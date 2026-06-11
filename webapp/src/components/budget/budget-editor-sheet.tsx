@@ -34,6 +34,8 @@ interface BudgetEditorSheetProps {
   onSaved: (categoryId: string, amount: number, expenseType: ExpenseType | null) => void;
   /** Called after a successful delete. */
   onDeleted: (categoryId: string) => void;
+  /** Shown for groups with subcategories: switches to the line composer. */
+  onConvertToLines?: () => void;
 }
 
 export function BudgetEditorSheet({
@@ -43,6 +45,7 @@ export function BudgetEditorSheet({
   currency,
   onSaved,
   onDeleted,
+  onConvertToLines,
 }: BudgetEditorSheetProps) {
   const [amount, setAmount] = useState("");
   const [expenseType, setExpenseType] = useState<ExpenseType | null>(null);
@@ -168,6 +171,19 @@ export function BudgetEditorSheet({
               Variable
             </button>
           </div>
+
+          {onConvertToLines && category.children.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                onOpenChange(false);
+                onConvertToLines();
+              }}
+              className="w-full rounded-md border border-dashed border-z-brass/35 bg-z-brass/6 px-3 py-2 text-xs font-medium text-z-brass transition-colors active:bg-z-brass/12"
+            >
+              Convertir en líneas — arma este grupo por subcategorías
+            </button>
+          )}
 
           <div className="flex items-center gap-2 pt-1">
             {hasBudget && (

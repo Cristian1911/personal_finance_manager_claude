@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { CategoryIcon } from "@/components/categories/category-icon";
 import { BudgetEditorSheet } from "./budget-editor-sheet";
+import { BudgetComposerSheet } from "./budget-composer-sheet";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
@@ -22,6 +23,7 @@ export function MobileBudgetList({ categories, currency }: MobileBudgetListProps
   const [localCategories, setLocalCategories] = useState(categories);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
   const [showUnbudgeted, setShowUnbudgeted] = useState(false);
 
   useEffect(() => {
@@ -46,28 +48,44 @@ export function MobileBudgetList({ categories, currency }: MobileBudgetListProps
 
   function openEditor(categoryId: string) {
     setEditingId(categoryId);
-    setSheetOpen(true);
+    const cat = localCategories.find((c) => c.id === categoryId);
+    // Composed groups (with subcategory lines) open the line composer directly.
+    if (cat && Object.keys(cat.childBudgets).length > 0) setComposerOpen(true);
+    else setSheetOpen(true);
   }
 
   function handleSaved(categoryId: string, amount: number, expenseType: ExpenseType | null) {
+    // The simple editor writes the Base row; the group total stays combined.
     setLocalCategories((prev) =>
-      prev.map((c) =>
-        c.id === categoryId
-          ? {
-              ...c,
-              budget: amount,
-              expense_type: expenseType,
-              percentUsed: amount > 0 ? (c.spent / amount) * 100 : 0,
-            }
-          : c
-      )
+      prev.map((c) => {
+        if (c.id !== categoryId) return c;
+        const childSum = Object.values(c.childBudgets).reduce((s, v) => s + v, 0);
+        const combined = amount + childSum;
+        return {
+          ...c,
+          baseBudget: amount,
+          budget: combined,
+          expense_type: expenseType,
+          percentUsed: combined > 0 ? (c.spent / combined) * 100 : 0,
+        };
+      })
     );
     startTransition(() => router.refresh());
   }
 
   function handleDeleted(categoryId: string) {
+    // Only the Base row is deleted; child lines survive.
     setLocalCategories((prev) =>
-      prev.map((c) => (c.id === categoryId ? { ...c, budget: null, percentUsed: 0 } : c))
+      prev.map((c) => {
+        if (c.id !== categoryId) return c;
+        const childSum = Object.values(c.childBudgets).reduce((s, v) => s + v, 0);
+        return {
+          ...c,
+          baseBudget: null,
+          budget: childSum > 0 ? childSum : null,
+          percentUsed: childSum > 0 ? (c.spent / childSum) * 100 : 0,
+        };
+      })
     );
     startTransition(() => router.refresh());
   }
@@ -144,6 +162,15 @@ export function MobileBudgetList({ categories, currency }: MobileBudgetListProps
         currency={currency}
         onSaved={handleSaved}
         onDeleted={handleDeleted}
+        onConvertToLines={() => setComposerOpen(true)}
+      />
+
+      <BudgetComposerSheet
+        group={editing}
+        open={composerOpen}
+        onOpenChange={setComposerOpen}
+        currency={currency}
+        onSaved={() => startTransition(() => router.refresh())}
       />
     </>
   );
