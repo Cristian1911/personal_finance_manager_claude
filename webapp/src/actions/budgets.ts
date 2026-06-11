@@ -14,23 +14,6 @@ type BudgetSummaryTransactionRow = {
 
 // ─── Cached inner functions ───────────────────────────────────────────────────
 
-async function getBudgetsCached(userId: string, isDemo: boolean): Promise<Budget[]> {
-    "use cache";
-    cacheTag("budgets");
-    cacheLife("zeta");
-
-    const supabase = createAdminClient();
-    const { data, error } = await supabase
-        .from("budgets")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("is_demo", isDemo)
-        .order("created_at", { ascending: false });
-
-    if (error) throw error;
-    return data ?? [];
-}
-
 async function getBudgetSummaryCached(userId: string, month: string | undefined, isDemo: boolean): Promise<BudgetSummary> {
     "use cache";
     cacheTag("budgets");
@@ -78,19 +61,6 @@ async function getBudgetSummaryCached(userId: string, month: string | undefined,
 }
 
 // ─── Public wrappers ──────────────────────────────────────────────────────────
-
-export async function getBudgets(): Promise<ActionResult<Budget[]>> {
-    const { user } = await getAuthenticatedClient();
-    if (!user) return { success: false, error: "No autenticado" };
-    try {
-        const isDemo = await getIsDemoFilter(user.id);
-        const data = await getBudgetsCached(user.id, isDemo);
-        return { success: true, data };
-    } catch (error) {
-        console.error("Error loading budgets:", error);
-        return { success: false, error: "Error al cargar los presupuestos" };
-    }
-}
 
 export interface BudgetSummary {
     totalTarget: number;
@@ -152,6 +122,26 @@ export async function deleteBudget(id: string): Promise<ActionResult> {
     if (!user) return { success: false, error: "No autenticado" };
 
     const { error } = await supabase.from("budgets").delete().eq("user_id", user.id).eq("id", id);
+
+    if (error) return { success: false, error: error.message };
+
+    updateTag("budgets");
+    updateTag("dashboard:budgets");
+    updateTag("attention");
+    return { success: true, data: undefined };
+}
+
+export async function deleteBudgetForCategory(categoryId: string): Promise<ActionResult> {
+    const { supabase, user } = await getAuthenticatedClient();
+
+    if (!user) return { success: false, error: "No autenticado" };
+
+    const { error } = await supabase
+        .from("budgets")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("category_id", categoryId)
+        .eq("period", "monthly");
 
     if (error) return { success: false, error: error.message };
 

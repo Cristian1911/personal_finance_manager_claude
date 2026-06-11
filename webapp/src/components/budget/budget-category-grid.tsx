@@ -10,8 +10,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { upsertBudget } from "@/actions/budgets";
+import { upsertBudget, deleteBudgetForCategory } from "@/actions/budgets";
 import { updateCategoryExpenseType } from "@/actions/categories";
+import { DESTRUCTIVE_GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import { BudgetCategoryCard } from "./budget-category-card";
 import type { CategoryBudgetData } from "@/types/domain";
 import type { ExpenseType } from "@/types/domain";
@@ -77,6 +78,29 @@ export function BudgetCategoryGrid({ categories }: BudgetCategoryGridProps) {
     setSaveError(null);
   }
 
+  async function handleDelete() {
+    if (!editingId) return;
+    const targetId = editingId;
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      // Optimistic update
+      setLocalCategories(prev => prev.map(c =>
+        c.id === targetId ? { ...c, budget: null, percentUsed: 0 } : c
+      ));
+      setEditingId(null);
+      setAmount("");
+
+      const result = await deleteBudgetForCategory(targetId);
+      if (!result.success) {
+        setLocalCategories(categories);
+        setSaveError(result.error ?? "Error al eliminar");
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   if (localCategories.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -99,11 +123,12 @@ export function BudgetCategoryGrid({ categories }: BudgetCategoryGridProps) {
           key={cat.id}
           open={editingId === cat.id}
           onOpenChange={(open) => {
-            if (!open) handleCancel();
+            if (open) handleSetBudget(cat.id);
+            else handleCancel();
           }}
         >
           <PopoverTrigger asChild>
-            <div>
+            <div className="cursor-pointer">
               <BudgetCategoryCard
                 category={cat}
                 onSetBudget={handleSetBudget}
@@ -143,22 +168,35 @@ export function BudgetCategoryGrid({ categories }: BudgetCategoryGridProps) {
               {saveError && (
                 <p className="text-xs text-destructive">{saveError}</p>
               )}
-              <div className="flex justify-end gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCancel}
-                  disabled={isSaving}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleSave}
-                  disabled={isSaving || !amount}
-                >
-                  {isSaving ? "Guardando..." : "Guardar"}
-                </Button>
+              <div className="flex items-center gap-2">
+                {(cat.budget ?? 0) > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={DESTRUCTIVE_GHOST_BUTTON_CLASS}
+                    onClick={handleDelete}
+                    disabled={isSaving}
+                  >
+                    Eliminar
+                  </Button>
+                )}
+                <div className="ml-auto flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCancel}
+                    disabled={isSaving}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleSave}
+                    disabled={isSaving || !amount}
+                  >
+                    {isSaving ? "Guardando..." : "Guardar"}
+                  </Button>
+                </div>
               </div>
             </div>
           </PopoverContent>

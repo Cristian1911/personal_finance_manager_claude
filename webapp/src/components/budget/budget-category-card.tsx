@@ -69,7 +69,12 @@ export function BudgetCategoryCard({
           </div>
           {category.children.length > 0 && (
             <button
-              onClick={() => setExpanded(!expanded)}
+              type="button"
+              onClick={(e) => {
+                // The whole card is a PopoverTrigger — don't open the editor.
+                e.stopPropagation();
+                setExpanded(!expanded);
+              }}
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
               {expanded ? (

@@ -13,17 +13,19 @@ import { BudgetCategoryGrid } from "@/components/budget/budget-category-grid";
 import { TrendComparison } from "@/components/budget/trend-comparison";
 import { CategoryZoneManager } from "@/components/categories/category-zone-manager";
 import { MonthPlanner } from "@/components/budget/month-planner";
+import { MobileBudgetList } from "@/components/budget/mobile-budget-list";
+import { BudgetAjustesSheet } from "@/components/budget/budget-ajustes-sheet";
 import { SummaryCard } from "@/components/ui/summary-card";
 import { AttentionCard } from "@/components/ui/attention-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { StateChip } from "@/components/mobile/v2/state-chip";
-import { CategoryIcon } from "@/components/categories/category-icon";
 import { PlanAllocationChip } from "@/components/mobile/v2/plan/plan-allocation-chip";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { parseMonth, formatMonthLabel, getDaysRemainingInMonth } from "@/lib/utils/date";
 import { MOBILE_TAB_BAR_CLEARANCE_CLASS, PANEL_INSET_CLASS, SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
+import type { BudgetMode } from "@/types/domain";
 import { categoryBudgetGroup, isFixedBudgetCategory } from "@zeta/shared";
 import { ScenarioSection, ScenarioEntryPoint } from "@/components/budget/scenario/scenario-section";
 import {
@@ -31,7 +33,7 @@ import {
   type ScenarioCategoryOption,
   type ScenarioDeseoOption,
 } from "@/components/budget/scenario/scenario-model";
-import type { CurrencyCode, CategoryBudgetData } from "@/types/domain";
+import type { CurrencyCode } from "@/types/domain";
 
 const BudgetWizard = dynamic(
   () => import("@/components/budget/budget-wizard").then((m) => ({ default: m.BudgetWizard })),
@@ -145,18 +147,6 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
   const essentialPct = totalSpent > 0 ? Math.round((essentialSpent / totalSpent) * 100) : 0;
   const wantsPct = totalSpent > 0 ? Math.round((wantsSpent / totalSpent) * 100) : 0;
 
-  // D6: group categories by risk state — over → near → safe
-  const over = [...budgeted]
-    .filter((c) => c.percentUsed > 100)
-    .sort((a, b) => b.percentUsed - a.percentUsed);
-  const near = [...budgeted]
-    .filter((c) => c.percentUsed >= 85 && c.percentUsed <= 100)
-    .sort((a, b) => b.percentUsed - a.percentUsed);
-  const safe = [...budgeted]
-    .filter((c) => c.percentUsed < 85)
-    .sort((a, b) => a.percentUsed - b.percentUsed);
-  const hasBudgetedCategories = over.length + near.length + safe.length > 0;
-
   const pressure = progress >= 100 ? "critical" : progress >= 80 ? "watch" : "stable";
   const chipConfig = {
     stable: { label: "En control", variant: "sage" as const },
@@ -164,6 +154,13 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
     critical: { label: "Sobre límite", variant: "danger" as const },
   } as const;
   const chip = chipConfig[pressure];
+
+  const ajustesProps = {
+    mode: budgetMode as BudgetMode | null,
+    income,
+    incomeSource: incomeEstimate?.source ?? null,
+    currency,
+  };
 
   return (
     <ScenarioSection
@@ -177,7 +174,12 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
     <div className="space-y-6">
       {/* Mobile view */}
       <div className={cn("lg:hidden", MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
-        <MobileHeader variant="sub" title="Presupuesto" backHref="/plan" />
+        <MobileHeader
+          variant="sub"
+          title="Presupuesto"
+          backHref="/plan"
+          action={<BudgetAjustesSheet variant="icon" {...ajustesProps} />}
+        />
 
         <div className="space-y-4 px-4 pt-4">
           {/* Budget hero card */}
@@ -234,56 +236,8 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
           {/* Simular cambio — entry / mode toggle */}
           <ScenarioEntryPoint />
 
-          {/* Categories grouped by risk state — D6 */}
-          {hasBudgetedCategories && (
-            <div className="space-y-5">
-              {over.length > 0 && (
-                <section>
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className={cn(SECTION_EYEBROW_CLASS, "text-z-expense")}>
-                      Sobre límite
-                    </p>
-                    <span className="text-[10px] text-muted-foreground">{over.length}</span>
-                  </div>
-                  <div className="space-y-3">
-                    {over.map((cat) => (
-                      <MobileBudgetCategoryRow key={cat.id} category={cat} currency={currency} />
-                    ))}
-                  </div>
-                </section>
-              )}
-              {near.length > 0 && (
-                <section>
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className={cn(SECTION_EYEBROW_CLASS, "text-z-brass")}>
-                      Cerca del límite
-                    </p>
-                    <span className="text-[10px] text-muted-foreground">{near.length}</span>
-                  </div>
-                  <div className="space-y-3">
-                    {near.map((cat) => (
-                      <MobileBudgetCategoryRow key={cat.id} category={cat} currency={currency} />
-                    ))}
-                  </div>
-                </section>
-              )}
-              {safe.length > 0 && (
-                <section>
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className={cn(SECTION_EYEBROW_CLASS, "text-z-income")}>
-                      Dentro del límite
-                    </p>
-                    <span className="text-[10px] text-muted-foreground">{safe.length}</span>
-                  </div>
-                  <div className="space-y-3">
-                    {safe.map((cat) => (
-                      <MobileBudgetCategoryRow key={cat.id} category={cat} currency={currency} />
-                    ))}
-                  </div>
-                </section>
-              )}
-            </div>
-          )}
+          {/* Categories grouped by risk state — tap any row to edit its límite */}
+          <MobileBudgetList categories={outflowCategories} currency={currency} />
 
           {/* Remaining budget */}
           {totalBudgeted > 0 && (
@@ -309,7 +263,10 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
             <h2 className="text-2xl font-semibold">Presupuesto</h2>
             <p className="text-sm text-muted-foreground">{monthLabel} · {daysRemaining} días restantes</p>
           </div>
-          <MonthPlanner categories={outflowCategories} />
+          <div className="flex items-center gap-2">
+            <BudgetAjustesSheet variant="button" {...ajustesProps} />
+            <MonthPlanner categories={outflowCategories} />
+          </div>
         </div>
 
         {/* Simular cambio — entry / mode toggle */}
@@ -356,67 +313,5 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
       </div>
     </div>
     </ScenarioSection>
-  );
-}
-
-// ─── Mobile helper ──────────────────────────────────────────────────────────
-
-function MobileBudgetCategoryRow({
-  category,
-  currency,
-}: {
-  category: CategoryBudgetData;
-  currency: CurrencyCode;
-}) {
-  const pct = category.percentUsed;
-  const isOver = pct >= 100;
-  const isWarning = pct >= 80 && pct < 100;
-
-  const barColor = isOver
-    ? "bg-z-debt"
-    : isWarning
-      ? "bg-z-alert"
-      : "bg-z-income";
-
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between gap-2">
-        {/* Left: icon + name */}
-        <div className="flex items-center gap-2 min-w-0">
-          <span
-            className="flex size-6 shrink-0 items-center justify-center rounded-md"
-            style={{ backgroundColor: `${category.color}20`, color: category.color }}
-          >
-            <CategoryIcon icon={category.icon} className="size-3.5" />
-          </span>
-          <span className="text-sm font-medium truncate">
-            {category.name_es ?? category.name}
-          </span>
-        </div>
-
-        {/* Right: amounts */}
-        <div className="flex items-center gap-1 shrink-0">
-          <span
-            className={cn(
-              "text-xs font-semibold tabular-nums",
-              isOver ? "text-z-debt" : isWarning ? "text-z-alert" : "text-foreground"
-            )}
-          >
-            {formatCurrency(category.spent, currency)}
-          </span>
-          <span className="text-[10px] text-muted-foreground">
-            / {formatCurrency(category.budget!, currency)}
-          </span>
-        </div>
-      </div>
-
-      {/* Mini progress bar */}
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/5">
-        <div
-          className={cn("h-full rounded-full transition-all", barColor)}
-          style={{ width: `${Math.min(pct, 100)}%` }}
-        />
-      </div>
-    </div>
   );
 }
