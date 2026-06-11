@@ -94,3 +94,11 @@ applyBudgetComposition(input: {
 - Named reusable templates ("Mudanza" for budgets) — the sandbox already covers what-if templates; revisit after usage.
 - Per-group envelopes/targets (top-down) — rejected for v1 (decision #5).
 - Merging builder with Planificar mes / wizard / sandbox — explicitly deferred (decision #4).
+
+## Addendum (planning, 2026-06-11)
+
+Three correctness consequences surfaced while writing the implementation plan:
+
+1. **Sandbox apply cleans child lines.** `applyBudgetScenario` writes group-level amounts to parent rows; on a composed group that would yield `total = scenario + surviving lines` (inflated). Rule: scenario wins — applying a group amount deletes that group's child budget rows so the result equals what the user saw. (Not a UX change to the sandbox.)
+2. **Planificar mes and the desktop grid prefill from `baseBudget`,** not the (now combined) `budget` — otherwise saving would write the combined total into the Base row and double-count. Both editors keep editing only the Base row; behavior on non-composed groups is identical to today.
+3. **`MobileHeader` sub variant gains `onBackClick?: () => void`** so the builder's dirty-draft guard can intercept the back tap (today the back affordance is an un-interceptable `Link`/history-back). Additive chrome change; also unblocks the sandbox's known back-bypasses-confirm flaw later.
