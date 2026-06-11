@@ -139,6 +139,12 @@ export function BudgetCategoryCard({
                 </span>
               </div>
             )}
+            {Object.keys(category.childBudgets).length > 0 && (
+              <p className="text-[10px] text-muted-foreground">
+                {Object.keys(category.childBudgets).length} líneas — edítalas en{" "}
+                <span className="text-z-brass">Armar presupuesto</span>
+              </p>
+            )}
           </div>
         ) : (
           <button
