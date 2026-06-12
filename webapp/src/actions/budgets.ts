@@ -113,7 +113,7 @@ export async function upsertBudget(
                 ...parsed.data,
                 updated_at: new Date().toISOString(),
             },
-            { onConflict: "user_id, category_id, period" }
+            { onConflict: "user_id,category_id,period" }
         )
         .select()
         .single();
@@ -182,7 +182,7 @@ export async function applyBudgetComposition(
         }));
         const { error } = await supabase
             .from("budgets")
-            .upsert(rows, { onConflict: "user_id, category_id, period" });
+            .upsert(rows, { onConflict: "user_id,category_id,period" });
         if (error) return { success: false, error: error.message };
     }
 
@@ -209,12 +209,17 @@ export async function deleteBudgetForCategory(categoryId: string): Promise<Actio
     if (!user) return { success: false, error: "No autenticado" };
     if (!UUID_RE.test(categoryId)) return { success: false, error: "Categoría inválida" };
 
+    // Scope by is_demo like applyBudgetComposition/applyBudgetScenario so demo
+    // and real rows stay isolated.
+    const isDemo = await getIsDemoFilter(user.id);
+
     const { error } = await supabase
         .from("budgets")
         .delete()
         .eq("user_id", user.id)
         .eq("category_id", categoryId)
-        .eq("period", "monthly");
+        .eq("period", "monthly")
+        .eq("is_demo", isDemo);
 
     if (error) return { success: false, error: error.message };
 
