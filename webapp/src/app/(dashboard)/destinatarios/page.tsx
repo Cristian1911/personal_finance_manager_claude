@@ -15,6 +15,8 @@ import { PageHeaderRow } from "@/components/ui/page-header-row";
 import { SummaryCard } from "@/components/ui/summary-card";
 import { AttentionCard } from "@/components/ui/attention-card";
 import { Button } from "@/components/ui/button";
+import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import { cn } from "@/lib/utils";
 
 export default async function DestinatariosPage() {
   await connection();
@@ -37,18 +39,32 @@ export default async function DestinatariosPage() {
 
   return (
     <div className="space-y-6">
-      <MobileHeader variant="sub" title="Destinatarios" backHref="/gestionar" />
+      <MobileHeader
+        variant="sub"
+        title="Destinatarios"
+        backHref="/gestionar"
+        action={
+          <CreateDestinatarioDialog
+            categories={categories}
+            trigger={
+              <Button
+                size="icon"
+                aria-label="Crear destinatario"
+                className={cn(BRASS_BUTTON_CLASS, "size-8 rounded-full")}
+              >
+                <Plus className="size-4" />
+              </Button>
+            }
+          />
+        }
+      />
 
       <PageHeaderRow
         title="Destinatarios"
         subtitle={`${destinatarios.length} registrados · ${withRules} con reglas`}
         actions={
           <div className="flex items-center gap-2">
-            <Button
-              asChild
-              variant="outline"
-              className="border-white/8 bg-black/10 text-z-sage-light hover:bg-white/5 hover:text-z-sage-light"
-            >
+            <Button asChild variant="outline" className={GHOST_BUTTON_CLASS}>
               <Link href="/categorizar">
                 <Tags className="mr-2 size-4" />
                 Ver Categorizar
@@ -57,7 +73,7 @@ export default async function DestinatariosPage() {
             <CreateDestinatarioDialog
               categories={categories}
               trigger={
-                <Button className="bg-z-brass text-z-ink hover:bg-z-brass/90">
+                <Button className={BRASS_BUTTON_CLASS}>
                   <Plus className="mr-2 size-4" />
                   Crear destinatario
                 </Button>

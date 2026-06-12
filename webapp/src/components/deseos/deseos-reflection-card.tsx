@@ -6,6 +6,7 @@ import { submitReflection } from "@/actions/wishlist";
 import type { CurrencyCode, WishlistItem } from "@/types/domain";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatRelativeDate } from "@/lib/utils/date";
+import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -32,7 +33,7 @@ export function DeseosReflectionCard({
 
   function handleSubmit() {
     if (worthIt === null || rating === 0) {
-      setError("Indica si valio la pena y una calificacion");
+      setError("Indica si valió la pena y una calificación");
       return;
     }
     setError(null);
@@ -71,7 +72,7 @@ export function DeseosReflectionCard({
         {/* Worth it? */}
         <div className="space-y-1.5">
           <p className="text-xs font-medium text-muted-foreground">
-            Valio la pena?
+            ¿Valió la pena?
           </p>
           <div className="flex gap-2">
             <button
@@ -79,18 +80,18 @@ export function DeseosReflectionCard({
               onClick={() => setWorthIt(true)}
               className={`rounded-lg border px-4 py-1.5 text-sm transition-colors ${
                 worthIt === true
-                  ? "border-green-900/30 bg-green-900/30 text-green-400"
+                  ? "border-z-income/25 bg-z-income/15 text-z-income"
                   : "border-white/10 text-muted-foreground hover:border-white/20"
               }`}
             >
-              Si
+              Sí
             </button>
             <button
               type="button"
               onClick={() => setWorthIt(false)}
               className={`rounded-lg border px-4 py-1.5 text-sm transition-colors ${
                 worthIt === false
-                  ? "border-red-900/30 bg-red-900/30 text-red-400"
+                  ? "border-z-debt/25 bg-z-debt/15 text-z-debt"
                   : "border-white/10 text-muted-foreground hover:border-white/20"
               }`}
             >
@@ -102,7 +103,7 @@ export function DeseosReflectionCard({
         {/* Rating */}
         <div className="space-y-1.5">
           <p className="text-xs font-medium text-muted-foreground">
-            Calificacion
+            Calificación
           </p>
           <div className="flex gap-1">
             {[1, 2, 3, 4, 5].map((n) => (
@@ -134,13 +135,13 @@ export function DeseosReflectionCard({
             onChange={(e) => setNote(e.target.value)}
             rows={2}
             maxLength={500}
-            placeholder="Que aprendiste?"
+            placeholder="¿Qué aprendiste?"
             autoComplete="off"
             className="w-full rounded-md border border-white/10 bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus:border-z-brass focus:outline-none"
           />
         </div>
 
-        {error && <p className="text-xs text-red-400">{error}</p>}
+        {error && <p className="text-xs text-z-debt">{error}</p>}
 
         <div className="flex gap-2">
           <Button
@@ -149,11 +150,11 @@ export function DeseosReflectionCard({
             onClick={() => setDismissed(true)}
             disabled={isPending}
           >
-            Despues
+            Después
           </Button>
           <Button
             size="sm"
-            className="bg-z-brass text-z-ink hover:bg-z-brass/90"
+            className={BRASS_BUTTON_CLASS}
             onClick={handleSubmit}
             disabled={isPending}
           >

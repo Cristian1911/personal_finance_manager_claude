@@ -32,6 +32,11 @@ interface SubHeaderProps {
    * "Atrás" button (which steps backward without losing state).
    */
   backStyle?: "back" | "exit";
+  /**
+   * Intercepts the back affordance (e.g. dirty-draft confirm). When provided,
+   * renders a button instead of the Link / history back.
+   */
+  onBackClick?: () => void;
 }
 
 type MobileHeaderProps = MainHeaderProps | SubHeaderProps;
@@ -51,7 +56,16 @@ export function MobileHeader(props: MobileHeaderProps) {
       <header className={base}>
         <div className="flex flex-1 items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
-            {props.backHref ? (
+            {props.onBackClick ? (
+              <button
+                type="button"
+                onClick={props.onBackClick}
+                className="flex size-8 shrink-0 items-center justify-center rounded-full text-z-sage-light transition-colors hover:bg-white/5"
+                aria-label={label}
+              >
+                <Icon className="size-4" />
+              </button>
+            ) : props.backHref ? (
               <Link
                 href={props.backHref}
                 className="flex size-8 shrink-0 items-center justify-center rounded-full text-z-sage-light transition-colors hover:bg-white/5"

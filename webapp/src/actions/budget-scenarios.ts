@@ -175,6 +175,36 @@ export async function applyBudgetScenario(input: {
     return { success: false, error: "No se pudo aplicar el escenario" };
   }
 
+  // Scenario amounts are group-level truth: drop child lines ("budget builder"
+  // composition rows) of every touched group so the rollup (Base + Σ children)
+  // equals exactly the applied amount.
+  const touchedParentIds = [
+    ...new Set([...upserts.map((u) => u.category_id), ...removedIds]),
+  ];
+  if (touchedParentIds.length > 0) {
+    const { data: childRows, error: childErr } = await supabase
+      .from("categories")
+      .select("id")
+      .or(`user_id.eq.${user.id},user_id.is.null`)
+      .in("parent_id", touchedParentIds);
+    if (childErr) {
+      return { success: false, error: "No se pudo aplicar el escenario" };
+    }
+    const childIds = (childRows ?? []).map((c) => c.id);
+    if (childIds.length > 0) {
+      const { error: delErr } = await supabase
+        .from("budgets")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("period", "monthly")
+        .eq("is_demo", isDemo)
+        .in("category_id", childIds);
+      if (delErr) {
+        return { success: false, error: "No se pudo aplicar el escenario" };
+      }
+    }
+  }
+
   if (id) {
     const { error: markError } = await supabase
       .from("budget_scenarios")

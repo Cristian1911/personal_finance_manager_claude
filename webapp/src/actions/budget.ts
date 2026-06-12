@@ -40,35 +40,6 @@ export async function setBudgetMode(
   return { success: true, data: null };
 }
 
-// ── Upsert budget for a category ─────────────────────────
-
-export async function upsertBudgetForCategory(
-  categoryId: string,
-  amount: number,
-): Promise<ActionResult<null>> {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
-
-  const { error } = await supabase
-    .from("budgets")
-    .upsert(
-      {
-        user_id: user.id,
-        category_id: categoryId,
-        amount,
-        period: "monthly",
-      },
-      { onConflict: "user_id,category_id,period" },
-    );
-
-  if (error) return { success: false, error: error.message };
-
-  updateTag("budgets");
-  updateTag("dashboard:budgets");
-  updateTag("attention");
-  return { success: true, data: null };
-}
-
 // ── Bulk upsert budgets (wizard completion) ──────────────
 
 export async function bulkUpsertBudgets(
@@ -114,5 +85,10 @@ export async function updateEstimatedIncome(
     .eq("id", user.id);
 
   if (error) return { success: false, error: error.message };
+
+  // getEstimatedIncome caches under "profile"; budget views derive from it.
+  updateTag("profile");
+  updateTag("budgets");
+  updateTag("dashboard:budgets");
   return { success: true, data: null };
 }

@@ -155,7 +155,10 @@ export type CategoryBudgetData = {
   is_active: boolean;
   direction: TransactionDirection;
   expense_type: ExpenseType | null;
+  /** Combined group budget: baseBudget + Σ childBudgets. Null when no rows exist. */
   budget: number | null;
+  /** The parent category's OWN budget row ("Base" line). Null when absent. */
+  baseBudget: number | null;
   spent: number;
   committedRecurring: number;
   percentUsed: number;
@@ -163,6 +166,12 @@ export type CategoryBudgetData = {
   children: CategoryWithChildren[];
   /** Spending per child category: childId → amount spent this month */
   childrenSpent: Record<string, number>;
+  /** Budget rows on child categories ("lines"): childId → amount */
+  childBudgets: Record<string, number>;
+  /** 3-month average spend per child: childId → amount */
+  childAvg3m: Record<string, number>;
+  /** Monthly recurring committed per child: childId → amount */
+  childRecurring: Record<string, number>;
 };
 
 // Transaction with account join (used by main transaction views)

@@ -88,7 +88,7 @@ function AddStartupSheet({
                       onAdd({ name: d.name, amount: d.amount, deseo: d });
                       onOpenChange(false);
                     }}
-                    className="flex w-full items-center gap-2.5 rounded-xl border border-white/6 bg-[#111] px-3 py-2.5 text-left transition-colors active:bg-white/5"
+                    className="flex w-full items-center gap-2.5 rounded-xl border border-white/6 bg-black/10 px-3 py-2.5 text-left transition-colors active:bg-white/5"
                   >
                     <Heart className="size-3.5 shrink-0 text-z-brass" strokeWidth={1.5} />
                     <span className="min-w-0 flex-1 truncate text-sm font-medium">{d.name}</span>
@@ -111,10 +111,10 @@ function AddStartupSheet({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Nombre — ej. Nevera"
-                className="h-11 w-full rounded-xl border border-white/6 bg-[#111] px-3 text-sm outline-none placeholder:text-z-sage-dark focus-visible:border-z-alert/35"
+                className="h-11 w-full rounded-xl border border-white/6 bg-black/10 px-3 text-sm outline-none placeholder:text-z-sage-dark focus-visible:border-z-alert/35"
               />
               <div className="flex gap-2">
-                <div className="flex h-11 flex-1 items-center gap-1 rounded-xl border border-white/6 bg-[#111] px-3">
+                <div className="flex h-11 flex-1 items-center gap-1 rounded-xl border border-white/6 bg-black/10 px-3">
                   <span className="text-sm text-z-sage-dark">$</span>
                   <input
                     inputMode="numeric"
@@ -316,7 +316,7 @@ export function ScenarioStartup({
           <div
             key={item.id}
             className={cn(
-              "flex items-center gap-2.5 rounded-xl border border-white/6 bg-[#111] px-3 py-2",
+              "flex items-center gap-2.5 rounded-xl border border-white/6 bg-black/10 px-3 py-2",
               item.deferred && "opacity-55",
             )}
           >

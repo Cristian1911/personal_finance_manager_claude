@@ -1333,3 +1333,16 @@ Phase 3 (planificador 4-step + Deseos/Puedo-pagar parity) shipped via PRs #248 a
 - **[P3] Dead code from the lens rewrite** — DebtAccountRow (0 consumers, stale 'canonical' docstring) + CHIP_NEUTRAL_CLASS (0 consumers): delete or re-adopt.
 - **[P3] runSubscriptionDetection blocks importTransactions tail** — 12-month scan + subscriptions fetch run serially at the end of every import; parallelize or fire-and-forget. Also upsertSubscriptionFromTemplate runs (and busts the subscriptions cache) on every non-subscription template edit.
 - **Note:** migration 20260610140559's updated_at tie-break already ran in prod with user-confirmed survivors; residual risk limited to other environments restored from pre-migration dumps.
+
+## 2026-06-11 session — webapp polish sweep (two audit passes, 16 surfaces)
+
+**Plan:** `docs/polish-plan-2026-06-11.md` — canonical continuation plan (Wave 2/3, chrome API gaps, systemic sweeps).
+
+- **Done this session:** budget editing restored (mobile sheet editor + Ajustes mode/income + desktop tap-to-edit + delete; dead code removed); presupuesto chrome dedup (double px-4/clearance, bg-[#111] → tokens); wave-1 polish agents (accounts + categorizar restructure, PageHeaderRow desktop-only central fix, suscripciones wiring + deseos sweep).
+- **Top of Wave 2 (correctness, minutes):** UTC "today" default bug in voice-capture-sheet + mobile-transaction-form (after ~7pm saves tomorrow) → shared `todayLocalISO()`; landing legal links `href="#"`; debt-direction trend chip shows green on growing debt (graph-face.tsx).
+- **Known feature-scope deferrals:** Transferencia tab saves plain OUTFLOW (no transfer semantics); onboarding import-first rebuild (Flow 01); Exportar datos.
+
+## 2026-06-11 — budget builder review findings (pre-existing, deferred)
+
+- **`is_demo` latent bug family in budget mutations:** `upsertBudget`, `bulkUpsertBudgets`, `deleteBudget`, `deleteBudgetForCategory` neither set `is_demo` on write nor filter it on delete. For demo-mode users, writes land `is_demo=false` → invisible to the demo-filtered `getBudgetSummaryCached`. `applyBudgetScenario` + `applyBudgetComposition` do it correctly — mirror that pattern across the four siblings. (server-action-reviewer, budget builder gate)
+- **`getBudgetSummaryCached` uses `createAdminClient()` inside `"use cache"`:** works (no encrypted columns) but diverges from the `createCachedClient(accessToken)` convention. Migrate on next cache-doctor pass. (perf-auditor)

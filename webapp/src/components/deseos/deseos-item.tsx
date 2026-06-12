@@ -17,21 +17,21 @@ import { DeseosEnrichDrawer } from "./deseos-enrich-drawer";
 
 const URGENCY_LABELS: Record<string, string> = {
   NECESSARY: "Necesario",
-  USEFUL: "Util",
+  USEFUL: "Útil",
   IMPULSE: "Impulso",
 };
 
 const DESIRE_TYPE_LABELS: Record<string, string> = {
   long_held: "Hace rato",
   recent: "Reciente",
-  spontaneous: "Espontaneo",
+  spontaneous: "Espontáneo",
 };
 
 function trafficLightColor(score: number | null): string {
   if (score == null) return "bg-muted-foreground";
-  if (score >= 55) return "bg-green-400";
-  if (score >= 35) return "bg-yellow-400";
-  return "bg-red-400";
+  if (score >= 55) return "bg-z-income";
+  if (score >= 35) return "bg-z-alert";
+  return "bg-z-debt";
 }
 
 function verdictText(verdict: string | null): string | null {
@@ -40,7 +40,7 @@ function verdictText(verdict: string | null): string | null {
     case "BUY":
       return "Puedes comprarlo";
     case "BUY_WITH_CAUTION":
-      return "Puedes, con precaucion";
+      return "Puedes, con precaución";
     case "WAIT":
       return "Mejor esperar";
     case "NOT_RECOMMENDED":
@@ -55,11 +55,11 @@ function verdictTextColor(verdict: string | null): string {
   switch (verdict) {
     case "BUY":
     case "BUY_WITH_CAUTION":
-      return "text-green-400";
+      return "text-z-income";
     case "WAIT":
-      return "text-yellow-400";
+      return "text-z-alert";
     case "NOT_RECOMMENDED":
-      return "text-red-400";
+      return "text-z-debt";
     default:
       return "text-muted-foreground";
   }
@@ -141,7 +141,7 @@ export function DeseosItem({
                 <span>{formatRelativeDate(item.created_at)}</span>
 
                 {localScoreError ? (
-                  <span className="text-red-400">No se pudo evaluar</span>
+                  <span className="text-z-debt">No se pudo evaluar</span>
                 ) : (
                   verdictText(item.freshVerdict) && (
                     <span className={verdictTextColor(item.freshVerdict)}>
@@ -182,7 +182,7 @@ export function DeseosItem({
                 {item.enriched && isGreen && (
                   <Button
                     size="xs"
-                    className="bg-green-900/30 text-green-400 border border-green-900/30 hover:bg-green-900/50 text-xs"
+                    className="border border-z-income/25 bg-z-income/10 text-z-income hover:bg-z-income/20 text-xs"
                     onClick={handleBought}
                     disabled={isPending}
                   >
@@ -208,7 +208,7 @@ export function DeseosItem({
                 <Button
                   size="icon-xs"
                   variant="ghost"
-                  className="ml-auto text-muted-foreground hover:text-red-400"
+                  className="ml-auto text-muted-foreground hover:text-z-debt"
                   onClick={handleDelete}
                   disabled={isPending}
                 >

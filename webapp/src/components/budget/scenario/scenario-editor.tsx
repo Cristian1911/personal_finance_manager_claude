@@ -117,7 +117,7 @@ function RealityRow({
   const isNew = line.current == null;
 
   return (
-    <div className="rounded-xl border border-white/6 bg-[#111] px-3 py-2.5">
+    <div className="rounded-xl border border-white/6 bg-black/10 px-3 py-2.5">
       <div className="flex items-center justify-between gap-2">
         <span className="flex min-w-0 items-center gap-1.5">
           <span className="truncate text-[13px] font-semibold">{line.name}</span>
@@ -178,7 +178,7 @@ export function ScenarioEditorFooter({
   return (
     <div
       className={cn(
-        "sticky bottom-2 z-10 rounded-xl border bg-[#111]/95 px-3.5 py-2.5 backdrop-blur-sm",
+        "sticky bottom-2 z-10 rounded-xl border bg-z-surface-2/95 px-3.5 py-2.5 backdrop-blur-sm",
         short ? "border-z-debt/30" : "border-z-income/30",
       )}
     >
@@ -303,7 +303,7 @@ export function ScenarioEditor({
                   onAddCategory(cat);
                   setPickerOpen(false);
                 }}
-                className="flex w-full items-center gap-3 rounded-xl border border-white/6 bg-[#111] px-3 py-2.5 text-left transition-colors active:bg-white/5"
+                className="flex w-full items-center gap-3 rounded-xl border border-white/6 bg-black/10 px-3 py-2.5 text-left transition-colors active:bg-white/5"
               >
                 <span
                   className="flex size-7 shrink-0 items-center justify-center rounded-md"

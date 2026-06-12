@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
+import { BRASS_GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -37,9 +38,9 @@ export function BudgetCategoryCard({
   const totalPercent = spentPercent;
   const barColor =
     totalPercent >= 100
-      ? "bg-red-500"
+      ? "bg-z-debt"
       : totalPercent >= 75
-        ? "bg-yellow-500"
+        ? "bg-z-alert"
         : undefined;
 
   return (
@@ -69,7 +70,12 @@ export function BudgetCategoryCard({
           </div>
           {category.children.length > 0 && (
             <button
-              onClick={() => setExpanded(!expanded)}
+              type="button"
+              onClick={(e) => {
+                // The whole card is a PopoverTrigger — don't open the editor.
+                e.stopPropagation();
+                setExpanded(!expanded);
+              }}
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
               {expanded ? (
@@ -111,13 +117,13 @@ export function BudgetCategoryCard({
               />
             </div>
             <div className="space-y-0.5">
-              <p className="text-xs font-medium">
+              <p className="text-xs font-medium tabular-nums">
                 Gastado: {formatCurrency(category.spent)}
                 <span className="text-muted-foreground font-normal">
                   {" "}de {formatCurrency(category.budget!)}
                 </span>
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground tabular-nums">
                 Disponible:{" "}
                 <span className={category.spent > category.budget! ? "text-z-debt" : "text-z-income"}>
                   {formatCurrency(Math.max(0, category.budget! - category.spent))}
@@ -128,17 +134,24 @@ export function BudgetCategoryCard({
             {hasRecurring && (
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Repeat className="size-3" />
-                <span>
+                <span className="tabular-nums">
                   {formatCurrency(category.committedRecurring)} fijos &middot;{" "}
                   {formatCurrency(flexible)} flexible
                 </span>
               </div>
             )}
+            {Object.keys(category.childBudgets).length > 0 && (
+              <p className="text-[10px] text-muted-foreground">
+                {Object.keys(category.childBudgets).length} líneas — edítalas en{" "}
+                <span className="text-z-brass">Armar presupuesto</span>
+              </p>
+            )}
           </div>
         ) : (
           <button
+            type="button"
             onClick={() => onSetBudget(category.id)}
-            className="text-xs text-primary hover:underline"
+            className={cn("rounded-md border px-2 py-1 text-xs transition-colors", BRASS_GHOST_BUTTON_CLASS)}
           >
             Fijar presupuesto
           </button>

@@ -10,8 +10,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { upsertBudget } from "@/actions/budgets";
+import { upsertBudget, deleteBudgetForCategory } from "@/actions/budgets";
 import { updateCategoryExpenseType } from "@/actions/categories";
+import { DESTRUCTIVE_GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import { BudgetCategoryCard } from "./budget-category-card";
 import type { CategoryBudgetData } from "@/types/domain";
 import type { ExpenseType } from "@/types/domain";
@@ -34,7 +35,7 @@ export function BudgetCategoryGrid({ categories }: BudgetCategoryGridProps) {
 
   function handleSetBudget(categoryId: string) {
     const cat = localCategories.find((c) => c.id === categoryId);
-    setAmount(cat?.budget ? cat.budget.toString() : "");
+    setAmount(cat?.baseBudget ? cat.baseBudget.toString() : "");
     setExpenseType(cat?.expense_type ?? null);
     setSaveError(null);
     setEditingId(categoryId);
@@ -50,11 +51,19 @@ export function BudgetCategoryGrid({ categories }: BudgetCategoryGridProps) {
       formData.append("amount", amount);
       formData.append("period", "monthly");
 
-      // Optimistic update
+      // Optimistic update — editor writes the Base row; total stays combined
       const budgetAmount = parseFloat(amount);
-      setLocalCategories(prev => prev.map(c =>
-        c.id === editingId ? { ...c, budget: budgetAmount, percentUsed: budgetAmount > 0 ? c.spent / budgetAmount * 100 : 0 } : c
-      ));
+      setLocalCategories(prev => prev.map(c => {
+        if (c.id !== editingId) return c;
+        const childSum = Object.values(c.childBudgets).reduce((s, v) => s + v, 0);
+        const combined = budgetAmount + childSum;
+        return {
+          ...c,
+          baseBudget: budgetAmount,
+          budget: combined,
+          percentUsed: combined > 0 ? (c.spent / combined) * 100 : 0,
+        };
+      }));
       setEditingId(null);
       setAmount("");
 
@@ -75,6 +84,36 @@ export function BudgetCategoryGrid({ categories }: BudgetCategoryGridProps) {
     setEditingId(null);
     setAmount("");
     setSaveError(null);
+  }
+
+  async function handleDelete() {
+    if (!editingId) return;
+    const targetId = editingId;
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      // Optimistic update — only the Base row is deleted; child lines survive
+      setLocalCategories(prev => prev.map(c => {
+        if (c.id !== targetId) return c;
+        const childSum = Object.values(c.childBudgets).reduce((s, v) => s + v, 0);
+        return {
+          ...c,
+          baseBudget: null,
+          budget: childSum > 0 ? childSum : null,
+          percentUsed: childSum > 0 ? (c.spent / childSum) * 100 : 0,
+        };
+      }));
+      setEditingId(null);
+      setAmount("");
+
+      const result = await deleteBudgetForCategory(targetId);
+      if (!result.success) {
+        setLocalCategories(categories);
+        setSaveError(result.error ?? "Error al eliminar");
+      }
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   if (localCategories.length === 0) {
@@ -99,11 +138,12 @@ export function BudgetCategoryGrid({ categories }: BudgetCategoryGridProps) {
           key={cat.id}
           open={editingId === cat.id}
           onOpenChange={(open) => {
-            if (!open) handleCancel();
+            if (open) handleSetBudget(cat.id);
+            else handleCancel();
           }}
         >
           <PopoverTrigger asChild>
-            <div>
+            <div className="cursor-pointer">
               <BudgetCategoryCard
                 category={cat}
                 onSetBudget={handleSetBudget}
@@ -143,22 +183,35 @@ export function BudgetCategoryGrid({ categories }: BudgetCategoryGridProps) {
               {saveError && (
                 <p className="text-xs text-destructive">{saveError}</p>
               )}
-              <div className="flex justify-end gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCancel}
-                  disabled={isSaving}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleSave}
-                  disabled={isSaving || !amount}
-                >
-                  {isSaving ? "Guardando..." : "Guardar"}
-                </Button>
+              <div className="flex items-center gap-2">
+                {(cat.budget ?? 0) > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={DESTRUCTIVE_GHOST_BUTTON_CLASS}
+                    onClick={handleDelete}
+                    disabled={isSaving}
+                  >
+                    Eliminar
+                  </Button>
+                )}
+                <div className="ml-auto flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCancel}
+                    disabled={isSaving}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleSave}
+                    disabled={isSaving || !amount}
+                  >
+                    {isSaving ? "Guardando..." : "Guardar"}
+                  </Button>
+                </div>
               </div>
             </div>
           </PopoverContent>

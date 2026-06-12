@@ -53,22 +53,23 @@ export function SubscriptionRow({
       </div>
 
       <div className="ml-3 flex shrink-0 gap-2">
-        {s.status !== "marked_for_cancellation" && (
+        {s.status === "marked_for_cancellation" ? (
+          <button
+            disabled={pending}
+            onClick={() => run(() => cancelSubscription(s.id))}
+            className={cn(ROW_ACTION_CLASS, DESTRUCTIVE_GHOST_BUTTON_CLASS)}
+          >
+            Ya la cancelé
+          </button>
+        ) : (
           <button
             disabled={pending}
             onClick={() => run(() => markForCancellation(s.id))}
             className={cn(ROW_ACTION_CLASS, GHOST_BUTTON_CLASS)}
           >
-            Marcar
+            Marcar para cancelar
           </button>
         )}
-        <button
-          disabled={pending}
-          onClick={() => run(() => cancelSubscription(s.id))}
-          className={cn(ROW_ACTION_CLASS, DESTRUCTIVE_GHOST_BUTTON_CLASS)}
-        >
-          Cancelar
-        </button>
       </div>
     </div>
   );

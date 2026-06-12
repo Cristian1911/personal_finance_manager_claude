@@ -20,23 +20,15 @@ export default async function MasPage() {
 
   return (
     <div className={PAGE_STACK_CLASS}>
-      <MobileHeader variant="sub" title="Más" />
+      <MobileHeader variant="main" title="Más" subtitle={subtitle} />
 
-      {/* Desktop */}
-      <div className="hidden lg:block space-y-8">
-        <div className="space-y-1">
-          <SectionEyebrow>Gestionar</SectionEyebrow>
-          <PageHeaderRow title="Más" subtitle={subtitle} />
-        </div>
-        <AttentionHub signals={snapshot.signals} />
-        <MobileLinkGrid />
+      <div className="hidden lg:block space-y-1">
+        <SectionEyebrow>Gestionar</SectionEyebrow>
+        <PageHeaderRow title="Más" subtitle={subtitle} />
       </div>
 
-      {/* Mobile */}
-      <div className="lg:hidden space-y-6">
-        <AttentionHub signals={snapshot.signals} />
-        <MobileLinkGrid />
-      </div>
+      <AttentionHub signals={snapshot.signals} />
+      <MobileLinkGrid />
     </div>
   );
 }

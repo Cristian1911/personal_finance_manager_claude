@@ -22,7 +22,7 @@ export default async function PdfPasswordsSettingsPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6 lg:space-y-8">
       <MobileHeader variant="sub" title="Contraseñas de PDF" backHref="/settings" />
-      <div className="space-y-2">
+      <div className="hidden lg:block space-y-2">
         <SettingsBackLink />
         <PageHeaderRow
           title="Contraseñas de PDF"

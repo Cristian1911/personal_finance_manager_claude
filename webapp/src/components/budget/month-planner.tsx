@@ -23,8 +23,10 @@ export function MonthPlanner({ categories }: Props) {
   function handleOpen() {
     const initial: Record<string, string> = {};
     for (const cat of categories) {
-      if (cat.budget && cat.budget > 0) {
-        initial[cat.id] = cat.budget.toString();
+      // Prefill the parent's OWN row ("Base") — `budget` is now the combined
+      // group total and would double-count composed lines on save.
+      if (cat.baseBudget && cat.baseBudget > 0) {
+        initial[cat.id] = cat.baseBudget.toString();
       }
     }
     setAmounts(initial);
