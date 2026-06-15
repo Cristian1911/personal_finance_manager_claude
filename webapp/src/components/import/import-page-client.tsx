@@ -102,6 +102,7 @@ export function ImportPageClient({
             key={selectedId ?? "none"}
             statements={visiblePending}
             onReviewStatement={handleReviewStatement}
+            vaultSuggestions={initialVaultSuggestions}
           />
           {mobileAboutPanel}
         </>
