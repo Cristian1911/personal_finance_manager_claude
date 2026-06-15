@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 
 import Link from "next/link";
-import { ArrowUpRight, ArrowDownLeft, ArrowRight, QrCode, CreditCard, Banknote, Building, Wallet, ArrowUpRight as TransferIcon, Mail, Hash, UserRound, Pencil, FileUp } from "lucide-react";
+import { ArrowUpRight, ArrowDownLeft, ArrowRight, QrCode, CreditCard, Banknote, Building, Wallet, ArrowUpRight as TransferIcon, Mail, Hash, UserRound, Pencil, FileUp, Clock } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -16,7 +16,7 @@ import { MobileZone } from "@/components/mobile/v2/mobile-zone";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { PANEL_INSET_CLASS, BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
 import { formatCurrency } from "@/lib/utils/currency";
-import { formatDate } from "@/lib/utils/date";
+import { formatDate, formatTime } from "@/lib/utils/date";
 import { categorizeTransaction, uncategorizeTransaction } from "@/actions/categorize";
 import {
   approveEmailTransaction,
@@ -615,6 +615,7 @@ function ImportarDetail({
           const isExpanded = expandedRow === email.id;
           const label = parsed?.merchant || parsed?.destination || "Sin descripción";
           const dateStr = parsed?.transaction_date ?? email.created_at.slice(0, 10);
+          const timeStr = parsed ? formatTime(parsed.transaction_time) : null;
           const cardInfo = parsed ? `*${parsed.card_last4}` : null;
           const amount = parsed?.amount ?? 0;
           const direction = parsed?.direction ?? "OUTFLOW";
@@ -667,6 +668,12 @@ function ImportarDetail({
                     <span className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] text-muted-foreground">
                       <PatternIcon className="size-2.5" />
                       {pattern.label}
+                    </span>
+                  )}
+                  {timeStr && (
+                    <span className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] text-muted-foreground">
+                      <Clock className="size-2.5" />
+                      {timeStr}
                     </span>
                   )}
                   <div onClick={(e) => e.stopPropagation()}>
