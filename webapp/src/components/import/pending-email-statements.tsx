@@ -133,6 +133,18 @@ export function PendingEmailStatements({
           );
           toast.success("PDF procesado correctamente");
         } else {
+          // Re-sync the row when the retry moved it to a new terminal status
+          // (e.g. a non-password failure flips it to `parse_failed`) so the UI
+          // doesn't stay stuck on the password prompt.
+          if (result.status) {
+            setStatements((prev) =>
+              prev.map((s) =>
+                s.id === id
+                  ? { ...s, status: result.status!, error_message: result.error }
+                  : s,
+              ),
+            );
+          }
           toast.error(result.error);
         }
       } catch {

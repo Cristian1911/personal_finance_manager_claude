@@ -89,10 +89,26 @@ export async function dismissEmailPdfStatement(
   return { success: true, data: null };
 }
 
+/**
+ * Result of a manual re-parse. On a parse failure we surface the new terminal
+ * status (`needs_password` vs `parse_failed`) so the caller can re-sync its
+ * optimistic UI — otherwise a corrupted-file failure leaves the row stuck on
+ * the password prompt even though the DB has moved it to `parse_failed`.
+ * `status` is omitted for transient/guard failures (auth, download) that don't
+ * change the stored status.
+ */
+export type RetryPdfParsingResult =
+  | { success: true }
+  | {
+      success: false;
+      error: string;
+      status?: "needs_password" | "parse_failed";
+    };
+
 export async function retryPdfParsing(
   id: string,
   password: string,
-): Promise<ActionResult<null>> {
+): Promise<RetryPdfParsingResult> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
@@ -169,21 +185,22 @@ export async function retryPdfParsing(
       }
     }
   } else {
+    const nextStatus = result.needsPassword ? "needs_password" : "parse_failed";
     await supabase
       .from("pending_email_statements")
       .update({
-        status: result.needsPassword ? "needs_password" : "parse_failed",
+        status: nextStatus,
         error_message: result.error,
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
       .eq("user_id", user.id);
 
-    return { success: false, error: result.error };
+    return { success: false, error: result.error, status: nextStatus };
   }
 
   updateTag("email-ingest");
-  return { success: true, data: null };
+  return { success: true };
 }
 
 /**
