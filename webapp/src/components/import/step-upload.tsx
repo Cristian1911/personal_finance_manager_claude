@@ -5,6 +5,7 @@ import { Upload, FileText, Loader2, Lock, HelpCircle, CheckCircle2, ImageIcon, K
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import { NO_PASSWORD_AUTOFILL_PROPS } from "@/lib/constants/forms";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -538,7 +539,7 @@ export function StepUpload({
                       setPasswordFromVault(false);
                     }}
                     className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                    autoComplete="off"
+                    {...NO_PASSWORD_AUTOFILL_PROPS}
                   />
                 </div>
                 {vaultSuggestions.length > 0 && (

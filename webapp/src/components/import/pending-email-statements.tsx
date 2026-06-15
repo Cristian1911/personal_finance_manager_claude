@@ -11,16 +11,25 @@ import {
   X,
   RefreshCw,
   Clock,
+  KeyRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import { NO_PASSWORD_AUTOFILL_PROPS } from "@/lib/constants/forms";
 import {
   dismissEmailPdfStatement,
   retryPdfParsing,
 } from "@/actions/email-pdf-ingest";
+import type { PdfPasswordSuggestion } from "@/actions/pdf-passwords";
 import type { PendingEmailStatement } from "@/types/domain";
 import { formatRelativeDate } from "@/lib/utils/date";
 import { cn } from "@/lib/utils";
@@ -73,11 +82,13 @@ function formatFileSize(bytes: number | null): string {
 interface PendingEmailStatementsProps {
   statements: PendingEmailStatement[];
   onReviewStatement?: (statement: PendingEmailStatement) => void;
+  vaultSuggestions?: PdfPasswordSuggestion[];
 }
 
 export function PendingEmailStatements({
   statements: initialStatements,
   onReviewStatement,
+  vaultSuggestions = [],
 }: PendingEmailStatementsProps) {
   const [statements, setStatements] = useState(initialStatements);
   const [isPending, startTransition] = useTransition();
@@ -104,8 +115,8 @@ export function PendingEmailStatements({
     });
   }
 
-  function handleRetryWithPassword(id: string) {
-    const password = passwordInputs[id]?.trim();
+  function handleRetryWithPassword(id: string, explicitPassword?: string) {
+    const password = (explicitPassword ?? passwordInputs[id])?.trim();
     if (!password) {
       toast.error("Ingresa la contraseña del PDF");
       return;
@@ -274,7 +285,7 @@ export function PendingEmailStatements({
 
                 {/* Password input for encrypted PDFs */}
                 {stmt.status === "needs_password" && (
-                  <div className="flex items-center gap-2 pl-12">
+                  <div className="flex flex-wrap items-center gap-2 pl-12">
                     <Input
                       type="password"
                       placeholder="Contraseña del PDF"
@@ -289,8 +300,47 @@ export function PendingEmailStatements({
                       onKeyDown={(e) => {
                         if (e.key === "Enter") handleRetryWithPassword(stmt.id);
                       }}
-                      autoComplete="off"
+                      {...NO_PASSWORD_AUTOFILL_PROPS}
                     />
+                    {vaultSuggestions.length > 0 && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className={cn(GHOST_BUTTON_CLASS, "h-8 gap-1.5 text-xs")}
+                            disabled={isLoading}
+                          >
+                            <KeyRound className="size-3.5" />
+                            Usar guardada
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                          {vaultSuggestions.map((sug) => (
+                            <DropdownMenuItem
+                              key={sug.id}
+                              onSelect={() => {
+                                setPasswordInputs((prev) => ({
+                                  ...prev,
+                                  [stmt.id]: sug.password,
+                                }));
+                                handleRetryWithPassword(stmt.id, sug.password);
+                              }}
+                            >
+                              <span className="truncate">{sug.alias}</span>
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                {sug.scope === "account"
+                                  ? "cuenta"
+                                  : sug.scope === "bank"
+                                  ? sug.bank_key
+                                  : "global"}
+                              </span>
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                     <Button
                       size="sm"
                       className={cn(BRASS_BUTTON_CLASS, "h-8 gap-1.5 text-xs")}
