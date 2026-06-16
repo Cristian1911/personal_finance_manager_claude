@@ -11,6 +11,7 @@ import {
   Repeat,
 } from "lucide-react";
 import { createTransaction } from "@/actions/transactions";
+import { createTransfer } from "@/actions/transfers";
 import { Button } from "@/components/ui/button";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { DestinatarioZonePicker } from "@/components/destinatarios/destinatario-zone-picker";
@@ -94,10 +95,23 @@ export function MobileTransactionForm({
 
   const direction = defaultDirection ?? directionFromType(transactionType);
 
-  const [state, formAction, pending] = useActionState(createTransaction, {
+  const isTransferMode = transactionType === "transfer";
+
+  // Two action states: regular transactions vs. paired account transfers.
+  // Transfers go through createTransfer (outflow + inflow + balance updates);
+  // everything else through createTransaction.
+  const [txState, txFormAction, txPending] = useActionState(createTransaction, {
     success: false,
     error: "",
   });
+  const [transferState, transferFormAction, transferPending] = useActionState(
+    createTransfer,
+    { success: false, error: "" }
+  );
+
+  const state = isTransferMode ? transferState : txState;
+  const formAction = isTransferMode ? transferFormAction : txFormAction;
+  const pending = isTransferMode ? transferPending : txPending;
 
   // Close form after action transition commits (route already revalidated)
   useEffect(() => {
@@ -119,6 +133,18 @@ export function MobileTransactionForm({
       localStorage.setItem(STORAGE_KEY, selectedAccountId);
     }
   }, [selectedAccountId]);
+
+  // Transfer destination account (only used in transfer mode). Only same-currency
+  // accounts are valid destinations — createTransfer rejects cross-currency.
+  const [destinationAccountId, setDestinationAccountId] = useState<string>("");
+  const transferSourceCurrency = accounts.find(
+    (a) => a.id === selectedAccountId
+  )?.currency_code;
+  const destinationAccounts = accounts.filter(
+    (a) =>
+      a.id !== selectedAccountId &&
+      a.currency_code === transferSourceCurrency
+  );
 
   const [categoryId, setCategoryId] = useState<string | null>(null);
 
@@ -233,6 +259,14 @@ export function MobileTransactionForm({
         value={recurringTransferSourceAccountId}
       />
 
+      {/* Transfer-only fields consumed by createTransfer */}
+      {isTransferMode && (
+        <>
+          <input type="hidden" name="currencyCode" value={currencyCode} />
+          <input type="hidden" name="date" value={transactionDate} />
+        </>
+      )}
+
       {/* Direction selector — only shown when no preset */}
       {showTypeSelector && (
         <div className="flex gap-1 rounded-lg bg-muted p-1">
@@ -264,28 +298,43 @@ export function MobileTransactionForm({
       {/* ── DETALLES ────────────────────────────────────────── */}
       <SectionEyebrow>Detalles</SectionEyebrow>
 
-      {/* Description — full width */}
-      <div className="space-y-2">
-        <Label htmlFor="mobile-merchant">Descripción</Label>
-        <Input
-          id="mobile-merchant"
-          name="merchant_name"
-          value={merchantName}
-          onChange={(event) => setMerchantName(event.target.value)}
-          placeholder="Ej: Almuerzo, Uber, Arriendo..."
-        />
-      </div>
+      {/* Description — full width (not used for transfers) */}
+      {!isTransferMode && (
+        <div className="space-y-2">
+          <Label htmlFor="mobile-merchant">Descripción</Label>
+          <Input
+            id="mobile-merchant"
+            name="merchant_name"
+            value={merchantName}
+            onChange={(event) => setMerchantName(event.target.value)}
+            placeholder="Ej: Almuerzo, Uber, Arriendo..."
+          />
+        </div>
+      )}
 
-      {/* Cuenta */}
+      {/* Cuenta (origen for transfers) */}
       <div className="space-y-2">
-        <Label htmlFor="mobile-account">Cuenta</Label>
+        <Label htmlFor="mobile-account">
+          {isTransferMode ? "Cuenta origen" : "Cuenta"}
+        </Label>
         <Select
-          name="account_id"
+          name={isTransferMode ? "fromAccountId" : "account_id"}
           value={selectedAccountId}
           onValueChange={(value) => {
             setSelectedAccountId(value);
             if (recurringTransferSourceAccountId === value) {
               setRecurringTransferSourceAccountId("");
+            }
+            // Clear a destination that's no longer valid for the new source
+            // (same account, or a now-mismatched currency).
+            const dest = accounts.find((a) => a.id === destinationAccountId);
+            const newSource = accounts.find((a) => a.id === value);
+            if (
+              dest &&
+              (dest.id === value ||
+                dest.currency_code !== newSource?.currency_code)
+            ) {
+              setDestinationAccountId("");
             }
           }}
         >
@@ -302,6 +351,34 @@ export function MobileTransactionForm({
         </Select>
       </div>
 
+      {/* Cuenta destino — transfers only */}
+      {isTransferMode && (
+        <div className="space-y-2">
+          <Label htmlFor="mobile-destination-account">Cuenta destino</Label>
+          <Select
+            name="toAccountId"
+            required
+            value={destinationAccountId}
+            onValueChange={setDestinationAccountId}
+          >
+            <SelectTrigger id="mobile-destination-account">
+              <SelectValue placeholder="Seleccionar cuenta" />
+            </SelectTrigger>
+            <SelectContent>
+              {destinationAccounts.map((acc) => (
+                <SelectItem key={acc.id} value={acc.id}>
+                  {acc.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Se registrará una salida en la cuenta origen y una entrada en la
+            cuenta destino.
+          </p>
+        </div>
+      )}
+
       {/* Fecha */}
       <div className="space-y-2">
         <Label>Fecha</Label>
@@ -312,18 +389,34 @@ export function MobileTransactionForm({
         />
       </div>
 
-      {/* Category — full width */}
-      <div className="space-y-2">
-        <Label>Categoría</Label>
-        <CategoryZonePicker
-          variant="popover"
-          categories={categories}
-          value={categoryId}
-          onValueChange={setCategoryId}
-          direction={direction}
-          name="category_id"
-        />
-      </div>
+      {/* Category — full width (not used for transfers) */}
+      {!isTransferMode && (
+        <div className="space-y-2">
+          <Label>Categoría</Label>
+          <CategoryZonePicker
+            variant="popover"
+            categories={categories}
+            value={categoryId}
+            onValueChange={setCategoryId}
+            direction={direction}
+            name="category_id"
+          />
+        </div>
+      )}
+
+      {/* Notas — transfers only (other modes have it under "Más opciones") */}
+      {isTransferMode && (
+        <div className="space-y-2">
+          <Label htmlFor="mobile-transfer-notes">Notas (opcional)</Label>
+          <Input
+            id="mobile-transfer-notes"
+            name="notes"
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+            placeholder="Ej: Pago cuota préstamo"
+          />
+        </div>
+      )}
 
       {/* ── ASIGNAR ─────────────────────────────────────────── */}
       {allowRelatedSetup && (

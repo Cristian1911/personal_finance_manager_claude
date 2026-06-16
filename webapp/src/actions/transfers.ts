@@ -148,8 +148,20 @@ export async function createTransfer(
     .single();
 
   if (inflowError) {
-    // Rollback: delete the outflow transaction
-    await supabase.from("transactions").delete().eq("id", outflow.id).eq("user_id", user.id);
+    // Rollback: delete the outflow transaction (balances not yet touched, so a
+    // failed rollback only leaves an orphaned outflow — log it for cleanup).
+    const { error: rollbackError } = await supabase
+      .from("transactions")
+      .delete()
+      .eq("id", outflow.id)
+      .eq("user_id", user.id);
+    if (rollbackError) {
+      console.error("Transfer rollback failed — orphaned outflow", {
+        transferGroupId,
+        outflowId: outflow.id,
+        rollbackError,
+      });
+    }
     if (inflowError.code === "23505") {
       return { success: false, error: "Esta transferencia ya fue registrada" };
     }
@@ -173,9 +185,11 @@ export async function createTransfer(
     fromUpdate.available_balance = fromAccount.credit_limit - newFromBalance;
   }
 
-  // TO account: INFLOW → debt decreases balance, non-debt increases balance
+  // TO account: INFLOW → debt decreases balance, non-debt increases balance.
+  // Clamp debt payments at 0 (matches registerPayment) so overpaying a credit
+  // card / loan doesn't drive the owed balance negative.
   const newToBalance = isToDebt
-    ? toAccount.current_balance - amount
+    ? Math.max(0, toAccount.current_balance - amount)
     : toAccount.current_balance + amount;
 
   const toUpdate: Record<string, unknown> = {
@@ -191,17 +205,24 @@ export async function createTransfer(
     supabase.from("accounts").update(toUpdate).eq("id", toAccountId).eq("user_id", user.id),
   ]);
 
+  // 7. Revalidate caches (do this even on balance failure so the new
+  // transactions are reflected immediately).
+  revalidateFinancialViews();
+
   if (fromBalRes.error || toBalRes.error) {
-    // Transactions exist but balances may be inconsistent — log for investigation
+    // Transactions exist but balances may be inconsistent — surface a warning
+    // so the user can reconcile (matches registerPayment's behavior).
     console.error("Balance update failed after transfer", {
       transferGroupId,
       fromError: fromBalRes.error,
       toError: toBalRes.error,
     });
+    return {
+      success: false,
+      error:
+        "Transferencia registrada, pero un saldo no se actualizó. Revísalo manualmente.",
+    };
   }
-
-  // 7. Revalidate caches
-  revalidateFinancialViews();
 
   return {
     success: true,

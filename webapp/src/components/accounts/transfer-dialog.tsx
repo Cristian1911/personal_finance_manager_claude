@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,6 +8,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { CurrencyInput } from "@/components/ui/currency-input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -22,8 +25,6 @@ import { cn } from "@/lib/utils";
 import { createTransfer } from "@/actions/transfers";
 import type { Account } from "@/types/domain";
 
-const EXCLUDED_DESTINATION_TYPES = new Set(["LOAN", "INVESTMENT"]);
-
 interface TransferDialogProps {
   account: Account;
   accounts: Account[];
@@ -37,13 +38,15 @@ export function TransferDialog({
   open,
   onOpenChange,
 }: TransferDialogProps) {
+  // Any other same-currency account is a valid destination — transferring to a
+  // CREDIT_CARD or LOAN registers a payment (inflow reduces the owed balance).
+  // createTransfer rejects cross-currency, so filter those out up front.
   const destinationAccounts = accounts.filter(
-    (a) =>
-      a.id !== account.id &&
-      !EXCLUDED_DESTINATION_TYPES.has(a.account_type ?? "")
+    (a) => a.id !== account.id && a.currency_code === account.currency_code
   );
 
   const today = new Date().toISOString().slice(0, 10);
+  const [date, setDate] = useState<string>(today);
 
   const [state, formAction, isPending] = useActionState(createTransfer, {
     success: false as const,
@@ -85,12 +88,9 @@ export function TransferDialog({
           {/* Amount */}
           <div className="space-y-2">
             <Label htmlFor="transfer-amount">Monto</Label>
-            <Input
+            <CurrencyInput
               id="transfer-amount"
               name="amount"
-              type="number"
-              step="0.01"
-              min="0.01"
               required
               autoFocus
               placeholder="0"
@@ -99,12 +99,13 @@ export function TransferDialog({
 
           {/* Date */}
           <div className="space-y-2">
-            <Label htmlFor="transfer-date">Fecha</Label>
-            <Input
-              id="transfer-date"
+            <Label>Fecha</Label>
+            <DatePicker
               name="date"
-              type="date"
-              defaultValue={today}
+              value={date}
+              onChange={(v) => setDate(v ?? today)}
+              className="w-full"
+              placeholder="Seleccionar fecha"
             />
           </div>
 
@@ -127,16 +128,13 @@ export function TransferDialog({
           )}
 
           {/* Submit */}
-          <button
+          <Button
             type="submit"
             disabled={isPending}
-            className={cn(
-              BRASS_BUTTON_CLASS,
-              "w-full rounded-md px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50"
-            )}
+            className={cn(BRASS_BUTTON_CLASS, "w-full")}
           >
             {isPending ? "Transfiriendo..." : "Transferir"}
-          </button>
+          </Button>
         </form>
       </DialogContent>
     </Dialog>
