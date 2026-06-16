@@ -134,11 +134,16 @@ export function MobileTransactionForm({
     }
   }, [selectedAccountId]);
 
-  // Transfer destination account (only used in transfer mode)
+  // Transfer destination account (only used in transfer mode). Only same-currency
+  // accounts are valid destinations — createTransfer rejects cross-currency.
   const [destinationAccountId, setDestinationAccountId] = useState<string>("");
-  const destinationAccounts = useMemo(
-    () => accounts.filter((a) => a.id !== selectedAccountId),
-    [accounts, selectedAccountId]
+  const transferSourceCurrency = accounts.find(
+    (a) => a.id === selectedAccountId
+  )?.currency_code;
+  const destinationAccounts = accounts.filter(
+    (a) =>
+      a.id !== selectedAccountId &&
+      a.currency_code === transferSourceCurrency
   );
 
   const [categoryId, setCategoryId] = useState<string | null>(null);
@@ -320,7 +325,15 @@ export function MobileTransactionForm({
             if (recurringTransferSourceAccountId === value) {
               setRecurringTransferSourceAccountId("");
             }
-            if (destinationAccountId === value) {
+            // Clear a destination that's no longer valid for the new source
+            // (same account, or a now-mismatched currency).
+            const dest = accounts.find((a) => a.id === destinationAccountId);
+            const newSource = accounts.find((a) => a.id === value);
+            if (
+              dest &&
+              (dest.id === value ||
+                dest.currency_code !== newSource?.currency_code)
+            ) {
               setDestinationAccountId("");
             }
           }}

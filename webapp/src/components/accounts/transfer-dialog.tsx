@@ -35,9 +35,12 @@ export function TransferDialog({
   open,
   onOpenChange,
 }: TransferDialogProps) {
-  // Any other account is a valid destination — transferring to a CREDIT_CARD or
-  // LOAN registers a payment (inflow reduces the owed balance).
-  const destinationAccounts = accounts.filter((a) => a.id !== account.id);
+  // Any other same-currency account is a valid destination — transferring to a
+  // CREDIT_CARD or LOAN registers a payment (inflow reduces the owed balance).
+  // createTransfer rejects cross-currency, so filter those out up front.
+  const destinationAccounts = accounts.filter(
+    (a) => a.id !== account.id && a.currency_code === account.currency_code
+  );
 
   const today = new Date().toISOString().slice(0, 10);
 
