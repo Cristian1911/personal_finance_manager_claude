@@ -22,8 +22,6 @@ import { cn } from "@/lib/utils";
 import { createTransfer } from "@/actions/transfers";
 import type { Account } from "@/types/domain";
 
-const EXCLUDED_DESTINATION_TYPES = new Set(["LOAN", "INVESTMENT"]);
-
 interface TransferDialogProps {
   account: Account;
   accounts: Account[];
@@ -37,11 +35,9 @@ export function TransferDialog({
   open,
   onOpenChange,
 }: TransferDialogProps) {
-  const destinationAccounts = accounts.filter(
-    (a) =>
-      a.id !== account.id &&
-      !EXCLUDED_DESTINATION_TYPES.has(a.account_type ?? "")
-  );
+  // Any other account is a valid destination — transferring to a CREDIT_CARD or
+  // LOAN registers a payment (inflow reduces the owed balance).
+  const destinationAccounts = accounts.filter((a) => a.id !== account.id);
 
   const today = new Date().toISOString().slice(0, 10);
 
