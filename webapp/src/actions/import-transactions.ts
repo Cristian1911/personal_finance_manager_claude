@@ -1247,9 +1247,11 @@ export async function importTransactions(
         // accounts page after a Tier-2 (OCR/email) delta. We recompute it here so
         // both reads agree. Per-currency `credit_limit` wins over the
         // account-level column when present.
+        const isDebt =
+          account.account_type === "CREDIT_CARD" || account.account_type === "LOAN";
         const creditLimit =
           (typeof currencyEntry?.credit_limit === "number" ? currencyEntry.credit_limit : null) ??
-          account.credit_limit;
+          (account.credit_limit != null ? Number(account.credit_limit) : null);
         const recomputedAvailable =
           account.account_type === "CREDIT_CARD" && creditLimit != null && creditLimit > 0
             ? Math.max(creditLimit - balance, 0)
@@ -1258,13 +1260,15 @@ export async function importTransactions(
         existingBalances[currencyKey] = {
           ...currencyEntry,
           current_balance: balance,
-          // `total_payment_due` is cleared alongside the recompute: for
-          // multi-currency cards `computeDebtFromCurrencyBalance()` checks it
-          // BEFORE the credit_limit−available formula, so a stale statement
-          // value would otherwise shadow the freshly computed available balance.
-          ...(recomputedAvailable != null
-            ? { available_balance: recomputedAvailable, total_payment_due: null }
-            : {}),
+          ...(recomputedAvailable != null ? { available_balance: recomputedAvailable } : {}),
+          // `total_payment_due` is a statement-time figure; once a delta import
+          // moves the live balance it's stale. Clear it for every debt account:
+          // `computeDebtFromCurrencyBalance()` (multi-currency) checks
+          // `total_payment_due` BEFORE both the credit_limit−available formula and
+          // the `current_balance` fallback, so a leftover value would otherwise
+          // shadow the freshly updated balance on the debt page — including for
+          // loans and credit cards without a credit limit.
+          ...(isDebt ? { total_payment_due: null } : {}),
         };
 
         const { error: updateError } = await supabase
