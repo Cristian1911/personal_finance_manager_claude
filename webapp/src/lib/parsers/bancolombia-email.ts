@@ -176,6 +176,25 @@ const PATTERNS: PatternDef[] = [
       pattern_type: "qr_transferencia",
     }),
   },
+  // Pattern 5b: Transferencia por QR (DD/MM/YYYY date) — same as 5 but day-first date
+  // "Transferiste $16,000.00 por QR desde tu cuenta 4398 a la cuenta 6256, el 09/06/2026 03:22"
+  {
+    type: "qr_transferencia",
+    regex:
+      /Transferiste \$([\d.,]+) por QR desde tu cuenta \*?(\d+) a la cuenta \*?(\d+),? el (\d{2}\/\d{2}\/\d{4}) (\d{2}:\d{2})/,
+    extract: (m) => ({
+      direction: "OUTFLOW",
+      amount: parseAmount(m[1]),
+      currency: "COP",
+      merchant: null,
+      destination: m[3],
+      card_last4: m[2],
+      card_type: "Cta",
+      transaction_date: parseDateDMY(m[4]),
+      transaction_time: m[5],
+      pattern_type: "qr_transferencia",
+    }),
+  },
   // Pattern 4: Transferencia (plain)
   // "Transferiste $680,000.00 desde tu cuenta 4398 a la cuenta *3196360227 el 27/03/2026 a las 17:19"
   {
@@ -234,11 +253,13 @@ const PATTERNS: PatternDef[] = [
     }),
   },
   // Pattern 8: Bre-B transfer (2-digit year, recipient name after account)
+  // Llave may be numeric (phone) or an alphanumeric Bre-B key (e.g. "@analogicdom")
   // "CRISTIAN, transferiste $100,000.00 a la llave 3013866335 desde tu cuenta *4398 a JUAN DIEGO TABORDA LOPEZ el 29/03/26 a las 20:52"
+  // "CRISTIAN, transferiste $129,000.00 a la llave @analogicdom desde tu cuenta *4398 a ANDRES CUARTAS el 16/06/26 a las 16:56"
   {
     type: "bre_b",
     regex:
-      /transferiste \$([\d.,]+) a la llave (\d+) desde tu cuenta \*?(\d+) a (.+?) el (\d{2}\/\d{2}\/\d{2,4}) a las (\d{2}:\d{2})/,
+      /transferiste \$([\d.,]+) a la llave (\S+) desde tu cuenta \*?(\d+) a (.+?) el (\d{2}\/\d{2}\/\d{2,4}) a las (\d{2}:\d{2})/,
     extract: (m) => ({
       direction: "OUTFLOW",
       amount: parseAmount(m[1]),
