@@ -14,6 +14,7 @@ export interface ParsedEmailTransaction {
     | "compra_debito"
     | "compra_credito"
     | "transferencia"
+    | "boton_bancolombia"
     | "qr_transferencia"
     | "qr_pago"
     | "pago_pse"
@@ -155,6 +156,27 @@ const PATTERNS: PatternDef[] = [
       transaction_date: parseDateDMY(m[5]),
       transaction_time: m[6],
       pattern_type: "compra_debito",
+    }),
+  },
+  // Pattern: Transferencia por Boton Bancolombia (PSE-style button payment to a merchant)
+  // "Transferiste $126,750.00 por Boton Bancolombia a MUNICIPIO DE BELLO desde producto *4398. 19/06/2026 12:04:49"
+  // Note: date+time follow a period (no "el"/"a las"); time may include seconds.
+  // Must come before the plain "transferencia"/"qr_transferencia" patterns.
+  {
+    type: "boton_bancolombia",
+    regex:
+      /Transferiste \$([\d.,]+) por Boton Bancolombia a (.+?) desde producto \*?(\d+)\.? (\d{2}\/\d{2}\/\d{4}) (\d{2}:\d{2})(?::\d{2})?/,
+    extract: (m) => ({
+      direction: "OUTFLOW",
+      amount: parseAmount(m[1]),
+      currency: "COP",
+      merchant: m[2].trim(),
+      destination: null,
+      card_last4: m[3],
+      card_type: "producto",
+      transaction_date: parseDateDMY(m[4]),
+      transaction_time: m[5],
+      pattern_type: "boton_bancolombia",
     }),
   },
   // Pattern 5: Transferencia por QR (YYYY/MM/DD date) — must come before plain transferencia
@@ -418,7 +440,7 @@ export function parseBancolombiaEmail(
       const parsed = pattern.extract(match);
       if (parsed) {
         // Extract raw_line from the alert segment only, excluding trailing support/marketing copy.
-        const rawLineMatch = normalized.match(/Bancolombia:\s*([\s\S]+?)(?:\.\s*(?:Si tienes dudas|¿Dudas|¿Tienes dudas|Encuentranos aqui|Con codigo QR|Con Bre-b|A tu lado|Estamos cerca)|$)/);
+        const rawLineMatch = normalized.match(/Bancolombia:\s*([\s\S]+?)(?:\.\s*(?:Si tienes dudas|Encuentranos aqui|Con codigo QR|Con Bre-b|A tu lado|Estamos cerca)|\.?\s*(?:¿Dudas|¿Tienes dudas)|$)/);
         const raw_line = rawLineMatch ? rawLineMatch[1].trim() : normalized;
         return { ...parsed, raw_line };
       }

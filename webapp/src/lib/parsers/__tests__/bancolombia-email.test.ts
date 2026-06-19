@@ -83,6 +83,26 @@ describe("parseBancolombiaEmail", () => {
     expect(result!.destination).toBe("10382409401");
   });
 
+  // Pattern: Transferencia por Boton Bancolombia (PSE-style button payment)
+  it("parses Boton Bancolombia transfer (Transferiste por Boton Bancolombia)", () => {
+    const line =
+      "header-logo [http://bancolombia-email-wsuite.s3.amazonaws.com/templates/60712c2057ad717760ad6b6c/img/header-logo.png]yellow-icon [http://bancolombia-email-wsuite.s3.amazonaws.com/templates/60712c2057ad717760ad6b6c/img/yellow-icon.png] NotificaciónTransaccionalBancolombia: Transferiste $126,750.00 por Boton Bancolombia a MUNICIPIO DE BELLO desde producto *4398. 19/06/2026 12:04:49 ¿Dudas? 018000931987.Este es una notificación automática, por favor no respondas este mensaje.";
+    const result = parseBancolombiaEmail(line);
+    expect(result).not.toBeNull();
+    expect(result!.direction).toBe("OUTFLOW");
+    expect(result!.amount).toBe(126750);
+    expect(result!.merchant).toBe("MUNICIPIO DE BELLO");
+    expect(result!.destination).toBeNull();
+    expect(result!.card_last4).toBe("4398");
+    expect(result!.card_type).toBe("producto");
+    expect(result!.transaction_date).toBe("2026-06-19");
+    expect(result!.transaction_time).toBe("12:04");
+    expect(result!.pattern_type).toBe("boton_bancolombia");
+    expect(result!.raw_line).toBe(
+      "Transferiste $126,750.00 por Boton Bancolombia a MUNICIPIO DE BELLO desde producto *4398. 19/06/2026 12:04:49"
+    );
+  });
+
   // Pattern 5: Transferencia por QR (YYYY/MM/DD date!)
   it("parses QR transfer (Transferiste por QR) with YYYY/MM/DD date", () => {
     const line =
