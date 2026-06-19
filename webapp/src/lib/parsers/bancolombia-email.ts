@@ -440,7 +440,7 @@ export function parseBancolombiaEmail(
       const parsed = pattern.extract(match);
       if (parsed) {
         // Extract raw_line from the alert segment only, excluding trailing support/marketing copy.
-        const rawLineMatch = normalized.match(/Bancolombia:\s*([\s\S]+?)(?:\.?\s*(?:Si tienes dudas|¿Dudas|¿Tienes dudas|Encuentranos aqui|Con codigo QR|Con Bre-b|A tu lado|Estamos cerca)|$)/);
+        const rawLineMatch = normalized.match(/Bancolombia:\s*([\s\S]+?)(?:\.\s*(?:Si tienes dudas|Encuentranos aqui|Con codigo QR|Con Bre-b|A tu lado|Estamos cerca)|\.?\s*(?:¿Dudas|¿Tienes dudas)|$)/);
         const raw_line = rawLineMatch ? rawLineMatch[1].trim() : normalized;
         return { ...parsed, raw_line };
       }
