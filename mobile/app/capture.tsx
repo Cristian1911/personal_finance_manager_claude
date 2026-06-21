@@ -48,6 +48,7 @@ import { createTransaction } from "../lib/repositories/transactions";
 import { trackProductEvent } from "../lib/analytics/product-events";
 import { getLocalProfile } from "../lib/profile";
 import {
+  LOCATION_FEATURE_ENABLED,
   captureCurrentLocation,
   linkNearestPingToTransaction,
 } from "../lib/services/location";
@@ -401,7 +402,7 @@ export default function CaptureScreen() {
       // Failures are silent — capturing the transaction must always succeed.
       try {
         const profile = await getLocalProfile();
-        if (profile?.location_tracking_enabled === 1) {
+        if (LOCATION_FEATURE_ENABLED && profile?.location_tracking_enabled === 1) {
           await captureCurrentLocation();
           await linkNearestPingToTransaction({
             userId: session.user.id,

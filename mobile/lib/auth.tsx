@@ -14,6 +14,7 @@ import { clearDatabase } from "./db/database";
 import { syncAll } from "./sync/engine";
 import { getLocalProfile } from "./profile";
 import {
+  LOCATION_FEATURE_ENABLED,
   getCurrentPermissionLevel,
   startBackgroundLocationTracking,
 } from "./services/location";
@@ -102,6 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function maybeResumeLocationTracking() {
+    if (!LOCATION_FEATURE_ENABLED) return;
     try {
       const profile = await getLocalProfile();
       if (profile?.location_tracking_enabled !== 1) return;

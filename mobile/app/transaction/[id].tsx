@@ -77,6 +77,9 @@ type TransactionDetail = {
   is_excluded: number; // SQLite stores boolean as 0/1
   destinatario_id: string | null;
   destinatario_name: string | null;
+  location_place_name: string | null;
+  location_place_locality: string | null;
+  location_place_country: string | null;
 };
 
 function DetailRow({
@@ -792,6 +795,14 @@ export default function TransactionDetailScreen() {
               }
             />
             <DetailRow label="Cuenta" value={transaction.account_name} />
+            <DetailRow
+              label="Ubicacion"
+              value={
+                [transaction.location_place_name, transaction.location_place_locality]
+                  .filter(Boolean)
+                  .join(", ") || null
+              }
+            />
             <DetailRow
               label="Categoria"
               value={isDebtPayment ? "Abono a deuda" : transaction.category_name_es}
