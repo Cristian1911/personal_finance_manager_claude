@@ -14,6 +14,7 @@ export interface ParsedEmailTransaction {
     | "compra_debito"
     | "compra_credito"
     | "transferencia"
+    | "boton_bancolombia"
     | "qr_transferencia"
     | "qr_pago"
     | "pago_pse"
@@ -157,6 +158,27 @@ const PATTERNS: PatternDef[] = [
       pattern_type: "compra_debito",
     }),
   },
+  // Pattern: Transferencia por Boton Bancolombia (PSE-style button payment to a merchant)
+  // "Transferiste $126,750.00 por Boton Bancolombia a MUNICIPIO DE BELLO desde producto *4398. 19/06/2026 12:04:49"
+  // Note: date+time follow a period (no "el"/"a las"); time may include seconds.
+  // Must come before the plain "transferencia"/"qr_transferencia" patterns.
+  {
+    type: "boton_bancolombia",
+    regex:
+      /Transferiste \$([\d.,]+) por Boton Bancolombia a (.+?) desde producto \*?(\d+)\.? (\d{2}\/\d{2}\/\d{4}) (\d{2}:\d{2})(?::\d{2})?/,
+    extract: (m) => ({
+      direction: "OUTFLOW",
+      amount: parseAmount(m[1]),
+      currency: "COP",
+      merchant: m[2].trim(),
+      destination: null,
+      card_last4: m[3],
+      card_type: "producto",
+      transaction_date: parseDateDMY(m[4]),
+      transaction_time: m[5],
+      pattern_type: "boton_bancolombia",
+    }),
+  },
   // Pattern 5: Transferencia por QR (YYYY/MM/DD date) — must come before plain transferencia
   // "Transferiste $42,500.00 por QR desde tu cuenta 4398 a la cuenta 2655, el 2026/03/27 11:59"
   {
@@ -172,6 +194,25 @@ const PATTERNS: PatternDef[] = [
       card_last4: m[2],
       card_type: "Cta",
       transaction_date: parseDateYMD(m[4]),
+      transaction_time: m[5],
+      pattern_type: "qr_transferencia",
+    }),
+  },
+  // Pattern 5b: Transferencia por QR (DD/MM/YYYY date) — same as 5 but day-first date
+  // "Transferiste $16,000.00 por QR desde tu cuenta 4398 a la cuenta 6256, el 09/06/2026 03:22"
+  {
+    type: "qr_transferencia",
+    regex:
+      /Transferiste \$([\d.,]+) por QR desde tu cuenta \*?(\d+) a la cuenta \*?(\d+),? el (\d{2}\/\d{2}\/\d{4}) (\d{2}:\d{2})/,
+    extract: (m) => ({
+      direction: "OUTFLOW",
+      amount: parseAmount(m[1]),
+      currency: "COP",
+      merchant: null,
+      destination: m[3],
+      card_last4: m[2],
+      card_type: "Cta",
+      transaction_date: parseDateDMY(m[4]),
       transaction_time: m[5],
       pattern_type: "qr_transferencia",
     }),
@@ -234,11 +275,13 @@ const PATTERNS: PatternDef[] = [
     }),
   },
   // Pattern 8: Bre-B transfer (2-digit year, recipient name after account)
+  // Llave may be numeric (phone) or an alphanumeric Bre-B key (e.g. "@analogicdom")
   // "CRISTIAN, transferiste $100,000.00 a la llave 3013866335 desde tu cuenta *4398 a JUAN DIEGO TABORDA LOPEZ el 29/03/26 a las 20:52"
+  // "CRISTIAN, transferiste $129,000.00 a la llave @analogicdom desde tu cuenta *4398 a ANDRES CUARTAS el 16/06/26 a las 16:56"
   {
     type: "bre_b",
     regex:
-      /transferiste \$([\d.,]+) a la llave (\d+) desde tu cuenta \*?(\d+) a (.+?) el (\d{2}\/\d{2}\/\d{2,4}) a las (\d{2}:\d{2})/,
+      /transferiste \$([\d.,]+) a la llave (\S+) desde tu cuenta \*?(\d+) a (.+?) el (\d{2}\/\d{2}\/\d{2,4}) a las (\d{2}:\d{2})/,
     extract: (m) => ({
       direction: "OUTFLOW",
       amount: parseAmount(m[1]),
@@ -397,7 +440,7 @@ export function parseBancolombiaEmail(
       const parsed = pattern.extract(match);
       if (parsed) {
         // Extract raw_line from the alert segment only, excluding trailing support/marketing copy.
-        const rawLineMatch = normalized.match(/Bancolombia:\s*([\s\S]+?)(?:\.\s*(?:Si tienes dudas|¿Dudas|¿Tienes dudas|Encuentranos aqui|Con codigo QR|Con Bre-b|A tu lado|Estamos cerca)|$)/);
+        const rawLineMatch = normalized.match(/Bancolombia:\s*([\s\S]+?)(?:\.\s*(?:Si tienes dudas|Encuentranos aqui|Con codigo QR|Con Bre-b|A tu lado|Estamos cerca)|\.?\s*(?:¿Dudas|¿Tienes dudas)|$)/);
         const raw_line = rawLineMatch ? rawLineMatch[1].trim() : normalized;
         return { ...parsed, raw_line };
       }

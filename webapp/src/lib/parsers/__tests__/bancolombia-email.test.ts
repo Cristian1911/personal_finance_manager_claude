@@ -83,6 +83,26 @@ describe("parseBancolombiaEmail", () => {
     expect(result!.destination).toBe("10382409401");
   });
 
+  // Pattern: Transferencia por Boton Bancolombia (PSE-style button payment)
+  it("parses Boton Bancolombia transfer (Transferiste por Boton Bancolombia)", () => {
+    const line =
+      "header-logo [http://bancolombia-email-wsuite.s3.amazonaws.com/templates/60712c2057ad717760ad6b6c/img/header-logo.png]yellow-icon [http://bancolombia-email-wsuite.s3.amazonaws.com/templates/60712c2057ad717760ad6b6c/img/yellow-icon.png] NotificaciónTransaccionalBancolombia: Transferiste $126,750.00 por Boton Bancolombia a MUNICIPIO DE BELLO desde producto *4398. 19/06/2026 12:04:49 ¿Dudas? 018000931987.Este es una notificación automática, por favor no respondas este mensaje.";
+    const result = parseBancolombiaEmail(line);
+    expect(result).not.toBeNull();
+    expect(result!.direction).toBe("OUTFLOW");
+    expect(result!.amount).toBe(126750);
+    expect(result!.merchant).toBe("MUNICIPIO DE BELLO");
+    expect(result!.destination).toBeNull();
+    expect(result!.card_last4).toBe("4398");
+    expect(result!.card_type).toBe("producto");
+    expect(result!.transaction_date).toBe("2026-06-19");
+    expect(result!.transaction_time).toBe("12:04");
+    expect(result!.pattern_type).toBe("boton_bancolombia");
+    expect(result!.raw_line).toBe(
+      "Transferiste $126,750.00 por Boton Bancolombia a MUNICIPIO DE BELLO desde producto *4398. 19/06/2026 12:04:49"
+    );
+  });
+
   // Pattern 5: Transferencia por QR (YYYY/MM/DD date!)
   it("parses QR transfer (Transferiste por QR) with YYYY/MM/DD date", () => {
     const line =
@@ -94,6 +114,21 @@ describe("parseBancolombiaEmail", () => {
     expect(result!.card_last4).toBe("4398");
     expect(result!.destination).toBe("2655");
     expect(result!.transaction_date).toBe("2026-03-27");
+    expect(result!.pattern_type).toBe("qr_transferencia");
+  });
+
+  // Pattern 5b: Transferencia por QR (DD/MM/YYYY date!)
+  it("parses QR transfer (Transferiste por QR) with DD/MM/YYYY date", () => {
+    const line =
+      "Logo Bancolombia [https://example.com/logo.png] yellow-icon [https://example.com/chulo.png] ¡Listo!Todo salió bien con tus movimientos Bancolombia: Transferiste $16,000.00 por QR desde tu cuenta 4398 a la cuenta 6256, el 09/06/2026 03:22. ¿Dudas? Llamanos al 018000931987. Estamos cerca.";
+    const result = parseBancolombiaEmail(line);
+    expect(result).not.toBeNull();
+    expect(result!.direction).toBe("OUTFLOW");
+    expect(result!.amount).toBe(16000);
+    expect(result!.card_last4).toBe("4398");
+    expect(result!.destination).toBe("6256");
+    expect(result!.transaction_date).toBe("2026-06-09");
+    expect(result!.transaction_time).toBe("03:22");
     expect(result!.pattern_type).toBe("qr_transferencia");
   });
 
@@ -139,6 +174,22 @@ describe("parseBancolombiaEmail", () => {
     expect(result!.merchant).toBe("JUAN DIEGO TABORDA LOPEZ");
     expect(result!.card_last4).toBe("4398");
     expect(result!.transaction_date).toBe("2026-03-29");
+    expect(result!.pattern_type).toBe("bre_b");
+  });
+
+  // Pattern 8b: Bre-B transfer with alphanumeric llave (@handle)
+  it("parses Bre-B transfer with alphanumeric llave (@analogicdom)", () => {
+    const line =
+      "Logo Bancolombia [http://example.com/logo.png] yellow-icon [https://example.com/chulo.png] ¡Listo! Todo salió bien con tus movimientos Bancolombia: CRISTIAN, transferiste $129,000.00 a la llave @analogicdom desde tu cuenta *4398 a ANDRES CUARTAS el 16/06/26 a las 16:56. Con Bre-b es de una y gratis. Dudas al 018000912345.";
+    const result = parseBancolombiaEmail(line);
+    expect(result).not.toBeNull();
+    expect(result!.direction).toBe("OUTFLOW");
+    expect(result!.amount).toBe(129000);
+    expect(result!.destination).toBe("@analogicdom");
+    expect(result!.merchant).toBe("ANDRES CUARTAS");
+    expect(result!.card_last4).toBe("4398");
+    expect(result!.transaction_date).toBe("2026-06-16");
+    expect(result!.transaction_time).toBe("16:56");
     expect(result!.pattern_type).toBe("bre_b");
   });
 

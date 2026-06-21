@@ -53,6 +53,7 @@ const PATTERN_LABELS: Record<string, { label: string; icon: typeof Mail }> = {
   compra_debito: { label: "Compra débito", icon: CreditCard },
   compra_credito: { label: "Compra crédito", icon: CreditCard },
   transferencia: { label: "Transferencia", icon: ArrowUpRight },
+  boton_bancolombia: { label: "Botón Bancolombia", icon: Building },
   qr_transferencia: { label: "Transferencia QR", icon: QrCode },
   qr_pago: { label: "Pago QR", icon: QrCode },
   pago_pse: { label: "Pago PSE", icon: Building },

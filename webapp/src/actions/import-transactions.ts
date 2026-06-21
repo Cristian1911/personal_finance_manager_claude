@@ -1208,7 +1208,7 @@ export async function importTransactions(
       const accountIds = [...txsByAccount.keys()];
       const { data: balanceAccounts, error: balanceError } = await supabase
         .from("accounts")
-        .select("id, account_type, current_balance, currency_code, currency_balances")
+        .select("id, account_type, current_balance, currency_code, currency_balances, credit_limit, available_balance")
         .eq("user_id", user.id)
         .in("id", accountIds);
 
@@ -1237,9 +1237,38 @@ export async function importTransactions(
             ? (account.currency_balances as Record<string, Record<string, number | null>>)
             : {};
         const currencyKey = account.currency_code ?? txs[0].currency_code;
+        const currencyEntry = existingBalances[currencyKey];
+
+        // Keep `available_balance` consistent with the new `current_balance`
+        // for credit cards. The debt views derive their balance via
+        // `computeDebtBalance()`, which PREFERS `credit_limit - available_balance`
+        // over `current_balance` — so a stale `available_balance` (last set by a
+        // bank-verified PDF statement) would otherwise make the debt page lag the
+        // accounts page after a Tier-2 (OCR/email) delta. We recompute it here so
+        // both reads agree. Per-currency `credit_limit` wins over the
+        // account-level column when present.
+        const isDebt =
+          account.account_type === "CREDIT_CARD" || account.account_type === "LOAN";
+        const creditLimit =
+          (typeof currencyEntry?.credit_limit === "number" ? currencyEntry.credit_limit : null) ??
+          (account.credit_limit != null ? Number(account.credit_limit) : null);
+        const recomputedAvailable =
+          account.account_type === "CREDIT_CARD" && creditLimit != null && creditLimit > 0
+            ? Math.max(creditLimit - balance, 0)
+            : null;
+
         existingBalances[currencyKey] = {
-          ...existingBalances[currencyKey],
+          ...currencyEntry,
           current_balance: balance,
+          ...(recomputedAvailable != null ? { available_balance: recomputedAvailable } : {}),
+          // `total_payment_due` is a statement-time figure; once a delta import
+          // moves the live balance it's stale. Clear it for every debt account:
+          // `computeDebtFromCurrencyBalance()` (multi-currency) checks
+          // `total_payment_due` BEFORE both the credit_limit−available formula and
+          // the `current_balance` fallback, so a leftover value would otherwise
+          // shadow the freshly updated balance on the debt page — including for
+          // loans and credit cards without a credit limit.
+          ...(isDebt ? { total_payment_due: null } : {}),
         };
 
         const { error: updateError } = await supabase
@@ -1247,6 +1276,7 @@ export async function importTransactions(
           .update({
             current_balance: balance,
             currency_balances: existingBalances,
+            ...(recomputedAvailable != null ? { available_balance: recomputedAvailable } : {}),
           })
           .eq("user_id", user.id)
           .eq("id", account.id);
