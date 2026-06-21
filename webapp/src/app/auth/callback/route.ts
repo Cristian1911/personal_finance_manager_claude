@@ -13,8 +13,13 @@ export async function GET(request: Request) {
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
   const nextParam = searchParams.get("next");
+  // Block protocol-relative ("//host") and backslash ("/\host") forms — both
+  // normalize to an off-origin URL via new URL(next, base) → open redirect.
   const safeNext =
-    nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//")
+    nextParam &&
+    nextParam.startsWith("/") &&
+    !nextParam.startsWith("//") &&
+    !nextParam.startsWith("/\\")
       ? nextParam
       : null;
   const next = safeNext ?? (type === "recovery" ? RECOVERY_REDIRECT : "/dashboard");
