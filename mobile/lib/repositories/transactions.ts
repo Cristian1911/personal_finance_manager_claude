@@ -402,11 +402,13 @@ export async function getTransactionById(id: string, includeReconciled = true) {
   return db.getFirstAsync(
     `SELECT t.*, c.name as category_name, c.name_es as category_name_es, c.icon as category_icon, c.color as category_color,
             a.name as account_name, a.icon as account_icon, a.color as account_color, a.account_type as account_type,
-            d.name as destinatario_name
+            d.name as destinatario_name,
+            l.place_name as location_place_name, l.place_locality as location_place_locality, l.place_country as location_place_country
      FROM transactions t
      LEFT JOIN categories c ON t.category_id = c.id
      LEFT JOIN accounts a ON t.account_id = a.id
      LEFT JOIN destinatarios d ON t.destinatario_id = d.id
+     LEFT JOIN transaction_locations l ON t.location_id = l.id
      WHERE t.id = ? ${visibility}`,
     [id]
   );

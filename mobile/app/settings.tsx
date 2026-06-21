@@ -50,6 +50,7 @@ import { deleteUserAccount } from "../lib/delete-account";
 import { useOnboardingStatus } from "../lib/onboarding-status";
 import { getLocalProfile, setLocationTrackingEnabled } from "../lib/profile";
 import {
+  LOCATION_FEATURE_ENABLED,
   isTracking,
   requestLocationPermissions,
   startBackgroundLocationTracking,
@@ -918,17 +919,21 @@ export default function SettingsScreen() {
         <View>
           <SectionHeading label="Privacidad y soporte" />
           <View className="gap-2">
-            <ToggleRow
-              icon={<MapPin size={18} color={COLORS.sageDark} />}
-              label="Guardar ubicación con cada movimiento"
-              value={locationOn}
-              onValueChange={handleToggleLocation}
-            />
-            <Text className="px-2 -mt-1 text-[11px] font-inter text-muted-foreground">
-              Apagado por defecto. Si lo activas, registramos tu ubicación
-              aproximada de fondo y la enlazamos al movimiento más cercano en
-              tiempo. Útil para recordar dónde gastaste.
-            </Text>
+            {LOCATION_FEATURE_ENABLED && (
+              <>
+                <ToggleRow
+                  icon={<MapPin size={18} color={COLORS.sageDark} />}
+                  label="Guardar ubicación con cada movimiento"
+                  value={locationOn}
+                  onValueChange={handleToggleLocation}
+                />
+                <Text className="px-2 -mt-1 text-[11px] font-inter text-muted-foreground">
+                  Apagado por defecto. Si lo activas, registramos tu ubicación
+                  aproximada de fondo y la enlazamos al movimiento más cercano en
+                  tiempo. Útil para recordar dónde gastaste.
+                </Text>
+              </>
+            )}
             <NavRow
               title="Reportar bug"
               meta="Envíanos comentarios o errores"
