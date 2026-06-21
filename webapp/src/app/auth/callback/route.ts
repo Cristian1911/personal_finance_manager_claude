@@ -12,14 +12,21 @@ export async function GET(request: Request) {
   // client-controllable, so validate it against an allowlist of trusted public
   // hosts to prevent host-header injection (redirecting the OAuth code off-site).
   // APP_URL (non-public → read at runtime) lets other deployments override.
+  let appUrlHost: string | null = null;
+  if (process.env.APP_URL) {
+    try {
+      appUrlHost = new URL(process.env.APP_URL).host.toLowerCase();
+    } catch {
+      // Ignore a misconfigured APP_URL (e.g. missing scheme) rather than crash.
+    }
+  }
   const allowedHosts = new Set(
-    [
-      process.env.APP_URL ? new URL(process.env.APP_URL).host : null,
-      "pfm.sanson1911.cloud",
-      "localhost:3000",
-    ].filter((h): h is string => Boolean(h))
+    [appUrlHost, "pfm.sanson1911.cloud", "localhost:3000"].filter(
+      (h): h is string => Boolean(h)
+    )
   );
-  const host = request.headers.get("host");
+  // Host headers are case-insensitive; normalize before the allowlist check.
+  const host = request.headers.get("host")?.toLowerCase();
   const proto =
     request.headers.get("x-forwarded-proto") ??
     new URL(request.url).protocol.replace(":", "");
