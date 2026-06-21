@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
+import { OAuthButtons } from "@/components/auth/oauth-buttons";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
@@ -65,6 +66,8 @@ export function SignupForm({ fromGuest = false }: SignupFormProps = {}) {
       <Button type="submit" className={cn("w-full", BRASS_BUTTON_CLASS)} disabled={pending}>
         {pending ? "Creando cuenta..." : "Crear cuenta"}
       </Button>
+
+      <OAuthButtons next="/dashboard" />
 
       <p className="text-center text-sm text-muted-foreground">
         ¿Ya tienes cuenta?{" "}

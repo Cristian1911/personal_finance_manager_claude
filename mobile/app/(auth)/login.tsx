@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { AppKeyboardAwareScrollView } from "../../components/common/AppKeyboardAwareScrollView";
+import { SocialAuthButtons } from "../../components/auth/SocialAuthButtons";
 import { Fingerprint } from "lucide-react-native";
 import { supabase } from "../../lib/supabase";
 import { seedDemoData } from "../../lib/demo-data";
@@ -252,6 +253,10 @@ export default function LoginScreen() {
             </Text>
           )}
         </TouchableOpacity>
+
+        <View className="mt-5">
+          <SocialAuthButtons onError={setError} />
+        </View>
 
         <TouchableOpacity
           className="mt-4 items-center"

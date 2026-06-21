@@ -5,6 +5,7 @@ import { signIn, type AuthActionResult } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { OAuthButtons } from "@/components/auth/oauth-buttons";
 import Link from "next/link";
 
 export function LoginForm() {
@@ -56,6 +57,8 @@ export function LoginForm() {
       <Button type="submit" className="w-full" disabled={pending}>
         {pending ? "Ingresando..." : "Iniciar sesión"}
       </Button>
+
+      <OAuthButtons next="/dashboard" />
 
       <p className="text-center text-sm text-muted-foreground">
         ¿No tienes cuenta?{" "}
