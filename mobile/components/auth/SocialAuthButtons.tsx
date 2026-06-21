@@ -17,6 +17,7 @@ export function SocialAuthButtons({
   const [busy, setBusy] = useState<null | "google" | "apple">(null);
 
   async function run(provider: "google" | "apple") {
+    if (busy !== null) return; // native Apple button has no disabled prop
     onError(null);
     setBusy(provider);
     const { error } =
@@ -53,7 +54,7 @@ export function SocialAuthButtons({
           buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
           buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
           cornerRadius={8}
-          style={{ height: 50 }}
+          style={{ width: "100%", height: 50 }}
           onPress={() => run("apple")}
         />
       ) : (

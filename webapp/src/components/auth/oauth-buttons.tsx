@@ -14,22 +14,30 @@ type Provider = "google" | "apple";
  */
 export function OAuthButtons({ next = "/dashboard" }: { next?: string }) {
   const [loading, setLoading] = useState<Provider | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function signIn(provider: Provider) {
     setLoading(provider);
+    setError(null);
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
         redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
       },
     });
     // On success the browser redirects away; only reached on error.
-    if (error) setLoading(null);
+    if (oauthError) {
+      setLoading(null);
+      setError(oauthError.message);
+    }
   }
 
   return (
     <div className="space-y-2">
+      {error && (
+        <p className="text-sm text-destructive text-center">{error}</p>
+      )}
       <div className="flex items-center gap-3 py-1">
         <div className="h-px flex-1 bg-white/6" />
         <span className="text-xs text-muted-foreground">o continúa con</span>

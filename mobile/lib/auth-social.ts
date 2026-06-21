@@ -39,6 +39,10 @@ export async function signInWithGoogle(): Promise<SocialResult> {
     configureGoogle();
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
     const result = await GoogleSignin.signIn();
+    // v13+ resolves with { type: 'cancelled' } instead of throwing on cancel.
+    if ((result as { type?: string }).type === "cancelled") {
+      return { error: null }; // user cancelled — silent
+    }
     // v13+ returns { type, data: { idToken } }; older returns { idToken }.
     const idToken =
       (result as { data?: { idToken?: string | null } }).data?.idToken ??
