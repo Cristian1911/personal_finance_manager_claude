@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { AppKeyboardAwareScrollView } from "../../components/common/AppKeyboardAwareScrollView";
+import { SocialAuthButtons } from "../../components/auth/SocialAuthButtons";
 import { supabase } from "../../lib/supabase";
 
 export default function SignupScreen() {
@@ -138,6 +139,10 @@ export default function SignupScreen() {
             </Text>
           )}
         </TouchableOpacity>
+
+        <View className="mt-5">
+          <SocialAuthButtons onError={setError} />
+        </View>
 
         <TouchableOpacity
           className="mt-6 items-center"
