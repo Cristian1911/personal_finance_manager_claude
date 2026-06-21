@@ -6,6 +6,9 @@ const RECOVERY_REDIRECT = "/reset-password";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
+  // ponytail: behind the proxy, request.url resolves to the internal 0.0.0.0:3000
+  // bind, so redirects must use the canonical app URL. Falls back to origin in dev.
+  const base = process.env.NEXT_PUBLIC_APP_URL ?? origin;
   const code = searchParams.get("code");
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
@@ -21,22 +24,22 @@ export async function GET(request: Request) {
   if (tokenHash && type) {
     const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      return NextResponse.redirect(`${base}${next}`);
     }
     return NextResponse.redirect(
-      `${origin}/login?error=auth_callback_failed&reason=${encodeURIComponent(error.message)}`
+      `${base}/login?error=auth_callback_failed&reason=${encodeURIComponent(error.message)}`
     );
   }
 
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      return NextResponse.redirect(`${base}${next}`);
     }
     return NextResponse.redirect(
-      `${origin}/login?error=auth_callback_failed&reason=${encodeURIComponent(error.message)}`
+      `${base}/login?error=auth_callback_failed&reason=${encodeURIComponent(error.message)}`
     );
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth_callback_missing_params`);
+  return NextResponse.redirect(`${base}/login?error=auth_callback_missing_params`);
 }
