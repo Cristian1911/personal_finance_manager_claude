@@ -7,8 +7,14 @@ const RECOVERY_REDIRECT = "/reset-password";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   // ponytail: behind the proxy, request.url resolves to the internal 0.0.0.0:3000
-  // bind, so redirects must use the canonical app URL. Falls back to origin in dev.
-  const base = process.env.NEXT_PUBLIC_APP_URL || origin;
+  // bind, and NEXT_PUBLIC_* is inlined at build time (unreliable at runtime), so
+  // derive the public base from the proxy-forwarded Host header. Falls back to
+  // origin for local dev (no proxy).
+  const host = request.headers.get("host");
+  const proto =
+    request.headers.get("x-forwarded-proto") ??
+    new URL(request.url).protocol.replace(":", "");
+  const base = host ? `${proto}://${host}` : origin;
   const code = searchParams.get("code");
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
