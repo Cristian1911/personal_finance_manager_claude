@@ -10,6 +10,7 @@ import {
 import { X } from "lucide-react-native";
 import { COLORS } from "../../lib/constants/colors";
 import type { CategoryRow } from "../../lib/repositories/categories";
+import { MODAL_SCRIM_COLOR } from "../ui/MobileSheet";
 
 interface CategoryPickerSheetProps {
   categories: CategoryRow[];
@@ -76,8 +77,11 @@ export function CategoryPickerSheet({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <View className="flex-1 justify-end bg-black/60">
-        <View className="max-h-[70%] rounded-t-3xl border-t border-white-6 bg-background">
+      <View
+        className="flex-1 justify-end"
+        style={{ backgroundColor: MODAL_SCRIM_COLOR }}
+      >
+        <View className="max-h-[70%] min-h-[320px] rounded-t-3xl border-t border-white-6 bg-background">
           {/* Header */}
           <View className="flex-row items-center justify-between px-4 pt-4 pb-2">
             <Text className="text-[15px] font-inter-semibold text-foreground">
@@ -93,7 +97,7 @@ export function CategoryPickerSheet({
           </View>
 
           <ScrollView
-            className="flex-1"
+            style={{ flexShrink: 1 }}
             contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}
           >
             {/* Grouped sections */}

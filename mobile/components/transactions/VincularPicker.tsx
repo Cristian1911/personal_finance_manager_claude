@@ -89,7 +89,7 @@ export function VincularPicker({
             </View>
           ) : (
             <ScrollView
-              className="flex-1"
+              style={{ flexShrink: 1 }}
               contentContainerStyle={{ paddingBottom: 24 }}
             >
               {candidates.map((c) => (

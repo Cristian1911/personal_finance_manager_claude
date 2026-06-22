@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 import { Check, X } from "lucide-react-native";
+import { MODAL_SCRIM_COLOR } from "../ui/MobileSheet";
 
 export type CategoryRow = {
   id: string;
@@ -108,7 +109,10 @@ export function CategoryPicker({
       transparent
       onRequestClose={handleClose}
     >
-      <View className="flex-1 justify-end bg-black/35">
+      <View
+        className="flex-1 justify-end"
+        style={{ backgroundColor: MODAL_SCRIM_COLOR }}
+      >
         <View className="max-h-[72%] min-h-[320px] rounded-t-2xl border-t border-white-6 bg-background">
           {/* Header */}
           <View className="flex-row items-center justify-between px-4 pt-4 pb-3 border-b border-white-6">
