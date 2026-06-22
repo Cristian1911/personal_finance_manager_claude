@@ -2,6 +2,7 @@ import { View, Text, Pressable } from "react-native";
 import { ACCOUNT_TYPES } from "../../lib/constants/accounts";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import type { AccountRow } from "../../lib/repositories/accounts";
+import { COLORS } from "../../lib/constants/colors";
 
 type Props = {
   account: AccountRow;
@@ -14,7 +15,7 @@ export function AccountCard({ account, onPress }: Props) {
   const typeDef = ACCOUNT_TYPES.find((t) => t.value === account.account_type);
   const Icon = typeDef?.icon;
   const shortLabel = typeDef?.shortLabel ?? account.account_type;
-  const color = account.color ?? "#6B7280";
+  const color = account.color ?? COLORS.sageDark;
   const isDebt = DEBT_TYPES.has(account.account_type);
 
   return (

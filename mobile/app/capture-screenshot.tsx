@@ -251,7 +251,7 @@ export default function CaptureScreenshotScreen() {
         >
           <ArrowLeft size={18} color={COLORS.foreground} />
         </Pressable>
-        <Text className="text-lg font-semibold text-z-white">
+        <Text className="text-lg font-semibold text-foreground">
           Capturar extracto
         </Text>
       </View>
@@ -285,7 +285,7 @@ export default function CaptureScreenshotScreen() {
               className={`${GHOST_BUTTON_CLASS} flex-row items-center justify-center gap-2 rounded-2xl px-4 py-4`}
             >
               <ImageIcon size={18} color={COLORS.foreground} />
-              <Text className="text-base font-medium text-z-white">
+              <Text className="text-base font-medium text-foreground">
                 Elegir de galería
               </Text>
             </Pressable>
@@ -297,7 +297,8 @@ export default function CaptureScreenshotScreen() {
             <Image
               source={{ uri: imageUri }}
               resizeMode="contain"
-              style={{ width: "100%", height: 420, borderRadius: 16, backgroundColor: "rgba(255,255,255,0.06)" }}
+              className="bg-white-6"
+              style={{ width: "100%", height: 420, borderRadius: 16 }}
             />
             {error ? (
               <Text className="text-sm text-z-expense">{error}</Text>
@@ -326,7 +327,7 @@ export default function CaptureScreenshotScreen() {
                   className={`${GHOST_BUTTON_CLASS} flex-row items-center justify-center gap-2 rounded-2xl px-4 py-3`}
                 >
                   <RefreshCw size={16} color={COLORS.foreground} />
-                  <Text className="text-sm font-medium text-z-white">
+                  <Text className="text-sm font-medium text-foreground">
                     Cambiar imagen
                   </Text>
                 </Pressable>
@@ -341,7 +342,7 @@ export default function CaptureScreenshotScreen() {
               <Text className="text-xs uppercase tracking-[0.14em] text-z-sage-dark">
                 {parsed.bank ?? "Extracto"}
               </Text>
-              <Text className="mt-1 text-base font-semibold text-z-white">
+              <Text className="mt-1 text-base font-semibold text-foreground">
                 {parsed.transactions.length} transacciones detectadas
               </Text>
             </View>
@@ -371,7 +372,7 @@ export default function CaptureScreenshotScreen() {
                         >
                           <Text
                             className={`text-xs ${
-                              isSelected ? "font-semibold text-z-brass" : "text-z-white"
+                              isSelected ? "font-semibold text-z-brass" : "text-foreground"
                             }`}
                           >
                             {a.name}
@@ -391,7 +392,7 @@ export default function CaptureScreenshotScreen() {
                   className="flex-row items-center justify-between rounded-2xl bg-z-surface-2-55 px-4 py-3"
                 >
                   <View className="flex-1 pr-3">
-                    <Text className="text-sm text-z-white" numberOfLines={1}>
+                    <Text className="text-sm text-foreground" numberOfLines={1}>
                       {t.description || "Sin descripción"}
                     </Text>
                     <Text className="text-xs text-z-sage-dark">{t.date}</Text>
@@ -442,7 +443,7 @@ export default function CaptureScreenshotScreen() {
         {step === "done" && (
           <View className="mt-6 items-center gap-4">
             <CheckCircle size={48} color={COLORS.income} />
-            <Text className="text-lg font-semibold text-z-white">
+            <Text className="text-lg font-semibold text-foreground">
               {importedCount} transacciones importadas
             </Text>
             <View className="w-full gap-3">
@@ -451,7 +452,7 @@ export default function CaptureScreenshotScreen() {
                 accessibilityRole="button"
                 className={`${GHOST_BUTTON_CLASS} flex-row items-center justify-center gap-2 rounded-2xl px-4 py-4`}
               >
-                <Text className="text-base font-medium text-z-white">
+                <Text className="text-base font-medium text-foreground">
                   Capturar otra
                 </Text>
               </Pressable>

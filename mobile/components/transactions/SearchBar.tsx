@@ -1,6 +1,7 @@
 import { View, TextInput } from "react-native";
 import { Search, X } from "lucide-react-native";
 import { useCallback, useRef, useState } from "react";
+import { COLORS } from "../../lib/constants/colors";
 
 type SearchBarProps = {
   onSearch: (query: string) => void;
@@ -32,18 +33,18 @@ export function SearchBar({
 
   return (
     <View className="flex-row items-center bg-z-surface-2 rounded-lg px-3 py-2.5 border border-white-6">
-      <Search size={18} color="#938C7E" />
+      <Search size={18} color={COLORS.sageDark} />
       <TextInput
         className="flex-1 ml-2 text-foreground font-inter text-sm"
         placeholder={placeholder}
-        placeholderTextColor="#938C7E"
+        placeholderTextColor={COLORS.sageDark}
         value={value}
         onChangeText={handleChange}
         autoCapitalize="none"
         autoCorrect={false}
       />
       {value.length > 0 && (
-        <X size={18} color="#9CA3AF" onPress={handleClear} />
+        <X size={18} color={COLORS.sageDark} onPress={handleClear} />
       )}
     </View>
   );

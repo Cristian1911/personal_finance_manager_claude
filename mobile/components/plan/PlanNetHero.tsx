@@ -31,6 +31,11 @@ interface PlanNetHeroProps {
   onToggle: () => void;
 }
 
+// Gridline tints. SVG strokes can't take a className, so derive translucent
+// foreground tints from the brand COLORS token instead of hardcoded RGB.
+const ZERO_LINE_COLOR = `${COLORS.foreground}1F`; // ~0.12
+const TODAY_LINE_COLOR = `${COLORS.foreground}26`; // ~0.15
+
 // Mini chart geometry (balance-only, non-interactive)
 const CHART_VB_W = 320;
 const CHART_VB_H = 54;
@@ -154,9 +159,9 @@ function PlanNetHeroBase({
           <View className="mt-3">
             <Svg viewBox={`0 0 ${CHART_VB_W} ${CHART_VB_H}`} style={{ width: "100%", height: CHART_VB_H }}>
               {chart.zeroY !== null && (
-                <Line x1={CHART_PAD_L} y1={chart.zeroY} x2={CHART_VB_W - CHART_PAD_R} y2={chart.zeroY} stroke="rgba(234,229,218,0.12)" strokeWidth={0.8} strokeDasharray="2,2" />
+                <Line x1={CHART_PAD_L} y1={chart.zeroY} x2={CHART_VB_W - CHART_PAD_R} y2={chart.zeroY} stroke={ZERO_LINE_COLOR} strokeWidth={0.8} strokeDasharray="2,2" />
               )}
-              <Line x1={chart.todayX} y1={CHART_PAD_T} x2={chart.todayX} y2={CHART_VB_H - CHART_PAD_B} stroke="rgba(234,229,218,0.15)" strokeWidth={0.8} strokeDasharray="2,2" />
+              <Line x1={chart.todayX} y1={CHART_PAD_T} x2={chart.todayX} y2={CHART_VB_H - CHART_PAD_B} stroke={TODAY_LINE_COLOR} strokeWidth={0.8} strokeDasharray="2,2" />
               {chart.pastPath !== "" && (
                 <Path d={chart.pastPath} fill="none" stroke={COLORS.brass} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
               )}

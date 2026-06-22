@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -19,7 +18,8 @@ import {
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { COLORS } from "../../lib/constants/colors";
-import { PANEL_INSET_CLASS } from "../../lib/constants/styles";
+import { BRASS_BUTTON_CLASS, PANEL_INSET_CLASS } from "../../lib/constants/styles";
+import { MobileSheet } from "../ui/MobileSheet";
 import { getDatabase } from "../../lib/db/database";
 import { toLocalMonthString } from "../../lib/utils/date";
 import { parseLocalizedAmount } from "../../lib/amount";
@@ -358,12 +358,12 @@ export function PaymentSheet({
   }, [sourceAccounts, debtAccount]);
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
-        <View className="flex-1 justify-end bg-black/60">
-          <View className="rounded-t-3xl border-t border-white-6 bg-background">
+    <MobileSheet visible={visible} onClose={handleClose} maxHeightClass="max-h-[88%]" hideHandle>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        <View>
+          <View>
             {/* Header */}
-            <View className="flex-row items-center justify-between px-4 pt-4 pb-2">
+            <View className="flex-row items-center justify-between px-4 pt-2 pb-2">
               <Text className="text-[15px] font-inter-semibold text-foreground">
                 {mode === "link" ? "Vincular pago existente" : "Registrar pago"}
               </Text>
@@ -373,8 +373,8 @@ export function PaymentSheet({
             </View>
 
             <ScrollView
-              className="max-h-[80%]"
-              contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}
+              style={{ flexShrink: 1 }}
+              contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}
               keyboardShouldPersistTaps="handled"
             >
               {/* Entry info */}
@@ -439,7 +439,7 @@ export function PaymentSheet({
 
                   {/* Error */}
                   {error && (
-                    <View className="rounded-xl bg-z-debt/10 px-3 py-2 mb-2">
+                    <View className="rounded-xl bg-z-debt-12 px-3 py-2 mb-2">
                       <Text className="text-xs font-inter-medium text-z-debt">{error}</Text>
                     </View>
                   )}
@@ -448,14 +448,14 @@ export function PaymentSheet({
                   <Pressable
                     onPress={handleLinkTransaction}
                     disabled={!selectedCandidateId || submitting}
-                    className={`rounded-xl py-3 items-center mt-2 flex-row justify-center gap-2 ${selectedCandidateId ? "bg-z-brass" : "bg-z-brass/30"}`}
+                    className={`${BRASS_BUTTON_CLASS} rounded-xl py-3 items-center mt-2 flex-row justify-center gap-2 ${selectedCandidateId ? "" : "opacity-40"}`}
                   >
                     {submitting ? (
                       <ActivityIndicator size="small" color={COLORS.ink} />
                     ) : (
                       <>
                         <Link2 size={14} color={COLORS.ink} />
-                        <Text className={`text-sm font-inter-semibold ${selectedCandidateId ? "text-z-ink" : "text-z-ink/50"}`}>
+                        <Text className="text-sm font-inter-semibold text-z-ink">
                           Vincular transacción
                         </Text>
                       </>
@@ -503,7 +503,7 @@ export function PaymentSheet({
                     <View className="ml-8 mb-3">
                       <TextInput
                         className="rounded-xl border border-white-6 bg-black-10 px-3 py-2.5 text-sm font-inter-medium text-foreground"
-                        placeholderTextColor="#938C7E"
+                        placeholderTextColor={COLORS.sageDark}
                         placeholder="Ej: 150.000"
                         keyboardType="numeric"
                         value={customAmount}
@@ -562,7 +562,7 @@ export function PaymentSheet({
 
                   {/* Error */}
                   {error && (
-                    <View className="rounded-xl bg-z-debt/10 px-3 py-2 mb-2">
+                    <View className="rounded-xl bg-z-debt-12 px-3 py-2 mb-2">
                       <Text className="text-xs font-inter-medium text-z-debt">{error}</Text>
                     </View>
                   )}
@@ -571,12 +571,12 @@ export function PaymentSheet({
                   <Pressable
                     onPress={handleCreatePayment}
                     disabled={!canSubmit}
-                    className={`rounded-xl py-3 items-center mt-2 ${canSubmit ? "bg-z-brass" : "bg-z-brass/30"}`}
+                    className={`${BRASS_BUTTON_CLASS} rounded-xl py-3 items-center mt-2 ${canSubmit ? "" : "opacity-40"}`}
                   >
                     {submitting ? (
                       <ActivityIndicator size="small" color={COLORS.ink} />
                     ) : (
-                      <Text className={`text-sm font-inter-semibold ${canSubmit ? "text-z-ink" : "text-z-ink/50"}`}>
+                      <Text className="text-sm font-inter-semibold text-z-ink">
                         Confirmar pago
                       </Text>
                     )}
@@ -600,7 +600,7 @@ export function PaymentSheet({
           </View>
         </View>
       </KeyboardAvoidingView>
-    </Modal>
+    </MobileSheet>
   );
 }
 

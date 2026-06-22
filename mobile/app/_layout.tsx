@@ -41,6 +41,7 @@ import {
   reschedulePaymentReminders,
 } from "../lib/services/notifications";
 import { trackProductEvent } from "../lib/analytics/product-events";
+import { COLORS } from "../lib/constants/colors";
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -378,7 +379,7 @@ function RootLayoutNav() {
         )}
         {isLoading && (
           <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color="#937844" />
+            <ActivityIndicator size="large" color={COLORS.brass} />
           </View>
         )}
         </OnboardingStatusContext.Provider>
@@ -391,7 +392,7 @@ function RootLayoutNav() {
 const styles = StyleSheet.create({
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#121412",
+    backgroundColor: COLORS.ink,
     alignItems: "center",
     justifyContent: "center",
   },

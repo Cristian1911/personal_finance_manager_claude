@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { Check, X } from "lucide-react-native";
 import { MODAL_SCRIM_COLOR } from "../ui/MobileSheet";
+import { COLORS } from "../../lib/constants/colors";
 
 export type CategoryRow = {
   id: string;
@@ -121,9 +122,9 @@ export function CategoryPicker({
             </Text>
             <Pressable
               onPress={handleClose}
-              className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-z-surface-2/10"
+              className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-black-10"
             >
-              <X size={18} color="#938C7E" />
+              <X size={18} color={COLORS.sageDark} />
             </Pressable>
           </View>
 
@@ -132,7 +133,7 @@ export function CategoryPicker({
             <TextInput
               className="bg-black-10 rounded-xl px-4 py-2.5 text-foreground font-inter text-sm"
               placeholder="Buscar categoría..."
-              placeholderTextColor="#938C7E"
+              placeholderTextColor={COLORS.sageDark}
               value={search}
               onChangeText={setSearch}
               autoCorrect={false}
@@ -143,13 +144,13 @@ export function CategoryPicker({
           {/* "None" option */}
           <Pressable
             onPress={() => handleSelect(null, null)}
-            className="flex-row items-center px-4 py-3.5 border-b border-white-6 active:bg-z-surface-2/5"
+            className="flex-row items-center px-4 py-3.5 border-b border-white-6 active:bg-black-10"
           >
-            <View className="w-3 h-3 rounded-full bg-z-surface-2/15 mr-3" />
+            <View className="w-3 h-3 rounded-full bg-white-6 mr-3" />
             <Text className="text-muted-foreground font-inter text-sm flex-1">
               Sin categoría
             </Text>
-            {selectedId === null && <Check size={16} color="#10B981" />}
+            {selectedId === null && <Check size={16} color={COLORS.income} />}
           </Pressable>
 
           <FlatList
@@ -175,7 +176,7 @@ export function CategoryPicker({
                   onPress={() =>
                     handleSelect(item.item.id, displayName(item.item))
                   }
-                  className={`flex-row items-center ${paddingLeft} pr-4 py-3.5 active:bg-z-surface-2/5`}
+                  className={`flex-row items-center ${paddingLeft} pr-4 py-3.5 active:bg-black-10`}
                 >
                   {item.item.color ? (
                     <View
@@ -183,21 +184,21 @@ export function CategoryPicker({
                       style={{ backgroundColor: item.item.color }}
                     />
                   ) : (
-                    <View className="w-3 h-3 rounded-full bg-z-surface-2/15 mr-3" />
+                    <View className="w-3 h-3 rounded-full bg-white-6 mr-3" />
                   )}
                   <Text
                     className={`font-inter text-sm flex-1 ${
-                      isSelected ? "text-primary font-inter-medium" : "text-foreground"
+                      isSelected ? "text-z-brass font-inter-medium" : "text-foreground"
                     }`}
                   >
                     {displayName(item.item)}
                   </Text>
-                  {isSelected && <Check size={16} color="#10B981" />}
+                  {isSelected && <Check size={16} color={COLORS.income} />}
                 </Pressable>
               );
             }}
             ItemSeparatorComponent={() => (
-              <View className="h-px bg-z-surface-2-6 ml-4" />
+              <View className="h-px bg-white-6 ml-4" />
             )}
           />
         </View>

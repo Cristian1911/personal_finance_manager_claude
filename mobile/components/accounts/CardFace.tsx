@@ -15,6 +15,16 @@ const INSTITUTION_GRADIENTS: Record<string, [string, string, string]> = {
 
 const FALLBACK_GRADIENT: [string, string, string] = ["#1a1a1a", "#252525", "#333333"];
 
+// Card-art text overlays sit on top of the institution gradient, so they use
+// translucent-white ink (not a brand token). Derived from a single white base
+// to keep the opacity ramp consistent.
+const CARD_INK = "255,255,255";
+const CARD_INK_PRIMARY = "#FFFFFF";
+const CARD_INK_70 = `rgba(${CARD_INK},0.7)`;
+const CARD_INK_60 = `rgba(${CARD_INK},0.6)`;
+const CARD_INK_50 = `rgba(${CARD_INK},0.5)`;
+const CARD_INK_40 = `rgba(${CARD_INK},0.4)`;
+
 const TYPE_LABELS: Record<string, string> = {
   CREDIT_CARD: "CRÉDITO",
   SAVINGS: "AHORROS",
@@ -54,14 +64,14 @@ export function CardFace({ account }: Props) {
       <View className="flex-1 p-4 justify-between">
         <View className="flex-row items-start justify-between">
           <Text
-            style={{ color: "rgba(255,255,255,0.7)" }}
+            style={{ color: CARD_INK_70 }}
             className="font-inter-medium text-xs uppercase"
             numberOfLines={1}
           >
             {account.institution_name ?? ""}
           </Text>
           <Text
-            style={{ color: "rgba(255,255,255,0.5)", letterSpacing: 1.5 }}
+            style={{ color: CARD_INK_50, letterSpacing: 1.5 }}
             className="font-inter-semibold text-[10px] uppercase"
           >
             {typeLabel}
@@ -69,7 +79,7 @@ export function CardFace({ account }: Props) {
         </View>
         <View className="flex-1 justify-center">
           <Text
-            style={{ color: "#FFFFFF" }}
+            style={{ color: CARD_INK_PRIMARY }}
             className="font-inter-bold text-xl tabular-nums"
           >
             {formatCurrency(account.current_balance ?? 0, cc)}
@@ -77,13 +87,13 @@ export function CardFace({ account }: Props) {
         </View>
         <View className="flex-row items-end justify-between">
           <Text
-            style={{ color: "rgba(255,255,255,0.6)", letterSpacing: 2 }}
+            style={{ color: CARD_INK_60, letterSpacing: 2 }}
             className="font-inter-medium text-sm"
           >
             {mask ? `•••• ${mask}` : "••••"}
           </Text>
           <Text
-            style={{ color: "rgba(255,255,255,0.4)" }}
+            style={{ color: CARD_INK_40 }}
             className="font-inter-medium text-xs"
           >
             {account.currency_code}

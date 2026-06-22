@@ -3,6 +3,7 @@ import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
 import { COLORS } from "../../lib/constants/colors";
+import { BRASS_BUTTON_CLASS } from "../../lib/constants/styles";
 import { MODAL_SCRIM_COLOR } from "../ui/MobileSheet";
 import { TagSelector } from "./TagSelector";
 import { getTagsForTransaction } from "../../lib/repositories/tags";
@@ -110,7 +111,7 @@ export function TagPickerSheet({ visible, transactionId, onClose, onSave }: Prop
               disabled={saving || loading}
               accessibilityLabel="Guardar etiquetas"
               accessibilityRole="button"
-              className={`items-center rounded-full bg-z-brass py-3 ${saving || loading ? "opacity-60" : "active:bg-z-brass-12"}`}
+              className={`items-center rounded-full py-3 ${BRASS_BUTTON_CLASS} ${saving || loading ? "opacity-40" : ""}`}
             >
               <Text className="text-sm font-inter-semibold text-z-ink">
                 {saving ? "Guardando…" : "Guardar"}

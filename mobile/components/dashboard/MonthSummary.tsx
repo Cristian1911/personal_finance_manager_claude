@@ -1,6 +1,7 @@
 import { View, Text } from "react-native";
 import { TrendingUp, TrendingDown } from "lucide-react-native";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
+import { COLORS } from "../../lib/constants/colors";
 
 type MonthSummaryProps = {
   income: number;
@@ -19,7 +20,7 @@ export function MonthSummary({
       <View className="flex-1 bg-z-surface-2-55 rounded-lg p-4">
         <View className="flex-row items-center mb-2">
           <View className="bg-z-income/10 rounded-full p-1.5">
-            <TrendingUp size={14} color="#22C55E" />
+            <TrendingUp size={14} color={COLORS.income} />
           </View>
           <Text className="text-muted-foreground font-inter text-xs ml-2">
             Ingresos
@@ -34,7 +35,7 @@ export function MonthSummary({
       <View className="flex-1 bg-z-surface-2-55 rounded-lg p-4">
         <View className="flex-row items-center mb-2">
           <View className="bg-z-expense/10 rounded-full p-1.5">
-            <TrendingDown size={14} color="#EF4444" />
+            <TrendingDown size={14} color={COLORS.expense} />
           </View>
           <Text className="text-muted-foreground font-inter text-xs ml-2">
             Gastos

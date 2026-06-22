@@ -1,5 +1,6 @@
 import { View, Text } from "react-native";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
+import { COLORS } from "../../lib/constants/colors";
 
 export type CategorySpend = {
   category_id: string | null;
@@ -32,7 +33,7 @@ export function CategoryBreakdown({
       ) : (
         categories.map((cat, index) => {
           const percentage = maxTotal > 0 ? (cat.total / maxTotal) * 100 : 0;
-          const color = cat.category_color || "#6B7280";
+          const color = cat.category_color || COLORS.sageDark;
 
           return (
             <View key={cat.category_id ?? `unknown-${index}`} className="mb-3">

@@ -1,7 +1,6 @@
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   ScrollView,
   Text,
@@ -12,7 +11,8 @@ import { Check, X } from "lucide-react-native";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import { useAuth } from "../../lib/auth";
 import { COLORS } from "../../lib/constants/colors";
-import { PANEL_INSET_CLASS } from "../../lib/constants/styles";
+import { BRASS_BUTTON_CLASS, PANEL_INSET_CLASS } from "../../lib/constants/styles";
+import { MobileSheet } from "../ui/MobileSheet";
 import { parseLocalizedAmount } from "../../lib/amount";
 import {
   createAssignment,
@@ -122,11 +122,11 @@ export function ReassignSheet({
   );
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
-      <View className="flex-1 justify-end bg-black/60">
-        <View className="rounded-t-3xl border-t border-white-6 bg-background">
+    <MobileSheet visible={visible} onClose={handleClose} maxHeightClass="max-h-[70%]" hideHandle>
+      <View>
+        <View>
           {/* Header */}
-          <View className="flex-row items-center justify-between px-4 pt-4 pb-2">
+          <View className="flex-row items-center justify-between px-4 pt-2 pb-2">
             <Text className="text-[15px] font-inter-semibold text-foreground">Reasignar gasto</Text>
             <Pressable onPress={handleClose} className="h-8 w-8 items-center justify-center rounded-full">
               <X size={16} color={COLORS.sageLight} />
@@ -134,8 +134,8 @@ export function ReassignSheet({
           </View>
 
           <ScrollView
-            className="max-h-[70%]"
-            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}
+            style={{ flexShrink: 1 }}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}
           >
             {/* Current assignment info */}
             <View className={`${PANEL_INSET_CLASS} p-3 mb-4`}>
@@ -193,7 +193,7 @@ export function ReassignSheet({
                 </Text>
                 <TextInput
                   className="rounded-xl border border-white-6 bg-black-10 px-3 py-2.5 text-sm font-inter-medium text-foreground"
-                  placeholderTextColor="#938C7E"
+                  placeholderTextColor={COLORS.sageDark}
                   placeholder="Monto"
                   keyboardType="numeric"
                   value={amountInput}
@@ -203,7 +203,7 @@ export function ReassignSheet({
             )}
 
             {error && (
-              <View className="rounded-xl bg-z-debt/10 px-3 py-2 mt-2">
+              <View className="rounded-xl bg-z-debt-12 px-3 py-2 mt-2">
                 <Text className="text-xs font-inter-medium text-z-debt">{error}</Text>
               </View>
             )}
@@ -212,12 +212,12 @@ export function ReassignSheet({
             <Pressable
               onPress={handleReassign}
               disabled={!selectedIncomeId || submitting}
-              className={`rounded-xl py-3 items-center mt-4 ${selectedIncomeId ? "bg-z-brass" : "bg-z-brass/30"}`}
+              className={`${BRASS_BUTTON_CLASS} rounded-xl py-3 items-center mt-4 ${selectedIncomeId ? "" : "opacity-40"}`}
             >
               {submitting ? (
                 <ActivityIndicator size="small" color={COLORS.ink} />
               ) : (
-                <Text className={`text-sm font-inter-semibold ${selectedIncomeId ? "text-z-ink" : "text-z-ink/50"}`}>
+                <Text className="text-sm font-inter-semibold text-z-ink">
                   Reasignar
                 </Text>
               )}
@@ -229,6 +229,6 @@ export function ReassignSheet({
           </ScrollView>
         </View>
       </View>
-    </Modal>
+    </MobileSheet>
   );
 }
