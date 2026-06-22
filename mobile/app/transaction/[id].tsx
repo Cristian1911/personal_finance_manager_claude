@@ -969,7 +969,7 @@ export default function TransactionDetailScreen() {
       {showDatePicker && Platform.OS === "ios" ? (
         <Modal transparent animationType="slide">
           <View className="flex-1 justify-end bg-black/40">
-            <View className="bg-z-surface-2-55 rounded-t-2xl pt-2 pb-6">
+            <View className="border-t border-white-6 bg-background rounded-t-2xl pt-2 pb-6">
               <View className="flex-row justify-end px-4 pb-2">
                 <Pressable
                   onPress={() => setShowDatePicker(false)}
