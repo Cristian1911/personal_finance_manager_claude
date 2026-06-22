@@ -1,5 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -7,9 +9,13 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Check, UserRound, X } from "lucide-react-native";
+import { Check, Plus, UserRound, X } from "lucide-react-native";
 import { COLORS } from "../../lib/constants/colors";
-import type { DestinatarioWithCount } from "../../lib/repositories/destinatarios";
+import { useAuth } from "../../lib/auth";
+import {
+  createDestinatarioWithPattern,
+  type DestinatarioWithCount,
+} from "../../lib/repositories/destinatarios";
 
 type Props = {
   visible: boolean;
@@ -34,13 +40,25 @@ export function DestinatarioPicker({
   selectedId,
   destinatarios,
 }: Props) {
+  const { session } = useAuth();
   const [search, setSearch] = useState("");
+  const [creating, setCreating] = useState(false);
+
+  const query = search.trim();
 
   const filtered = useMemo(() => {
-    const query = search.toLowerCase().trim();
-    if (!query) return destinatarios;
-    return destinatarios.filter((d) => d.name.toLowerCase().includes(query));
-  }, [destinatarios, search]);
+    const q = query.toLowerCase();
+    if (!q) return destinatarios;
+    return destinatarios.filter((d) => d.name.toLowerCase().includes(q));
+  }, [destinatarios, query]);
+
+  // Offer inline creation when the search term doesn't already name a destinatario.
+  const canCreate = useMemo(
+    () =>
+      query.length > 0 &&
+      !destinatarios.some((d) => d.name.toLowerCase() === query.toLowerCase()),
+    [destinatarios, query]
+  );
 
   const handleClose = () => {
     setSearch("");
@@ -55,6 +73,24 @@ export function DestinatarioPicker({
     },
     [onSelect, onClose]
   );
+
+  const handleCreate = useCallback(async () => {
+    const userId = session?.user?.id;
+    if (!userId || !query || creating) return;
+    setCreating(true);
+    try {
+      const { destinatarioId } = await createDestinatarioWithPattern({
+        user_id: userId,
+        name: query,
+      });
+      handleSelect(destinatarioId, query);
+    } catch (e) {
+      console.warn("createDestinatario failed:", e);
+      Alert.alert("Error", "No se pudo crear el destinatario.");
+    } finally {
+      setCreating(false);
+    }
+  }, [session, query, creating, handleSelect]);
 
   const renderRow = useCallback(
     ({ item }: { item: DestinatarioWithCount }) => {
@@ -149,12 +185,39 @@ export function DestinatarioPicker({
             keyboardShouldPersistTaps="handled"
             renderItem={renderRow}
             ItemSeparatorComponent={Separator}
+            ListHeaderComponent={
+              canCreate ? (
+                <Pressable
+                  onPress={handleCreate}
+                  disabled={creating}
+                  accessibilityLabel={`Crear destinatario ${query}`}
+                  accessibilityRole="button"
+                  className="flex-row items-center px-4 py-3.5 border-b border-white-6 active:bg-black-10"
+                >
+                  <View className="w-7 h-7 rounded-full bg-z-income-20 items-center justify-center mr-3">
+                    {creating ? (
+                      <ActivityIndicator size="small" color={COLORS.income} />
+                    ) : (
+                      <Plus size={14} color={COLORS.income} />
+                    )}
+                  </View>
+                  <Text className="text-foreground font-inter text-sm flex-1">
+                    Crear «{query}»
+                  </Text>
+                  <Text className="text-z-income font-inter-medium text-xs">
+                    {creating ? "Creando…" : "Nuevo"}
+                  </Text>
+                </Pressable>
+              ) : null
+            }
             ListEmptyComponent={
-              <View className="py-8 px-6">
-                <Text className="text-muted-fg-50 font-inter text-sm text-center">
-                  No hay destinatarios.
-                </Text>
-              </View>
+              canCreate ? null : (
+                <View className="py-8 px-6">
+                  <Text className="text-muted-fg-50 font-inter text-sm text-center">
+                    No hay destinatarios.
+                  </Text>
+                </View>
+              )
             }
           />
         </View>

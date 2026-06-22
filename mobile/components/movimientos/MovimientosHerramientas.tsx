@@ -1,19 +1,20 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, Pressable } from "react-native";
 import { ArrowDownLeft, ArrowRight, ArrowUpRight, ChevronRight, FileUp, Tag } from "lucide-react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { formatCurrency, formatDate, type CurrencyCode } from "@zeta/shared";
 import { COLORS } from "../../lib/constants/colors";
 import { MobileZone } from "../ui/MobileZone";
 import { AnimatedAccordion } from "../ui/AnimatedAccordion";
 import {
-  BRASS_BUTTON_CLASS,
   BRASS_GHOST_BUTTON_CLASS,
   PANEL_INSET_CLASS,
   SECTION_EYEBROW_CLASS,
 } from "../../lib/constants/styles";
 import type { UncategorizedSampleRow } from "../../lib/repositories/transactions";
 import type { CategoryRow } from "../../lib/repositories/categories";
+import { getPendingEmailTransactionsCount } from "../../lib/repositories/pending-email";
+import { EmailImportPanel } from "./EmailImportPanel";
 
 const MAX_ITEMS = 5;
 
@@ -25,6 +26,8 @@ interface MovimientosHerramientasProps {
   onToggleTool: (tool: "categorizar" | "importar") => void;
   /** Delegate picker opening to the Root (which owns the single hoisted CategoryPickerSheet). */
   onRequestCategoryPicker: (transactionId: string) => void;
+  /** Re-read the Movimientos feed after a tool mutation (email-queue import). */
+  onDataChanged?: () => void;
 }
 
 function MovimientosHerramientasBase({
@@ -34,10 +37,28 @@ function MovimientosHerramientasBase({
   activeTool,
   onToggleTool,
   onRequestCategoryPicker,
+  onDataChanged,
 }: MovimientosHerramientasProps) {
   const router = useRouter();
 
   void categories;
+
+  const [emailCount, setEmailCount] = useState(0);
+  const [emailPanelHeight, setEmailPanelHeight] = useState(200);
+
+  const refreshEmailCount = useCallback(() => {
+    getPendingEmailTransactionsCount()
+      .then(setEmailCount)
+      .catch(() => {});
+  }, []);
+
+  // Wrap so the effect returns undefined — useFocusEffect treats a non-function
+  // return (refreshEmailCount returns a Promise) as a cleanup and dev-errors.
+  useFocusEffect(
+    useCallback(() => {
+      refreshEmailCount();
+    }, [refreshEmailCount])
+  );
 
   const visibleUncategorized = useMemo(
     () => uncategorizedTransactions.slice(0, MAX_ITEMS),
@@ -108,19 +129,38 @@ function MovimientosHerramientasBase({
               : "border-z-sage-20 bg-z-sage-10"
           }`}
         >
-          <View className="h-6 w-6 items-center justify-center rounded-lg bg-z-sage-20">
-            <FileUp size={14} color={COLORS.sageLight} />
-          </View>
-          <Text className="mt-1 text-[10px] font-inter-semibold text-muted-foreground">
-            Importar
-          </Text>
-          <Text className="mt-1 text-[9px] font-inter text-z-sage-light">
-            Subir PDF
-          </Text>
+          {emailCount > 0 ? (
+            <>
+              <Text className="text-[22px] font-inter-bold leading-tight text-z-sage-light">
+                {emailCount}
+              </Text>
+              <Text className="mt-0.5 text-[10px] font-inter-semibold text-muted-foreground">
+                Importar
+              </Text>
+              <Text className="mt-1 text-[9px] font-inter text-z-sage-light">
+                {emailCount} {emailCount === 1 ? "correo" : "correos"}
+              </Text>
+            </>
+          ) : (
+            <>
+              <View className="h-6 w-6 items-center justify-center rounded-lg bg-z-sage-20">
+                <FileUp size={14} color={COLORS.sageLight} />
+              </View>
+              <Text className="mt-1 text-[10px] font-inter-semibold text-muted-foreground">
+                Importar
+              </Text>
+              <Text className="mt-1 text-[9px] font-inter text-z-sage-light">
+                Subir PDF
+              </Text>
+            </>
+          )}
         </Pressable>
       </View>
 
-      <AnimatedAccordion expanded={activeTool !== null} estimatedHeight={260}>
+      <AnimatedAccordion
+        expanded={activeTool !== null}
+        estimatedHeight={renderedTool === "importar" ? emailPanelHeight + 24 : 260}
+      >
         <View className={`mt-1.5 ${PANEL_INSET_CLASS} border-white-8 bg-black-20 p-3`}>
           {renderedTool === "categorizar" && (
             <CategorizarDetail
@@ -131,7 +171,14 @@ function MovimientosHerramientasBase({
             />
           )}
           {renderedTool === "importar" && (
-            <ImportarDetail onOpen={() => router.push("/(tabs)/import" as any)} />
+            <EmailImportPanel
+              onOpenImport={() => router.push("/(tabs)/import" as any)}
+              onAfterChange={() => {
+                refreshEmailCount();
+                onDataChanged?.();
+              }}
+              onHeightChange={setEmailPanelHeight}
+            />
           )}
         </View>
       </AnimatedAccordion>
@@ -224,37 +271,6 @@ function CategorizarDetail({
           <ArrowRight size={11} color={COLORS.brass} />
         </Pressable>
       </View>
-    </View>
-  );
-}
-
-/* ─── Importar detail ────────────────────────────────────────────────── */
-
-function ImportarDetail({ onOpen }: { onOpen: () => void }) {
-  return (
-    <View className="gap-2">
-      <Text className={`${SECTION_EYEBROW_CLASS} text-z-sage-light`}>
-        Importar extracto
-      </Text>
-      <Pressable
-        onPress={onOpen}
-        className="flex-row items-center gap-3 rounded-xl p-2 active:bg-z-surface-2-5"
-      >
-        <View className="h-8 w-8 items-center justify-center rounded-lg border border-z-sage-20 bg-z-sage-10">
-          <FileUp size={16} color={COLORS.sageLight} />
-        </View>
-        <View className="min-w-0 flex-1">
-          <Text className="text-[11px] font-inter-semibold text-foreground">
-            Subir PDF del banco
-          </Text>
-          <Text className="text-[9px] font-inter text-muted-foreground">
-            Extracto mensual de cualquier banco
-          </Text>
-        </View>
-        <View className={`${BRASS_BUTTON_CLASS} rounded-lg px-3 py-1`}>
-          <Text className="text-[10px] font-inter-semibold text-z-ink">Subir</Text>
-        </View>
-      </Pressable>
     </View>
   );
 }
