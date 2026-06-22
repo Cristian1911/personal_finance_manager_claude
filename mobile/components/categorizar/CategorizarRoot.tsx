@@ -123,8 +123,8 @@ export function CategorizarRoot() {
             </Text>
             <Text className="text-[11px] font-inter text-muted-foreground">
               {transactions.length === 1
-                ? "transaccion sin categoria"
-                : "transacciones sin categoria"}
+                ? "transacción sin categoría"
+                : "transacciones sin categoría"}
             </Text>
           </View>
         </MCard>

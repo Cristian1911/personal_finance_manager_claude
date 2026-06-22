@@ -60,6 +60,7 @@ import {
   PANEL_INSET_CLASS,
 } from "../lib/constants/styles";
 import { COLORS } from "../lib/constants/colors";
+import { TransferSheet } from "../components/accounts/TransferSheet";
 
 const DEFAULT_ACCOUNT_KEY = "zeta.last_capture_account_id";
 const EXPLICIT_DEFAULT_ACCOUNT_KEY = "zeta.default_capture_account_id";
@@ -230,6 +231,7 @@ export default function CaptureScreen() {
   const [isSubscription, setIsSubscription] = useState(false);
   const [createDestinatario, setCreateDestinatario] = useState(false);
   const [createRecurring, setCreateRecurring] = useState(false);
+  const [showTransferSheet, setShowTransferSheet] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -293,10 +295,10 @@ export default function CaptureScreen() {
 
   function handleTypeChange(next: TxType) {
     if (next === "transfer") {
-      Alert.alert(
-        "Próximamente",
-        "La creación de transferencias llega en la siguiente versión."
-      );
+      // Transfers are a paired OUTFLOW+INFLOW across two accounts — handled by
+      // the dedicated TransferSheet (createTransfer), not the single-account
+      // capture form. Open the sheet and keep the pill on the current type.
+      setShowTransferSheet(true);
       return;
     }
     if (next !== type) {
@@ -772,6 +774,18 @@ export default function CaptureScreen() {
         }}
         selectedId={categoryId}
         categories={filteredCategories as PickerCategoryRow[]}
+      />
+
+      <TransferSheet
+        visible={showTransferSheet}
+        allAccounts={accounts}
+        initialFromAccountId={accountId || undefined}
+        onClose={() => setShowTransferSheet(false)}
+        onSuccess={() => {
+          setShowTransferSheet(false);
+          Alert.alert("Listo", "La transferencia se registró correctamente.");
+          router.back();
+        }}
       />
     </View>
   );

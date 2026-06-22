@@ -118,8 +118,8 @@ export function DestinatariosRoot() {
             </Text>
             <Text className="text-[11px] font-inter text-muted-foreground text-center px-8">
               {searchQuery.trim()
-                ? "No se encontraron resultados para tu busqueda"
-                : "Los destinatarios se crean automaticamente al importar transacciones"}
+                ? "No se encontraron resultados para tu búsqueda"
+                : "Los destinatarios se crean automáticamente al importar transacciones"}
             </Text>
           </View>
         ) : (

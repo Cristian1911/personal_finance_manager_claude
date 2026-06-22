@@ -22,7 +22,7 @@ export function CategoryBreakdown({
   return (
     <View className="bg-z-surface-2-55 rounded-lg p-4 mx-4 mt-4 mb-6">
       <Text className="text-foreground font-inter-bold text-base mb-4">
-        Gastos por categoria
+        Gastos por categoría
       </Text>
 
       {categories.length === 0 ? (
@@ -46,7 +46,7 @@ export function CategoryBreakdown({
                     className="text-foreground font-inter-medium text-sm"
                     numberOfLines={1}
                   >
-                    {cat.category_name_es || "Sin categoria"}
+                    {cat.category_name_es || "Sin categoría"}
                   </Text>
                 </View>
                 <Text className="text-foreground font-inter-semibold text-sm ml-2">

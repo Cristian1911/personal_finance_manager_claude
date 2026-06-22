@@ -64,7 +64,7 @@ export default function CreateAccountScreen() {
     const parsedBalance = parseFloat(balance) || 0;
 
     if (isCreditCard && !creditLimit.trim()) {
-      Alert.alert("Error", "El limite de credito es requerido para tarjetas.");
+      Alert.alert("Error", "El límite de crédito es requerido para tarjetas.");
       return;
     }
 
@@ -163,27 +163,27 @@ export default function CreateAccountScreen() {
         {/* Credit card specific fields */}
         {isCreditCard && (
           <>
-            <FormField label="Limite de credito" required>
+            <FormField label="Límite de crédito" required>
               <NumericInput
                 value={creditLimit}
                 onChangeText={setCreditLimit}
                 placeholder="Ej: 5000000"
               />
             </FormField>
-            <FormField label="Tasa de interes mensual (%)">
+            <FormField label="Tasa de interés mensual (%)">
               <NumericInput
                 value={interestRate}
                 onChangeText={setInterestRate}
                 placeholder="Ej: 2.5"
               />
             </FormField>
-            <FormField label="Dia de corte">
+            <FormField label="Día de corte">
               <DayPicker
                 value={cutoffDay}
                 onSelect={setCutoffDay}
               />
             </FormField>
-            <FormField label="Dia de pago">
+            <FormField label="Día de pago">
               <DayPicker
                 value={paymentDay}
                 onSelect={setPaymentDay}
@@ -195,14 +195,14 @@ export default function CreateAccountScreen() {
         {/* Loan specific fields */}
         {isLoan && (
           <>
-            <FormField label="Tasa de interes mensual (%)">
+            <FormField label="Tasa de interés mensual (%)">
               <NumericInput
                 value={interestRate}
                 onChangeText={setInterestRate}
                 placeholder="Ej: 1.8"
               />
             </FormField>
-            <FormField label="Dia de pago">
+            <FormField label="Día de pago">
               <DayPicker
                 value={paymentDay}
                 onSelect={setPaymentDay}

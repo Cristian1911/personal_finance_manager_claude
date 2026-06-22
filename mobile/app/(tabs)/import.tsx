@@ -469,15 +469,15 @@ export default function ImportScreen() {
       const stmt = statements[0];
 
       if (!stmt) {
-        throw new Error("No se encontro informacion en el extracto");
+        throw new Error("No se encontró información en el extracto");
       }
 
       if (!stmt.transactions?.length) {
         const typeLabel =
           stmt.statement_type === "loan"
-            ? "prestamo"
+            ? "préstamo"
             : stmt.statement_type === "credit_card"
-              ? "tarjeta de credito"
+              ? "tarjeta de crédito"
               : "extracto";
         throw new Error(
           `Este ${typeLabel} no contiene transacciones para importar`
@@ -617,8 +617,8 @@ export default function ImportScreen() {
     if (!parsedData) return;
     if (!session?.user?.id) {
       Alert.alert(
-        "Inicia sesion",
-        "La importacion de extractos requiere una cuenta autenticada."
+        "Inicia sesión",
+        "La importación de extractos requiere una cuenta autenticada."
       );
       return;
     }

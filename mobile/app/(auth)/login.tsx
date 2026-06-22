@@ -192,7 +192,7 @@ export default function LoginScreen() {
         )}
 
         <Text className="text-sm font-medium text-muted-foreground mb-1">
-          Correo electronico
+          Correo electrónico
         </Text>
         <TextInput
           className="border border-white-6 rounded-lg px-4 py-3 mb-4 text-base text-foreground bg-black-10"
@@ -207,11 +207,11 @@ export default function LoginScreen() {
         />
 
         <Text className="text-sm font-medium text-muted-foreground mb-1">
-          Contrasena
+          Contraseña
         </Text>
         <TextInput
           className="border border-white-6 rounded-lg px-4 py-3 mb-6 text-base text-foreground bg-black-10"
-          placeholder="Tu contrasena"
+          placeholder="Tu contraseña"
           placeholderTextColor="#938C7E"
           value={password}
           onChangeText={setPassword}
@@ -232,7 +232,7 @@ export default function LoginScreen() {
             <ActivityIndicator color="#121412" />
           ) : (
             <Text className="text-z-ink font-semibold text-base">
-              Iniciar sesion
+              Iniciar sesión
             </Text>
           )}
         </TouchableOpacity>

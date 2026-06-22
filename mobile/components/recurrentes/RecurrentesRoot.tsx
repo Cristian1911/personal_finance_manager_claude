@@ -8,10 +8,10 @@ import { useSync } from "../../lib/sync/hooks";
 import {
   getOccurrencesForMonth,
   getRecurringSummary,
-  confirmOccurrence,
   skipOccurrence,
   type OccurrenceWithTemplate,
 } from "../../lib/repositories/recurring";
+import { getAllAccounts, type AccountRow } from "../../lib/repositories/accounts";
 import { getPreferredCurrency } from "../../lib/profile";
 import { COLORS } from "../../lib/constants/colors";
 import { MOBILE_TAB_BAR_CLEARANCE, SECTION_EYEBROW_CLASS } from "../../lib/constants/styles";
@@ -20,6 +20,7 @@ import { MonthSelector } from "../common/MonthSelector";
 import { MCard } from "../ui/MCard";
 import { RecurringSummaryCard } from "./RecurringSummaryCard";
 import { OccurrenceRow } from "./OccurrenceRow";
+import { RecurringConfirmSheet } from "./RecurringConfirmSheet";
 
 interface RecurringSummary {
   total_expected: number;
@@ -46,17 +47,22 @@ export function RecurrentesRoot() {
   const [summary, setSummary] = useState<RecurringSummary>(EMPTY_SUMMARY);
   const [completedExpanded, setCompletedExpanded] = useState(false);
   const [currency, setCurrency] = useState<CurrencyCode>("COP");
+  const [accounts, setAccounts] = useState<AccountRow[]>([]);
+  const [confirmingOccurrence, setConfirmingOccurrence] =
+    useState<OccurrenceWithTemplate | null>(null);
 
   const loadData = useCallback(async () => {
     try {
-      const [occ, sum, preferredCurrency] = await Promise.all([
+      const [occ, sum, preferredCurrency, accountRows] = await Promise.all([
         getOccurrencesForMonth(currentMonth),
         getRecurringSummary(currentMonth),
         getPreferredCurrency(),
+        getAllAccounts(),
       ]);
       setOccurrences(occ);
       setSummary(sum);
       setCurrency(preferredCurrency);
+      setAccounts(accountRows);
     } catch (error) {
       console.error("Failed to load recurrentes data:", error);
     }
@@ -79,15 +85,13 @@ export function RecurrentesRoot() {
   }, [sync, loadData]);
 
   const handleConfirm = useCallback(
-    async (occurrenceId: string) => {
-      try {
-        await confirmOccurrence(occurrenceId);
-        await loadData();
-      } catch (error) {
-        console.error("Failed to confirm occurrence:", error);
-      }
+    (occurrenceId: string) => {
+      // Open the confirm sheet — recording the payment (real transaction +
+      // balance + paid-link) happens through recordRecurringOccurrencePayment.
+      const occ = occurrences.find((o) => o.id === occurrenceId);
+      if (occ) setConfirmingOccurrence(occ);
     },
-    [loadData]
+    [occurrences]
   );
 
   const handleSkip = useCallback(
@@ -216,6 +220,18 @@ export function RecurrentesRoot() {
           </View>
         )}
       </ScrollView>
+
+      <RecurringConfirmSheet
+        visible={confirmingOccurrence != null}
+        occurrence={confirmingOccurrence}
+        accounts={accounts}
+        currency={currency}
+        onClose={() => setConfirmingOccurrence(null)}
+        onSuccess={() => {
+          setConfirmingOccurrence(null);
+          loadData();
+        }}
+      />
     </View>
   );
 }

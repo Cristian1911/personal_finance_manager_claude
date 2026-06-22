@@ -10,7 +10,7 @@ export interface DailyPoint {
   amount: number;
 }
 
-function toColombiaDateString(d: Date): string {
+export function toColombiaDateString(d: Date): string {
   return d.toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
 }
 

@@ -41,7 +41,7 @@ export function DeudasAccountsAccordion({
                     {account.name}
                   </Text>
                   <Text className="text-[10px] font-inter text-muted-foreground">
-                    {account.type === "CREDIT_CARD" ? "Tarjeta de credito" : "Prestamo"} · {account.interestRate}% EA
+                    {account.type === "CREDIT_CARD" ? "Tarjeta de crédito" : "Préstamo"} · {account.interestRate}% EA
                   </Text>
                 </View>
                 <View className="items-end">

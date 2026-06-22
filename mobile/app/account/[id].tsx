@@ -7,12 +7,13 @@ import {
   Alert,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
 import { COLORS } from "../../lib/constants/colors";
 import {
   getAccountById,
+  getAllAccounts,
   deleteAccount,
   type AccountRow,
 } from "../../lib/repositories/accounts";
@@ -28,6 +29,9 @@ import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import { isDebtInflow } from "../../lib/transaction-semantics";
 import { AccountHero } from "../../components/accounts/AccountHero";
 import { QuickActionsBar } from "../../components/accounts/QuickActionsBar";
+import { PaymentActionSheet } from "../../components/accounts/PaymentActionSheet";
+import { ReconcileSheet } from "../../components/accounts/ReconcileSheet";
+import { TransferSheet } from "../../components/accounts/TransferSheet";
 import {
   MOBILE_TAB_BAR_CLEARANCE,
   SECTION_EYEBROW_CLASS,
@@ -76,61 +80,63 @@ export default function AccountDetailScreen() {
   const [trendPercent, setTrendPercent] = useState<number | undefined>(undefined);
   const [monthlySpent, setMonthlySpent] = useState(0);
   const [dailyActivity, setDailyActivity] = useState<DailyPoint[]>([]);
+  const [allAccounts, setAllAccounts] = useState<AccountRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeSheet, setActiveSheet] = useState<
+    "payment" | "transfer" | "reconcile" | null
+  >(null);
 
-  useEffect(() => {
+  const loadData = useCallback(async () => {
     if (!id) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const now = new Date();
-        const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-        const db = await getDatabase();
-        const [acc, txs, summary] = await Promise.all([
-          getAccountById(id),
-          getTransactions({ accountId: id, limit: 10 }),
-          db.getFirstAsync<{ total_out: number; total_in: number; tx_count: number }>(
-            `SELECT
+    try {
+      const now = new Date();
+      const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const db = await getDatabase();
+      const [acc, txs, summary, accountRows] = await Promise.all([
+        getAccountById(id),
+        getTransactions({ accountId: id, limit: 10 }),
+        db.getFirstAsync<{ total_out: number; total_in: number; tx_count: number }>(
+          `SELECT
               COALESCE(SUM(CASE WHEN direction = 'OUTFLOW' THEN amount ELSE 0 END), 0) as total_out,
               COALESCE(SUM(CASE WHEN direction = 'INFLOW' THEN amount ELSE 0 END), 0) as total_in,
               COUNT(*) as tx_count
             FROM transactions
             WHERE account_id = ? AND transaction_date LIKE ? AND is_excluded = 0`,
-            [id, `${month}%`]
-          ),
-        ]);
-        if (cancelled) return;
-        setAccount(acc);
-        setRecentTx(txs as TransactionRow[]);
-        setSpendingSummary(summary);
+          [id, `${month}%`]
+        ),
+        getAllAccounts(),
+      ]);
+      setAccount(acc);
+      setRecentTx(txs as TransactionRow[]);
+      setSpendingSummary(summary);
+      setAllAccounts(accountRows);
 
-        if (acc) {
-          const [history, pulse] = await Promise.all([
-            getBalanceHistory(id, acc.current_balance ?? 0),
-            getSpendingPulse(id),
-          ]);
-          if (cancelled) return;
-          setSnapshotData(history);
-          if (history.length >= 2) {
-            const first = history[0].balance;
-            const last = history[history.length - 1].balance;
-            if (first !== 0) {
-              setTrendPercent(((last - first) / Math.abs(first)) * 100);
-            }
+      if (acc) {
+        const [history, pulse] = await Promise.all([
+          getBalanceHistory(id, acc.current_balance ?? 0),
+          getSpendingPulse(id),
+        ]);
+        setSnapshotData(history);
+        if (history.length >= 2) {
+          const first = history[0].balance;
+          const last = history[history.length - 1].balance;
+          if (first !== 0) {
+            setTrendPercent(((last - first) / Math.abs(first)) * 100);
           }
-          setMonthlySpent(pulse.monthlySpent);
-          setDailyActivity(pulse.dailyActivity);
         }
-      } catch (error) {
-        console.error("Failed to load account:", error);
-      } finally {
-        if (!cancelled) setLoading(false);
+        setMonthlySpent(pulse.monthlySpent);
+        setDailyActivity(pulse.dailyActivity);
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    } catch (error) {
+      console.error("Failed to load account:", error);
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleDelete = () => {
     if (!id) return;
@@ -226,6 +232,9 @@ export default function AccountDetailScreen() {
             account={account}
             onEdit={() => router.push(`/account/edit/${id}`)}
             onDelete={handleDelete}
+            onPayment={() => setActiveSheet("payment")}
+            onTransfer={() => setActiveSheet("transfer")}
+            onReconcile={() => setActiveSheet("reconcile")}
           />
         </View>
 
@@ -254,7 +263,9 @@ export default function AccountDetailScreen() {
               </View>
             </View>
             <Text className="text-muted-fg-70 font-inter text-xs mt-1.5 text-center">
-              {spendingSummary.tx_count} transacciones este mes
+              {spendingSummary.tx_count}{" "}
+              {spendingSummary.tx_count === 1 ? "transacción" : "transacciones"} este
+              mes
             </Text>
           </View>
         )}
@@ -269,26 +280,26 @@ export default function AccountDetailScreen() {
             <View className="bg-z-surface-2 rounded-xl px-4 border border-white-6">
               {account.credit_limit != null && (
                 <DetailRow
-                  label="Limite de credito"
+                  label="Límite de crédito"
                   value={formatCurrency(account.credit_limit, currency)}
                 />
               )}
               {account.interest_rate != null && (
                 <DetailRow
-                  label="Tasa de interes"
+                  label="Tasa de interés"
                   value={`${account.interest_rate}%`}
                 />
               )}
               {account.cutoff_day != null && (
                 <DetailRow
-                  label="Dia de corte"
-                  value={`Dia ${account.cutoff_day}`}
+                  label="Día de corte"
+                  value={`Día ${account.cutoff_day}`}
                 />
               )}
               {account.payment_day != null && (
                 <DetailRow
-                  label="Dia de pago"
-                  value={`Dia ${account.payment_day}`}
+                  label="Día de pago"
+                  value={`Día ${account.payment_day}`}
                 />
               )}
             </View>
@@ -298,7 +309,7 @@ export default function AccountDetailScreen() {
         {/* Recent transactions */}
         <View className="mx-4 mt-4">
           <Text className={`${SECTION_EYEBROW_CLASS} mb-2`}>
-            Ultimas transacciones
+            Últimas transacciones
           </Text>
           {recentTx.length === 0 ? (
             <View className="bg-z-surface-2 rounded-xl px-4 py-6 border border-white-6 items-center">
@@ -328,7 +339,7 @@ export default function AccountDetailScreen() {
                         className="text-foreground font-inter-medium text-sm"
                         numberOfLines={1}
                       >
-                        {tx.merchant_name ?? tx.description ?? "Sin descripcion"}
+                        {tx.merchant_name ?? tx.description ?? "Sin descripción"}
                       </Text>
                       {(tx.category_name_es || isDebtPayment) && (
                         <Text className="text-muted-fg-70 font-inter text-xs mt-0.5">
@@ -351,6 +362,41 @@ export default function AccountDetailScreen() {
           )}
         </View>
       </ScrollView>
+
+      <PaymentActionSheet
+        visible={activeSheet === "payment"}
+        account={account}
+        allAccounts={allAccounts}
+        onClose={() => setActiveSheet(null)}
+        onSuccess={() => {
+          setActiveSheet(null);
+          Alert.alert("Listo", "El pago se registró correctamente.");
+          loadData();
+        }}
+      />
+
+      <TransferSheet
+        visible={activeSheet === "transfer"}
+        allAccounts={allAccounts}
+        initialFromAccountId={account.id}
+        onClose={() => setActiveSheet(null)}
+        onSuccess={() => {
+          setActiveSheet(null);
+          Alert.alert("Listo", "La transferencia se registró correctamente.");
+          loadData();
+        }}
+      />
+
+      <ReconcileSheet
+        visible={activeSheet === "reconcile"}
+        account={account}
+        onClose={() => setActiveSheet(null)}
+        onSuccess={() => {
+          setActiveSheet(null);
+          Alert.alert("Listo", "El saldo se ajustó correctamente.");
+          loadData();
+        }}
+      />
     </View>
   );
 }

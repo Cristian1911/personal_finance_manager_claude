@@ -45,7 +45,7 @@ export function BiometricLockScreen({
 
         <Pressable onPress={onFallback} className="px-4 py-2">
           <Text className="text-sm font-inter-medium text-muted-foreground">
-            Usar contrasena
+            Usar contraseña
           </Text>
         </Pressable>
       </View>

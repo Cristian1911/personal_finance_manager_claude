@@ -297,12 +297,12 @@ export function CategoriesRoot() {
     <View className="flex-1 bg-background">
       <MobileHeader
         variant="sub"
-        title="Categorias"
+        title="Categorías"
         action={
           <Pressable
             onPress={handleCreate}
             className="h-8 w-8 items-center justify-center rounded-full"
-            accessibilityLabel="Nueva categoria"
+            accessibilityLabel="Nueva categoría"
           >
             <Plus size={16} color={COLORS.brass} />
           </Pressable>
@@ -374,10 +374,10 @@ export function CategoriesRoot() {
               <Grid3X3 size={24} color={COLORS.brass} />
             </View>
             <Text className="text-[13px] font-inter-medium text-foreground mb-1">
-              Sin categorias
+              Sin categorías
             </Text>
             <Text className="text-[11px] font-inter text-muted-foreground text-center px-8">
-              Las categorias se sincronizaran cuando te conectes
+              Las categorías se sincronizarán cuando te conectes
             </Text>
           </View>
         )}

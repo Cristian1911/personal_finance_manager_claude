@@ -1,7 +1,22 @@
 import * as Crypto from "expo-crypto";
-import type { RecurrenceFrequency, TransactionDirection } from "@zeta/shared";
+import {
+  getDebtPaymentCategoryId,
+  getOccurrencesBetween,
+  isDebtAccountType,
+  TRANSFER_CATEGORY_ID,
+  type RecurrenceFrequency,
+  type TransactionDirection,
+} from "@zeta/shared";
 import { getDatabase } from "../db/database";
 import { enqueueInsert, enqueueUpdate } from "../sync/queue";
+import { toColombiaDateString } from "./accounts-detail";
+import {
+  applyLocalBalanceDelta,
+  buildLedgerTxPayload,
+  computeIdempotencyKey,
+  insertLedgerTransaction,
+  type LedgerAccountRow,
+} from "./ledger-helpers";
 
 /** Convert a recurring amount to its monthly equivalent based on frequency. */
 export function toMonthlyAmount(amount: number, frequency: string): number {
@@ -283,26 +298,6 @@ export async function createRecurringTemplate(
   });
 
   return id;
-}
-
-/** Mark an occurrence as paid and enqueue for sync. */
-export async function confirmOccurrence(occurrenceId: string): Promise<void> {
-  const db = await getDatabase();
-  const now = new Date().toISOString();
-  await db.runAsync(
-    "UPDATE recurring_occurrences SET status = 'paid', paid_at = ? WHERE id = ?",
-    [now, occurrenceId]
-  );
-  await db.runAsync(
-    `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at) VALUES (?, ?, ?, ?, ?)`,
-    [
-      "recurring_occurrences",
-      occurrenceId,
-      "UPDATE",
-      JSON.stringify({ status: "paid", paid_at: now }),
-      now,
-    ]
-  );
 }
 
 /** True when a `recurring_occurrences` row already points to this transaction. */
@@ -630,4 +625,420 @@ export async function skipOccurrence(occurrenceId: string): Promise<void> {
       now,
     ]
   );
+}
+
+// ─── Record a recurring occurrence payment (full ledger mutation) ────────────
+
+export type RecordRecurringOccurrencePaymentInput = {
+  templateId: string;
+  /** Local `recurring_occurrences.id` of the occurrence being paid. When the
+   * UI caller has it (it does), pass it so the occurrence UPDATE is keyed by id
+   * — no template+date guess, no missing-sync-row race. */
+  occurrenceId?: string;
+  /** YYYY-MM-DD — the scheduled occurrence date (drives idempotency + matching). */
+  occurrenceDate: string;
+  /** YYYY-MM-DD — when the payment actually happened. Defaults to occurrenceDate. */
+  paymentDate?: string;
+  actualAmount: number;
+  sourceAccountId?: string | null;
+};
+
+export type RecordRecurringOccurrencePaymentResult =
+  | { success: true; created: number; alreadyRecorded: number }
+  | { success: false; error: string };
+
+type RecurringLeg = {
+  accountId: string;
+  amount: number;
+  direction: TransactionDirection;
+  rawDescription: string;
+  merchantName: string;
+  categoryId: string | null;
+  notes: string;
+};
+
+/**
+ * Offline-first mirror of webapp recurring-templates.ts
+ * `recordRecurringOccurrencePayment`. Replaces the old confirmOccurrence stub's
+ * logic for the "marcar como pagada con monto" path.
+ *
+ * - Validates `occurrenceDate` matches the template via getOccurrencesBetween.
+ * - Debt template → TWO legs: OUTFLOW from the source account
+ *   (category TRANSFER_CATEGORY_ID) + INFLOW on the debt account
+ *   (category template.category_id ?? getDebtPaymentCategoryId(account_type)).
+ *   Non-debt → ONE leg on the template account.
+ * - recurrence_group_id = computeRecurringGroupUuid(templateId, occurrenceDate)
+ *   (reused existing local impl — byte-identical to webapp).
+ * - PER-LEG idempotency: provider "RECURRING_CHECKLIST", providerTransactionId
+ *   = `${templateId}|${occurrenceDate}|${accountId}|${direction}` (uses
+ *   occurrenceDate, NOT paymentDate — distinct per leg).
+ * - On created > 0: occurrence → status 'paid', transaction_id = firstCreated,
+ *   paid_at = now (does NOT set linked_manually). Copies recurring_template_tags
+ *   → transaction_tags (soft-fail).
+ * - Applies the balance delta per CREATED tx only (skips dupes → no double
+ *   debit) against an in-memory accountMap, so a debt account hit by both legs
+ *   accumulates correctly. If a debt nextBalance <= 0 → deactivate templates +
+ *   delete pending occurrences (payoff lifecycle).
+ * - All writes wrapped in ONE withTransactionAsync.
+ */
+export async function recordRecurringOccurrencePayment(
+  input: RecordRecurringOccurrencePaymentInput
+): Promise<RecordRecurringOccurrencePaymentResult> {
+  if (!(input.actualAmount > 0)) {
+    return { success: false, error: "El monto debe ser mayor que cero." };
+  }
+
+  const db = await getDatabase();
+  const now = new Date().toISOString();
+
+  const template = await db.getFirstAsync<{
+    id: string;
+    user_id: string;
+    account_id: string;
+    category_id: string | null;
+    currency_code: string;
+    direction: TransactionDirection;
+    frequency: string;
+    start_date: string;
+    end_date: string | null;
+    merchant_name: string | null;
+    description: string | null;
+    transfer_source_account_id: string | null;
+    account_type: string | null;
+  }>(
+    `SELECT t.id, t.user_id, t.account_id, t.category_id, t.currency_code, t.direction,
+            t.frequency, t.start_date, t.end_date, t.merchant_name, t.description,
+            t.transfer_source_account_id, a.account_type
+     FROM recurring_transaction_templates t
+     LEFT JOIN accounts a ON t.account_id = a.id
+     WHERE t.id = ?`,
+    [input.templateId]
+  );
+  if (!template) {
+    return { success: false, error: "No se encontró la plantilla recurrente." };
+  }
+  // Fail fast on a missing user_id — an empty-string user_id produces rows that
+  // fail Supabase RLS and stick in sync_queue forever.
+  if (!template.user_id) {
+    return { success: false, error: "Sesión inválida" };
+  }
+
+  // Validate occurrence matches the template's recurrence.
+  const targetDate = new Date(`${input.occurrenceDate}T12:00:00`);
+  const occurrences = getOccurrencesBetween(
+    template.start_date,
+    template.frequency as RecurrenceFrequency,
+    template.end_date,
+    targetDate,
+    targetDate
+  );
+  if (!occurrences.includes(input.occurrenceDate)) {
+    return { success: false, error: "La fecha no coincide con la recurrencia de la plantilla." };
+  }
+
+  const isDebtPaymentTemplate = !!template.account_type && isDebtAccountType(template.account_type);
+  const effectiveSourceAccountId =
+    input.sourceAccountId ?? template.transfer_source_account_id ?? null;
+
+  if (isDebtPaymentTemplate && !effectiveSourceAccountId) {
+    return { success: false, error: "Debes indicar la cuenta origen para registrar el pago de deuda." };
+  }
+  if (isDebtPaymentTemplate && effectiveSourceAccountId === template.account_id) {
+    return { success: false, error: "La cuenta origen no puede ser la misma cuenta de deuda." };
+  }
+
+  // Load involved accounts into a mutable map (balance deltas mutate it).
+  const accountIds = [
+    template.account_id,
+    ...(effectiveSourceAccountId ? [effectiveSourceAccountId] : []),
+  ];
+  const placeholders = accountIds.map(() => "?").join(", ");
+  const accountRows = await db.getAllAsync<LedgerAccountRow>(
+    `SELECT * FROM accounts WHERE id IN (${placeholders})`,
+    accountIds
+  );
+  const accountMap = new Map(accountRows.map((a) => [a.id, a]));
+  const targetAccount = accountMap.get(template.account_id);
+  if (!targetAccount) {
+    return { success: false, error: "No se encontró la cuenta destino del pago." };
+  }
+
+  // Build legs (mirror buildRecurringPaymentTransactions).
+  const baseLabel = template.merchant_name || template.description || "Pago recurrente";
+  let legs: RecurringLeg[];
+  if (isDebtPaymentTemplate) {
+    const sourceAccount = effectiveSourceAccountId ? accountMap.get(effectiveSourceAccountId) : null;
+    if (!sourceAccount) {
+      return { success: false, error: "No se encontró la cuenta origen para esta transferencia." };
+    }
+    legs = [
+      {
+        accountId: sourceAccount.id,
+        amount: input.actualAmount,
+        direction: "OUTFLOW",
+        rawDescription: `Transferencia a ${targetAccount.name} - ${baseLabel}`,
+        merchantName: `Transferencia a ${targetAccount.name}`,
+        categoryId: TRANSFER_CATEGORY_ID,
+        notes: "Pago recurrente marcado desde checklist",
+      },
+      {
+        accountId: targetAccount.id,
+        amount: input.actualAmount,
+        direction: "INFLOW",
+        rawDescription: `Abono deuda desde ${sourceAccount.name} - ${baseLabel}`,
+        merchantName: baseLabel,
+        categoryId: template.category_id ?? getDebtPaymentCategoryId(targetAccount.account_type),
+        notes: "Abono de deuda marcado desde checklist recurrente",
+      },
+    ];
+  } else {
+    legs = [
+      {
+        accountId: template.account_id,
+        amount: input.actualAmount,
+        direction: template.direction,
+        rawDescription: baseLabel,
+        merchantName: baseLabel,
+        categoryId: template.category_id,
+        notes: "Transacción recurrente marcada desde checklist",
+      },
+    ];
+  }
+
+  const effectivePaymentDate = input.paymentDate ?? input.occurrenceDate;
+  const recurrenceGroupId = await computeRecurringGroupUuid(template.id, input.occurrenceDate);
+
+  let created = 0;
+  let alreadyRecorded = 0;
+  const createdTxIds: string[] = [];
+  const createdLegs: { accountId: string; amount: number; direction: TransactionDirection }[] = [];
+
+  await db.withTransactionAsync(async () => {
+    // Persist the resolved source account on the template if it changed (debt).
+    // Inside the transaction so it rolls back atomically with the payment.
+    if (
+      isDebtPaymentTemplate &&
+      effectiveSourceAccountId &&
+      effectiveSourceAccountId !== template.transfer_source_account_id
+    ) {
+      await db.runAsync(
+        "UPDATE recurring_transaction_templates SET transfer_source_account_id = ?, updated_at = ? WHERE id = ?",
+        [effectiveSourceAccountId, now, template.id]
+      );
+      await enqueueUpdate(
+        db,
+        "recurring_transaction_templates",
+        template.id,
+        { transfer_source_account_id: effectiveSourceAccountId, updated_at: now },
+        now
+      );
+    }
+
+    for (const leg of legs) {
+      // PER-LEG idempotency: providerTransactionId uses occurrenceDate (NOT
+      // paymentDate), so the key is stable regardless of when paid.
+      const recurrenceIdentity = `${template.id}|${input.occurrenceDate}|${leg.accountId}|${leg.direction}`;
+      const idempotencyKey = await computeIdempotencyKey({
+        provider: "RECURRING_CHECKLIST",
+        providerTransactionId: recurrenceIdentity,
+        transactionDate: input.occurrenceDate,
+        amount: leg.amount,
+        rawDescription: leg.rawDescription,
+      });
+
+      const txPayload = buildLedgerTxPayload(
+        {
+          userId: template.user_id,
+          accountId: leg.accountId,
+          amount: leg.amount,
+          currencyCode: template.currency_code,
+          direction: leg.direction,
+          transactionDate: effectivePaymentDate,
+          rawDescription: leg.rawDescription,
+          merchantName: leg.merchantName,
+          categoryId: leg.categoryId,
+          categorizationSource: leg.categoryId ? "USER_CREATED" : "SYSTEM_DEFAULT",
+          notes: leg.notes,
+          idempotencyKey,
+          isRecurring: true,
+          recurrenceGroupId,
+        },
+        now
+      );
+
+      const { inserted, id } = await insertLedgerTransaction(db, txPayload, now);
+      if (!inserted) {
+        alreadyRecorded++;
+        continue;
+      }
+      created++;
+      createdTxIds.push(id);
+      createdLegs.push({ accountId: leg.accountId, amount: leg.amount, direction: leg.direction });
+    }
+
+    if (created > 0) {
+      // Mark the matching occurrence paid (does NOT set linked_manually).
+      const occPayload = {
+        status: "paid",
+        transaction_id: createdTxIds[0],
+        paid_at: now,
+      };
+      if (input.occurrenceId) {
+        // Caller supplied the occurrence id — key the UPDATE + sync row by it.
+        // No template+date guess, no missing-row race.
+        await db.runAsync(
+          `UPDATE recurring_occurrences
+             SET status = 'paid', transaction_id = ?, paid_at = ?
+             WHERE id = ? AND status = 'pending'`,
+          [createdTxIds[0], now, input.occurrenceId]
+        );
+        await enqueueUpdate(
+          db,
+          "recurring_occurrences",
+          input.occurrenceId,
+          occPayload,
+          now
+        );
+      } else {
+        // Fallback: template + date. If no local occurrence row exists yet
+        // (not pulled), the UPDATE is a no-op — never enqueue a guessed row,
+        // or Supabase would receive a stale UPDATE keyed by the wrong id.
+        const res = await db.runAsync(
+          `UPDATE recurring_occurrences
+             SET status = 'paid', transaction_id = ?, paid_at = ?
+             WHERE template_id = ? AND occurrence_date = ? AND status = 'pending'`,
+          [createdTxIds[0], now, template.id, input.occurrenceDate]
+        );
+        if (res.changes === 0) {
+          console.warn(
+            `recordRecurringOccurrencePayment: no local pending occurrence for template ${template.id} @ ${input.occurrenceDate}; skipping occurrence sync enqueue (it will be reconciled on next pull).`
+          );
+        } else {
+          const occRow = await db.getFirstAsync<{ id: string }>(
+            `SELECT id FROM recurring_occurrences
+               WHERE template_id = ? AND occurrence_date = ? LIMIT 1`,
+            [template.id, input.occurrenceDate]
+          );
+          if (occRow) {
+            await enqueueUpdate(
+              db,
+              "recurring_occurrences",
+              occRow.id,
+              occPayload,
+              now
+            );
+          }
+        }
+      }
+
+      // Copy template tags onto every created transaction (soft-fail). The
+      // `recurring_template_tags` table may not exist on mobile yet (webapp-only
+      // for now) — probe first so a missing table is a silent no-op rather than
+      // a mid-transaction error that would roll back the whole payment.
+      const tagTableExists = await db.getFirstAsync<{ name: string }>(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'recurring_template_tags'"
+      );
+      if (tagTableExists) {
+        const tagRows = await db.getAllAsync<{ tag_id: string }>(
+          "SELECT tag_id FROM recurring_template_tags WHERE recurring_template_id = ?",
+          [template.id]
+        );
+        const tagIds = tagRows.map((r) => r.tag_id);
+        if (tagIds.length > 0) {
+          for (const txId of createdTxIds) {
+            for (const tagId of tagIds) {
+              await db.runAsync(
+                "INSERT OR IGNORE INTO transaction_tags (transaction_id, tag_id) VALUES (?, ?)",
+                [txId, tagId]
+              );
+            }
+            await db.runAsync(
+              `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at)
+               VALUES ('transaction_tags', ?, 'REPLACE', ?, ?)`,
+              [
+                txId,
+                JSON.stringify({
+                  transaction_id: txId,
+                  tag_ids: tagIds,
+                  // transaction_tags has a NOT-NULL user_id (webapp inserts it).
+                  user_id: template.user_id,
+                }),
+                now,
+              ]
+            );
+          }
+        }
+      }
+    }
+
+    // Apply balance delta per CREATED leg only (skip dupes → no double debit).
+    // accountMap rows are mutated by applyLocalBalanceDelta so a debt account
+    // hit by both legs accumulates.
+    for (const leg of createdLegs) {
+      const account = accountMap.get(leg.accountId);
+      if (!account) continue;
+      const nextBalance = await applyLocalBalanceDelta(
+        db,
+        account,
+        leg.direction,
+        leg.amount,
+        template.currency_code,
+        now
+      );
+      // Payoff lifecycle: a debt that reached 0 stops generating cuotas.
+      if (isDebtAccountType(account.account_type) && nextBalance <= 0) {
+        await deactivateTemplatesForPaidOffAccountLocal(db, account.id, now);
+      }
+    }
+  });
+
+  return { success: true, created, alreadyRecorded };
+}
+
+/**
+ * Local port of webapp `deactivateTemplatesForPaidOffAccount`: when a debt
+ * account reaches 0, deactivate its active templates (is_active = 0,
+ * end_date = today) and DELETE only its PENDING occurrences (paid/skipped stay
+ * as history). Enqueues all changes for sync. Caller runs inside a transaction.
+ */
+async function deactivateTemplatesForPaidOffAccountLocal(
+  db: Awaited<ReturnType<typeof getDatabase>>,
+  accountId: string,
+  now: string
+): Promise<void> {
+  // Colombia-timezone date for end_date, matching webapp (toColombiaDateString).
+  // `now.slice(0,10)` would be UTC — wrong day late-evening in Colombia (UTC-5).
+  const today = toColombiaDateString(new Date(now));
+  const templates = await db.getAllAsync<{ id: string }>(
+    "SELECT id FROM recurring_transaction_templates WHERE account_id = ? AND is_active = 1",
+    [accountId]
+  );
+  if (templates.length === 0) return;
+
+  for (const t of templates) {
+    await db.runAsync(
+      "UPDATE recurring_transaction_templates SET is_active = 0, end_date = ?, updated_at = ? WHERE id = ?",
+      [today, now, t.id]
+    );
+    await enqueueUpdate(
+      db,
+      "recurring_transaction_templates",
+      t.id,
+      { is_active: false, end_date: today, updated_at: now },
+      now
+    );
+
+    const pendingOccs = await db.getAllAsync<{ id: string }>(
+      "SELECT id FROM recurring_occurrences WHERE template_id = ? AND status = 'pending'",
+      [t.id]
+    );
+    for (const occ of pendingOccs) {
+      await db.runAsync("DELETE FROM recurring_occurrences WHERE id = ?", [occ.id]);
+      await db.runAsync(
+        `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at)
+         VALUES ('recurring_occurrences', ?, 'DELETE', ?, ?)`,
+        [occ.id, JSON.stringify({ id: occ.id }), now]
+      );
+    }
+  }
 }
