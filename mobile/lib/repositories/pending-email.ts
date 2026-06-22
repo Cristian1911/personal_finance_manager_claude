@@ -384,7 +384,9 @@ export async function approveEmailTransaction(
   ) {
     await (supabase as any)
       .from("accounts")
-      .update({ debit_card_mask: parsed.card_last4 })
+      // updated_at bump is required: the mobile incremental pull filters
+      // `updated_at > lastSyncedAt` and accounts have no DB moddatetime trigger.
+      .update({ debit_card_mask: parsed.card_last4, updated_at: new Date().toISOString() })
       .eq("id", accountId)
       .eq("user_id", userId);
   }
@@ -508,7 +510,9 @@ export async function approveEmailTransaction(
     });
     await (supabase as any)
       .from("accounts")
-      .update({ current_balance: newBalance })
+      // updated_at bump required so the incremental pull picks up the new
+      // balance (accounts have no DB moddatetime trigger).
+      .update({ current_balance: newBalance, updated_at: new Date().toISOString() })
       .eq("id", accountId)
       .eq("user_id", userId);
   }

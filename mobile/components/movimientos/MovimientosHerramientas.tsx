@@ -52,7 +52,13 @@ function MovimientosHerramientasBase({
       .catch(() => {});
   }, []);
 
-  useFocusEffect(refreshEmailCount);
+  // Wrap so the effect returns undefined — useFocusEffect treats a non-function
+  // return (refreshEmailCount returns a Promise) as a cleanup and dev-errors.
+  useFocusEffect(
+    useCallback(() => {
+      refreshEmailCount();
+    }, [refreshEmailCount])
+  );
 
   const visibleUncategorized = useMemo(
     () => uncategorizedTransactions.slice(0, MAX_ITEMS),
