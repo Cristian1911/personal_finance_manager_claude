@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -66,14 +66,23 @@ export function PaymentActionSheet({
   const [showSourcePicker, setShowSourcePicker] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasInitializedRef = useRef(false);
 
+  // Initialize once per open. `sourceAccounts` stays in deps for exhaustive-deps,
+  // but the ref guard prevents a background account reload from wiping the user's
+  // in-progress amount/source selection while the sheet is open.
   useEffect(() => {
     if (visible) {
-      setAmountInput("");
-      setSelectedSourceId(sourceAccounts[0]?.id ?? "");
-      setShowSourcePicker(false);
-      setSubmitting(false);
-      setError(null);
+      if (!hasInitializedRef.current) {
+        setAmountInput("");
+        setSelectedSourceId(sourceAccounts[0]?.id ?? "");
+        setShowSourcePicker(false);
+        setSubmitting(false);
+        setError(null);
+        hasInitializedRef.current = true;
+      }
+    } else {
+      hasInitializedRef.current = false;
     }
   }, [visible, sourceAccounts]);
 

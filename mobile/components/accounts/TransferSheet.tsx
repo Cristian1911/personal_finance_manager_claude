@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -51,16 +51,24 @@ export function TransferSheet({
   const [showToPicker, setShowToPicker] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasInitializedRef = useRef(false);
 
+  // Initialize once per open; the ref guard keeps a background account reload
+  // from wiping in-progress selections/input while the sheet is open.
   useEffect(() => {
     if (visible) {
-      setFromId(initialFromAccountId ?? allAccounts[0]?.id ?? "");
-      setToId("");
-      setAmountInput("");
-      setShowFromPicker(false);
-      setShowToPicker(false);
-      setSubmitting(false);
-      setError(null);
+      if (!hasInitializedRef.current) {
+        setFromId(initialFromAccountId ?? allAccounts[0]?.id ?? "");
+        setToId("");
+        setAmountInput("");
+        setShowFromPicker(false);
+        setShowToPicker(false);
+        setSubmitting(false);
+        setError(null);
+        hasInitializedRef.current = true;
+      }
+    } else {
+      hasInitializedRef.current = false;
     }
   }, [visible, initialFromAccountId, allAccounts]);
 

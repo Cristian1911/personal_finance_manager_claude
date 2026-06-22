@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -71,14 +71,22 @@ export function RecurringConfirmSheet({
   const [showSourcePicker, setShowSourcePicker] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasInitializedRef = useRef(false);
 
+  // Initialize once per open; the ref guard keeps a background account reload
+  // from wiping the user's in-progress amount/source while the sheet is open.
   useEffect(() => {
     if (visible && occurrence) {
-      setAmountInput(String(Math.round(occurrence.expected_amount)));
-      setSelectedSourceId(sourceAccounts[0]?.id ?? "");
-      setShowSourcePicker(false);
-      setSubmitting(false);
-      setError(null);
+      if (!hasInitializedRef.current) {
+        setAmountInput(String(Math.round(occurrence.expected_amount)));
+        setSelectedSourceId(sourceAccounts[0]?.id ?? "");
+        setShowSourcePicker(false);
+        setSubmitting(false);
+        setError(null);
+        hasInitializedRef.current = true;
+      }
+    } else if (!visible) {
+      hasInitializedRef.current = false;
     }
   }, [visible, occurrence, sourceAccounts]);
 
