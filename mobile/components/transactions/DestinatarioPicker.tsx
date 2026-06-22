@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -83,6 +84,9 @@ export function DestinatarioPicker({
         name: query,
       });
       handleSelect(destinatarioId, query);
+    } catch (e) {
+      console.warn("createDestinatario failed:", e);
+      Alert.alert("Error", "No se pudo crear el destinatario.");
     } finally {
       setCreating(false);
     }
