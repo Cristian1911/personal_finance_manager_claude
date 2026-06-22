@@ -4,14 +4,17 @@ import {
   Text,
   TextInput,
   Pressable,
-  Modal,
   ScrollView,
   type ViewStyle,
   Alert,
 } from "react-native";
 import { X, Trash2, ChevronDown } from "lucide-react-native";
 import { COLORS } from "../../lib/constants/colors";
-import { BRASS_BUTTON_CLASS } from "../../lib/constants/styles";
+import {
+  BRASS_BUTTON_CLASS,
+  DESTRUCTIVE_GHOST_BUTTON_CLASS,
+} from "../../lib/constants/styles";
+import { MobileSheet } from "../ui/MobileSheet";
 import type { CategoryRow } from "../../lib/repositories/categories";
 
 /** Preset colors that read well on the dark background */
@@ -106,16 +109,11 @@ export function CategoryFormSheet({
   }, [category, onDelete, onClose]);
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <View className="flex-1 justify-end bg-black/60">
-        <View className="max-h-[80%] rounded-t-3xl border-t border-white-6 bg-background">
+    <MobileSheet visible={visible} onClose={onClose} maxHeightClass="max-h-[80%]" hideHandle>
+      <View>
+        <View>
           {/* Header */}
-          <View className="flex-row items-center justify-between px-4 pt-4 pb-2">
+          <View className="flex-row items-center justify-between px-4 pt-2 pb-2">
             <Text className="text-[15px] font-inter-semibold text-foreground">
               {isEditing ? "Editar categoría" : "Nueva categoría"}
             </Text>
@@ -129,10 +127,10 @@ export function CategoryFormSheet({
           </View>
 
           <ScrollView
-            className="flex-1"
+            style={{ flexShrink: 1 }}
             contentContainerStyle={{
               paddingHorizontal: 16,
-              paddingBottom: 40,
+              paddingBottom: 16,
               gap: 16,
             }}
             keyboardShouldPersistTaps="handled"
@@ -275,9 +273,9 @@ export function CategoryFormSheet({
               {isEditing && onDelete && (
                 <Pressable
                   onPress={handleDelete}
-                  className="flex-row items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/8 py-3 active:opacity-80"
+                  className={`${DESTRUCTIVE_GHOST_BUTTON_CLASS} flex-row items-center justify-center gap-2 rounded-xl py-3 active:opacity-80`}
                 >
-                  <Trash2 size={14} color="#E05545" />
+                  <Trash2 size={14} color={COLORS.debt} />
                   <Text className="text-[13px] font-inter-semibold text-z-expense">
                     Eliminar categoría
                   </Text>
@@ -287,6 +285,6 @@ export function CategoryFormSheet({
           </ScrollView>
         </View>
       </View>
-    </Modal>
+    </MobileSheet>
   );
 }

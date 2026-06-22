@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { Modal, Pressable, Text, View } from "react-native";
+import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
 import { COLORS } from "../../lib/constants/colors";
+import { BRASS_BUTTON_CLASS } from "../../lib/constants/styles";
+import { MODAL_SCRIM_COLOR } from "../ui/MobileSheet";
 import { TagSelector } from "./TagSelector";
 import { getTagsForTransaction } from "../../lib/repositories/tags";
 
@@ -63,9 +65,12 @@ export function TagPickerSheet({ visible, transactionId, onClose, onSave }: Prop
       transparent
       onRequestClose={onClose}
     >
-      <View className="flex-1 justify-end bg-black-40">
+      <View
+        className="flex-1 justify-end"
+        style={{ backgroundColor: MODAL_SCRIM_COLOR }}
+      >
         <View
-          className="max-h-[80%] rounded-t-2xl bg-z-surface-2-55"
+          className="max-h-[80%] min-h-[420px] rounded-t-2xl border border-white-6 bg-background"
           style={{ paddingBottom: insets.bottom }}
         >
           <View className="flex-row items-center justify-between px-4 pb-2 pt-4">
@@ -82,7 +87,10 @@ export function TagPickerSheet({ visible, transactionId, onClose, onSave }: Prop
             </Pressable>
           </View>
 
-          <View className="flex-1 px-4 pb-2">
+          <ScrollView
+            className="flex-1"
+            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 8 }}
+          >
             {loading ? (
               <View className="py-12 items-center">
                 <Text className="text-sm font-inter text-muted-foreground">
@@ -95,7 +103,7 @@ export function TagPickerSheet({ visible, transactionId, onClose, onSave }: Prop
                 onChange={setSelectedTagIds}
               />
             )}
-          </View>
+          </ScrollView>
 
           <View className="px-4 pb-4 pt-2">
             <Pressable
@@ -103,7 +111,7 @@ export function TagPickerSheet({ visible, transactionId, onClose, onSave }: Prop
               disabled={saving || loading}
               accessibilityLabel="Guardar etiquetas"
               accessibilityRole="button"
-              className={`items-center rounded-full bg-z-brass py-3 ${saving || loading ? "opacity-60" : "active:bg-z-brass-12"}`}
+              className={`items-center rounded-full py-3 ${BRASS_BUTTON_CLASS} ${saving || loading ? "opacity-40" : ""}`}
             >
               <Text className="text-sm font-inter-semibold text-z-ink">
                 {saving ? "Guardando…" : "Guardar"}

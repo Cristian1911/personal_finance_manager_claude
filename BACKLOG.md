@@ -10,6 +10,14 @@
 
 ---
 
+## Mobile design-system follow-ups (2026-06-22, post PR #302)
+
+PR #302 fixed the inline-tx picker bugs (panel opacity / see-through scrim / flex-collapse) + a 36-file design-system sweep (MobileSheet conversion ×4, safe-area, brand colors, button classes, hex→COLORS). Remaining:
+
+- **Slash-opacity className sweep.** NativeWind v3 (this project) does NOT compile `bg-color/opacity` in `className` — it renders transparent (for `bg-`) or no-op (for `border-`). The scrims were the worst case (fixed). But many `className` tints/borders/pressed-states still use slash-opacity and render wrong: `bg-z-income/10`, `bg-z-brass/10`, `bg-z-surface-2/5`, `active:bg-z-surface-2/5`, `active:bg-z-surface-2/10`, `border-white/10`, `border-white/20`, `bg-z-debt/10` (e.g. periodo.tsx, PaymentSheet RadioOption, CategoryFormSheet/PaymentSheet pressed states). Sweep: grep `/[0-9]` inside className strings → replace with the dash token (`bg-z-income-10` etc.). Some tokens don't exist yet (`white-20`, `z-debt-10`, `surface-2-5`) and must be added to `tailwind.config.js` first.
+- **Verify the 4 MobileSheet conversions on device** (AddWidgetSheet, plan PaymentSheet, ReassignSheet, CategoryFormSheet) — tsc-clean structural refactors, worth a visual check (esp. PaymentSheet's KeyboardAvoidingView + link/create modes).
+- **Off-token colors needing NEW tokens** (audit fix #9): `#0EA5E9` debt-blue, `#6366f1` account-seed default — propose tokens in colors.ts/TOKENS.md rather than approximating.
+
 ## Mobile ledger parity — Phase 2 follow-ups (2026-06-22)
 
 Mobile got the 4 ledger mutations (`registerPayment`/`createTransfer`/`reconcileBalance`/`recordRecurringOccurrencePayment`) + screen wiring this session. Verified end-to-end on iOS sim: **account Pagar → registerPayment** (balance + tx + refresh all correct). Remaining:

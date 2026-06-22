@@ -174,7 +174,7 @@ export default function LoginScreen() {
             activeOpacity={0.7}
           >
             <View className="bg-z-brass-12 border border-z-brass-25 rounded-full p-4">
-              <Fingerprint size={36} color="#937844" />
+              <Fingerprint size={36} color={COLORS.brass} />
             </View>
             <Text className="text-z-brass font-inter-medium text-sm">
               Ingresar con biometría
@@ -197,7 +197,7 @@ export default function LoginScreen() {
         <TextInput
           className="border border-white-6 rounded-lg px-4 py-3 mb-4 text-base text-foreground bg-black-10"
           placeholder="correo@ejemplo.com"
-          placeholderTextColor="#938C7E"
+          placeholderTextColor={COLORS.sageDark}
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
@@ -212,7 +212,7 @@ export default function LoginScreen() {
         <TextInput
           className="border border-white-6 rounded-lg px-4 py-3 mb-6 text-base text-foreground bg-black-10"
           placeholder="Tu contraseña"
-          placeholderTextColor="#938C7E"
+          placeholderTextColor={COLORS.sageDark}
           value={password}
           onChangeText={setPassword}
           secureTextEntry
@@ -229,7 +229,7 @@ export default function LoginScreen() {
           activeOpacity={0.8}
         >
           {loading ? (
-            <ActivityIndicator color="#121412" />
+            <ActivityIndicator color={COLORS.ink} />
           ) : (
             <Text className="text-z-ink font-semibold text-base">
               Iniciar sesión
@@ -246,7 +246,7 @@ export default function LoginScreen() {
           activeOpacity={0.8}
         >
           {demoLoading ? (
-            <ActivityIndicator color="#938C7E" />
+            <ActivityIndicator color={COLORS.sageDark} />
           ) : (
             <Text className="text-foreground font-semibold text-base">
               Probar demo sin cuenta

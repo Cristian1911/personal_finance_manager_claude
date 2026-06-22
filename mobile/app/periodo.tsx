@@ -6,12 +6,12 @@ import {
   Text,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
 import { useFocusEffect } from "expo-router";
-import { ArrowLeft, Check, ChevronDown, Banknote } from "lucide-react-native";
+import { Check, ChevronDown, Banknote } from "lucide-react-native";
 import { formatCurrency, formatDate, type CurrencyCode } from "@zeta/shared";
 import { useAuth } from "../lib/auth";
 import { COLORS } from "../lib/constants/colors";
+import { MobileHeader } from "../components/ui/MobileHeader";
 import { isDebtAccountType } from "../lib/constants/accounts";
 import { MOBILE_TAB_BAR_CLEARANCE, PANEL_INSET_CLASS, SECTION_EYEBROW_CLASS } from "../lib/constants/styles";
 import { getActivePeriodWithEntries } from "../lib/repositories/planning";
@@ -87,7 +87,6 @@ interface PeriodoData {
 }
 
 export default function PeriodoScreen() {
-  const router = useRouter();
   const { session } = useAuth();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<PeriodoData | null>(null);
@@ -244,7 +243,7 @@ export default function PeriodoScreen() {
   if (!data) {
     return (
       <View className="flex-1 bg-background">
-        <Header onBack={() => router.back()} />
+        <MobileHeader variant="sub" title="Plan del periodo" />
         <View className="flex-1 items-center justify-center px-8">
           <Text className="text-foreground font-inter-semibold text-base text-center">
             No hay periodo activo
@@ -262,7 +261,7 @@ export default function PeriodoScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <Header onBack={() => router.back()} />
+      <MobileHeader variant="sub" title="Plan del periodo" />
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: MOBILE_TAB_BAR_CLEARANCE }}
@@ -421,18 +420,6 @@ export default function PeriodoScreen() {
           loadData();
         }}
       />
-    </View>
-  );
-}
-
-// ── Header ──
-function Header({ onBack }: { onBack: () => void }) {
-  return (
-    <View className="flex-row items-center px-4 pt-14 pb-2">
-      <Pressable onPress={onBack} className="mr-3 p-1">
-        <ArrowLeft size={20} color={COLORS.sageLight} />
-      </Pressable>
-      <Text className="text-lg font-inter-bold text-foreground">Plan del periodo</Text>
     </View>
   );
 }

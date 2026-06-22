@@ -1,6 +1,7 @@
 import { Pressable, Text, View } from "react-native";
 import { ChevronLeft, ChevronRight } from "lucide-react-native";
 import { formatMonthLabel } from "@zeta/shared";
+import { COLORS } from "../../lib/constants/colors";
 
 function parseMonth(month: string): Date {
   const [year, monthIndex] = month.split("-").map(Number);
@@ -36,7 +37,7 @@ export function MonthSelector({
         onPress={() => onChange(shiftMonth(month, -1))}
         className="h-8 w-8 items-center justify-center rounded-full bg-black-10"
       >
-        <ChevronLeft size={16} color="#938C7E" />
+        <ChevronLeft size={16} color={COLORS.sageDark} />
       </Pressable>
 
       <Text className="text-foreground font-inter-semibold text-sm capitalize">
@@ -56,7 +57,7 @@ export function MonthSelector({
           onPress={() => onChange(shiftMonth(month, 1))}
           className="h-8 w-8 items-center justify-center rounded-full bg-black-10"
         >
-          <ChevronRight size={16} color="#938C7E" />
+          <ChevronRight size={16} color={COLORS.sageDark} />
         </Pressable>
       </View>
     </View>

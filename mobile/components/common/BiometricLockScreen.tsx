@@ -2,6 +2,8 @@ import { useEffect } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Fingerprint } from "lucide-react-native";
 import { authenticateWithBiometrics } from "../../lib/biometrics";
+import { COLORS } from "../../lib/constants/colors";
+import { BRASS_BUTTON_CLASS } from "../../lib/constants/styles";
 
 export function BiometricLockScreen({
   onUnlock,
@@ -25,7 +27,7 @@ export function BiometricLockScreen({
     <View style={styles.container}>
       <View className="items-center">
         <View className="h-20 w-20 rounded-full bg-z-brass-10 items-center justify-center mb-6">
-          <Fingerprint size={40} color="#937844" />
+          <Fingerprint size={40} color={COLORS.brass} />
         </View>
         <Text className="text-2xl font-inter-bold text-foreground mb-2">
           Zeta
@@ -36,7 +38,7 @@ export function BiometricLockScreen({
 
         <Pressable
           onPress={attemptUnlock}
-          className="rounded-xl bg-z-brass px-8 py-3.5 mb-4"
+          className={`${BRASS_BUTTON_CLASS} rounded-xl px-8 py-3.5 mb-4`}
         >
           <Text className="text-z-ink font-inter-bold text-base">
             Desbloquear
@@ -56,7 +58,7 @@ export function BiometricLockScreen({
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#121412",
+    backgroundColor: COLORS.ink,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 999,

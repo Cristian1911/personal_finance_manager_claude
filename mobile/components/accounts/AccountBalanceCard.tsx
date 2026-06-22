@@ -2,6 +2,7 @@ import { View, Text } from "react-native";
 import { ACCOUNT_TYPES } from "../../lib/constants/accounts";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import type { AccountRow } from "../../lib/repositories/accounts";
+import { COLORS } from "../../lib/constants/colors";
 
 type Props = {
   account: AccountRow;
@@ -24,7 +25,7 @@ export function AccountBalanceCard({ account }: Props) {
     account.account_type === "LOAN";
   const typeDef = ACCOUNT_TYPES.find((t) => t.value === account.account_type);
   const Icon = typeDef?.icon;
-  const color = account.color ?? "#6B7280";
+  const color = account.color ?? COLORS.sageDark;
 
   // Credit utilization: balance / credit_limit (only for credit cards)
   const showUtilization =
@@ -38,9 +39,9 @@ export function AccountBalanceCard({ account }: Props) {
 
   // Utilization severity color
   const getUtilizationColor = (pct: number) => {
-    if (pct >= 80) return "#EF4444"; // red
-    if (pct >= 50) return "#F59E0B"; // amber
-    return "#10B981"; // green
+    if (pct >= 80) return COLORS.debt; // high
+    if (pct >= 50) return COLORS.alert; // medium
+    return COLORS.income; // low
   };
 
   return (

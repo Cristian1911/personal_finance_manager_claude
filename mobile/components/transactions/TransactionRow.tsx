@@ -2,6 +2,7 @@ import { View, Text, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import { isDebtInflow } from "../../lib/transaction-semantics";
+import { COLORS } from "../../lib/constants/colors";
 
 type TransactionRowProps = {
   id: string;
@@ -33,7 +34,7 @@ export function TransactionRow({
   const isInflow = direction === "INFLOW";
   const isDebtPayment = isDebtInflow({ direction, accountType: account_type });
   const semanticCategory = isDebtPayment ? "Abono a deuda" : category_name_es;
-  const color = isDebtPayment ? "#0EA5E9" : (category_color || "#6B7280");
+  const color = isDebtPayment ? COLORS.debt : (category_color || COLORS.sageDark);
   const initial = isDebtPayment ? "AB" : category_icon || (semanticCategory?.[0] ?? "?");
 
   return (

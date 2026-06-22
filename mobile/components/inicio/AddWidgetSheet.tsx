@@ -1,7 +1,7 @@
-import { View, Text, Pressable, Modal, ScrollView } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { View, Text, Pressable, ScrollView } from "react-native";
 import { X, Plus } from "lucide-react-native";
 import { COLORS } from "../../lib/constants/colors";
+import { MobileSheet } from "../ui/MobileSheet";
 import {
   WIDGET_CATALOG,
   type CatalogEntry,
@@ -21,55 +21,45 @@ export function AddWidgetSheet({
   onAdd,
   existingTypes,
 }: AddWidgetSheetProps) {
-  const insets = useSafeAreaInsets();
-
   return (
-    <Modal
-      visible={open}
-      animationType="slide"
-      transparent
-      onRequestClose={onClose}
-    >
-      <Pressable className="flex-1 bg-black-40" onPress={onClose} />
-      <View
-        className="rounded-t-2xl border-t border-white-6 bg-z-surface-2"
-        style={{ paddingBottom: insets.bottom + 8, maxHeight: "70%" }}
-      >
-        <View className="flex-row items-center justify-between px-4 pb-3 pt-4">
-          <View>
-            <Text className="text-sm font-inter-semibold text-foreground">
-              Añadir widget
-            </Text>
-            <Text className="mt-0.5 text-[11px] font-inter text-muted-foreground">
-              Personaliza tu inicio
-            </Text>
-          </View>
-          <Pressable
-            onPress={onClose}
-            accessibilityLabel="Cerrar"
-            className="h-8 w-8 items-center justify-center rounded-full"
-          >
-            <X size={18} color={COLORS.sageDark} />
-          </Pressable>
+    <MobileSheet visible={open} onClose={onClose} maxHeightClass="max-h-[70%]">
+      <View className="flex-row items-center justify-between px-4 pb-3 pt-1">
+        <View>
+          <Text className="text-sm font-inter-semibold text-foreground">
+            Añadir widget
+          </Text>
+          <Text className="mt-0.5 text-[11px] font-inter text-muted-foreground">
+            Personaliza tu inicio
+          </Text>
         </View>
-
-        <View className="h-px bg-z-surface-2-6 mx-4" />
-
-        <ScrollView contentContainerStyle={{ paddingVertical: 8 }}>
-          {WIDGET_CATALOG.map((entry) => (
-            <CatalogRow
-              key={entry.type}
-              entry={entry}
-              disabled={!entry.available || existingTypes.has(entry.type)}
-              onPress={() => {
-                onAdd(entry.type);
-                onClose();
-              }}
-            />
-          ))}
-        </ScrollView>
+        <Pressable
+          onPress={onClose}
+          accessibilityLabel="Cerrar"
+          className="h-8 w-8 items-center justify-center rounded-full"
+        >
+          <X size={18} color={COLORS.sageDark} />
+        </Pressable>
       </View>
-    </Modal>
+
+      <View className="h-px bg-z-surface-2-6 mx-4" />
+
+      <ScrollView
+        style={{ flexShrink: 1 }}
+        contentContainerStyle={{ paddingVertical: 8 }}
+      >
+        {WIDGET_CATALOG.map((entry) => (
+          <CatalogRow
+            key={entry.type}
+            entry={entry}
+            disabled={!entry.available || existingTypes.has(entry.type)}
+            onPress={() => {
+              onAdd(entry.type);
+              onClose();
+            }}
+          />
+        ))}
+      </ScrollView>
+    </MobileSheet>
   );
 }
 

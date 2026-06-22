@@ -398,7 +398,7 @@ function NudgeBanner({
         <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-brass">
           {nudge.type === "score_transition" ? "Pasó a verde" : "Llegó la hora"}
         </Text>
-        <Text className="font-inter text-xs text-z-white mt-0.5">
+        <Text className="font-inter text-xs text-foreground mt-0.5">
           {nudge.message}
         </Text>
       </View>
@@ -470,7 +470,7 @@ const DeseosRow = memo(function DeseosRow({
                 </Text>
               </View>
               {score != null && (
-                <Text className="text-[14px] font-inter-bold text-z-white tabular-nums">
+                <Text className="text-[14px] font-inter-bold text-foreground tabular-nums">
                   {Math.round(score)}
                   <Text className="text-[10px] text-muted-foreground"> /100</Text>
                 </Text>

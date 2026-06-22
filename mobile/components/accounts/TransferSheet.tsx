@@ -15,6 +15,7 @@ import { createTransfer } from "../../lib/repositories/transfers";
 import { parseLocalizedAmount } from "../../lib/amount";
 import { toLocalDateString } from "../../lib/utils/date";
 import { COLORS } from "../../lib/constants/colors";
+import { BRASS_BUTTON_CLASS } from "../../lib/constants/styles";
 import { MobileSheet } from "../ui/MobileSheet";
 import {
   SheetAccountPicker,
@@ -186,12 +187,12 @@ export function TransferSheet({
           <Pressable
             onPress={handleSubmit}
             disabled={!canSubmit}
-            className={`rounded-xl py-3 items-center mt-2 ${canSubmit ? "bg-z-brass" : "bg-z-brass/30"}`}
+            className={`${BRASS_BUTTON_CLASS} rounded-xl py-3 items-center mt-2 ${canSubmit ? "" : "opacity-40"}`}
           >
             {submitting ? (
               <ActivityIndicator size="small" color={COLORS.ink} />
             ) : (
-              <Text className={`text-sm font-inter-semibold ${canSubmit ? "text-z-ink" : "text-z-ink/50"}`}>
+              <Text className="text-sm font-inter-semibold text-z-ink">
                 Confirmar transferencia
               </Text>
             )}

@@ -1,6 +1,7 @@
 import { Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Brain } from "lucide-react-native";
+import { COLORS } from "../../lib/constants/colors";
 
 export function PurchaseDecisionCard() {
   const router = useRouter();
@@ -12,7 +13,7 @@ export function PurchaseDecisionCard() {
     >
       <View className="flex-row items-center gap-3">
         <View className="h-10 w-10 rounded-full bg-z-brass/10 items-center justify-center">
-          <Brain size={20} color="#C5BFAE" />
+          <Brain size={20} color={COLORS.sageLight} />
         </View>
         <View className="flex-1">
           <Text className="text-sm font-inter-semibold text-foreground">

@@ -488,7 +488,7 @@ export default function TransactionDetailScreen() {
             accessibilityRole="button"
             className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-black-20"
           >
-            <X size={18} color="#938C7E" />
+            <X size={18} color={COLORS.sageDark} />
           </Pressable>
           <Text className="text-foreground font-inter-bold text-base">
             Detalle
@@ -543,7 +543,7 @@ export default function TransactionDetailScreen() {
               {saving ? (
                 <ActivityIndicator size="small" color={COLORS.income} />
               ) : (
-                <Text className="text-primary font-inter-bold text-sm">
+                <Text className="text-z-brass font-inter-bold text-sm">
                   Guardar
                 </Text>
               )}
@@ -557,7 +557,7 @@ export default function TransactionDetailScreen() {
               accessibilityRole="button"
               className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-black-20"
             >
-              <X size={18} color="#938C7E" />
+              <X size={18} color={COLORS.sageDark} />
             </Pressable>
             <Text className="text-foreground font-inter-bold text-base">
               Detalle
@@ -569,7 +569,7 @@ export default function TransactionDetailScreen() {
                 accessibilityRole="button"
                 className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-black-20"
               >
-                <Pencil size={16} color="#938C7E" />
+                <Pencil size={16} color={COLORS.sageDark} />
               </Pressable>
               <Pressable
                 onPress={handleDelete}
@@ -612,7 +612,7 @@ export default function TransactionDetailScreen() {
                 value={editMerchantName}
                 onChangeText={setEditMerchantName}
                 placeholder="Nombre del comercio"
-                placeholderTextColor="#938C7E"
+                placeholderTextColor={COLORS.sageDark}
                 autoCapitalize="words"
               />
             </FormField>
@@ -624,7 +624,7 @@ export default function TransactionDetailScreen() {
                 value={editDescription}
                 onChangeText={setEditDescription}
                 placeholder="Descripción de la transacción"
-                placeholderTextColor="#938C7E"
+                placeholderTextColor={COLORS.sageDark}
               />
             </FormField>
 
@@ -635,7 +635,7 @@ export default function TransactionDetailScreen() {
                 value={editAmount}
                 onChangeText={setEditAmount}
                 placeholder="0"
-                placeholderTextColor="#938C7E"
+                placeholderTextColor={COLORS.sageDark}
                 keyboardType="decimal-pad"
               />
             </FormField>
@@ -653,14 +653,14 @@ export default function TransactionDetailScreen() {
                     day: "numeric",
                   })}
                 </Text>
-                <Calendar size={16} color="#938C7E" />
+                <Calendar size={16} color={COLORS.sageDark} />
               </Pressable>
             </FormField>
 
             {/* Category */}
             <FormField label="Categoría">
               {isDebtPayment ? (
-                <View className="bg-sky-900/20 border border-sky-700/30 rounded-xl px-4 py-3 flex-row items-center justify-between">
+                <View className="bg-z-brass-8 border border-z-brass-20 rounded-xl px-4 py-3 flex-row items-center justify-between">
                   <Text className="font-inter-medium text-sm text-z-brass">
                     Abono a deuda
                   </Text>
@@ -680,7 +680,7 @@ export default function TransactionDetailScreen() {
                   >
                     {editCategoryName ?? "Sin categoría"}
                   </Text>
-                  <Tag size={16} color="#938C7E" />
+                  <Tag size={16} color={COLORS.sageDark} />
                 </Pressable>
               )}
             </FormField>
@@ -700,7 +700,7 @@ export default function TransactionDetailScreen() {
                 >
                   {editDestinatarioName ?? "Sin destinatario"}
                 </Text>
-                <UserRound size={16} color="#938C7E" />
+                <UserRound size={16} color={COLORS.sageDark} />
               </Pressable>
             </FormField>
 
@@ -711,7 +711,7 @@ export default function TransactionDetailScreen() {
                 value={editNotes}
                 onChangeText={setEditNotes}
                 placeholder="Agregar nota..."
-                placeholderTextColor="#938C7E"
+                placeholderTextColor={COLORS.sageDark}
                 multiline
                 style={{ minHeight: 72, textAlignVertical: "top" }}
               />
@@ -735,9 +735,9 @@ export default function TransactionDetailScreen() {
               <Switch
                 value={editIsExcluded}
                 onValueChange={setEditIsExcluded}
-                trackColor={{ false: "#3A3A3A", true: COLORS.income }}
+                trackColor={{ false: COLORS.switchTrack, true: COLORS.income }}
                 thumbColor={COLORS.foreground}
-                ios_backgroundColor="#3A3A3A"
+                ios_backgroundColor={COLORS.switchTrack}
               />
             </View>
           </ScrollView>
@@ -754,7 +754,7 @@ export default function TransactionDetailScreen() {
               })}
             </Text>
             {isExcluded && (
-              <View className="flex-row items-center bg-amber-900/20 px-3 py-1 rounded-full mb-2">
+              <View className="flex-row items-center bg-z-alert-12 px-3 py-1 rounded-full mb-2">
                 <Text className="text-z-alert font-inter-medium text-xs">
                   Excluido de totales
                 </Text>
@@ -853,9 +853,9 @@ export default function TransactionDetailScreen() {
               <Switch
                 value={isExcluded}
                 onValueChange={handleToggleExclude}
-                trackColor={{ false: "#3A3A3A", true: COLORS.income }}
+                trackColor={{ false: COLORS.switchTrack, true: COLORS.income }}
                 thumbColor={COLORS.foreground}
-                ios_backgroundColor="#3A3A3A"
+                ios_backgroundColor={COLORS.switchTrack}
               />
             </View>
 
@@ -968,14 +968,17 @@ export default function TransactionDetailScreen() {
       {/* Date picker — iOS: spinner in bottom sheet; Android: native dialog */}
       {showDatePicker && Platform.OS === "ios" ? (
         <Modal transparent animationType="slide">
-          <View className="flex-1 justify-end bg-black/40">
-            <View className="bg-z-surface-2-55 rounded-t-2xl pt-2 pb-6">
+          <View
+            className="flex-1 justify-end"
+            style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+          >
+            <View className="border border-white-6 bg-background rounded-t-2xl pt-2 pb-6">
               <View className="flex-row justify-end px-4 pb-2">
                 <Pressable
                   onPress={() => setShowDatePicker(false)}
                   className="h-8 px-3 items-center justify-center"
                 >
-                  <Text className="text-primary font-inter-bold text-sm">
+                  <Text className="text-z-brass font-inter-bold text-sm">
                     Listo
                   </Text>
                 </Pressable>

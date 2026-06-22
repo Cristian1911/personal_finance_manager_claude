@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { View, Text, Pressable, ActivityIndicator } from "react-native";
 import { getAllTags, type TagWithGroup } from "../../lib/repositories/tags";
+import { COLORS } from "../../lib/constants/colors";
+
+/** Brass tint background for the selected tag pill (brass at ~6% alpha). */
+const SELECTED_TAG_BG = `${COLORS.brass}10`;
 
 type Props = {
   selectedTagIds: string[];
@@ -57,7 +61,7 @@ export function TagSelector({ selectedTagIds, onChange }: Props) {
   if (loading) {
     return (
       <View className="py-3 items-center">
-        <ActivityIndicator size="small" color="#937844" />
+        <ActivityIndicator size="small" color={COLORS.brass} />
       </View>
     );
   }
@@ -85,27 +89,26 @@ export function TagSelector({ selectedTagIds, onChange }: Props) {
           <View className="flex-row flex-wrap gap-1.5">
             {group.tags.map((tag) => {
               const isSelected = selected.has(tag.id);
-              const tagColor = tag.color ?? group.groupColor ?? "#6B7280";
               return (
                 <Pressable
                   key={tag.id}
                   onPress={() => toggleTag(tag.id)}
                   className={`rounded-full px-2.5 py-1 border ${
                     isSelected
-                      ? "border-amber-600 bg-amber-50"
+                      ? "border-z-brass-20 bg-z-brass-8"
                       : "border-white-8 bg-z-surface-2-55"
                   }`}
                   style={
                     isSelected
-                      ? { borderColor: "#937844", backgroundColor: "#93784410" }
+                      ? { borderColor: COLORS.brass, backgroundColor: SELECTED_TAG_BG }
                       : undefined
                   }
                 >
                   <Text
                     className={`font-inter-medium text-xs ${
-                      isSelected ? "text-z-alert" : "text-muted-foreground"
+                      isSelected ? "text-z-brass" : "text-muted-foreground"
                     }`}
-                    style={isSelected ? { color: "#937844" } : undefined}
+                    style={isSelected ? { color: COLORS.brass } : undefined}
                   >
                     {tag.name}
                   </Text>

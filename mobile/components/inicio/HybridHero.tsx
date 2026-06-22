@@ -53,6 +53,13 @@ const TONE_COLOR: Record<RitmoStatusTone, string> = {
   debt: COLORS.debt,
 };
 
+// Heatmap legend swatch colors. SVG/inline backgrounds can't take a className,
+// so derive translucent tints from the brand COLORS tokens (matches the
+// bucket-tone opacities used in BUCKET_TONE).
+const LEGEND_LOW_COLOR = `${COLORS.income}4D`; // 0.30
+const LEGEND_MED_COLOR = `${COLORS.alert}66`; // 0.40
+const LEGEND_HIGH_COLOR = `${COLORS.debt}80`; // 0.50
+
 function dayOfMonth(iso: string): number {
   return parseInt(iso.slice(8, 10), 10);
 }
@@ -596,9 +603,9 @@ const PatternView = memo(function PatternView(props: {
 
       {/* Legend */}
       <View className="mt-3 flex-row flex-wrap gap-3">
-        <LegendDot color="rgba(92,184,138,0.30)" label={BUCKET_LABEL.low} />
-        <LegendDot color="rgba(212,168,67,0.40)" label={BUCKET_LABEL.med} />
-        <LegendDot color="rgba(224,85,69,0.50)" label={BUCKET_LABEL.high} />
+        <LegendDot color={LEGEND_LOW_COLOR} label={BUCKET_LABEL.low} />
+        <LegendDot color={LEGEND_MED_COLOR} label={BUCKET_LABEL.med} />
+        <LegendDot color={LEGEND_HIGH_COLOR} label={BUCKET_LABEL.high} />
       </View>
 
       {selectedEntry && (

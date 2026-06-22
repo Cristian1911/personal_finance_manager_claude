@@ -86,7 +86,7 @@ export default function SignupScreen() {
         <TextInput
           className="border border-white-6 rounded-lg px-4 py-3 mb-4 text-base text-foreground bg-black-10"
           placeholder="correo@ejemplo.com"
-          placeholderTextColor="#938C7E"
+          placeholderTextColor={COLORS.sageDark}
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
@@ -101,7 +101,7 @@ export default function SignupScreen() {
         <TextInput
           className="border border-white-6 rounded-lg px-4 py-3 mb-4 text-base text-foreground bg-black-10"
           placeholder="Mínimo 8 caracteres"
-          placeholderTextColor="#938C7E"
+          placeholderTextColor={COLORS.sageDark}
           value={password}
           onChangeText={setPassword}
           secureTextEntry
@@ -115,7 +115,7 @@ export default function SignupScreen() {
         <TextInput
           className="border border-white-6 rounded-lg px-4 py-3 mb-6 text-base text-foreground bg-black-10"
           placeholder="Repite tu contraseña"
-          placeholderTextColor="#938C7E"
+          placeholderTextColor={COLORS.sageDark}
           value={confirmPassword}
           onChangeText={setConfirmPassword}
           secureTextEntry
@@ -132,7 +132,7 @@ export default function SignupScreen() {
           activeOpacity={0.8}
         >
           {loading ? (
-            <ActivityIndicator color="#121412" />
+            <ActivityIndicator color={COLORS.ink} />
           ) : (
             <Text className="text-z-ink font-semibold text-base">
               Crear cuenta

@@ -44,7 +44,7 @@ export function MobileSheet({
       >
         <Pressable
           onPress={(e) => e.stopPropagation()}
-          className={`${maxHeightClass} rounded-t-2xl border-t border-white-6 bg-background`}
+          className={`${maxHeightClass} rounded-t-2xl border border-white-6 bg-background`}
           style={{ paddingBottom: insets.bottom + 16 }}
         >
           {!hideHandle && (

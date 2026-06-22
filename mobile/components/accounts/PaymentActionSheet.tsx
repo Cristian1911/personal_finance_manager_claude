@@ -15,7 +15,7 @@ import { registerPayment } from "../../lib/repositories/accounts";
 import { isDebtAccountType, LIQUID_ACCOUNT_TYPES } from "../../lib/constants/accounts";
 import { parseLocalizedAmount } from "../../lib/amount";
 import { COLORS } from "../../lib/constants/colors";
-import { PANEL_INSET_CLASS } from "../../lib/constants/styles";
+import { BRASS_BUTTON_CLASS, PANEL_INSET_CLASS } from "../../lib/constants/styles";
 import { MobileSheet } from "../ui/MobileSheet";
 import {
   SheetAccountPicker,
@@ -185,12 +185,12 @@ export function PaymentActionSheet({
           <Pressable
             onPress={handleSubmit}
             disabled={!canSubmit}
-            className={`rounded-xl py-3 items-center mt-2 ${canSubmit ? "bg-z-brass" : "bg-z-brass/30"}`}
+            className={`${BRASS_BUTTON_CLASS} rounded-xl py-3 items-center mt-2 ${canSubmit ? "" : "opacity-40"}`}
           >
             {submitting ? (
               <ActivityIndicator size="small" color={COLORS.ink} />
             ) : (
-              <Text className={`text-sm font-inter-semibold ${canSubmit ? "text-z-ink" : "text-z-ink/50"}`}>
+              <Text className="text-sm font-inter-semibold text-z-ink">
                 {isDebt ? "Confirmar pago" : "Registrar"}
               </Text>
             )}

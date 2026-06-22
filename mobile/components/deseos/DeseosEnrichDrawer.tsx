@@ -139,7 +139,7 @@ export function DeseosEnrichDrawer({ visible, item, userId, onClose, onSaved }: 
               <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
                 Completar
               </Text>
-              <Text className="font-inter-bold text-base text-z-white mt-0.5" numberOfLines={1}>
+              <Text className="font-inter-bold text-base text-foreground mt-0.5" numberOfLines={1}>
                 {item.name}
               </Text>
             </View>
@@ -163,7 +163,7 @@ export function DeseosEnrichDrawer({ visible, item, userId, onClose, onSaved }: 
                 maxLength={500}
                 placeholder="Describe tu motivación..."
                 placeholderTextColor={COLORS.sageDark}
-                className="rounded-xl border border-white-6 bg-z-surface-2 px-3 py-2.5 font-inter text-sm text-z-white min-h-[60px]"
+                className="rounded-xl border border-white-6 bg-z-surface-2 px-3 py-2.5 font-inter text-sm text-foreground min-h-[60px]"
                 style={{ textAlignVertical: "top" }}
               />
             </FieldGroup>
@@ -204,7 +204,7 @@ export function DeseosEnrichDrawer({ visible, item, userId, onClose, onSaved }: 
                   keyboardType="numeric"
                   placeholder="12"
                   placeholderTextColor={COLORS.sageDark}
-                  className="rounded-xl border border-white-6 bg-z-surface-2 px-3 py-2.5 font-inter-semibold text-sm text-z-white tabular-nums w-32"
+                  className="rounded-xl border border-white-6 bg-z-surface-2 px-3 py-2.5 font-inter-semibold text-sm text-foreground tabular-nums w-32"
                 />
               </FieldGroup>
             )}
@@ -229,7 +229,7 @@ export function DeseosEnrichDrawer({ visible, item, userId, onClose, onSaved }: 
                       >
                         <Text
                           className={`font-inter-semibold text-xs ${
-                            isSelected ? "text-z-white" : "text-z-sage-light"
+                            isSelected ? "text-foreground" : "text-z-sage-light"
                           }`}
                         >
                           {a.name}
@@ -247,7 +247,7 @@ export function DeseosEnrichDrawer({ visible, item, userId, onClose, onSaved }: 
                 onPress={() => setPickerOpen(true)}
                 className="flex-row items-center justify-between rounded-xl border border-white-6 bg-z-surface-2 px-3 py-3"
               >
-                <Text className="font-inter-semibold text-sm text-z-white">
+                <Text className="font-inter-semibold text-sm text-foreground">
                   {categoryLabel}
                 </Text>
                 <ChevronRight size={16} color={COLORS.sageDark} />

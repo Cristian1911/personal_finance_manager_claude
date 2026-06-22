@@ -19,6 +19,8 @@ import { supabase } from "../lib/supabase";
 import { parseLocalizedAmount } from "../lib/amount";
 import { useAuth } from "../lib/auth";
 import { KeyboardScreen } from "../components/common/KeyboardScreen";
+import { BRASS_BUTTON_CLASS } from "../lib/constants/styles";
+import { COLORS } from "../lib/constants/colors";
 const SUGGESTED_NAMES = [
   "Gym",
   "Netflix",
@@ -335,16 +337,14 @@ export default function SubscriptionsScreen() {
           <Pressable
             onPress={handleSave}
             disabled={saving || loading}
-            className={`flex-1 rounded-xl py-3 items-center ${
-              saving || loading
-                ? "bg-primary-light"
-                : "bg-primary active:bg-primary-dark"
+            className={`${BRASS_BUTTON_CLASS} flex-1 rounded-xl py-3 items-center ${
+              saving || loading ? "opacity-40" : ""
             }`}
           >
             {saving ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={COLORS.ink} />
             ) : (
-              <Text className="text-white font-inter-bold text-sm">
+              <Text className="text-z-ink font-inter-bold text-sm">
                 {editingId ? "Guardar cambios" : "Agregar suscripción"}
               </Text>
             )}
@@ -364,7 +364,7 @@ export default function SubscriptionsScreen() {
     >
       {loading ? (
         <View className="flex-1 items-center justify-center py-16">
-          <ActivityIndicator size="large" color="#C5BFAE" />
+          <ActivityIndicator size="large" color={COLORS.sageLight} />
         </View>
       ) : (
         <>
@@ -381,7 +381,7 @@ export default function SubscriptionsScreen() {
                 <Pressable
                   key={name}
                   onPress={() => useSuggestedName(name)}
-                  className="rounded-full border border-z-brass/30 bg-z-brass/10 px-3 py-1.5 active:bg-z-brass/20"
+                  className="rounded-full border border-z-brass-30 bg-z-brass-10 px-3 py-1.5 active:bg-z-brass-20"
                 >
                   <Text className="text-z-brass font-inter-medium text-xs">{name}</Text>
                 </Pressable>
@@ -395,7 +395,7 @@ export default function SubscriptionsScreen() {
               value={merchantName}
               onChangeText={setMerchantName}
               placeholder="Ej: Netflix"
-              placeholderTextColor="#938C7E"
+              placeholderTextColor={COLORS.sageDark}
               className="rounded-xl border border-white-6 bg-black-10 px-3 py-2.5 text-foreground"
             />
 
@@ -405,7 +405,7 @@ export default function SubscriptionsScreen() {
               onChangeText={setAmountInput}
               keyboardType="decimal-pad"
               placeholder="Ej: 49900"
-              placeholderTextColor="#938C7E"
+              placeholderTextColor={COLORS.sageDark}
               className="rounded-xl border border-white-6 bg-black-10 px-3 py-2.5 text-foreground"
             />
 
@@ -413,7 +413,7 @@ export default function SubscriptionsScreen() {
               Cuenta de cobro
             </Text>
             {accounts.length === 0 ? (
-              <View className="rounded-xl border border-amber-700/30 bg-amber-900/20 px-3 py-2.5">
+              <View className="rounded-xl border border-z-alert-25 bg-z-alert-12 px-3 py-2.5">
                 <Text className="text-z-alert font-inter text-xs">
                   Crea una cuenta primero para registrar suscripciones.
                 </Text>
@@ -428,13 +428,13 @@ export default function SubscriptionsScreen() {
                       onPress={() => setAccountId(account.id)}
                       className={`rounded-xl border px-3 py-2 ${
                         selected
-                          ? "border-primary bg-primary-light"
+                          ? "border-z-brass bg-z-brass-15"
                           : "border-white-6 bg-black-10"
                       }`}
                     >
                       <Text
                         className={`font-inter-medium text-xs ${
-                          selected ? "text-primary-dark" : "text-foreground"
+                          selected ? "text-z-brass" : "text-foreground"
                         }`}
                       >
                         {account.name}
@@ -454,12 +454,12 @@ export default function SubscriptionsScreen() {
                     key={option.value}
                     onPress={() => setFrequency(option.value)}
                     className={`rounded-xl border px-3 py-2 ${
-                      selected ? "border-primary bg-primary-light" : "border-white-6 bg-black-10"
+                      selected ? "border-z-brass bg-z-brass-15" : "border-white-6 bg-black-10"
                     }`}
                   >
                     <Text
                       className={`font-inter-medium text-xs ${
-                        selected ? "text-primary-dark" : "text-foreground"
+                        selected ? "text-z-brass" : "text-foreground"
                       }`}
                     >
                       {option.label}
@@ -475,7 +475,7 @@ export default function SubscriptionsScreen() {
               onChangeText={setDayOfMonthInput}
               keyboardType="number-pad"
               placeholder="1 - 31"
-              placeholderTextColor="#938C7E"
+              placeholderTextColor={COLORS.sageDark}
               className="rounded-xl border border-white-6 bg-black-10 px-3 py-2.5 text-foreground"
             />
 
@@ -486,7 +486,7 @@ export default function SubscriptionsScreen() {
               value={description}
               onChangeText={setDescription}
               placeholder="Ej: Plan familiar"
-              placeholderTextColor="#938C7E"
+              placeholderTextColor={COLORS.sageDark}
               className="rounded-xl border border-white-6 bg-black-10 px-3 py-2.5 text-foreground"
             />
 
@@ -523,7 +523,7 @@ export default function SubscriptionsScreen() {
 
                       <View
                         className={`rounded-full px-2.5 py-1 ${
-                          item.is_active ? "bg-z-income/10" : "bg-black-10"
+                          item.is_active ? "bg-z-income-10" : "bg-black-10"
                         }`}
                       >
                         <Text
@@ -541,7 +541,7 @@ export default function SubscriptionsScreen() {
                         {formatCurrency(item.amount, item.currency_code as CurrencyCode)}
                       </Text>
                       <View className="flex-row items-center">
-                        <Repeat size={14} color="#938C7E" />
+                        <Repeat size={14} color={COLORS.sageDark} />
                         <Text className="ml-1 text-muted-foreground font-inter text-xs">
                           {getScheduleLabel(item)}
                         </Text>
@@ -565,11 +565,11 @@ export default function SubscriptionsScreen() {
 
                       <Pressable
                         onPress={() => toggleActive(item)}
-                        className="rounded-xl border border-sky-700/30 px-3 py-2 active:bg-sky-900/20"
+                        className="rounded-xl border border-z-brass-20 px-3 py-2 active:bg-z-brass-8"
                         disabled={isBusy || saving}
                       >
                         {togglingId === item.id ? (
-                          <ActivityIndicator size="small" color="#0284C7" />
+                          <ActivityIndicator size="small" color={COLORS.brass} />
                         ) : (
                           <Text className="text-z-brass font-inter-medium text-xs">
                             {item.is_active ? "Pausar" : "Activar"}
@@ -579,14 +579,14 @@ export default function SubscriptionsScreen() {
 
                       <Pressable
                         onPress={() => handleDelete(item)}
-                        className="rounded-xl border border-z-debt/30 px-3 py-2 active:bg-z-debt/10"
+                        className="rounded-xl border border-z-debt-30 px-3 py-2 active:bg-z-debt-12"
                         disabled={isBusy || saving}
                       >
                         {deletingId === item.id ? (
-                          <ActivityIndicator size="small" color="#DC2626" />
+                          <ActivityIndicator size="small" color={COLORS.expense} />
                         ) : (
                           <View className="flex-row items-center">
-                            <Trash2 size={12} color="#DC2626" />
+                            <Trash2 size={12} color={COLORS.expense} />
                             <Text className="ml-1 text-z-expense font-inter-medium text-xs">
                               Eliminar
                             </Text>

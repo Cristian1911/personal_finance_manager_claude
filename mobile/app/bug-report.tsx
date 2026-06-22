@@ -13,7 +13,8 @@ import {
 import { useRouter } from "expo-router";
 import Constants from "expo-constants";
 import * as DocumentPicker from "expo-document-picker";
-import { MOBILE_TAB_BAR_CLEARANCE } from "../lib/constants/styles";
+import { MOBILE_TAB_BAR_CLEARANCE, BRASS_BUTTON_CLASS } from "../lib/constants/styles";
+import { COLORS } from "../lib/constants/colors";
 import { ArrowLeft, Paperclip, Send } from "lucide-react-native";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
@@ -260,7 +261,7 @@ export default function BugReportScreen() {
           onPress={() => router.back()}
           className="w-8 h-8 items-center justify-center rounded-full bg-z-surface-2 active:bg-z-surface-3"
         >
-          <ArrowLeft size={18} color="#6B7280" />
+          <ArrowLeft size={18} color={COLORS.sageDark} />
         </Pressable>
         <Text className="text-foreground font-inter-bold text-base">
           Quick Capture de Bug
@@ -336,10 +337,10 @@ export default function BugReportScreen() {
               disabled={picking || submitting}
             >
               {picking ? (
-                <ActivityIndicator color="#6B7280" />
+                <ActivityIndicator color={COLORS.sageDark} />
               ) : (
                 <>
-                  <Paperclip size={16} color="#6B7280" />
+                  <Paperclip size={16} color={COLORS.sageDark} />
                   <Text className="ml-2 text-foreground font-inter-medium text-sm">
                     Adjuntar captura o PDF
                   </Text>
@@ -349,7 +350,7 @@ export default function BugReportScreen() {
           )}
 
           {!pendingScreenshotUri && attachment && (
-            <View className="mt-2 rounded-lg bg-sky-50 border border-sky-200 px-3 py-2">
+            <View className="mt-2 rounded-lg bg-z-brass-8 border border-z-brass-20 px-3 py-2">
               <Text className="text-z-brass font-inter text-xs" numberOfLines={2}>
                 Archivo: {attachment.name}
               </Text>
@@ -360,7 +361,7 @@ export default function BugReportScreen() {
               )}
               <Pressable
                 onPress={() => setAttachment(null)}
-                className="mt-2 self-start rounded-md border border-sky-300 px-2 py-1 active:bg-sky-100"
+                className="mt-2 self-start rounded-md border border-z-brass-30 px-2 py-1 active:bg-z-brass-10"
                 disabled={submitting}
               >
                 <Text className="text-z-brass font-inter-medium text-xs">
@@ -371,18 +372,18 @@ export default function BugReportScreen() {
           )}
         </View>
         <Pressable
-          className={`mt-5 rounded-xl py-3.5 items-center flex-row justify-center ${
-            canSubmit && !submitting ? "bg-primary" : "bg-z-surface-3"
+          className={`${BRASS_BUTTON_CLASS} mt-5 rounded-xl py-3.5 items-center flex-row justify-center ${
+            canSubmit && !submitting ? "" : "opacity-40"
           }`}
           onPress={handleSubmit}
           disabled={!canSubmit || submitting}
         >
           {submitting ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={COLORS.ink} />
           ) : (
             <>
-              <Send size={16} color="#FFFFFF" />
-              <Text className="ml-2 text-white font-inter-bold text-base">
+              <Send size={16} color={COLORS.ink} />
+              <Text className="ml-2 text-z-ink font-inter-bold text-base">
                 Enviar ticket
               </Text>
             </>
