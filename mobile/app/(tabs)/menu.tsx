@@ -36,7 +36,7 @@ export default function MenuScreen() {
         <HubEntry
           icon={PiggyBank}
           title="Presupuestos"
-          hint="Control mensual por categoria"
+          hint="Control mensual por categoría"
           onPress={() => router.push("/(tabs)/plan" as any)}
         />
         <HubEntry

@@ -129,15 +129,15 @@ export default function BugReportScreen() {
     if (!session?.user?.id) {
       Alert.alert(
         "Requiere cuenta",
-        "Debes iniciar sesion para enviar reportes de bug al bucket compartido."
+        "Debes iniciar sesión para enviar reportes de bug al bucket compartido."
       );
       return;
     }
 
     if (!canSubmit) {
       Alert.alert(
-        "Completa la informacion",
-        "Agrega un titulo y una descripcion un poco mas detallada."
+        "Completa la información",
+        "Agrega un título y una descripción un poco más detallada."
       );
       return;
     }
@@ -283,17 +283,17 @@ export default function BugReportScreen() {
           </Text>
 
           <Text className="mt-4 mb-1 text-sm font-inter-medium text-foreground">
-            Titulo del bug
+            Título del bug
           </Text>
           <TextInput
             value={title}
             onChangeText={setTitle}
-            placeholder="Ej: En editar transaccion se solapan fecha y cuenta"
+            placeholder="Ej: En editar transacción se solapan fecha y cuenta"
             className="rounded-xl border border-white-10 bg-z-surface-2-55 px-3 py-2.5 text-foreground"
           />
 
           <Text className="mt-3 mb-1 text-sm font-inter-medium text-foreground">
-            Descripcion
+            Descripción
           </Text>
           <TextInput
             value={description}

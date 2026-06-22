@@ -28,8 +28,8 @@ export default function SignupScreen() {
       return;
     }
 
-    if (password.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres");
+    if (password.length < 8) {
+      setError("La contraseña debe tener al menos 8 caracteres");
       return;
     }
 
@@ -100,7 +100,7 @@ export default function SignupScreen() {
         </Text>
         <TextInput
           className="border border-white-6 rounded-lg px-4 py-3 mb-4 text-base text-foreground bg-black-10"
-          placeholder="Mínimo 6 caracteres"
+          placeholder="Mínimo 8 caracteres"
           placeholderTextColor="#938C7E"
           value={password}
           onChangeText={setPassword}

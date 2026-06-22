@@ -321,7 +321,7 @@ export default function TransactionDetailScreen() {
       setTransaction({ ...transaction, is_excluded: isExcluded ? 0 : 1 });
     } catch (err) {
       console.error("Toggle exclude error:", err);
-      Alert.alert("Error", "No se pudo actualizar la transaccion.");
+      Alert.alert("Error", "No se pudo actualizar la transacción.");
     }
   };
 
@@ -449,8 +449,8 @@ export default function TransactionDetailScreen() {
   const handleDelete = () => {
     if (!id) return;
     Alert.alert(
-      "Eliminar transaccion",
-      "Esta accion no se puede deshacer.",
+      "Eliminar transacción",
+      "Esta acción no se puede deshacer.",
       [
         { text: "Cancelar", style: "cancel" },
         {
@@ -462,7 +462,7 @@ export default function TransactionDetailScreen() {
               router.back();
             } catch (err) {
               console.error("Delete failed:", err);
-              Alert.alert("Error", "No se pudo eliminar la transaccion.");
+              Alert.alert("Error", "No se pudo eliminar la transacción.");
             }
           },
         },
@@ -497,7 +497,7 @@ export default function TransactionDetailScreen() {
         </View>
         <View className="flex-1 items-center justify-center px-8">
           <Text className="text-muted-fg-50 font-inter text-base">
-            Transaccion no encontrada
+            Transacción no encontrada
           </Text>
         </View>
       </View>
@@ -665,7 +665,7 @@ export default function TransactionDetailScreen() {
                     Abono a deuda
                   </Text>
                   <Text className="font-inter text-xs text-z-brass">
-                    Categoria fija
+                    Categoría fija
                   </Text>
                 </View>
               ) : (
@@ -804,7 +804,7 @@ export default function TransactionDetailScreen() {
               }
             />
             <DetailRow
-              label="Categoria"
+              label="Categoría"
               value={isDebtPayment ? "Abono a deuda" : transaction.category_name_es}
             />
             <DetailRow
@@ -812,9 +812,9 @@ export default function TransactionDetailScreen() {
               value={transaction.destinatario_name ?? "Sin destinatario"}
             />
             <DetailRow label="Estado" value={statusLabel} />
-            <DetailRow label="Descripcion" value={transaction.description} />
+            <DetailRow label="Descripción" value={transaction.description} />
             <DetailRow
-              label="Descripcion original"
+              label="Descripción original"
               value={transaction.raw_description}
             />
             <DetailRow label="Notas" value={transaction.notes} />

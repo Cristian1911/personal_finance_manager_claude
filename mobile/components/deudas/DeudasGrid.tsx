@@ -31,7 +31,7 @@ export function DeudasGrid({
           percentage={overallUtilization}
           color={utilizationColor}
           size={56}
-          label="Utilizacion"
+          label="Utilización"
         />
 
         <View className="items-center justify-center">

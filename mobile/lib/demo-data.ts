@@ -136,7 +136,7 @@ export async function seedDemoData(): Promise<void> {
     [
       loanId,
       DEMO_USER_ID,
-      "Credito Vehiculo Demo",
+      "Crédito Vehículo Demo",
       "LOAN",
       "Banco Demo",
       6800000,
@@ -207,7 +207,7 @@ export async function seedDemoData(): Promise<void> {
       accountId: loanId,
       amount: 510000,
       direction: "INFLOW",
-      description: "Cuota credito vehiculo",
+      description: "Cuota crédito vehículo",
       date: dateShift(-2),
       categoryId: CATEGORY_OBLIGACIONES,
     },

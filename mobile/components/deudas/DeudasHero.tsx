@@ -53,7 +53,7 @@ export function DeudasHero({
                     {a.name}
                   </Text>
                   <Text className="text-[10px] font-inter text-muted-foreground">
-                    {a.type === "CREDIT_CARD" ? "Tarjeta" : "Prestamo"} · {a.interestRate}% EA
+                    {a.type === "CREDIT_CARD" ? "Tarjeta" : "Préstamo"} · {a.interestRate}% EA
                   </Text>
                 </View>
                 <Text className="text-xs font-inter-semibold text-foreground">

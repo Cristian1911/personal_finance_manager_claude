@@ -557,6 +557,21 @@ export const DB_MIGRATIONS: DbMigration[] = [
       `CREATE INDEX IF NOT EXISTS idx_transactions_personal_debt ON transactions(personal_debt_id)`,
     ],
   },
+  {
+    version: 17,
+    statements: [
+      // ── accounts: multi-currency debt balances (ledger mutation layer) ────
+      // Webapp persists per-currency debt detail in `currency_balances` (JSONB
+      // on the Supabase accounts view). Each entry carries its own
+      // total_payment_due / available_balance — there is NO top-level
+      // total_payment_due column on accounts (that column belongs to
+      // statement_snapshots). Mirror only the JSON column locally so the ledger
+      // mutations (registerPayment, createTransfer, reconcileBalance,
+      // recordRecurringOccurrencePayment) can write the shared debt payload and
+      // pull/push round-trips don't drop it. Stored as TEXT (SQLite has no JSON).
+      `ALTER TABLE accounts ADD COLUMN currency_balances TEXT`,
+    ],
+  },
 ];
 
 export const LATEST_DB_VERSION =

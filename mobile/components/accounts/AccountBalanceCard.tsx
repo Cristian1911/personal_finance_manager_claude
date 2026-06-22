@@ -10,10 +10,10 @@ type Props = {
 const ACCOUNT_TYPE_LABELS: Record<string, string> = {
   CHECKING: "Cuenta corriente",
   SAVINGS: "Ahorros",
-  CREDIT_CARD: "Tarjeta de credito",
-  LOAN: "Prestamo",
+  CREDIT_CARD: "Tarjeta de crédito",
+  LOAN: "Préstamo",
   CASH: "Efectivo",
-  INVESTMENT: "Inversion",
+  INVESTMENT: "Inversión",
   OTHER: "Otro",
 };
 
@@ -84,7 +84,7 @@ export function AccountBalanceCard({ account }: Props) {
         <View className="mt-4">
           <View className="flex-row items-center justify-between mb-1.5">
             <Text className="text-muted-foreground font-inter text-xs">
-              Utilizacion de credito
+              Utilización de crédito
             </Text>
             <Text
               className="font-inter-semibold text-xs"

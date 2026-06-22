@@ -13,7 +13,7 @@ export function UncategorizedRow({
   transaction: tx,
   onAssign,
 }: UncategorizedRowProps) {
-  const description = tx.merchant_name ?? tx.description ?? "Sin descripcion";
+  const description = tx.merchant_name ?? tx.description ?? "Sin descripción";
   const isInflow = tx.direction === "INFLOW";
 
   return (
@@ -61,7 +61,7 @@ export function UncategorizedRow({
       <Pressable
         onPress={() => onAssign(tx.id)}
         className="flex-row items-center gap-1 rounded-lg border border-z-brass-20 bg-z-brass-8 px-2 py-1 active:bg-z-brass-15"
-        accessibilityLabel={`Asignar categoria a ${description}`}
+        accessibilityLabel={`Asignar categoría a ${description}`}
       >
         <Tag size={10} color={COLORS.brass} />
         <Text className="text-[10px] font-inter-semibold text-z-brass">

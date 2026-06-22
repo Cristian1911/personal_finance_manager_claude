@@ -89,7 +89,7 @@ export function CategoryFormSheet({
   const handleDelete = useCallback(() => {
     if (!category || !onDelete) return;
     Alert.alert(
-      "Eliminar categoria",
+      "Eliminar categoría",
       `Seguro que quieres eliminar "${category.name_es ?? category.name}"?`,
       [
         { text: "Cancelar", style: "cancel" },
@@ -117,7 +117,7 @@ export function CategoryFormSheet({
           {/* Header */}
           <View className="flex-row items-center justify-between px-4 pt-4 pb-2">
             <Text className="text-[15px] font-inter-semibold text-foreground">
-              {isEditing ? "Editar categoria" : "Nueva categoria"}
+              {isEditing ? "Editar categoría" : "Nueva categoría"}
             </Text>
             <Pressable
               onPress={onClose}
@@ -156,7 +156,7 @@ export function CategoryFormSheet({
             {/* Parent category picker */}
             <View>
               <Text className="text-[11px] font-inter-semibold text-z-sage-dark uppercase tracking-[2px] mb-1.5">
-                Categoria padre (opcional)
+                Categoría padre (opcional)
               </Text>
               <Pressable
                 onPress={() => setParentPickerOpen(!parentPickerOpen)}
@@ -268,7 +268,7 @@ export function CategoryFormSheet({
                 }`}
               >
                 <Text className="text-[13px] font-inter-semibold text-z-ink">
-                  {isEditing ? "Guardar cambios" : "Crear categoria"}
+                  {isEditing ? "Guardar cambios" : "Crear categoría"}
                 </Text>
               </Pressable>
 
@@ -279,7 +279,7 @@ export function CategoryFormSheet({
                 >
                   <Trash2 size={14} color="#E05545" />
                   <Text className="text-[13px] font-inter-semibold text-z-expense">
-                    Eliminar categoria
+                    Eliminar categoría
                   </Text>
                 </Pressable>
               )}

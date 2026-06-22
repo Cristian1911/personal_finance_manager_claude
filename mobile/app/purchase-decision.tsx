@@ -580,7 +580,7 @@ export default function PurchaseDecisionScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Abrir la lista de deseos"
-                  onPress={() => router.push("/(tabs)/deseos" as never)}
+                  onPress={() => router.push("/deseos" as never)}
                   className="items-center py-2"
                 >
                   <Text className="font-inter-semibold text-sm text-z-brass">

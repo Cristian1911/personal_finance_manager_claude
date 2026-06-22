@@ -86,24 +86,26 @@ type Props = {
   account: AccountRow;
   onEdit: () => void;
   onDelete: () => void;
+  /** Open the payment sheet (registerPayment). */
+  onPayment?: () => void;
+  /** Open the transfer sheet (createTransfer). */
+  onTransfer?: () => void;
+  /** Open the reconcile sheet (reconcileBalance). */
+  onReconcile?: () => void;
 };
 
-const STUB_MESSAGES: Record<string, string> = {
-  payment: "Pagos desde la cuenta llegarán pronto. Por ahora usa 'Agregar' para registrar una transacción.",
-  transfer: "Transferencias entre cuentas llegarán pronto. Por ahora usa 'Agregar' en cada cuenta.",
-  reconcile: "Ajuste de saldo llegará pronto. Por ahora edita la cuenta para corregir el balance manualmente.",
-};
-
-export function QuickActionsBar({ account, onEdit, onDelete }: Props) {
+export function QuickActionsBar({
+  account,
+  onEdit,
+  onDelete,
+  onPayment,
+  onTransfer,
+  onReconcile,
+}: Props) {
   const router = useRouter();
   const accountType = account.account_type ?? "OTHER";
   const accountId = account.id;
   const actions = getActionsForType(accountType);
-
-  function handleStub(type: ActionType) {
-    const msg = STUB_MESSAGES[type];
-    if (msg) Alert.alert("Próximamente", msg);
-  }
 
   function handleMore() {
     Alert.alert("Más opciones", undefined, [
@@ -124,9 +126,13 @@ export function QuickActionsBar({ account, onEdit, onDelete }: Props) {
         handleMore();
         return;
       case "payment":
+        onPayment?.();
+        return;
       case "transfer":
+        onTransfer?.();
+        return;
       case "reconcile":
-        handleStub(action.type);
+        onReconcile?.();
         return;
     }
   }

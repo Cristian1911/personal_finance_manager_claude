@@ -11,84 +11,23 @@ import {
   View,
 } from "react-native";
 import { Check, ChevronDown, X, Link2 } from "lucide-react-native";
-import * as Crypto from "expo-crypto";
 import {
-  applyAccountBalanceDelta,
-  computeIdempotencyKey,
   formatCurrency,
   formatDate,
   type CurrencyCode,
-  type TransactionDirection,
 } from "@zeta/shared";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { COLORS } from "../../lib/constants/colors";
 import { PANEL_INSET_CLASS } from "../../lib/constants/styles";
-import { toLocalDateString, toLocalMonthString } from "../../lib/utils/date";
+import { getDatabase } from "../../lib/db/database";
+import { toLocalMonthString } from "../../lib/utils/date";
 import { parseLocalizedAmount } from "../../lib/amount";
 import { isDebtAccountType } from "../../lib/constants/accounts";
 import { markEntryCompleted } from "../../lib/repositories/planning";
+import { registerPayment } from "../../lib/repositories/accounts";
+import { recordRecurringOccurrencePayment } from "../../lib/repositories/recurring";
 import { computeRecurringGroupUuid } from "../../lib/utils/recurring-group";
-
-const expoHashFn = (payload: string) =>
-  Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, payload);
-
-async function buildIdempotencyKey(params: {
-  txId: string;
-  date: string;
-  amount: number;
-  description: string;
-}): Promise<string> {
-  // Mirrors webapp `cashflow-planner.ts:1283-1292`: same provider name and
-  // providerTransactionId so SHA-256 hash matches across platforms and the
-  // UNIQUE constraint dedups consistently.
-  return computeIdempotencyKey(
-    {
-      provider: "MANUAL_FORM",
-      providerTransactionId: params.txId,
-      transactionDate: params.date,
-      amount: params.amount,
-      rawDescription: params.description,
-    },
-    expoHashFn,
-  );
-}
-
-// Updates accounts.current_balance on Supabase to keep the webapp + dashboard
-// in sync immediately. Local SQLite reconciles on the next pull.
-// Throws on fetch/update errors so the caller's try/catch can surface the
-// failure — silent failure would leave the transaction recorded with the
-// account balance still stale.
-async function updateAccountBalanceRemote(params: {
-  accountId: string;
-  userId: string;
-  direction: TransactionDirection;
-  amount: number;
-}): Promise<void> {
-  const sb = supabase as any;
-  const { data: acct, error: fetchErr } = await sb
-    .from("accounts")
-    .select("current_balance, account_type")
-    .eq("id", params.accountId)
-    .eq("user_id", params.userId)
-    .single();
-  if (fetchErr) throw new Error(fetchErr.message);
-  if (!acct) throw new Error("Cuenta no encontrada");
-
-  const newBalance = applyAccountBalanceDelta({
-    currentBalance: acct.current_balance,
-    accountType: acct.account_type,
-    direction: params.direction,
-    amount: params.amount,
-  });
-
-  const { error: updateErr } = await sb
-    .from("accounts")
-    .update({ current_balance: newBalance })
-    .eq("id", params.accountId)
-    .eq("user_id", params.userId);
-  if (updateErr) throw new Error(updateErr.message);
-}
 
 // ── Types ──
 
@@ -162,7 +101,6 @@ export function PaymentSheet({
   // Search for candidate transactions when sheet opens
   useEffect(() => {
     if (!visible || !session?.user?.id) return;
-    let cancelled = false;
 
     setMode("loading");
     setCandidates([]);
@@ -339,13 +277,19 @@ export function PaymentSheet({
       handleClose();
       onSuccess();
     } catch (err: any) {
-      setError(err?.message ?? "Error al vincular transaccion");
+      setError(err?.message ?? "Error al vincular transacción");
     } finally {
       setSubmitting(false);
     }
   }, [selectedCandidateId, session?.user?.id, entry, handleClose, onSuccess]);
 
   // ── Create new transaction ──
+  // Routes through the offline-first ledger repos (NOT direct Supabase inserts),
+  // so balances clamp at 0, debt available_balance recomputes, and the writes go
+  // through local SQLite + sync_queue:
+  //   · entry has a recurring template → recordRecurringOccurrencePayment
+  //     (real tx[s] + balance + occurrence paid-link + payoff lifecycle).
+  //   · debt account, no template → registerPayment (INFLOW + paired source OUTFLOW).
   const handleCreatePayment = useCallback(async () => {
     if (!canSubmit || !session?.user?.id || resolvedAmount == null) return;
 
@@ -353,152 +297,53 @@ export function PaymentSheet({
     setError(null);
 
     try {
-      const userId = session.user.id;
-      const today = toLocalDateString();
-      const outflowTxId = Crypto.randomUUID();
-      const transferGroupId = debtAccount ? Crypto.randomUUID() : null;
-      const sb = supabase as any;
-      // OUTFLOW shows the entry label in the source ledger ("Netflix"),
-      // INFLOW on the debt account shows "Pago: Netflix". Mirrors webapp
-      // `cashflow-planner.ts:1305-1306` (OUTFLOW) and `:1366-1367` (INFLOW).
-      const outflowDescription = entry.label;
-      const inflowDescription = `Pago: ${entry.label}`;
-
-      // Resolve the matching occurrence up-front so we can stamp
-      // recurrence_group_id on the inserted transactions (mirrors webapp).
-      let occurrenceRow: { id: string; occurrence_date: string } | null = null;
-      let recurrenceGroupId: string | null = null;
       if (entry.recurring_template_id) {
+        // Resolve the matching local pending occurrence so we can pass the
+        // race-free occurrenceId. Fall back to entry.expected_date if the local
+        // occurrence hasn't been pulled yet — the repo tolerates a missing row.
+        const db = await getDatabase();
         const monthPrefix = toLocalMonthString() + "%";
-        const { data: occurrences } = await sb
-          .from("recurring_occurrences")
-          .select("id, occurrence_date")
-          .eq("template_id", entry.recurring_template_id)
-          .eq("user_id", userId)
-          .eq("status", "pending")
-          .like("occurrence_date", monthPrefix)
-          .order("occurrence_date", { ascending: true })
-          .limit(1);
-        if (occurrences && occurrences.length > 0) {
-          const occ = occurrences[0];
-          occurrenceRow = occ;
-          recurrenceGroupId = await computeRecurringGroupUuid(
-            entry.recurring_template_id,
-            occ.occurrence_date,
-          );
+        const occ = await db.getFirstAsync<{ id: string; occurrence_date: string }>(
+          `SELECT id, occurrence_date FROM recurring_occurrences
+           WHERE template_id = ? AND status = 'pending' AND occurrence_date LIKE ?
+           ORDER BY occurrence_date ASC LIMIT 1`,
+          [entry.recurring_template_id, monthPrefix],
+        );
+
+        const result = await recordRecurringOccurrencePayment({
+          templateId: entry.recurring_template_id,
+          occurrenceId: occ?.id,
+          occurrenceDate: occ?.occurrence_date ?? entry.expected_date,
+          actualAmount: resolvedAmount,
+          sourceAccountId: selectedSourceId || undefined,
+        });
+        if (!result.success) {
+          setError(result.error);
+          return;
         }
-      }
-
-      // 1. OUTFLOW from source
-      const outflowKey = await buildIdempotencyKey({
-        txId: outflowTxId,
-        date: today,
-        amount: resolvedAmount,
-        description: outflowDescription,
-      });
-      const { error: outflowErr } = await sb
-        .from("transactions")
-        .insert({
-          id: outflowTxId,
-          user_id: userId,
-          account_id: selectedSourceId,
+      } else if (debtAccount) {
+        // Debt payment with no recurring template — single INFLOW on the debt
+        // account + paired source OUTFLOW.
+        const result = await registerPayment(debtAccount.id, {
           amount: resolvedAmount,
-          currency_code: entry.currency_code,
-          direction: "OUTFLOW",
-          transaction_date: today,
-          raw_description: outflowDescription,
-          clean_description: outflowDescription,
-          merchant_name: entry.label,
-          capture_method: "MANUAL_FORM",
-          category_id: entry.category_id,
-          transfer_group_id: transferGroupId,
-          idempotency_key: outflowKey,
-          is_recurring: !!entry.recurring_template_id,
-          recurrence_group_id: recurrenceGroupId,
+          sourceAccountId: selectedSourceId || undefined,
         });
-
-      if (outflowErr && !outflowErr.message?.includes("23505")) {
-        throw new Error(outflowErr.message);
-      }
-
-      // 2. INFLOW on debt account
-      if (debtAccount && transferGroupId) {
-        const inflowTxId = Crypto.randomUUID();
-        const inflowKey = await buildIdempotencyKey({
-          txId: inflowTxId,
-          date: today,
-          amount: resolvedAmount,
-          description: inflowDescription,
-        });
-        const { error: inflowErr } = await sb
-          .from("transactions")
-          .insert({
-            id: inflowTxId,
-            user_id: userId,
-            account_id: debtAccount.id,
-            amount: resolvedAmount,
-            currency_code: entry.currency_code,
-            direction: "INFLOW",
-            transaction_date: today,
-            raw_description: inflowDescription,
-            clean_description: inflowDescription,
-            merchant_name: entry.label,
-            capture_method: "MANUAL_FORM",
-            category_id: entry.category_id,
-            transfer_group_id: transferGroupId,
-            idempotency_key: inflowKey,
-            is_recurring: !!entry.recurring_template_id,
-            recurrence_group_id: recurrenceGroupId,
-          });
-        if (inflowErr && !inflowErr.message?.includes("23505")) {
-          throw new Error(inflowErr.message);
+        if (!result.success) {
+          setError(result.error);
+          return;
         }
+      } else {
+        setError("No se pudo determinar el destino del pago.");
+        return;
       }
 
-      // 3. Link to recurring occurrence (only after the OUTFLOW persisted).
-      if (occurrenceRow) {
-        const { error: occErr } = await sb
-          .from("recurring_occurrences")
-          .update({
-            status: "paid",
-            transaction_id: outflowTxId,
-            paid_at: new Date().toISOString(),
-          })
-          .eq("id", occurrenceRow.id)
-          .eq("user_id", userId);
-        if (occErr) throw new Error(occErr.message);
-      }
-
-      // 4. Update account balances on Supabase so the webapp reflects the
-      // payment immediately. Local SQLite reconciles on the next pull.
-      await updateAccountBalanceRemote({
-        accountId: selectedSourceId,
-        userId,
-        direction: "OUTFLOW",
-        amount: resolvedAmount,
-      });
-      if (debtAccount) {
-        await updateAccountBalanceRemote({
-          accountId: debtAccount.id,
-          userId,
-          direction: "INFLOW",
-          amount: resolvedAmount,
-        });
-      }
-
-      // 5. Mark planning entry COMPLETED (local + enqueued)
+      // Mark planning entry COMPLETED (local + enqueued).
       await markEntryCompleted(entry.id);
 
       handleClose();
       onSuccess();
     } catch (err: any) {
-      const msg = err?.message ?? "Error al registrar el pago";
-      if (msg.includes("23505") || msg.includes("duplicate")) {
-        handleClose();
-        onSuccess();
-        return;
-      }
-      setError(msg);
+      setError(err?.message ?? "Error al registrar el pago");
     } finally {
       setSubmitting(false);
     }
@@ -559,7 +404,7 @@ export function PaymentSheet({
                     ¿Ya hiciste este pago?
                   </Text>
                   <Text className="text-[11px] font-inter text-muted-fg-50 mb-3">
-                    Encontramos transacciones que podrian ser este pago. Selecciona una para vincularla.
+                    Encontramos transacciones que podrían ser este pago. Selecciona una para vincularla.
                   </Text>
 
                   {candidates.map((tx) => {
@@ -611,7 +456,7 @@ export function PaymentSheet({
                       <>
                         <Link2 size={14} color={COLORS.ink} />
                         <Text className={`text-sm font-inter-semibold ${selectedCandidateId ? "text-z-ink" : "text-z-ink/50"}`}>
-                          Vincular transaccion
+                          Vincular transacción
                         </Text>
                       </>
                     )}

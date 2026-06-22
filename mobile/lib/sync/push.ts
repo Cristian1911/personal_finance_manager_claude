@@ -148,6 +148,9 @@ export async function pushPendingChanges(): Promise<number> {
             const rows = payload.tag_ids.map((tagId: string) => ({
               transaction_id: item.record_id,
               tag_id: tagId,
+              // transaction_tags has a NOT-NULL user_id (RLS-scoped). The
+              // enqueuer now carries it; without it the insert fails NOT-NULL/RLS.
+              user_id: payload.user_id,
             }));
             const { error: insError } = await sb
               .from(tableName)

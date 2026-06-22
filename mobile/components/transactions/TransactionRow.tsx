@@ -29,7 +29,7 @@ export function TransactionRow({
   account_type,
 }: TransactionRowProps) {
   const router = useRouter();
-  const displayName = merchant_name || description || "Sin descripcion";
+  const displayName = merchant_name || description || "Sin descripción";
   const isInflow = direction === "INFLOW";
   const isDebtPayment = isDebtInflow({ direction, accountType: account_type });
   const semanticCategory = isDebtPayment ? "Abono a deuda" : category_name_es;

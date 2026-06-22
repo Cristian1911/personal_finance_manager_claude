@@ -10,6 +10,21 @@
 
 ---
 
+## Mobile ledger parity — Phase 2 follow-ups (2026-06-22)
+
+Mobile got the 4 ledger mutations (`registerPayment`/`createTransfer`/`reconcileBalance`/`recordRecurringOccurrencePayment`) + screen wiring this session. Verified end-to-end on iOS sim: **account Pagar → registerPayment** (balance + tx + refresh all correct). Remaining:
+
+- **Emulator-verify the other 3 wirings.** Pagar is proven; spot-check **Transferir** (createTransfer paired legs), **Ajustar** (reconcileBalance overwrite), and **Recurrentes Confirmar** (recordRecurringOccurrencePayment — the ex-corruption path) on the sim. Same MobileSheet pattern + gate-reviewed repos, so low risk, but confirm balances move.
+- **createTransfer FROM-debt `available_balance` clamp divergence.** Mobile clamps to 0 via `buildDebtBalanceUpdatePayload`; webapp `transfers.ts` allows negative (over-limit). Edge case (transfer FROM a maxed card). Decide canonical behavior and align both sides. (parity gate, 2026-06-22)
+- **Multi-currency reconcile.** Mobile schema migration v17 added only `accounts.currency_balances TEXT` (NO top-level `total_payment_due` — it's a JSON sub-field; remote view lacks the column). Verify `currency_balances` pulls from the remote accounts view correctly and the multi-currency reconcile path works on a real multi-currency account.
+- **`recurring_template_tags` table missing on mobile.** `recordRecurringOccurrencePayment` probes `sqlite_master` and no-ops the tag copy when absent. Add the synced table so recurring payments carry their template tags.
+- **Slash-opacity NativeWind classes** in the new sheets (`bg-z-brass/30`, `bg-z-debt/10`, `active:bg-z-surface-2/5`) — kept for byte-parity with shipping `PaymentSheet.tsx`; rendered fine live, but they're the NativeWind-v3 footgun. Consider migrating PaymentSheet + the new sheets to explicit tokens together.
+- **Sparse Más menu** vs webapp — no Deudas/Deseos/Recurrentes/Categorías/Destinatarios entry points. Confirm whether this is intentional v2 curation; if not, surface them.
+- **Account-detail time-range chips overlap the floating gear** (6M chip under the settings button). Minor header layout fix in `app/account/[id].tsx`.
+- **PlanRoot period chip hardcoded** — `PlanRoot.tsx:257` `periodHasActive={false}`/`periodPercentAssigned={0}`. Wire via `getActivePeriodWithEntries` (needs userId + the webapp assign-% formula). Pairs with the broader Plan/Periodo CRUD (Phase 4).
+- **`confirmOccurrence` deleted** from `recurring.ts` (superseded by `recordRecurringOccurrencePayment`). One doc-comment reference remains; harmless.
+- **iOS Podfile modular-headers fix is local-only** — `mobile/ios/` is gitignored, so the `pod 'GoogleUtilities'/'RecaptchaInterop', :modular_headers => true` lines (needed for the google-signin/AppCheckCore static-lib error) won't survive `expo prebuild` or reach CI/other devs. Make it durable via `expo-build-properties` in `app.json` (`ios.extraPods` or `useModularHeaders`).
+
 ## Bugs
 
 ### `seedPeriodFromRecurring` — reminder dedup is title/amount-fragile

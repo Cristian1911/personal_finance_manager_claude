@@ -137,7 +137,10 @@ export function DestinatarioDetail({ id }: DestinatarioDetailProps) {
             <View className="flex-row items-center gap-1.5 pt-2">
               <FileText size={12} color={COLORS.sageDark} />
               <Text className="text-[11px] font-inter text-muted-foreground">
-                {destinatario?.transaction_count ?? 0} transacciones
+                {destinatario?.transaction_count ?? 0}{" "}
+                {(destinatario?.transaction_count ?? 0) === 1
+                  ? "transacción"
+                  : "transacciones"}
               </Text>
             </View>
           </View>
@@ -204,7 +207,7 @@ export function DestinatarioDetail({ id }: DestinatarioDetailProps) {
               {transactions.map((tx, idx) => {
                 const isInflow = tx.direction === "INFLOW";
                 const label =
-                  tx.merchant_name ?? tx.description ?? "Sin descripcion";
+                  tx.merchant_name ?? tx.description ?? "Sin descripción";
 
                 return (
                   <MListRow

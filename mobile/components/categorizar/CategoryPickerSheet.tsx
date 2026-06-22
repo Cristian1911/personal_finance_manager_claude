@@ -81,7 +81,7 @@ export function CategoryPickerSheet({
           {/* Header */}
           <View className="flex-row items-center justify-between px-4 pt-4 pb-2">
             <Text className="text-[15px] font-inter-semibold text-foreground">
-              Elegir categoria
+              Elegir categoría
             </Text>
             <Pressable
               onPress={onClose}

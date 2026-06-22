@@ -77,7 +77,7 @@ export default function AccountsListScreen() {
               isNegative ? "text-z-debt" : "text-foreground"
             }`}
           >
-            {formatCurrency(Math.abs(netWorth), "COP" as CurrencyCode)}
+            {(isNegative ? "-" : "") + formatCurrency(Math.abs(netWorth), "COP" as CurrencyCode)}
           </Text>
         </View>
 
