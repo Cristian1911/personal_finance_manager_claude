@@ -114,7 +114,7 @@ export function CategoryPicker({
         className="flex-1 justify-end"
         style={{ backgroundColor: MODAL_SCRIM_COLOR }}
       >
-        <View className="max-h-[72%] min-h-[320px] rounded-t-2xl border-t border-white-6 bg-background">
+        <View className="max-h-[72%] min-h-[320px] rounded-t-2xl border border-white-6 bg-background">
           {/* Header */}
           <View className="flex-row items-center justify-between px-4 pt-4 pb-3 border-b border-white-6">
             <Text className="text-foreground font-inter-bold text-base">

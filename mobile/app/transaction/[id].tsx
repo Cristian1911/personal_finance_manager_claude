@@ -972,7 +972,7 @@ export default function TransactionDetailScreen() {
             className="flex-1 justify-end"
             style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
           >
-            <View className="border-t border-white-6 bg-background rounded-t-2xl pt-2 pb-6">
+            <View className="border border-white-6 bg-background rounded-t-2xl pt-2 pb-6">
               <View className="flex-row justify-end px-4 pb-2">
                 <Pressable
                   onPress={() => setShowDatePicker(false)}

@@ -70,7 +70,7 @@ export function TagPickerSheet({ visible, transactionId, onClose, onSave }: Prop
         style={{ backgroundColor: MODAL_SCRIM_COLOR }}
       >
         <View
-          className="max-h-[80%] min-h-[420px] rounded-t-2xl border-t border-white-6 bg-background"
+          className="max-h-[80%] min-h-[420px] rounded-t-2xl border border-white-6 bg-background"
           style={{ paddingBottom: insets.bottom }}
         >
           <View className="flex-row items-center justify-between px-4 pb-2 pt-4">
