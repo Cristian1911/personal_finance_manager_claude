@@ -32,6 +32,7 @@ import { StatementChip } from "../../components/import/StatementChip";
 import { SectionDivider } from "../../components/import/SectionDivider";
 import { CreditCardSummary } from "../../components/import/CreditCardSummary";
 import { CreditCardStackCard } from "../../components/import/CreditCardStackCard";
+import { PendingEmailQueue } from "../../components/import/PendingEmailQueue";
 import { ImportThemeProvider } from "../../components/import/import-theme";
 import { Narrator } from "../../components/common/Narrator";
 import { useTheme, themeSurfaceClasses } from "../../lib/theme";
@@ -198,7 +199,7 @@ type ReconciliationPreview = {
 };
 
 function ItemSeparator() {
-  return <View className="ml-12 h-px bg-z-surface-2-6" />;
+  return <View className="ml-12 h-px bg-white-6" />;
 }
 
 function AccountSelector({
@@ -1046,7 +1047,16 @@ export default function ImportScreen() {
   if (step === "pick") {
     return (
       <ImportThemeProvider neutral={neutralTheme}>
-      <View className={`flex-1 ${inkCls} px-4 pb-4`} style={{ paddingTop: topInset + 4 }}>
+      <ScrollView
+        className={`flex-1 ${inkCls}`}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: topInset + 4,
+          paddingBottom: MOBILE_TAB_BAR_CLEARANCE,
+        }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <PendingEmailQueue />
         <Text className="text-[11px] font-inter-semibold uppercase text-z-sage-dark tracking-[0.18em]">
           Paso 1 de 4
         </Text>
@@ -1162,7 +1172,7 @@ export default function ImportScreen() {
             </Text>
           )}
         </Pressable>
-      </View>
+      </ScrollView>
       </ImportThemeProvider>
     );
   }
