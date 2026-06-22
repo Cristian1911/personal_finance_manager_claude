@@ -51,6 +51,10 @@ const BOOLEAN_FIELDS: Record<string, string[]> = {
 const JSON_FIELDS: Record<string, string[]> = {
   statement_snapshots: ["statement_json"],
   profiles: ["dashboard_config", "mobile_dashboard_config"],
+  // Per-currency debt detail (JSONB remote, TEXT locally). Without stringifying
+  // it, expo-sqlite can't bind the object and the whole accounts pull throws
+  // ("runAsync failed"), stalling the sync cursor so transactions never pull.
+  accounts: ["currency_balances"],
 };
 
 /** Tables with no updated_at — always full-replace on every sync */
@@ -299,7 +303,17 @@ async function upsertRow(
   const columns = Object.keys(processed).filter((col) => tableColumns.has(col));
   if (columns.length === 0) return;
   const placeholders = columns.map(() => "?").join(", ");
-  const values = columns.map((col) => processed[col] ?? null);
+  // Defense-in-depth: expo-sqlite can only bind string | number | null. Any
+  // other type (a JSON object from a column not in JSON_FIELDS, or a boolean
+  // from a column not in BOOLEAN_FIELDS) makes runAsync throw and stalls the
+  // whole sync cursor. Coerce instead of crashing the pull.
+  const values = columns.map((col) => {
+    const v = processed[col];
+    if (v == null) return null;
+    if (typeof v === "boolean") return v ? 1 : 0;
+    if (typeof v === "object") return JSON.stringify(v);
+    return v as string | number;
+  });
 
   await db.runAsync(
     `INSERT OR REPLACE INTO ${table} (${columns.join(", ")}) VALUES (${placeholders})`,

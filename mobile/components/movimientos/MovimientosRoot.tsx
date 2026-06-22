@@ -170,6 +170,14 @@ export function MovimientosRoot() {
     }
   }, [sync, loadData]);
 
+  /** Re-read the feed + aggregates after a tool mutation (e.g. importing an
+   *  email-queue transaction). The tool already ran syncAll(), so local SQLite
+   *  is current — just reload from it so the new row shows without a manual
+   *  pull-to-refresh. */
+  const handleToolDataChanged = useCallback(() => {
+    void loadData({ reset: true });
+  }, [loadData]);
+
   const handleEndReached = useCallback(async () => {
     if (!hasMore || loadingMore) return;
     setLoadingMore(true);
@@ -430,6 +438,7 @@ export function MovimientosRoot() {
           activeTool={activeTool}
           onToggleTool={handleToggleTool}
           onRequestCategoryPicker={handleRequestPicker}
+          onDataChanged={handleToolDataChanged}
         />
 
         <MovimientosUtilidades
