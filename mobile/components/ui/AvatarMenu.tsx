@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { View, Text, Pressable, Modal } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { MODAL_SCRIM_COLOR } from "./MobileSheet";
 import {
   Settings,
   Upload,
@@ -89,7 +90,11 @@ function AvatarMenuPopover({
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      <Pressable className="flex-1" onPress={onClose}>
+      <Pressable
+        className="flex-1"
+        onPress={onClose}
+        style={{ backgroundColor: MODAL_SCRIM_COLOR }}
+      >
         <View
           style={{
             position: "absolute",
@@ -100,9 +105,9 @@ function AvatarMenuPopover({
         >
           <Pressable
             onPress={(e) => e.stopPropagation()}
-            className="rounded-2xl border border-white-6 bg-z-surface-2-80 overflow-hidden"
+            className="rounded-2xl border border-white-6 bg-z-surface-2 overflow-hidden"
             style={{
-              shadowColor: "#000",
+              shadowColor: COLORS.ink,
               shadowOffset: { width: 0, height: 8 },
               shadowOpacity: 0.35,
               shadowRadius: 24,
@@ -127,7 +132,7 @@ function AvatarMenuPopover({
               )}
             </View>
 
-            <View className="h-px bg-z-surface-2-6 mx-4" />
+            <View className="h-px bg-white-6 mx-4" />
 
             {/* Featured IMPORTAR card */}
             <View className="px-4 pt-3 pb-2">
@@ -141,7 +146,7 @@ function AvatarMenuPopover({
                   </View>
                   <View className="flex-1">
                     <View className="flex-row items-center justify-between">
-                      <Text className="text-[10px] font-inter-semibold uppercase tracking-[2px] text-z-brass">
+                      <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-brass">
                         Importar
                       </Text>
                       <ChevronRight size={14} color={COLORS.brass} />
@@ -157,7 +162,7 @@ function AvatarMenuPopover({
               </Pressable>
             </View>
 
-            <View className="h-px bg-z-surface-2-6 mx-4 mt-2" />
+            <View className="h-px bg-white-6 mx-4 mt-2" />
 
             {/* Nav rows */}
             <View className="py-1">
@@ -201,7 +206,7 @@ function MenuRow({
   return (
     <Pressable
       onPress={onPress}
-      className="flex-row items-center gap-3 px-4 py-3 active:bg-z-surface-2/5"
+      className="flex-row items-center gap-3 px-4 py-3 active:bg-white-5"
     >
       {icon}
       <Text className="flex-1 text-sm font-inter-medium text-foreground">
