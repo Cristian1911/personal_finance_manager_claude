@@ -90,6 +90,8 @@ interface RecentTransactionMobile {
   destinatario_id: string | null;
   destinatario_name: string | null;
   recurrence_group_id: string | null;
+  personal_debt_id: string | null;
+  transfer_group_id: string | null;
   tags: Array<{ id: string; name: string; color: string | null; group_color: string | null }>;
 }
 

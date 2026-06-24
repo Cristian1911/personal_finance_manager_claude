@@ -77,6 +77,8 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
     destinatario_id: tx.destinatario_id ?? null,
     destinatario_name: tx.destinatario?.name ?? null,
     recurrence_group_id: tx.recurrence_group_id ?? null,
+    personal_debt_id: tx.personal_debt_id ?? null,
+    transfer_group_id: tx.transfer_group_id ?? null,
     tags: (tx.transaction_tags ?? []).map((tt) => ({
       id: tt.tag.id,
       name: tt.tag.name,

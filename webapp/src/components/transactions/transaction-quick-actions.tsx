@@ -44,14 +44,40 @@ import {
   type CandidateOccurrence,
 } from "@/actions/occurrences";
 import { getPersonalDebts, linkTransactionToPersonalDebt } from "@/actions/personal-debts";
-import type {
-  TransactionWithAccount,
-  CategoryWithChildren,
-  CurrencyCode,
-} from "@/types/domain";
+import type { CategoryWithChildren, CurrencyCode } from "@/types/domain";
+
+/**
+ * Minimal transaction contract the action surface needs — a structural subset
+ * of `TransactionWithAccount` (so the Movimientos row passes its full tx as-is)
+ * that lighter sources (dashboard recent activity) can also satisfy via a small
+ * adapter. Keep this lean: only fields actually read below.
+ */
+export interface QuickActionTransaction {
+  id: string;
+  account_id: string;
+  direction: "INFLOW" | "OUTFLOW";
+  amount: number;
+  currency_code: string;
+  transaction_date: string;
+  raw_description: string | null;
+  merchant_name: string | null;
+  clean_description: string | null;
+  category: {
+    id: string;
+    name: string;
+    name_es: string | null;
+    icon: string | null;
+    color: string | null;
+  } | null;
+  destinatario: { id: string; name: string } | null;
+  is_excluded: boolean;
+  recurrence_group_id: string | null;
+  personal_debt_id: string | null;
+  transfer_group_id: string | null;
+}
 
 export interface TransactionQuickActionsProps {
-  transaction: TransactionWithAccount;
+  transaction: QuickActionTransaction;
   categories: CategoryWithChildren[];
   tags?: Array<{ id: string; name: string; color: string | null; group_color: string | null }>;
   /** Account IDs with pending recurring occurrences — enables "Vincular a recurrente". */

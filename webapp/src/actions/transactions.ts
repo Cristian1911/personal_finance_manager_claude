@@ -729,6 +729,8 @@ export type RecentTransaction = {
   category_id: string | null;
   destinatario_id: string | null;
   recurrence_group_id: string | null;
+  personal_debt_id: string | null;
+  transfer_group_id: string | null;
   merchant_name: string | null;
   clean_description: string | null;
   transaction_date: string;
@@ -763,7 +765,7 @@ async function getRecentTransactionsCached(
   const { data } = await supabase
     .from("transactions")
     .select(`
-      id, amount, direction, account_id, category_id, destinatario_id, recurrence_group_id, merchant_name, clean_description,
+      id, amount, direction, account_id, category_id, destinatario_id, recurrence_group_id, personal_debt_id, transfer_group_id, merchant_name, clean_description,
       transaction_date, currency_code,
       categories!transactions_category_id_fkey(name_es, name, icon),
       accounts!transactions_account_id_fkey(name, color, mask, bank_key, account_type),
