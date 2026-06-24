@@ -1065,6 +1065,16 @@ export async function updateTransactionAccount(
   }
   if (existing.account_id === accountId) return { success: true, data: null };
 
+  // Defense-in-depth: the target account must belong to the caller, otherwise a
+  // crafted accountId could move the transaction onto another user's account.
+  const { data: targetAccount } = await supabase
+    .from("accounts")
+    .select("id")
+    .eq("id", accountId)
+    .eq("user_id", user.id)
+    .single();
+  if (!targetAccount) return { success: false, error: "Cuenta no encontrada" };
+
   const { error: updateError } = await supabase
     .from("transactions")
     .update({ account_id: accountId })
@@ -1095,6 +1105,76 @@ export async function updateTransactionAccount(
   });
 
   if (!balanceResult.success) return { success: false, error: balanceResult.error };
+
+  revalidateFinancialViews();
+  return { success: true, data: null };
+}
+
+/**
+ * Edit the critical numeric/temporal fields of a transaction — amount, date,
+ * time. Amount changes recompute the account balance (date/time don't). Focused
+ * (doesn't touch title/category/notes) and validated.
+ */
+export async function updateTransactionAmountAndDate(
+  transactionId: string,
+  fields: { amount: number; transaction_date: string; transaction_time: string | null },
+): Promise<ActionResult<null>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  if (!Number.isFinite(fields.amount) || fields.amount <= 0) {
+    return { success: false, error: "El monto debe ser mayor a 0" };
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fields.transaction_date)) {
+    return { success: false, error: "Fecha inválida" };
+  }
+
+  const { data: existing, error: existingError } = await supabase
+    .from("transactions")
+    .select("account_id, amount, direction, is_excluded")
+    .eq("user_id", user.id)
+    .eq("id", transactionId)
+    .single();
+
+  if (existingError || !existing) {
+    return { success: false, error: existingError?.message ?? "Transacción no encontrada" };
+  }
+
+  const { error: updateError } = await supabase
+    .from("transactions")
+    .update({
+      amount: fields.amount,
+      transaction_date: fields.transaction_date,
+      transaction_time: fields.transaction_time,
+    })
+    .eq("user_id", user.id)
+    .eq("id", transactionId);
+
+  if (updateError) return { success: false, error: updateError.message };
+
+  if (existing.amount !== fields.amount) {
+    const balanceResult = await adjustBalancesForTransactionChanges({
+      supabase,
+      userId: user.id,
+      changes: [
+        {
+          existingTx: {
+            account_id: existing.account_id,
+            amount: existing.amount,
+            direction: existing.direction,
+            is_excluded: existing.is_excluded,
+          },
+          nextTx: {
+            account_id: existing.account_id,
+            amount: fields.amount,
+            direction: existing.direction,
+            is_excluded: existing.is_excluded,
+          },
+        },
+      ],
+    });
+    if (!balanceResult.success) return { success: false, error: balanceResult.error };
+  }
 
   revalidateFinancialViews();
   return { success: true, data: null };

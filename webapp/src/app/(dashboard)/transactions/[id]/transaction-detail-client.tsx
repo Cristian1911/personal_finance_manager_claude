@@ -58,6 +58,7 @@ import {
   getTransactionLocation,
   toggleExcludeTransaction,
   updateTransactionAccount,
+  updateTransactionAmountAndDate,
   updateTransactionNotes,
   updateTransactionTitle,
 } from "@/actions/transactions";
@@ -170,6 +171,58 @@ export function TransactionDetailClient({
       }
     });
   }
+
+  /* ─── Monto / Fecha · Hora — staged critical edit ──────────────────── */
+  const [optAmount, setOptAmount] = useState(tx.amount);
+  const [optDate, setOptDate] = useState(tx.transaction_date);
+  const [optTime, setOptTime] = useState<string | null>(tx.transaction_time);
+  const [editDataOpen, setEditDataOpen] = useState(false);
+  const [draftAmount, setDraftAmount] = useState(String(tx.amount));
+  const [draftDate, setDraftDate] = useState(tx.transaction_date);
+  const [draftTime, setDraftTime] = useState(tx.transaction_time?.slice(0, 5) ?? "");
+  const [savingData, setSavingData] = useState(false);
+
+  function openEditData() {
+    setDraftAmount(String(optAmount));
+    setDraftDate(optDate);
+    setDraftTime(optTime?.slice(0, 5) ?? "");
+    setEditDataOpen(true);
+  }
+
+  async function handleSaveData() {
+    const amount = Number(draftAmount.replace(",", "."));
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error("El monto debe ser mayor a 0");
+      return;
+    }
+    const time = draftTime ? `${draftTime}:00` : null;
+    const prev = { amount: optAmount, date: optDate, time: optTime };
+    setSavingData(true);
+    const result = await updateTransactionAmountAndDate(tx.id, {
+      amount,
+      transaction_date: draftDate,
+      transaction_time: time,
+    });
+    setSavingData(false);
+    if (result.success) {
+      setOptAmount(amount);
+      setOptDate(draftDate);
+      setOptTime(time);
+      setEditDataOpen(false);
+      toast.success("Datos actualizados");
+      router.refresh();
+    } else {
+      setOptAmount(prev.amount);
+      setOptDate(prev.date);
+      setOptTime(prev.time);
+      toast.error(result.error ?? "No se pudieron guardar los cambios");
+    }
+  }
+
+  const dataDirty =
+    Number(draftAmount.replace(",", ".")) !== optAmount ||
+    draftDate !== optDate ||
+    (draftTime ? `${draftTime}:00` : null) !== optTime;
 
   /* ─── Linked location (lazy fetch — only when tx.location_id is set) ─── */
   const [location, setLocation] = useState<TransactionLocation | null>(null);
@@ -463,7 +516,7 @@ export function TransactionDetailClient({
           )}
         >
           {isInflow ? "+" : "-"}
-          {formatCurrency(tx.amount, tx.currency_code as CurrencyCode)}
+          {formatCurrency(optAmount, tx.currency_code as CurrencyCode)}
         </p>
 
         {/* Title (editable) */}
@@ -535,11 +588,11 @@ export function TransactionDetailClient({
       <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 pt-3 text-[11px] text-muted-foreground">
         <span className="uppercase tracking-wider">{tx.provider}</span>
         <span className="text-white/15">·</span>
-        <span>{formatDate(tx.transaction_date, "dd MMM yyyy")}</span>
-        {tx.transaction_time && (
+        <span>{formatDate(optDate, "dd MMM yyyy")}</span>
+        {optTime && (
           <>
             <span className="text-white/15">·</span>
-            <span className="tabular-nums">{tx.transaction_time.slice(0, 5)}</span>
+            <span className="tabular-nums">{optTime.slice(0, 5)}</span>
           </>
         )}
       </div>
@@ -856,6 +909,14 @@ export function TransactionDetailClient({
       <section className="px-4 py-4">
         <p className={cn(SECTION_EYEBROW_CLASS, "mb-2")}>Acciones</p>
         <div className="flex flex-wrap items-stretch gap-2">
+          <button
+            type="button"
+            onClick={openEditData}
+            className={DETAIL_ACTION_CHIP_CLASS}
+          >
+            <Pencil className="size-3.5" />
+            Editar datos
+          </button>
           <PromoteToRecurringButton
             transaction={{
               id: tx.id,
@@ -906,6 +967,73 @@ export function TransactionDetailClient({
           </button>
         </div>
       </section>
+
+      {/* ── Editar datos (monto · fecha · hora — staged critical edit) ── */}
+      <Drawer open={editDataOpen} onOpenChange={setEditDataOpen}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>Editar datos</DrawerTitle>
+          </DrawerHeader>
+          <DrawerBody className="space-y-4 px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-z-sage-dark">
+                Monto ({tx.currency_code})
+              </label>
+              <input
+                inputMode="decimal"
+                value={draftAmount}
+                onChange={(e) => setDraftAmount(e.target.value)}
+                className="w-full rounded-xl border border-white/6 bg-white/[0.03] px-3 py-2.5 text-base font-semibold tabular-nums outline-none focus:border-z-brass/40"
+              />
+            </div>
+            <div className="flex gap-3">
+              <div className="flex-1 space-y-1.5">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-z-sage-dark">
+                  Fecha
+                </label>
+                <input
+                  type="date"
+                  value={draftDate}
+                  onChange={(e) => setDraftDate(e.target.value)}
+                  className="w-full rounded-xl border border-white/6 bg-white/[0.03] px-3 py-2.5 text-sm outline-none [color-scheme:dark] focus:border-z-brass/40"
+                />
+              </div>
+              <div className="flex-1 space-y-1.5">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-z-sage-dark">
+                  Hora
+                </label>
+                <input
+                  type="time"
+                  value={draftTime}
+                  onChange={(e) => setDraftTime(e.target.value)}
+                  className="w-full rounded-xl border border-white/6 bg-white/[0.03] px-3 py-2.5 text-sm tabular-nums outline-none [color-scheme:dark] focus:border-z-brass/40"
+                />
+              </div>
+            </div>
+            <p className="rounded-lg border border-z-expense/25 bg-z-expense/5 px-3 py-2 text-[11px] text-z-expense">
+              Cambiar el monto recalcula los saldos de la cuenta y las métricas.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setEditDataOpen(false)}
+                disabled={savingData}
+                className={cn(GHOST_BUTTON_CLASS, "flex-1 rounded-xl py-2.5")}
+              >
+                Descartar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveData}
+                disabled={savingData || !dataDirty}
+                className={cn(BRASS_BUTTON_CLASS, "flex-1 rounded-xl py-2.5 disabled:opacity-50")}
+              >
+                {savingData ? "Guardando…" : "Guardar cambios"}
+              </button>
+            </div>
+          </DrawerBody>
+        </DrawerContent>
+      </Drawer>
 
       {/* ── Link picker sheet ─────────────────────────────────────── */}
       {linking && (
