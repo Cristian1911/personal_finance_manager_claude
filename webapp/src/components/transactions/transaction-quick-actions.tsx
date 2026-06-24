@@ -12,13 +12,14 @@ import {
   Pencil,
   Repeat,
   UserPlus,
+  UserRound,
   MoreHorizontal,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
-import { Chip } from "@/components/ui/chip";
+import { CategoryIcon } from "@/components/categories/category-icon";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { DestinatarioZonePicker } from "@/components/destinatarios/destinatario-zone-picker";
 import { TagZonePicker } from "@/components/tags/tag-zone-picker";
@@ -45,6 +46,10 @@ import {
 } from "@/actions/occurrences";
 import { getPersonalDebts, linkTransactionToPersonalDebt } from "@/actions/personal-debts";
 import type { CategoryWithChildren, CurrencyCode } from "@/types/domain";
+
+/** Equal-width action button for the primary trio (Variante B). */
+const TRIO_BTN_CLASS =
+  "flex-1 inline-flex min-w-0 items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-medium transition-colors";
 
 /**
  * Minimal transaction contract the action surface needs — a structural subset
@@ -111,6 +116,8 @@ export function TransactionQuickActions({
   const [excluded, setExcluded] = useState(tx.is_excluded);
 
   const [moreOpen, setMoreOpen] = useState(false);
+  const [catOpen, setCatOpen] = useState(false);
+  const [destOpen, setDestOpen] = useState(false);
 
   // Link-to-recurring + link-to-persona sheets (same flow as before).
   const [linkPickerOpen, setLinkPickerOpen] = useState(false);
@@ -308,46 +315,71 @@ export function TransactionQuickActions({
         </div>
       )}
 
-      {/* Primary trio — Categoría · Destinatario · Más */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        <CategoryZonePicker
-          categories={categories}
-          value={localCategory?.id ?? null}
-          onValueChange={handleCategorize}
-          direction={tx.direction}
-          placeholder="Categoría"
-          variant="drawer"
-          triggerClassName={cn(
-            "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
-            categoryName
-              ? "border-z-brass/30 bg-z-brass/10 text-z-brass hover:bg-z-brass/15"
-              : "border-white/6 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06]",
+      {/* Primary trio — three equal-width buttons (Variante B) */}
+      <div className="flex items-stretch gap-2">
+        <button
+          type="button"
+          onClick={() => setCatOpen(true)}
+          className={cn(TRIO_BTN_CLASS, "border-z-brass/30 bg-z-brass/10 text-z-brass")}
+        >
+          {categoryName ? (
+            <>
+              {localCategory?.icon && <CategoryIcon icon={localCategory.icon} className="size-3.5 shrink-0" />}
+              <span className="truncate">{categoryName}</span>
+            </>
+          ) : (
+            <>
+              <TagIcon className="size-3.5 shrink-0" />
+              Categorizar
+            </>
           )}
-        />
-        <DestinatarioZonePicker
-          value={localDestinatario?.id ?? null}
-          onValueChange={handleDestinatarioChange}
-          selectedName={localDestinatario?.name}
-          variant="drawer"
-          compact
-          categories={categories}
-          rawDescription={tx.raw_description}
-          merchantName={tx.merchant_name}
-          amount={tx.amount}
-          currencyCode={tx.currency_code as CurrencyCode}
-          triggerClassName={cn(
-            "rounded-full px-2.5 py-1 text-[11px] font-medium",
+        </button>
+        <button
+          type="button"
+          onClick={() => setDestOpen(true)}
+          className={cn(
+            TRIO_BTN_CLASS,
             localDestinatario
-              ? "border-z-brass/30 bg-z-brass/10 text-z-brass hover:bg-z-brass/15"
-              : "border-white/6 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06]",
+              ? "border-z-brass/30 bg-z-brass/10 text-z-brass"
+              : "border-white/8 bg-white/[0.03] text-foreground hover:bg-white/[0.06]",
           )}
-        />
-        <Chip asChild>
-          <button type="button" onClick={() => setMoreOpen(true)}>
-            <MoreHorizontal /> Más
-          </button>
-        </Chip>
+        >
+          <UserRound className="size-3.5 shrink-0" />
+          <span className="truncate">{localDestinatario?.name ?? "Destinatario"}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMoreOpen(true)}
+          className={cn(TRIO_BTN_CLASS, "border-white/8 bg-white/[0.03] text-foreground hover:bg-white/[0.06]")}
+        >
+          <MoreHorizontal className="size-3.5 shrink-0" />
+          Más
+        </button>
       </div>
+
+      {/* Hidden controlled pickers driven by the trio buttons */}
+      <CategoryZonePicker
+        categories={categories}
+        value={localCategory?.id ?? null}
+        onValueChange={handleCategorize}
+        direction={tx.direction}
+        hideTrigger
+        controlledOpen={catOpen}
+        onControlledOpenChange={setCatOpen}
+      />
+      <DestinatarioZonePicker
+        value={localDestinatario?.id ?? null}
+        onValueChange={handleDestinatarioChange}
+        selectedName={localDestinatario?.name}
+        hideTrigger
+        controlledOpen={destOpen}
+        onControlledOpenChange={setDestOpen}
+        categories={categories}
+        rawDescription={tx.raw_description}
+        merchantName={tx.merchant_name}
+        amount={tx.amount}
+        currencyCode={tx.currency_code as CurrencyCode}
+      />
 
       {/* "Más" sheet — secondary actions */}
       <Drawer open={moreOpen} onOpenChange={setMoreOpen}>
