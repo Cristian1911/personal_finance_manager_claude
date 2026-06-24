@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Zeta · Estandarización de acciones + picker de destinatario</title>
+<style>
+  :root{
+    --z-ink:#121412; --z-sage:#768053; --z-brass:#937844; --z-brass-hot:#B29256;
+    --z-sage-light:#D9CCB9; --z-sage-dark:#938C7E; --z-income:#5CB88A; --z-expense:#E8875A;
+    --z-surface:#171A17; --z-surface-2:#1E221E; --z-surface-3:#262B26;
+    --z-white:#ECE8E0; --line:rgba(255,255,255,0.06); --line-2:rgba(255,255,255,0.10);
+    --brass-bg:rgba(147,120,68,0.10); --brass-bd:rgba(147,120,68,0.30);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;}
+  body{background:#0b0c0b;color:var(--z-white);padding:32px 20px 80px;line-height:1.45;}
+  h1{font-size:22px;font-weight:600;letter-spacing:-.02em;margin-bottom:4px;}
+  .sub{color:var(--z-sage-dark);font-size:13px;max-width:760px;margin-bottom:28px;}
+  h2{font-size:15px;font-weight:600;color:var(--z-sage-light);margin:40px 0 4px;display:flex;align-items:center;gap:8px;}
+  h2 .num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:7px;background:var(--brass-bg);border:1px solid var(--brass-bd);color:var(--z-brass-hot);font-size:12px;}
+  .note{color:var(--z-sage-dark);font-size:12.5px;max-width:780px;margin:2px 0 18px;}
+  .eyebrow{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.18em;color:var(--z-sage-dark);margin-bottom:10px;}
+  .row{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start;}
+  /* phone frame */
+  .phone{width:392px;flex:0 0 392px;background:var(--z-ink);border:1px solid var(--line);border-radius:22px;padding:16px;box-shadow:0 8px 30px rgba(0,0,0,.4);}
+  .phone.narrow{width:360px;flex-basis:360px;}
+  .cap{font-size:11px;color:var(--z-sage-dark);margin:8px 2px 0;width:392px;}
+  .badge{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:3px 7px;border-radius:6px;margin-bottom:9px;}
+  .b-now{background:rgba(232,135,90,.12);color:var(--z-expense);border:1px solid rgba(232,135,90,.3);}
+  .b-new{background:var(--brass-bg);color:var(--z-brass-hot);border:1px solid var(--brass-bd);}
+  .b-opt{background:rgba(92,184,138,.10);color:var(--z-income);border:1px solid rgba(92,184,138,.3);}
+  /* tx row */
+  .txrow{display:flex;align-items:center;gap:10px;padding:6px 2px;}
+  .ic{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:rgba(232,135,90,.12);color:var(--z-expense);font-size:13px;}
+  .txmeta{min-width:0;flex:1;}
+  .txt{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .txs{font-size:11px;color:var(--z-sage-dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px;}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--z-brass-hot);flex-shrink:0;}
+  .amt{font-size:14px;font-weight:600;flex-shrink:0;font-variant-numeric:tabular-nums;}
+  /* chips */
+  .chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+  .chip{display:inline-flex;align-items:center;gap:5px;border-radius:999px;font-size:11px;font-weight:500;padding:4px 10px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--z-sage-dark);white-space:nowrap;}
+  .chip svg,.chip .gi{width:13px;height:13px;flex-shrink:0;opacity:.9;}
+  .chip.active{border-color:var(--brass-bd);background:var(--brass-bg);color:var(--z-brass-hot);}
+  .chip.primary{background:var(--z-brass);border-color:var(--z-brass);color:var(--z-ink);font-weight:600;}
+  .chip.danger{color:var(--z-expense);border-color:rgba(232,135,90,.25);}
+  .chip.lg{padding:7px 14px;font-size:12px;}
+  /* old movimientos cramped style (rounded-lg, mixed) */
+  .chip-old{display:inline-flex;align-items:center;gap:5px;border-radius:8px;font-size:10px;font-weight:600;padding:5px 10px;border:1px solid var(--brass-bd);background:var(--brass-bg);color:var(--z-brass-hot);white-space:nowrap;}
+  .chip-old.muted{border-color:var(--line);background:rgba(255,255,255,.03);color:var(--z-sage-dark);font-weight:500;}
+  .grow{flex:1;}
+  /* equal button trio (dashboard) */
+  .trio{display:flex;gap:8px;}
+  .tbtn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--z-sage-light);font-size:12px;font-weight:500;padding:11px 8px;}
+  .tbtn.brass{border-color:var(--brass-bd);background:var(--brass-bg);color:var(--z-brass-hot);}
+  /* picker panel */
+  .panel{border:1px solid var(--line);border-radius:16px;background:var(--z-surface);overflow:hidden;}
+  .psearch{margin:12px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--z-sage-dark);font-size:13px;}
+  .prow{display:flex;align-items:center;gap:10px;padding:11px 14px;font-size:14px;cursor:pointer;}
+  .prow:hover{background:rgba(255,255,255,.04);}
+  .prow .gi{color:var(--z-sage-dark);}
+  .prow.brass{color:var(--z-brass-hot);}
+  .pdiv{height:1px;background:var(--line);margin:2px 12px;}
+  .avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--brass-bg);color:var(--z-brass-hot);flex-shrink:0;}
+  .manage-head{display:flex;align-items:center;gap:10px;margin:12px;padding:11px 12px;border-radius:12px;background:var(--brass-bg);border:1px solid var(--brass-bd);}
+  .gi{display:inline-flex;width:16px;height:16px;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;}
+  .sectlabel{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:var(--z-sage);margin:14px 0 8px;}
+  .card{border-top:1px solid var(--line);padding:13px 0;}
+  .pill-spec{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 0;}
+  .pill-spec .lbl{font-size:11px;color:var(--z-sage-dark);width:150px;}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;font-size:11.5px;color:var(--z-sage-dark);margin-bottom:6px;}
+  .legend span{display:inline-flex;align-items:center;gap:6px;}
+  .sw{width:11px;height:11px;border-radius:3px;}
+  .arrow{font-size:11px;color:var(--z-brass-hot);font-weight:600;align-self:center;padding:0 4px;}
+  .detail-sect{border-top:1px solid var(--line);padding:12px 0;}
+  .mini{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:var(--z-sage);margin-bottom:7px;}
+  .moresheet{margin-top:10px;border:1px solid var(--line);border-radius:16px 16px 0 0;background:var(--z-surface-2);padding:14px;}
+  .moresheet .grab{width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,.15);margin:0 auto 12px;}
+  .actionline{display:flex;align-items:center;gap:11px;padding:11px 4px;font-size:14px;border-bottom:1px solid var(--line);}
+  .actionline:last-child{border-bottom:none;}
+  .actionline.danger{color:var(--z-expense);}
+  .actionline .gi{color:var(--z-sage-light);width:18px;height:18px;}
+  .actionline.danger .gi{color:var(--z-expense);}
+  /* metadata read-layout proposals */
+  .merch-av{width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto;background:rgba(232,135,90,.14);color:var(--z-expense);font-size:22px;border:1px solid rgba(232,135,90,.25);}
+  .hero-tint{padding:22px 16px 18px;text-align:center;background:linear-gradient(180deg,rgba(232,135,90,.14),rgba(232,135,90,0) 78%);}
+  .vcard{border:1px solid var(--line);border-radius:14px;background:var(--z-surface-2);overflow:hidden;margin-top:4px;}
+  .vrow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 13px;font-size:12.5px;border-bottom:1px solid var(--line);}
+  .vrow:last-child{border-bottom:none;}
+  .vrow>span:first-child{color:var(--z-sage-dark);}
+  .vrow b{font-weight:500;text-align:right;}
+  .vrow.plain{padding:10px 0;}
+  .statusbadge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--z-income);background:rgba(92,184,138,.12);border:1px solid rgba(92,184,138,.3);border-radius:999px;padding:2px 9px;}
+  .cal-chip{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;width:34px;height:36px;border-radius:9px;background:var(--z-surface-3);border:1px solid var(--line);line-height:1;}
+  .cal-chip .m{font-size:8px;font-weight:700;letter-spacing:.08em;color:var(--z-expense);text-transform:uppercase;}
+  .cal-chip .d{font-size:15px;font-weight:700;}
+  .mapmini{width:84px;height:42px;border-radius:8px;background:linear-gradient(135deg,#2a2f29,#1b1f1b);border:1px solid var(--line);position:relative;flex-shrink:0;}
+  .mapmini::after{content:"";position:absolute;left:50%;top:50%;width:8px;height:8px;border-radius:50%;background:var(--z-brass-hot);transform:translate(-50%,-50%);box-shadow:0 0 0 3px rgba(147,120,68,.25);}
+</style>
+</head>
+<body>
+<h1>Zeta · Estandarización de superficies de acción + picker de destinatario</h1>
+<p class="sub">Propuestas para visualizar antes de decidir. Cada marco es un teléfono a 392&nbsp;px. Etiquetas: <span class="badge b-now" style="margin:0">ACTUAL</span> estado actual · <span class="badge b-new" style="margin:0">PROPUESTA</span> dirección recomendada · <span class="badge b-opt" style="margin:0">VARIANTE</span> alternativa a elegir.</p>
+
+<!-- ─────────────────────────────  1. CHIP / PILL TOKENS  ───────────────────────────── -->
+<h2><span class="num">1</span> Tokens de chips / pills</h2>
+<p class="note">Hoy conviven dos formas (píldora <code>rounded-full</code> y rectángulo <code>rounded-lg</code>), tres tamaños y colores sueltos. Propuesta: <b>una sola píldora</b> con 4 estados. Esto elimina la deriva en todas las superficies.</p>
+<div class="row">
+  <div class="phone">
+    <span class="badge b-now">ACTUAL · mezcla</span>
+    <div class="chips" style="margin-bottom:12px">
+      <span class="chip-old muted">Categoría ⌄</span>
+      <span class="chip-old">🔧 Mantenimiento</span>
+      <span class="chip-old muted">⛓ Vincular</span>
+    </div>
+    <div class="legend"><span>Distintos radios, pesos y tamaños conviviendo</span></div>
+  </div>
+  <div class="phone">
+    <span class="badge b-new">PROPUESTA · 4 estados, una píldora</span>
+    <div class="pill-spec"><span class="lbl">Neutral (sin valor)</span><span class="chip"><span class="gi">🏷</span>Categoría</span></div>
+    <div class="pill-spec"><span class="lbl">Activo (con valor)</span><span class="chip active"><span class="gi">🔧</span>Mantenimiento</span></div>
+    <div class="pill-spec"><span class="lbl">Primario (1 CTA)</span><span class="chip primary"><span class="gi">＋</span>Categorizar</span></div>
+    <div class="pill-spec"><span class="lbl">Destructivo</span><span class="chip danger"><span class="gi">✕</span>Quitar</span></div>
+    <div class="legend" style="margin-top:8px">
+      <span><span class="sw" style="background:var(--z-brass)"></span>brass</span>
+      <span><span class="sw" style="background:var(--brass-bg);border:1px solid var(--brass-bd)"></span>brass/10</span>
+      <span><span class="sw" style="background:rgba(255,255,255,.03);border:1px solid var(--line)"></span>neutral</span>
+      <span>radio 999px · 11px · icono 13px · gap 5px</span>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────  2. DESTINATARIO PICKER  ───────────────────────────── -->
+<h2><span class="num">2</span> Picker de destinatario — modo gestión</h2>
+<p class="note">Hoy: al abrir el picker con un destinatario YA asignado, vuelve a mostrar la lista de búsqueda completa. Propuesta: si hay uno asignado, abrir en <b>modo gestión</b> con acciones sobre él; "Cambiar" lleva a la lista. Disponible desde <b>cualquier</b> entrada del picker (detalle, movimientos, inicio, formularios).</p>
+<div class="row">
+  <div class="phone">
+    <span class="badge b-now">ACTUAL · vuelve a la lista</span>
+    <div class="panel">
+      <div class="psearch">Buscar destinatario…</div>
+      <div class="prow"><span class="gi">👤</span>Abono Intereses Ahorros</div>
+      <div class="prow"><span class="gi">👤</span>ChatGPT</div>
+      <div class="prow brass"><span class="gi">👤</span>Hermanita <span style="margin-left:auto">✓</span></div>
+      <div class="prow"><span class="gi">👤</span>Compras Amazon</div>
+      <div class="pdiv"></div>
+      <div class="prow brass"><span class="gi">＋</span>Crear nuevo</div>
+    </div>
+    <div class="cap">El usuario ya eligió "Hermanita" — pero el menú lo trata como si fuera a elegir de cero.</div>
+  </div>
+  <div class="phone">
+    <span class="badge b-new">PROPUESTA · modo gestión</span>
+    <div class="panel">
+      <div class="manage-head">
+        <span class="avatar">👤</span>
+        <div style="min-width:0">
+          <div style="font-size:14px;font-weight:600">Hermanita</div>
+          <div style="font-size:11px;color:var(--z-sage-dark)">Destinatario asignado</div>
+        </div>
+      </div>
+      <div class="prow"><span class="gi">⇄</span>Cambiar destinatario</div>
+      <div class="prow"><span class="gi">↗</span>Ver detalles</div>
+      <div class="prow brass"><span class="gi">🏷</span>Agregar patrón</div>
+      <div class="pdiv"></div>
+      <div class="prow" style="color:var(--z-expense)"><span class="gi">✕</span>Quitar destinatario</div>
+    </div>
+    <div class="cap">"Agregar patrón" sólo aparece cuando hay transacción de origen (raw/merchant). "Cambiar" abre la lista de búsqueda de siempre.</div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────  3. ACCIONES INLINE EN LISTAS  ───────────────────────────── -->
+<h2><span class="num">3</span> Acciones inline en listas (Inicio · Movimientos · Categorizar)</h2>
+<p class="note">Hoy la misma transacción tiene dos vocabularios distintos. Propuesta: <b>un solo componente</b> de acciones. Abajo, las dos variantes a decidir.</p>
+
+<div class="eyebrow">Estado actual — dos mundos</div>
+<div class="row">
+  <div class="phone">
+    <span class="badge b-now">ACTUAL · Movimientos (apretado)</span>
+    <div style="border-left:2px solid var(--z-brass);padding-left:10px">
+      <div class="txrow">
+        <span class="ic">↗</span>
+        <div class="txmeta"><div class="txt">JOSE ALEJANDRO CORTES TA…</div><div class="txs"><span class="dot"></span>Bancolombia Ahorros ****43…&nbsp;·&nbsp;Sin cat.</div></div>
+        <span class="amt">-$ 44.100</span>
+      </div>
+      <div class="chips" style="margin-top:8px">
+        <span class="chip-old muted">Categoría ⌄</span>
+        <span class="chip-old muted">👤</span>
+        <span class="chip-old muted">#</span>
+        <span class="chip-old">⛓ Vincular</span>
+        <span class="chip-old muted">👥 Vincular a deuda personal</span>
+        <span class="chip-old muted">✎ Editar</span>
+      </div>
+    </div>
+    <div class="cap">6 chips, formas/tamaños mezclados → 3 filas apretadas en 392&nbsp;px.</div>
+  </div>
+  <div class="phone">
+    <span class="badge b-now">ACTUAL · Inicio (limpio)</span>
+    <div class="txrow">
+      <span class="ic">↗</span>
+      <div class="txmeta"><div class="txt">JOSE ALEJANDRO CORTES TABORDA</div><div class="txs"><span class="dot"></span>Ahorros</div></div>
+      <span class="amt">-$ 44.100</span>
+    </div>
+    <div class="trio" style="margin-top:10px">
+      <span class="tbtn brass">🏷 Categorizar</span>
+      <span class="tbtn">⛓ Vincular</span>
+      <span class="tbtn">⋯ Más</span>
+    </div>
+    <div class="cap">3 botones iguales, lo secundario en "Más". Limpio pero esconde la edición de categoría/destinatario.</div>
+  </div>
+</div>
+
+<div class="eyebrow" style="margin-top:26px">Propuesta — un componente, dos variantes a elegir</div>
+<div class="row">
+  <div class="phone">
+    <span class="badge b-opt">VARIANTE A · edición primero</span>
+    <div class="txrow">
+      <span class="ic">↗</span>
+      <div class="txmeta"><div class="txt">JOSE ALEJANDRO CORTES TA…</div><div class="txs"><span class="dot"></span>Ahorros&nbsp;·&nbsp;Sin cat.</div></div>
+      <span class="amt">-$ 44.100</span>
+    </div>
+    <div class="chips" style="margin-top:10px">
+      <span class="chip"><span class="gi">🏷</span>Categoría</span>
+      <span class="chip"><span class="gi">👤</span>Destinatario</span>
+      <span class="chip"><span class="gi">⋯</span>Más</span>
+    </div>
+    <div class="cap">Lo que más se edita (categoría, destinatario) directo; el resto en "Más". Misma píldora del token #1.</div>
+  </div>
+  <div class="phone" style="outline:2px solid var(--z-income);outline-offset:3px;border-radius:24px">
+    <span class="badge b-opt" style="background:rgba(92,184,138,.18)">VARIANTE B · ✓ ELEGIDA</span>
+    <div class="txrow">
+      <span class="ic">↗</span>
+      <div class="txmeta"><div class="txt">JOSE ALEJANDRO CORTES TA…</div><div class="txs"><span class="dot"></span>Ahorros&nbsp;·&nbsp;Sin cat.</div></div>
+      <span class="amt">-$ 44.100</span>
+    </div>
+    <div class="trio" style="margin-top:10px">
+      <span class="tbtn brass">🏷 Categorizar</span>
+      <span class="tbtn">👤 Destinatario</span>
+      <span class="tbtn">⋯ Más</span>
+    </div>
+    <div class="cap">Hereda el estilo de Inicio (botones iguales) pero unifica el set en todas las listas.</div>
+  </div>
+  <div class="phone">
+    <span class="badge b-new">"Más" → hoja inferior compartida</span>
+    <div class="txrow" style="opacity:.5">
+      <span class="ic">↗</span>
+      <div class="txmeta"><div class="txt">JOSE ALEJANDRO CORTES TA…</div><div class="txs"><span class="dot"></span>Ahorros</div></div>
+      <span class="amt">-$ 44.100</span>
+    </div>
+    <div class="moresheet">
+      <div class="grab"></div>
+      <div class="actionline"><span class="gi">#</span>Etiquetas</div>
+      <div class="actionline"><span class="gi">⛓</span>Vincular a recurrente</div>
+      <div class="actionline"><span class="gi">👥</span>Vincular a deuda personal</div>
+      <div class="actionline"><span class="gi">🚫</span>Excluir de métricas</div>
+      <div class="actionline"><span class="gi">✎</span>Ver / editar detalle</div>
+    </div>
+    <div class="cap">Lo secundario vive aquí, igual en Inicio / Movimientos / Categorizar. Una sola lista de acciones.</div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────  3b. ESTADO ASIGNADO SIN CRAMMING  ───────────────────────────── -->
+<h2><span class="num">3b</span> Mostrar lo asignado sin volver a apretar</h2>
+<p class="note">Tu duda: si asigno algo de "Más" (etiqueta, recurrente, deuda personal, excluida), quiero <b>verlo</b> en la fila expandida — pero sin volver al amontonamiento. Solución: separar <b>estado</b> (lo que YA está, compacto y de sólo-lectura/atajo) de <b>acciones</b> (lo que puedo hacer). Las acciones nunca crecen; el estado se muestra como una "meta-línea" fina.</p>
+<div class="row">
+  <div class="phone">
+    <span class="badge b-now">PROBLEMA · si todo es botón</span>
+    <div class="txrow"><span class="ic">↗</span><div class="txmeta"><div class="txt">TOSTAO</div><div class="txs"><span class="dot"></span>Ahorros</div></div><span class="amt">-$ 11.500</span></div>
+    <div class="chips" style="margin-top:10px">
+      <span class="chip active"><span class="gi">🍔</span>Café/Snacks</span><span class="chip active"><span class="gi">👤</span>TOSTAO</span>
+      <span class="chip active"><span class="gi">#</span>antojo</span><span class="chip active"><span class="gi">🔁</span>Recurrente</span><span class="chip"><span class="gi">⛓</span>Vincular</span><span class="chip danger"><span class="gi">🚫</span>Excluida</span><span class="chip"><span class="gi">⋯</span>Más</span>
+    </div>
+    <div class="cap">Mostrar cada estado como botón → vuelve el muro de chips.</div>
+  </div>
+  <div class="phone">
+    <span class="badge b-new">PROPUESTA · meta-línea + acciones fijas</span>
+    <div class="txrow"><span class="ic">↗</span><div class="txmeta"><div class="txt">TOSTAO</div><div class="txs"><span class="dot"></span>Ahorros</div></div><span class="amt">-$ 11.500</span></div>
+    <!-- meta: estado de solo lectura / atajo, compacto -->
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:9px;font-size:11px;color:var(--z-sage-dark)">
+      <span style="display:inline-flex;align-items:center;gap:4px"><span class="gi" style="width:13px;height:13px">🔁</span>Recurrente</span>
+      <span style="opacity:.4">·</span>
+      <span style="display:inline-flex;align-items:center;gap:4px"><span class="gi" style="width:13px;height:13px">#</span>antojo</span>
+      <span style="opacity:.4">·</span>
+      <span style="display:inline-flex;align-items:center;gap:4px;color:var(--z-expense)"><span class="gi" style="width:13px;height:13px">🚫</span>Excluida</span>
+    </div>
+    <!-- acciones: SIEMPRE el mismo trío, no crece -->
+    <div class="trio" style="margin-top:10px">
+      <span class="tbtn brass">🏷 Café/Snacks</span>
+      <span class="tbtn">👤 TOSTAO</span>
+      <span class="tbtn">⋯ Más</span>
+    </div>
+    <div class="cap">La meta-línea muestra lo asignado de "Más" (recurrente, etiquetas, excluida) como texto compacto y tocable. El trío de acciones es siempre el mismo — categoría y destinatario reflejan su valor (activo) en vez de decir "Categorizar/Destinatario". Tocar un ítem de la meta-línea abre su edición.</div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────  4. DETALLE DE TRANSACCIÓN  ───────────────────────────── -->
+<h2><span class="num">4</span> Detalle de transacción — ideas de layout</h2>
+<p class="note">Pediste ideas para mejorar el layout completo, no sólo alinear píldoras. Abajo: el actual, y <b>tres ideas</b> a elegir/combinar. Todas adoptan el token de píldora #1 y el modo-gestión del destinatario (sección 2).</p>
+<div class="row">
+  <div class="phone">
+    <span class="badge b-now">ACTUAL</span>
+    <div style="font-size:13px;color:var(--z-sage-dark);margin-bottom:4px">GASTO · 31091585050</div>
+    <div style="font-size:26px;font-weight:600;color:var(--z-expense)">-$ 80</div>
+    <div class="detail-sect"><div class="mini">Categoría</div><span class="chip-old">🔧 Mantenimiento ⌄</span></div>
+    <div class="detail-sect"><div class="mini">Destinatario</div><span class="chip-old">👤 Hermanita ⌄</span></div>
+    <div class="detail-sect"><div class="mini">Acciones</div>
+      <div class="chips"><span class="chip-old muted">📅 Hacer recurrente</span><span class="chip-old muted">⛓ Vincular</span><span class="chip-old muted">🚫 Excluir</span><span class="chip-old muted" style="color:var(--z-expense)">🗑 Eliminar</span></div>
+    </div>
+    <div class="cap">Estilo de píldora distinto al de las listas; el destinatario no ofrece acciones (sólo cambiar).</div>
+  </div>
+  <div class="phone">
+    <span class="badge b-opt">IDEA 1 · secciones alineadas (mínimo)</span>
+    <div style="font-size:13px;color:var(--z-sage-dark);margin-bottom:4px">GASTO · 31091585050</div>
+    <div style="font-size:26px;font-weight:600;color:var(--z-expense)">-$ 80</div>
+    <div class="detail-sect"><div class="mini">Categoría</div><span class="chip active"><span class="gi">🔧</span>Mantenimiento <span class="gi">⌄</span></span></div>
+    <div class="detail-sect"><div class="mini">Destinatario</div>
+      <span class="chip active"><span class="gi">👤</span>Hermanita <span class="gi">⌄</span></span>
+    </div>
+    <div class="detail-sect"><div class="mini">Acciones</div>
+      <div class="chips"><span class="chip"><span class="gi">📅</span>Hacer recurrente</span><span class="chip"><span class="gi">⛓</span>Vincular</span><span class="chip"><span class="gi">🚫</span>Excluir</span><span class="chip danger"><span class="gi">🗑</span>Eliminar</span></div>
+    </div>
+    <div class="cap">El layout de hoy, sólo con píldoras del token #1 + gestión del destinatario. Cambio mínimo, bajo riesgo.</div>
+  </div>
+
+  <div class="phone">
+    <span class="badge b-new">IDEA 2 · tarjeta "Clasificación" + barra de acciones</span>
+    <div style="display:flex;align-items:flex-start;gap:10px">
+      <span class="ic" style="width:34px;height:34px;font-size:15px">↗</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:15px;font-weight:600">31091585050</div>
+        <div style="font-size:11px;color:var(--z-sage-dark)">22 jun 2026 · 21:16 · Bancolombia Ahorros</div>
+      </div>
+      <div style="font-size:22px;font-weight:700;color:var(--z-expense)">-$ 80</div>
+    </div>
+    <div class="chips" style="margin-top:8px">
+      <span class="chip" style="font-size:10px"><span class="gi">✉</span>Email</span>
+      <span class="chip" style="font-size:10px"><span class="gi">🔁</span>Recurrente</span>
+    </div>
+    <div style="margin-top:12px;border:1px solid var(--line);border-radius:14px;background:var(--z-surface);overflow:hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 13px;border-bottom:1px solid var(--line)"><span style="font-size:12px;color:var(--z-sage-dark)">Categoría</span><span class="chip active"><span class="gi">🔧</span>Mantenimiento</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 13px;border-bottom:1px solid var(--line)"><span style="font-size:12px;color:var(--z-sage-dark)">Destinatario</span><span class="chip active"><span class="gi">👤</span>Hermanita</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 13px"><span style="font-size:12px;color:var(--z-sage-dark)">Etiquetas</span><span class="chip"><span class="gi">＋</span>Agregar</span></div>
+    </div>
+    <div style="margin-top:10px;border:1px solid var(--line);border-radius:14px;background:var(--z-surface);padding:11px 13px;font-size:12px;color:var(--z-sage-dark)">📝 Toca para agregar una nota…</div>
+    <div style="margin-top:12px;display:flex;gap:8px;border-top:1px solid var(--line);padding-top:12px">
+      <span class="tbtn" style="flex:1">📅 Recurrente</span><span class="tbtn" style="flex:1">⛓ Vincular</span><span class="tbtn" style="flex:1">⋯ Más</span>
+    </div>
+    <div class="cap">Agrupa la clasificación en UNA tarjeta de filas (consistente con cómo se ven cuentas/ajustes). Acciones en una barra inferior fija; lo secundario (Excluir, Eliminar) en "Más". Menos dispersión vertical.</div>
+  </div>
+
+  <div class="phone">
+    <span class="badge b-new">IDEA 3 · hero accionable + meta-línea</span>
+    <div style="font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--z-sage);text-transform:uppercase">Gasto</div>
+    <div style="font-size:28px;font-weight:700;color:var(--z-expense);margin:2px 0">-$ 80</div>
+    <div style="font-size:13px;font-weight:500">31091585050</div>
+    <div style="font-size:11px;color:var(--z-sage-dark);margin-bottom:10px">22 jun 21:16 · Bancolombia Ahorros · Email</div>
+    <div class="chips">
+      <span class="chip active"><span class="gi">🔧</span>Mantenimiento</span>
+      <span class="chip active"><span class="gi">👤</span>Hermanita</span>
+      <span class="chip"><span class="gi">#</span>Etiqueta</span>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;font-size:11px;color:var(--z-sage-dark)">
+      <span style="display:inline-flex;gap:4px;align-items:center"><span class="gi" style="width:13px;height:13px">🔁</span>Recurrente</span><span style="opacity:.4">·</span>
+      <span style="display:inline-flex;gap:4px;align-items:center"><span class="gi" style="width:13px;height:13px">📝</span>Sin nota</span>
+    </div>
+    <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px;display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--z-sage-light)"><span>Más acciones</span><span style="color:var(--z-sage-dark)">⌄</span></div>
+    <div class="cap">Hero accionable: clasificación editable bajo el monto, meta-línea con estado (recurrente/nota), y todo lo demás (vincular, excluir, eliminar, ver original) detrás de "Más acciones". El más compacto y escaneable.</div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────  4b. EDITAR METADATOS + GUARDADO  ───────────────────────────── -->
+<h2><span class="num">4b</span> Modelo de edición / guardado <span style="font-size:12px;color:var(--z-income)">✓ aprobado</span></h2>
+<p class="note">Esto te gustó: campos en línea con <b>dos velocidades de guardado</b> según el riesgo. Lo blando guarda solo; lo crítico se <b>acumula</b> y pide confirmar. (El <b>layout de lectura</b> de los metadatos se rediseña en §4c.)</p>
+<div class="row">
+  <div class="phone" style="outline:2px solid var(--z-income);outline-offset:3px;border-radius:24px">
+    <span class="badge b-new">EDICIÓN · blando autosave · crítico acumulado</span>
+    <div style="display:flex;flex-direction:column;gap:9px">
+      <div><div style="font-size:10px;color:var(--z-sage-dark);margin-bottom:3px">TÍTULO <span style="color:var(--z-income)">· guarda solo</span></div>
+        <div style="border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.03);padding:8px 10px;font-size:13px">31091585050</div></div>
+      <div><div style="font-size:10px;color:var(--z-sage-dark);margin-bottom:3px">MONTO <span style="color:var(--z-expense)">⚠ crítico</span></div>
+        <div style="border:1px solid rgba(232,135,90,.4);border-radius:9px;background:rgba(232,135,90,.06);padding:8px 10px;font-size:13px;display:flex;justify-content:space-between"><span>-$ 80</span><span style="color:var(--z-expense)">editado</span></div></div>
+      <div style="display:flex;gap:8px">
+        <div style="flex:1"><div style="font-size:10px;color:var(--z-sage-dark);margin-bottom:3px">CUENTA <span style="color:var(--z-expense)">⚠</span></div>
+          <div style="border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.03);padding:8px 10px;font-size:12px;display:flex;justify-content:space-between">Ahorros <span style="opacity:.5">⌄</span></div></div>
+        <div style="flex:1"><div style="font-size:10px;color:var(--z-sage-dark);margin-bottom:3px">FECHA · HORA</div>
+          <div style="border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.03);padding:8px 10px;font-size:12px">22/06 21:16</div></div>
+      </div>
+    </div>
+    <div style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px">
+      <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--z-expense);margin-bottom:8px"><span class="gi" style="width:14px;height:14px">⚠</span>Cambiar monto o cuenta recalcula saldos y métricas.</div>
+      <div style="display:flex;gap:8px">
+        <span class="tbtn" style="flex:0 0 auto;padding-left:16px;padding-right:16px">Descartar</span>
+        <span class="tbtn brass" style="flex:1;background:var(--z-brass);color:var(--z-ink);border-color:var(--z-brass);font-weight:600">Guardar cambios</span>
+      </div>
+    </div>
+    <div class="cap"><b>Blando</b> (título, categoría, destinatario, etiquetas, notas) = guarda al instante, optimista. <b>Crítico</b> (monto, cuenta, fecha) = se marca "editado", aparece la barra "Guardar cambios" y al confirmar avisa del impacto. Nada crítico se guarda al perder foco.</div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────  4c. METADATOS LECTURA — 3 PROPUESTAS  ───────────────────────────── -->
+<h2><span class="num">4c</span> Metadatos en lectura — diseño final (tu boceto)</h2>
+<p class="note">Basado en tu boceto: avatar de dirección + monto, descripción, chips <b>Cuenta</b> y <b>Categoría</b>, y una sección "Detalles" en 2 columnas. <b>Quité "Estado/Conciliada"</b> (no aplica en Zeta) y <b>cambié por Ubicación</b>. El vínculo a recurrente NO va acá — vive en su propia sección más abajo. Dejo el final + una variante de hero (plano vs tintado) por si querés el tinte.</p>
+<div class="row">
+
+  <!-- FINAL · boceto centrado -->
+  <div class="phone" style="outline:2px solid var(--z-income);outline-offset:3px;border-radius:24px">
+    <span class="badge b-opt" style="background:rgba(92,184,138,.18)">✓ FINAL · centrado</span>
+    <div style="text-align:center;padding:8px 0 4px">
+      <div class="merch-av">↗</div>
+      <div style="font-size:34px;font-weight:700;color:var(--z-expense);margin-top:12px;line-height:1">-$ 80</div>
+      <div style="font-size:15px;font-weight:600;margin-top:8px">31091585050</div>
+      <div class="chips" style="justify-content:center;margin-top:12px">
+        <span class="chip"><span class="gi">🏦</span>Bancolombia Ahorros</span>
+        <span class="chip active"><span class="gi">🔧</span>Mantenimiento</span>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin:18px 0 4px"><span style="height:1px;flex:1;background:var(--line)"></span><span style="font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--z-sage-dark)">Detalles</span><span style="height:1px;flex:1;background:var(--line)"></span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 10px;margin-top:10px;text-align:center">
+      <div><div style="font-size:10px;color:var(--z-sage-dark);text-transform:uppercase;letter-spacing:.12em">Origen</div><div style="font-size:13px;display:flex;align-items:center;justify-content:center;gap:5px;margin-top:3px"><span class="gi" style="width:13px;height:13px">✉</span>Email</div></div>
+      <div><div style="font-size:10px;color:var(--z-sage-dark);text-transform:uppercase;letter-spacing:.12em">Fecha · Hora</div><div style="font-size:13px;margin-top:3px">22 jun 2026 · 21:16</div></div>
+    </div>
+    <div style="margin-top:16px;text-align:center">
+      <div style="font-size:10px;color:var(--z-sage-dark);text-transform:uppercase;letter-spacing:.12em">Ubicación</div>
+      <div style="font-size:13px;margin-top:4px">📍 Cra 27 #36, Bucaramanga</div>
+      <span class="mapmini" style="display:block;width:100%;height:72px;margin-top:8px"></span>
+    </div>
+    <div style="margin-top:16px;text-align:center;font-size:12px;color:var(--z-brass-hot)"><span class="gi" style="width:13px;height:13px">✎</span> Editar datos</div>
+    <div class="cap">Centrado, hero plano. Avatar → monto → descripción → chips Cuenta/Categoría, todo centrado. "Detalles" en dos columnas centradas + Ubicación con mini-mapa ancho. Hora y ubicación sólo si existen. Sin "Estado".</div>
+  </div>
+</div>
+
+<div style="display:none">
+
+  <!-- R1 · Recibo agrupado -->
+  <div class="phone">
+    <span class="badge b-new">R1 · Recibo (hero centrado + tarjeta)</span>
+    <div style="text-align:center;padding:6px 0 14px">
+      <div class="merch-av">↗</div>
+      <div style="font-size:10px;color:var(--z-sage-dark);text-transform:uppercase;letter-spacing:.16em;margin-top:10px">Gasto · vía Email</div>
+      <div style="font-size:30px;font-weight:700;color:var(--z-expense);margin-top:3px">-$ 80</div>
+      <div style="font-size:13px;color:var(--z-sage-light)">31091585050</div>
+    </div>
+    <div class="vcard">
+      <div class="vrow"><span>Cuenta</span><b>Bancolombia Ahorros ****4398</b></div>
+      <div class="vrow"><span>Fecha</span><b>22 jun 2026 · 21:16</b></div>
+      <div class="vrow"><span>Estado</span><span class="statusbadge">✓ Conciliada</span></div>
+    </div>
+    <div style="margin-top:10px;text-align:center;font-size:12px;color:var(--z-brass-hot)"><span class="gi" style="width:13px;height:13px">✎</span> Editar datos</div>
+    <div class="cap">Estilo recibo: hero centrado con avatar de dirección + UNA tarjeta agrupada label→valor. Aire y jerarquía; lo crítico (monto/cuenta) se lee de un vistazo.</div>
+  </div>
+
+  <!-- R2 · Hero tintado -->
+  <div class="phone" style="overflow:hidden">
+    <span class="badge b-new">R2 · Hero tintado + detalles</span>
+    <div class="hero-tint" style="margin:6px -16px 0;">
+      <div class="merch-av">↗</div>
+      <div style="font-size:28px;font-weight:700;color:var(--z-expense);margin-top:10px">-$ 80</div>
+      <div style="font-size:14px;font-weight:500">31091585050</div>
+      <div class="chips" style="justify-content:center;margin-top:10px">
+        <span class="chip"><span class="gi">🏦</span>Ahorros</span>
+        <span class="chip active"><span class="gi">🔧</span>Mantenimiento</span>
+      </div>
+    </div>
+    <div style="padding-top:6px">
+      <div class="mini" style="margin-top:10px">Detalles</div>
+      <div class="vrow plain"><span>Fecha · hora</span><b>22 jun 2026 · 21:16</b></div>
+      <div class="vrow plain" style="border-top:1px solid var(--line)"><span>Origen</span><b>✉ Email</b></div>
+      <div class="vrow plain" style="border-top:1px solid var(--line)"><span>Estado</span><span class="statusbadge">✓ Conciliada</span></div>
+    </div>
+    <div class="cap">Banda superior tintada (color del tipo: gasto=naranja / ingreso=verde, muy sutil) con monto + título + chips. Detalles abajo como filas limpias. Aireado y "premium".</div>
+  </div>
+
+  <!-- R3 · Compacto + ubicación -->
+  <div class="phone">
+    <span class="badge b-new">R3 · Compacto + ubicación</span>
+    <div style="display:flex;align-items:center;gap:10px;padding-bottom:10px;border-bottom:1px solid var(--line)">
+      <span class="ic" style="background:var(--z-surface-3);color:var(--z-sage-light)">🏦</span>
+      <div style="flex:1;min-width:0"><div style="font-size:10px;color:var(--z-sage-dark)">Cuenta</div><div style="font-size:13px;font-weight:500">Bancolombia Ahorros</div></div>
+      <div class="cal-chip"><span class="m">Jun</span><span class="d">22</span></div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
+      <div><div style="font-size:26px;font-weight:700;color:var(--z-expense)">-$ 80</div><div style="font-size:13px">31091585050</div></div>
+      <span class="statusbadge">✓ Conciliada</span>
+    </div>
+    <div class="vcard" style="margin-top:14px">
+      <div class="vrow"><span>Hora</span><b>21:16</b></div>
+      <div class="vrow"><span>Origen</span><b>✉ Email</b></div>
+      <div class="vrow"><span>Ubicación</span><div style="display:flex;align-items:center;gap:8px"><b style="font-size:11px;max-width:120px">Cra 27 #36, Bucaramanga</b><span class="mapmini"></span></div></div>
+    </div>
+    <div class="cap">Encabezado cuenta + chip de calendario (tipo #11). Trae <b>ubicación</b> con mini-mapa cuando existe (Zeta ya guarda location), sin el exceso de texto de la referencia #9.</div>
+  </div>
+</div>
+
+<p class="note" style="margin-top:40px;border-top:1px solid var(--line);padding-top:18px">
+  <b>Diseño cerrado ✓</b> — chips token #1 · inline <b>Variante B</b> · "Más" · meta-línea §3b · destinatario modo-gestión §2 · detalle <b>Idea 2</b> · metadatos <b>centrado, hero plano</b> (sin Estado, con Ubicación; recurrente en sección propia) · edición/guardado §4b.
+  Sin decisiones pendientes. Próximo paso: plan de implementación.
+</p>
+</body>
+</html>
