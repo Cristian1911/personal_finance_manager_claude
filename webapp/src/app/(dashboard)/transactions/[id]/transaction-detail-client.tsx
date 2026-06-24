@@ -411,8 +411,8 @@ export function TransactionDetailClient({
       {/* ── Hero (centered metadata) ─────────────────────────────────── */}
       <header
         className={cn(
-          "relative overflow-hidden border-b border-white/6 px-4 pb-5 pt-6 text-center",
-          "bg-[radial-gradient(circle_at_top,rgba(200,181,96,0.08),transparent_55%),linear-gradient(180deg,rgba(26,29,26,0.9),rgba(18,20,18,0.95))]",
+          "relative px-4 pb-4 pt-6 text-center",
+          "bg-[radial-gradient(circle_at_top,rgba(200,181,96,0.06),transparent_60%)]",
         )}
       >
         {/* Direction avatar */}
