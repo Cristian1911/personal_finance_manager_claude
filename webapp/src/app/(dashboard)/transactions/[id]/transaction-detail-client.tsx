@@ -794,7 +794,7 @@ export function TransactionDetailClient({
       {location && (
         <section className="px-4 pt-4">
           <p className={cn(SECTION_EYEBROW_CLASS, "mb-2")}>Ubicación</p>
-          <div className="rounded-xl border border-white/6 bg-white/[0.04] p-3">
+          <div className="rounded-xl border border-white/6 bg-z-surface-2/60 p-3">
             <div className="flex items-center gap-3">
               <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-z-brass/15 text-z-brass">
                 <MapPin className="size-4" />
@@ -871,7 +871,7 @@ export function TransactionDetailClient({
             type="button"
             onClick={handleNotesOpen}
             className={cn(
-              "block w-full rounded-xl border border-white/6 bg-black/10 px-3 py-2 text-left text-sm transition-colors hover:bg-white/[0.03]",
+              "block w-full rounded-xl border border-white/6 bg-z-surface-2/60 px-3 py-2.5 text-left text-sm transition-colors hover:bg-white/[0.04]",
               !notes && "italic text-muted-foreground",
             )}
           >
