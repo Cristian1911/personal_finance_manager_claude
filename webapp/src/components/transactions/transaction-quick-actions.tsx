@@ -153,7 +153,7 @@ export function TransactionQuickActions({
 
   const debtCounterparty =
     localDestinatario &&
-    destinatarios.some((d) => d.id === localDestinatario.id && d.kind === "person")
+    destinatarios?.some((d) => d.id === localDestinatario.id && d.kind === "person")
       ? localDestinatario
       : null;
 

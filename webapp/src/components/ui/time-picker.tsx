@@ -179,7 +179,14 @@ function Wheel({
     if (!open) return;
     const c = scrollRef.current;
     if (!c) return;
-    const idx = Math.max(0, items.indexOf(selected ?? items[0]));
+    // Center the closest available value — `selected` may be off-step (e.g. a
+    // minute of 34 with minuteStep 5), so indexOf alone would land on 0.
+    const target = selected ?? items[0];
+    const closest = items.reduce(
+      (prev, curr) => (Math.abs(curr - target) < Math.abs(prev - target) ? curr : prev),
+      items[0],
+    );
+    const idx = Math.max(0, items.indexOf(closest));
     programmaticRef.current = true;
     requestAnimationFrame(() => {
       c.scrollTop = idx * ITEM_H;
@@ -191,6 +198,9 @@ function Wheel({
     // user's scroll.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // Clear the pending snap-settle timeout if the picker closes/unmounts mid-scroll.
+  React.useEffect(() => () => window.clearTimeout(debounceRef.current), []);
 
   function handleScroll() {
     if (programmaticRef.current) return;

@@ -87,7 +87,7 @@ function AddPatternForm({
           added++;
           for (const c of result.conflicts ?? []) {
             if (c.destinatarioId === destinatarioId) continue;
-            const name = destinatarios.find((d) => d.id === c.destinatarioId)?.name;
+            const name = destinatarios?.find((d) => d.id === c.destinatarioId)?.name;
             if (name) conflictNames.add(name);
           }
         } else if (!firstError) {
