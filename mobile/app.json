@@ -2,7 +2,7 @@
   "expo": {
     "name": "Zeta",
     "slug": "zeta",
-    "version": "1.1.4",
+    "version": "1.1.5",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "zeta",
@@ -135,6 +135,17 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "extraPods": [
+              { "name": "GoogleUtilities", "modular_headers": true },
+              { "name": "RecaptchaInterop", "modular_headers": true }
+            ]
+          }
+        }
+      ],
       "expo-router",
       "expo-secure-store",
       "expo-system-ui",
