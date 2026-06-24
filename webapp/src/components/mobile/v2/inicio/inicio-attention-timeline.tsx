@@ -62,7 +62,7 @@ export function InicioAttentionTimeline({
           </div>
         </div>
       ) : (
-        <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 scrollbar-none">
+        <div className="-mx-3 flex touch-pan-x gap-2 overflow-x-auto overscroll-x-contain px-3 pb-1 scrollbar-none">
           {items.map((item) => (
             <Link
               key={item.id}
