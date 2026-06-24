@@ -10,6 +10,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
+type Period = "AM" | "PM";
+
 interface TimePickerProps {
   value?: string | null;
   onChange: (value: string | null) => void;
@@ -26,6 +28,7 @@ interface TimePickerProps {
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
+/** Parse stored 24h "HH:mm" → 24h hour + minute. */
 function parseTime(value: string | null | undefined): { h: number | null; m: number | null } {
   if (!value) return { h: null, m: null };
   const match = value.match(/^(\d{1,2}):(\d{2})/);
@@ -33,9 +36,16 @@ function parseTime(value: string | null | undefined): { h: number | null; m: num
   return { h: Number(match[1]), m: Number(match[2]) };
 }
 
+/** Build a 24h "HH:mm" from 12h hour (1-12) + period + minute. */
+function build(hour12: number, period: Period, minute: number): string {
+  let h = hour12 % 12; // 12 → 0
+  if (period === "PM") h += 12; // 0→12 … 11→23
+  return `${pad(h)}:${pad(minute)}`;
+}
+
 /**
- * Time-of-day picker. Stores values as "HH:mm" strings. Opens a popover with
- * tap-to-select hour and minute columns (no keyboard) — alarm-clock style.
+ * Time-of-day picker. Stores values as 24h "HH:mm". Opens a popover with
+ * tap-to-select hour / minute / AM·PM columns (no keyboard) — alarm-clock style.
  */
 export function TimePicker({
   value,
@@ -48,10 +58,12 @@ export function TimePicker({
   minuteStep = 1,
 }: TimePickerProps) {
   const [open, setOpen] = React.useState(false);
-  const { h, m } = parseTime(value);
-  const display = value ? `${pad(h ?? 0)}:${pad(m ?? 0)}` : null;
+  const { h: h24, m } = parseTime(value);
+  const hour12 = h24 == null ? null : ((h24 + 11) % 12) + 1;
+  const period: Period = h24 != null && h24 >= 12 ? "PM" : "AM";
+  const display = value ? `${pad(hour12 ?? 12)}:${pad(m ?? 0)} ${period}` : null;
 
-  const hours = React.useMemo(() => Array.from({ length: 24 }, (_, i) => i), []);
+  const hours = React.useMemo(() => Array.from({ length: 12 }, (_, i) => i + 1), []);
   const minutes = React.useMemo(
     () => Array.from({ length: Math.ceil(60 / minuteStep) }, (_, i) => i * minuteStep),
     [minuteStep],
@@ -79,20 +91,26 @@ export function TimePicker({
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start" sideOffset={6}>
           <div className="flex">
-            <TimeColumn
+            <NumberColumn
               label="Hora"
               items={hours}
-              selected={h}
+              selected={hour12}
               open={open}
-              onSelect={(nh) => onChange(`${pad(nh)}:${pad(m ?? 0)}`)}
+              onSelect={(nh) => onChange(build(nh, period, m ?? 0))}
             />
             <div className="w-px self-stretch bg-white/6" />
-            <TimeColumn
+            <NumberColumn
               label="Min"
               items={minutes}
               selected={m}
               open={open}
-              onSelect={(nm) => onChange(`${pad(h ?? 0)}:${pad(nm)}`)}
+              onSelect={(nm) => onChange(build(hour12 ?? 12, period, nm))}
+            />
+            <div className="w-px self-stretch bg-white/6" />
+            <PeriodColumn
+              selected={period}
+              hasValue={value != null}
+              onSelect={(p) => onChange(build(hour12 ?? 12, p, m ?? 0))}
             />
           </div>
         </PopoverContent>
@@ -101,7 +119,7 @@ export function TimePicker({
   );
 }
 
-function TimeColumn({
+function NumberColumn({
   label,
   items,
   selected,
@@ -118,8 +136,7 @@ function TimeColumn({
   const selectedRef = React.useRef<HTMLButtonElement>(null);
 
   // Center the selected value when the popover opens. Manual scrollTop (not
-  // scrollIntoView) so it stays scoped to this column and doesn't shove the
-  // popover/page around.
+  // scrollIntoView) so it stays scoped to this column.
   React.useEffect(() => {
     if (!open) return;
     requestAnimationFrame(() => {
@@ -132,9 +149,7 @@ function TimeColumn({
 
   return (
     <div className="flex flex-col">
-      <div className="border-b border-white/6 px-3 py-1.5 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {label}
-      </div>
+      <ColumnHeader>{label}</ColumnHeader>
       <div
         ref={scrollRef}
         className="relative h-48 w-16 overflow-y-auto overscroll-contain py-1 scrollbar-none"
@@ -159,6 +174,50 @@ function TimeColumn({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function PeriodColumn({
+  selected,
+  hasValue,
+  onSelect,
+}: {
+  selected: Period;
+  hasValue: boolean;
+  onSelect: (value: Period) => void;
+}) {
+  return (
+    <div className="flex flex-col">
+      <ColumnHeader>AM/PM</ColumnHeader>
+      <div className="flex h-48 w-16 flex-col justify-center gap-1 p-1.5">
+        {(["AM", "PM"] as const).map((p) => {
+          const isSel = hasValue && selected === p;
+          return (
+            <button
+              key={p}
+              type="button"
+              onClick={() => onSelect(p)}
+              className={cn(
+                "rounded-md px-2 py-2 text-center text-sm font-semibold transition-colors",
+                isSel
+                  ? "bg-z-brass/15 text-z-brass"
+                  : "text-foreground hover:bg-white/5",
+              )}
+            >
+              {p}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ColumnHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="border-b border-white/6 px-3 py-1.5 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      {children}
     </div>
   );
 }
