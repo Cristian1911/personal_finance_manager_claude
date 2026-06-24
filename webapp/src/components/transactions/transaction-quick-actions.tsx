@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
+import { chipBackground, zoneBorder, zoneTextColor } from "@/lib/utils/zone-colors";
 import { CategoryIcon } from "@/components/categories/category-icon";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { DestinatarioZonePicker } from "@/components/destinatarios/destinatario-zone-picker";
@@ -47,9 +48,23 @@ import {
 import { getPersonalDebts, linkTransactionToPersonalDebt } from "@/actions/personal-debts";
 import type { CategoryWithChildren, CurrencyCode } from "@/types/domain";
 
-/** Equal-width action button for the primary trio (Variante B). */
+/** Base action button for the primary trio (Variante B). Categoría/Destinatario
+ *  take `flex-1`; "Más" stays content-width so the two grow. */
 const TRIO_BTN_CLASS =
-  "flex-1 inline-flex min-w-0 items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-medium transition-colors";
+  "inline-flex min-w-0 items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-medium transition-colors";
+
+/** Resolve a category's display color (parent zone color, like the picker). */
+function resolveCategoryColor(
+  categories: CategoryWithChildren[],
+  id: string,
+): string | null {
+  for (const parent of categories) {
+    if (parent.id === id) return parent.color ?? null;
+    const child = parent.children?.find((c) => c.id === id);
+    if (child) return parent.color ?? child.color ?? null;
+  }
+  return null;
+}
 
 /**
  * Minimal transaction contract the action surface needs — a structural subset
@@ -133,6 +148,8 @@ export function TransactionQuickActions({
   const description =
     tx.merchant_name || tx.clean_description || tx.raw_description || "Sin descripción";
   const categoryName = localCategory?.name_es ?? localCategory?.name ?? null;
+  const catColor =
+    categoryName && localCategory ? resolveCategoryColor(categories, localCategory.id) : null;
 
   const debtCounterparty =
     localDestinatario &&
@@ -315,12 +332,25 @@ export function TransactionQuickActions({
         </div>
       )}
 
-      {/* Primary trio — three equal-width buttons (Variante B) */}
+      {/* Primary trio — Categoría · Destinatario grow; Más stays compact */}
       <div className="flex items-stretch gap-2">
         <button
           type="button"
           onClick={() => setCatOpen(true)}
-          className={cn(TRIO_BTN_CLASS, "border-z-brass/30 bg-z-brass/10 text-z-brass")}
+          className={cn(
+            TRIO_BTN_CLASS,
+            "flex-1",
+            !catColor && "border-z-brass/30 bg-z-brass/10 text-z-brass",
+          )}
+          style={
+            catColor
+              ? {
+                  backgroundColor: chipBackground(catColor),
+                  borderColor: zoneBorder(catColor),
+                  color: zoneTextColor(catColor),
+                }
+              : undefined
+          }
         >
           {categoryName ? (
             <>
@@ -339,6 +369,7 @@ export function TransactionQuickActions({
           onClick={() => setDestOpen(true)}
           className={cn(
             TRIO_BTN_CLASS,
+            "flex-1",
             localDestinatario
               ? "border-z-brass/30 bg-z-brass/10 text-z-brass"
               : "border-white/8 bg-white/[0.03] text-foreground hover:bg-white/[0.06]",
@@ -350,7 +381,11 @@ export function TransactionQuickActions({
         <button
           type="button"
           onClick={() => setMoreOpen(true)}
-          className={cn(TRIO_BTN_CLASS, "border-white/8 bg-white/[0.03] text-foreground hover:bg-white/[0.06]")}
+          aria-label="Más acciones"
+          className={cn(
+            TRIO_BTN_CLASS,
+            "shrink-0 border-white/8 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06]",
+          )}
         >
           <MoreHorizontal className="size-3.5 shrink-0" />
           Más
