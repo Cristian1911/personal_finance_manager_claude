@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { Check, ChevronsUpDown, Plus, UserRound } from "lucide-react";
+import { Check, ChevronsUpDown, Plus, Tag, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -27,6 +27,7 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { useDestinatarios } from "@/components/providers/app-data-provider";
 import { createDestinatario, getRecentDestinatarios, addDestinatarioRule } from "@/actions/destinatarios";
 import { DestinatarioCreateDialog } from "@/components/destinatarios/destinatario-create-form";
+import { AddDestinatarioPatternDialog } from "@/components/destinatarios/add-destinatario-pattern-dialog";
 import type { CategoryWithChildren, CurrencyCode, DestinatarioKind } from "@/types/domain";
 import { toast } from "sonner";
 
@@ -67,6 +68,14 @@ interface DestinatarioZonePickerProps {
    * Defaults to the sole kindFilter entry when exactly one is given.
    */
   createKind?: DestinatarioKind;
+  /**
+   * When true and a destinatario is already selected, the picker offers an
+   * "Agregar patrón a {nombre}" action that opens the seeded pattern builder
+   * (same chip recognition as the create wizard). Requires the seed props
+   * (rawDescription / merchantName / amount / currencyCode) to be useful.
+   * Off by default so generic picker usages stay uncluttered.
+   */
+  allowAddPattern?: boolean;
 }
 
 export function DestinatarioZonePicker({
@@ -87,6 +96,7 @@ export function DestinatarioZonePicker({
   currencyCode,
   kindFilter,
   createKind,
+  allowAddPattern = false,
 }: DestinatarioZonePickerProps) {
   // When exactly one kind is being filtered, default new rows to that kind so
   // creation isn't immediately hidden by the same filter.
@@ -98,6 +108,7 @@ export function DestinatarioZonePicker({
   // pass categories.
   const seeded = Boolean(categories);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showAddPattern, setShowAddPattern] = useState(false);
   // Carries the typed search term into the create form's Nombre field, since
   // closing the picker clears `search`.
   const [dialogPrefillName, setDialogPrefillName] = useState<string | undefined>(undefined);
@@ -295,6 +306,20 @@ export function DestinatarioZonePicker({
             {d.id === value && <Check className="size-4 text-z-brass" />}
           </button>
         ))}
+        {/* Add a detection pattern to the already-selected destinatario */}
+        {allowAddPattern && value && displayName && !creating && (
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              setShowAddPattern(true);
+            }}
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-z-brass transition-colors hover:bg-white/5"
+          >
+            <Tag className="size-3.5" />
+            <span className="truncate">Agregar patrón a {displayName}</span>
+          </button>
+        )}
         {/* Inline create form */}
         {creating && !search ? (
           <form
@@ -370,6 +395,20 @@ export function DestinatarioZonePicker({
       />
     ) : null;
 
+  const addPatternDialog =
+    allowAddPattern && value && displayName && showAddPattern ? (
+      <AddDestinatarioPatternDialog
+        open={showAddPattern}
+        onOpenChange={setShowAddPattern}
+        destinatarioId={value}
+        destinatarioName={displayName}
+        rawDescription={rawDescription}
+        merchantName={merchantName}
+        amount={amount}
+        currencyCode={currencyCode}
+      />
+    ) : null;
+
   if (variant === "popover") {
     return (
       <>
@@ -384,6 +423,7 @@ export function DestinatarioZonePicker({
           </PopoverContent>
         </Popover>
         {createDialog}
+        {addPatternDialog}
       </>
     );
   }
@@ -415,6 +455,7 @@ export function DestinatarioZonePicker({
           </DialogContent>
         </Dialog>
         {createDialog}
+        {addPatternDialog}
       </>
     );
   }
@@ -437,6 +478,7 @@ export function DestinatarioZonePicker({
         </DrawerContent>
       </Drawer>
       {createDialog}
+      {addPatternDialog}
     </>
   );
 }

@@ -28,7 +28,6 @@ import { formatDate, formatDateTime } from "@/lib/utils/date";
 import { chipBackground, zoneTextColor } from "@/lib/utils/zone-colors";
 import {
   BRASS_BUTTON_CLASS,
-  CHIP_NEUTRAL_CLASS,
   DESTRUCTIVE_BUTTON_CLASS,
   GHOST_BUTTON_CLASS,
   SECTION_EYEBROW_CLASS,
@@ -36,7 +35,6 @@ import {
 import { CategoryIcon } from "@/components/categories/category-icon";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { DestinatarioZonePicker } from "@/components/destinatarios/destinatario-zone-picker";
-import { AddDestinatarioPatternDialog } from "@/components/destinatarios/add-destinatario-pattern-dialog";
 import { TagZonePicker } from "@/components/tags/tag-zone-picker";
 import { LinkPickerSheet } from "@/components/recurring/link-picker-sheet";
 import { PromoteToRecurringButton } from "@/components/transactions/promote-to-recurring-button";
@@ -222,7 +220,6 @@ export function TransactionDetailClient({
   const [optDestId, setOptDestId] = useState<string | null>(tx.destinatario_id);
   const [optDestName, setOptDestName] = useState<string | null>(currentDestinatarioName);
   const [destOpen, setDestOpen] = useState(false);
-  const [addPatternOpen, setAddPatternOpen] = useState(false);
   const [, startDestTransition] = useTransition();
   // When the user has a locked (manually edited) title, assigning a destinatario
   // whose name differs prompts before replacing the title.
@@ -530,37 +527,21 @@ export function TransactionDetailClient({
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
             Destinatario
           </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setDestOpen(true)}
-              aria-label="Cambiar destinatario"
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold",
-                optDestName
-                  ? "bg-z-brass/12 text-z-brass"
-                  : "border border-white/6 bg-white/[0.03] font-normal text-muted-foreground",
-              )}
-            >
-              <UserRound className="size-3.5" />
-              <span>{optDestName ?? "Sin destinatario"}</span>
-              <ChevronDown className="ml-0.5 size-3 opacity-60" />
-            </button>
-            {optDestId && optDestName && (
-              <button
-                type="button"
-                onClick={() => setAddPatternOpen(true)}
-                aria-label={`Agregar patrón a ${optDestName}`}
-                className={cn(
-                  CHIP_NEUTRAL_CLASS,
-                  "gap-1 px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-white/[0.06]",
-                )}
-              >
-                <Plus className="size-3" />
-                Agregar patrón
-              </button>
+          <button
+            type="button"
+            onClick={() => setDestOpen(true)}
+            aria-label="Cambiar destinatario"
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold",
+              optDestName
+                ? "bg-z-brass/12 text-z-brass"
+                : "border border-white/6 bg-white/[0.03] font-normal text-muted-foreground",
             )}
-          </div>
+          >
+            <UserRound className="size-3.5" />
+            <span>{optDestName ?? "Sin destinatario"}</span>
+            <ChevronDown className="ml-0.5 size-3 opacity-60" />
+          </button>
           <DestinatarioZonePicker
             value={optDestId}
             selectedName={optDestName}
@@ -569,23 +550,12 @@ export function TransactionDetailClient({
             controlledOpen={destOpen}
             onControlledOpenChange={setDestOpen}
             categories={categories}
+            allowAddPattern
             rawDescription={tx.raw_description}
             merchantName={tx.merchant_name}
             amount={tx.amount}
             currencyCode={tx.currency_code as CurrencyCode}
           />
-          {optDestId && optDestName && addPatternOpen && (
-            <AddDestinatarioPatternDialog
-              open={addPatternOpen}
-              onOpenChange={setAddPatternOpen}
-              destinatarioId={optDestId}
-              destinatarioName={optDestName}
-              rawDescription={tx.raw_description}
-              merchantName={tx.merchant_name}
-              amount={tx.amount}
-              currencyCode={tx.currency_code as CurrencyCode}
-            />
-          )}
         </div>
 
         {/* Etiquetas */}
