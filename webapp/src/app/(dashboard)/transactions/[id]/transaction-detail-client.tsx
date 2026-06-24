@@ -29,7 +29,9 @@ import { chipBackground, zoneTextColor } from "@/lib/utils/zone-colors";
 import {
   BRASS_BUTTON_CLASS,
   DESTRUCTIVE_BUTTON_CLASS,
+  DETAIL_ACTION_CHIP_CLASS,
   GHOST_BUTTON_CLASS,
+  MOBILE_SHEET_SAFE_AREA_CLASS,
   SECTION_EYEBROW_CLASS,
 } from "@/lib/constants/styles";
 import { CategoryIcon } from "@/components/categories/category-icon";
@@ -87,12 +89,6 @@ import type {
   Transaction,
   TransactionLocation,
 } from "@/types/domain";
-
-/** Neutral chip button used in the Acciones row. Brass-solid "Hacer recurrente"
- * is supplied by PromoteToRecurringButton; destructive + toggle chips append
- * their own color classes on top. */
-const DETAIL_ACTION_CHIP_CLASS =
-  "inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/6 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-foreground transition-colors active:opacity-70 disabled:opacity-50";
 
 /** Fallback category chip color when a category has no `color` set. Hex literal
  * is intentional — `chipBackground()` / `zoneTextColor()` in `zone-colors.ts`
@@ -747,7 +743,7 @@ export function TransactionDetailClient({
             <DrawerHeader>
               <DrawerTitle>Cuenta</DrawerTitle>
             </DrawerHeader>
-            <DrawerBody className="px-2 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+            <DrawerBody className={cn("px-2", MOBILE_SHEET_SAFE_AREA_CLASS)}>
               {accounts
                 .filter((a) => a.currency_code === tx.currency_code)
                 .map((a) => (
@@ -977,7 +973,7 @@ export function TransactionDetailClient({
           </DrawerHeader>
           <DrawerBody className="space-y-4 px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-z-sage-dark">
+              <label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
                 Monto ({tx.currency_code})
               </label>
               <CurrencyInput
@@ -989,7 +985,7 @@ export function TransactionDetailClient({
             </div>
             <div className="flex gap-3">
               <div className="flex-1 space-y-1.5">
-                <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-z-sage-dark">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
                   Fecha
                 </label>
                 <DatePicker
@@ -1000,7 +996,7 @@ export function TransactionDetailClient({
                 />
               </div>
               <div className="flex-1 space-y-1.5">
-                <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-z-sage-dark">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
                   Hora
                 </label>
                 <TimePicker
