@@ -759,6 +759,67 @@ export function TransactionDetailClient({
         </Drawer>
       </section>
 
+      {/* ── Acciones (uniform grid, reachable above the fold) ────────── */}
+      <section className="px-4 pt-5">
+        <p className={cn(SECTION_EYEBROW_CLASS, "mb-2")}>Acciones</p>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={openEditData}
+            className={cn(DETAIL_ACTION_CHIP_CLASS, "w-full")}
+          >
+            <Pencil className="size-3.5" />
+            Editar datos
+          </button>
+          <PromoteToRecurringButton
+            transaction={{
+              id: tx.id,
+              account_id: tx.account_id,
+              amount: tx.amount,
+              currency_code: tx.currency_code as CurrencyCode,
+              direction: tx.direction,
+              merchant_name: tx.merchant_name,
+              clean_description: tx.clean_description,
+              category_id: tx.category_id,
+              destinatario_id: tx.destinatario_id,
+              transaction_date: tx.transaction_date,
+            }}
+            isLinkedToOccurrence={isLinkedToOccurrence}
+            accounts={accounts}
+            categories={categories}
+            triggerClassName={cn(DETAIL_ACTION_CHIP_CLASS, "w-full")}
+          />
+          {vincularEligible && (
+            <button
+              type="button"
+              onClick={handleOpenLinkPicker}
+              disabled={isLinkingPending}
+              className={cn(DETAIL_ACTION_CHIP_CLASS, "w-full")}
+            >
+              <Link2 className="size-3.5" />
+              Vincular
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleToggleExclude}
+            disabled={excluding}
+            className={cn(DETAIL_ACTION_CHIP_CLASS, "w-full")}
+          >
+            {optExcluded ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+            {optExcluded ? "Incluir en métricas" : "Excluir de métricas"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setDeleteConfirmOpen(true)}
+            className={cn(DETAIL_ACTION_CHIP_CLASS, "w-full border-z-debt/20 bg-z-debt/8 text-z-debt")}
+          >
+            <Trash2 className="size-3.5" />
+            Eliminar
+          </button>
+        </div>
+      </section>
+
       {/* ── Vinculado a recurrente ─────────────────────────────────── */}
       {linkedRecurring && (
         <section className="px-4 pt-4">
@@ -901,69 +962,6 @@ export function TransactionDetailClient({
             </div>
           );
         })()}
-      </section>
-
-      {/* ── Acciones ───────────────────────────────────────────────── */}
-      <section className="px-4 py-4">
-        <p className={cn(SECTION_EYEBROW_CLASS, "mb-2")}>Acciones</p>
-        <div className="flex flex-wrap items-stretch gap-2">
-          <button
-            type="button"
-            onClick={openEditData}
-            className={DETAIL_ACTION_CHIP_CLASS}
-          >
-            <Pencil className="size-3.5" />
-            Editar datos
-          </button>
-          <PromoteToRecurringButton
-            transaction={{
-              id: tx.id,
-              account_id: tx.account_id,
-              amount: tx.amount,
-              currency_code: tx.currency_code as CurrencyCode,
-              direction: tx.direction,
-              merchant_name: tx.merchant_name,
-              clean_description: tx.clean_description,
-              category_id: tx.category_id,
-              destinatario_id: tx.destinatario_id,
-              transaction_date: tx.transaction_date,
-            }}
-            isLinkedToOccurrence={isLinkedToOccurrence}
-            accounts={accounts}
-            categories={categories}
-          />
-          {vincularEligible && (
-            <button
-              type="button"
-              onClick={handleOpenLinkPicker}
-              disabled={isLinkingPending}
-              className={DETAIL_ACTION_CHIP_CLASS}
-            >
-              <Link2 className="size-3.5" />
-              Vincular
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={handleToggleExclude}
-            disabled={excluding}
-            className={DETAIL_ACTION_CHIP_CLASS}
-          >
-            {optExcluded ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
-            {optExcluded ? "Incluir en métricas" : "Excluir de métricas"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setDeleteConfirmOpen(true)}
-            className={cn(
-              DETAIL_ACTION_CHIP_CLASS,
-              "border-z-debt/20 bg-z-debt/8 text-z-debt",
-            )}
-          >
-            <Trash2 className="size-3.5" />
-            Eliminar
-          </button>
-        </div>
       </section>
 
       {/* ── Editar datos (monto · fecha · hora — staged critical edit) ── */}

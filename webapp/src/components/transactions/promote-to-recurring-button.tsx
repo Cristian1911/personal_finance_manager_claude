@@ -46,6 +46,8 @@ type PromoteToRecurringButtonProps = {
   isLinkedToOccurrence: boolean;
   accounts: Account[];
   categories: CategoryWithChildren[];
+  /** Override the trigger button style (defaults to the brass CTA). */
+  triggerClassName?: string;
 };
 
 function prefillFromTransaction(tx: PromoteSourceTx): Partial<RecurringTemplate> {
@@ -78,6 +80,7 @@ export function PromoteToRecurringButton({
   isLinkedToOccurrence,
   accounts,
   categories,
+  triggerClassName,
 }: PromoteToRecurringButtonProps) {
   // Auto-open when navigated here with ?promote=1 (e.g. from the Vincular
   // picker on /transactions). Only opens for unlinked tx.
@@ -141,7 +144,7 @@ export function PromoteToRecurringButton({
     <>
       <Button
         type="button"
-        className={BRASS_BUTTON_CLASS}
+        className={triggerClassName ?? BRASS_BUTTON_CLASS}
         onClick={() => setOpen(true)}
       >
         <CalendarClock className="size-4" aria-hidden="true" />

@@ -433,8 +433,10 @@ export function CategoryPickerBody({
       row.getBoundingClientRect().top -
       container.getBoundingClientRect().top +
       container.scrollTop;
+    // Leave a small gap so the expanded card's rounded top outline + zone label
+    // aren't clipped by the scroll container's top edge.
     container.scrollTo({
-      top: Math.max(0, target),
+      top: Math.max(0, target - 10),
       behavior: didMount.current ? "smooth" : "auto",
     });
   }, [expandedZoneId]);
