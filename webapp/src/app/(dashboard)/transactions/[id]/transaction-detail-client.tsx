@@ -24,7 +24,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
-import { formatDate, formatDateTime } from "@/lib/utils/date";
+import { formatDate } from "@/lib/utils/date";
 import { chipBackground, zoneTextColor } from "@/lib/utils/zone-colors";
 import {
   BRASS_BUTTON_CLASS,
@@ -457,17 +457,19 @@ export function TransactionDetailClient({
             className="mx-auto mt-2 w-full max-w-xs border-b border-z-brass/40 bg-transparent text-center text-base font-semibold text-z-white outline-none placeholder:text-muted-foreground focus:border-z-brass"
           />
         ) : (
-          <button
-            type="button"
-            onClick={handleTitleOpen}
-            aria-label="Editar título"
-            className="group mx-auto mt-2 flex max-w-full items-center justify-center gap-1.5"
-          >
-            <h1 className="truncate text-base font-semibold text-z-white">
-              {title || "Transacción"}
-            </h1>
-            <Pencil className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-          </button>
+          <div className="mt-2 flex justify-center">
+            <button
+              type="button"
+              onClick={handleTitleOpen}
+              aria-label="Editar título"
+              className="relative max-w-full px-5"
+            >
+              <h1 className="truncate text-center text-base font-semibold text-z-white">
+                {title || "Transacción"}
+              </h1>
+              <Pencil className="absolute right-0 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground/40" />
+            </button>
+          </div>
         )}
 
         {/* Status badges */}
@@ -497,17 +499,8 @@ export function TransactionDetailClient({
           )}
         </div>
 
-        {/* Cuenta + Categoría chips */}
-        <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
-          {account && (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/6 bg-white/[0.03] px-2.5 py-1 text-xs text-muted-foreground">
-              <span
-                className="size-2 shrink-0 rounded-full"
-                style={{ backgroundColor: account.color ?? undefined }}
-              />
-              {account.name}
-            </span>
-          )}
+        {/* Categoría chip */}
+        <div className="mt-3 flex items-center justify-center">
           <button type="button" onClick={() => setCatOpen(true)} aria-label="Cambiar categoría">
             {selectedCategory ? (
               <span
@@ -551,17 +544,31 @@ export function TransactionDetailClient({
           <span className="h-px flex-1 bg-white/6" />
         </div>
         <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-4 text-center">
-          <div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-z-sage-dark">
+              Cuenta
+            </p>
+            <p className="mt-1 truncate text-sm">{account?.name ?? "—"}</p>
+          </div>
+          <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-z-sage-dark">
               Origen
             </p>
-            <p className="mt-1 text-sm uppercase tracking-wider">{tx.provider}</p>
+            <p className="mt-1 truncate text-sm uppercase tracking-wider">{tx.provider}</p>
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-z-sage-dark">
-              Fecha · Hora
+              Fecha
             </p>
-            <p className="mt-1 text-sm">{formatDateTime(tx.transaction_date, tx.transaction_time)}</p>
+            <p className="mt-1 text-sm">{formatDate(tx.transaction_date, "dd MMM yyyy")}</p>
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-z-sage-dark">
+              Hora
+            </p>
+            <p className="mt-1 text-sm tabular-nums">
+              {tx.transaction_time ? tx.transaction_time.slice(0, 5) : "—"}
+            </p>
           </div>
         </div>
       </section>
