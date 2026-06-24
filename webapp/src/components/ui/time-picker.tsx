@@ -26,6 +26,10 @@ interface TimePickerProps {
   minuteStep?: number;
 }
 
+const ITEM_H = 40; // px — wheel item height
+const COL_H = 200; // px — visible column height (must be a multiple of ITEM_H for clean centering)
+const PAD = (COL_H - ITEM_H) / 2;
+
 const pad = (n: number) => String(n).padStart(2, "0");
 
 /** Parse stored 24h "HH:mm" → 24h hour + minute. */
@@ -45,11 +49,9 @@ function build(hour12: number, period: Period, minute: number): string {
 
 /**
  * Time-of-day picker. Stores values as 24h "HH:mm". Opens a popover with
- * scrollable hour / minute columns + an AM·PM toggle (alarm-clock style).
- *
- * The popover portals into the nearest modal (`[role="dialog"]` — vaul drawers
- * and Radix dialogs both qualify) so its columns scroll inside that modal's
- * scroll-lock instead of being blocked as portaled-to-body content.
+ * snap-wheel hour / minute columns (the value that lands in the center band
+ * becomes the selection) + an AM·PM toggle. Portals into the nearest modal
+ * (`[role="dialog"]`) so it scrolls inside that modal's scroll-lock.
  */
 export function TimePicker({
   value,
@@ -111,7 +113,7 @@ export function TimePicker({
           sideOffset={6}
         >
           <div className="flex">
-            <ScrollColumn
+            <Wheel
               label="Hora"
               items={hours}
               selected={hour12}
@@ -119,7 +121,7 @@ export function TimePicker({
               onSelect={(nh) => onChange(build(nh, period, m ?? 0))}
             />
             <div className="w-px self-stretch bg-white/6" />
-            <ScrollColumn
+            <Wheel
               label="Min"
               items={minutes}
               selected={m}
@@ -129,17 +131,17 @@ export function TimePicker({
             <div className="w-px self-stretch bg-white/6" />
             <div className="flex flex-col">
               <ColumnHeader>AM/PM</ColumnHeader>
-              <div className="flex h-48 w-16 flex-col justify-center gap-1 p-1.5">
+              <div className="flex w-16 flex-col justify-center gap-1 p-1.5" style={{ height: COL_H }}>
                 {(["AM", "PM"] as const).map((p) => (
                   <button
                     key={p}
                     type="button"
                     onClick={() => onChange(build(hour12 ?? 12, p, m ?? 0))}
                     className={cn(
-                      "rounded-md px-2 py-2 text-center text-sm font-semibold transition-colors",
+                      "rounded-md px-2 py-2.5 text-center text-sm font-semibold transition-colors",
                       value != null && period === p
                         ? "bg-z-brass/15 text-z-brass"
-                        : "text-foreground hover:bg-white/5",
+                        : "text-muted-foreground hover:text-foreground",
                     )}
                   >
                     {p}
@@ -154,7 +156,7 @@ export function TimePicker({
   );
 }
 
-function ScrollColumn({
+function Wheel({
   label,
   items,
   selected,
@@ -168,44 +170,71 @@ function ScrollColumn({
   onSelect: (value: number) => void;
 }) {
   const scrollRef = React.useRef<HTMLDivElement>(null);
-  const selectedRef = React.useRef<HTMLButtonElement>(null);
+  const debounceRef = React.useRef<number | undefined>(undefined);
+  // Suppress the scroll handler while we programmatically center on open, so it
+  // doesn't fire onSelect and set a value the user never chose.
+  const programmaticRef = React.useRef(false);
 
   React.useEffect(() => {
     if (!open) return;
+    const c = scrollRef.current;
+    if (!c) return;
+    const idx = Math.max(0, items.indexOf(selected ?? items[0]));
+    programmaticRef.current = true;
     requestAnimationFrame(() => {
-      const el = selectedRef.current;
-      const container = scrollRef.current;
-      if (!el || !container) return;
-      container.scrollTop = el.offsetTop - container.clientHeight / 2 + el.clientHeight / 2;
+      c.scrollTop = idx * ITEM_H;
+      window.setTimeout(() => {
+        programmaticRef.current = false;
+      }, 250);
     });
+    // Only on open — re-centering on `selected`/`items` change would fight the
+    // user's scroll.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  function handleScroll() {
+    if (programmaticRef.current) return;
+    const c = scrollRef.current;
+    if (!c) return;
+    window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => {
+      const idx = Math.min(items.length - 1, Math.max(0, Math.round(c.scrollTop / ITEM_H)));
+      const val = items[idx];
+      if (val !== selected) onSelect(val);
+    }, 110);
+  }
 
   return (
     <div className="flex flex-col">
       <ColumnHeader>{label}</ColumnHeader>
-      <div
-        ref={scrollRef}
-        className="relative h-48 w-16 overflow-y-auto overscroll-contain py-1 scrollbar-none"
-      >
-        {items.map((it) => {
-          const isSel = selected === it;
-          return (
+      <div className="relative w-16" style={{ height: COL_H }}>
+        {/* Center selection band */}
+        <div className="pointer-events-none absolute inset-x-1.5 top-1/2 h-10 -translate-y-1/2 rounded-md bg-white/[0.05]" />
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="h-full snap-y snap-mandatory overflow-y-auto overscroll-contain scrollbar-none"
+        >
+          <div style={{ height: PAD }} aria-hidden />
+          {items.map((it) => (
             <button
               key={it}
-              ref={isSel ? selectedRef : undefined}
               type="button"
-              onClick={() => onSelect(it)}
+              onClick={() => {
+                scrollRef.current?.scrollTo({ top: items.indexOf(it) * ITEM_H, behavior: "smooth" });
+                onSelect(it);
+              }}
               className={cn(
-                "block w-full rounded-md px-2 py-1.5 text-center text-sm tabular-nums transition-colors",
-                isSel
-                  ? "bg-z-brass/15 font-semibold text-z-brass"
-                  : "text-foreground hover:bg-white/5",
+                "flex w-full snap-center items-center justify-center text-sm tabular-nums transition-colors",
+                it === selected ? "font-semibold text-z-brass" : "text-muted-foreground hover:text-foreground",
               )}
+              style={{ height: ITEM_H }}
             >
               {pad(it)}
             </button>
-          );
-        })}
+          ))}
+          <div style={{ height: PAD }} aria-hidden />
+        </div>
       </div>
     </div>
   );
