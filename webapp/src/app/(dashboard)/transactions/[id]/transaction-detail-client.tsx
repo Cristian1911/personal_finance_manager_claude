@@ -69,6 +69,9 @@ import {
   DrawerBody,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import { CurrencyInput } from "@/components/ui/currency-input";
+import { DatePicker } from "@/components/ui/date-picker";
+import { TimePicker } from "@/components/ui/time-picker";
 import { removeTagFromEntity } from "@/actions/tags";
 import {
   getCandidateOccurrencesForTransaction,
@@ -977,11 +980,11 @@ export function TransactionDetailClient({
               <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-z-sage-dark">
                 Monto ({tx.currency_code})
               </label>
-              <input
-                inputMode="decimal"
+              <CurrencyInput
                 value={draftAmount}
                 onChange={(e) => setDraftAmount(e.target.value)}
-                className="w-full rounded-xl border border-white/6 bg-white/[0.03] px-3 py-2.5 text-base font-semibold tabular-nums outline-none focus:border-z-brass/40"
+                inputMode="decimal"
+                className="h-auto rounded-xl border-white/6 bg-white/[0.03] px-3 py-2.5 text-base font-semibold tabular-nums focus-visible:border-z-brass/40 focus-visible:ring-0"
               />
             </div>
             <div className="flex gap-3">
@@ -989,22 +992,21 @@ export function TransactionDetailClient({
                 <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-z-sage-dark">
                   Fecha
                 </label>
-                <input
-                  type="date"
+                <DatePicker
                   value={draftDate}
-                  onChange={(e) => setDraftDate(e.target.value)}
-                  className="w-full rounded-xl border border-white/6 bg-white/[0.03] px-3 py-2.5 text-sm outline-none [color-scheme:dark] focus:border-z-brass/40"
+                  onChange={(v) => setDraftDate(v ?? "")}
+                  placeholder="Fecha"
+                  className="w-full"
                 />
               </div>
               <div className="flex-1 space-y-1.5">
                 <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-z-sage-dark">
                   Hora
                 </label>
-                <input
-                  type="time"
+                <TimePicker
                   value={draftTime}
-                  onChange={(e) => setDraftTime(e.target.value)}
-                  className="w-full rounded-xl border border-white/6 bg-white/[0.03] px-3 py-2.5 text-sm tabular-nums outline-none [color-scheme:dark] focus:border-z-brass/40"
+                  onChange={(v) => setDraftTime(v ?? "")}
+                  className="h-auto rounded-xl border-white/6 bg-white/[0.03] py-2.5"
                 />
               </div>
             </div>
