@@ -28,6 +28,7 @@ import { formatDate, formatDateTime } from "@/lib/utils/date";
 import { chipBackground, zoneTextColor } from "@/lib/utils/zone-colors";
 import {
   BRASS_BUTTON_CLASS,
+  CHIP_NEUTRAL_CLASS,
   DESTRUCTIVE_BUTTON_CLASS,
   GHOST_BUTTON_CLASS,
   SECTION_EYEBROW_CLASS,
@@ -549,7 +550,11 @@ export function TransactionDetailClient({
               <button
                 type="button"
                 onClick={() => setAddPatternOpen(true)}
-                className="inline-flex items-center gap-1 rounded-full border border-white/6 bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-white/[0.06]"
+                aria-label={`Agregar patrón a ${optDestName}`}
+                className={cn(
+                  CHIP_NEUTRAL_CLASS,
+                  "gap-1 px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-white/[0.06]",
+                )}
               >
                 <Plus className="size-3" />
                 Agregar patrón

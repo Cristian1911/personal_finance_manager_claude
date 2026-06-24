@@ -21,7 +21,10 @@ import {
   DrawerDescription,
 } from "@/components/ui/drawer";
 import { DestinatarioPatternBuilder } from "@/components/destinatarios/destinatario-pattern-builder";
-import { attachPatternToDestinatario } from "@/actions/destinatarios";
+import {
+  attachPatternToDestinatario,
+  applyDestinatarioRules,
+} from "@/actions/destinatarios";
 import { useDestinatarios } from "@/components/providers/app-data-provider";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
@@ -57,7 +60,18 @@ function AddPatternForm({
   const [pending, startTransition] = React.useTransition();
 
   function handleSubmit() {
-    const list = value.split(",").map((p) => p.trim()).filter(Boolean);
+    // Case-insensitive de-dupe so repeated chips/typos don't re-run the action.
+    const seen = new Set<string>();
+    const list = value
+      .split(",")
+      .map((p) => p.trim())
+      .filter((p) => {
+        if (!p) return false;
+        const key = p.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
     if (list.length === 0) {
       toast.error("Escribe o selecciona un patrón");
       return;
@@ -82,10 +96,20 @@ function AddPatternForm({
       }
 
       if (added > 0) {
-        toast.success(
+        // Retroactively link existing unassigned transactions that match the new
+        // rule(s), apply the default category, and revalidate financial views —
+        // matches what the "Probar" preview promises the user.
+        const linkResult = await applyDestinatarioRules(destinatarioId);
+        const linked = linkResult.success ? linkResult.data.linked : 0;
+
+        const base =
           added === 1
             ? `Patrón agregado a ${destinatarioName}`
-            : `${added} patrones agregados a ${destinatarioName}`,
+            : `${added} patrones agregados a ${destinatarioName}`;
+        toast.success(
+          linked > 0
+            ? `${base} · ${linked} transacción${linked === 1 ? "" : "es"} vinculada${linked === 1 ? "" : "s"}`
+            : base,
         );
         if (conflictNames.size > 0) {
           toast.warning(
