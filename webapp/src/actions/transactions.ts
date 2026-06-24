@@ -1055,7 +1055,7 @@ export async function updateTransactionAccount(
 
   const { data: existing, error: existingError } = await supabase
     .from("transactions")
-    .select("account_id, amount, direction, is_excluded")
+    .select("account_id, amount, direction, is_excluded, currency_code")
     .eq("user_id", user.id)
     .eq("id", transactionId)
     .single();
@@ -1069,11 +1069,21 @@ export async function updateTransactionAccount(
   // crafted accountId could move the transaction onto another user's account.
   const { data: targetAccount } = await supabase
     .from("accounts")
-    .select("id")
+    .select("id, currency_code")
     .eq("id", accountId)
     .eq("user_id", user.id)
     .single();
   if (!targetAccount) return { success: false, error: "Cuenta no encontrada" };
+
+  // The tx amount is in its own currency with no FX here — moving it to an
+  // account of a different currency would subtract a raw amount from a
+  // different-currency balance and corrupt it. Require a currency match.
+  if (targetAccount.currency_code !== existing.currency_code) {
+    return {
+      success: false,
+      error: "La cuenta debe tener la misma moneda que la transacción",
+    };
+  }
 
   const { error: updateError } = await supabase
     .from("transactions")

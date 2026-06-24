@@ -180,7 +180,7 @@ export function TransactionDetailClient({
   const [draftAmount, setDraftAmount] = useState(String(tx.amount));
   const [draftDate, setDraftDate] = useState(tx.transaction_date);
   const [draftTime, setDraftTime] = useState(tx.transaction_time?.slice(0, 5) ?? "");
-  const [savingData, setSavingData] = useState(false);
+  const [savingData, startDataTransition] = useTransition();
 
   function openEditData() {
     setDraftAmount(String(optAmount));
@@ -189,34 +189,30 @@ export function TransactionDetailClient({
     setEditDataOpen(true);
   }
 
-  async function handleSaveData() {
+  function handleSaveData() {
     const amount = Number(draftAmount.replace(",", "."));
     if (!Number.isFinite(amount) || amount <= 0) {
       toast.error("El monto debe ser mayor a 0");
       return;
     }
     const time = draftTime ? `${draftTime}:00` : null;
-    const prev = { amount: optAmount, date: optDate, time: optTime };
-    setSavingData(true);
-    const result = await updateTransactionAmountAndDate(tx.id, {
-      amount,
-      transaction_date: draftDate,
-      transaction_time: time,
+    startDataTransition(async () => {
+      const result = await updateTransactionAmountAndDate(tx.id, {
+        amount,
+        transaction_date: draftDate,
+        transaction_time: time,
+      });
+      if (result.success) {
+        setOptAmount(amount);
+        setOptDate(draftDate);
+        setOptTime(time);
+        setEditDataOpen(false);
+        toast.success("Datos actualizados");
+        router.refresh();
+      } else {
+        toast.error(result.error ?? "No se pudieron guardar los cambios");
+      }
     });
-    setSavingData(false);
-    if (result.success) {
-      setOptAmount(amount);
-      setOptDate(draftDate);
-      setOptTime(time);
-      setEditDataOpen(false);
-      toast.success("Datos actualizados");
-      router.refresh();
-    } else {
-      setOptAmount(prev.amount);
-      setOptDate(prev.date);
-      setOptTime(prev.time);
-      toast.error(result.error ?? "No se pudieron guardar los cambios");
-    }
   }
 
   const dataDirty =
@@ -739,7 +735,9 @@ export function TransactionDetailClient({
               <DrawerTitle>Cuenta</DrawerTitle>
             </DrawerHeader>
             <DrawerBody className="px-2 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-              {accounts.map((a) => (
+              {accounts
+                .filter((a) => a.currency_code === tx.currency_code)
+                .map((a) => (
                 <button
                   key={a.id}
                   type="button"
