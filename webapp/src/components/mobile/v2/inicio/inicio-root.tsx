@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, RotateCcw, Settings2 } from "lucide-react";
 import { toast } from "sonner";
@@ -139,16 +139,10 @@ export function InicioRoot({
     : -1;
   const editingWidget = editingIndex >= 0 ? layout.widgets[editingIndex] : null;
 
-  // Lock body scroll whenever any chip is expanded so the inline accordion
-  // doesn't fight touch gestures inside horizontal-scroll widget details.
-  useEffect(() => {
-    if (!activeZone) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [activeZone]);
+  // NOTE: we intentionally do NOT lock body scroll while a zone is expanded.
+  // A global `body { overflow: hidden }` made expanded content unreachable
+  // (the page couldn't scroll to reveal it). Horizontal-scroll widget details
+  // isolate their own gesture via `overscroll-x-contain` at the source instead.
 
   const live = useLiveDashboard(
     {

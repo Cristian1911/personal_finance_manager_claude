@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { cn } from "@/lib/utils";
 import {
   packRows,
@@ -51,6 +51,23 @@ export function WidgetGrid({
 }: WidgetGridProps) {
   const rows = useMemo(() => packRows(widgets), [widgets]);
 
+  // Protection layer: when a zone expands, smoothly scroll its row into view so
+  // the expanded detail is never left hidden below the fold (the page scroll is
+  // no longer locked). `block: "nearest"` pins the panel up/down minimally; the
+  // detail's own max-height + overflow-y-auto handles content taller than the
+  // viewport. Timeout clears the 200ms grid-template-rows expand animation first.
+  const rowRefs = useRef<(HTMLDivElement | null)[]>([]);
+  useEffect(() => {
+    if (!activeId) return;
+    const idx = rows.findIndex((row) => row.some((w) => w.id === activeId));
+    const el = rowRefs.current[idx];
+    if (!el) return;
+    const t = setTimeout(() => {
+      el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 220);
+    return () => clearTimeout(t);
+  }, [activeId, rows]);
+
   return (
     <div className="flex flex-col gap-2.5">
       {rows.map((row, rowIdx) => {
@@ -62,7 +79,19 @@ export function WidgetGrid({
         }));
         const active = rendered.find((x) => x.isActive);
         return (
-          <div key={rowIdx} className="flex flex-col gap-2">
+          <div
+            key={rowIdx}
+            ref={(el) => {
+              rowRefs.current[rowIdx] = el;
+            }}
+            className="flex flex-col gap-2"
+            // Reserve floating tab-bar + FAB clearance so scroll-into-view on
+            // expand stops above the bar instead of tucking the panel behind it.
+            style={{
+              scrollMarginBottom:
+                "calc(var(--z-mobile-tab-bar-h) + var(--z-mobile-fab-overshoot) + env(safe-area-inset-bottom) + 12px)",
+            }}
+          >
             <div className={cn("grid gap-2", GRID_COLS_BY_KIND[rowKind])}>
               {rendered.map(({ w, r, isActive }) => {
                 const press = editing

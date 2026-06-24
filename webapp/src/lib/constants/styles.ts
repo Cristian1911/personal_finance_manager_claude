@@ -116,6 +116,11 @@ export const MOBILE_SHEET_SAFE_AREA_CLASS =
 export const MOBILE_ACTION_BUTTON_CLASS =
   "rounded-lg border border-z-brass/20 bg-z-brass/8 px-2.5 py-1 text-[10px] font-semibold text-z-brass";
 
+/** Neutral action chip used on the transaction detail page (Acciones grid,
+ *  Vincular/Excluir/Eliminar, "Hacer recurrente" trigger). */
+export const DETAIL_ACTION_CHIP_CLASS =
+  "inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/6 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-foreground transition-colors active:opacity-70 disabled:opacity-50";
+
 /** Segmented tab control — inactive tab (e.g. /deudas Carga·Plan·Cuentas) */
 export const SEGMENTED_TAB_CLASS =
   "flex-1 rounded-full px-3 py-1.5 text-xs font-medium transition-colors text-muted-foreground active:bg-white/[0.06]";

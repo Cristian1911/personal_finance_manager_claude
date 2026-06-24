@@ -729,6 +729,8 @@ export type RecentTransaction = {
   category_id: string | null;
   destinatario_id: string | null;
   recurrence_group_id: string | null;
+  personal_debt_id: string | null;
+  transfer_group_id: string | null;
   merchant_name: string | null;
   clean_description: string | null;
   transaction_date: string;
@@ -763,7 +765,7 @@ async function getRecentTransactionsCached(
   const { data } = await supabase
     .from("transactions")
     .select(`
-      id, amount, direction, account_id, category_id, destinatario_id, recurrence_group_id, merchant_name, clean_description,
+      id, amount, direction, account_id, category_id, destinatario_id, recurrence_group_id, personal_debt_id, transfer_group_id, merchant_name, clean_description,
       transaction_date, currency_code,
       categories!transactions_category_id_fkey(name_es, name, icon),
       accounts!transactions_account_id_fkey(name, color, mask, bank_key, account_type),
@@ -1035,6 +1037,157 @@ export async function updateTransaction(
 
   revalidateFinancialViews();
   return { success: true, data };
+}
+
+/**
+ * Move a single transaction to a different account. Critical edit — recomputes
+ * both accounts' balances via the same reconciliation path as `updateTransaction`
+ * (reverse the tx's effect on the old account, apply it to the new one). Focused
+ * so it never clobbers the user's title/category/notes the way a full
+ * `updateTransaction` round-trip would.
+ */
+export async function updateTransactionAccount(
+  transactionId: string,
+  accountId: string,
+): Promise<ActionResult<null>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { data: existing, error: existingError } = await supabase
+    .from("transactions")
+    .select("account_id, amount, direction, is_excluded, currency_code")
+    .eq("user_id", user.id)
+    .eq("id", transactionId)
+    .single();
+
+  if (existingError || !existing) {
+    return { success: false, error: existingError?.message ?? "Transacción no encontrada" };
+  }
+  if (existing.account_id === accountId) return { success: true, data: null };
+
+  // Defense-in-depth: the target account must belong to the caller, otherwise a
+  // crafted accountId could move the transaction onto another user's account.
+  const { data: targetAccount } = await supabase
+    .from("accounts")
+    .select("id, currency_code")
+    .eq("id", accountId)
+    .eq("user_id", user.id)
+    .single();
+  if (!targetAccount) return { success: false, error: "Cuenta no encontrada" };
+
+  // The tx amount is in its own currency with no FX here — moving it to an
+  // account of a different currency would subtract a raw amount from a
+  // different-currency balance and corrupt it. Require a currency match.
+  if (targetAccount.currency_code !== existing.currency_code) {
+    return {
+      success: false,
+      error: "La cuenta debe tener la misma moneda que la transacción",
+    };
+  }
+
+  const { error: updateError } = await supabase
+    .from("transactions")
+    .update({ account_id: accountId })
+    .eq("user_id", user.id)
+    .eq("id", transactionId);
+
+  if (updateError) return { success: false, error: updateError.message };
+
+  const balanceResult = await adjustBalancesForTransactionChanges({
+    supabase,
+    userId: user.id,
+    changes: [
+      {
+        existingTx: {
+          account_id: existing.account_id,
+          amount: existing.amount,
+          direction: existing.direction,
+          is_excluded: existing.is_excluded,
+        },
+        nextTx: {
+          account_id: accountId,
+          amount: existing.amount,
+          direction: existing.direction,
+          is_excluded: existing.is_excluded,
+        },
+      },
+    ],
+  });
+
+  if (!balanceResult.success) return { success: false, error: balanceResult.error };
+
+  revalidateFinancialViews();
+  return { success: true, data: null };
+}
+
+/**
+ * Edit the critical numeric/temporal fields of a transaction — amount, date,
+ * time. Amount changes recompute the account balance (date/time don't). Focused
+ * (doesn't touch title/category/notes) and validated.
+ */
+export async function updateTransactionAmountAndDate(
+  transactionId: string,
+  fields: { amount: number; transaction_date: string; transaction_time: string | null },
+): Promise<ActionResult<null>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  if (!Number.isFinite(fields.amount) || fields.amount <= 0) {
+    return { success: false, error: "El monto debe ser mayor a 0" };
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fields.transaction_date)) {
+    return { success: false, error: "Fecha inválida" };
+  }
+
+  const { data: existing, error: existingError } = await supabase
+    .from("transactions")
+    .select("account_id, amount, direction, is_excluded")
+    .eq("user_id", user.id)
+    .eq("id", transactionId)
+    .single();
+
+  if (existingError || !existing) {
+    return { success: false, error: existingError?.message ?? "Transacción no encontrada" };
+  }
+
+  const { error: updateError } = await supabase
+    .from("transactions")
+    .update({
+      amount: fields.amount,
+      transaction_date: fields.transaction_date,
+      transaction_time: fields.transaction_time,
+    })
+    .eq("user_id", user.id)
+    .eq("id", transactionId);
+
+  if (updateError) return { success: false, error: updateError.message };
+
+  if (existing.amount !== fields.amount) {
+    const balanceResult = await adjustBalancesForTransactionChanges({
+      supabase,
+      userId: user.id,
+      changes: [
+        {
+          existingTx: {
+            account_id: existing.account_id,
+            amount: existing.amount,
+            direction: existing.direction,
+            is_excluded: existing.is_excluded,
+          },
+          nextTx: {
+            account_id: existing.account_id,
+            amount: fields.amount,
+            direction: existing.direction,
+            is_excluded: existing.is_excluded,
+          },
+        },
+      ],
+    });
+    if (!balanceResult.success) return { success: false, error: balanceResult.error };
+  }
+
+  revalidateFinancialViews();
+  return { success: true, data: null };
 }
 
 /**

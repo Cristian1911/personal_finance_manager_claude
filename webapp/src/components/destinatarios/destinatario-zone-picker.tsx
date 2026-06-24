@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { Check, ChevronsUpDown, Plus, UserRound } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeftRight, Check, ChevronsUpDown, ExternalLink, Plus, Tag, Type, UserRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -27,6 +28,7 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { useDestinatarios } from "@/components/providers/app-data-provider";
 import { createDestinatario, getRecentDestinatarios, addDestinatarioRule } from "@/actions/destinatarios";
 import { DestinatarioCreateDialog } from "@/components/destinatarios/destinatario-create-form";
+import { AddDestinatarioPatternDialog } from "@/components/destinatarios/add-destinatario-pattern-dialog";
 import type { CategoryWithChildren, CurrencyCode, DestinatarioKind } from "@/types/domain";
 import { toast } from "sonner";
 
@@ -67,6 +69,12 @@ interface DestinatarioZonePickerProps {
    * Defaults to the sole kindFilter entry when exactly one is given.
    */
   createKind?: DestinatarioKind;
+  /**
+   * Optional: when provided, the manage-view shows a "Usar nombre como título"
+   * action that renames the originating transaction to the destinatario's name.
+   * Only pass this from transaction contexts (not generic form pickers).
+   */
+  onUseAsTitle?: () => void;
 }
 
 export function DestinatarioZonePicker({
@@ -87,7 +95,9 @@ export function DestinatarioZonePicker({
   currencyCode,
   kindFilter,
   createKind,
+  onUseAsTitle,
 }: DestinatarioZonePickerProps) {
+  const router = useRouter();
   // When exactly one kind is being filtered, default new rows to that kind so
   // creation isn't immediately hidden by the same filter.
   const effectiveCreateKind =
@@ -98,6 +108,10 @@ export function DestinatarioZonePicker({
   // pass categories.
   const seeded = Boolean(categories);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showAddPattern, setShowAddPattern] = useState(false);
+  // When a destinatario is already assigned the picker opens in "manage" mode;
+  // tapping "Cambiar" flips to the search list. Reset when the picker closes.
+  const [showListView, setShowListView] = useState(false);
   // Carries the typed search term into the create form's Nombre field, since
   // closing the picker clears `search`.
   const [dialogPrefillName, setDialogPrefillName] = useState<string | undefined>(undefined);
@@ -125,6 +139,7 @@ export function DestinatarioZonePicker({
     if (!open) {
       setSearch("");
       setCreating(false);
+      setShowListView(false);
       return;
     }
     getRecentDestinatarios(3).then(setRecents);
@@ -149,6 +164,20 @@ export function DestinatarioZonePicker({
 
   function handleSelect(dest: DestinatarioOption) {
     onValueChange(dest.id, dest.name);
+    setOpen(false);
+  }
+
+  // ── Manage mode (a destinatario is already assigned) ──────────────────────
+  const canAddPattern = Boolean(rawDescription || merchantName);
+  const inManageView = Boolean(value && displayName && !showListView);
+
+  function handleViewDetails() {
+    if (!value) return;
+    setOpen(false);
+    router.push(`/destinatarios/${value}`);
+  }
+  function handleRemove() {
+    onValueChange(null, null);
     setOpen(false);
   }
 
@@ -350,6 +379,62 @@ export function DestinatarioZonePicker({
     </div>
   );
 
+  // ── Manage body (shown when a destinatario is already assigned) ───────────
+  const manageRowClass =
+    "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-white/5 focus-visible:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-z-brass/40";
+  const manageBody = (
+    <div className="flex flex-col p-2">
+      <div className="mb-1 flex items-center gap-3 rounded-xl border border-z-brass/25 bg-z-brass/10 px-3 py-2.5">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-z-brass/15 text-z-brass">
+          <UserRound className="size-4" />
+        </span>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">{displayName}</p>
+          <p className="text-[11px] text-muted-foreground">Destinatario asignado</p>
+        </div>
+      </div>
+      <button type="button" onClick={() => setShowListView(true)} className={manageRowClass}>
+        <ArrowLeftRight className="size-4 text-muted-foreground" />
+        Cambiar destinatario
+      </button>
+      <button type="button" onClick={handleViewDetails} className={manageRowClass}>
+        <ExternalLink className="size-4 text-muted-foreground" />
+        Ver detalles
+      </button>
+      {canAddPattern && (
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(false);
+            setShowAddPattern(true);
+          }}
+          className={manageRowClass}
+        >
+          <Tag className="size-4 text-muted-foreground" />
+          Agregar patrón
+        </button>
+      )}
+      {onUseAsTitle && (
+        <button
+          type="button"
+          onClick={() => {
+            onUseAsTitle();
+            setOpen(false);
+          }}
+          className={manageRowClass}
+        >
+          <Type className="size-4 text-muted-foreground" />
+          Usar nombre como título
+        </button>
+      )}
+      <div className="my-1 h-px bg-white/6" />
+      <button type="button" onClick={handleRemove} className={cn(manageRowClass, "text-z-expense")}>
+        <X className="size-4" />
+        Quitar destinatario
+      </button>
+    </div>
+  );
+
   // ── Render ───────────────────────────────────────────────────────────────
 
   const createDialog =
@@ -370,6 +455,20 @@ export function DestinatarioZonePicker({
       />
     ) : null;
 
+  const addPatternDialog =
+    value && displayName && showAddPattern ? (
+      <AddDestinatarioPatternDialog
+        open={showAddPattern}
+        onOpenChange={setShowAddPattern}
+        destinatarioId={value}
+        destinatarioName={displayName}
+        rawDescription={rawDescription}
+        merchantName={merchantName}
+        amount={amount}
+        currencyCode={currencyCode}
+      />
+    ) : null;
+
   if (variant === "popover") {
     return (
       <>
@@ -380,10 +479,11 @@ export function DestinatarioZonePicker({
             align="start"
             sideOffset={8}
           >
-            {body}
+            {inManageView ? manageBody : body}
           </PopoverContent>
         </Popover>
         {createDialog}
+        {addPatternDialog}
       </>
     );
   }
@@ -410,11 +510,12 @@ export function DestinatarioZonePicker({
               </DialogTitle>
             </DialogHeader>
             <div className="min-h-0 flex-1 overflow-y-auto">
-              {body}
+              {inManageView ? manageBody : body}
             </div>
           </DialogContent>
         </Dialog>
         {createDialog}
+        {addPatternDialog}
       </>
     );
   }
@@ -432,11 +533,12 @@ export function DestinatarioZonePicker({
             </DrawerTitle>
           </DrawerHeader>
           <DrawerBody className="px-2">
-            {body}
+            {inManageView ? manageBody : body}
           </DrawerBody>
         </DrawerContent>
       </Drawer>
       {createDialog}
+      {addPatternDialog}
     </>
   );
 }

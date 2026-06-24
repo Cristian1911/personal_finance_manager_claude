@@ -7,7 +7,6 @@ import { createCachedClient } from "@/lib/supabase/cached";
 import { extractPattern, matchDestinatario, prepareDestinatarioRules } from "@zeta/shared";
 import { fetchDestinatarioRules } from "./destinatarios";
 import { uuidStr } from "@/lib/validators/shared";
-import { shouldOverwriteTitle } from "@/lib/utils/title-overwrite";
 import { z } from "zod";
 import type { ActionResult } from "@/types/actions";
 import type { TransactionWithAccount } from "@/types/domain";
@@ -457,8 +456,11 @@ export async function assignDestinatario(
     return { success: false, error: "Destinatario no encontrado" };
   }
 
-  // 3. Build update payload. merchant_name is the display title — preserve a
-  // user-locked title unless the caller explicitly opted into replacing it.
+  // 3. Build update payload. `merchant_name` is the display title and belongs to
+  // the user — assigning a destinatario must NOT rename the transaction. Only
+  // overwrite when the caller explicitly opts in (e.g. a "use destinatario name
+  // as title" confirmation). This keeps the original title available for, e.g.,
+  // adding it to the destinatario's patterns afterwards.
   const updatePayload: {
     destinatario_id: string;
     merchant_name?: string;
@@ -468,7 +470,7 @@ export async function assignDestinatario(
     destinatario_id: destinatarioId,
   };
 
-  if (shouldOverwriteTitle({ titleLocked: tx.title_locked ?? false, overwriteTitle })) {
+  if (overwriteTitle) {
     updatePayload.merchant_name = dest.name;
   }
 

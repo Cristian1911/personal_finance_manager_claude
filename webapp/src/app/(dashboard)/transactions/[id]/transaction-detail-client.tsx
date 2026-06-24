@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   ArrowDownLeft,
   ArrowUpRight,
+  Check,
   ChevronDown,
   ChevronRight,
   ChevronUp,
@@ -16,7 +17,6 @@ import {
   Pencil,
   Plus,
   Repeat,
-  Tag,
   Trash2,
   UserRound,
   X,
@@ -24,12 +24,14 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
-import { formatDate, formatDateTime } from "@/lib/utils/date";
+import { formatDate } from "@/lib/utils/date";
 import { chipBackground, zoneTextColor } from "@/lib/utils/zone-colors";
 import {
   BRASS_BUTTON_CLASS,
   DESTRUCTIVE_BUTTON_CLASS,
+  DETAIL_ACTION_CHIP_CLASS,
   GHOST_BUTTON_CLASS,
+  MOBILE_SHEET_SAFE_AREA_CLASS,
   SECTION_EYEBROW_CLASS,
 } from "@/lib/constants/styles";
 import { CategoryIcon } from "@/components/categories/category-icon";
@@ -51,14 +53,27 @@ import {
   categorizeTransaction,
   uncategorizeTransaction,
   assignDestinatario,
+  removeDestinatarioFromTransaction,
 } from "@/actions/categorize";
 import {
   deleteTransaction,
   getTransactionLocation,
   toggleExcludeTransaction,
+  updateTransactionAccount,
+  updateTransactionAmountAndDate,
   updateTransactionNotes,
   updateTransactionTitle,
 } from "@/actions/transactions";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerBody,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import { CurrencyInput } from "@/components/ui/currency-input";
+import { DatePicker } from "@/components/ui/date-picker";
+import { TimePicker } from "@/components/ui/time-picker";
 import { removeTagFromEntity } from "@/actions/tags";
 import {
   getCandidateOccurrencesForTransaction,
@@ -74,12 +89,6 @@ import type {
   Transaction,
   TransactionLocation,
 } from "@/types/domain";
-
-/** Neutral chip button used in the Acciones row. Brass-solid "Hacer recurrente"
- * is supplied by PromoteToRecurringButton; destructive + toggle chips append
- * their own color classes on top. */
-const DETAIL_ACTION_CHIP_CLASS =
-  "inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/6 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-foreground transition-colors active:opacity-70 disabled:opacity-50";
 
 /** Fallback category chip color when a category has no `color` set. Hex literal
  * is intentional — `chipBackground()` / `zoneTextColor()` in `zone-colors.ts`
@@ -135,10 +144,80 @@ export function TransactionDetailClient({
 }: TransactionDetailClientProps) {
   const router = useRouter();
   const isInflow = tx.direction === "INFLOW";
+
+  /* ─── Cuenta (optimistic; balance-safe change via updateTransactionAccount) ─ */
+  const [optAccountId, setOptAccountId] = useState(tx.account_id);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [, startAccountTransition] = useTransition();
   const account = useMemo(
-    () => accounts.find((a) => a.id === tx.account_id) ?? null,
-    [accounts, tx.account_id],
+    () => accounts.find((a) => a.id === optAccountId) ?? null,
+    [accounts, optAccountId],
   );
+
+  function handleAccountSelect(accountId: string) {
+    setAccountOpen(false);
+    if (accountId === optAccountId) return;
+    const prev = optAccountId;
+    setOptAccountId(accountId);
+    startAccountTransition(async () => {
+      const result = await updateTransactionAccount(tx.id, accountId);
+      if (result.success) {
+        toast.success("Cuenta actualizada");
+        router.refresh();
+      } else {
+        setOptAccountId(prev);
+        toast.error(result.error ?? "No se pudo cambiar la cuenta");
+      }
+    });
+  }
+
+  /* ─── Monto / Fecha · Hora — staged critical edit ──────────────────── */
+  const [optAmount, setOptAmount] = useState(tx.amount);
+  const [optDate, setOptDate] = useState(tx.transaction_date);
+  const [optTime, setOptTime] = useState<string | null>(tx.transaction_time);
+  const [editDataOpen, setEditDataOpen] = useState(false);
+  const [draftAmount, setDraftAmount] = useState(String(tx.amount));
+  const [draftDate, setDraftDate] = useState(tx.transaction_date);
+  const [draftTime, setDraftTime] = useState(tx.transaction_time?.slice(0, 5) ?? "");
+  const [savingData, startDataTransition] = useTransition();
+
+  function openEditData() {
+    setDraftAmount(String(optAmount));
+    setDraftDate(optDate);
+    setDraftTime(optTime?.slice(0, 5) ?? "");
+    setEditDataOpen(true);
+  }
+
+  function handleSaveData() {
+    const amount = Number(draftAmount.replace(",", "."));
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error("El monto debe ser mayor a 0");
+      return;
+    }
+    const time = draftTime ? `${draftTime}:00` : null;
+    startDataTransition(async () => {
+      const result = await updateTransactionAmountAndDate(tx.id, {
+        amount,
+        transaction_date: draftDate,
+        transaction_time: time,
+      });
+      if (result.success) {
+        setOptAmount(amount);
+        setOptDate(draftDate);
+        setOptTime(time);
+        setEditDataOpen(false);
+        toast.success("Datos actualizados");
+        router.refresh();
+      } else {
+        toast.error(result.error ?? "No se pudieron guardar los cambios");
+      }
+    });
+  }
+
+  const dataDirty =
+    Number(draftAmount.replace(",", ".")) !== optAmount ||
+    draftDate !== optDate ||
+    (draftTime ? `${draftTime}:00` : null) !== optTime;
 
   /* ─── Linked location (lazy fetch — only when tx.location_id is set) ─── */
   const [location, setLocation] = useState<TransactionLocation | null>(null);
@@ -246,9 +325,34 @@ export function TransactionDetailClient({
     });
   }
 
+  function runRemoveDestinatario() {
+    const prevId = optDestId;
+    const prevName = optDestName;
+    setOptDestId(null);
+    setOptDestName(null);
+    startDestTransition(async () => {
+      const result = await removeDestinatarioFromTransaction(tx.id);
+      if (result.success) {
+        toast.success("Destinatario quitado");
+      } else {
+        setOptDestId(prevId);
+        setOptDestName(prevName);
+        toast.error(result.error ?? "No se pudo quitar el destinatario");
+      }
+    });
+  }
+
+  function handleUseDestAsTitle() {
+    if (!optDestId) return;
+    runAssign(optDestId, optDestName, true);
+  }
+
   function handleDestSelect(id: string | null, name: string | null) {
     setDestOpen(false);
-    if (!id) return;
+    if (!id) {
+      runRemoveDestinatario();
+      return;
+    }
     if (titleLocked && name && name !== title) {
       setPendingAssign({ id, name });
       return;
@@ -382,23 +486,78 @@ export function TransactionDetailClient({
 
   return (
     <div className="space-y-0">
-      {/* ── Hero ─────────────────────────────────────────────────────── */}
+      {/* ── Hero (centered metadata) ─────────────────────────────────── */}
       <header
         className={cn(
-          "relative overflow-hidden border-b border-white/6 px-4 pb-5 pt-4",
-          "bg-[radial-gradient(circle_at_top_left,rgba(200,181,96,0.08),transparent_45%),linear-gradient(180deg,rgba(26,29,26,0.9),rgba(18,20,18,0.95))]",
+          "relative px-4 pb-4 pt-6 text-center",
+          "bg-[radial-gradient(circle_at_top,rgba(200,181,96,0.06),transparent_60%)]",
         )}
       >
-        <div className="flex items-center gap-2">
+        {/* Direction avatar */}
+        <span
+          className={cn(
+            "mx-auto flex size-12 items-center justify-center rounded-full",
+            isInflow ? "bg-z-income/14 text-z-income" : "bg-z-expense/14 text-z-expense",
+          )}
+        >
+          {isInflow ? <ArrowDownLeft className="size-5" /> : <ArrowUpRight className="size-5" />}
+        </span>
+
+        {/* Amount */}
+        <p
+          className={cn(
+            "mt-3 text-[32px] font-bold leading-none tabular-nums tracking-[-0.01em]",
+            isInflow ? "text-z-income" : "text-z-white",
+          )}
+        >
+          {isInflow ? "+" : "-"}
+          {formatCurrency(optAmount, tx.currency_code as CurrencyCode)}
+        </p>
+
+        {/* Title (editable) */}
+        {titleEditing ? (
+          <input
+            ref={titleInputRef}
+            value={title}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              setTitleDirty(true);
+            }}
+            onBlur={handleTitleBlur}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                titleInputRef.current?.blur();
+              }
+            }}
+            maxLength={200}
+            placeholder="Título de la transacción"
+            className="mx-auto mt-2 w-full max-w-xs border-b border-z-brass/40 bg-transparent text-center text-base font-semibold text-z-white outline-none placeholder:text-muted-foreground focus:border-z-brass"
+          />
+        ) : (
+          <div className="mt-2 flex justify-center">
+            <button
+              type="button"
+              onClick={handleTitleOpen}
+              aria-label="Editar título"
+              className="relative max-w-full px-5"
+            >
+              <h1 className="truncate text-center text-base font-semibold text-z-white">
+                {title || "Transacción"}
+              </h1>
+              <Pencil className="absolute right-0 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground/40" />
+            </button>
+          </div>
+        )}
+
+        {/* Status badges */}
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
           <span
             className={cn(
               "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em]",
-              isInflow
-                ? "bg-z-income/14 text-z-income"
-                : "bg-z-expense/14 text-z-expense",
+              isInflow ? "bg-z-income/14 text-z-income" : "bg-z-expense/14 text-z-expense",
             )}
           >
-            {isInflow ? <ArrowDownLeft className="size-3" /> : <ArrowUpRight className="size-3" />}
             {isInflow ? "Ingreso" : "Gasto"}
           </span>
           {tx.status === "PENDING" && (
@@ -418,186 +577,247 @@ export function TransactionDetailClient({
           )}
         </div>
 
-        {titleEditing ? (
-          <input
-            ref={titleInputRef}
-            value={title}
-            onChange={(e) => {
-              setTitle(e.target.value);
-              setTitleDirty(true);
-            }}
-            onBlur={handleTitleBlur}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                titleInputRef.current?.blur();
-              }
-            }}
-            maxLength={200}
-            placeholder="Título de la transacción"
-            className="mt-2 w-full border-b border-z-brass/40 bg-transparent text-lg font-semibold text-z-white outline-none placeholder:text-muted-foreground focus:border-z-brass"
-          />
-        ) : (
-          <button
-            type="button"
-            onClick={handleTitleOpen}
-            aria-label="Editar título"
-            className="group mt-2 flex items-center gap-1.5 text-left"
-          >
-            <h1 className="text-lg font-semibold text-z-white">
-              {title || "Transacción"}
-            </h1>
-            <Pencil className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-          </button>
-        )}
-
-        <p
-          className={cn(
-            "mt-2 text-[28px] font-bold tabular-nums tracking-[-0.01em]",
-            isInflow ? "text-z-income" : "text-z-white",
-          )}
-        >
-          {isInflow ? "+" : "-"}
-          {formatCurrency(tx.amount, tx.currency_code as CurrencyCode)}
-        </p>
-
-        <p className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
-          <span>{formatDateTime(tx.transaction_date, tx.transaction_time)}</span>
-          {account && (
-            <>
-              <span className="text-white/15">·</span>
-              <span>{account.name}</span>
-            </>
-          )}
-          <span className="text-white/15">·</span>
-          <span className="uppercase tracking-wider">{tx.provider}</span>
-        </p>
       </header>
 
-      {/* ── Clasificación ──────────────────────────────────────────── */}
-      <section className="px-4 pt-4">
-        <p className={cn(SECTION_EYEBROW_CLASS, "mb-3")}>Clasificación</p>
+      {/* ── Contexto (read-only facts) ───────────────────────────────── */}
+      <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 pt-3 text-[11px] text-muted-foreground">
+        <span className="uppercase tracking-wider">{tx.provider}</span>
+        <span className="text-white/15">·</span>
+        <span>{formatDate(optDate, "dd MMM yyyy")}</span>
+        {optTime && (
+          <>
+            <span className="text-white/15">·</span>
+            <span className="tabular-nums">{optTime.slice(0, 5)}</span>
+          </>
+        )}
+      </div>
+      <div className="flex justify-center pt-2.5">
+        <button
+          type="button"
+          onClick={openEditData}
+          className="inline-flex items-center gap-1.5 rounded-full border border-white/6 bg-white/[0.03] px-3 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-white/[0.06]"
+        >
+          <Pencil className="size-3" />
+          Editar datos
+        </button>
+      </div>
 
-        {/* Categoría */}
-        <div className="border-t border-white/6 py-3 first:border-t-0 first:pt-0">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-            Categoría
-          </p>
+      {/* ── Clasificación (actionable controls) ──────────────────────── */}
+      <section className="px-4 pt-5">
+        <p className={cn(SECTION_EYEBROW_CLASS, "mb-2")}>Clasificación</p>
+        <div className="overflow-hidden rounded-2xl border border-white/6 bg-z-surface-2/60">
+          {/* Cuenta */}
+          <button
+            type="button"
+            onClick={() => setAccountOpen(true)}
+            className="flex w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition-colors hover:bg-white/[0.03]"
+          >
+            <span className="text-sm text-muted-foreground">Cuenta</span>
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span
+                className="size-2 shrink-0 rounded-full"
+                style={{ backgroundColor: account?.color ?? undefined }}
+              />
+              <span className="truncate text-sm font-medium">{account?.name ?? "Sin cuenta"}</span>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
+            </span>
+          </button>
+
+          {/* Categoría */}
           <button
             type="button"
             onClick={() => setCatOpen(true)}
-            aria-label="Cambiar categoría"
-            className="inline-flex items-center"
+            className="flex w-full items-center justify-between gap-3 border-t border-white/6 px-3.5 py-3 text-left transition-colors hover:bg-white/[0.03]"
           >
-            {selectedCategory ? (
-              <span
-                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
-                style={{
-                  backgroundColor: chipBackground(catChipColor),
-                  color: zoneTextColor(catChipColor),
-                }}
-              >
-                {selectedCategory.icon && (
-                  <CategoryIcon icon={selectedCategory.icon} className="size-3.5" />
-                )}
-                <span>{selectedCategory.name}</span>
-                <ChevronDown className="ml-0.5 size-3 opacity-60" />
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/6 bg-white/[0.03] px-2.5 py-1 text-xs text-muted-foreground">
-                <Tag className="size-3" />
-                Sin categoría
-                <ChevronDown className="ml-0.5 size-3 opacity-60" />
-              </span>
-            )}
+            <span className="text-sm text-muted-foreground">Categoría</span>
+            <span className="flex min-w-0 items-center gap-1.5">
+              {selectedCategory ? (
+                <span
+                  className="inline-flex min-w-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold"
+                  style={{ backgroundColor: chipBackground(catChipColor), color: zoneTextColor(catChipColor) }}
+                >
+                  {selectedCategory.icon && <CategoryIcon icon={selectedCategory.icon} className="size-3.5 shrink-0" />}
+                  <span className="truncate">{selectedCategory.name}</span>
+                </span>
+              ) : (
+                <span className="text-sm text-z-brass">Categorizar</span>
+              )}
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
+            </span>
           </button>
-          <CategoryZonePicker
-            categories={categories}
-            value={optCategoryId}
-            onValueChange={handleCategorySelect}
-            direction={tx.direction}
-            hideTrigger
-            controlledOpen={catOpen}
-            onControlledOpenChange={setCatOpen}
-          />
-        </div>
 
-        {/* Destinatario */}
-        <div className="border-t border-white/6 py-3">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-            Destinatario
-          </p>
+          {/* Destinatario */}
           <button
             type="button"
             onClick={() => setDestOpen(true)}
-            aria-label="Cambiar destinatario"
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold",
-              optDestName
-                ? "bg-z-brass/12 text-z-brass"
-                : "border border-white/6 bg-white/[0.03] font-normal text-muted-foreground",
-            )}
+            className="flex w-full items-center justify-between gap-3 border-t border-white/6 px-3.5 py-3 text-left transition-colors hover:bg-white/[0.03]"
           >
-            <UserRound className="size-3.5" />
-            <span>{optDestName ?? "Sin destinatario"}</span>
-            <ChevronDown className="ml-0.5 size-3 opacity-60" />
+            <span className="text-sm text-muted-foreground">Destinatario</span>
+            <span className="flex min-w-0 items-center gap-1.5">
+              {optDestName ? (
+                <span className="inline-flex min-w-0 items-center gap-1.5 rounded-full bg-z-brass/12 px-2 py-0.5 text-xs font-semibold text-z-brass">
+                  <UserRound className="size-3.5 shrink-0" />
+                  <span className="truncate">{optDestName}</span>
+                </span>
+              ) : (
+                <span className="text-sm text-muted-foreground">Asignar</span>
+              )}
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
+            </span>
           </button>
-          <DestinatarioZonePicker
-            value={optDestId}
-            selectedName={optDestName}
-            onValueChange={handleDestSelect}
-            hideTrigger
-            controlledOpen={destOpen}
-            onControlledOpenChange={setDestOpen}
-            categories={categories}
-            rawDescription={tx.raw_description}
-            merchantName={tx.merchant_name}
-            amount={tx.amount}
-            currencyCode={tx.currency_code as CurrencyCode}
-          />
+
+          {/* Etiquetas */}
+          <div className="border-t border-white/6 px-3.5 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm text-muted-foreground">Etiquetas</span>
+              <button
+                type="button"
+                onClick={() => setTagOpen(true)}
+                className="inline-flex items-center gap-1 text-sm text-z-brass"
+              >
+                <Plus className="size-3.5" />
+                {tags.length > 0 ? "Editar" : "Agregar"}
+              </button>
+            </div>
+            {tags.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {tags.map((t) => (
+                  <span
+                    key={t.id}
+                    className="inline-flex items-center gap-1 rounded-full border border-z-brass/20 bg-z-brass/10 py-0.5 pl-2.5 pr-1 text-[11px] font-medium text-z-brass"
+                  >
+                    <span className="truncate">{t.name}</span>
+                    <button
+                      type="button"
+                      aria-label={`Quitar etiqueta ${t.name}`}
+                      onClick={() => handleRemoveTag(t.id)}
+                      className="ml-0.5 inline-flex size-4 items-center justify-center rounded-full text-z-brass/60 transition-colors hover:bg-z-brass/15 hover:text-z-brass"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Etiquetas */}
-        <div className="border-t border-white/6 py-3">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-            Etiquetas
-          </p>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {tags.map((t) => (
-              <span
-                key={t.id}
-                className="inline-flex items-center gap-1 rounded-full border border-z-brass/20 bg-z-brass/10 pl-2.5 pr-1 py-0.5 text-[11px] font-medium text-z-brass"
-              >
-                <span className="truncate">{t.name}</span>
+        {/* Controlled pickers driven by the rows above */}
+        <CategoryZonePicker
+          categories={categories}
+          value={optCategoryId}
+          onValueChange={handleCategorySelect}
+          direction={tx.direction}
+          hideTrigger
+          controlledOpen={catOpen}
+          onControlledOpenChange={setCatOpen}
+        />
+        <DestinatarioZonePicker
+          value={optDestId}
+          selectedName={optDestName}
+          onValueChange={handleDestSelect}
+          hideTrigger
+          controlledOpen={destOpen}
+          onControlledOpenChange={setDestOpen}
+          categories={categories}
+          onUseAsTitle={optDestId ? handleUseDestAsTitle : undefined}
+          rawDescription={tx.raw_description}
+          merchantName={tx.merchant_name}
+          amount={tx.amount}
+          currencyCode={tx.currency_code as CurrencyCode}
+        />
+        <TagZonePicker
+          entityType="transaction"
+          entityId={tx.id}
+          hideTrigger
+          controlledOpen={tagOpen}
+          onControlledOpenChange={(open) => {
+            setTagOpen(open);
+            if (!open) startTransition(() => router.refresh());
+          }}
+        />
+
+        {/* Account picker */}
+        <Drawer open={accountOpen} onOpenChange={setAccountOpen}>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>Cuenta</DrawerTitle>
+            </DrawerHeader>
+            <DrawerBody className={cn("px-2", MOBILE_SHEET_SAFE_AREA_CLASS)}>
+              {accounts
+                .filter((a) => a.currency_code === tx.currency_code)
+                .map((a) => (
                 <button
+                  key={a.id}
                   type="button"
-                  aria-label={`Quitar etiqueta ${t.name}`}
-                  onClick={() => handleRemoveTag(t.id)}
-                  className="ml-0.5 inline-flex size-4 items-center justify-center rounded-full text-z-brass/60 transition-colors hover:bg-z-brass/15 hover:text-z-brass"
+                  onClick={() => handleAccountSelect(a.id)}
+                  className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-white/5"
                 >
-                  <X className="size-3" />
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span
+                      className="size-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: a.color ?? undefined }}
+                    />
+                    <span className="truncate">{a.name}</span>
+                  </span>
+                  {a.id === optAccountId && <Check className="size-4 shrink-0 text-z-brass" />}
                 </button>
-              </span>
-            ))}
+              ))}
+            </DrawerBody>
+          </DrawerContent>
+        </Drawer>
+      </section>
+
+      {/* ── Acciones (uniform grid, reachable above the fold) ────────── */}
+      <section className="px-4 pt-5">
+        <p className={cn(SECTION_EYEBROW_CLASS, "mb-2")}>Acciones</p>
+        <div className="grid grid-cols-2 gap-2">
+          <PromoteToRecurringButton
+            transaction={{
+              id: tx.id,
+              account_id: tx.account_id,
+              amount: tx.amount,
+              currency_code: tx.currency_code as CurrencyCode,
+              direction: tx.direction,
+              merchant_name: tx.merchant_name,
+              clean_description: tx.clean_description,
+              category_id: tx.category_id,
+              destinatario_id: tx.destinatario_id,
+              transaction_date: tx.transaction_date,
+            }}
+            isLinkedToOccurrence={isLinkedToOccurrence}
+            accounts={accounts}
+            categories={categories}
+            triggerClassName={cn(DETAIL_ACTION_CHIP_CLASS, "w-full")}
+          />
+          {vincularEligible && (
             <button
               type="button"
-              onClick={() => setTagOpen(true)}
-              className="inline-flex items-center gap-1 rounded-full border border-white/6 bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-white/[0.06]"
+              onClick={handleOpenLinkPicker}
+              disabled={isLinkingPending}
+              className={cn(DETAIL_ACTION_CHIP_CLASS, "w-full")}
             >
-              <Plus className="size-3" />
-              Etiqueta
+              <Link2 className="size-3.5" />
+              Vincular
             </button>
-          </div>
-          <TagZonePicker
-            entityType="transaction"
-            entityId={tx.id}
-            hideTrigger
-            controlledOpen={tagOpen}
-            onControlledOpenChange={(open) => {
-              setTagOpen(open);
-              if (!open) startTransition(() => router.refresh());
-            }}
-          />
+          )}
+          <button
+            type="button"
+            onClick={handleToggleExclude}
+            disabled={excluding}
+            className={cn(DETAIL_ACTION_CHIP_CLASS, "w-full")}
+          >
+            {optExcluded ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+            {optExcluded ? "Incluir en métricas" : "Excluir de métricas"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setDeleteConfirmOpen(true)}
+            className={cn(DETAIL_ACTION_CHIP_CLASS, "w-full border-z-debt/20 bg-z-debt/8 text-z-debt")}
+          >
+            <Trash2 className="size-3.5" />
+            Eliminar
+          </button>
         </div>
       </section>
 
@@ -634,7 +854,7 @@ export function TransactionDetailClient({
       {location && (
         <section className="px-4 pt-4">
           <p className={cn(SECTION_EYEBROW_CLASS, "mb-2")}>Ubicación</p>
-          <div className="rounded-xl border border-white/6 bg-white/[0.04] p-3">
+          <div className="rounded-xl border border-white/6 bg-z-surface-2/60 p-3">
             <div className="flex items-center gap-3">
               <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-z-brass/15 text-z-brass">
                 <MapPin className="size-4" />
@@ -711,7 +931,7 @@ export function TransactionDetailClient({
             type="button"
             onClick={handleNotesOpen}
             className={cn(
-              "block w-full rounded-xl border border-white/6 bg-black/10 px-3 py-2 text-left text-sm transition-colors hover:bg-white/[0.03]",
+              "block w-full rounded-xl border border-white/6 bg-z-surface-2/60 px-3 py-2.5 text-left text-sm transition-colors hover:bg-white/[0.04]",
               !notes && "italic text-muted-foreground",
             )}
           >
@@ -745,60 +965,71 @@ export function TransactionDetailClient({
         })()}
       </section>
 
-      {/* ── Acciones ───────────────────────────────────────────────── */}
-      <section className="px-4 py-4">
-        <p className={cn(SECTION_EYEBROW_CLASS, "mb-2")}>Acciones</p>
-        <div className="flex flex-wrap items-stretch gap-2">
-          <PromoteToRecurringButton
-            transaction={{
-              id: tx.id,
-              account_id: tx.account_id,
-              amount: tx.amount,
-              currency_code: tx.currency_code as CurrencyCode,
-              direction: tx.direction,
-              merchant_name: tx.merchant_name,
-              clean_description: tx.clean_description,
-              category_id: tx.category_id,
-              destinatario_id: tx.destinatario_id,
-              transaction_date: tx.transaction_date,
-            }}
-            isLinkedToOccurrence={isLinkedToOccurrence}
-            accounts={accounts}
-            categories={categories}
-          />
-          {vincularEligible && (
-            <button
-              type="button"
-              onClick={handleOpenLinkPicker}
-              disabled={isLinkingPending}
-              className={DETAIL_ACTION_CHIP_CLASS}
-            >
-              <Link2 className="size-3.5" />
-              Vincular
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={handleToggleExclude}
-            disabled={excluding}
-            className={DETAIL_ACTION_CHIP_CLASS}
-          >
-            {optExcluded ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
-            {optExcluded ? "Incluir en métricas" : "Excluir de métricas"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setDeleteConfirmOpen(true)}
-            className={cn(
-              DETAIL_ACTION_CHIP_CLASS,
-              "border-z-debt/20 bg-z-debt/8 text-z-debt",
-            )}
-          >
-            <Trash2 className="size-3.5" />
-            Eliminar
-          </button>
-        </div>
-      </section>
+      {/* ── Editar datos (monto · fecha · hora — staged critical edit) ── */}
+      <Drawer open={editDataOpen} onOpenChange={setEditDataOpen}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>Editar datos</DrawerTitle>
+          </DrawerHeader>
+          <DrawerBody className="space-y-4 px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+                Monto ({tx.currency_code})
+              </label>
+              <CurrencyInput
+                value={draftAmount}
+                onChange={(e) => setDraftAmount(e.target.value)}
+                inputMode="decimal"
+                className="h-auto rounded-xl border-white/6 bg-white/[0.03] px-3 py-2.5 text-base font-semibold tabular-nums focus-visible:border-z-brass/40 focus-visible:ring-0"
+              />
+            </div>
+            <div className="flex gap-3">
+              <div className="flex-1 space-y-1.5">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+                  Fecha
+                </label>
+                <DatePicker
+                  value={draftDate}
+                  onChange={(v) => setDraftDate(v ?? "")}
+                  placeholder="Fecha"
+                  className="w-full"
+                />
+              </div>
+              <div className="flex-1 space-y-1.5">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+                  Hora
+                </label>
+                <TimePicker
+                  value={draftTime}
+                  onChange={(v) => setDraftTime(v ?? "")}
+                  className="h-auto rounded-xl border-white/6 bg-white/[0.03] py-2.5"
+                />
+              </div>
+            </div>
+            <p className="rounded-lg border border-z-expense/25 bg-z-expense/5 px-3 py-2 text-[11px] text-z-expense">
+              Cambiar el monto recalcula los saldos de la cuenta y las métricas.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setEditDataOpen(false)}
+                disabled={savingData}
+                className={cn(GHOST_BUTTON_CLASS, "flex-1 rounded-xl py-2.5")}
+              >
+                Descartar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveData}
+                disabled={savingData || !dataDirty}
+                className={cn(BRASS_BUTTON_CLASS, "flex-1 rounded-xl py-2.5 disabled:opacity-50")}
+              >
+                {savingData ? "Guardando…" : "Guardar cambios"}
+              </button>
+            </div>
+          </DrawerBody>
+        </DrawerContent>
+      </Drawer>
 
       {/* ── Link picker sheet ─────────────────────────────────────── */}
       {linking && (

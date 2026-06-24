@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Loader2, Search, UserRound } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,23 +12,14 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerBody,
-  DrawerTitle,
-  DrawerDescription,
-} from "@/components/ui/drawer";
+import { cn } from "@/lib/utils";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
+import { DestinatarioPatternBuilder } from "@/components/destinatarios/destinatario-pattern-builder";
 import {
   createDestinatario,
-  testDestinatarioPattern,
   type CreateDestinatarioResult,
-  type PatternTestResult,
 } from "@/actions/destinatarios";
 import { tokenizeDescription } from "@/lib/utils/tokenize-description";
-import { formatCurrency } from "@/lib/utils/currency";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import type { ActionResult } from "@/types/actions";
@@ -62,33 +52,16 @@ export function DestinatarioCreateForm({
   onCreated,
   onCancel,
 }: DestinatarioCreateFormProps) {
-  const chips = React.useMemo(() => {
-    const base = tokenizeDescription(rawDescription);
-    const extra: string[] = [];
-    if (merchantName?.trim()) extra.push(merchantName.trim());
-    return Array.from(new Set([...extra, ...base]));
-  }, [rawDescription, merchantName]);
+  const nameDefault = React.useMemo(() => {
+    if (merchantName?.trim()) return merchantName.trim();
+    return tokenizeDescription(rawDescription)[0] ?? "";
+  }, [merchantName, rawDescription]);
 
   const [categoryId, setCategoryId] = React.useState<string | null>(null);
-  const [selected, setSelected] = React.useState<string[]>(chips[0] ? [chips[0]] : []);
-  const [patterns, setPatterns] = React.useState(chips[0] ?? "");
-  const [testResult, setTestResult] = React.useState<PatternTestResult | null>(null);
-  const [isTesting, startTest] = React.useTransition();
   const [state, formAction, pending] = React.useActionState<
     ActionResult<CreateDestinatarioResult>,
     FormData
   >(createDestinatario, { success: false, error: "" });
-
-  function toggleChip(token: string) {
-    setTestResult(null);
-    setSelected((prev) => {
-      const next = prev.includes(token)
-        ? prev.filter((t) => t !== token)
-        : [...prev, token];
-      setPatterns(next.join(" "));
-      return next;
-    });
-  }
 
   // Keep the latest onCreated without retriggering the success effect when the
   // parent passes a fresh inline callback each render.
@@ -107,30 +80,6 @@ export function DestinatarioCreateForm({
     }
   }, [state]);
 
-  function handleTest() {
-    const list = patterns.split(",").map((p) => p.trim()).filter(Boolean);
-    if (list.length === 0) return;
-    startTest(async () => {
-      const results = await Promise.all(
-        list.map((p) => testDestinatarioPattern(p, "contains")),
-      );
-      const combined: PatternTestResult = { matchCount: 0, samples: [] };
-      const seen = new Set<string>();
-      for (const r of results) {
-        if (!r.success) continue;
-        combined.matchCount += r.data.matchCount;
-        for (const s of r.data.samples) {
-          if (!seen.has(s.id)) {
-            seen.add(s.id);
-            combined.samples.push(s);
-          }
-        }
-      }
-      combined.samples = combined.samples.slice(0, 5);
-      setTestResult(combined);
-    });
-  }
-
   return (
     <form action={formAction} className="w-full min-w-0 space-y-4">
       {!state.success && state.error && (
@@ -144,7 +93,7 @@ export function DestinatarioCreateForm({
         <Input
           id="dcf-name"
           name="name"
-          defaultValue={merchantName?.trim() || chips[0] || ""}
+          defaultValue={nameDefault}
           placeholder="Ej: Nequi, Spotify"
           required
         />
@@ -165,83 +114,13 @@ export function DestinatarioCreateForm({
 
       <div className="space-y-2">
         <Label>Patrones de detección</Label>
-        {chips.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {chips.map((token) => (
-              <button
-                key={token}
-                type="button"
-                onClick={() => toggleChip(token)}
-                className={cn(
-                  "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
-                  selected.includes(token)
-                    ? "border-z-brass/30 bg-z-brass/10 text-z-brass"
-                    : "border-white/6 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06]",
-                )}
-              >
-                {token}
-              </button>
-            ))}
-            {amount != null && currencyCode && (
-              <span className="rounded-full border border-white/6 bg-white/[0.02] px-2.5 py-1 text-[11px] text-muted-foreground/70">
-                {formatCurrency(amount, currencyCode)}
-              </span>
-            )}
-          </div>
-        )}
-        <div className="flex gap-2">
-          <Input
-            name="patterns"
-            value={patterns}
-            className="flex-1"
-            onChange={(e) => {
-              setPatterns(e.target.value);
-              setTestResult(null);
-            }}
-            placeholder="Toca chips o escribe; separa con comas para varias reglas"
-          />
-          <Button
-            type="button"
-            size="icon"
-            className={GHOST_BUTTON_CLASS}
-            onClick={handleTest}
-            disabled={!patterns.trim() || isTesting}
-            title="Probar patrón"
-          >
-            {isTesting ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Search className="size-4" />
-            )}
-          </Button>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Toca las palabras de esta transacción para crear patrones de detección.
-        </p>
-        {testResult && (
-          <div className="space-y-2 rounded-lg border border-white/6 bg-z-surface-2 p-3">
-            <p className="text-xs font-medium">
-              {testResult.matchCount === 0
-                ? "Sin coincidencias en transacciones sin asignar"
-                : `${testResult.matchCount} transacción${testResult.matchCount === 1 ? "" : "es"} coinciden`}
-            </p>
-            {testResult.samples.length > 0 && (
-              <ul className="space-y-1">
-                {testResult.samples.map((s) => (
-                  <li
-                    key={s.id}
-                    className="flex min-w-0 justify-between gap-2 text-xs text-muted-foreground"
-                  >
-                    <span className="min-w-0 flex-1 truncate">{s.rawDescription}</span>
-                    <span className="shrink-0 tabular-nums">
-                      {formatCurrency(s.amount, s.currencyCode as CurrencyCode)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
+        <DestinatarioPatternBuilder
+          inputName="patterns"
+          rawDescription={rawDescription}
+          merchantName={merchantName}
+          amount={amount}
+          currencyCode={currencyCode}
+        />
       </div>
 
       <div className="space-y-2">
@@ -276,7 +155,12 @@ export interface DestinatarioCreateDialogProps extends DestinatarioCreateFormPro
   onOpenChange: (open: boolean) => void;
 }
 
-/** Wraps DestinatarioCreateForm in a Dialog (desktop) / Drawer (mobile). */
+/**
+ * Wraps DestinatarioCreateForm in a centered Dialog on desktop and a
+ * full-screen Dialog on mobile (not a bottom sheet) — the full-screen surface
+ * avoids the keyboard/drag jank a vaul Drawer had and gives the nested
+ * CategoryZonePicker room to render fully.
+ */
 export function DestinatarioCreateDialog({
   open,
   onOpenChange,
@@ -304,19 +188,27 @@ export function DestinatarioCreateDialog({
   }
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent>
-        <DrawerHeader>
-          <DrawerTitle className="flex items-center gap-2">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className={cn(
+          "left-0 top-0 flex h-dvh max-h-dvh w-screen max-w-none translate-x-0 translate-y-0",
+          "flex-col gap-0 rounded-none border-0 p-0",
+        )}
+      >
+        <DialogHeader
+          className="shrink-0 border-b border-white/6 px-4 pb-3 text-left"
+          style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
+        >
+          <DialogTitle className="flex items-center gap-2">
             <UserRound className="size-4 text-z-brass" />
             {title}
-          </DrawerTitle>
-          <DrawerDescription>{description}</DrawerDescription>
-        </DrawerHeader>
-        <DrawerBody>
+          </DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
           <DestinatarioCreateForm {...formProps} />
-        </DrawerBody>
-      </DrawerContent>
-    </Drawer>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
