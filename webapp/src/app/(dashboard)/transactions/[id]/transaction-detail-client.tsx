@@ -51,6 +51,7 @@ import {
   categorizeTransaction,
   uncategorizeTransaction,
   assignDestinatario,
+  removeDestinatarioFromTransaction,
 } from "@/actions/categorize";
 import {
   deleteTransaction,
@@ -246,9 +247,29 @@ export function TransactionDetailClient({
     });
   }
 
+  function runRemoveDestinatario() {
+    const prevId = optDestId;
+    const prevName = optDestName;
+    setOptDestId(null);
+    setOptDestName(null);
+    startDestTransition(async () => {
+      const result = await removeDestinatarioFromTransaction(tx.id);
+      if (result.success) {
+        toast.success("Destinatario quitado");
+      } else {
+        setOptDestId(prevId);
+        setOptDestName(prevName);
+        toast.error(result.error ?? "No se pudo quitar el destinatario");
+      }
+    });
+  }
+
   function handleDestSelect(id: string | null, name: string | null) {
     setDestOpen(false);
-    if (!id) return;
+    if (!id) {
+      runRemoveDestinatario();
+      return;
+    }
     if (titleLocked && name && name !== title) {
       setPendingAssign({ id, name });
       return;
@@ -550,7 +571,6 @@ export function TransactionDetailClient({
             controlledOpen={destOpen}
             onControlledOpenChange={setDestOpen}
             categories={categories}
-            allowAddPattern
             rawDescription={tx.raw_description}
             merchantName={tx.merchant_name}
             amount={tx.amount}
