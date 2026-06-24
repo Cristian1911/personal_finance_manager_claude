@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { ArrowRight, Brain } from "lucide-react";
 import { getTransactions, getMonthlyAggregates } from "@/actions/transactions";
+import { getUncategorizedTransactions } from "@/actions/categorize";
 import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
 import { getAllTags } from "@/actions/tags";
@@ -44,6 +45,7 @@ export default async function TransactionsPage({
     allTags,
     pendingEmailResult,
     monthlyAggregatesResult,
+    uncategorizedTxs,
   ] = await Promise.all([
     getTransactions(params),
     getAccounts(),
@@ -51,6 +53,7 @@ export default async function TransactionsPage({
     getAllTags(),
     getPendingEmailTransactions(),
     getMonthlyAggregates(params.month, params.accountId),
+    getUncategorizedTransactions(),
   ]);
 
   const pendingTransactions = pendingEmailResult.success ? pendingEmailResult.data : [];
@@ -117,7 +120,8 @@ export default async function TransactionsPage({
           count={monthlyAggregates.count}
           totalInflow={monthlyAggregates.totalInflow}
           totalOutflow={monthlyAggregates.totalOutflow}
-          uncategorizedCount={monthlyAggregates.uncategorizedCount}
+          uncategorizedCount={uncategorizedTxs.length}
+          uncategorizedTransactions={uncategorizedTxs.slice(0, 12)}
           pendingEmails={pendingTransactions}
           currency={summaryCurrency}
         />

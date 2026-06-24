@@ -31,6 +31,9 @@ interface MovimientosRootProps {
   totalInflow: number;
   totalOutflow: number;
   uncategorizedCount: number;
+  /** Actual uncategorized rows (server-fetched, all months) for the inline
+   *  "sin categoría" preview — NOT derived from the paginated page list. */
+  uncategorizedTransactions: TransactionWithAccount[];
   pendingEmails: PendingEmailTransaction[];
   currency: CurrencyCode;
   /** Server-resolved pagination state + the filters to replay for "Cargar más". */
@@ -48,6 +51,7 @@ export function MovimientosRoot({
   totalInflow,
   totalOutflow,
   uncategorizedCount,
+  uncategorizedTransactions,
   pendingEmails,
   currency,
   page = 1,
@@ -117,16 +121,6 @@ export function MovimientosRoot({
           .map((a) => a.id)
       ),
     [accounts]
-  );
-
-  const uncategorizedTransactions = useMemo(
-    () =>
-      transactions
-        .filter(
-          (tx) => !tx.is_excluded && tx.direction === "OUTFLOW" && !tx.category_id
-        )
-        .slice(0, 5),
-    [transactions]
   );
 
   /** Build tags-by-transaction lookup from joined transaction_tags */
