@@ -592,6 +592,16 @@ export function TransactionDetailClient({
           </>
         )}
       </div>
+      <div className="flex justify-center pt-2.5">
+        <button
+          type="button"
+          onClick={openEditData}
+          className="inline-flex items-center gap-1.5 rounded-full border border-white/6 bg-white/[0.03] px-3 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-white/[0.06]"
+        >
+          <Pencil className="size-3" />
+          Editar datos
+        </button>
+      </div>
 
       {/* ── Clasificación (actionable controls) ──────────────────────── */}
       <section className="px-4 pt-5">
@@ -763,14 +773,6 @@ export function TransactionDetailClient({
       <section className="px-4 pt-5">
         <p className={cn(SECTION_EYEBROW_CLASS, "mb-2")}>Acciones</p>
         <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={openEditData}
-            className={cn(DETAIL_ACTION_CHIP_CLASS, "w-full")}
-          >
-            <Pencil className="size-3.5" />
-            Editar datos
-          </button>
           <PromoteToRecurringButton
             transaction={{
               id: tx.id,
