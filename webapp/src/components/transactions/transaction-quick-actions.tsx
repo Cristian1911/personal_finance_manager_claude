@@ -198,6 +198,19 @@ export function TransactionQuickActions({
     }
   }
 
+  function handleUseDestAsTitle() {
+    if (!localDestinatario) return;
+    startTransition(async () => {
+      const result = await assignDestinatario(tx.id, localDestinatario.id, true);
+      if (result.success) {
+        toast.success("Título actualizado");
+        router.refresh();
+      } else {
+        toast.error(result.error ?? "No se pudo actualizar el título");
+      }
+    });
+  }
+
   function handleToggleExclude() {
     const next = !excluded;
     setExcluded(next);
@@ -410,6 +423,7 @@ export function TransactionQuickActions({
         controlledOpen={destOpen}
         onControlledOpenChange={setDestOpen}
         categories={categories}
+        onUseAsTitle={localDestinatario ? handleUseDestAsTitle : undefined}
         rawDescription={tx.raw_description}
         merchantName={tx.merchant_name}
         amount={tx.amount}

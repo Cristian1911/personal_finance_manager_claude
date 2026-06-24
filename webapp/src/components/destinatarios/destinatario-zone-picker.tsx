@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeftRight, Check, ChevronsUpDown, ExternalLink, Plus, Tag, UserRound, X } from "lucide-react";
+import { ArrowLeftRight, Check, ChevronsUpDown, ExternalLink, Plus, Tag, Type, UserRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -69,6 +69,12 @@ interface DestinatarioZonePickerProps {
    * Defaults to the sole kindFilter entry when exactly one is given.
    */
   createKind?: DestinatarioKind;
+  /**
+   * Optional: when provided, the manage-view shows a "Usar nombre como título"
+   * action that renames the originating transaction to the destinatario's name.
+   * Only pass this from transaction contexts (not generic form pickers).
+   */
+  onUseAsTitle?: () => void;
 }
 
 export function DestinatarioZonePicker({
@@ -89,6 +95,7 @@ export function DestinatarioZonePicker({
   currencyCode,
   kindFilter,
   createKind,
+  onUseAsTitle,
 }: DestinatarioZonePickerProps) {
   const router = useRouter();
   // When exactly one kind is being filtered, default new rows to that kind so
@@ -405,6 +412,19 @@ export function DestinatarioZonePicker({
         >
           <Tag className="size-4 text-muted-foreground" />
           Agregar patrón
+        </button>
+      )}
+      {onUseAsTitle && (
+        <button
+          type="button"
+          onClick={() => {
+            onUseAsTitle();
+            setOpen(false);
+          }}
+          className={manageRowClass}
+        >
+          <Type className="size-4 text-muted-foreground" />
+          Usar nombre como título
         </button>
       )}
       <div className="my-1 h-px bg-white/6" />

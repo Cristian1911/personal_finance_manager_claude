@@ -264,6 +264,11 @@ export function TransactionDetailClient({
     });
   }
 
+  function handleUseDestAsTitle() {
+    if (!optDestId) return;
+    runAssign(optDestId, optDestName, true);
+  }
+
   function handleDestSelect(id: string | null, name: string | null) {
     setDestOpen(false);
     if (!id) {
@@ -571,6 +576,7 @@ export function TransactionDetailClient({
             controlledOpen={destOpen}
             onControlledOpenChange={setDestOpen}
             categories={categories}
+            onUseAsTitle={optDestId ? handleUseDestAsTitle : undefined}
             rawDescription={tx.raw_description}
             merchantName={tx.merchant_name}
             amount={tx.amount}
