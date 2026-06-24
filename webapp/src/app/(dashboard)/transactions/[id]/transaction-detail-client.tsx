@@ -408,23 +408,76 @@ export function TransactionDetailClient({
 
   return (
     <div className="space-y-0">
-      {/* ── Hero ─────────────────────────────────────────────────────── */}
+      {/* ── Hero (centered metadata) ─────────────────────────────────── */}
       <header
         className={cn(
-          "relative overflow-hidden border-b border-white/6 px-4 pb-5 pt-4",
-          "bg-[radial-gradient(circle_at_top_left,rgba(200,181,96,0.08),transparent_45%),linear-gradient(180deg,rgba(26,29,26,0.9),rgba(18,20,18,0.95))]",
+          "relative overflow-hidden border-b border-white/6 px-4 pb-5 pt-6 text-center",
+          "bg-[radial-gradient(circle_at_top,rgba(200,181,96,0.08),transparent_55%),linear-gradient(180deg,rgba(26,29,26,0.9),rgba(18,20,18,0.95))]",
         )}
       >
-        <div className="flex items-center gap-2">
+        {/* Direction avatar */}
+        <span
+          className={cn(
+            "mx-auto flex size-12 items-center justify-center rounded-full",
+            isInflow ? "bg-z-income/14 text-z-income" : "bg-z-expense/14 text-z-expense",
+          )}
+        >
+          {isInflow ? <ArrowDownLeft className="size-5" /> : <ArrowUpRight className="size-5" />}
+        </span>
+
+        {/* Amount */}
+        <p
+          className={cn(
+            "mt-3 text-[32px] font-bold leading-none tabular-nums tracking-[-0.01em]",
+            isInflow ? "text-z-income" : "text-z-white",
+          )}
+        >
+          {isInflow ? "+" : "-"}
+          {formatCurrency(tx.amount, tx.currency_code as CurrencyCode)}
+        </p>
+
+        {/* Title (editable) */}
+        {titleEditing ? (
+          <input
+            ref={titleInputRef}
+            value={title}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              setTitleDirty(true);
+            }}
+            onBlur={handleTitleBlur}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                titleInputRef.current?.blur();
+              }
+            }}
+            maxLength={200}
+            placeholder="Título de la transacción"
+            className="mx-auto mt-2 w-full max-w-xs border-b border-z-brass/40 bg-transparent text-center text-base font-semibold text-z-white outline-none placeholder:text-muted-foreground focus:border-z-brass"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={handleTitleOpen}
+            aria-label="Editar título"
+            className="group mx-auto mt-2 flex max-w-full items-center justify-center gap-1.5"
+          >
+            <h1 className="truncate text-base font-semibold text-z-white">
+              {title || "Transacción"}
+            </h1>
+            <Pencil className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+          </button>
+        )}
+
+        {/* Status badges */}
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
           <span
             className={cn(
               "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em]",
-              isInflow
-                ? "bg-z-income/14 text-z-income"
-                : "bg-z-expense/14 text-z-expense",
+              isInflow ? "bg-z-income/14 text-z-income" : "bg-z-expense/14 text-z-expense",
             )}
           >
-            {isInflow ? <ArrowDownLeft className="size-3" /> : <ArrowUpRight className="size-3" />}
             {isInflow ? "Ingreso" : "Gasto"}
           </span>
           {tx.status === "PENDING" && (
@@ -444,77 +497,18 @@ export function TransactionDetailClient({
           )}
         </div>
 
-        {titleEditing ? (
-          <input
-            ref={titleInputRef}
-            value={title}
-            onChange={(e) => {
-              setTitle(e.target.value);
-              setTitleDirty(true);
-            }}
-            onBlur={handleTitleBlur}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                titleInputRef.current?.blur();
-              }
-            }}
-            maxLength={200}
-            placeholder="Título de la transacción"
-            className="mt-2 w-full border-b border-z-brass/40 bg-transparent text-lg font-semibold text-z-white outline-none placeholder:text-muted-foreground focus:border-z-brass"
-          />
-        ) : (
-          <button
-            type="button"
-            onClick={handleTitleOpen}
-            aria-label="Editar título"
-            className="group mt-2 flex items-center gap-1.5 text-left"
-          >
-            <h1 className="text-lg font-semibold text-z-white">
-              {title || "Transacción"}
-            </h1>
-            <Pencil className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-          </button>
-        )}
-
-        <p
-          className={cn(
-            "mt-2 text-[28px] font-bold tabular-nums tracking-[-0.01em]",
-            isInflow ? "text-z-income" : "text-z-white",
-          )}
-        >
-          {isInflow ? "+" : "-"}
-          {formatCurrency(tx.amount, tx.currency_code as CurrencyCode)}
-        </p>
-
-        <p className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
-          <span>{formatDateTime(tx.transaction_date, tx.transaction_time)}</span>
+        {/* Cuenta + Categoría chips */}
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
           {account && (
-            <>
-              <span className="text-white/15">·</span>
-              <span>{account.name}</span>
-            </>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/6 bg-white/[0.03] px-2.5 py-1 text-xs text-muted-foreground">
+              <span
+                className="size-2 shrink-0 rounded-full"
+                style={{ backgroundColor: account.color ?? undefined }}
+              />
+              {account.name}
+            </span>
           )}
-          <span className="text-white/15">·</span>
-          <span className="uppercase tracking-wider">{tx.provider}</span>
-        </p>
-      </header>
-
-      {/* ── Clasificación ──────────────────────────────────────────── */}
-      <section className="px-4 pt-4">
-        <p className={cn(SECTION_EYEBROW_CLASS, "mb-3")}>Clasificación</p>
-
-        {/* Categoría */}
-        <div className="border-t border-white/6 py-3 first:border-t-0 first:pt-0">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-            Categoría
-          </p>
-          <button
-            type="button"
-            onClick={() => setCatOpen(true)}
-            aria-label="Cambiar categoría"
-            className="inline-flex items-center"
-          >
+          <button type="button" onClick={() => setCatOpen(true)} aria-label="Cambiar categoría">
             {selectedCategory ? (
               <span
                 className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
@@ -523,33 +517,61 @@ export function TransactionDetailClient({
                   color: zoneTextColor(catChipColor),
                 }}
               >
-                {selectedCategory.icon && (
-                  <CategoryIcon icon={selectedCategory.icon} className="size-3.5" />
-                )}
+                {selectedCategory.icon && <CategoryIcon icon={selectedCategory.icon} className="size-3.5" />}
                 <span>{selectedCategory.name}</span>
                 <ChevronDown className="ml-0.5 size-3 opacity-60" />
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/6 bg-white/[0.03] px-2.5 py-1 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-z-brass/30 bg-z-brass/10 px-2.5 py-1 text-xs font-medium text-z-brass">
                 <Tag className="size-3" />
-                Sin categoría
+                Categorizar
                 <ChevronDown className="ml-0.5 size-3 opacity-60" />
               </span>
             )}
           </button>
-          <CategoryZonePicker
-            categories={categories}
-            value={optCategoryId}
-            onValueChange={handleCategorySelect}
-            direction={tx.direction}
-            hideTrigger
-            controlledOpen={catOpen}
-            onControlledOpenChange={setCatOpen}
-          />
         </div>
+        <CategoryZonePicker
+          categories={categories}
+          value={optCategoryId}
+          onValueChange={handleCategorySelect}
+          direction={tx.direction}
+          hideTrigger
+          controlledOpen={catOpen}
+          onControlledOpenChange={setCatOpen}
+        />
+      </header>
+
+      {/* ── Detalles ─────────────────────────────────────────────────── */}
+      <section className="px-4 pt-4">
+        <div className="flex items-center gap-3 py-1">
+          <span className="h-px flex-1 bg-white/6" />
+          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Detalles
+          </span>
+          <span className="h-px flex-1 bg-white/6" />
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-4 text-center">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-z-sage-dark">
+              Origen
+            </p>
+            <p className="mt-1 text-sm uppercase tracking-wider">{tx.provider}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-z-sage-dark">
+              Fecha · Hora
+            </p>
+            <p className="mt-1 text-sm">{formatDateTime(tx.transaction_date, tx.transaction_time)}</p>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Clasificación ──────────────────────────────────────────── */}
+      <section className="px-4 pt-4">
+        <p className={cn(SECTION_EYEBROW_CLASS, "mb-3")}>Clasificación</p>
 
         {/* Destinatario */}
-        <div className="border-t border-white/6 py-3">
+        <div className="py-3 pt-0">
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
             Destinatario
           </p>
