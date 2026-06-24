@@ -12,14 +12,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerBody,
-  DrawerTitle,
-  DrawerDescription,
-} from "@/components/ui/drawer";
+import { cn } from "@/lib/utils";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { DestinatarioPatternBuilder } from "@/components/destinatarios/destinatario-pattern-builder";
 import {
@@ -162,7 +155,12 @@ export interface DestinatarioCreateDialogProps extends DestinatarioCreateFormPro
   onOpenChange: (open: boolean) => void;
 }
 
-/** Wraps DestinatarioCreateForm in a Dialog (desktop) / Drawer (mobile). */
+/**
+ * Wraps DestinatarioCreateForm in a centered Dialog on desktop and a
+ * full-screen Dialog on mobile (not a bottom sheet) — the full-screen surface
+ * avoids the keyboard/drag jank a vaul Drawer had and gives the nested
+ * CategoryZonePicker room to render fully.
+ */
 export function DestinatarioCreateDialog({
   open,
   onOpenChange,
@@ -190,19 +188,27 @@ export function DestinatarioCreateDialog({
   }
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent>
-        <DrawerHeader>
-          <DrawerTitle className="flex items-center gap-2">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className={cn(
+          "left-0 top-0 flex h-dvh max-h-dvh w-screen max-w-none translate-x-0 translate-y-0",
+          "flex-col gap-0 rounded-none border-0 p-0",
+        )}
+      >
+        <DialogHeader
+          className="shrink-0 border-b border-white/6 px-4 pb-3 text-left"
+          style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
+        >
+          <DialogTitle className="flex items-center gap-2">
             <UserRound className="size-4 text-z-brass" />
             {title}
-          </DrawerTitle>
-          <DrawerDescription>{description}</DrawerDescription>
-        </DrawerHeader>
-        <DrawerBody>
+          </DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
           <DestinatarioCreateForm {...formProps} />
-        </DrawerBody>
-      </DrawerContent>
-    </Drawer>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
