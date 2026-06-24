@@ -1040,6 +1040,67 @@ export async function updateTransaction(
 }
 
 /**
+ * Move a single transaction to a different account. Critical edit — recomputes
+ * both accounts' balances via the same reconciliation path as `updateTransaction`
+ * (reverse the tx's effect on the old account, apply it to the new one). Focused
+ * so it never clobbers the user's title/category/notes the way a full
+ * `updateTransaction` round-trip would.
+ */
+export async function updateTransactionAccount(
+  transactionId: string,
+  accountId: string,
+): Promise<ActionResult<null>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { data: existing, error: existingError } = await supabase
+    .from("transactions")
+    .select("account_id, amount, direction, is_excluded")
+    .eq("user_id", user.id)
+    .eq("id", transactionId)
+    .single();
+
+  if (existingError || !existing) {
+    return { success: false, error: existingError?.message ?? "Transacción no encontrada" };
+  }
+  if (existing.account_id === accountId) return { success: true, data: null };
+
+  const { error: updateError } = await supabase
+    .from("transactions")
+    .update({ account_id: accountId })
+    .eq("user_id", user.id)
+    .eq("id", transactionId);
+
+  if (updateError) return { success: false, error: updateError.message };
+
+  const balanceResult = await adjustBalancesForTransactionChanges({
+    supabase,
+    userId: user.id,
+    changes: [
+      {
+        existingTx: {
+          account_id: existing.account_id,
+          amount: existing.amount,
+          direction: existing.direction,
+          is_excluded: existing.is_excluded,
+        },
+        nextTx: {
+          account_id: accountId,
+          amount: existing.amount,
+          direction: existing.direction,
+          is_excluded: existing.is_excluded,
+        },
+      },
+    ],
+  });
+
+  if (!balanceResult.success) return { success: false, error: balanceResult.error };
+
+  revalidateFinancialViews();
+  return { success: true, data: null };
+}
+
+/**
  * Patch the `notes` field on a single transaction. Lightweight counterpart to
  * `updateTransaction` for inline/autosave flows (detail page textarea).
  * Notes don't affect balances or categorization, so we skip the balance-change

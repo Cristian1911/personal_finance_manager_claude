@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   ArrowDownLeft,
   ArrowUpRight,
+  Check,
   ChevronDown,
   ChevronRight,
   ChevronUp,
@@ -16,7 +17,6 @@ import {
   Pencil,
   Plus,
   Repeat,
-  Tag,
   Trash2,
   UserRound,
   X,
@@ -57,9 +57,17 @@ import {
   deleteTransaction,
   getTransactionLocation,
   toggleExcludeTransaction,
+  updateTransactionAccount,
   updateTransactionNotes,
   updateTransactionTitle,
 } from "@/actions/transactions";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerBody,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { removeTagFromEntity } from "@/actions/tags";
 import {
   getCandidateOccurrencesForTransaction,
@@ -136,10 +144,32 @@ export function TransactionDetailClient({
 }: TransactionDetailClientProps) {
   const router = useRouter();
   const isInflow = tx.direction === "INFLOW";
+
+  /* ─── Cuenta (optimistic; balance-safe change via updateTransactionAccount) ─ */
+  const [optAccountId, setOptAccountId] = useState(tx.account_id);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [, startAccountTransition] = useTransition();
   const account = useMemo(
-    () => accounts.find((a) => a.id === tx.account_id) ?? null,
-    [accounts, tx.account_id],
+    () => accounts.find((a) => a.id === optAccountId) ?? null,
+    [accounts, optAccountId],
   );
+
+  function handleAccountSelect(accountId: string) {
+    setAccountOpen(false);
+    if (accountId === optAccountId) return;
+    const prev = optAccountId;
+    setOptAccountId(accountId);
+    startAccountTransition(async () => {
+      const result = await updateTransactionAccount(tx.id, accountId);
+      if (result.success) {
+        toast.success("Cuenta actualizada");
+        router.refresh();
+      } else {
+        setOptAccountId(prev);
+        toast.error(result.error ?? "No se pudo cambiar la cuenta");
+      }
+    });
+  }
 
   /* ─── Linked location (lazy fetch — only when tx.location_id is set) ─── */
   const [location, setLocation] = useState<TransactionLocation | null>(null);
@@ -499,30 +529,122 @@ export function TransactionDetailClient({
           )}
         </div>
 
-        {/* Categoría chip */}
-        <div className="mt-3 flex items-center justify-center">
-          <button type="button" onClick={() => setCatOpen(true)} aria-label="Cambiar categoría">
-            {selectedCategory ? (
+      </header>
+
+      {/* ── Contexto (read-only facts) ───────────────────────────────── */}
+      <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 pt-3 text-[11px] text-muted-foreground">
+        <span className="uppercase tracking-wider">{tx.provider}</span>
+        <span className="text-white/15">·</span>
+        <span>{formatDate(tx.transaction_date, "dd MMM yyyy")}</span>
+        {tx.transaction_time && (
+          <>
+            <span className="text-white/15">·</span>
+            <span className="tabular-nums">{tx.transaction_time.slice(0, 5)}</span>
+          </>
+        )}
+      </div>
+
+      {/* ── Clasificación (actionable controls) ──────────────────────── */}
+      <section className="px-4 pt-5">
+        <p className={cn(SECTION_EYEBROW_CLASS, "mb-2")}>Clasificación</p>
+        <div className="overflow-hidden rounded-2xl border border-white/6 bg-z-surface-2/60">
+          {/* Cuenta */}
+          <button
+            type="button"
+            onClick={() => setAccountOpen(true)}
+            className="flex w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition-colors hover:bg-white/[0.03]"
+          >
+            <span className="text-sm text-muted-foreground">Cuenta</span>
+            <span className="flex min-w-0 items-center gap-1.5">
               <span
-                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
-                style={{
-                  backgroundColor: chipBackground(catChipColor),
-                  color: zoneTextColor(catChipColor),
-                }}
-              >
-                {selectedCategory.icon && <CategoryIcon icon={selectedCategory.icon} className="size-3.5" />}
-                <span>{selectedCategory.name}</span>
-                <ChevronDown className="ml-0.5 size-3 opacity-60" />
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-z-brass/30 bg-z-brass/10 px-2.5 py-1 text-xs font-medium text-z-brass">
-                <Tag className="size-3" />
-                Categorizar
-                <ChevronDown className="ml-0.5 size-3 opacity-60" />
-              </span>
-            )}
+                className="size-2 shrink-0 rounded-full"
+                style={{ backgroundColor: account?.color ?? undefined }}
+              />
+              <span className="truncate text-sm font-medium">{account?.name ?? "Sin cuenta"}</span>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
+            </span>
           </button>
+
+          {/* Categoría */}
+          <button
+            type="button"
+            onClick={() => setCatOpen(true)}
+            className="flex w-full items-center justify-between gap-3 border-t border-white/6 px-3.5 py-3 text-left transition-colors hover:bg-white/[0.03]"
+          >
+            <span className="text-sm text-muted-foreground">Categoría</span>
+            <span className="flex min-w-0 items-center gap-1.5">
+              {selectedCategory ? (
+                <span
+                  className="inline-flex min-w-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold"
+                  style={{ backgroundColor: chipBackground(catChipColor), color: zoneTextColor(catChipColor) }}
+                >
+                  {selectedCategory.icon && <CategoryIcon icon={selectedCategory.icon} className="size-3.5 shrink-0" />}
+                  <span className="truncate">{selectedCategory.name}</span>
+                </span>
+              ) : (
+                <span className="text-sm text-z-brass">Categorizar</span>
+              )}
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
+            </span>
+          </button>
+
+          {/* Destinatario */}
+          <button
+            type="button"
+            onClick={() => setDestOpen(true)}
+            className="flex w-full items-center justify-between gap-3 border-t border-white/6 px-3.5 py-3 text-left transition-colors hover:bg-white/[0.03]"
+          >
+            <span className="text-sm text-muted-foreground">Destinatario</span>
+            <span className="flex min-w-0 items-center gap-1.5">
+              {optDestName ? (
+                <span className="inline-flex min-w-0 items-center gap-1.5 rounded-full bg-z-brass/12 px-2 py-0.5 text-xs font-semibold text-z-brass">
+                  <UserRound className="size-3.5 shrink-0" />
+                  <span className="truncate">{optDestName}</span>
+                </span>
+              ) : (
+                <span className="text-sm text-muted-foreground">Asignar</span>
+              )}
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
+            </span>
+          </button>
+
+          {/* Etiquetas */}
+          <div className="border-t border-white/6 px-3.5 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm text-muted-foreground">Etiquetas</span>
+              <button
+                type="button"
+                onClick={() => setTagOpen(true)}
+                className="inline-flex items-center gap-1 text-sm text-z-brass"
+              >
+                <Plus className="size-3.5" />
+                {tags.length > 0 ? "Editar" : "Agregar"}
+              </button>
+            </div>
+            {tags.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {tags.map((t) => (
+                  <span
+                    key={t.id}
+                    className="inline-flex items-center gap-1 rounded-full border border-z-brass/20 bg-z-brass/10 py-0.5 pl-2.5 pr-1 text-[11px] font-medium text-z-brass"
+                  >
+                    <span className="truncate">{t.name}</span>
+                    <button
+                      type="button"
+                      aria-label={`Quitar etiqueta ${t.name}`}
+                      onClick={() => handleRemoveTag(t.id)}
+                      className="ml-0.5 inline-flex size-4 items-center justify-center rounded-full text-z-brass/60 transition-colors hover:bg-z-brass/15 hover:text-z-brass"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Controlled pickers driven by the rows above */}
         <CategoryZonePicker
           categories={categories}
           value={optCategoryId}
@@ -532,129 +654,58 @@ export function TransactionDetailClient({
           controlledOpen={catOpen}
           onControlledOpenChange={setCatOpen}
         />
-      </header>
+        <DestinatarioZonePicker
+          value={optDestId}
+          selectedName={optDestName}
+          onValueChange={handleDestSelect}
+          hideTrigger
+          controlledOpen={destOpen}
+          onControlledOpenChange={setDestOpen}
+          categories={categories}
+          onUseAsTitle={optDestId ? handleUseDestAsTitle : undefined}
+          rawDescription={tx.raw_description}
+          merchantName={tx.merchant_name}
+          amount={tx.amount}
+          currencyCode={tx.currency_code as CurrencyCode}
+        />
+        <TagZonePicker
+          entityType="transaction"
+          entityId={tx.id}
+          hideTrigger
+          controlledOpen={tagOpen}
+          onControlledOpenChange={(open) => {
+            setTagOpen(open);
+            if (!open) startTransition(() => router.refresh());
+          }}
+        />
 
-      {/* ── Detalles ─────────────────────────────────────────────────── */}
-      <section className="px-4 pt-4">
-        <div className="flex items-center gap-3 py-1">
-          <span className="h-px flex-1 bg-white/6" />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Detalles
-          </span>
-          <span className="h-px flex-1 bg-white/6" />
-        </div>
-        <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-4 text-center">
-          <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-z-sage-dark">
-              Cuenta
-            </p>
-            <p className="mt-1 truncate text-sm">{account?.name ?? "—"}</p>
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-z-sage-dark">
-              Origen
-            </p>
-            <p className="mt-1 truncate text-sm uppercase tracking-wider">{tx.provider}</p>
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-z-sage-dark">
-              Fecha
-            </p>
-            <p className="mt-1 text-sm">{formatDate(tx.transaction_date, "dd MMM yyyy")}</p>
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-z-sage-dark">
-              Hora
-            </p>
-            <p className="mt-1 text-sm tabular-nums">
-              {tx.transaction_time ? tx.transaction_time.slice(0, 5) : "—"}
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Clasificación ──────────────────────────────────────────── */}
-      <section className="px-4 pt-4">
-        <p className={cn(SECTION_EYEBROW_CLASS, "mb-3")}>Clasificación</p>
-
-        {/* Destinatario */}
-        <div className="py-3 pt-0">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-            Destinatario
-          </p>
-          <button
-            type="button"
-            onClick={() => setDestOpen(true)}
-            aria-label="Cambiar destinatario"
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold",
-              optDestName
-                ? "bg-z-brass/12 text-z-brass"
-                : "border border-white/6 bg-white/[0.03] font-normal text-muted-foreground",
-            )}
-          >
-            <UserRound className="size-3.5" />
-            <span>{optDestName ?? "Sin destinatario"}</span>
-            <ChevronDown className="ml-0.5 size-3 opacity-60" />
-          </button>
-          <DestinatarioZonePicker
-            value={optDestId}
-            selectedName={optDestName}
-            onValueChange={handleDestSelect}
-            hideTrigger
-            controlledOpen={destOpen}
-            onControlledOpenChange={setDestOpen}
-            categories={categories}
-            onUseAsTitle={optDestId ? handleUseDestAsTitle : undefined}
-            rawDescription={tx.raw_description}
-            merchantName={tx.merchant_name}
-            amount={tx.amount}
-            currencyCode={tx.currency_code as CurrencyCode}
-          />
-        </div>
-
-        {/* Etiquetas */}
-        <div className="border-t border-white/6 py-3">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-            Etiquetas
-          </p>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {tags.map((t) => (
-              <span
-                key={t.id}
-                className="inline-flex items-center gap-1 rounded-full border border-z-brass/20 bg-z-brass/10 pl-2.5 pr-1 py-0.5 text-[11px] font-medium text-z-brass"
-              >
-                <span className="truncate">{t.name}</span>
+        {/* Account picker */}
+        <Drawer open={accountOpen} onOpenChange={setAccountOpen}>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>Cuenta</DrawerTitle>
+            </DrawerHeader>
+            <DrawerBody className="px-2 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+              {accounts.map((a) => (
                 <button
+                  key={a.id}
                   type="button"
-                  aria-label={`Quitar etiqueta ${t.name}`}
-                  onClick={() => handleRemoveTag(t.id)}
-                  className="ml-0.5 inline-flex size-4 items-center justify-center rounded-full text-z-brass/60 transition-colors hover:bg-z-brass/15 hover:text-z-brass"
+                  onClick={() => handleAccountSelect(a.id)}
+                  className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-white/5"
                 >
-                  <X className="size-3" />
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span
+                      className="size-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: a.color ?? undefined }}
+                    />
+                    <span className="truncate">{a.name}</span>
+                  </span>
+                  {a.id === optAccountId && <Check className="size-4 shrink-0 text-z-brass" />}
                 </button>
-              </span>
-            ))}
-            <button
-              type="button"
-              onClick={() => setTagOpen(true)}
-              className="inline-flex items-center gap-1 rounded-full border border-white/6 bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-white/[0.06]"
-            >
-              <Plus className="size-3" />
-              Etiqueta
-            </button>
-          </div>
-          <TagZonePicker
-            entityType="transaction"
-            entityId={tx.id}
-            hideTrigger
-            controlledOpen={tagOpen}
-            onControlledOpenChange={(open) => {
-              setTagOpen(open);
-              if (!open) startTransition(() => router.refresh());
-            }}
-          />
-        </div>
+              ))}
+            </DrawerBody>
+          </DrawerContent>
+        </Drawer>
       </section>
 
       {/* ── Vinculado a recurrente ─────────────────────────────────── */}
