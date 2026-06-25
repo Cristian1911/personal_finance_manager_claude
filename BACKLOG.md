@@ -10,6 +10,15 @@
 
 ---
 
+## Plan living timeline (branch `feat/plan-living-timeline`) — deferred polish
+
+Shipped the living-timeline redesign of the Periodo plan. Review agents flagged these as acceptable follow-ups (none block the feature):
+- **Perf H1 — `EnvelopeBoard` double-mounts.** `MobilePeriodoView` wraps `EnvelopeBoard` and the desktop path also renders it; both mount via CSS hiding. Partly inherited from `plan/page.tsx`'s `lg:hidden`+`DesktopOnly` pattern. ~5ms + lightweight closed dialogs at current scale. Fix: make `MobilePeriodoView` layout-only, render one `EnvelopeBoard` beneath both shells; consider a `MobileOnly` companion to `DesktopOnly`.
+- **Perf M3 — memoize cards.** `React.memo` on `IncomeEnvelopeCard`/`ExpenseEntryRow` once a list exceeds ~30 items.
+- **zetas tier polish (pre-existing).** `income-envelope-card` `bg-card`/`rounded-xl p-4`, `expense-entry-row` `rounded-lg bg-card/50`, confirm-dialog candidate rows mix tiers — align to a defined card tier.
+- **Desktop Flujo chart** not added yet (only mobile collapsible). Add under the desktop hero (expanded), drop the duplicate Ingresos/Gastos/Neto footer, lift the "Saldo negativo proyectado" danger banner so it shows even collapsed.
+- **Mobile Ingresos/Gastos tabs** — design had them; current mobile stacks the board. Add if the stacked view feels long.
+
 ## Mobile ↔ Webapp parity audit (2026-06-25, branch `audit/mobile-web-parity-2026-06-25`)
 
 Full report: [`docs/audits/2026-06-25-mobile-web-parity.md`](docs/audits/2026-06-25-mobile-web-parity.md) (127 findings, severity-ranked).
