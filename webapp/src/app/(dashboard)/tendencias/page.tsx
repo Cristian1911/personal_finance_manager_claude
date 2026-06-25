@@ -41,7 +41,7 @@ export default async function TendenciasPage({
 
   const cats = categorySeries(rows, config);
   const cashflow = incomeVsExpenseSeries(rows, config);
-  const savings = savingsRateSeries(rows, config);
+  const savings = savingsRateSeries(rows, config, cashflow);
   const moverList = movers(cats);
   const n = Math.max(cashflow.length, 1);
   const avgIncome = cashflow.reduce((a, p) => a + p.income, 0) / n;

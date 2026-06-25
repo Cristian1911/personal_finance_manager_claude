@@ -30,9 +30,13 @@ export function FixedVariableCard({ data, currency }: { data: FixedVariable; cur
         <span>
           Variables <b className="tabular-nums text-z-white">{formatCurrency(data.variable, currency)}</b>
           {data.variableMoM !== null && (
-            <span className={data.variableMoM > 0 ? " text-z-expense" : " text-z-income"}>
+            <span
+              className={
+                data.variableMoM > 0 ? " text-z-expense" : data.variableMoM < 0 ? " text-z-income" : " text-z-sage-dark"
+              }
+            >
               {" "}
-              {data.variableMoM > 0 ? "▲" : "▼"} {Math.abs(Math.round(data.variableMoM))}%
+              {data.variableMoM > 0 ? "▲" : data.variableMoM < 0 ? "▼" : "~"} {Math.abs(Math.round(data.variableMoM))}%
             </span>
           )}
         </span>

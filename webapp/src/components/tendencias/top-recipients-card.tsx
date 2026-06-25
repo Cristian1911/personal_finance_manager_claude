@@ -31,9 +31,9 @@ export function TopRecipientsCard({ recipients, currency }: { recipients: Recipi
             <p className="mt-1 text-[11px] text-z-sage-dark">
               {r.count} mov.
               {r.momPct !== null && (
-                <span className={r.momPct > 0 ? " text-z-expense" : " text-z-income"}>
+                <span className={r.momPct > 0 ? " text-z-expense" : r.momPct < 0 ? " text-z-income" : " text-z-sage-dark"}>
                   {" · "}
-                  {r.momPct > 0 ? "▲" : "▼"} {Math.abs(Math.round(r.momPct))}%
+                  {r.momPct > 0 ? "▲" : r.momPct < 0 ? "▼" : "~"} {Math.abs(Math.round(r.momPct))}%
                 </span>
               )}
             </p>

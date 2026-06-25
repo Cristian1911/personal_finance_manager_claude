@@ -13,8 +13,13 @@ export function incomeVsExpenseSeries(rows: readonly AnalyticsTx[], cfg: Analyti
   return cfg.months.map((month, i) => ({ month, income: inc[i], expense: exp[i], net: inc[i] - exp[i] }));
 }
 
-export function savingsRateSeries(rows: readonly AnalyticsTx[], cfg: AnalyticsConfig): SavingsPoint[] {
-  return incomeVsExpenseSeries(rows, cfg).map((p) => ({
+// Pass `cashflow` to reuse an already-computed incomeVsExpenseSeries (avoids recomputation).
+export function savingsRateSeries(
+  rows: readonly AnalyticsTx[],
+  cfg: AnalyticsConfig,
+  cashflow?: readonly CashflowPoint[],
+): SavingsPoint[] {
+  return (cashflow ?? incomeVsExpenseSeries(rows, cfg)).map((p) => ({
     month: p.month,
     income: p.income,
     expense: p.expense,
