@@ -333,7 +333,9 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
         open={assignDialogOpen}
         onOpenChange={setAssignDialogOpen}
         expense={assignTarget}
-        incomeEnvelopes={income_envelopes}
+        // Only assignable income: current Saldo + still-expected/atrasado income.
+        // Confirmed paychecks already folded into the Saldo, so excluded.
+        incomeEnvelopes={visibleIncome}
         currency={currency}
         existingAssignedToExpense={assignTarget ? (assignedPerExpense.get(assignTarget.id) ?? 0) : 0}
         incomeColorMap={incomeColorMap}
