@@ -51,6 +51,7 @@ export default async function TendenciasPage({
   const vm: TendenciasViewModel = {
     range: typeof range === "string" ? range : "custom",
     currency,
+    months: config.months,
     verdict: buildVerdict({ savings, movers: moverList, avgExpense, avgIncome }, fmt),
     gastos: {
       categories: cats,

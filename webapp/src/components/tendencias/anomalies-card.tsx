@@ -15,7 +15,7 @@ export function AnomaliesCard({ anomalies, currency }: { anomalies: Anomaly[]; c
         anomalies.slice(0, 5).map((a, i) => (
           <div
             key={`${a.categoryId}-${a.month}`}
-            className={`flex items-start gap-3 rounded-xl border border-z-brass/25 bg-z-brass/8 p-3 ${i > 0 ? "mt-2" : ""}`}
+            className={`flex items-start gap-3 rounded-2xl border border-z-brass/25 bg-z-brass/8 p-3 ${i > 0 ? "mt-2" : ""}`}
           >
             <AlertTriangle className="size-4 shrink-0 text-z-brass" />
             <div>

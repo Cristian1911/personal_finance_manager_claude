@@ -2,6 +2,7 @@ import type { CategoryTrend } from "@zeta/shared";
 import { formatCurrency } from "@/lib/utils/currency";
 import { PANEL_SURFACE_CLASS } from "@/lib/constants/styles";
 import type { CurrencyCode } from "@/types/domain";
+import { DeltaChip } from "./delta-chip";
 
 function Sparkline({ points, color }: { points: number[]; color: string }) {
   const max = Math.max(...points, 1);
@@ -34,15 +35,7 @@ export function CategoryTrendList({ categories, currency }: { categories: Catego
           <span className="min-w-0 flex-1 truncate text-sm">{c.nameEs}</span>
           <Sparkline points={c.monthly} color={c.color} />
           <span className="text-sm font-semibold tabular-nums">{formatCurrency(c.total, currency)}</span>
-          {c.momPct !== null && (
-            <span
-              className={`rounded-full px-1.5 py-0.5 text-[11px] font-semibold tabular-nums ${
-                c.momPct > 0 ? "bg-z-expense/12 text-z-expense" : c.momPct < 0 ? "bg-z-income/10 text-z-income" : "text-z-sage-dark"
-              }`}
-            >
-              {c.momPct > 0 ? "▲" : c.momPct < 0 ? "▼" : "~"} {Math.abs(Math.round(c.momPct))}%
-            </span>
-          )}
+          {c.momPct !== null && <DeltaChip pct={c.momPct} />}
         </div>
       ))}
     </div>

@@ -13,6 +13,7 @@ import {
   PiggyBank,
   Settings,
   Tag,
+  TrendingUp,
   Users,
   Wallet,
   type LucideIcon,
@@ -56,6 +57,11 @@ const RECURRENTES_TILE: Tile = {
 const DESEOS_TILE: Tile = { href: "/deseos", icon: Heart, label: "Deseos" };
 const PUEDO_PAGAR_TILE: Tile = { href: "/puedo-pagar", icon: Brain, label: "¿Comprarlo?" };
 
+const ANALISIS_GROUP: Group = {
+  title: "Análisis",
+  tiles: [{ href: "/tendencias", icon: TrendingUp, label: "Tendencias" }],
+};
+
 const SISTEMA_GROUP: Group = {
   title: "Sistema",
   tiles: [{ href: "/settings", icon: Settings, label: "Ajustes" }],
@@ -76,6 +82,7 @@ export function MobileLinkGrid() {
 
   const groups: Group[] = [
     CUENTAS_GROUP,
+    ANALISIS_GROUP,
     ORGANIZAR_GROUP,
     planificarGroup,
     SISTEMA_GROUP,

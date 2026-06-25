@@ -15,6 +15,8 @@ interface DashboardSectionProps {
   summaryText?: string;
   subtitle?: string;
   showToggle?: boolean;
+  /** Optional action rendered at the right of the section header (e.g. a "Ver más" link) */
+  headerAction?: React.ReactNode;
   /** Override widgets list — if omitted, pulls from DashboardConfigProvider */
   onToggleWidget?: (widgetId: string, visible: boolean) => void;
   widgets?: Array<{ id: string; label: string; visible: boolean }>;
@@ -28,6 +30,7 @@ export function DashboardSection({
   summaryText,
   subtitle,
   showToggle = true,
+  headerAction,
   onToggleWidget: onToggleWidgetProp,
   widgets: widgetsProp,
 }: DashboardSectionProps) {
@@ -58,12 +61,15 @@ export function DashboardSection({
               {title}
             </span>
           </button>
-          {showToggle && resolvedWidgets && resolvedOnToggle && (
-            <WidgetTogglePanel
-              widgets={resolvedWidgets}
-              onToggle={resolvedOnToggle}
-            />
-          )}
+          <div className="flex items-center gap-2">
+            {headerAction}
+            {showToggle && resolvedWidgets && resolvedOnToggle && (
+              <WidgetTogglePanel
+                widgets={resolvedWidgets}
+                onToggle={resolvedOnToggle}
+              />
+            )}
+          </div>
         </div>
         {subtitle && (
           <p className="text-[15px] text-muted-foreground mt-1 ml-6">{subtitle}</p>

@@ -8,6 +8,7 @@ import { PeriodControl } from "./period-control";
 import { LensGastos } from "./lens-gastos";
 import { LensAhorro } from "./lens-ahorro";
 import { LensCambios } from "./lens-cambios";
+import { ExportButton } from "./export-button";
 
 type Lens = "gastos" | "ahorro" | "cambios";
 const LENSES: { id: Lens; label: string }[] = [
@@ -20,9 +21,12 @@ export function TendenciasShell({ vm }: { vm: TendenciasViewModel }) {
   const [lens, setLens] = useState<Lens>("gastos");
   return (
     <div className="mx-auto w-full max-w-2xl px-4">
-      <div className="pt-4">
-        <SectionEyebrow>Análisis</SectionEyebrow>
-        <h1 className="text-2xl font-semibold tracking-tight lg:text-3xl">Tendencias</h1>
+      <div className="flex items-start justify-between pt-4">
+        <div>
+          <SectionEyebrow>Análisis</SectionEyebrow>
+          <h1 className="text-2xl font-semibold tracking-tight lg:text-3xl">Tendencias</h1>
+        </div>
+        <ExportButton categories={vm.gastos.categories} months={vm.months} range={vm.range} />
       </div>
 
       <VerdictHeader verdict={vm.verdict} />

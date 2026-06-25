@@ -1,5 +1,6 @@
 import type { AdherencePoint } from "@zeta/shared";
 import { PANEL_SURFACE_CLASS } from "@/lib/constants/styles";
+import { DeltaChip } from "./delta-chip";
 
 export function BudgetAdherenceCard({ adherence }: { adherence: AdherencePoint[] }) {
   if (adherence.length === 0) return null;
@@ -14,15 +15,7 @@ export function BudgetAdherenceCard({ adherence }: { adherence: AdherencePoint[]
             <span className="text-[11px] text-z-sage-dark">
               {a.monthsExceeded > 0 ? `excedido ${a.monthsExceeded} de ${total}` : `dentro ${a.monthsWithin} de ${total}`}
             </span>
-            {a.momPct !== null && (
-              <span
-                className={`rounded-full px-1.5 py-0.5 text-[11px] font-semibold tabular-nums ${
-                  a.momPct > 0 ? "bg-z-expense/12 text-z-expense" : "bg-z-income/10 text-z-income"
-                }`}
-              >
-                {a.momPct > 0 ? "▲" : "▼"} {Math.abs(Math.round(a.momPct))}%
-              </span>
-            )}
+            {a.momPct !== null && <DeltaChip pct={a.momPct} />}
           </div>
         );
       })}

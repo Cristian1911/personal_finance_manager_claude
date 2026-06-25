@@ -25,7 +25,7 @@ export function ForecastCard({
     <div className={`mt-3 ${PANEL_SURFACE_CLASS} p-4`}>
       <p className="mb-2 text-sm font-semibold">Proyección de saldo</p>
       <ChartContainer config={config} className="h-28 w-full">
-        <LineChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+        <LineChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }} accessibilityLayer>
           <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={6} fontSize={10} />
           <Line
             type="monotone"

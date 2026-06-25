@@ -34,6 +34,7 @@ export interface CambiosData {
 export interface TendenciasViewModel {
   range: string;
   currency: CurrencyCode;
+  months: string[];
   verdict: Verdict;
   gastos: GastosData;
   ahorro: AhorroData;

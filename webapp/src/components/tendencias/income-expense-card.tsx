@@ -28,7 +28,7 @@ export function IncomeExpenseCard({ cashflow, currency }: { cashflow: CashflowPo
         </span>
       </div>
       <ChartContainer config={config} className="h-32 w-full">
-        <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+        <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }} accessibilityLayer>
           <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={6} fontSize={10} />
           <ChartTooltip
             content={({ active, payload }) => {
