@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { getEnvelopeColor } from "@/lib/constants/envelope-colors";
 import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
+import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import { cn } from "@/lib/utils";
 import type { CurrencyCode, PlanningEntryStatus } from "@/types/domain";
 import type { IncomeEnvelope, PlanningEntryWithRelations } from "@/types/cashflow-planner";
@@ -142,7 +143,7 @@ export function IncomeEnvelopeCard({ envelope, currency, colorIndex, onEdit, onC
               )}
               <DropdownMenuItem
                 onClick={handleDelete}
-                className="text-red-400 focus:text-red-400"
+                className="text-z-debt focus:text-z-debt"
               >
                 <Trash2 className="mr-2 h-3.5 w-3.5" />
                 Eliminar
@@ -176,13 +177,11 @@ export function IncomeEnvelopeCard({ envelope, currency, colorIndex, onEdit, onC
 
       {expanded && assignments.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Gastos asignados
-          </p>
+          <SectionEyebrow>Gastos asignados</SectionEyebrow>
           {assignments.map(({ assignment, expense_entry }) => (
             <div
               key={assignment.id}
-              className="flex items-center justify-between gap-2 rounded-md border border-white/4 bg-background/50 px-3 py-1.5"
+              className="flex items-center justify-between gap-2 rounded-md border border-white/6 bg-background/50 px-3 py-1.5"
             >
               <div className="flex items-center gap-2 min-w-0">
                 {expense_entry.category && (
@@ -202,7 +201,7 @@ export function IncomeEnvelopeCard({ envelope, currency, colorIndex, onEdit, onC
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 text-muted-foreground hover:text-red-400"
+                  className="h-6 w-6 text-muted-foreground hover:text-z-debt"
                   onClick={() => handleRemoveAssignment(assignment.id)}
                   disabled={isPending}
                 >

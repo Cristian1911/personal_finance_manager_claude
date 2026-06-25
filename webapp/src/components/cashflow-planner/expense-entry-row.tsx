@@ -146,7 +146,7 @@ export function ExpenseEntryRow({
           </p>
         )}
         {assignedAmount > 0 && remaining > 0 && (
-          <p className="text-[10px] text-amber-400 tabular-nums">
+          <p className="text-[10px] text-z-alert tabular-nums">
             Falta: {formatCurrency(remaining, currency)}
           </p>
         )}
@@ -185,7 +185,7 @@ export function ExpenseEntryRow({
             variant="ghost"
             size="sm"
             onClick={onPay}
-            className="shrink-0 gap-1 text-xs text-z-income hidden sm:inline-flex"
+            className="shrink-0 gap-1 text-xs hidden sm:inline-flex"
           >
             <Check className="h-3.5 w-3.5" />
             Pagar
@@ -218,7 +218,7 @@ export function ExpenseEntryRow({
             )}
             <DropdownMenuItem
               onClick={handleDelete}
-              className="text-red-400 focus:text-red-400"
+              className="text-z-debt focus:text-z-debt"
             >
               <Trash2 className="mr-2 h-3.5 w-3.5" />
               Eliminar

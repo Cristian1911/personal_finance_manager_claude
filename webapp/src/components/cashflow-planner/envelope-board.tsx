@@ -186,7 +186,7 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
             </div>
           )}
           {actionableIncome.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-white/10 p-4 text-center text-xs text-muted-foreground">
+            <p className="rounded-xl border border-dashed border-white/6 p-4 text-center text-xs text-muted-foreground">
               Todo confirmado por ahora
             </p>
           ) : (
@@ -239,7 +239,7 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
             </div>
           )}
           {pendingExpenses.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-white/10 p-4 text-center text-xs text-muted-foreground">
+            <p className="rounded-xl border border-dashed border-white/6 p-4 text-center text-xs text-muted-foreground">
               Nada pendiente por pagar
             </p>
           ) : (

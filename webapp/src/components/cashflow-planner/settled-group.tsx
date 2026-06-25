@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -31,6 +31,7 @@ export function SettledGroup({
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const contentId = useId();
 
   return (
     <div className="flex flex-col gap-2.5">
@@ -38,7 +39,8 @@ export function SettledGroup({
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex w-full items-center gap-2.5 rounded-xl border border-dashed border-white/10 bg-white/[0.015] p-3 text-left transition-colors hover:bg-white/[0.03]"
+        aria-controls={contentId}
+        className="flex w-full items-center gap-2.5 rounded-xl border border-dashed border-white/6 bg-white/[0.015] p-3 text-left transition-colors hover:bg-white/[0.03]"
       >
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-z-income/12 text-z-income">
           <Check className="h-3.5 w-3.5" strokeWidth={2.6} />
@@ -61,7 +63,11 @@ export function SettledGroup({
           />
         </span>
       </button>
-      {open && <div className="flex flex-col gap-2.5">{children}</div>}
+      {open && (
+        <div id={contentId} className="flex flex-col gap-2.5">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
