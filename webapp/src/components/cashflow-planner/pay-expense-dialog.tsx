@@ -172,7 +172,7 @@ export function PayExpenseDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-md max-h-[85svh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             Pagar: {entry.label}
