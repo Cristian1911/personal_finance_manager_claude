@@ -18,6 +18,7 @@ import { getEnvelopeColor } from "@/lib/constants/envelope-colors";
 import { toast } from "sonner";
 import type { CurrencyCode, PlanningEntryStatus } from "@/types/domain";
 import type { PlanningEntryWithRelations } from "@/types/cashflow-planner";
+import type { ExpenseCommitment } from "@/lib/utils/plan-commitments";
 
 interface ExpenseEntryRowProps {
   entry: PlanningEntryWithRelations;
@@ -26,6 +27,9 @@ interface ExpenseEntryRowProps {
   assignmentChips?: { colorIndex: number; amount: number; label: string }[];
   onAssign?: () => void;
   onEdit?: (entry: PlanningEntryWithRelations) => void;
+  onPay?: () => void;
+  /** Time-aware commitment classification for this expense (when pending). */
+  commitment?: ExpenseCommitment;
   showAssignButton?: boolean;
 }
 
@@ -38,6 +42,17 @@ const STATUS_BADGE: Record<
   SKIPPED: { label: "Omitido", className: "border-white/10 text-muted-foreground line-through" },
 };
 
+function commitTag(commitment: ExpenseCommitment | undefined) {
+  if (!commitment) return null;
+  if (commitment.cuentaAhora > 0)
+    return { label: "cuenta ahora", className: "border-z-alert/30 text-z-alert" };
+  if (commitment.cubierto > 0)
+    return { label: "cubierto", className: "border-z-income/30 text-z-income" };
+  if (commitment.sinAsignar > 0)
+    return { label: "sin asignar", className: "border-white/10 text-muted-foreground" };
+  return null;
+}
+
 export function ExpenseEntryRow({
   entry,
   currency,
@@ -45,12 +60,15 @@ export function ExpenseEntryRow({
   assignmentChips,
   onAssign,
   onEdit,
+  onPay,
+  commitment,
   showAssignButton = true,
 }: ExpenseEntryRowProps) {
   const [isPending, startTransition] = useTransition();
   // Assignments are in period currency, so remaining uses converted_amount
   const remaining = entry.converted_amount - assignedAmount;
   const isForeignCurrency = entry.currency_code !== currency;
+  const tag = entry.status === "PLANNED" ? commitTag(commitment) : null;
 
   function cycleStatus() {
     const nextStatus: PlanningEntryStatus =
@@ -106,6 +124,11 @@ export function ExpenseEntryRow({
           <Badge variant="outline" className={`text-[9px] sm:text-[10px] px-1 sm:px-1.5 ${badge.className}`}>
             {badge.label}
           </Badge>
+          {tag && (
+            <Badge variant="outline" className={`text-[9px] sm:text-[10px] px-1 sm:px-1.5 ${tag.className}`}>
+              {tag.label}
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span>{formatDate(entry.expected_date)}</span>
@@ -157,6 +180,17 @@ export function ExpenseEntryRow({
             Asignar
           </Button>
         )}
+        {onPay && entry.status === "PLANNED" && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onPay}
+            className="shrink-0 gap-1 text-xs text-z-income hidden sm:inline-flex"
+          >
+            <Check className="h-3.5 w-3.5" />
+            Pagar
+          </Button>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
@@ -168,6 +202,12 @@ export function ExpenseEntryRow({
               <DropdownMenuItem onClick={onAssign} className="sm:hidden">
                 <ArrowRightLeft className="mr-2 h-3.5 w-3.5" />
                 Asignar
+              </DropdownMenuItem>
+            )}
+            {onPay && entry.status === "PLANNED" && (
+              <DropdownMenuItem onClick={onPay} className="sm:hidden">
+                <Check className="mr-2 h-3.5 w-3.5" />
+                Pagar
               </DropdownMenuItem>
             )}
             {onEdit && (

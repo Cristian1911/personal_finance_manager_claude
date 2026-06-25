@@ -139,8 +139,9 @@ export async function PlanTabPeriodo() {
 
           {planData && (
             <div className={isExpired ? "opacity-60" : undefined}>
-              <PeriodHeader data={planData} isExpired={isExpired} />
-              {!isExpired && (
+              {isExpired ? (
+                <PeriodHeader data={planData} isExpired={isExpired} />
+              ) : (
                 <EnvelopeBoard
                   data={planData}
                   accounts={accounts}

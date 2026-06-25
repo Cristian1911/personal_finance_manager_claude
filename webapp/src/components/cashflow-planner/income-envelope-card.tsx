@@ -15,6 +15,8 @@ import { formatDate } from "@/lib/utils/date";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { getEnvelopeColor } from "@/lib/constants/envelope-colors";
+import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
+import { cn } from "@/lib/utils";
 import type { CurrencyCode, PlanningEntryStatus } from "@/types/domain";
 import type { IncomeEnvelope, PlanningEntryWithRelations } from "@/types/cashflow-planner";
 
@@ -23,17 +25,37 @@ interface IncomeEnvelopeCardProps {
   currency: CurrencyCode;
   colorIndex: number;
   onEdit?: (entry: PlanningEntryWithRelations) => void;
+  /** When provided, income confirmation replaces the manual status toggle. */
+  onConfirm?: (entry: PlanningEntryWithRelations) => void;
 }
 
-export function IncomeEnvelopeCard({ envelope, currency, colorIndex, onEdit }: IncomeEnvelopeCardProps) {
+const STATE_CHIP: Record<string, { label: string; className: string }> = {
+  confirmado: { label: "Confirmado", className: "border-z-income/30 text-z-income" },
+  esperado: { label: "Esperado", className: "border-white/10 text-muted-foreground" },
+  atrasado: { label: "Atrasado", className: "border-z-expense/30 text-z-expense" },
+  omitido: { label: "Omitido", className: "border-white/10 text-muted-foreground" },
+};
+
+export function IncomeEnvelopeCard({ envelope, currency, colorIndex, onEdit, onConfirm }: IncomeEnvelopeCardProps) {
   const [isPending, startTransition] = useTransition();
   const [expanded, setExpanded] = useState(false);
-  const { entry, total_amount, assigned_amount, remaining_amount, assignments } = envelope;
+  const { entry, total_amount, assigned_amount, remaining_amount, assignments, state } = envelope;
   const percentUsed = total_amount > 0
     ? Math.round((assigned_amount / total_amount) * 100)
     : 0;
   const isForeignCurrency = entry.currency_code !== currency;
   const envelopeColor = getEnvelopeColor(colorIndex);
+
+  // In the living timeline, income confirmation (onConfirm) replaces the manual
+  // PLANNED↔COMPLETED check; the left border is tinted by lifecycle state.
+  const chip = STATE_CHIP[state] ?? STATE_CHIP.esperado;
+  const showConfirm = !!onConfirm && state !== "confirmado";
+  const borderLeftColor =
+    state === "confirmado"
+      ? "var(--z-income)"
+      : state === "atrasado"
+        ? "var(--z-expense)"
+        : envelopeColor.hex;
 
   function handleRemoveAssignment(assignmentId: string) {
     startTransition(async () => {
@@ -61,30 +83,37 @@ export function IncomeEnvelopeCard({ envelope, currency, colorIndex, onEdit }: I
   }
 
   return (
-    <div className="rounded-xl border border-white/6 bg-card p-4 space-y-3 border-l-2" style={{ borderLeftColor: envelopeColor.hex }}>
+    <div className="rounded-xl border border-white/6 bg-card p-4 space-y-3 border-l-2" style={{ borderLeftColor }}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
-          <button
-            type="button"
-            onClick={handleToggleStatus}
-            disabled={isPending}
-            className="shrink-0 rounded-md border border-white/10 p-1 transition-colors hover:border-white/20"
-          >
-            <Check
-              className={`h-3.5 w-3.5 ${entry.status === "COMPLETED" ? "" : "text-muted-foreground"}`}
-              style={entry.status === "COMPLETED" ? { color: envelopeColor.hex } : undefined}
-            />
-          </button>
+          {!showConfirm && (
+            <button
+              type="button"
+              onClick={handleToggleStatus}
+              disabled={isPending}
+              className="shrink-0 rounded-md border border-white/10 p-1 transition-colors hover:border-white/20"
+            >
+              <Check
+                className={`h-3.5 w-3.5 ${entry.status === "COMPLETED" ? "" : "text-muted-foreground"}`}
+                style={entry.status === "COMPLETED" ? { color: envelopeColor.hex } : undefined}
+              />
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
             className="text-left min-w-0"
           >
             <p className="text-sm font-semibold truncate">{entry.label}</p>
-            <p className="text-xs text-muted-foreground truncate">
-              {formatDate(entry.expected_date)}
-              {entry.account && ` · ${entry.account.name}`}
-            </p>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className={cn("text-[10px] shrink-0", chip.className)}>
+                {chip.label}
+              </Badge>
+              <p className="text-xs text-muted-foreground truncate">
+                {formatDate(entry.expected_date)}
+                {entry.account && ` · ${entry.account.name}`}
+              </p>
+            </div>
           </button>
         </div>
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
@@ -132,6 +161,18 @@ export function IncomeEnvelopeCard({ envelope, currency, colorIndex, onEdit }: I
           <div className="h-full rounded-full transition-all" style={{ width: `${percentUsed}%`, backgroundColor: envelopeColor.hex }} />
         </div>
       </div>
+
+      {showConfirm && (
+        <Button
+          size="sm"
+          className={cn("h-8 gap-1.5 text-xs", BRASS_BUTTON_CLASS)}
+          disabled={isPending}
+          onClick={() => onConfirm?.(entry)}
+        >
+          <Check className="h-3.5 w-3.5" />
+          {state === "atrasado" ? "¿Llegó? Confirmar" : "Confirmar recibido"}
+        </Button>
+      )}
 
       {expanded && assignments.length > 0 && (
         <div className="space-y-1.5">

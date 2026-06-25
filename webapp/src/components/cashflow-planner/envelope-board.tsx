@@ -4,6 +4,9 @@ import { useMemo, useState } from "react";
 import { IncomeEnvelopeCard } from "./income-envelope-card";
 import { ExpenseEntryRow } from "./expense-entry-row";
 import { AssignmentDialog } from "./assignment-dialog";
+import { ConfirmIncomeDialog } from "./confirm-income-dialog";
+import { PayExpenseDialog } from "./pay-expense-dialog";
+import { SettledGroup } from "./settled-group";
 import { BalanceSeedButton } from "./balance-seed-button";
 import { EntryFormDialog } from "./entry-form-dialog";
 import { EditEntryDialog } from "./edit-entry-dialog";
@@ -11,8 +14,12 @@ import { AutoAssignButton } from "./auto-assign-button";
 import { SyncRecurringButton } from "./sync-recurring-button";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import { buildEnvelopeMaps } from "@/lib/utils/cashflow-planner";
-import { Wallet, Receipt } from "lucide-react";
-import type { Account, Category } from "@/types/domain";
+import { formatCurrency } from "@/lib/utils/currency";
+import { formatDate, toColombiaDateString } from "@/lib/utils/date";
+import { Wallet, Receipt, AlertTriangle, Info } from "lucide-react";
+import { differenceInCalendarDays, parseISO } from "date-fns";
+import type { Category } from "@/types/domain";
+import type { PlanAccount } from "@/components/mobile/v2/plan/mobile-periodo-view";
 import {
   BALANCE_SEED_NOTES,
   type PeriodPlanData,
@@ -21,7 +28,7 @@ import {
 
 interface EnvelopeBoardProps {
   data: PeriodPlanData;
-  accounts?: Pick<Account, "id" | "name" | "icon" | "color">[];
+  accounts?: PlanAccount[];
   categories?: Pick<Category, "id" | "name" | "name_es" | "icon" | "color">[];
 }
 
@@ -30,7 +37,12 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<PlanningEntryWithRelations | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const { income_envelopes, expense_entries, unassigned_expenses, currency, period } = data;
+  const [confirmTarget, setConfirmTarget] = useState<PlanningEntryWithRelations | null>(null);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [payTarget, setPayTarget] = useState<PlanningEntryWithRelations | null>(null);
+  const [payDialogOpen, setPayDialogOpen] = useState(false);
+
+  const { income_envelopes, expense_entries, unassigned_expenses, currency, period, commitments } = data;
 
   const { assignedPerExpense, incomeColorMap, expenseAssignmentChips } = useMemo(
     () => buildEnvelopeMaps(income_envelopes),
@@ -42,31 +54,115 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
     [income_envelopes],
   );
 
+  // Settled (above HOY) vs actionable (below HOY).
+  const confirmedIncome = income_envelopes.filter((e) => e.state === "confirmado");
+  const actionableIncome = income_envelopes.filter((e) => e.state !== "confirmado");
+  const paidExpenses = expense_entries.filter((e) => e.status === "COMPLETED");
+  const pendingExpenses = expense_entries.filter((e) => e.status !== "COMPLETED");
+
+  const confirmedTotal = confirmedIncome.reduce((s, e) => s + e.total_amount, 0);
+  const paidTotal = paidExpenses.reduce((s, e) => s + e.converted_amount, 0);
+  const actionableIncomeTotal = actionableIncome.reduce((s, e) => s + e.total_amount, 0);
+  const pendingExpenseTotal = pendingExpenses.reduce((s, e) => s + e.converted_amount, 0);
+  const atrasadoCount = actionableIncome.filter((e) => e.state === "atrasado").length;
+
+  const todayISO = toColombiaDateString(new Date());
+  const daysLeft = Math.max(0, differenceInCalendarDays(parseISO(period.end_date), parseISO(todayISO)));
+
   function openAssignDialog(expense: PlanningEntryWithRelations) {
     setAssignTarget(expense);
     setAssignDialogOpen(true);
   }
-
   function openEditDialog(entry: PlanningEntryWithRelations) {
     setEditTarget(entry);
     setEditDialogOpen(true);
   }
+  function openConfirmDialog(entry: PlanningEntryWithRelations) {
+    setConfirmTarget(entry);
+    setConfirmDialogOpen(true);
+  }
+  function openPayDialog(entry: PlanningEntryWithRelations) {
+    setPayTarget(entry);
+    setPayDialogOpen(true);
+  }
+
+  const colorIndexOf = (id: string) => incomeColorMap.get(id) ?? 0;
 
   return (
     <>
+      {/* ── Settled (past): confirmed income + paid expenses, collapsed ── */}
+      {(confirmedIncome.length > 0 || paidExpenses.length > 0) && (
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-2 mb-4">
+          {confirmedIncome.length > 0 ? (
+            <SettledGroup
+              count={confirmedIncome.length}
+              total={confirmedTotal}
+              currency={currency}
+              noun="confirmados"
+              caption="ya en el saldo"
+            >
+              {confirmedIncome.map((env) => (
+                <IncomeEnvelopeCard
+                  key={env.entry.id}
+                  envelope={env}
+                  currency={currency}
+                  colorIndex={colorIndexOf(env.entry.id)}
+                  onEdit={openEditDialog}
+                />
+              ))}
+            </SettledGroup>
+          ) : (
+            <div />
+          )}
+          {paidExpenses.length > 0 && (
+            <SettledGroup
+              count={paidExpenses.length}
+              total={paidTotal}
+              currency={currency}
+              noun="pagados"
+              caption="ya descontados"
+            >
+              {paidExpenses.map((entry) => (
+                <ExpenseEntryRow
+                  key={entry.id}
+                  entry={entry}
+                  currency={currency}
+                  assignedAmount={assignedPerExpense.get(entry.id) ?? 0}
+                  assignmentChips={expenseAssignmentChips.get(entry.id) ?? []}
+                  onEdit={openEditDialog}
+                />
+              ))}
+            </SettledGroup>
+          )}
+        </div>
+      )}
+
+      {/* ── HOY divider ── */}
+      <div className="flex items-center gap-3 my-5">
+        <div className="h-px flex-1 bg-white/6" />
+        <div className="flex items-center gap-2 rounded-full border border-z-brass/30 bg-z-brass/[0.07] px-3 py-1">
+          <span className="h-1.5 w-1.5 rounded-full bg-z-brass" />
+          <span className="text-[11px] font-bold uppercase tracking-[0.13em] text-z-brass">
+            Hoy · {formatDate(todayISO, "d MMM")}
+          </span>
+          <span className="text-[11px] text-muted-foreground">
+            quedan {daysLeft} {daysLeft === 1 ? "día" : "días"}
+          </span>
+        </div>
+        <div className="h-px flex-1 bg-white/6" />
+      </div>
+
+      {/* ── Actionable (present/future): esperado/atrasado income | pending expenses ── */}
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
-        {/* Income envelopes */}
-        <div className="space-y-4">
+        {/* Income */}
+        <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Wallet className="h-4 w-4 text-z-income" />
               <SectionEyebrow>Ingresos</SectionEyebrow>
             </div>
             <div className="flex items-center gap-2">
-              <BalanceSeedButton
-                periodId={period.id}
-                hasExistingBalances={hasBalanceEnvelopes}
-              />
+              <BalanceSeedButton periodId={period.id} hasExistingBalances={hasBalanceEnvelopes} />
               <EntryFormDialog
                 periodId={period.id}
                 currency={currency}
@@ -76,33 +172,39 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
               />
             </div>
           </div>
-
-          {income_envelopes.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-white/10 p-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                No hay ingresos en este periodo
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Agrega un ingreso para empezar a asignar gastos
-              </p>
+          {actionableIncomeTotal > 0 && (
+            <p className="text-[11px] text-muted-foreground tabular-nums">
+              {formatCurrency(actionableIncomeTotal, currency)} por confirmar
+            </p>
+          )}
+          {atrasadoCount > 0 && (
+            <div className="flex items-center gap-2 rounded-xl border border-z-expense/20 bg-z-expense/[0.06] px-3 py-2 text-xs text-z-expense">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              <span>
+                {atrasadoCount} {atrasadoCount === 1 ? "ingreso atrasado" : "ingresos atrasados"} sin confirmar
+              </span>
             </div>
+          )}
+          {actionableIncome.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-white/10 p-4 text-center text-xs text-muted-foreground">
+              Todo confirmado por ahora
+            </p>
           ) : (
-            <div className="space-y-3">
-              {income_envelopes.map((env, index) => (
-                <IncomeEnvelopeCard
-                  key={env.entry.id}
-                  envelope={env}
-                  currency={currency}
-                  colorIndex={index}
-                  onEdit={openEditDialog}
-                />
-              ))}
-            </div>
+            actionableIncome.map((env) => (
+              <IncomeEnvelopeCard
+                key={env.entry.id}
+                envelope={env}
+                currency={currency}
+                colorIndex={colorIndexOf(env.entry.id)}
+                onEdit={openEditDialog}
+                onConfirm={openConfirmDialog}
+              />
+            ))
           )}
         </div>
 
-        {/* Expense pool */}
-        <div className="space-y-4">
+        {/* Expenses */}
+        <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Receipt className="h-4 w-4 text-z-expense" />
@@ -122,27 +224,37 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
               />
             </div>
           </div>
-
-          {expense_entries.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-white/10 p-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                No hay gastos en este periodo
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Agrega un gasto o pobla desde tus recurrentes
-              </p>
+          {pendingExpenseTotal > 0 && (
+            <p className="text-[11px] text-muted-foreground tabular-nums">
+              {formatCurrency(pendingExpenseTotal, currency)} por pagar
+            </p>
+          )}
+          {unassigned_expenses.length > 0 && (
+            <div className="flex items-center gap-2 rounded-xl border border-z-brass/20 bg-z-brass/[0.06] px-3 py-2 text-xs text-z-brass">
+              <Info className="h-3.5 w-3.5 shrink-0" />
+              <span>
+                {unassigned_expenses.length}{" "}
+                {unassigned_expenses.length === 1 ? "gasto sin asignar" : "gastos sin asignar"} a un ingreso
+              </span>
             </div>
+          )}
+          {pendingExpenses.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-white/10 p-4 text-center text-xs text-muted-foreground">
+              Nada pendiente por pagar
+            </p>
           ) : (
             <div className="space-y-2">
-              {expense_entries.map((entry) => (
+              {pendingExpenses.map((entry) => (
                 <ExpenseEntryRow
                   key={entry.id}
                   entry={entry}
                   currency={currency}
                   assignedAmount={assignedPerExpense.get(entry.id) ?? 0}
                   assignmentChips={expenseAssignmentChips.get(entry.id) ?? []}
+                  commitment={commitments[entry.id]}
                   onAssign={() => openAssignDialog(entry)}
                   onEdit={openEditDialog}
+                  onPay={() => openPayDialog(entry)}
                 />
               ))}
             </div>
@@ -156,9 +268,7 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
         expense={assignTarget}
         incomeEnvelopes={income_envelopes}
         currency={currency}
-        existingAssignedToExpense={
-          assignTarget ? (assignedPerExpense.get(assignTarget.id) ?? 0) : 0
-        }
+        existingAssignedToExpense={assignTarget ? (assignedPerExpense.get(assignTarget.id) ?? 0) : 0}
         incomeColorMap={incomeColorMap}
       />
 
@@ -169,6 +279,24 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
         currency={currency}
         accounts={accounts}
         categories={categories}
+      />
+
+      <ConfirmIncomeDialog
+        entry={confirmTarget}
+        open={confirmDialogOpen}
+        onOpenChange={setConfirmDialogOpen}
+        currency={currency}
+        accounts={accounts}
+        periodMonth={period.start_date.slice(0, 7)}
+      />
+
+      <PayExpenseDialog
+        entry={payTarget}
+        open={payDialogOpen}
+        onOpenChange={setPayDialogOpen}
+        currency={currency}
+        accounts={accounts}
+        periodMonth={period.start_date.slice(0, 7)}
       />
     </>
   );
