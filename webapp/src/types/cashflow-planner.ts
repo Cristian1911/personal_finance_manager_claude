@@ -7,6 +7,7 @@ import type {
   PlanningPeriod,
   RecurringTemplate,
 } from "./domain";
+import type { IncomeState, ExpenseCommitment } from "@/lib/utils/plan-commitments";
 
 /**
  * Sentinel stored in `planning_entries.notes` to flag entries that mirror an
@@ -34,6 +35,10 @@ export interface IncomeEnvelope {
   assigned_amount: number;
   remaining_amount: number;
   assignments: AssignmentDetail[];
+  /** Lifecycle state; opening-balance seeds are reported as "confirmado". */
+  state: IncomeState;
+  /** True when this envelope mirrors an account's opening balance (`[saldo]`). */
+  is_opening_balance: boolean;
 }
 
 export interface PeriodPlanData {
@@ -50,4 +55,16 @@ export interface PeriodPlanData {
   exchange_rates: Partial<Record<CurrencyCode, number>>;
   /** True when entries use currencies other than the period's */
   is_multi_currency: boolean;
+  /** Live spendable accounts balance, in period currency (read from `accounts`). */
+  saldo_actual: number;
+  /** saldo_actual − comprometido_ahora. May be negative (over-committed). */
+  puedo_gastar: number;
+  /** Unpaid commitments that must come from money in hand (subtract from puedo_gastar). */
+  comprometido_ahora: number;
+  /** Unpaid commitments covered by an upcoming income that lands in time. */
+  comprometido_cubierto: number;
+  /** Earliest expected (esperado) income date on/after today, or null. */
+  next_income_date: string | null;
+  /** Per-expense commitment classification, keyed by expense entry id. */
+  commitments: Record<string, ExpenseCommitment>;
 }
