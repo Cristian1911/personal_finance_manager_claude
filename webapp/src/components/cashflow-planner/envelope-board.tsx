@@ -98,8 +98,10 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
               count={confirmedIncome.length}
               total={confirmedTotal}
               currency={currency}
-              noun="confirmados"
+              noun="ingresos confirmados"
               caption="ya en el saldo"
+              icon={<Wallet className="h-3.5 w-3.5" />}
+              iconClassName="bg-z-income/12 text-z-income"
             >
               {confirmedIncome.map((env) => (
                 <IncomeEnvelopeCard
@@ -119,8 +121,10 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
               count={paidExpenses.length}
               total={paidTotal}
               currency={currency}
-              noun="pagados"
+              noun="gastos pagados"
               caption="ya descontados"
+              icon={<Receipt className="h-3.5 w-3.5" />}
+              iconClassName="bg-z-expense/12 text-z-expense"
             >
               {paidExpenses.map((entry) => (
                 <ExpenseEntryRow
@@ -156,12 +160,12 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
         {/* Income */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Wallet className="h-4 w-4 text-z-income" />
               <SectionEyebrow>Ingresos</SectionEyebrow>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <BalanceSeedButton periodId={period.id} hasExistingBalances={hasBalanceEnvelopes} />
               <EntryFormDialog
                 periodId={period.id}
@@ -205,12 +209,12 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
 
         {/* Expenses */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Receipt className="h-4 w-4 text-z-expense" />
               <SectionEyebrow>Gastos</SectionEyebrow>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {unassigned_expenses.length > 0 && income_envelopes.length > 0 && (
                 <AutoAssignButton periodId={period.id} />
               )}

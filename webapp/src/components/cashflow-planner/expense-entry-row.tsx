@@ -118,22 +118,22 @@ export function ExpenseEntryRow({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 sm:gap-2">
           {entry.category && (
-            <span className="text-xs">{entry.category.icon}</span>
+            <span className="shrink-0 text-xs">{entry.category.icon}</span>
           )}
-          <span className="text-sm font-medium truncate">{entry.label}</span>
-          <Badge variant="outline" className={`text-[9px] sm:text-[10px] px-1 sm:px-1.5 ${badge.className}`}>
+          <span className="min-w-0 truncate text-sm font-medium">{entry.label}</span>
+          <Badge variant="outline" className={`shrink-0 text-[9px] sm:text-[10px] px-1 sm:px-1.5 ${badge.className}`}>
             {badge.label}
           </Badge>
           {tag && (
-            <Badge variant="outline" className={`text-[9px] sm:text-[10px] px-1 sm:px-1.5 ${tag.className}`}>
+            <Badge variant="outline" className={`shrink-0 text-[9px] sm:text-[10px] px-1 sm:px-1.5 ${tag.className}`}>
               {tag.label}
             </Badge>
           )}
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>{formatDate(entry.expected_date)}</span>
-          {entry.account && <span>· {entry.account.name}</span>}
-        </div>
+        <p className="truncate text-xs text-muted-foreground">
+          {formatDate(entry.expected_date)}
+          {entry.account && ` · ${entry.account.name}`}
+        </p>
       </div>
 
       <div className="text-right shrink-0 min-w-[70px]">

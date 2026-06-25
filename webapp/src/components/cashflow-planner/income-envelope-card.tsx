@@ -106,11 +106,11 @@ export function IncomeEnvelopeCard({ envelope, currency, colorIndex, onEdit, onC
             className="text-left min-w-0"
           >
             <p className="text-sm font-semibold truncate">{entry.label}</p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 min-w-0">
               <Badge variant="outline" className={cn("text-[10px] shrink-0", chip.className)}>
                 {chip.label}
               </Badge>
-              <p className="text-xs text-muted-foreground truncate">
+              <p className="text-xs text-muted-foreground truncate min-w-0">
                 {formatDate(entry.expected_date)}
                 {entry.account && ` · ${entry.account.name}`}
               </p>

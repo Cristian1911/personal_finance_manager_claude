@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import type { CurrencyCode } from "@/types/domain";
@@ -17,6 +17,8 @@ export function SettledGroup({
   currency,
   noun,
   caption,
+  icon,
+  iconClassName = "bg-z-income/12 text-z-income",
   defaultOpen = false,
   children,
 }: {
@@ -27,6 +29,10 @@ export function SettledGroup({
   noun: string;
   /** e.g. "ya en el saldo" / "ya descontados" */
   caption: string;
+  /** Domain icon (Wallet/Receipt) so income vs expense reads at a glance. */
+  icon: React.ReactNode;
+  /** Tint classes for the icon chip (income green vs expense red). */
+  iconClassName?: string;
   defaultOpen?: boolean;
   children: React.ReactNode;
 }) {
@@ -42,8 +48,13 @@ export function SettledGroup({
         aria-controls={contentId}
         className="flex w-full items-center gap-2.5 rounded-xl border border-dashed border-white/6 bg-white/[0.015] p-3 text-left transition-colors hover:bg-white/[0.03]"
       >
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-z-income/12 text-z-income">
-          <Check className="h-3.5 w-3.5" strokeWidth={2.6} />
+        <span
+          className={cn(
+            "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
+            iconClassName
+          )}
+        >
+          {icon}
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-[13px] font-semibold tabular-nums text-z-white">
