@@ -1,5 +1,7 @@
 "use client";
 import { useState } from "react";
+import { PANEL_SURFACE_CLASS, SEGMENTED_TAB_ACTIVE_CLASS, SEGMENTED_TAB_CLASS } from "@/lib/constants/styles";
+import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import type { TendenciasViewModel } from "./types";
 import { VerdictHeader } from "./verdict-header";
 import { PeriodControl } from "./period-control";
@@ -15,16 +17,16 @@ const LENSES: { id: Lens; label: string }[] = [
 export function TendenciasShell({ vm }: { vm: TendenciasViewModel }) {
   const [lens, setLens] = useState<Lens>("gastos");
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 pb-10">
+    <div className="mx-auto w-full max-w-2xl px-4">
       <div className="pt-4">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">Análisis</p>
-        <h1 className="text-2xl font-semibold tracking-tight">Tendencias</h1>
+        <SectionEyebrow>Análisis</SectionEyebrow>
+        <h1 className="text-2xl font-semibold tracking-tight lg:text-3xl">Tendencias</h1>
       </div>
 
       <VerdictHeader verdict={vm.verdict} />
       <PeriodControl range={vm.range} />
 
-      <div role="tablist" className="mt-4 flex gap-1 rounded-xl border border-white/6 bg-z-surface-2/60 p-1">
+      <div role="tablist" className="mt-4 flex gap-1 rounded-full border border-white/6 bg-black/10 p-1">
         {LENSES.map((l) => (
           <button
             key={l.id}
@@ -32,9 +34,7 @@ export function TendenciasShell({ vm }: { vm: TendenciasViewModel }) {
             type="button"
             aria-selected={lens === l.id}
             onClick={() => setLens(l.id)}
-            className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
-              lens === l.id ? "bg-z-brass/12 text-z-brass" : "text-z-sage-dark hover:text-z-sage-light"
-            }`}
+            className={lens === l.id ? SEGMENTED_TAB_ACTIVE_CLASS : SEGMENTED_TAB_CLASS}
           >
             {l.label}
           </button>
@@ -44,12 +44,12 @@ export function TendenciasShell({ vm }: { vm: TendenciasViewModel }) {
       <div className="mt-4">
         {lens === "gastos" && <LensGastos data={vm.gastos} currency={vm.currency} />}
         {lens === "ahorro" && (
-          <div className="rounded-2xl border border-white/6 bg-z-surface-2/80 p-6 text-center text-sm text-z-sage-dark">
+          <div className={`${PANEL_SURFACE_CLASS} p-6 text-center text-sm text-z-sage-dark`}>
             Lente de ahorro — próximamente
           </div>
         )}
         {lens === "cambios" && (
-          <div className="rounded-2xl border border-white/6 bg-z-surface-2/80 p-6 text-center text-sm text-z-sage-dark">
+          <div className={`${PANEL_SURFACE_CLASS} p-6 text-center text-sm text-z-sage-dark`}>
             Lente de cambios — próximamente
           </div>
         )}

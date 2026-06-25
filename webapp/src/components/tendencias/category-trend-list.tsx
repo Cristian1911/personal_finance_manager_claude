@@ -1,5 +1,6 @@
 import type { CategoryTrend } from "@zeta/shared";
 import { formatCurrency } from "@/lib/utils/currency";
+import { PANEL_SURFACE_CLASS } from "@/lib/constants/styles";
 import type { CurrencyCode } from "@/types/domain";
 
 function Sparkline({ points, color }: { points: number[]; color: string }) {
@@ -19,13 +20,13 @@ function Sparkline({ points, color }: { points: number[]; color: string }) {
 export function CategoryTrendList({ categories, currency }: { categories: CategoryTrend[]; currency: CurrencyCode }) {
   if (categories.length === 0) {
     return (
-      <div className="rounded-2xl border border-white/6 bg-z-surface-2/80 p-6 text-center text-sm text-z-sage-dark">
+      <div className={`${PANEL_SURFACE_CLASS} p-6 text-center text-sm text-z-sage-dark`}>
         Sin gastos categorizados en el periodo.
       </div>
     );
   }
   return (
-    <div className="rounded-2xl border border-white/6 bg-z-surface-2/80 p-4">
+    <div className={`${PANEL_SURFACE_CLASS} p-4`}>
       <p className="mb-3 text-sm font-semibold">Gasto por categoría</p>
       {categories.slice(0, 8).map((c) => (
         <div key={c.categoryId} className="flex items-center gap-3 border-t border-white/6 py-2 first:border-t-0">

@@ -1,12 +1,13 @@
 import type { FixedVariable } from "@zeta/shared";
 import { formatCurrency } from "@/lib/utils/currency";
+import { PANEL_SURFACE_CLASS } from "@/lib/constants/styles";
 import type { CurrencyCode } from "@/types/domain";
 
 export function FixedVariableCard({ data, currency }: { data: FixedVariable; currency: CurrencyCode }) {
   const total = data.fixed + data.variable || 1;
   const fixedPct = Math.round((data.fixed / total) * 100);
   return (
-    <div className="mt-3 rounded-2xl border border-white/6 bg-z-surface-2/80 p-4">
+    <div className={`mt-3 ${PANEL_SURFACE_CLASS} p-4`}>
       <p className="mb-3 text-sm font-semibold">Fijos vs. variables</p>
       <div className="flex h-7 overflow-hidden rounded-lg border border-white/6">
         <div
