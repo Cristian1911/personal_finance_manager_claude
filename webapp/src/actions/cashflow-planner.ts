@@ -29,6 +29,12 @@ import {
   type AssignmentDetail,
   type PeriodPlanData,
 } from "@/types/cashflow-planner";
+import {
+  deriveIncomeState,
+  classifyCommitments,
+  type CommitmentIncomeRef,
+  type CommitmentExpenseInput,
+} from "@/lib/utils/plan-commitments";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -75,7 +81,12 @@ async function hydratePeriodData(
   const supabase = createCachedClient(accessToken);
   const periodCurrency = period.currency_code;
 
-  const [{ data: rawEntries }, { data: rawAssignments }, { data: rawOccurrences }] = await Promise.all([
+  const [
+    { data: rawEntries },
+    { data: rawAssignments },
+    { data: rawOccurrences },
+    { data: spendAccounts },
+  ] = await Promise.all([
     supabase
       .from("planning_entries")
       .select(
@@ -103,6 +114,17 @@ async function hydratePeriodData(
       .eq("user_id", userId)
       .gte("occurrence_date", period.start_date)
       .lte("occurrence_date", period.end_date),
+    // Live spendable balances for "Saldo actual" — read directly from accounts,
+    // independent of the frozen opening-balance envelope. Filters match
+    // `upsertBalanceEnvelopes` (incl. show_in_dashboard) so saldo_actual
+    // reconciles with the opening-balance seed.
+    supabase
+      .from("accounts")
+      .select("id, current_balance, currency_code")
+      .eq("user_id", userId)
+      .eq("is_active", true)
+      .eq("show_in_dashboard", true)
+      .in("account_type", MAIN_ACCOUNT_TYPES),
   ]);
 
   const rawEntriesTyped = (rawEntries ?? []) as unknown as (Omit<PlanningEntryWithRelations, "converted_amount">)[];
@@ -122,6 +144,11 @@ async function hydratePeriodData(
       foreignCurrencies.add(e.currency_code);
     }
   }
+  for (const a of spendAccounts ?? []) {
+    if (a.currency_code && a.currency_code !== periodCurrency) {
+      foreignCurrencies.add(a.currency_code);
+    }
+  }
 
   const exchangeRates: Partial<Record<CurrencyCode, number>> = {};
   if (foreignCurrencies.size > 0) {
@@ -137,6 +164,27 @@ async function hydratePeriodData(
   }
 
   const isMultiCurrency = foreignCurrencies.size > 0;
+
+  const convertToPeriod = (amount: number, cur: CurrencyCode | null) => {
+    if (!cur || cur === periodCurrency) return amount;
+    const rate = exchangeRates[cur];
+    return rate != null ? amount * rate : amount;
+  };
+
+  // Live "Saldo actual": real spendable balance, in period currency.
+  // Also keep a per-account map so the opening-balance "Saldo" envelope can
+  // mirror its account's live balance (instead of the frozen seed amount).
+  const todayISO = toColombiaDateString(new Date());
+  const liveBalanceById = new Map<string, number>();
+  let saldoActual = 0;
+  for (const a of spendAccounts ?? []) {
+    const bal = convertToPeriod(
+      Number(a.current_balance ?? 0),
+      a.currency_code as CurrencyCode
+    );
+    liveBalanceById.set(a.id, bal);
+    saldoActual += bal;
+  }
 
   const entries: PlanningEntryWithRelations[] = rawEntriesTyped.map((e) => {
     const amount = Number(e.amount);
@@ -172,10 +220,14 @@ async function hydratePeriodData(
 
   const incomeEnvelopes: IncomeEnvelope[] = incomeEntries.map((entry) => {
     const entryAssignments = assignmentsByIncome.get(entry.id) ?? [];
-    const assignedAmount = entryAssignments.reduce(
-      (sum, a) => sum + Number(a.assigned_amount),
-      0
-    );
+    // Only assignments to still-pending expenses commit this income — paid /
+    // skipped expenses already settled, so they free up the envelope. (Keeps
+    // the card, the assign dialog, and "Disponible" consistent.)
+    const assignedAmount = entryAssignments.reduce((sum, a) => {
+      const exp = expenseById.get(a.expense_entry_id);
+      const counts = !exp || (exp.status !== "COMPLETED" && exp.status !== "SKIPPED");
+      return counts ? sum + Number(a.assigned_amount) : sum;
+    }, 0);
 
     const assignmentDetails: AssignmentDetail[] = entryAssignments
       .map((a) => {
@@ -185,13 +237,28 @@ async function hydratePeriodData(
       })
       .filter(Boolean) as AssignmentDetail[];
 
+    const isOpening = entry.notes === BALANCE_SEED_NOTES;
+    const state = isOpening
+      ? ("confirmado" as const)
+      : deriveIncomeState(entry.status, entry.expected_date, todayISO);
+
+    // Opening-balance "Saldo" envelopes display the LIVE account balance (so
+    // they mirror the hero's saldo_actual), not the frozen seed amount. The
+    // stored entry.converted_amount stays frozen → total_income isn't doubled.
+    const displayAmount =
+      isOpening && entry.account_id != null && liveBalanceById.has(entry.account_id)
+        ? liveBalanceById.get(entry.account_id)!
+        : entry.converted_amount;
+
     return {
       entry,
       // Use converted amount so assignments (in period currency) are comparable
-      total_amount: entry.converted_amount,
+      total_amount: displayAmount,
       assigned_amount: assignedAmount,
-      remaining_amount: entry.converted_amount - assignedAmount,
+      remaining_amount: displayAmount - assignedAmount,
       assignments: assignmentDetails,
+      state,
+      is_opening_balance: isOpening,
     };
   });
 
@@ -219,6 +286,40 @@ async function hydratePeriodData(
     0
   );
 
+  // Time-aware commitments (cuenta ahora vs cubierto) over unpaid expenses.
+  const incomeRefs: CommitmentIncomeRef[] = incomeEnvelopes.map((env) => ({
+    entryId: env.entry.id,
+    state: env.state,
+    expectedDate: env.entry.expected_date,
+    isOpeningBalance: env.is_opening_balance,
+  }));
+
+  const assignmentsByExpense = new Map<
+    string,
+    { incomeEntryId: string; amount: number }[]
+  >();
+  for (const a of assignments) {
+    const list = assignmentsByExpense.get(a.expense_entry_id) ?? [];
+    list.push({ incomeEntryId: a.income_entry_id, amount: Number(a.assigned_amount) });
+    assignmentsByExpense.set(a.expense_entry_id, list);
+  }
+
+  const commitmentInputs: CommitmentExpenseInput[] = expenseEntries
+    .filter((e) => e.status !== "COMPLETED" && e.status !== "SKIPPED")
+    .map((e) => ({
+      entryId: e.id,
+      dueDate: e.expected_date,
+      unpaidAmount: e.converted_amount,
+      assignments: assignmentsByExpense.get(e.id) ?? [],
+    }));
+
+  const commitmentSummary = classifyCommitments(
+    commitmentInputs,
+    incomeRefs,
+    saldoActual,
+    todayISO
+  );
+
   return {
     period,
     currency: periodCurrency,
@@ -231,6 +332,12 @@ async function hydratePeriodData(
     total_unassigned: totalExpenses - totalAssigned,
     exchange_rates: exchangeRates,
     is_multi_currency: isMultiCurrency,
+    saldo_actual: saldoActual,
+    puedo_gastar: commitmentSummary.puedoGastar,
+    comprometido_ahora: commitmentSummary.comprometidoAhora,
+    comprometido_cubierto: commitmentSummary.comprometidoCubierto,
+    next_income_date: commitmentSummary.nextIncomeDate,
+    commitments: commitmentSummary.perExpense,
   };
 }
 
@@ -487,11 +594,15 @@ const MAIN_ACCOUNT_TYPES: Database["public"]["Enums"]["account_type"][] = [
 /**
  * Seeds (first run) or refreshes (subsequent runs) one INCOME planning entry
  * per main liquid account (`CHECKING`/`SAVINGS`/`CASH` with
- * `show_in_dashboard = true`). Each entry mirrors the account's
- * `current_balance` so the user can assign expenses against it.
+ * `show_in_dashboard = true`). Each entry captures the account's
+ * `current_balance` AT SEED TIME — the period's opening balance.
  *
- * On refresh, the amount and label are overwritten — to "promote" an entry
- * to user-managed, change its notes to anything other than `[saldo]`.
+ * The amount is FROZEN: refreshes only update label/currency, never the
+ * amount. The live balance is surfaced separately as `saldo_actual` (read
+ * from `accounts`). Freezing prevents double-counting income — once a
+ * paycheck lands and raises `current_balance`, the opening envelope must not
+ * grow with it while the paycheck entry also counts. To "promote" an entry to
+ * user-managed, change its notes to anything other than `[saldo]`.
  */
 export async function upsertBalanceEnvelopes(
   periodId: string
@@ -558,8 +669,8 @@ export async function upsertBalanceEnvelopes(
       updatePromises.push(
         supabase
           .from("planning_entries")
+          // amount frozen — opening balance is set once at insert (below).
           .update({
-            amount: balance,
             label,
             currency_code: account.currency_code,
           })
@@ -1414,6 +1525,171 @@ export async function payPlanningEntry(params: {
   updateTag(TAG);
   updateTag("occurrences");
   updateTag("recurring");
+  revalidateFinancialViews();
+  return { success: true, data: { transactionId: txId } };
+}
+
+// ─── Confirm income received (INFLOW) ────────────────────────────────────────
+
+/**
+ * Confirms an INCOME planning entry as received. Mirrors `payPlanningEntry`
+ * but records an INFLOW so the real account balance rises (→ `saldo_actual`).
+ * LINK mode connects an already-imported transaction; CREATE mode inserts a
+ * new INFLOW into the target account. Recurring entries link to their pending
+ * occurrence so the recurrentes view stays consistent.
+ */
+export async function confirmIncomeReceived(params: {
+  entryId: string;
+  existingTransactionId?: string; // LINK mode
+  amount?: number; // CREATE mode
+  accountId?: string; // CREATE mode (INFLOW target)
+  currencyCode?: string;
+  label?: string;
+}): Promise<ActionResult<{ transactionId: string }>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { data: entry, error: entryErr } = await supabase
+    .from("planning_entries")
+    .select("*, period:planning_periods!inner(start_date, end_date)")
+    .eq("id", params.entryId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (entryErr || !entry) {
+    return { success: false, error: "Entrada del plan no encontrada" };
+  }
+  if (entry.entry_type !== "INCOME") {
+    return { success: false, error: "Esta entrada no es un ingreso" };
+  }
+
+  const period = entry.period as { start_date: string; end_date: string };
+
+  const markCompleted = async () => {
+    const { error } = await supabase
+      .from("planning_entries")
+      .update({ status: "COMPLETED", completed_at: new Date().toISOString() })
+      .eq("id", params.entryId)
+      .eq("user_id", user.id);
+    return error?.message ?? null;
+  };
+
+  // Returns an error message on failure, or null on success.
+  const linkOccurrence = async (transactionId: string): Promise<string | null> => {
+    if (!entry.recurring_template_id) return null;
+    const { data: occurrences, error: occErr } = await supabase
+      .from("recurring_occurrences")
+      .select("id")
+      .eq("template_id", entry.recurring_template_id)
+      .eq("user_id", user.id)
+      .eq("status", "pending")
+      .gte("occurrence_date", period.start_date)
+      .lte("occurrence_date", period.end_date)
+      .limit(1);
+    if (occErr) return occErr.message;
+    if (occurrences && occurrences.length > 0) {
+      const { linkExistingTransactionToOccurrence } = await import("@/actions/occurrences");
+      const res = await linkExistingTransactionToOccurrence(occurrences[0].id, transactionId);
+      if (!res.success) return res.error;
+    }
+    return null;
+  };
+
+  // ── LINK MODE: connect an already-imported transaction ──
+  if (params.existingTransactionId) {
+    // Sequential: don't mark the entry completed if the occurrence link failed
+    // (nothing else happened in LINK mode — avoids a completed-but-unlinked entry).
+    const linkErr = await linkOccurrence(params.existingTransactionId);
+    if (linkErr) return { success: false, error: linkErr };
+    const markErr = await markCompleted();
+    if (markErr) return { success: false, error: markErr };
+
+    updateTag(TAG);
+    updateTag("occurrences");
+    revalidateFinancialViews();
+    return { success: true, data: { transactionId: params.existingTransactionId } };
+  }
+
+  // ── CREATE MODE: record a new INFLOW ──
+  if (!params.amount || !params.accountId) {
+    return { success: false, error: "Monto y cuenta son requeridos" };
+  }
+
+  // Load the target account up front — income must land in a spendable account.
+  // INFLOW to a debt account would wrongly REDUCE the debt, not record income.
+  const { data: acct, error: acctErr } = await supabase
+    .from("accounts")
+    .select("current_balance, account_type")
+    .eq("id", params.accountId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (acctErr || !acct) return { success: false, error: "Cuenta no encontrada" };
+  if (isDebtAccountType(acct.account_type)) {
+    return { success: false, error: "No puedes registrar un ingreso en una cuenta de deuda" };
+  }
+
+  const today = toColombiaDateString(new Date());
+  const txId = crypto.randomUUID();
+  const currencyCode = params.currencyCode ?? entry.currency_code ?? "COP";
+  const idempotencyKey = await (async () => {
+    const { computeIdempotencyKey } = await import("@/lib/utils/idempotency");
+    return computeIdempotencyKey({
+      provider: "MANUAL_FORM",
+      providerTransactionId: txId,
+      transactionDate: today,
+      amount: params.amount!,
+      rawDescription: params.label ?? entry.label,
+    });
+  })();
+
+  const { error: txErr } = await supabase
+    .from("transactions")
+    .insert({
+      id: txId,
+      user_id: user.id,
+      account_id: params.accountId,
+      direction: "INFLOW",
+      amount: params.amount,
+      currency_code: currencyCode as any,
+      transaction_date: today,
+      raw_description: params.label ?? entry.label,
+      clean_description: params.label ?? entry.label,
+      capture_method: "MANUAL_FORM",
+      idempotency_key: idempotencyKey,
+      category_id: entry.category_id ?? null,
+    } as any)
+    .single();
+
+  if (txErr) {
+    if (txErr.code === "23505") return { success: false, error: "Este ingreso ya fue registrado" };
+    return { success: false, error: txErr.message };
+  }
+
+  // Raise the target account balance (acct already loaded + validated above).
+  {
+    const { applyAccountBalanceDelta } = await import("@/lib/utils/account-balance");
+    const newBalance = applyAccountBalanceDelta({
+      currentBalance: acct.current_balance,
+      accountType: acct.account_type,
+      direction: "INFLOW",
+      amount: params.amount,
+    });
+    await supabase
+      .from("accounts")
+      .update({ current_balance: newBalance })
+      .eq("id", params.accountId)
+      .eq("user_id", user.id);
+  }
+
+  // CREATE: the INFLOW + balance are already recorded, so marking is correct
+  // regardless of link success. Parallel + log (non-blocking secondary writes).
+  const [linkErr, markErr] = await Promise.all([linkOccurrence(txId), markCompleted()]);
+  if (linkErr) console.error("Income confirm link occurrence error:", linkErr);
+  if (markErr) console.error("Income confirm entry update error:", markErr);
+
+  updateTag(TAG);
+  updateTag("occurrences");
   revalidateFinancialViews();
   return { success: true, data: { transactionId: txId } };
 }

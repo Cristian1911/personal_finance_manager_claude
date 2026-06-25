@@ -4,6 +4,7 @@ import { getCategories } from "@/actions/categories";
 import { getPreferredCurrency } from "@/actions/profile";
 import { getPlanTimelineData } from "@/actions/plan-timeline";
 import { PeriodHeader } from "@/components/cashflow-planner/period-header";
+import { PeriodHero } from "@/components/cashflow-planner/period-hero";
 import { EnvelopeBoard } from "@/components/cashflow-planner/envelope-board";
 import { PeriodSetupDialog } from "@/components/cashflow-planner/period-setup-dialog";
 import { MobilePeriodoView } from "@/components/mobile/v2/plan/mobile-periodo-view";
@@ -132,10 +133,15 @@ export async function PlanTabPeriodo() {
             </div>
           )}
 
+          {planData && !isExpired && (
+            <PeriodHero data={planData} />
+          )}
+
           {planData && (
             <div className={isExpired ? "opacity-60" : undefined}>
-              <PeriodHeader data={planData} isExpired={isExpired} />
-              {!isExpired && (
+              {isExpired ? (
+                <PeriodHeader data={planData} isExpired={isExpired} />
+              ) : (
                 <EnvelopeBoard
                   data={planData}
                   accounts={accounts}
