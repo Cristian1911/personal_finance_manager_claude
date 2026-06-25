@@ -6,7 +6,6 @@ import { ExpenseEntryRow } from "./expense-entry-row";
 import { AssignmentDialog } from "./assignment-dialog";
 import { ConfirmIncomeDialog } from "./confirm-income-dialog";
 import { PayExpenseDialog } from "./pay-expense-dialog";
-import { SettledGroup } from "./settled-group";
 import { BalanceSeedButton } from "./balance-seed-button";
 import { EntryFormDialog } from "./entry-form-dialog";
 import { EditEntryDialog } from "./edit-entry-dialog";
@@ -16,7 +15,8 @@ import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import { buildEnvelopeMaps } from "@/lib/utils/cashflow-planner";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate, toColombiaDateString } from "@/lib/utils/date";
-import { Wallet, Receipt, AlertTriangle, Info } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Wallet, Receipt, AlertTriangle, Info, ChevronDown } from "lucide-react";
 import { differenceInCalendarDays, parseISO } from "date-fns";
 import type { Category } from "@/types/domain";
 import type { PlanAccount } from "@/components/mobile/v2/plan/mobile-periodo-view";
@@ -41,6 +41,7 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [payTarget, setPayTarget] = useState<PlanningEntryWithRelations | null>(null);
   const [payDialogOpen, setPayDialogOpen] = useState(false);
+  const [openSettled, setOpenSettled] = useState<"income" | "expense" | null>(null);
 
   const { income_envelopes, expense_entries, unassigned_expenses, currency, period, commitments } = data;
 
@@ -90,19 +91,80 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
 
   return (
     <>
-      {/* ── Settled (past): confirmed income + paid expenses, collapsed ── */}
+      {/* ── Settled (past): compact green/red chips; expand full-width below ── */}
       {(confirmedIncome.length > 0 || paidExpenses.length > 0) && (
-        <div className="grid gap-4 sm:gap-6 lg:grid-cols-2 mb-4">
-          {confirmedIncome.length > 0 ? (
-            <SettledGroup
-              count={confirmedIncome.length}
-              total={confirmedTotal}
-              currency={currency}
-              noun="ingresos confirmados"
-              caption="ya en el saldo"
-              icon={<Wallet className="h-3.5 w-3.5" />}
-              iconClassName="bg-z-income/12 text-z-income"
-            >
+        <div className="mb-5 space-y-3">
+          <div className="grid grid-cols-2 gap-2.5">
+            {confirmedIncome.length > 0 ? (
+              <button
+                type="button"
+                aria-expanded={openSettled === "income"}
+                onClick={() => setOpenSettled((o) => (o === "income" ? null : "income"))}
+                className={cn(
+                  "flex min-w-0 items-center gap-2.5 rounded-xl border border-dashed px-3 py-2.5 text-left transition-colors",
+                  openSettled === "income"
+                    ? "border-z-income/30 bg-z-income/[0.05]"
+                    : "border-white/6 hover:bg-white/[0.03]"
+                )}
+              >
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-z-income/12 text-z-income">
+                  <Wallet className="h-3.5 w-3.5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[12px] font-semibold text-z-white">
+                    {confirmedIncome.length} confirmados
+                  </span>
+                  <span className="block truncate text-[11px] font-semibold tabular-nums text-z-income">
+                    {formatCurrency(confirmedTotal, currency)}
+                  </span>
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                    openSettled === "income" && "rotate-180"
+                  )}
+                />
+              </button>
+            ) : (
+              <div className="min-w-0" />
+            )}
+            {paidExpenses.length > 0 ? (
+              <button
+                type="button"
+                aria-expanded={openSettled === "expense"}
+                onClick={() => setOpenSettled((o) => (o === "expense" ? null : "expense"))}
+                className={cn(
+                  "flex min-w-0 items-center gap-2.5 rounded-xl border border-dashed px-3 py-2.5 text-left transition-colors",
+                  openSettled === "expense"
+                    ? "border-z-expense/30 bg-z-expense/[0.05]"
+                    : "border-white/6 hover:bg-white/[0.03]"
+                )}
+              >
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-z-expense/12 text-z-expense">
+                  <Receipt className="h-3.5 w-3.5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[12px] font-semibold text-z-white">
+                    {paidExpenses.length} pagados
+                  </span>
+                  <span className="block truncate text-[11px] font-semibold tabular-nums text-z-expense">
+                    {formatCurrency(paidTotal, currency)}
+                  </span>
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                    openSettled === "expense" && "rotate-180"
+                  )}
+                />
+              </button>
+            ) : (
+              <div className="min-w-0" />
+            )}
+          </div>
+
+          {openSettled === "income" && (
+            <div className="space-y-2.5">
               {confirmedIncome.map((env) => (
                 <IncomeEnvelopeCard
                   key={env.entry.id}
@@ -112,20 +174,10 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
                   onEdit={openEditDialog}
                 />
               ))}
-            </SettledGroup>
-          ) : (
-            <div />
+            </div>
           )}
-          {paidExpenses.length > 0 && (
-            <SettledGroup
-              count={paidExpenses.length}
-              total={paidTotal}
-              currency={currency}
-              noun="gastos pagados"
-              caption="ya descontados"
-              icon={<Receipt className="h-3.5 w-3.5" />}
-              iconClassName="bg-z-expense/12 text-z-expense"
-            >
+          {openSettled === "expense" && (
+            <div className="space-y-2">
               {paidExpenses.map((entry) => (
                 <ExpenseEntryRow
                   key={entry.id}
@@ -136,7 +188,7 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
                   onEdit={openEditDialog}
                 />
               ))}
-            </SettledGroup>
+            </div>
           )}
         </div>
       )}
@@ -159,8 +211,8 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
       {/* ── Actionable (present/future): esperado/atrasado income | pending expenses ── */}
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
         {/* Income */}
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="space-y-3 min-w-0">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <Wallet className="h-4 w-4 text-z-income" />
               <SectionEyebrow>Ingresos</SectionEyebrow>
@@ -208,8 +260,8 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
         </div>
 
         {/* Expenses */}
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="space-y-3 min-w-0">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <Receipt className="h-4 w-4 text-z-expense" />
               <SectionEyebrow>Gastos</SectionEyebrow>
