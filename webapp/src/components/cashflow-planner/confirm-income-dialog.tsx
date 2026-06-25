@@ -24,6 +24,7 @@ import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
 import {
   findCandidateTransactions,
   confirmIncomeReceived,
+  toggleEntryStatus,
 } from "@/actions/cashflow-planner";
 import type { PlanCandidateTransaction } from "@/actions/cashflow-planner";
 import { toast } from "sonner";
@@ -134,9 +135,24 @@ export function ConfirmIncomeDialog({
     });
   }
 
+  // Just mark the plan entry as received — no INFLOW. For income that already
+  // landed in the account (so the balance reflects it) and shouldn't duplicate.
+  function handleMarkOnly() {
+    if (!entry) return;
+    startTransition(async () => {
+      const result = await toggleEntryStatus(entry.id, "COMPLETED");
+      if (result.success) {
+        toast.success("Marcado como recibido");
+        onOpenChange(false);
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-md max-h-[85svh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Confirmar recibido</DialogTitle>
           <p className="text-xs text-muted-foreground">
@@ -207,6 +223,15 @@ export function ConfirmIncomeDialog({
             )}
             Confirmar {formatCurrency(effectiveAmount, currency)}
           </Button>
+
+          <button
+            type="button"
+            onClick={handleMarkOnly}
+            disabled={isPending}
+            className="w-full py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+          >
+            Solo marcar como recibido (sin movimiento)
+          </button>
 
           {/* Link an already-imported movement */}
           {(loadingCandidates || candidates.length > 0) && (
