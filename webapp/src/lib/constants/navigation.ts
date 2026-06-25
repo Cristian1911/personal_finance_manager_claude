@@ -9,6 +9,7 @@ import {
   Contact,
   Users,
   Settings,
+  TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 
@@ -38,6 +39,7 @@ export const PRIMARY_NAV: NavItem[] = [
       "/deudas/planificador",
     ],
   },
+  { title: "Tendencias", href: "/tendencias", icon: TrendingUp },
   {
     title: "Bandeja",
     href: "/gestionar",

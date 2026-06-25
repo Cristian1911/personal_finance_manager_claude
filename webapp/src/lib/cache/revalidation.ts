@@ -14,6 +14,7 @@ const FINANCIAL_TAGS = [
   "attention",
   "occurrences",
   "recurring",
+  "analytics",
 ] as const;
 
 /**

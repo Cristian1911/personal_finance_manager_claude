@@ -140,6 +140,7 @@ Positive/income:  text-emerald-500 or text-z-income
 Negative/debt:    text-red-500 or text-z-debt
 Warning:          text-amber-400 or text-z-expense
 Neutral accent:   text-z-brass
+Brass hover/hot:  text-z-brass-hot (#B29256) — hover/active brass, chart strokes
 Muted text:       text-muted-foreground
 ```
 

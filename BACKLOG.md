@@ -10,6 +10,22 @@
 
 ---
 
+## Tendencias hub follow-ups (2026-06-24, branch `feat/tendencias-hub`)
+
+New `/tendencias` analytics hub shipped (engine + dataset + 3 lenses + nav + export). Deferred:
+
+- **Obligation-aware forecast.** Forecast currently runs on avg-net projection only; `recurring: []` is stubbed in `getTendenciasDataset` because `ensureCurrentOccurrences` is a mutation that can't run inside `"use cache"`. To wire it: fetch pending OUTFLOW occurrences by month (read-only — generate occurrences in the public wrapper or a separate non-cached action, NOT inside the cached delegate), aggregate `expected_amount` by `occurrence_date.slice(0,7)`, pass as `recurring` to `forecast()`.
+- **Budget adherence uses current target across the window.** `categoryMeta.budgetTarget` is the *current* `budgets.amount` applied to every month (no per-month budget history table). If misleading in use, add a historical-budget snapshot table. Labeled "meta actual" in spec.
+- **Heuristic tuning.** Anomaly threshold `max(2.5× trailing-3mo mean, mean+2σ)` and the linear forecast are deterministic placeholders (`ponytail:` comments in `anomalies.ts`/`forecast.ts`). Tune or upgrade to seasonal baselines if real usage shows false positives / naive projections.
+- **Custom date range UI.** Period control ships 3M/6M/12M/Año; `rangeToWindow` already accepts `{from,to}` but there's no date-picker UI for "Personalizado" yet.
+- **Mobile Tendencias screen.** The `@zeta/shared/analytics` engine is built portable (pure functions). A mobile Lectura/Tendencias screen can reuse it on local SQLite rows — parity gate (mobile-webapp-parity) applies before building.
+
+## Pre-existing test debt (discovered 2026-06-24) — [issue #306](https://github.com/Cristian1911/personal_finance_manager_claude/issues/306)
+
+`@zeta/shared` has ~40 failing unit tests on `main` (unrelated to Tendencias): `auto-categorize.test.ts` (autoCategorize returns null where matches expected — likely rules/seed drift) + `debt-stats.test.ts` (computeDebtStats missing a null-guard edge case). Decide per case whether the test expectation is stale or the impl regressed. Tracked in #306.
+
+---
+
 ## Mobile design-system follow-ups (2026-06-22, post PR #302)
 
 PR #302 fixed the inline-tx picker bugs (panel opacity / see-through scrim / flex-collapse) + a 36-file design-system sweep (MobileSheet conversion ×4, safe-area, brand colors, button classes, hex→COLORS). Remaining:

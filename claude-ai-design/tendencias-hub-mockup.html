@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zeta · Tendencias (Análisis) — Mockup</title>
+<style>
+  :root{
+    --z-brass-hot:#B29256; --z-brass:#937844; --z-expense:#E8875A;
+    --z-income:#5CB88A; --z-ink:#121412; --z-sage-dark:#938C7E;
+    --z-sage-light:#D9CCB9; --z-sage:#768053; --z-surface-2:#1E221E;
+    --z-surface-3:#262B26; --z-surface:#171A17; --z-white:#ECE8E0;
+    --line:rgba(255,255,255,.06); --line-2:rgba(255,255,255,.08);
+    --brass-bg:rgba(178,146,86,.10); --brass-bd:rgba(178,146,86,.25);
+    --inc-bg:rgba(92,184,138,.10); --exp-bg:rgba(232,135,90,.12);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;}
+  body{background:#0b0c0b;color:var(--z-white);padding:28px 18px 80px;line-height:1.4;}
+  .wrap{max-width:1180px;margin:0 auto;}
+  .pagehead{margin-bottom:22px;}
+  .pagehead h1{font-size:22px;font-weight:700;letter-spacing:-.02em;}
+  .pagehead p{color:var(--z-sage-dark);font-size:13px;margin-top:4px;max-width:640px;}
+  .frames{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start;}
+
+  .phone{width:392px;flex:0 0 392px;background:var(--z-ink);border:1px solid var(--line);
+    border-radius:26px;padding:0;box-shadow:0 8px 34px rgba(0,0,0,.45);overflow:hidden;}
+  .scroll{height:760px;overflow-y:auto;padding:14px 14px 28px;}
+  .scroll::-webkit-scrollbar{width:0;}
+
+  /* ---- shared atoms ---- */
+  .eyebrow{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.18em;color:var(--z-sage-dark);}
+  .h-page{font-size:25px;font-weight:600;letter-spacing:-.02em;margin-top:3px;}
+  .card{border:1px solid var(--line);background:rgba(30,34,30,.8);border-radius:16px;padding:14px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.03);}
+  .card+.card{margin-top:12px;}
+  .card-t{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .card-t .lbl{font-size:13px;font-weight:600;color:var(--z-white);}
+  .card-t .sub{font-size:11px;color:var(--z-sage-dark);}
+  .num{font-variant-numeric:tabular-nums;}
+  .pos{color:var(--z-income);} .neg{color:var(--z-expense);} .brass{color:var(--z-brass-hot);}
+  .muted{color:var(--z-sage-dark);}
+
+  .divider{display:flex;align-items:center;gap:10px;margin:20px 2px 12px;}
+  .divider .ln{height:1px;flex:1;background:var(--line);}
+  .divider .tx{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.18em;color:var(--z-sage-dark);}
+
+  .chip{display:inline-flex;align-items:center;gap:5px;border-radius:999px;font-size:11px;font-weight:500;
+    padding:5px 11px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--z-sage-dark);white-space:nowrap;cursor:default;}
+  .chip.active{border-color:var(--brass-bd);background:var(--brass-bg);color:var(--z-brass-hot);font-weight:600;}
+  .chiprow{display:flex;gap:7px;overflow-x:auto;padding-bottom:2px;}
+
+  .delta{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;
+    padding:2px 7px;border-radius:999px;}
+  .delta.up{background:var(--exp-bg);color:var(--z-expense);}
+  .delta.down{background:var(--inc-bg);color:var(--z-income);}
+  .delta.flat{background:rgba(255,255,255,.04);color:var(--z-sage-dark);}
+
+  .legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;}
+  .legend span{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--z-sage-light);}
+  .legend i{width:9px;height:9px;border-radius:3px;display:inline-block;}
+
+  /* category rows */
+  .crow{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line);}
+  .crow:first-of-type{border-top:0;}
+  .cdot{width:9px;height:9px;border-radius:3px;flex-shrink:0;}
+  .cname{font-size:13px;font-weight:500;flex:1;min-width:0;}
+  .camt{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;}
+
+  /* ranked bars */
+  .rank{display:flex;align-items:center;gap:11px;padding:10px 0;border-top:1px solid var(--line);}
+  .rank:first-of-type{border-top:0;}
+  .ravatar{width:30px;height:30px;border-radius:9px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:700;color:var(--z-ink);}
+  .rbody{flex:1;min-width:0;}
+  .rtop{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+  .rname{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .rmeta{font-size:11px;color:var(--z-sage-dark);margin-top:1px;}
+  .rbar{height:6px;border-radius:999px;background:rgba(255,255,255,.05);margin-top:7px;overflow:hidden;}
+  .rbar i{display:block;height:100%;border-radius:999px;}
+
+  /* split bar */
+  .split{height:30px;border-radius:9px;overflow:hidden;display:flex;border:1px solid var(--line);}
+  .split i{display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--z-ink);}
+
+  /* alert rows */
+  .alert{display:flex;gap:11px;padding:11px;border-radius:12px;border:1px solid var(--brass-bd);
+    background:var(--brass-bg);align-items:flex-start;}
+  .alert+.alert{margin-top:9px;}
+  .alert .ai{width:26px;height:26px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+    font-size:13px;background:rgba(178,146,86,.18);}
+  .alert .at{font-size:12.5px;font-weight:600;}
+  .alert .ad{font-size:11.5px;color:var(--z-sage-dark);margin-top:2px;line-height:1.35;}
+
+  /* hero summary tiles */
+  .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}
+  .tile{border:1px solid var(--line);background:rgba(0,0,0,.18);border-radius:13px;padding:11px 10px;}
+  .tile .tl{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--z-sage-dark);}
+  .tile .tv{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:5px;}
+  .tile .td{font-size:10.5px;margin-top:3px;font-weight:600;}
+
+  .verdict{display:flex;gap:11px;align-items:center;border:1px solid var(--brass-bd);background:var(--brass-bg);
+    border-radius:14px;padding:13px;margin-bottom:14px;}
+  .verdict .vi{width:38px;height:38px;border-radius:11px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+    font-size:19px;background:rgba(178,146,86,.18);}
+  .verdict .vt{font-size:13px;font-weight:600;line-height:1.3;}
+  .verdict .vs{font-size:11.5px;color:var(--z-sage-dark);margin-top:2px;}
+
+  .ftbtn{width:100%;margin-top:16px;border:1px solid var(--line-2);background:rgba(0,0,0,.18);color:var(--z-sage-light);
+    border-radius:12px;padding:12px;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;cursor:default;}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+  .iconbtn{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.03);
+    display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--z-sage-light);}
+
+  .notecard{width:340px;flex:0 0 340px;}
+  .notecard h3{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--z-brass-hot);margin:18px 0 8px;}
+  .notecard h3:first-child{margin-top:0;}
+  .notecard ul{list-style:none;font-size:12.5px;color:var(--z-sage-light);}
+  .notecard li{padding:6px 0 6px 16px;position:relative;border-top:1px solid var(--line);line-height:1.45;}
+  .notecard li:first-child{border-top:0;}
+  .notecard li::before{content:"";position:absolute;left:2px;top:13px;width:6px;height:6px;border-radius:50%;background:var(--z-brass-hot);}
+  .notecard li b{color:var(--z-white);}
+  .tag{display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:6px;margin-left:5px;vertical-align:middle;}
+  .tag.exist{background:var(--inc-bg);color:var(--z-income);}
+  .tag.new{background:var(--brass-bg);color:var(--z-brass-hot);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="pagehead">
+    <div class="eyebrow">ZETA · MOCKUP DE DISEÑO</div>
+    <h1>Tendencias — el lente retrospectivo</h1>
+    <p>Hub dedicado de análisis. El dashboard responde “¿voy bien <em>ahora</em>?”; Tendencias responde “¿a dónde fue mi dinero y cómo está cambiando?”. Tres trabajos co-iguales en una sola vista escaneable. Mobile-first; en escritorio reflows a 2 columnas.</p>
+  </div>
+
+  <div class="frames">
+    <!-- ================= PHONE FRAME ================= -->
+    <div class="phone">
+      <div class="scroll">
+
+        <!-- TOPBAR -->
+        <div class="topbar">
+          <div>
+            <div class="eyebrow">ANÁLISIS</div>
+            <div class="h-page">Tendencias</div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <div class="iconbtn" title="Moneda">COP</div>
+            <div class="iconbtn" title="Exportar">⤓</div>
+          </div>
+        </div>
+
+        <!-- PERIOD CONTROL -->
+        <div class="chiprow" style="margin:12px 0 16px;">
+          <span class="chip">3M</span>
+          <span class="chip active">6M</span>
+          <span class="chip">12M</span>
+          <span class="chip">Año</span>
+          <span class="chip">Personalizado ▾</span>
+        </div>
+
+        <!-- VERDICT (the "am I on track" one-liner) -->
+        <div class="verdict">
+          <div class="vi">📈</div>
+          <div>
+            <div class="vt">Tu ahorro subió a 24% — el mejor en 6 meses.</div>
+            <div class="vs">Pero Restaurantes viene acelerando (+18% mensual).</div>
+          </div>
+        </div>
+
+        <!-- SUMMARY TILES -->
+        <div class="tiles">
+          <div class="tile">
+            <div class="tl">Gasto prom/mes</div>
+            <div class="tv num">$3,48M</div>
+            <div class="td neg">▲ 4% vs prev.</div>
+          </div>
+          <div class="tile">
+            <div class="tl">Tasa de ahorro</div>
+            <div class="tv num brass">24%</div>
+            <div class="td pos">▲ 5 pts</div>
+          </div>
+          <div class="tile">
+            <div class="tl">Ingreso prom</div>
+            <div class="tv num">$4,55M</div>
+            <div class="td pos">▲ 2%</div>
+          </div>
+        </div>
+
+        <!-- ============ JOB 1 — ¿A DÓNDE VA EL DINERO? ============ -->
+        <div class="divider"><span class="ln"></span><span class="tx">¿A dónde va el dinero?</span><span class="ln"></span></div>
+
+        <!-- Category trend (stacked area, 6 months) -->
+        <div class="card">
+          <div class="card-t">
+            <span class="lbl">Gasto por categoría</span>
+            <span class="sub">últimos 6 meses</span>
+          </div>
+          <svg viewBox="0 0 320 130" width="100%" height="130" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E8875A" stop-opacity=".55"/><stop offset="1" stop-color="#E8875A" stop-opacity=".05"/></linearGradient>
+            </defs>
+            <!-- gridlines -->
+            <line x1="0" y1="32" x2="320" y2="32" stroke="rgba(255,255,255,.05)"/>
+            <line x1="0" y1="64" x2="320" y2="64" stroke="rgba(255,255,255,.05)"/>
+            <line x1="0" y1="96" x2="320" y2="96" stroke="rgba(255,255,255,.05)"/>
+            <!-- stacked-ish layered areas (top = total) -->
+            <polygon points="0,128 0,46 64,42 128,38 192,34 256,30 320,22 320,128" fill="url(#g1)"/>
+            <polyline points="0,46 64,42 128,38 192,34 256,30 320,22" fill="none" stroke="#E8875A" stroke-width="2"/>
+            <polyline points="0,78 64,80 128,76 192,82 256,79 320,77" fill="none" stroke="#937844" stroke-width="1.8" opacity=".85"/>
+            <polyline points="0,104 64,100 128,96 192,90 256,86 320,84" fill="none" stroke="#5CB88A" stroke-width="1.8" opacity=".8"/>
+          </svg>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--z-sage-dark);margin-top:4px;">
+            <span>ene</span><span>feb</span><span>mar</span><span>abr</span><span>may</span><span>jun</span>
+          </div>
+
+          <div style="margin-top:12px;">
+            <div class="crow">
+              <span class="cdot" style="background:#E8875A"></span>
+              <span class="cname">Mercado &amp; Comida</span>
+              <svg width="56" height="18" viewBox="0 0 56 18"><polyline points="0,11 11,9 22,7 33,5 44,6 55,3" fill="none" stroke="#E8875A" stroke-width="1.6"/></svg>
+              <span class="camt num">$890k</span>
+              <span class="delta up">▲ 6%</span>
+            </div>
+            <div class="crow">
+              <span class="cdot" style="background:#937844"></span>
+              <span class="cname">Restaurantes</span>
+              <svg width="56" height="18" viewBox="0 0 56 18"><polyline points="0,14 11,12 22,9 33,6 44,4 55,2" fill="none" stroke="#937844" stroke-width="1.6"/></svg>
+              <span class="camt num">$410k</span>
+              <span class="delta up">▲ 18%</span>
+            </div>
+            <div class="crow">
+              <span class="cdot" style="background:#5CB88A"></span>
+              <span class="cname">Hogar &amp; Servicios</span>
+              <svg width="56" height="18" viewBox="0 0 56 18"><polyline points="0,7 11,6 22,8 33,7 44,7 55,6" fill="none" stroke="#5CB88A" stroke-width="1.6"/></svg>
+              <span class="camt num">$635k</span>
+              <span class="delta flat">~ 0%</span>
+            </div>
+            <div class="crow">
+              <span class="cdot" style="background:#768053"></span>
+              <span class="cname">Transporte</span>
+              <svg width="56" height="18" viewBox="0 0 56 18"><polyline points="0,3 11,5 22,7 33,9 44,11 55,13" fill="none" stroke="#768053" stroke-width="1.6"/></svg>
+              <span class="camt num">$320k</span>
+              <span class="delta down">▼ 22%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top destinatarios -->
+        <div class="card">
+          <div class="card-t">
+            <span class="lbl">¿A dónde va? · Top destinatarios</span>
+            <span class="sub">por gasto</span>
+          </div>
+          <div class="rank">
+            <div class="ravatar" style="background:#E8875A">É</div>
+            <div class="rbody">
+              <div class="rtop"><span class="rname">Éxito</span><span class="camt num">$420k</span></div>
+              <div class="rmeta">14 compras · prom $30k</div>
+              <div class="rbar"><i style="width:100%;background:#E8875A"></i></div>
+            </div>
+          </div>
+          <div class="rank">
+            <div class="ravatar" style="background:#937844">R</div>
+            <div class="rbody">
+              <div class="rtop"><span class="rname">Rappi</span><span class="camt num">$180k</span></div>
+              <div class="rmeta">9 pedidos <span class="delta up" style="margin-left:4px;">▲ 28%</span></div>
+              <div class="rbar"><i style="width:43%;background:#937844"></i></div>
+            </div>
+          </div>
+          <div class="rank">
+            <div class="ravatar" style="background:#5CB88A">C</div>
+            <div class="rbody">
+              <div class="rtop"><span class="rname">Claro</span><span class="camt num">$90k</span></div>
+              <div class="rmeta">1 recurrente · plan móvil</div>
+              <div class="rbar"><i style="width:21%;background:#5CB88A"></i></div>
+            </div>
+          </div>
+          <div class="rank">
+            <div class="ravatar" style="background:#768053">U</div>
+            <div class="rbody">
+              <div class="rtop"><span class="rname">Uber</span><span class="camt num">$74k</span></div>
+              <div class="rmeta">12 viajes</div>
+              <div class="rbar"><i style="width:18%;background:#768053"></i></div>
+            </div>
+          </div>
+          <div style="text-align:center;margin-top:10px;"><span class="chip">Ver todos →</span></div>
+        </div>
+
+        <!-- Fixed vs variable -->
+        <div class="card">
+          <div class="card-t">
+            <span class="lbl">Fijos vs. variables</span>
+            <span class="sub">jun</span>
+          </div>
+          <div class="split">
+            <i style="width:58%;background:var(--z-brass)">Fijos 58%</i>
+            <i style="width:42%;background:var(--z-expense)">Variables 42%</i>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-top:9px;">
+            <span class="muted">Fijos <b class="num" style="color:var(--z-white)">$2,02M</b></span>
+            <span class="muted">Variables <b class="num" style="color:var(--z-white)">$1,46M</b> <span class="delta up" style="margin-left:3px;">▲ 9%</span></span>
+          </div>
+        </div>
+
+        <!-- ============ JOB 2 — ¿VOY BIEN? ============ -->
+        <div class="divider"><span class="ln"></span><span class="tx">¿Voy bien?</span><span class="ln"></span></div>
+
+        <!-- Savings rate trend -->
+        <div class="card">
+          <div class="card-t">
+            <span class="lbl">Tasa de ahorro</span>
+            <span class="brass num" style="font-size:18px;font-weight:700;">24%</span>
+          </div>
+          <svg viewBox="0 0 320 90" width="100%" height="90" preserveAspectRatio="none">
+            <defs><linearGradient id="g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B29256" stop-opacity=".4"/><stop offset="1" stop-color="#B29256" stop-opacity=".03"/></linearGradient></defs>
+            <line x1="0" y1="60" x2="320" y2="60" stroke="rgba(92,184,138,.3)" stroke-dasharray="3 3"/>
+            <text x="2" y="56" font-size="8" fill="#5CB88A">meta 20%</text>
+            <polygon points="0,88 0,66 64,52 128,58 192,40 256,46 320,28 320,88" fill="url(#g2)"/>
+            <polyline points="0,66 64,52 128,58 192,40 256,46 320,28" fill="none" stroke="#B29256" stroke-width="2.2"/>
+            <circle cx="320" cy="28" r="3.2" fill="#B29256"/>
+          </svg>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--z-sage-dark);margin-top:2px;">
+            <span>14%</span><span>18%</span><span>16%</span><span>21%</span><span>19%</span><span class="brass">24%</span>
+          </div>
+        </div>
+
+        <!-- Income vs expense over time -->
+        <div class="card">
+          <div class="card-t">
+            <span class="lbl">Ingreso vs. gasto</span>
+            <span class="sub">6 meses</span>
+          </div>
+          <svg viewBox="0 0 320 110" width="100%" height="110">
+            <!-- 6 month grouped bars -->
+            <g font-size="0">
+              <!-- per month: income (green) + expense (orange) -->
+              <!-- m1 -->
+              <rect x="8"  y="38" width="16" height="60" rx="2" fill="#5CB88A" opacity=".85"/>
+              <rect x="26" y="52" width="16" height="46" rx="2" fill="#E8875A" opacity=".85"/>
+              <!-- m2 -->
+              <rect x="58" y="32" width="16" height="66" rx="2" fill="#5CB88A" opacity=".85"/>
+              <rect x="76" y="56" width="16" height="42" rx="2" fill="#E8875A" opacity=".85"/>
+              <!-- m3 -->
+              <rect x="108" y="36" width="16" height="62" rx="2" fill="#5CB88A" opacity=".85"/>
+              <rect x="126" y="50" width="16" height="48" rx="2" fill="#E8875A" opacity=".85"/>
+              <!-- m4 -->
+              <rect x="158" y="30" width="16" height="68" rx="2" fill="#5CB88A" opacity=".85"/>
+              <rect x="176" y="58" width="16" height="40" rx="2" fill="#E8875A" opacity=".85"/>
+              <!-- m5 -->
+              <rect x="208" y="33" width="16" height="65" rx="2" fill="#5CB88A" opacity=".85"/>
+              <rect x="226" y="54" width="16" height="44" rx="2" fill="#E8875A" opacity=".85"/>
+              <!-- m6 -->
+              <rect x="258" y="28" width="16" height="70" rx="2" fill="#5CB88A"/>
+              <rect x="276" y="55" width="16" height="43" rx="2" fill="#E8875A"/>
+            </g>
+            <line x1="0" y1="98" x2="320" y2="98" stroke="rgba(255,255,255,.08)"/>
+          </svg>
+          <div class="legend">
+            <span><i style="background:#5CB88A"></i>Ingreso</span>
+            <span><i style="background:#E8875A"></i>Gasto</span>
+            <span class="muted" style="margin-left:auto;">Neto prom <b class="num pos">+$1,07M</b></span>
+          </div>
+        </div>
+
+        <!-- Budget adherence over time -->
+        <div class="card">
+          <div class="card-t">
+            <span class="lbl">Cumplimiento de presupuesto</span>
+            <span class="sub">últimos 6 meses</span>
+          </div>
+          <div class="crow" style="border-top:0;">
+            <span class="cname">Restaurantes</span>
+            <span class="muted" style="font-size:11px;">excedido 4 de 6 meses</span>
+            <span class="delta up">+18%</span>
+          </div>
+          <div class="crow">
+            <span class="cname">Mercado</span>
+            <span class="muted" style="font-size:11px;">dentro 5 de 6</span>
+            <span class="delta down">−3%</span>
+          </div>
+          <div class="crow">
+            <span class="cname">Transporte</span>
+            <span class="muted" style="font-size:11px;">dentro 6 de 6</span>
+            <span class="delta down">−22%</span>
+          </div>
+        </div>
+
+        <!-- ============ JOB 3 — ¿ESTÁ CAMBIANDO MI GASTO? ============ -->
+        <div class="divider"><span class="ln"></span><span class="tx">¿Está cambiando mi gasto?</span><span class="ln"></span></div>
+
+        <!-- Movers -->
+        <div class="card">
+          <div class="card-t">
+            <span class="lbl">Cambios destacados</span>
+            <span class="sub">vs. mes previo</span>
+          </div>
+          <div class="crow" style="border-top:0;">
+            <span class="cdot" style="background:#937844"></span>
+            <span class="cname">Restaurantes</span>
+            <span class="muted num" style="font-size:11px;">$348k → $410k</span>
+            <span class="delta up">▲ 18%</span>
+          </div>
+          <div class="crow">
+            <span class="cdot" style="background:#E8875A"></span>
+            <span class="cname">Suscripciones</span>
+            <span class="muted num" style="font-size:11px;">$64k → $90k</span>
+            <span class="delta up">▲ 40%</span>
+          </div>
+          <div class="crow">
+            <span class="cdot" style="background:#768053"></span>
+            <span class="cname">Transporte</span>
+            <span class="muted num" style="font-size:11px;">$410k → $320k</span>
+            <span class="delta down">▼ 22%</span>
+          </div>
+        </div>
+
+        <!-- Anomalies -->
+        <div class="card">
+          <div class="card-t"><span class="lbl">Anomalías detectadas</span></div>
+          <div class="alert">
+            <div class="ai">⚠️</div>
+            <div>
+              <div class="at">Compra inusual en Compras</div>
+              <div class="ad">$1,2M el 14 jun — 3× tu promedio de categoría. Toca para ver.</div>
+            </div>
+          </div>
+          <div class="alert">
+            <div class="ai">📊</div>
+            <div>
+              <div class="at">Suscripciones subió 40%</div>
+              <div class="ad">2 cobros nuevos este mes vs. tu base de 3 meses.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Forecast -->
+        <div class="card">
+          <div class="card-t">
+            <span class="lbl">Proyección de saldo</span>
+            <span class="sub">próx. 3 meses</span>
+          </div>
+          <svg viewBox="0 0 320 100" width="100%" height="100" preserveAspectRatio="none">
+            <defs><linearGradient id="g3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5CB88A" stop-opacity=".3"/><stop offset="1" stop-color="#5CB88A" stop-opacity=".03"/></linearGradient></defs>
+            <line x1="0" y1="78" x2="320" y2="78" stroke="rgba(255,255,255,.06)"/>
+            <!-- historical (solid) -->
+            <polygon points="0,98 0,60 50,54 100,58 150,44 200,40 200,98" fill="url(#g3)"/>
+            <polyline points="0,60 50,54 100,58 150,44 200,40" fill="none" stroke="#5CB88A" stroke-width="2.2"/>
+            <!-- projection (dashed) -->
+            <polyline points="200,40 250,52 285,66 320,58" fill="none" stroke="#B29256" stroke-width="2.2" stroke-dasharray="4 4"/>
+            <circle cx="200" cy="40" r="3" fill="#5CB88A"/>
+            <line x1="200" y1="14" x2="200" y2="98" stroke="rgba(255,255,255,.12)" stroke-dasharray="2 3"/>
+            <text x="204" y="20" font-size="8" fill="#938C7E">hoy</text>
+          </svg>
+          <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-top:6px;">
+            <span class="muted">Saldo hoy <b class="num" style="color:var(--z-white)">$5,2M</b></span>
+            <span class="muted">Proy. ago <b class="num brass">$4,6M</b></span>
+          </div>
+          <div class="ad" style="font-size:11px;color:var(--z-sage-dark);margin-top:6px;">Asume tu gasto promedio + obligaciones recurrentes. No incluye ingresos no confirmados.</div>
+        </div>
+
+        <button class="ftbtn">⤓ Exportar CSV del periodo</button>
+
+      </div>
+    </div>
+
+    <!-- ================= SPEC NOTES ================= -->
+    <div class="notecard">
+      <h3>Arquitectura</h3>
+      <ul>
+        <li>Ruta nueva <b>/tendencias</b> (server component) + secciones. Entrada en nav.</li>
+        <li>Motor portable en <b>@zeta/shared/analytics</b> — funciones puras que derivan todas las series desde filas crudas. Mobile lo reusa después.</li>
+        <li>Un solo fetch cacheado <b>getAnalyticsDataset(rango, moneda)</b> alimenta todas las secciones (no N queries).</li>
+        <li>Rango/moneda por <b>searchParams</b> (server-driven, cacheable) — sin store cliente.</li>
+        <li>Reusa charts existentes (recharts) + tokens. Cero deps nuevas.</li>
+      </ul>
+      <h3>Datos — qué existe / qué falta</h3>
+      <ul>
+        <li>Cashflow mensual, neto, heatmap <span class="tag exist">existe</span></li>
+        <li>Serie de categoría multi-mes <span class="tag new">nuevo</span></li>
+        <li>Top destinatarios (agrupa por destinatario_id) <span class="tag new">nuevo</span></li>
+        <li>Serie de tasa de ahorro <span class="tag new">nuevo</span></li>
+        <li>Fijos vs variables (usa expense_type) <span class="tag new">nuevo</span></li>
+        <li>Cumplimiento de presupuesto histórico <span class="tag new">nuevo</span></li>
+        <li>Movers MoM / velocidad <span class="tag new">deriv.</span></li>
+        <li>Anomalías (z-score vs base 3m) <span class="tag new">nuevo</span></li>
+        <li>Proyección (recurrentes + burn rate) <span class="tag new">nuevo</span></li>
+      </ul>
+      <h3>Reglas Zeta respetadas</h3>
+      <ul>
+        <li>Ingreso <b>excluye</b> inflows a CREDIT_CARD/LOAN.</li>
+        <li>Excluye reconciliadas e <b>is_excluded</b>.</li>
+        <li>Agrupa por <b>destinatario_id</b> (no strings de merchant).</li>
+        <li><b>"use cache"</b> + cacheTag("analytics") + cacheLife("zeta"); mutaciones → updateTag.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</body>
+</html>

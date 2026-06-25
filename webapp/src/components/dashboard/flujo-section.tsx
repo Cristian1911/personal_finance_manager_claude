@@ -1,7 +1,10 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { getMonthlyCashflow } from "@/actions/charts";
 import { getBurnRate } from "@/actions/burn-rate";
 import { formatCurrency } from "@/lib/utils/currency";
+import { cn } from "@/lib/utils";
+import { BRASS_GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import { DashboardSection } from "./dashboard-section";
 import { WidgetSlot } from "./widget-slot";
 import { FlujoWaterfall } from "./flujo-waterfall";
@@ -77,6 +80,17 @@ export async function FlujoSection({
       title="Flujo de caja"
       section="flujo"
       subtitle={flujoSubtitle}
+      headerAction={
+        <Link
+          href="/tendencias"
+          className={cn(
+            BRASS_GHOST_BUTTON_CLASS,
+            "inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium",
+          )}
+        >
+          Ver tendencias →
+        </Link>
+      }
     >
       <WidgetSlot widgetId="waterfall">
         <Suspense fallback={<FlujoWaterfallSkeleton />}>
