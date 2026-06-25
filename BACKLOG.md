@@ -56,6 +56,18 @@ Production Android is slow — **confirmed on the installed release build, NOT a
 - **[bug] AnimatedAccordion `estimatedHeight` worklet closure** → email-import panel animates to wrong height after the panel measures itself; convert `estimatedHeight` to a shared value. **S.**
 - **[bug] MovimientosRoot `listHeader` useMemo missing `currency` + `handleToolDataChanged` deps** → stale-currency display if preferred currency resolves after first paint. **S.**
 
+### Mobile SQLite / data-layer perf audit (2026-06-25)
+
+Full report: [`docs/audits/2026-06-25-mobile-sqlite-perf.md`](docs/audits/2026-06-25-mobile-sqlite-perf.md) (46 findings) · plan: [`...-plan.md`](docs/audits/2026-06-25-mobile-sqlite-perf-plan.md). Foundation OK (WAL on, 32 indexes). **46 findings: P0:2 · P1:15 · P2:16 · P3:13.**
+
+- ~~**PRAGMA tuning**~~ → ✅ **SHIPPED**: `applyConnectionPragmas` adds `synchronous=NORMAL` (drops per-commit fsync app-wide) + `busy_timeout`/`cache_size`/`mmap_size`/`temp_store` (`database.ts`).
+- ~~**Index coverage**~~ → ✅ **SHIPPED** (migration v18): +`(category_id,date)` +`(account_id,date)`; dropped redundant `idx_transactions_idempotency` (UNIQUE auto-indexes) + `idx_transactions_account` (subsumed by the composite). Net-zero index count, better coverage. (Month-agg already served by `idx_transactions_date`; no new index per sync-doctor gate.)
+- **[P0/P1] Dashboard + Plan 500-row fetch → SQL aggregation** — both run `getTransactions({limit:500})` (`SELECT t.*` ×3 JOINs ≈ 23k cells) + O(500) JS loop on every focus. Use `getMonthlyAggregates` + a 20-row feed. ~95% bridge cut on the two hottest screens. **M.**
+- **[P1] Subscriptions → local SQLite** — reads `accounts` + `recurring_transaction_templates` over the network every focus; both are synced. **M.**
+- **[P1] Sync push round-trip collapse** — replace the per-UPDATE `isLocalFresh` network pre-read (`push.ts:116`, 2 RTTs/update) with a conditional `.lte('updated_at')` write; batch inserts/deletes. **M.**
+- **[P1] Focus-reload gate** — module-level data-version flag so `useFocusEffect` skips a full re-query when nothing changed. **S–M.**
+- **[P2/P3] remainder** — `SELECT *` over-fetch (22), N+1 in 5 repos, serial 20-table pull, `transaction_tags` full DELETE-ALL+refetch each sync. See report.
+
 ---
 
 ## Tendencias hub follow-ups (2026-06-24, branch `feat/tendencias-hub`)
