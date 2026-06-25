@@ -15,6 +15,7 @@ import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { cn } from "@/lib/utils";
 import { getEnvelopeColor } from "@/lib/constants/envelope-colors";
+import { CategoryIcon } from "@/components/categories/category-icon";
 import { toast } from "sonner";
 import type { CurrencyCode, PlanningEntryStatus } from "@/types/domain";
 import type { PlanningEntryWithRelations } from "@/types/cashflow-planner";
@@ -118,7 +119,10 @@ export function ExpenseEntryRow({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 sm:gap-2">
           {entry.category && (
-            <span className="shrink-0 text-xs">{entry.category.icon}</span>
+            <CategoryIcon
+              icon={entry.category.icon}
+              className="h-3.5 w-3.5 shrink-0 text-xs text-muted-foreground"
+            />
           )}
           <span className="min-w-0 truncate text-sm font-medium">{entry.label}</span>
           <Badge variant="outline" className={`shrink-0 text-[9px] sm:text-[10px] px-1 sm:px-1.5 ${badge.className}`}>

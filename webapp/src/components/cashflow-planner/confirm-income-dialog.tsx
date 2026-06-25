@@ -20,7 +20,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
-import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
+import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import {
   findCandidateTransactions,
   confirmIncomeReceived,
@@ -224,14 +224,15 @@ export function ConfirmIncomeDialog({
             Confirmar {formatCurrency(effectiveAmount, currency)}
           </Button>
 
-          <button
+          <Button
             type="button"
+            size="sm"
             onClick={handleMarkOnly}
             disabled={isPending}
-            className="w-full py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+            className={cn("w-full text-xs", GHOST_BUTTON_CLASS)}
           >
             Solo marcar como recibido (sin movimiento)
-          </button>
+          </Button>
 
           {/* Link an already-imported movement */}
           {(loadingCandidates || candidates.length > 0) && (

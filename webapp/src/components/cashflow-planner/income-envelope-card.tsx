@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { getEnvelopeColor } from "@/lib/constants/envelope-colors";
 import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
+import { CategoryIcon } from "@/components/categories/category-icon";
 import { cn } from "@/lib/utils";
 import type { CurrencyCode, PlanningEntryStatus } from "@/types/domain";
 import type { IncomeEnvelope, PlanningEntryWithRelations } from "@/types/cashflow-planner";
@@ -40,7 +41,12 @@ const STATE_CHIP: Record<string, { label: string; className: string }> = {
 export function IncomeEnvelopeCard({ envelope, currency, colorIndex, onEdit, onConfirm }: IncomeEnvelopeCardProps) {
   const [isPending, startTransition] = useTransition();
   const [expanded, setExpanded] = useState(false);
-  const { entry, total_amount, assigned_amount, remaining_amount, assignments, state } = envelope;
+  const { entry, total_amount, assigned_amount, remaining_amount, assignments, state, is_opening_balance } = envelope;
+  // assigned_amount / remaining_amount already exclude paid/skipped (computed in
+  // hydratePeriodData). The list mirrors that — only pending assignments shown.
+  const pendingAssignments = assignments.filter(
+    (a) => a.expense_entry.status !== "COMPLETED" && a.expense_entry.status !== "SKIPPED"
+  );
   const percentUsed = total_amount > 0
     ? Math.round((assigned_amount / total_amount) * 100)
     : 0;
@@ -87,7 +93,7 @@ export function IncomeEnvelopeCard({ envelope, currency, colorIndex, onEdit, onC
     <div className="rounded-xl border border-white/6 bg-card p-4 space-y-3 border-l-2" style={{ borderLeftColor }}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
-          {!showConfirm && (
+          {!showConfirm && !is_opening_balance && (
             <button
               type="button"
               onClick={handleToggleStatus}
@@ -120,9 +126,11 @@ export function IncomeEnvelopeCard({ envelope, currency, colorIndex, onEdit, onC
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           <div className="text-right shrink-0">
             <p className={`text-sm sm:text-lg font-semibold tabular-nums ${envelopeColor.text}`}>
-              {formatCurrency(Number(entry.amount), entry.currency_code)}
+              {is_opening_balance
+                ? formatCurrency(total_amount, currency)
+                : formatCurrency(Number(entry.amount), entry.currency_code)}
             </p>
-            {isForeignCurrency && (
+            {!is_opening_balance && isForeignCurrency && (
               <p className="text-[10px] text-muted-foreground tabular-nums">
                 ≈ {formatCurrency(entry.converted_amount, currency)}
               </p>
@@ -175,17 +183,20 @@ export function IncomeEnvelopeCard({ envelope, currency, colorIndex, onEdit, onC
         </Button>
       )}
 
-      {expanded && assignments.length > 0 && (
+      {expanded && pendingAssignments.length > 0 && (
         <div className="space-y-1.5">
           <SectionEyebrow>Gastos asignados</SectionEyebrow>
-          {assignments.map(({ assignment, expense_entry }) => (
+          {pendingAssignments.map(({ assignment, expense_entry }) => (
             <div
               key={assignment.id}
               className="flex items-center justify-between gap-2 rounded-md border border-white/6 bg-background/50 px-3 py-1.5"
             >
               <div className="flex items-center gap-2 min-w-0">
                 {expense_entry.category && (
-                  <span className="text-xs">{expense_entry.category.icon}</span>
+                  <CategoryIcon
+                    icon={expense_entry.category.icon}
+                    className="h-3.5 w-3.5 shrink-0 text-xs text-muted-foreground"
+                  />
                 )}
                 <span className="text-sm truncate">
                   {expense_entry.label}
@@ -213,13 +224,13 @@ export function IncomeEnvelopeCard({ envelope, currency, colorIndex, onEdit, onC
         </div>
       )}
 
-      {assignments.length > 0 && (
+      {pendingAssignments.length > 0 && (
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
           className="w-full text-center text-[10px] text-muted-foreground hover:text-foreground transition-colors"
         >
-          {expanded ? "Ocultar asignaciones" : `Ver ${assignments.length} asignación${assignments.length !== 1 ? "es" : ""}`}
+          {expanded ? "Ocultar asignaciones" : `Ver ${pendingAssignments.length} asignación${pendingAssignments.length !== 1 ? "es" : ""}`}
         </button>
       )}
     </div>

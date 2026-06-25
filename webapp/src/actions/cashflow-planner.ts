@@ -120,7 +120,7 @@ async function hydratePeriodData(
     // reconciles with the opening-balance seed.
     supabase
       .from("accounts")
-      .select("current_balance, currency_code")
+      .select("id, current_balance, currency_code")
       .eq("user_id", userId)
       .eq("is_active", true)
       .eq("show_in_dashboard", true)
@@ -172,13 +172,18 @@ async function hydratePeriodData(
   };
 
   // Live "Saldo actual": real spendable balance, in period currency.
+  // Also keep a per-account map so the opening-balance "Saldo" envelope can
+  // mirror its account's live balance (instead of the frozen seed amount).
   const todayISO = toColombiaDateString(new Date());
+  const liveBalanceById = new Map<string, number>();
   let saldoActual = 0;
   for (const a of spendAccounts ?? []) {
-    saldoActual += convertToPeriod(
+    const bal = convertToPeriod(
       Number(a.current_balance ?? 0),
       a.currency_code as CurrencyCode
     );
+    liveBalanceById.set(a.id, bal);
+    saldoActual += bal;
   }
 
   const entries: PlanningEntryWithRelations[] = rawEntriesTyped.map((e) => {
@@ -215,10 +220,14 @@ async function hydratePeriodData(
 
   const incomeEnvelopes: IncomeEnvelope[] = incomeEntries.map((entry) => {
     const entryAssignments = assignmentsByIncome.get(entry.id) ?? [];
-    const assignedAmount = entryAssignments.reduce(
-      (sum, a) => sum + Number(a.assigned_amount),
-      0
-    );
+    // Only assignments to still-pending expenses commit this income — paid /
+    // skipped expenses already settled, so they free up the envelope. (Keeps
+    // the card, the assign dialog, and "Disponible" consistent.)
+    const assignedAmount = entryAssignments.reduce((sum, a) => {
+      const exp = expenseById.get(a.expense_entry_id);
+      const counts = !exp || (exp.status !== "COMPLETED" && exp.status !== "SKIPPED");
+      return counts ? sum + Number(a.assigned_amount) : sum;
+    }, 0);
 
     const assignmentDetails: AssignmentDetail[] = entryAssignments
       .map((a) => {
@@ -233,12 +242,20 @@ async function hydratePeriodData(
       ? ("confirmado" as const)
       : deriveIncomeState(entry.status, entry.expected_date, todayISO);
 
+    // Opening-balance "Saldo" envelopes display the LIVE account balance (so
+    // they mirror the hero's saldo_actual), not the frozen seed amount. The
+    // stored entry.converted_amount stays frozen → total_income isn't doubled.
+    const displayAmount =
+      isOpening && entry.account_id != null && liveBalanceById.has(entry.account_id)
+        ? liveBalanceById.get(entry.account_id)!
+        : entry.converted_amount;
+
     return {
       entry,
       // Use converted amount so assignments (in period currency) are comparable
-      total_amount: entry.converted_amount,
+      total_amount: displayAmount,
       assigned_amount: assignedAmount,
-      remaining_amount: entry.converted_amount - assignedAmount,
+      remaining_amount: displayAmount - assignedAmount,
       assignments: assignmentDetails,
       state,
       is_opening_balance: isOpening,
@@ -1576,9 +1593,11 @@ export async function confirmIncomeReceived(params: {
 
   // ── LINK MODE: connect an already-imported transaction ──
   if (params.existingTransactionId) {
-    await linkOccurrence(params.existingTransactionId);
-    const err = await markCompleted();
-    if (err) return { success: false, error: err };
+    const [, markErr] = await Promise.all([
+      linkOccurrence(params.existingTransactionId),
+      markCompleted(),
+    ]);
+    if (markErr) return { success: false, error: markErr };
 
     updateTag(TAG);
     updateTag("occurrences");
@@ -1658,9 +1677,8 @@ export async function confirmIncomeReceived(params: {
       .eq("user_id", user.id);
   }
 
-  await linkOccurrence(txId);
-  const err = await markCompleted();
-  if (err) console.error("Income confirm entry update error:", err);
+  const [, markErr] = await Promise.all([linkOccurrence(txId), markCompleted()]);
+  if (markErr) console.error("Income confirm entry update error:", markErr);
 
   updateTag(TAG);
   updateTag("occurrences");

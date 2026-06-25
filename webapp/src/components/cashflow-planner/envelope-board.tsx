@@ -56,8 +56,17 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
   );
 
   // Settled (above HOY) vs actionable (below HOY).
-  const confirmedIncome = income_envelopes.filter((e) => e.state === "confirmado");
-  const actionableIncome = income_envelopes.filter((e) => e.state !== "confirmado");
+  // Opening-balance "Saldo" envelopes stay VISIBLE even when confirmed — they're
+  // the current spendable balance you assign expenses against. Only confirmed
+  // paychecks collapse into the settled chip.
+  const openingBalances = income_envelopes.filter((e) => e.is_opening_balance);
+  const confirmedIncome = income_envelopes.filter(
+    (e) => e.state === "confirmado" && !e.is_opening_balance
+  );
+  const actionableIncome = income_envelopes.filter(
+    (e) => e.state !== "confirmado" && !e.is_opening_balance
+  );
+  const visibleIncome = [...openingBalances, ...actionableIncome];
   const paidExpenses = expense_entries.filter((e) => e.status === "COMPLETED");
   const pendingExpenses = expense_entries.filter((e) => e.status !== "COMPLETED");
 
@@ -99,12 +108,13 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
               <button
                 type="button"
                 aria-expanded={openSettled === "income"}
+                aria-controls="settled-income-list"
                 onClick={() => setOpenSettled((o) => (o === "income" ? null : "income"))}
                 className={cn(
                   "flex min-w-0 items-center gap-2.5 rounded-xl border border-dashed px-3 py-2.5 text-left transition-colors",
                   openSettled === "income"
-                    ? "border-z-income/30 bg-z-income/[0.05]"
-                    : "border-white/6 hover:bg-white/[0.03]"
+                    ? "border-z-income/30 bg-z-income/5"
+                    : "border-white/6 hover:bg-white/3"
                 )}
               >
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-z-income/12 text-z-income">
@@ -132,12 +142,13 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
               <button
                 type="button"
                 aria-expanded={openSettled === "expense"}
+                aria-controls="settled-expense-list"
                 onClick={() => setOpenSettled((o) => (o === "expense" ? null : "expense"))}
                 className={cn(
                   "flex min-w-0 items-center gap-2.5 rounded-xl border border-dashed px-3 py-2.5 text-left transition-colors",
                   openSettled === "expense"
-                    ? "border-z-expense/30 bg-z-expense/[0.05]"
-                    : "border-white/6 hover:bg-white/[0.03]"
+                    ? "border-z-expense/30 bg-z-expense/5"
+                    : "border-white/6 hover:bg-white/3"
                 )}
               >
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-z-expense/12 text-z-expense">
@@ -164,7 +175,7 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
           </div>
 
           {openSettled === "income" && (
-            <div className="space-y-2.5">
+            <div id="settled-income-list" className="space-y-2.5">
               {confirmedIncome.map((env) => (
                 <IncomeEnvelopeCard
                   key={env.entry.id}
@@ -177,7 +188,7 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
             </div>
           )}
           {openSettled === "expense" && (
-            <div className="space-y-2">
+            <div id="settled-expense-list" className="space-y-2">
               {paidExpenses.map((entry) => (
                 <ExpenseEntryRow
                   key={entry.id}
@@ -196,7 +207,7 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
       {/* ── HOY divider ── */}
       <div className="flex items-center gap-3 my-5">
         <div className="h-px flex-1 bg-white/6" />
-        <div className="flex items-center gap-2 rounded-full border border-z-brass/30 bg-z-brass/[0.07] px-3 py-1">
+        <div className="flex items-center gap-2 rounded-full border border-z-brass/30 bg-z-brass/7 px-3 py-1">
           <span className="h-1.5 w-1.5 rounded-full bg-z-brass" />
           <span className="text-[11px] font-bold uppercase tracking-[0.13em] text-z-brass">
             Hoy · {formatDate(todayISO, "d MMM")}
@@ -234,19 +245,19 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
             </p>
           )}
           {atrasadoCount > 0 && (
-            <div className="flex items-center gap-2 rounded-xl border border-z-expense/20 bg-z-expense/[0.06] px-3 py-2 text-xs text-z-expense">
+            <div className="flex items-center gap-2 rounded-xl border border-z-expense/20 bg-z-expense/6 px-3 py-2 text-xs text-z-expense">
               <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
               <span>
                 {atrasadoCount} {atrasadoCount === 1 ? "ingreso atrasado" : "ingresos atrasados"} sin confirmar
               </span>
             </div>
           )}
-          {actionableIncome.length === 0 ? (
+          {visibleIncome.length === 0 ? (
             <p className="rounded-xl border border-dashed border-white/6 p-4 text-center text-xs text-muted-foreground">
-              Todo confirmado por ahora
+              Usa “Actualizar saldos” para ver tu saldo disponible
             </p>
           ) : (
-            actionableIncome.map((env) => (
+            visibleIncome.map((env) => (
               <IncomeEnvelopeCard
                 key={env.entry.id}
                 envelope={env}
@@ -286,7 +297,7 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
             </p>
           )}
           {unassigned_expenses.length > 0 && (
-            <div className="flex items-center gap-2 rounded-xl border border-z-brass/20 bg-z-brass/[0.06] px-3 py-2 text-xs text-z-brass">
+            <div className="flex items-center gap-2 rounded-xl border border-z-brass/20 bg-z-brass/6 px-3 py-2 text-xs text-z-brass">
               <Info className="h-3.5 w-3.5 shrink-0" />
               <span>
                 {unassigned_expenses.length}{" "}
