@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/zeta-design-system-019dcbea-f04a-7d4c-b73b-b05e420673e5/colors_and_type.css">
+<style>
+  body{ background:#0b0c0b; }
+  .frame-card{ border-radius:30px; border:1px solid rgba(255,255,255,0.06); background:var(--z-surface-1, #131720); overflow:hidden; box-shadow:0 24px 60px rgba(0,0,0,0.45); }
+  .frame-card{ background:#171A17; }
+  .scrollpad{ padding:18px 16px 22px; }
+  .flabel{ font-size:12px; font-weight:600; letter-spacing:0.02em; color:#8b9184; padding-left:6px; margin-bottom:10px; }
+  .ghead{ font-size:11px; font-weight:600; letter-spacing:0.18em; text-transform:uppercase; color:#6f7568; }
+  .jobtag{ font-size:9px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:var(--z-brass); }
+  .scard{ margin-top:10px; }
+  .sech{ display:flex; align-items:center; gap:8px; margin:18px 2px 8px; }
+  .cardttl{ font-size:14px; font-weight:600; color:var(--z-white); }
+  .mini{ font-size:9px; font-weight:600; letter-spacing:0.16em; text-transform:uppercase; color:var(--z-sage-dark); }
+  .num{ font-variant-numeric:tabular-nums; }
+</style>
+</helmet>
+
+<div style="position:absolute; left:0; top:0; width:4360px; height:3500px; background:#0b0c0b;"></div>
+
+<div style="position:absolute; left:60px; top:38px; width:760px;">
+  <div class="z-eyebrow" style="color:var(--z-brass);">Zeta · nueva superficie</div>
+  <div style="font-size:30px; font-weight:700; letter-spacing:-0.02em; color:var(--z-white); margin-top:4px;">Tendencias — exploración de IA</div>
+  <div style="font-size:13px; color:var(--z-sage-light); margin-top:6px; line-height:1.6;">Móvil 390px · oscuro · COP · español. El periodo y la moneda son controles vivos. Desktop refluye a 2 columnas (no diseñado aquí).</div>
+</div>
+
+<div class="ghead" style="position:absolute; left:66px; top:128px;">Direcciones de IA — la página completa, 3 maneras</div>
+<div class="ghead" style="position:absolute; left:1506px; top:128px;">Componente difícil 1 · tendencia por categoría</div>
+<div class="ghead" style="position:absolute; left:2946px; top:128px;">Componente difícil 2 · apertura / verdict</div>
+
+<!-- ===================== DIRECTION A · SCROLL SECCIONADO ===================== -->
+<div style="position:absolute; left:60px; top:160px; width:390px;">
+  <div class="flabel" data-drags-parent="1">A · Scroll seccionado — todo visible, una sola columna</div>
+  <div class="frame-card">
+    <div class="scrollpad" data-screen-label="Tendencias A">
+
+      <div style="margin-bottom:14px;">
+        <div class="z-eyebrow">Análisis</div>
+        <div style="font-size:24px; font-weight:700; letter-spacing:-0.02em; color:var(--z-white); margin-top:2px;">Tendencias</div>
+      </div>
+
+      <!-- period + currency -->
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:14px;">
+        <div style="display:inline-flex; gap:2px; padding:3px; border-radius:10px; background:rgba(0,0,0,0.28); border:1px solid var(--z-border);">
+          <sc-for list="{{ periodPills }}" as="p" hint-placeholder-count="5">
+            <button onClick="{{ p.on }}" style="border:none; cursor:pointer; font-family:inherit; font-size:12px; font-weight:600; padding:6px 9px; border-radius:8px; background:{{ p.bg }}; color:{{ p.fg }}; transition:background 150ms,color 150ms;">{{ p.label }}</button>
+          </sc-for>
+        </div>
+        <button onClick="{{ toggleCurrency }}" style="display:inline-flex; align-items:center; gap:4px; font-family:inherit; font-size:12px; font-weight:600; color:var(--z-sage-light); background:rgba(0,0,0,0.28); border:1px solid var(--z-border); border-radius:8px; padding:6px 10px; cursor:pointer;">{{ currency }} ▾</button>
+      </div>
+
+      <!-- verdict -->
+      <div style="border-radius:16px; border:1px solid var(--z-border); padding:14px; background:radial-gradient(circle at top left,rgba(63,70,50,0.30),transparent 46%),linear-gradient(180deg,rgba(27,30,27,0.96),rgba(18,20,18,0.98)); box-shadow:inset 0 1px 0 rgba(255,255,255,0.03);">
+        <div class="z-eyebrow" style="margin-bottom:7px;">Tu lectura · jun</div>
+        <div style="font-size:15px; line-height:1.55; color:var(--z-sage-light);">Tu tasa de ahorro subió a <b style="color:var(--z-white);">24%</b> — la mejor en 6 meses. Pero <b style="color:var(--z-expense);">Restaurantes</b> viene acelerando.</div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:6px;">
+        <sc-for list="{{ tiles }}" as="t" hint-placeholder-count="3">
+          <div class="z-card-stat" style="padding:11px 10px;">
+            <div class="mini" style="font-size:8.5px; letter-spacing:0.1em;">{{ t.label }}</div>
+            <div class="num" style="font-size:17px; font-weight:700; color:var(--z-white); margin-top:5px;">{{ t.value }}</div>
+            <div style="font-size:11px; font-weight:600; margin-top:2px; color:{{ t.dc }};">{{ t.delta }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- JOB 1 -->
+      <div class="sech"><span class="jobtag">Job 1</span><span class="cardttl" style="font-size:15px;">¿A dónde va el dinero?</span></div>
+
+      <div class="z-card-surface scard">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+          <span class="cardttl">Gasto por categoría</span>
+          <span class="mini">tendencia · 6m</span>
+        </div>
+        <sc-for list="{{ catRows }}" as="c" hint-placeholder-count="7">
+          <div style="display:flex; align-items:center; gap:9px; padding:7px 0; border-bottom:1px solid var(--z-border);">
+            <span style="width:7px; height:7px; border-radius:50%; background:{{ c.color }}; flex:none;"></span>
+            <div style="flex:1; min-width:0;">
+              <div style="font-size:13px; color:var(--z-sage-light); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ c.name }}</div>
+              <sc-if value="{{ c.accel }}" hint-placeholder-val="{{ false }}"><div style="font-size:9px; font-weight:600; color:var(--z-expense); margin-top:1px;">acelerando</div></sc-if>
+            </div>
+            <svg width="72" height="26" style="flex:none;"><polyline points="{{ c.spark }}" style="fill:none; stroke:{{ c.color }}; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round;"></polyline></svg>
+            <div style="width:60px; text-align:right; flex:none;">
+              <div class="num" style="font-size:13px; font-weight:600; color:var(--z-white);">{{ c.amt }}</div>
+              <div style="font-size:10px; font-weight:600; color:{{ c.deltaColor }};">{{ c.delta }}</div>
+            </div>
+          </div>
+        </sc-for>
+        <div style="font-size:11px; color:var(--z-sage-dark); margin-top:9px;">Toca una categoría para ver su tendencia propia.</div>
+      </div>
+
+      <div class="z-card-surface scard">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px;">
+          <span class="cardttl">Top destinatarios</span>
+          <span class="mini">¿a dónde va?</span>
+        </div>
+        <sc-for list="{{ dest }}" as="d" hint-placeholder-count="5">
+          <div style="display:flex; align-items:center; gap:10px; padding:7px 0;">
+            <span style="width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:#121412; background:{{ d.color }}; flex:none;">{{ d.ini }}</span>
+            <div style="flex:1; min-width:0;">
+              <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px;">
+                <span style="font-size:13px; color:var(--z-sage-light);">{{ d.name }}</span>
+                <span class="num" style="font-size:13px; font-weight:600; color:var(--z-white);">{{ d.amt }}</span>
+              </div>
+              <div style="height:4px; border-radius:2px; background:rgba(255,255,255,0.06); margin-top:6px; overflow:hidden;"><div style="height:100%; width:{{ d.pct }}%; background:{{ d.color }}; opacity:0.55;"></div></div>
+              <div style="display:flex; justify-content:space-between; margin-top:4px;">
+                <span style="font-size:10px; color:var(--z-sage-dark);">{{ d.sub }}</span>
+                <span style="font-size:10px; font-weight:600; color:{{ d.dc }};">{{ d.delta }}</span>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+        <button class="z-btn z-btn-ghost" style="width:100%; height:32px; font-size:12px; margin-top:8px;">Ver todos (23)</button>
+      </div>
+
+      <div class="z-card-surface scard">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px;">
+          <span class="cardttl">Fijos vs. variables</span>
+          <span class="mini">jun</span>
+        </div>
+        <div style="display:flex; height:11px; border-radius:6px; overflow:hidden; background:rgba(0,0,0,0.3);">
+          <div style="width:58%; background:var(--z-sage);"></div>
+          <div style="width:42%; background:var(--z-expense);"></div>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-top:10px;">
+          <div>
+            <div style="display:flex; align-items:center; gap:6px;"><span style="width:7px;height:7px;border-radius:2px;background:var(--z-sage);"></span><span style="font-size:12px; color:var(--z-sage-light);">Fijos</span></div>
+            <div class="num" style="font-size:16px; font-weight:600; color:var(--z-white); margin-top:3px;">$2,02M</div>
+            <div style="font-size:10px; color:var(--z-sage-dark);">58% · recurrentes</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="display:flex; align-items:center; gap:6px; justify-content:flex-end;"><span style="font-size:12px; color:var(--z-sage-light);">Variables</span><span style="width:7px;height:7px;border-radius:2px;background:var(--z-expense);"></span></div>
+            <div class="num" style="font-size:16px; font-weight:600; color:var(--z-white); margin-top:3px;">$1,46M</div>
+            <div style="font-size:10px; color:var(--z-expense); font-weight:600;">42% · ▲9%</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; margin-top:12px; padding-top:11px; border-top:1px solid var(--z-border);">
+          <span style="font-size:11px; color:var(--z-sage-dark); flex:1;">Lo variable viene subiendo</span>
+          <svg width="132" height="28" style="flex:none;"><polyline points="{{ variableSpark }}" style="fill:none; stroke:var(--z-expense); stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round;"></polyline></svg>
+        </div>
+      </div>
+
+      <!-- JOB 2 -->
+      <div class="sech"><span class="jobtag">Job 2</span><span class="cardttl" style="font-size:15px;">¿Voy bien?</span></div>
+
+      <div class="z-card-surface scard">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div><span class="cardttl">Tasa de ahorro</span><div style="font-size:11px; color:var(--z-sage-dark); margin-top:2px;">meta 20%</div></div>
+          <div style="text-align:right;"><div class="num" style="font-size:26px; font-weight:800; color:var(--z-income); letter-spacing:-0.02em;">24%</div><div style="font-size:11px; font-weight:600; color:var(--z-income);">▲5pp vs ene</div></div>
+        </div>
+        <svg width="326" height="72" style="display:block; margin-top:12px;">
+          <path d="{{ savArea }}" style="fill:var(--z-income); opacity:0.10;"></path>
+          <line x1="0" y1="{{ savMetaY }}" x2="326" y2="{{ savMetaY }}" style="stroke:var(--z-sage-dark); stroke-width:1; stroke-dasharray:4 3;"></line>
+          <polyline points="{{ savPts }}" style="fill:none; stroke:var(--z-income); stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"></polyline>
+          <sc-for list="{{ savDots }}" as="p" hint-placeholder-count="6"><circle cx="{{ p.x }}" cy="{{ p.y }}" r="2.6" style="fill:#171A17; stroke:var(--z-income); stroke-width:1.6;"></circle></sc-for>
+        </svg>
+        <div style="display:flex; justify-content:space-between; margin-top:4px;">
+          <sc-for list="{{ savMonths }}" as="m" hint-placeholder-count="6"><span style="font-size:9px; color:var(--z-sage-dark);">{{ m }}</span></sc-for>
+        </div>
+      </div>
+
+      <div class="z-card-surface scard">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px;">
+          <span class="cardttl">Ingreso vs. gasto</span>
+          <span style="font-size:12px; color:var(--z-income); font-weight:600;">neto prom +$1,07M</span>
+        </div>
+        <div style="display:flex; align-items:flex-end; justify-content:space-between; height:74px;">
+          <sc-for list="{{ igBars }}" as="b" hint-placeholder-count="6">
+            <div style="display:flex; flex-direction:column; align-items:center; gap:5px; flex:1;">
+              <div style="display:flex; align-items:flex-end; gap:3px; height:58px;">
+                <div style="width:9px; border-radius:2px 2px 0 0; background:var(--z-income); height:{{ b.ingH }}px;"></div>
+                <div style="width:9px; border-radius:2px 2px 0 0; background:var(--z-expense); height:{{ b.gasH }}px;"></div>
+              </div>
+              <span style="font-size:9px; color:var(--z-sage-dark);">{{ b.m }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex; gap:14px; margin-top:10px; padding-top:10px; border-top:1px solid var(--z-border);">
+          <span style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--z-sage-light);"><span style="width:7px;height:7px;border-radius:2px;background:var(--z-income);"></span>Ingreso</span>
+          <span style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--z-sage-light);"><span style="width:7px;height:7px;border-radius:2px;background:var(--z-expense);"></span>Gasto</span>
+        </div>
+      </div>
+
+      <div class="z-card-surface scard">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px;">
+          <span class="cardttl">Cumplimiento de presupuesto</span>
+          <span class="mini">histórico</span>
+        </div>
+        <sc-for list="{{ presup }}" as="p" hint-placeholder-count="3">
+          <div style="padding:8px 0; border-bottom:1px solid var(--z-border);">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+              <div style="display:flex; align-items:center; gap:8px;"><span style="width:7px;height:7px;border-radius:50%;background:{{ p.color }};"></span><span style="font-size:13px; color:var(--z-sage-light);">{{ p.name }}</span></div>
+              <div style="display:flex; gap:3px;">
+                <sc-for list="{{ p.cells }}" as="d" hint-placeholder-count="6"><span style="width:11px; height:11px; border-radius:3px; background:{{ d.bg }};"></span></sc-for>
+              </div>
+            </div>
+            <div style="font-size:10px; font-weight:600; color:{{ p.noteColor }}; margin-top:5px;">{{ p.note }}</div>
+          </div>
+        </sc-for>
+        <div style="font-size:10px; color:var(--z-sage-dark); margin-top:8px;">Rojo = mes excedido · verde = dentro</div>
+      </div>
+
+      <!-- JOB 3 -->
+      <div class="sech"><span class="jobtag">Job 3</span><span class="cardttl" style="font-size:15px;">¿Está cambiando mi gasto?</span></div>
+
+      <div class="z-card-surface scard">
+        <div style="margin-bottom:8px;"><span class="cardttl">Cambios destacados</span></div>
+        <sc-for list="{{ movers }}" as="m" hint-placeholder-count="3">
+          <div style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--z-border);">
+            <span style="font-size:13px; color:var(--z-sage-light); flex:1;">{{ m.name }}</span>
+            <span class="num" style="font-size:12px; color:var(--z-sage-dark);">{{ m.from }}</span>
+            <span style="font-size:12px; color:var(--z-sage-dark);">→</span>
+            <span class="num" style="font-size:12px; color:var(--z-white); font-weight:600;">{{ m.to }}</span>
+            <span style="width:46px; text-align:right; font-size:11px; font-weight:700; color:{{ m.dc }};">{{ m.delta }}</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:6px; margin-top:10px;">
+        <sc-for list="{{ anomalies }}" as="a" hint-placeholder-count="2">
+          <div class="surface-alert" style="border-radius:12px; padding:11px 12px; display:flex; gap:10px; align-items:flex-start;">
+            <svg width="16" height="16" style="flex:none; margin-top:1px;"><path d="M8 2 L15 14 L1 14 Z" style="fill:none; stroke:var(--z-alert); stroke-width:1.5; stroke-linejoin:round;"></path><line x1="8" y1="6" x2="8" y2="10" style="stroke:var(--z-alert); stroke-width:1.5; stroke-linecap:round;"></line><circle cx="8" cy="12.2" r="0.9" style="fill:var(--z-alert);"></circle></svg>
+            <div style="flex:1;"><div style="font-size:13px; font-weight:600; color:var(--z-white);">{{ a.title }}</div><div style="font-size:11px; color:var(--z-sage-light); margin-top:2px; line-height:1.4;">{{ a.desc }}</div></div>
+            <span style="color:var(--z-sage-dark); font-size:15px;">›</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <div class="z-card-surface scard">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
+          <div><span class="cardttl">Proyección de saldo</span><div style="font-size:11px; color:var(--z-sage-dark); margin-top:2px;">próximos 3 meses</div></div>
+          <div style="text-align:right;"><div class="num" style="font-size:16px; font-weight:700; color:var(--z-white);">$5,2M <span style="color:var(--z-sage-dark);">→</span> $4,6M</div><div style="font-size:11px; color:var(--z-expense); font-weight:600;">▼ $600k</div></div>
+        </div>
+        <svg width="326" height="88" style="display:block; margin-top:8px;">
+          <path d="{{ projArea }}" style="fill:var(--z-brass); opacity:0.08;"></path>
+          <line x1="{{ projTodayX }}" y1="0" x2="{{ projTodayX }}" y2="88" style="stroke:var(--z-sage-dark); stroke-width:1; stroke-dasharray:3 3;"></line>
+          <polyline points="{{ projPast }}" style="fill:none; stroke:var(--z-brass); stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"></polyline>
+          <polyline points="{{ projFut }}" style="fill:none; stroke:var(--z-brass); stroke-width:2; stroke-dasharray:4 3; stroke-linecap:round; stroke-linejoin:round;"></polyline>
+          <circle cx="{{ projTodayX }}" cy="{{ projTodayY }}" r="3" style="fill:var(--z-brass);"></circle>
+        </svg>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+          <span style="font-size:10px; color:var(--z-sage-dark);">hoy</span>
+          <span style="font-size:10px; color:var(--z-sage-dark);">proyectado (— — —)</span>
+        </div>
+        <div style="font-size:10px; color:var(--z-sage-dark); margin-top:8px; line-height:1.4;">Basado en gasto promedio + obligaciones recurrentes. No incluye ingresos no confirmados.</div>
+      </div>
+
+      <button class="z-btn z-btn-ghost" style="width:100%; height:40px; margin-top:14px;">Exportar CSV del periodo</button>
+
+    </div>
+  </div>
+</div>
+
+<!-- ===================== DIRECTION B · LENTES SEGMENTADOS ===================== -->
+<div style="position:absolute; left:520px; top:160px; width:390px;">
+  <div class="flabel" data-drags-parent="1">B · Lentes segmentados — foco por pregunta (patrón de Deudas)</div>
+  <div class="frame-card">
+    <div class="scrollpad" data-screen-label="Tendencias B">
+
+      <div style="margin-bottom:14px;">
+        <div class="z-eyebrow">Análisis</div>
+        <div style="font-size:24px; font-weight:700; letter-spacing:-0.02em; color:var(--z-white); margin-top:2px;">Tendencias</div>
+      </div>
+
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px;">
+        <div style="display:inline-flex; gap:2px; padding:3px; border-radius:10px; background:rgba(0,0,0,0.28); border:1px solid var(--z-border);">
+          <sc-for list="{{ periodPills }}" as="p" hint-placeholder-count="5">
+            <button onClick="{{ p.on }}" style="border:none; cursor:pointer; font-family:inherit; font-size:12px; font-weight:600; padding:6px 9px; border-radius:8px; background:{{ p.bg }}; color:{{ p.fg }}; transition:background 150ms,color 150ms;">{{ p.label }}</button>
+          </sc-for>
+        </div>
+        <button onClick="{{ toggleCurrency }}" style="display:inline-flex; align-items:center; gap:4px; font-family:inherit; font-size:12px; font-weight:600; color:var(--z-sage-light); background:rgba(0,0,0,0.28); border:1px solid var(--z-border); border-radius:8px; padding:6px 10px; cursor:pointer;">{{ currency }} ▾</button>
+      </div>
+
+      <!-- compact verdict -->
+      <div style="border-radius:14px; border:1px solid var(--z-border); padding:12px 13px; background:radial-gradient(circle at top left,rgba(63,70,50,0.30),transparent 46%),rgba(20,22,20,0.8); margin-bottom:12px;">
+        <div style="font-size:13px; line-height:1.5; color:var(--z-sage-light);">Ahorro <b style="color:var(--z-income);">24%</b> (máx. 6m) · <b style="color:var(--z-expense);">Restaurantes</b> acelera.</div>
+      </div>
+
+      <!-- lens segmented -->
+      <div style="display:flex; gap:3px; padding:3px; border-radius:12px; background:rgba(0,0,0,0.3); border:1px solid var(--z-border); margin-bottom:14px;">
+        <sc-for list="{{ lensTabs }}" as="t" hint-placeholder-count="3">
+          <button onClick="{{ t.on }}" style="flex:1; border:none; cursor:pointer; font-family:inherit; font-size:11.5px; font-weight:600; padding:9px 4px; border-radius:9px; background:{{ t.bg }}; color:{{ t.fg }}; transition:background 150ms,color 150ms;">{{ t.label }}</button>
+        </sc-for>
+      </div>
+
+      <!-- LENS 0 -->
+      <sc-if value="{{ lens0 }}" hint-placeholder-val="{{ true }}">
+        <div>
+          <div class="z-card-surface">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;"><span class="cardttl">Gasto por categoría</span><span class="mini">6m</span></div>
+            <sc-for list="{{ catRows }}" as="c" hint-placeholder-count="7">
+              <div style="display:flex; align-items:center; gap:9px; padding:7px 0; border-bottom:1px solid var(--z-border);">
+                <span style="width:7px; height:7px; border-radius:50%; background:{{ c.color }}; flex:none;"></span>
+                <div style="flex:1; min-width:0; font-size:13px; color:var(--z-sage-light); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ c.name }}</div>
+                <svg width="64" height="24" style="flex:none;"><polyline points="{{ c.spark }}" style="fill:none; stroke:{{ c.color }}; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round;"></polyline></svg>
+                <div style="width:58px; text-align:right; flex:none;"><div class="num" style="font-size:13px; font-weight:600; color:var(--z-white);">{{ c.amt }}</div><div style="font-size:10px; font-weight:600; color:{{ c.deltaColor }};">{{ c.delta }}</div></div>
+              </div>
+            </sc-for>
+          </div>
+          <div class="z-card-surface scard">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;"><span class="cardttl">Top destinatarios</span><span class="mini">¿a dónde va?</span></div>
+            <sc-for list="{{ dest }}" as="d" hint-placeholder-count="5">
+              <div style="display:flex; align-items:center; gap:10px; padding:6px 0;">
+                <span style="width:26px; height:26px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:#121412; background:{{ d.color }}; flex:none;">{{ d.ini }}</span>
+                <div style="flex:1; min-width:0;"><div style="display:flex; justify-content:space-between;"><span style="font-size:12px; color:var(--z-sage-light);">{{ d.name }}</span><span class="num" style="font-size:12px; font-weight:600; color:var(--z-white);">{{ d.amt }}</span></div><div style="font-size:10px; color:var(--z-sage-dark);">{{ d.sub }}</div></div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- LENS 1 -->
+      <sc-if value="{{ lens1 }}" hint-placeholder-val="{{ false }}">
+        <div>
+          <div class="z-card-surface">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+              <div><span class="cardttl">Tasa de ahorro</span><div style="font-size:11px; color:var(--z-sage-dark); margin-top:2px;">meta 20%</div></div>
+              <div style="text-align:right;"><div class="num" style="font-size:26px; font-weight:800; color:var(--z-income);">24%</div><div style="font-size:11px; font-weight:600; color:var(--z-income);">▲5pp</div></div>
+            </div>
+            <svg width="326" height="72" style="display:block; margin-top:12px;">
+              <path d="{{ savArea }}" style="fill:var(--z-income); opacity:0.10;"></path>
+              <line x1="0" y1="{{ savMetaY }}" x2="326" y2="{{ savMetaY }}" style="stroke:var(--z-sage-dark); stroke-width:1; stroke-dasharray:4 3;"></line>
+              <polyline points="{{ savPts }}" style="fill:none; stroke:var(--z-income); stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"></polyline>
+              <sc-for list="{{ savDots }}" as="p" hint-placeholder-count="6"><circle cx="{{ p.x }}" cy="{{ p.y }}" r="2.6" style="fill:#171A17; stroke:var(--z-income); stroke-width:1.6;"></circle></sc-for>
+            </svg>
+            <div style="display:flex; justify-content:space-between; margin-top:4px;"><sc-for list="{{ savMonths }}" as="m" hint-placeholder-count="6"><span style="font-size:9px; color:var(--z-sage-dark);">{{ m }}</span></sc-for></div>
+          </div>
+          <div class="z-card-surface scard">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px;"><span class="cardttl">Ingreso vs. gasto</span><span style="font-size:12px; color:var(--z-income); font-weight:600;">+$1,07M</span></div>
+            <div style="display:flex; align-items:flex-end; justify-content:space-between; height:74px;">
+              <sc-for list="{{ igBars }}" as="b" hint-placeholder-count="6">
+                <div style="display:flex; flex-direction:column; align-items:center; gap:5px; flex:1;"><div style="display:flex; align-items:flex-end; gap:3px; height:58px;"><div style="width:9px; border-radius:2px 2px 0 0; background:var(--z-income); height:{{ b.ingH }}px;"></div><div style="width:9px; border-radius:2px 2px 0 0; background:var(--z-expense); height:{{ b.gasH }}px;"></div></div><span style="font-size:9px; color:var(--z-sage-dark);">{{ b.m }}</span></div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- LENS 2 -->
+      <sc-if value="{{ lens2 }}" hint-placeholder-val="{{ false }}">
+        <div>
+          <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;">
+            <sc-for list="{{ anomalies }}" as="a" hint-placeholder-count="2">
+              <div class="surface-alert" style="border-radius:12px; padding:11px 12px; display:flex; gap:10px; align-items:flex-start;">
+                <svg width="16" height="16" style="flex:none; margin-top:1px;"><path d="M8 2 L15 14 L1 14 Z" style="fill:none; stroke:var(--z-alert); stroke-width:1.5; stroke-linejoin:round;"></path><line x1="8" y1="6" x2="8" y2="10" style="stroke:var(--z-alert); stroke-width:1.5; stroke-linecap:round;"></line><circle cx="8" cy="12.2" r="0.9" style="fill:var(--z-alert);"></circle></svg>
+                <div style="flex:1;"><div style="font-size:13px; font-weight:600; color:var(--z-white);">{{ a.title }}</div><div style="font-size:11px; color:var(--z-sage-light); margin-top:2px; line-height:1.4;">{{ a.desc }}</div></div>
+                <span style="color:var(--z-sage-dark); font-size:15px;">›</span>
+              </div>
+            </sc-for>
+          </div>
+          <div class="z-card-surface">
+            <div style="margin-bottom:8px;"><span class="cardttl">Cambios destacados</span></div>
+            <sc-for list="{{ movers }}" as="m" hint-placeholder-count="3">
+              <div style="display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--z-border);">
+                <span style="font-size:13px; color:var(--z-sage-light); flex:1;">{{ m.name }}</span>
+                <span class="num" style="font-size:11px; color:var(--z-sage-dark);">{{ m.from }} → {{ m.to }}</span>
+                <span style="width:44px; text-align:right; font-size:11px; font-weight:700; color:{{ m.dc }};">{{ m.delta }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div class="z-card-surface scard">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;"><span class="cardttl">Proyección de saldo</span><div class="num" style="font-size:14px; font-weight:700; color:var(--z-white);">$5,2M → $4,6M</div></div>
+            <svg width="326" height="88" style="display:block; margin-top:6px;">
+              <path d="{{ projArea }}" style="fill:var(--z-brass); opacity:0.08;"></path>
+              <line x1="{{ projTodayX }}" y1="0" x2="{{ projTodayX }}" y2="88" style="stroke:var(--z-sage-dark); stroke-width:1; stroke-dasharray:3 3;"></line>
+              <polyline points="{{ projPast }}" style="fill:none; stroke:var(--z-brass); stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"></polyline>
+              <polyline points="{{ projFut }}" style="fill:none; stroke:var(--z-brass); stroke-width:2; stroke-dasharray:4 3; stroke-linecap:round; stroke-linejoin:round;"></polyline>
+              <circle cx="{{ projTodayX }}" cy="{{ projTodayY }}" r="3" style="fill:var(--z-brass);"></circle>
+            </svg>
+            <div style="font-size:10px; color:var(--z-sage-dark); margin-top:6px;">No incluye ingresos no confirmados.</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <div style="font-size:11px; color:var(--z-sage-dark); text-align:center; margin-top:16px; line-height:1.5;">Menos scroll, más foco — cada lente responde una pregunta. El verdict + periodo quedan fijos arriba.</div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ===================== DIRECTION C · HISTORIA / PROGRESIVO ===================== -->
+<div style="position:absolute; left:980px; top:160px; width:390px;">
+  <div class="flabel" data-drags-parent="1">C · Historia / progresivo — verdict primero, secciones expandibles</div>
+  <div class="frame-card">
+    <div class="scrollpad" data-screen-label="Tendencias C">
+
+      <div style="margin-bottom:14px;">
+        <div class="z-eyebrow">Análisis</div>
+        <div style="font-size:24px; font-weight:700; letter-spacing:-0.02em; color:var(--z-white); margin-top:2px;">Tendencias</div>
+      </div>
+
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:14px;">
+        <div style="display:inline-flex; gap:2px; padding:3px; border-radius:10px; background:rgba(0,0,0,0.28); border:1px solid var(--z-border);">
+          <sc-for list="{{ periodPills }}" as="p" hint-placeholder-count="5">
+            <button onClick="{{ p.on }}" style="border:none; cursor:pointer; font-family:inherit; font-size:12px; font-weight:600; padding:6px 9px; border-radius:8px; background:{{ p.bg }}; color:{{ p.fg }}; transition:background 150ms,color 150ms;">{{ p.label }}</button>
+          </sc-for>
+        </div>
+        <button onClick="{{ toggleCurrency }}" style="display:inline-flex; align-items:center; gap:4px; font-family:inherit; font-size:12px; font-weight:600; color:var(--z-sage-light); background:rgba(0,0,0,0.28); border:1px solid var(--z-border); border-radius:8px; padding:6px 10px; cursor:pointer;">{{ currency }} ▾</button>
+      </div>
+
+      <!-- verdict scorecard, prominent -->
+      <div style="border-radius:16px; border:1px solid var(--z-border); padding:16px; background:radial-gradient(circle at top left,rgba(63,70,50,0.32),transparent 50%),linear-gradient(180deg,rgba(27,30,27,0.96),rgba(18,20,18,0.98)); box-shadow:inset 0 1px 0 rgba(255,255,255,0.03);">
+        <div class="z-eyebrow" style="margin-bottom:8px;">Tu lectura · últimos 6 meses</div>
+        <div style="font-size:17px; line-height:1.5; color:var(--z-white); font-weight:500;">Tu ahorro subió a <b style="color:var(--z-income);">24%</b>, el mejor en 6 meses.</div>
+        <div style="font-size:13px; line-height:1.5; color:var(--z-sage-light); margin-top:6px;">Pero <b style="color:var(--z-expense);">Restaurantes</b> viene acelerando (▲18%) y aparecieron 2 suscripciones nuevas.</div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:6px;">
+        <sc-for list="{{ tiles }}" as="t" hint-placeholder-count="3">
+          <div class="z-card-stat" style="padding:11px 10px;"><div class="mini" style="font-size:8.5px; letter-spacing:0.1em;">{{ t.label }}</div><div class="num" style="font-size:17px; font-weight:700; color:var(--z-white); margin-top:5px;">{{ t.value }}</div><div style="font-size:11px; font-weight:600; margin-top:2px; color:{{ t.dc }};">{{ t.delta }}</div></div>
+        </sc-for>
+      </div>
+
+      <div style="margin-top:18px;"></div>
+
+      <!-- accordion: dinero -->
+      <button onClick="{{ accDinero.on }}" style="width:100%; display:flex; align-items:center; gap:10px; background:transparent; border:none; border-top:1px solid var(--z-border); padding:15px 2px; cursor:pointer; font-family:inherit; text-align:left;">
+        <span class="jobtag">Job 1</span><span style="flex:1; font-size:15px; font-weight:600; color:var(--z-white);">¿A dónde va el dinero?</span>
+        <svg width="12" height="12" style="transform:{{ accDinero.chev }}; transition:transform 150ms;"><path d="M4 2 L8 6 L4 10" style="fill:none; stroke:var(--z-sage-dark); stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round;"></path></svg>
+      </button>
+      <sc-if value="{{ accDinero.open }}" hint-placeholder-val="{{ true }}">
+        <div class="z-card-surface" style="margin-bottom:4px;">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px;"><span class="cardttl">Gasto por categoría</span><span class="mini">6m</span></div>
+          <sc-for list="{{ catRows }}" as="c" hint-placeholder-count="7">
+            <div style="display:flex; align-items:center; gap:9px; padding:6px 0; border-bottom:1px solid var(--z-border);">
+              <span style="width:7px; height:7px; border-radius:50%; background:{{ c.color }}; flex:none;"></span>
+              <div style="flex:1; min-width:0; font-size:13px; color:var(--z-sage-light); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ c.name }}</div>
+              <svg width="60" height="22" style="flex:none;"><polyline points="{{ c.spark }}" style="fill:none; stroke:{{ c.color }}; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round;"></polyline></svg>
+              <div style="width:58px; text-align:right; flex:none;"><div class="num" style="font-size:13px; font-weight:600; color:var(--z-white);">{{ c.amt }}</div><div style="font-size:10px; font-weight:600; color:{{ c.deltaColor }};">{{ c.delta }}</div></div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <!-- accordion: bien -->
+      <button onClick="{{ accBien.on }}" style="width:100%; display:flex; align-items:center; gap:10px; background:transparent; border:none; border-top:1px solid var(--z-border); padding:15px 2px; cursor:pointer; font-family:inherit; text-align:left;">
+        <span class="jobtag">Job 2</span><span style="flex:1; font-size:15px; font-weight:600; color:var(--z-white);">¿Voy bien?</span>
+        <span style="font-size:12px; font-weight:600; color:var(--z-income); margin-right:2px;">24%</span>
+        <svg width="12" height="12" style="transform:{{ accBien.chev }}; transition:transform 150ms;"><path d="M4 2 L8 6 L4 10" style="fill:none; stroke:var(--z-sage-dark); stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round;"></path></svg>
+      </button>
+      <sc-if value="{{ accBien.open }}" hint-placeholder-val="{{ false }}">
+        <div class="z-card-surface" style="margin-bottom:4px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;"><span class="cardttl">Tasa de ahorro</span><div class="num" style="font-size:22px; font-weight:800; color:var(--z-income);">24%</div></div>
+          <svg width="326" height="72" style="display:block; margin-top:10px;">
+            <path d="{{ savArea }}" style="fill:var(--z-income); opacity:0.10;"></path>
+            <line x1="0" y1="{{ savMetaY }}" x2="326" y2="{{ savMetaY }}" style="stroke:var(--z-sage-dark); stroke-width:1; stroke-dasharray:4 3;"></line>
+            <polyline points="{{ savPts }}" style="fill:none; stroke:var(--z-income); stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"></polyline>
+            <sc-for list="{{ savDots }}" as="p" hint-placeholder-count="6"><circle cx="{{ p.x }}" cy="{{ p.y }}" r="2.6" style="fill:#171A17; stroke:var(--z-income); stroke-width:1.6;"></circle></sc-for>
+          </svg>
+          <div style="display:flex; justify-content:space-between; margin-top:4px;"><sc-for list="{{ savMonths }}" as="m" hint-placeholder-count="6"><span style="font-size:9px; color:var(--z-sage-dark);">{{ m }}</span></sc-for></div>
+        </div>
+      </sc-if>
+
+      <!-- accordion: cambios -->
+      <button onClick="{{ accCambios.on }}" style="width:100%; display:flex; align-items:center; gap:10px; background:transparent; border:none; border-top:1px solid var(--z-border); padding:15px 2px; cursor:pointer; font-family:inherit; text-align:left;">
+        <span class="jobtag">Job 3</span><span style="flex:1; font-size:15px; font-weight:600; color:var(--z-white);">¿Está cambiando mi gasto?</span>
+        <span style="display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0 4px; border-radius:8px; background:var(--z-alert); color:#121412; font-size:10px; font-weight:700; margin-right:2px;">2</span>
+        <svg width="12" height="12" style="transform:{{ accCambios.chev }}; transition:transform 150ms;"><path d="M4 2 L8 6 L4 10" style="fill:none; stroke:var(--z-sage-dark); stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round;"></path></svg>
+      </button>
+      <sc-if value="{{ accCambios.open }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:4px;">
+          <sc-for list="{{ anomalies }}" as="a" hint-placeholder-count="2">
+            <div class="surface-alert" style="border-radius:12px; padding:11px 12px; display:flex; gap:10px; align-items:flex-start;">
+              <svg width="16" height="16" style="flex:none; margin-top:1px;"><path d="M8 2 L15 14 L1 14 Z" style="fill:none; stroke:var(--z-alert); stroke-width:1.5; stroke-linejoin:round;"></path><line x1="8" y1="6" x2="8" y2="10" style="stroke:var(--z-alert); stroke-width:1.5; stroke-linecap:round;"></line><circle cx="8" cy="12.2" r="0.9" style="fill:var(--z-alert);"></circle></svg>
+              <div style="flex:1;"><div style="font-size:13px; font-weight:600; color:var(--z-white);">{{ a.title }}</div><div style="font-size:11px; color:var(--z-sage-light); margin-top:2px; line-height:1.4;">{{ a.desc }}</div></div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <div style="border-top:1px solid var(--z-border); margin-top:2px;"></div>
+      <div style="font-size:11px; color:var(--z-sage-dark); text-align:center; margin-top:16px; line-height:1.5;">Primer paint más liviano: el verdict responde "¿voy bien?" sin scroll; el detalle se abre a demanda.</div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ===================== COMPONENT VARIANTS · CATEGORY TREND ===================== -->
+<div style="position:absolute; left:1500px; top:160px; width:390px;">
+  <div class="flabel" data-drags-parent="1">1a · Área apilada — total + mezcla en el tiempo</div>
+  <div class="frame-card"><div class="scrollpad">
+    <div class="z-card-surface">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px;"><span class="cardttl">Gasto por categoría</span><span class="mini">apilado · 6m</span></div>
+      <svg width="326" height="128" style="display:block;">
+        <sc-for list="{{ bands }}" as="b" hint-placeholder-count="4"><path d="{{ b.d }}" style="fill:{{ b.color }}; opacity:0.82;"></path></sc-for>
+      </svg>
+      <div style="display:flex; justify-content:space-between; margin-top:5px;"><sc-for list="{{ months }}" as="m" hint-placeholder-count="6"><span style="font-size:9px; color:var(--z-sage-dark);">{{ m }}</span></sc-for></div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:12px; padding-top:12px; border-top:1px solid var(--z-border);">
+        <sc-for list="{{ stackLegend }}" as="l" hint-placeholder-count="4">
+          <div style="display:flex; align-items:center; gap:7px;"><span style="width:9px;height:9px;border-radius:2px;background:{{ l.color }};flex:none;"></span><span style="font-size:11px; color:var(--z-sage-light); flex:1;">{{ l.name }}</span><span class="num" style="font-size:11px; color:var(--z-white); font-weight:600;">{{ l.amt }}</span></div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="font-size:11px; color:var(--z-sage-dark); margin-top:12px; line-height:1.5;"><b style="color:var(--z-sage-light);">Lee:</b> el total y cómo se reparte. Bueno para "¿creció el pastel completo?". Débil para comparar categorías pequeñas entre sí.</div>
+  </div></div>
+</div>
+
+<div style="position:absolute; left:1960px; top:160px; width:390px;">
+  <div class="flabel" data-drags-parent="1">1b · Pequeños múltiples — comparar formas</div>
+  <div class="frame-card"><div class="scrollpad">
+    <div class="z-card-surface">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px;"><span class="cardttl">Gasto por categoría</span><span class="mini">múltiplos · 6m</span></div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <sc-for list="{{ catRows }}" as="c" hint-placeholder-count="7">
+          <div style="border-radius:12px; border:1px solid var(--z-border); background:rgba(0,0,0,0.18); padding:10px;">
+            <div style="display:flex; align-items:center; gap:6px;"><span style="width:6px;height:6px;border-radius:50%;background:{{ c.color }};flex:none;"></span><span style="font-size:11px; color:var(--z-sage-light); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ c.name }}</span></div>
+            <svg width="118" height="34" style="display:block; margin:8px 0 6px;"><polyline points="{{ c.sparkMid }}" style="fill:none; stroke:{{ c.color }}; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round;"></polyline></svg>
+            <div style="display:flex; justify-content:space-between; align-items:baseline;"><span class="num" style="font-size:13px; font-weight:600; color:var(--z-white);">{{ c.amt }}</span><span style="font-size:10px; font-weight:700; color:{{ c.deltaColor }};">{{ c.delta }}</span></div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="font-size:11px; color:var(--z-sage-dark); margin-top:12px; line-height:1.5;"><b style="color:var(--z-sage-light);">Lee:</b> la forma de cada categoría sin que la grande aplaste a la chica. Bueno para detectar quién acelera. Débil para sumar el total.</div>
+  </div></div>
+</div>
+
+<div style="position:absolute; left:2420px; top:160px; width:390px;">
+  <div class="flabel" data-drags-parent="1">1c · Ranking + sparkline ★ recomendado</div>
+  <div class="frame-card"><div class="scrollpad">
+    <div class="z-card-surface">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;"><span class="cardttl">Gasto por categoría</span><span class="mini">ranking · 6m</span></div>
+      <sc-for list="{{ catRows }}" as="c" hint-placeholder-count="7">
+        <div style="display:flex; align-items:center; gap:9px; padding:9px 0; border-bottom:1px solid var(--z-border);">
+          <span style="width:7px; height:7px; border-radius:50%; background:{{ c.color }}; flex:none;"></span>
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:13px; color:var(--z-sage-light); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ c.name }}</div>
+            <div style="height:4px; border-radius:2px; background:rgba(255,255,255,0.06); margin-top:5px; overflow:hidden;"><div style="height:100%; width:{{ c.barPct }}%; background:{{ c.color }}; opacity:0.55;"></div></div>
+          </div>
+          <svg width="56" height="24" style="flex:none;"><polyline points="{{ c.spark }}" style="fill:none; stroke:{{ c.color }}; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round;"></polyline></svg>
+          <div style="width:58px; text-align:right; flex:none;"><div class="num" style="font-size:13px; font-weight:600; color:var(--z-white);">{{ c.amt }}</div><div style="font-size:10px; font-weight:600; color:{{ c.deltaColor }};">{{ c.delta }}</div></div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="font-size:11px; color:var(--z-sage-dark); margin-top:12px; line-height:1.5;"><b style="color:var(--z-sage-light);">Lee:</b> magnitud (barra), tendencia (spark) y cambio (delta) en una fila. La más densa por píxel y la más "Zeta" — tap → drill a la categoría.</div>
+  </div></div>
+</div>
+
+<!-- ===================== COMPONENT VARIANTS · VERDICT ===================== -->
+<div style="position:absolute; left:2940px; top:160px; width:390px;">
+  <div class="flabel" data-drags-parent="1">2a · Una sola frase</div>
+  <div class="frame-card"><div class="scrollpad">
+    <div style="border-radius:16px; border:1px solid var(--z-border); padding:16px; background:radial-gradient(circle at top left,rgba(63,70,50,0.30),transparent 46%),linear-gradient(180deg,rgba(27,30,27,0.96),rgba(18,20,18,0.98)); box-shadow:inset 0 1px 0 rgba(255,255,255,0.03);">
+      <div class="z-eyebrow" style="margin-bottom:8px;">Tu lectura · jun</div>
+      <div style="font-size:17px; line-height:1.5; color:var(--z-sage-light);">Tu tasa de ahorro subió a <b style="color:var(--z-white);">24%</b> — el mejor en 6 meses. Pero <b style="color:var(--z-expense);">Restaurantes</b> viene acelerando.</div>
+    </div>
+    <div style="font-size:11px; color:var(--z-sage-dark); margin-top:12px; line-height:1.5;"><b style="color:var(--z-sage-light);">Lee:</b> lenguaje plano, cero ruido. Máxima calma. Cuesta cuando el usuario quiere el número exacto sin leer.</div>
+  </div></div>
+</div>
+
+<div style="position:absolute; left:3400px; top:160px; width:390px;">
+  <div class="flabel" data-drags-parent="1">2b · Frase + tiles ★ recomendado</div>
+  <div class="frame-card"><div class="scrollpad">
+    <div style="border-radius:16px; border:1px solid var(--z-border); padding:14px; background:radial-gradient(circle at top left,rgba(63,70,50,0.30),transparent 46%),linear-gradient(180deg,rgba(27,30,27,0.96),rgba(18,20,18,0.98)); box-shadow:inset 0 1px 0 rgba(255,255,255,0.03);">
+      <div class="z-eyebrow" style="margin-bottom:7px;">Tu lectura · jun</div>
+      <div style="font-size:15px; line-height:1.55; color:var(--z-sage-light);">Tu tasa de ahorro subió a <b style="color:var(--z-white);">24%</b> — la mejor en 6 meses. Pero <b style="color:var(--z-expense);">Restaurantes</b> viene acelerando.</div>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:6px;">
+      <sc-for list="{{ tiles }}" as="t" hint-placeholder-count="3">
+        <div class="z-card-stat" style="padding:11px 10px;"><div class="mini" style="font-size:8.5px; letter-spacing:0.1em;">{{ t.label }}</div><div class="num" style="font-size:17px; font-weight:700; color:var(--z-white); margin-top:5px;">{{ t.value }}</div><div style="font-size:11px; font-weight:600; margin-top:2px; color:{{ t.dc }};">{{ t.delta }}</div></div>
+      </sc-for>
+    </div>
+    <div style="font-size:11px; color:var(--z-sage-dark); margin-top:12px; line-height:1.5;"><b style="color:var(--z-sage-light);">Lee:</b> la frase da el "porqué", los 3 tiles dan los números duros con delta. Equilibrio narrativa + dato.</div>
+  </div></div>
+</div>
+
+<div style="position:absolute; left:3860px; top:160px; width:390px;">
+  <div class="flabel" data-drags-parent="1">2c · Scorecard compacto</div>
+  <div class="frame-card"><div class="scrollpad">
+    <div class="z-card-surface" style="display:flex; gap:14px; align-items:center;">
+      <div style="position:relative; flex:none; width:64px; height:64px;">
+        <svg width="64" height="64"><circle cx="32" cy="32" r="27" style="fill:none; stroke:rgba(255,255,255,0.08); stroke-width:6;"></circle><circle cx="32" cy="32" r="27" style="fill:none; stroke:var(--z-brass); stroke-width:6; stroke-linecap:round; stroke-dasharray:{{ ringDash }}; transform:rotate(-90deg); transform-origin:32px 32px;"></circle></svg>
+        <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;"><span class="num" style="font-size:18px; font-weight:800; color:var(--z-white);">78</span></div>
+      </div>
+      <div style="flex:1;">
+        <div class="z-eyebrow" style="margin-bottom:3px;">Salud financiera</div>
+        <div style="font-size:13px; line-height:1.45; color:var(--z-sage-light);">Vas <b style="color:var(--z-income);">bien</b>. Ahorro en máximo; vigila Restaurantes.</div>
+      </div>
+    </div>
+    <div style="display:flex; gap:6px; margin-top:6px;">
+      <div class="z-card-stat" style="flex:1; padding:10px;"><div class="mini" style="font-size:8px;">Ahorro</div><div class="num" style="font-size:15px; font-weight:700; color:var(--z-income); margin-top:3px;">24%</div></div>
+      <div class="z-card-stat" style="flex:1; padding:10px;"><div class="mini" style="font-size:8px;">Gasto/mes</div><div class="num" style="font-size:15px; font-weight:700; color:var(--z-white); margin-top:3px;">$3,48M</div></div>
+      <div class="z-card-stat" style="flex:1; padding:10px;"><div class="mini" style="font-size:8px;">Alertas</div><div class="num" style="font-size:15px; font-weight:700; color:var(--z-alert); margin-top:3px;">2</div></div>
+    </div>
+    <div style="font-size:11px; color:var(--z-sage-dark); margin-top:12px; line-height:1.5;"><b style="color:var(--z-sage-light);">Lee:</b> un score único (anillo brass) + 3 señales. Muy escaneable, pero introduce un "puntaje" que el resto de Zeta hoy no usa.</div>
+  </div></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1400,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  state = { period:'6M', currency:'COP', lens:0, open:{ dinero:true, bien:false, cambios:false } };
+
+  toggle(k){ this.setState(s=>({ open:{...s.open, [k]:!s.open[k]} })); }
+
+  lp(vals,w,h,min,max){ const n=vals.length, R=(max-min)||1; return vals.map((v,i)=>{ const x=n<2?0:w*i/(n-1); const y=h-((v-min)/R)*h; return x.toFixed(1)+','+y.toFixed(1); }).join(' '); }
+  lpa(vals,w,h){ const mn=Math.min(...vals), mx=Math.max(...vals), pad=(mx-mn)*0.28||1; return this.lp(vals,w,h,mn-pad,mx+pad); }
+  area(vals,w,h,min,max){ const pts=this.lp(vals,w,h,min,max).split(' '); const x0=pts[0].split(',')[0], xn=pts[pts.length-1].split(',')[0]; return 'M '+x0+','+h+' L '+pts.join(' L ')+' L '+xn+','+h+' Z'; }
+  stack(list,w,h,maxT){ const n=list[0].vals.length; const xs=[...Array(n)].map((_,i)=> n<2?0:w*i/(n-1)); const yOf=v=> h-(v/maxT)*h; let lower=new Array(n).fill(0); const bands=[]; for(const s of list){ const upper=lower.map((lo,i)=>lo+s.vals[i]); let d='M '+xs.map((x,i)=>x.toFixed(1)+','+yOf(upper[i]).toFixed(1)).join(' L ')+' L '; const rev=[]; for(let i=n-1;i>=0;i--){ rev.push(xs[i].toFixed(1)+','+yOf(lower[i]).toFixed(1)); } d+=rev.join(' L ')+' Z'; bands.push({ d, color:s.color, name:s.name }); lower=upper; } return bands; }
+
+  renderVals(){
+    const st=this.state;
+    const months=['Ene','Feb','Mar','Abr','May','Jun'];
+
+    const cats=[
+      {name:'Mercado & Comida', color:'#5CB88A', amt:'$890k', n:890, delta:'▲6%',  kind:'up',   s:[840,855,870,878,862,890]},
+      {name:'Hogar & Servicios',color:'#6FA8C7', amt:'$635k', n:635, delta:'~0%',  kind:'flat', s:[628,640,634,639,631,635]},
+      {name:'Restaurantes',     color:'#E8875A', amt:'$410k', n:410, delta:'▲18%', kind:'up', accel:true, s:[300,318,332,352,381,410]},
+      {name:'Compras',          color:'#B07CC6', amt:'$380k', n:380, delta:'▲6%',  kind:'up',   s:[352,360,341,372,358,380]},
+      {name:'Transporte',       color:'#D4A843', amt:'$320k', n:320, delta:'▼22%', kind:'down', s:[412,402,381,360,341,320]},
+      {name:'Salud',            color:'#E0696A', amt:'$180k', n:180, delta:'▲6%',  kind:'up',   s:[150,168,159,181,170,180]},
+      {name:'Suscripciones',    color:'#937844', amt:'$90k',  n:90,  delta:'▲40%', kind:'up', accel:true, s:[64,64,64,64,64,90]},
+    ];
+    const dcOf=k=> k==='flat'?'var(--z-sage-dark)': k==='down'?'var(--z-income)':'var(--z-expense)';
+    const catRows=cats.map(c=>({ name:c.name, color:c.color, amt:c.amt, delta:c.delta, accel:!!c.accel, deltaColor:dcOf(c.kind), spark:this.lpa(c.s,72,26), sparkMid:this.lpa(c.s,118,34), barPct:Math.round(c.n/890*100) }));
+
+    const bands=this.stack([
+      {name:'Mercado',     color:'#5CB88A', vals:[840,855,870,878,862,890]},
+      {name:'Hogar',       color:'#6FA8C7', vals:[628,640,634,639,631,635]},
+      {name:'Restaurantes',color:'#E8875A', vals:[300,318,332,352,381,410]},
+      {name:'Otros',       color:'#3F4632', vals:[980,990,950,980,940,970]},
+    ],326,128,3100);
+    const stackLegend=[
+      {name:'Mercado',color:'#5CB88A',amt:'$890k'},
+      {name:'Hogar',color:'#6FA8C7',amt:'$635k'},
+      {name:'Restaurantes',color:'#E8875A',amt:'$410k'},
+      {name:'Otros',color:'#3F4632',amt:'$970k'},
+    ];
+
+    const sav=[14,18,16,21,19,24];
+    const savPts=this.lp(sav,326,72,0,30);
+    const savArea=this.area(sav,326,72,0,30);
+    const savMetaY=(72-(20/30)*72).toFixed(1);
+    const savDots=sav.map((v,i)=>({ x:(326*i/5).toFixed(1), y:(72-(v/30)*72).toFixed(1) }));
+    const savMonths=months;
+
+    const ing=[4400,4550,4500,4650,4600,4600], gas=[3550,3450,3600,3400,3500,3460];
+    const igMax=4900;
+    const igBars=ing.map((v,i)=>({ m:months[i], ingH:Math.round(v/igMax*58), gasH:Math.round(gas[i]/igMax*58) }));
+
+    const dest=[
+      {ini:'É',name:'Éxito', color:'#C9952F', amt:'$420k', sub:'14 compras', delta:'',     dc:'var(--z-sage-dark)', pct:100},
+      {ini:'R',name:'Rappi', color:'#E0696A', amt:'$180k', sub:'9 pedidos',  delta:'▲28%', dc:'var(--z-expense)',  pct:43},
+      {ini:'C',name:'Claro', color:'#B0413A', amt:'$90k',  sub:'recurrente', delta:'fijo', dc:'var(--z-sage-dark)', pct:21},
+      {ini:'U',name:'Uber',  color:'#7E8A93', amt:'$74k',  sub:'12 viajes',  delta:'▼12%', dc:'var(--z-income)',   pct:18},
+      {ini:'D',name:'D1',    color:'#B33A2E', amt:'$66k',  sub:'8 compras',  delta:'',     dc:'var(--z-sage-dark)', pct:16},
+    ];
+
+    const variableSpark=this.lpa([1300,1350,1340,1400,1335,1460],132,28);
+
+    const presup=[
+      {name:'Restaurantes', color:'#E8875A', dots:[1,0,1,1,0,1], note:'Excedido 4 de 6 meses', noteColor:'var(--z-expense)'},
+      {name:'Mercado & Comida', color:'#5CB88A', dots:[0,0,1,0,0,0], note:'Dentro 5 de 6 meses', noteColor:'var(--z-sage-light)'},
+      {name:'Transporte', color:'#D4A843', dots:[0,0,0,0,0,0], note:'Dentro 6 de 6 meses', noteColor:'var(--z-income)'},
+    ].map(p=>({ ...p, cells:p.dots.map(d=>({ bg: d? 'var(--z-expense)':'rgba(92,184,138,0.45)' })) }));
+
+    const movers=[
+      {name:'Restaurantes', delta:'▲18%', dc:'var(--z-expense)', from:'$347k', to:'$410k'},
+      {name:'Suscripciones',delta:'▲40%', dc:'var(--z-expense)', from:'$64k',  to:'$90k'},
+      {name:'Transporte',   delta:'▼22%', dc:'var(--z-income)',  from:'$410k', to:'$320k'},
+    ];
+
+    const anomalies=[
+      {title:'Compra de $1,2M', desc:'14 jun · Compras · 3× tu promedio de categoría'},
+      {title:'Suscripciones ▲40%', desc:'2 cobros nuevos este mes ($26k)'},
+    ];
+
+    const past=[4.1,4.4,4.6,4.9,5.0,5.2], fut=[5.2,5.0,4.8,4.6];
+    const pmin=3.8,pmax=5.6,pw=326,ph=88;
+    const xAt=i=> (pw*i/8); const yAt=v=> (ph-((v-pmin)/(pmax-pmin))*ph);
+    const projPast=past.map((v,i)=>xAt(i).toFixed(1)+','+yAt(v).toFixed(1)).join(' ');
+    const projFut=fut.map((v,i)=>xAt(5+i).toFixed(1)+','+yAt(v).toFixed(1)).join(' ');
+    const projTodayX=xAt(5).toFixed(1);
+    const projArea='M '+xAt(0).toFixed(1)+','+ph+' L '+past.map((v,i)=>xAt(i).toFixed(1)+','+yAt(v).toFixed(1)).join(' L ')+' L '+xAt(5).toFixed(1)+','+ph+' Z';
+    const projTodayY=yAt(5.2).toFixed(1);
+
+    const tiles=[
+      {label:'Gasto prom/mes', value:'$3,48M', delta:'▼4%',  dc:'var(--z-income)'},
+      {label:'Tasa de ahorro', value:'24%',    delta:'▲5pp', dc:'var(--z-income)'},
+      {label:'Ingreso prom',   value:'$4,55M', delta:'▲2%',  dc:'var(--z-income)'},
+    ];
+
+    const periods=['3M','6M','12M','Año','Person.'];
+    const periodPills=periods.map(p=>({ label:p, on:()=>this.setState({period:p}), bg: p===st.period?'var(--z-brass)':'transparent', fg: p===st.period?'var(--z-ink)':'var(--z-sage-dark)' }));
+
+    const lensTabs=['¿A dónde va?','¿Voy bien?','¿Cambios?'].map((l,i)=>({ label:l, on:()=>this.setState({lens:i}), bg: i===st.lens?'var(--z-surface-3)':'transparent', fg: i===st.lens?'var(--z-white)':'var(--z-sage-dark)' }));
+
+    const C=2*Math.PI*27;
+    const ringDash=(0.78*C).toFixed(1)+' '+C.toFixed(1);
+
+    const chev=o=> o?'rotate(90deg)':'rotate(0deg)';
+
+    return {
+      months, catRows, bands, stackLegend,
+      savPts, savArea, savMetaY, savDots, savMonths,
+      igBars, dest, variableSpark, presup, movers, anomalies,
+      projPast, projFut, projTodayX, projArea, projTodayY,
+      tiles, periodPills, currency:st.currency, toggleCurrency:()=>this.setState({currency: st.currency==='COP'?'USD':'COP'}),
+      lensTabs, lens0:st.lens===0, lens1:st.lens===1, lens2:st.lens===2,
+      ringDash,
+      accDinero:{ open:st.open.dinero, on:()=>this.toggle('dinero'), chev:chev(st.open.dinero) },
+      accBien:{ open:st.open.bien, on:()=>this.toggle('bien'), chev:chev(st.open.bien) },
+      accCambios:{ open:st.open.cambios, on:()=>this.toggle('cambios'), chev:chev(st.open.cambios) },
+    };
+  }
+}
+</script>
+</body>
+</html>
