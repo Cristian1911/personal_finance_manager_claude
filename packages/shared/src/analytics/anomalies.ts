@@ -1,11 +1,12 @@
 import { categorySeries } from "./category-series";
-import type { Anomaly, AnalyticsConfig, AnalyticsTx } from "./types";
+import type { Anomaly, AnalyticsConfig, AnalyticsTx, CategoryTrend } from "./types";
 
 // ponytail: threshold heuristic — max(2.5x trailing-3mo mean, mean+2sigma). Tune the
 // constants here if the false-positive rate is wrong; upgrade path is seasonal baselines.
-export function anomalies(rows: readonly AnalyticsTx[], cfg: AnalyticsConfig): Anomaly[] {
+// Pass `series` to reuse an already-computed categorySeries (avoids recomputation).
+export function anomalies(rows: readonly AnalyticsTx[], cfg: AnalyticsConfig, series?: readonly CategoryTrend[]): Anomaly[] {
   const out: Anomaly[] = [];
-  for (const c of categorySeries(rows, cfg)) {
+  for (const c of series ?? categorySeries(rows, cfg)) {
     for (let i = 0; i < c.monthly.length; i++) {
       const hist = c.monthly.slice(Math.max(0, i - 3), i);
       if (hist.length < 2) continue;

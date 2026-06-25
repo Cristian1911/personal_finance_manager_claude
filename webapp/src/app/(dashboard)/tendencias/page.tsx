@@ -54,14 +54,15 @@ export default async function TendenciasPage({
     months: config.months,
     verdict: buildVerdict({ savings, movers: moverList, avgExpense, avgIncome }, fmt),
     gastos: {
-      categories: cats,
+      // Cap at top-20 by spend to bound the RSC payload (list shows 8, movers/anomalies use full `cats`).
+      categories: cats.slice(0, 20),
       recipients: topRecipients(rows, config),
       fixedVariable: fixedVsVariable(rows, config),
     },
-    ahorro: { savings, cashflow, adherence: budgetAdherenceSeries(rows, config) },
+    ahorro: { savings, cashflow, adherence: budgetAdherenceSeries(rows, config, cats) },
     cambios: {
       movers: moverList,
-      anomalies: anomalies(rows, config),
+      anomalies: anomalies(rows, config, cats),
       forecast: forecast(cashflow, ds.currentBalance, ds.recurring, ds.horizonMonths),
       currentBalance: ds.currentBalance,
     },

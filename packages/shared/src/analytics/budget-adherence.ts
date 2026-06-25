@@ -1,9 +1,14 @@
 import { categorySeries } from "./category-series";
-import type { AdherencePoint, AnalyticsConfig, AnalyticsTx } from "./types";
+import type { AdherencePoint, AnalyticsConfig, AnalyticsTx, CategoryTrend } from "./types";
 
-export function budgetAdherenceSeries(rows: readonly AnalyticsTx[], cfg: AnalyticsConfig): AdherencePoint[] {
+// Pass `series` to reuse an already-computed categorySeries (avoids recomputation).
+export function budgetAdherenceSeries(
+  rows: readonly AnalyticsTx[],
+  cfg: AnalyticsConfig,
+  series?: readonly CategoryTrend[],
+): AdherencePoint[] {
   const out: AdherencePoint[] = [];
-  for (const c of categorySeries(rows, cfg)) {
+  for (const c of series ?? categorySeries(rows, cfg)) {
     const target = cfg.categoryMeta.get(c.categoryId)?.budgetTarget ?? null;
     if (target === null || target <= 0) continue;
     let within = 0;

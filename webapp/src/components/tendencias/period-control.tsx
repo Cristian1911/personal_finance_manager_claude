@@ -14,7 +14,7 @@ export function PeriodControl({ range }: { range: string }) {
   function setRange(r: string) {
     const next = new URLSearchParams(params);
     next.set("range", r);
-    router.push(`${pathname}?${next.toString()}`);
+    router.replace(`${pathname}?${next.toString()}`);
   }
 
   return (

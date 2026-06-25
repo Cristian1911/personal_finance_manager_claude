@@ -5,7 +5,7 @@ import type { AnalyticsTx, CategoryMeta, DestinatarioMeta, RecurringObligation }
 import { isDebtAccountType } from "@zeta/shared";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
-import { getDemoAccountIds, getIsDemoFilter } from "@/lib/demo-filter";
+import { getIsDemoFilter } from "@/lib/demo-filter";
 import type { CurrencyCode } from "@/types/domain";
 import { type AnalyticsRange, nextMonths, rangeToWindow } from "@/lib/analytics/range";
 
@@ -65,10 +65,19 @@ async function getTendenciasDatasetCached(
   const { from, to, months } = rangeToWindow(range);
   const horizonMonths = nextMonths(months[months.length - 1], 3);
 
-  const accountIds = await getDemoAccountIds(supabase, userId, isDemo);
-  if (!accountIds) return { ...EMPTY, months, horizonMonths };
+  // One accounts fetch (demo filter inline) replaces getDemoAccountIds + the
+  // redundant per-id refetch — same WHERE clause, one fewer serial round-trip.
+  const { data: accountRows, error: accountsErr } = await supabase
+    .from("accounts")
+    .select("id, account_type, current_balance, currency_code")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .eq("is_demo", isDemo);
+  if (accountsErr) throw accountsErr;
+  if (!accountRows?.length) return { ...EMPTY, months, horizonMonths };
+  const accountIds = accountRows.map((a) => a.id);
 
-  const [txRes, budgetsRes, accountsRes, destRes] = await Promise.all([
+  const [txRes, budgetsRes, destRes] = await Promise.all([
     supabase
       .from("transactions")
       .select(
@@ -84,13 +93,11 @@ async function getTendenciasDatasetCached(
       .is("transfer_group_id", null)
       .or("personal_debt_id.is.null,pd_role.neq.origin"),
     supabase.from("budgets").select("category_id, amount").eq("user_id", userId),
-    supabase.from("accounts").select("id, account_type, current_balance, currency_code").eq("user_id", userId).in("id", accountIds),
     supabase.from("destinatarios").select("id, name").eq("user_id", userId),
   ]);
 
   if (txRes.error) throw txRes.error;
   if (budgetsRes.error) throw budgetsRes.error;
-  if (accountsRes.error) throw accountsRes.error;
   if (destRes.error) throw destRes.error;
 
   const budgetMap = new Map<string, number>();
@@ -100,7 +107,7 @@ async function getTendenciasDatasetCached(
 
   const debtAccountIds: string[] = [];
   let currentBalance = 0;
-  for (const a of accountsRes.data ?? []) {
+  for (const a of accountRows) {
     if (isDebtAccountType(a.account_type)) debtAccountIds.push(a.id);
     else if (a.currency_code === cur) currentBalance += Number(a.current_balance ?? 0);
   }
@@ -129,7 +136,10 @@ async function getTendenciasDatasetCached(
     }
   }
 
-  const destinatarioMeta: [string, DestinatarioMeta][] = (destRes.data ?? []).map((d) => [d.id, { name: d.name, color: destColor(d.id) }]);
+  const usedDestIds = new Set(rows.map((r) => r.destinatarioId).filter(Boolean));
+  const destinatarioMeta: [string, DestinatarioMeta][] = (destRes.data ?? [])
+    .filter((d) => usedDestIds.has(d.id))
+    .map((d) => [d.id, { name: d.name, color: destColor(d.id) }]);
 
   return {
     rows,
