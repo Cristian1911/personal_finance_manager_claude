@@ -26,6 +26,7 @@ import "react-native-reanimated";
 import { AppKeyboardProvider } from "../components/common/AppKeyboardAwareScrollView";
 import { AuthProvider, useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
+import { getLocalProfile } from "../lib/profile";
 import { BugReportProvider, BugReportViewShot } from "../lib/bugReportMode";
 import { BugFAB } from "../components/BugFAB";
 import {
@@ -133,6 +134,29 @@ function RootLayoutNav() {
         return;
       }
 
+      // Local-first: read onboarding state from SQLite so launch never blocks
+      // on the network (and works offline). The profile row is synced down, so
+      // every launch after the first reads it locally and is instant.
+      const localProfile = await getLocalProfile();
+      if (localProfile) {
+        if (!mounted) return;
+        setNeedsOnboarding(!localProfile.onboarding_completed);
+        setCheckingOnboarding(false);
+        // Background re-check (non-blocking) to converge if onboarding was
+        // completed on another device since the last sync. Offline → no-op.
+        void supabase
+          .from("profiles")
+          .select("onboarding_completed")
+          .eq("id", session.user.id)
+          .maybeSingle()
+          .then(({ data }) => {
+            if (mounted && data) setNeedsOnboarding(!data.onboarding_completed);
+          });
+        return;
+      }
+
+      // No local profile yet (fresh install before first sync) — fall back to
+      // the network gate this once; the initial pull will populate SQLite.
       setCheckingOnboarding(true);
       const { data } = await supabase
         .from("profiles")

@@ -40,6 +40,22 @@ Counts: P0:8 · P1:27 · P2:38 · P3:38 · P4:16. Most P1/P2/P3 are already trac
 - BACKLOG:755 onboarding 'en-US' default — **stale** (now `navigator.language || 'es-CO'`).
 - BACKLOG:1119-1123 tx-new 'Formulario en construcción' stub — **stale** (redirects to /capture).
 
+### Mobile perf / offline-first leaks (2026-06-25 perf diagnosis)
+
+Production Android is slow — **confirmed on the installed release build, NOT a debug artifact** (Hermes is on). Root cause: a **dual write architecture** — some paths bypass the local-first repos and write directly to remote Supabase with serial, blocking round-trips. Perf and the P0 side-effect gaps **converge**: routing these to local-first fixes both.
+
+- ~~**[P0-perf] Cold start blocks on network**~~ → ✅ **SHIPPED** (`audit/mobile-web-parity-2026-06-25`): `_layout.tsx` now reads `onboarding_completed` from local SQLite (`getLocalProfile`), background-converges, falls back to network only on fresh install. Offline launch unblocked.
+- ~~**[P0-perf] Email import direct-to-remote + 4-6 serial round-trips**~~ → ✅ **SHIPPED**: `approveEmailTransaction` rewritten local-first (local account read, local insert via `createTransaction` + `idempotency_key` override, local balance delta, local reconcile, non-blocking `markImported`). Typecheck clean; `mobile-sync-doctor` + `mobile-webapp-parity` gates passed. **Gate follow-ups (deferred):**
+  - **[P1] Mobile occurrence-linking is app-wide missing** — webapp marks the matching `recurring_occurrences` paid on every tx create (`linkTransactionToOccurrence`); mobile's `createTransaction`/PDF-import/email-approve all skip it. Fix app-wide (not email-only, to avoid inconsistency): after a non-reconcile create, `findMatchingOccurrence` → `markOccurrencePaid`. Most user-visible on the explicit "Aprobar" action. **M.**
+  - **[P3] `categorization_source` fallback** — `buildInsertPayload` (`transactions.ts:~138`) writes `SYSTEM_DEFAULT` when no category; webapp trigger defaults `USER_CREATED`. Align the fallback. Affects all mobile write paths. **S.**
+  - **[type] `AccountRow` missing `currency_balances`** (`accounts.ts`) — runtime-present via `SELECT *`, but untyped; add `currency_balances?: string | null`. **S.**
+  - **[refactor] email-import non-atomicity** — tx INSERT + balance delta run in two `withTransactionAsync` blocks (crash window; pre-existing). Optional: collapse via `insertLedgerTransaction` with a shared `db` handle. **S.**
+- **[perf] Subscriptions screen network reads every focus** → `subscriptions.tsx:114-130` reads `accounts` + `recurring_transaction_templates` over the network on each open; both are synced tables → read local SQLite. **S.**
+- **[perf] Home/Plan over-fetch** → `useDashboardData` + `PlanRoot` pull 500 full tx rows and aggregate in JS on every focus → SQL aggregation + `limit 20` recent. **M.**
+- **[perf] Feed re-query on every focus** → `MovimientosRoot` reloads all SQLite on navigation return (visible flash) → dirty-flag / version gate. **S.**
+- **[bug] AnimatedAccordion `estimatedHeight` worklet closure** → email-import panel animates to wrong height after the panel measures itself; convert `estimatedHeight` to a shared value. **S.**
+- **[bug] MovimientosRoot `listHeader` useMemo missing `currency` + `handleToolDataChanged` deps** → stale-currency display if preferred currency resolves after first paint. **S.**
+
 ---
 
 ## Tendencias hub follow-ups (2026-06-24, branch `feat/tendencias-hub`)
