@@ -28,6 +28,7 @@ export interface CambiosData {
   movers: Mover[];
   anomalies: Anomaly[];
   forecast: ForecastPoint[];
+  currentBalance: number;
 }
 
 export interface TendenciasViewModel {

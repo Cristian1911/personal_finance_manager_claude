@@ -1,11 +1,13 @@
 "use client";
 import { useState } from "react";
-import { PANEL_SURFACE_CLASS, SEGMENTED_TAB_ACTIVE_CLASS, SEGMENTED_TAB_CLASS } from "@/lib/constants/styles";
+import { SEGMENTED_TAB_ACTIVE_CLASS, SEGMENTED_TAB_CLASS } from "@/lib/constants/styles";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import type { TendenciasViewModel } from "./types";
 import { VerdictHeader } from "./verdict-header";
 import { PeriodControl } from "./period-control";
 import { LensGastos } from "./lens-gastos";
+import { LensAhorro } from "./lens-ahorro";
+import { LensCambios } from "./lens-cambios";
 
 type Lens = "gastos" | "ahorro" | "cambios";
 const LENSES: { id: Lens; label: string }[] = [
@@ -43,16 +45,8 @@ export function TendenciasShell({ vm }: { vm: TendenciasViewModel }) {
 
       <div className="mt-4">
         {lens === "gastos" && <LensGastos data={vm.gastos} currency={vm.currency} />}
-        {lens === "ahorro" && (
-          <div className={`${PANEL_SURFACE_CLASS} p-6 text-center text-sm text-z-sage-dark`}>
-            Lente de ahorro — próximamente
-          </div>
-        )}
-        {lens === "cambios" && (
-          <div className={`${PANEL_SURFACE_CLASS} p-6 text-center text-sm text-z-sage-dark`}>
-            Lente de cambios — próximamente
-          </div>
-        )}
+        {lens === "ahorro" && <LensAhorro data={vm.ahorro} currency={vm.currency} />}
+        {lens === "cambios" && <LensCambios data={vm.cambios} currency={vm.currency} />}
       </div>
     </div>
   );

@@ -62,6 +62,7 @@ export default async function TendenciasPage({
       movers: moverList,
       anomalies: anomalies(rows, config),
       forecast: forecast(cashflow, ds.currentBalance, ds.recurring, ds.horizonMonths),
+      currentBalance: ds.currentBalance,
     },
   };
 
