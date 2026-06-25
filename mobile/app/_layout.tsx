@@ -149,9 +149,16 @@ function RootLayoutNav() {
           .select("onboarding_completed")
           .eq("id", session.user.id)
           .maybeSingle()
-          .then(({ data }) => {
-            if (mounted && data) setNeedsOnboarding(!data.onboarding_completed);
-          });
+          .then(
+            ({ data }) => {
+              if (mounted && data) setNeedsOnboarding(!data.onboarding_completed);
+            },
+            (err: unknown) => {
+              // Offline / network failure on this non-blocking re-check is fine
+              // — the local value already rendered. Log, don't reject.
+              console.warn("Background onboarding re-check failed:", err);
+            }
+          );
         return;
       }
 

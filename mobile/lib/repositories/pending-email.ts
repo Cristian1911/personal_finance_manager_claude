@@ -459,18 +459,32 @@ export async function approveEmailTransaction(
       [reconcileWithTransactionId, userId]
     );
 
-    if (manualTx) {
-      const merged = mergeTransactionMetadata(manualTx, {
-        category_id: categoryId,
-        categorization_source: categorizationSource,
-        notes: null,
-        capture_method: "EMAIL_IMPORT",
-      });
-      categoryId = merged.category_id ?? null;
-      reconcileNotes = merged.notes ?? null;
-      captureMethod = merged.capture_method;
-      reconcileManualId = manualTx.id;
+    // If the reconcile target isn't in local SQLite (deleted, already
+    // reconciled, or — likely on mobile — found remotely by
+    // checkEmailReconciliation but not yet pulled to this device), we cannot
+    // safely import: proceeding would skip the balance delta (silent drift),
+    // and applying the delta instead would double-count against the manual tx
+    // that already moved the balance remotely. Abort so the user retries after
+    // a sync. (Justified divergence from webapp, whose manualTx comes from the
+    // authoritative DB so it is virtually always present.)
+    if (!manualTx) {
+      return {
+        success: false,
+        error:
+          "La transacción a conciliar ya no está disponible. Intenta de nuevo tras sincronizar.",
+      };
     }
+
+    const merged = mergeTransactionMetadata(manualTx, {
+      category_id: categoryId,
+      categorization_source: categorizationSource,
+      notes: null,
+      capture_method: "EMAIL_IMPORT",
+    });
+    categoryId = merged.category_id ?? null;
+    reconcileNotes = merged.notes ?? null;
+    captureMethod = merged.capture_method;
+    reconcileManualId = manualTx.id;
   }
 
   // Insert the transaction LOCALLY. createTransaction computes the same EMAIL
