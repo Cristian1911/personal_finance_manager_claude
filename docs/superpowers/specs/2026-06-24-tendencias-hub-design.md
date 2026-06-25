@@ -133,13 +133,12 @@ async function getTendenciasDatasetCached(accessToken, userId, range, currency, 
 
 ---
 
-## 3. Navigation entry point  ⚠️ one open decision
+## 3. Navigation entry point  ✅ decided
 
-The mobile tab bar (Home · Movimientos · + · Plan · Me) is full; a 6th tab is not viable. Proposed default (lazy, reversible):
+The mobile tab bar (Home · Movimientos · + · Plan · Me) is full; a 6th tab is not viable. **Decided:**
 - **Desktop:** add "Tendencias" to the sidebar nav.
-- **Mobile:** a first-class entry from the Dashboard (a "Ver tendencias →" action in the relevant section header / hero), plus an item in the "Me"/more menu.
-
-This is the only UX decision not yet locked — see open question at end.
+- **Mobile:** a first-class "Ver tendencias →" entry from the Dashboard (section header / hero), plus an item in the "Me"/more menu.
+- No tab-bar surgery; reversible. Wired last (Phase 5) since the engine and lenses don't depend on it.
 
 ---
 
@@ -196,6 +195,6 @@ Phased so each step ships green (`pnpm build` gate between phases):
 
 ---
 
-## Open question (blocking nav, not the engine)
+## Open questions
 
-**Nav placement for mobile** — go with the proposed default (Dashboard entry point + "Me"/more menu + desktop sidebar), or do you want Tendencias surfaced differently (e.g. promoted onto the Plan page, or replacing a current tab)? The engine and lenses don't depend on this, so Phase 1 can start regardless.
+None blocking. Nav placement resolved (§3). Two caveats remain as accepted approximations (§5): budget-adherence uses current target across the window; forecast is a simple projection — both flagged for BACKLOG re-evaluation if they prove misleading in use.
