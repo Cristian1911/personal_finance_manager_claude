@@ -572,6 +572,29 @@ export const DB_MIGRATIONS: DbMigration[] = [
       `ALTER TABLE accounts ADD COLUMN currency_balances TEXT`,
     ],
   },
+  {
+    version: 18,
+    statements: [
+      // Perf (2026-06-25 SQLite audit) — index coverage for the hot aggregation
+      // and account-detail queries; drop two redundant indexes.
+      //
+      // idempotency_key is `TEXT UNIQUE` (already auto-indexed), so the explicit
+      // index is redundant double b-tree maintenance on the import write path.
+      `DROP INDEX IF EXISTS idx_transactions_idempotency`,
+      // Covers getBudgetProgress' per-category JOIN, getTransactions({categoryId}),
+      // and the `category_id IS NULL` uncategorized lookups (SQLite indexes NULLs).
+      `CREATE INDEX IF NOT EXISTS idx_transactions_category_date ON transactions(category_id, transaction_date)`,
+      // Composite for account-scoped history (getBalanceHistory LIMIT 5000,
+      // getSpendingPulse, reconciliation) — avoids the account-scan + filesort.
+      // Its (account_id) prefix subsumes the old single-column index → drop it.
+      `CREATE INDEX IF NOT EXISTS idx_transactions_account_date ON transactions(account_id, transaction_date)`,
+      `DROP INDEX IF EXISTS idx_transactions_account`,
+      // No new month-aggregation index: getMonthlyAggregates filters only on
+      // transaction_date (+ reconciled_into IS NULL), already served by the
+      // existing idx_transactions_date (v1); direction/is_excluded are reduced
+      // in JS, so a wider composite would add write cost without a read gain.
+    ],
+  },
 ];
 
 export const LATEST_DB_VERSION =

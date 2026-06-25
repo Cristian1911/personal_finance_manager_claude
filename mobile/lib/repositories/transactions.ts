@@ -98,6 +98,12 @@ export type CreateTransactionParams = {
   transaction_time?: string | null;
   /** Optional FK to a transaction_locations row. Filled by the location linker. */
   location_id?: string | null;
+  /**
+   * Preset idempotency key (e.g. the server-computed pending-email key) to
+   * preserve cross-source dedup. When omitted, it is computed from
+   * provider/date/amount/description — same as before.
+   */
+  idempotency_key?: string | null;
 };
 
 export type UpdateTransactionParams = {
@@ -175,15 +181,17 @@ export async function createTransaction(params: CreateTransactionParams): Promis
   const db = await getDatabase();
   const now = new Date().toISOString();
   const txId = Crypto.randomUUID();
-  const idempotencyKey = await computeIdempotencyKey(
-    {
-      provider: params.provider ?? "MANUAL",
-      transactionDate: params.transaction_date,
-      amount: params.amount,
-      rawDescription: params.raw_description ?? params.description ?? params.merchant_name ?? "",
-    },
-    expoHashFn
-  );
+  const idempotencyKey =
+    params.idempotency_key ??
+    (await computeIdempotencyKey(
+      {
+        provider: params.provider ?? "MANUAL",
+        transactionDate: params.transaction_date,
+        amount: params.amount,
+        rawDescription: params.raw_description ?? params.description ?? params.merchant_name ?? "",
+      },
+      expoHashFn
+    ));
 
   const payload = buildInsertPayload(txId, now, params, idempotencyKey);
 

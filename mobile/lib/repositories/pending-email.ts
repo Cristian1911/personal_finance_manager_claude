@@ -1,15 +1,18 @@
 import { supabase } from "../supabase";
 import {
   autoCategorize,
-  applyAccountBalanceDelta,
   findReconciliationCandidates,
   mergeTransactionMetadata,
   prepareDestinatarioRules,
   matchDestinatario,
   type ReconciliationCandidate,
+  type TransactionCaptureMethod,
   type TransactionDirection,
 } from "@zeta/shared";
-import { computeIdempotencyKey } from "./ledger-helpers";
+import { getDatabase } from "../db/database";
+import { applyLocalBalanceDelta, enqueueAccountUpdateCoalesced } from "./ledger-helpers";
+import { getAccountById } from "./accounts";
+import { createTransaction, updateTransaction } from "./transactions";
 import { getDestinatarioRulesForMatching } from "./destinatarios";
 
 /**
@@ -333,11 +336,22 @@ export async function checkEmailReconciliation(
 // ── Approve / dismiss ─────────────────────────────────────────────────────────
 
 /**
- * Import a pending email transaction. Mirrors webapp `approveEmailTransaction`:
- * resolves the account, enriches (destinatario + autoCategorize), inserts the
- * transaction (capture_method EMAIL_IMPORT, idempotency dedup), optionally
- * reconciles into an existing manual transaction, applies the balance delta
- * (skipped when reconciling), and marks the pending row imported.
+ * Import a pending email transaction — LOCAL-FIRST. Mirrors webapp
+ * `approveEmailTransaction` but writes to local SQLite + enqueues the sync push
+ * instead of inserting straight to remote, so the row appears in the feed
+ * immediately, works offline, and applies the balance side-effect locally.
+ *
+ * Only the two genuinely remote steps survive (the `pending_email_transactions`
+ * queue is REMOTE-only): reading the pending row up-front, and marking it
+ * imported at the end. The mark-imported call is fire-and-forget so the action
+ * returns the instant the local writes finish — if it fails offline, the
+ * idempotency key blocks a duplicate transaction on the next retry.
+ *
+ * Flow: resolve the account locally → learn the debit-card mask locally →
+ * enrich (destinatario + autoCategorize) → insert the transaction via
+ * `createTransaction` (capture_method EMAIL_IMPORT, idempotency dedup) →
+ * optionally reconcile into an existing manual transaction → apply the balance
+ * delta (skipped when reconciling) → mark the pending row imported.
  */
 export async function approveEmailTransaction(
   pendingId: string,
@@ -347,6 +361,7 @@ export async function approveEmailTransaction(
   const userId = await getUserId();
   if (!userId) return { success: false, error: "No autenticado" };
 
+  // REMOTE read — the pending queue is not in local SQLite.
   const { data: pending, error: fetchError } = await (supabase as any)
     .from("pending_email_transactions")
     .select("id, suggested_account_id, email_ingest_id, idempotency_key, parsed_data")
@@ -364,31 +379,33 @@ export async function approveEmailTransaction(
     return { success: false, error: "No se encontró una cuenta para esta transacción" };
   }
 
-  const { data: account, error: accountError } = await (supabase as any)
-    .from("accounts")
-    .select("currency_code, account_type, debit_card_mask, current_balance")
-    .eq("id", accountId)
-    .eq("user_id", userId)
-    .single();
-
-  if (accountError) return { success: false, error: accountError.message };
+  // Resolve the account LOCALLY — applyLocalBalanceDelta needs the full row.
+  const account = await getAccountById(accountId);
   if (!account) return { success: false, error: "Cuenta no encontrada" };
 
-  // Learn the debit-card → account mapping when a debit notification lands on a
-  // bank account that didn't have the card mask yet.
+  const db = await getDatabase();
+  const now = new Date().toISOString();
+
+  // Learn the debit-card → account mapping LOCALLY (+ enqueue the sync UPDATE)
+  // when a debit notification lands on a bank account without the mask yet.
   if (
     parsed.card_type === "T.Deb" &&
     parsed.card_last4 &&
     (account.account_type === "SAVINGS" || account.account_type === "CHECKING") &&
     !maskSuffixMatches(account.debit_card_mask, parsed.card_last4)
   ) {
-    await (supabase as any)
-      .from("accounts")
-      // updated_at bump is required: the mobile incremental pull filters
-      // `updated_at > lastSyncedAt` and accounts have no DB moddatetime trigger.
-      .update({ debit_card_mask: parsed.card_last4, updated_at: new Date().toISOString() })
-      .eq("id", accountId)
-      .eq("user_id", userId);
+    await db.withTransactionAsync(async () => {
+      await db.runAsync(
+        "UPDATE accounts SET debit_card_mask = ?, updated_at = ? WHERE id = ?",
+        [parsed.card_last4, now, accountId]
+      );
+      await enqueueAccountUpdateCoalesced(
+        db,
+        accountId,
+        { debit_card_mask: parsed.card_last4, updated_at: now },
+        now
+      );
+    });
   }
 
   const merchantName = parsed.merchant ?? parsed.destination ?? null;
@@ -418,20 +435,64 @@ export async function approveEmailTransaction(
     if (categoryId) categorizationSource = "SYSTEM_DEFAULT";
   }
 
-  const idempotencyKey =
-    pending.idempotency_key ||
-    (await computeIdempotencyKey({
-      provider: "EMAIL",
-      transactionDate: parsed.transaction_date,
-      amount: parsed.amount,
-      rawDescription: parsed.raw_line,
-    }));
-
   const cleanDescription = merchantName ?? rawDescription;
 
-  const { data: insertedTx, error: insertError } = await (supabase as any)
-    .from("transactions")
-    .insert({
+  // Reconcile pre-read: when merging into an existing manual transaction, the
+  // higher-authority capture_method survives and the manual tx's user-set
+  // enrichments are carried onto the new row (mergeTransactionMetadata). We read
+  // the manual tx LOCALLY and bake the merged values straight into the create —
+  // identical end-state to the webapp's create-then-update, with one less write.
+  let captureMethod: TransactionCaptureMethod = "EMAIL_IMPORT";
+  let reconcileNotes: string | null = null;
+  let reconcileManualId: string | null = null;
+
+  if (reconcileWithTransactionId) {
+    const manualTx = await db.getFirstAsync<
+      Pick<
+        ReconciliationCandidate,
+        "category_id" | "categorization_source" | "notes" | "capture_method"
+      > & { id: string }
+    >(
+      `SELECT id, category_id, categorization_source, notes, capture_method
+       FROM transactions
+       WHERE id = ? AND user_id = ? AND reconciled_into_transaction_id IS NULL`,
+      [reconcileWithTransactionId, userId]
+    );
+
+    // If the reconcile target isn't in local SQLite (deleted, already
+    // reconciled, or — likely on mobile — found remotely by
+    // checkEmailReconciliation but not yet pulled to this device), we cannot
+    // safely import: proceeding would skip the balance delta (silent drift),
+    // and applying the delta instead would double-count against the manual tx
+    // that already moved the balance remotely. Abort so the user retries after
+    // a sync. (Justified divergence from webapp, whose manualTx comes from the
+    // authoritative DB so it is virtually always present.)
+    if (!manualTx) {
+      return {
+        success: false,
+        error:
+          "La transacción a conciliar ya no está disponible. Intenta de nuevo tras sincronizar.",
+      };
+    }
+
+    const merged = mergeTransactionMetadata(manualTx, {
+      category_id: categoryId,
+      categorization_source: categorizationSource,
+      notes: null,
+      capture_method: "EMAIL_IMPORT",
+    });
+    categoryId = merged.category_id ?? null;
+    reconcileNotes = merged.notes ?? null;
+    captureMethod = merged.capture_method;
+    reconcileManualId = manualTx.id;
+  }
+
+  // Insert the transaction LOCALLY. createTransaction computes the same EMAIL
+  // idempotency key when `pending.idempotency_key` is null (provider/date/amount/
+  // raw_description match the old fallback), so cross-source dedup is preserved.
+  let newTxId: string;
+  try {
+    newTxId = await createTransaction({
       user_id: userId,
       account_id: accountId,
       amount: parsed.amount,
@@ -440,92 +501,65 @@ export async function approveEmailTransaction(
       transaction_date: parsed.transaction_date,
       transaction_time: normalizeEmailTime(parsed.transaction_time),
       raw_description: rawDescription,
-      clean_description: cleanDescription,
+      description: cleanDescription,
       merchant_name: merchantName,
-      idempotency_key: idempotencyKey,
-      provider: "EMAIL",
-      capture_method: "EMAIL_IMPORT",
       category_id: categoryId,
       categorization_source: categorizationSource,
       destinatario_id: destinatarioId,
+      notes: reconcileNotes,
+      provider: "EMAIL",
+      capture_method: captureMethod,
       status: "POSTED",
-    })
-    .select("id, category_id, categorization_source, notes")
-    .single();
-
-  if (insertError) {
-    // Duplicate — still mark imported so it doesn't linger in the queue.
-    if (insertError.code === "23505") {
-      await markImported(userId, pendingId);
+      idempotency_key: pending.idempotency_key ?? undefined,
+    });
+  } catch (err) {
+    // Local UNIQUE(idempotency_key) collision = already imported. Mark the
+    // pending row imported (non-blocking) so it leaves the queue, and report
+    // success — the existing row already represents this transaction.
+    if (isUniqueConstraintError(err)) {
+      void markImported(userId, pendingId);
       return { success: true };
     }
-    return { success: false, error: insertError.message };
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "No se pudo importar la transacción",
+    };
   }
 
-  // Reconcile with an existing manual transaction if requested.
-  if (reconcileWithTransactionId && insertedTx) {
-    const { data: manualTx } = await (supabase as any)
-      .from("transactions")
-      .select(
-        "id, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method"
-      )
-      .eq("id", reconcileWithTransactionId)
-      .eq("user_id", userId)
-      .is("reconciled_into_transaction_id", null)
-      .maybeSingle();
-
-    if (manualTx) {
-      const merged = mergeTransactionMetadata(manualTx as ReconciliationCandidate, {
-        category_id: insertedTx.category_id,
-        categorization_source: insertedTx.categorization_source,
-        notes: insertedTx.notes,
-        capture_method: "EMAIL_IMPORT",
-      });
-
-      await (supabase as any)
-        .from("transactions")
-        .update({
-          category_id: merged.category_id ?? null,
-          notes: merged.notes ?? null,
-          capture_method: merged.capture_method,
-        })
-        .eq("user_id", userId)
-        .eq("id", insertedTx.id);
-
-      await (supabase as any)
-        .from("transactions")
-        .update({ reconciled_into_transaction_id: insertedTx.id })
-        .eq("user_id", userId)
-        .eq("id", manualTx.id);
-    }
-  }
-
-  // Balance delta — skip when reconciling (the manual tx already moved it).
-  if (!reconcileWithTransactionId) {
-    const newBalance = applyAccountBalanceDelta({
-      currentBalance: account.current_balance ?? 0,
-      accountType: account.account_type,
-      direction: parsed.direction,
-      amount: parsed.amount,
+  // Link the manual transaction into the new (surviving) row. The balance delta
+  // below is skipped because that manual tx already moved the balance.
+  if (reconcileManualId) {
+    await updateTransaction(reconcileManualId, {
+      reconciled_into_transaction_id: newTxId,
     });
-    await (supabase as any)
-      .from("accounts")
-      // updated_at bump required so the incremental pull picks up the new
-      // balance (accounts have no DB moddatetime trigger).
-      .update({ current_balance: newBalance, updated_at: new Date().toISOString() })
-      .eq("id", accountId)
-      .eq("user_id", userId);
   }
 
-  const { error: updateError } = await (supabase as any)
-    .from("pending_email_transactions")
-    .update({ status: "imported" })
-    .eq("id", pendingId)
-    .eq("user_id", userId);
+  // Balance delta — skip when reconciling (the manual tx already moved it). This
+  // is the local side-effect the old remote-only insert dropped on mobile.
+  if (!reconcileWithTransactionId) {
+    await db.withTransactionAsync(async () => {
+      await applyLocalBalanceDelta(
+        db,
+        account,
+        parsed.direction,
+        parsed.amount,
+        account.currency_code,
+        now
+      );
+    });
+  }
 
-  if (updateError) return { success: false, error: updateError.message };
+  // REMOTE write, non-blocking — return the instant the local writes finish.
+  void markImported(userId, pendingId);
 
   return { success: true };
+}
+
+/** True for a SQLite UNIQUE constraint violation (idempotency_key collision) —
+ * the local equivalent of the Postgres 23505 duplicate path. */
+function isUniqueConstraintError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return /UNIQUE constraint failed/i.test(message);
 }
 
 async function markImported(userId: string, pendingId: string): Promise<void> {

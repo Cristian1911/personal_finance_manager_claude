@@ -9,6 +9,7 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (!dbInitPromise) {
     dbInitPromise = (async () => {
       const database = await SQLite.openDatabaseAsync("zeta.db");
+      await applyConnectionPragmas(database);
       await runMigrations(database);
       db = database;
       return database;
@@ -21,10 +22,32 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   return dbInitPromise;
 }
 
-async function runMigrations(database: SQLite.SQLiteDatabase): Promise<void> {
-  await database.execAsync("PRAGMA journal_mode = WAL;");
-  await database.execAsync("PRAGMA foreign_keys = ON;");
+/**
+ * Connection-level PRAGMAs, applied once per opened connection. We keep a single
+ * cached connection, so this runs once at startup. Order matters: busy_timeout
+ * first (the WAL switch itself can briefly lock), then WAL, then synchronous.
+ *
+ * synchronous=NORMAL (safe only with WAL) drops the per-commit fsync — the
+ * highest-value change for this write-heavy offline cache. Trade-off: an
+ * OS-crash / power-loss can lose the last transaction(s) since the WAL
+ * checkpoint; acceptable because Supabase is the source of truth and unsynced
+ * local edits are rare and re-enterable.
+ */
+async function applyConnectionPragmas(
+  database: SQLite.SQLiteDatabase
+): Promise<void> {
+  await database.execAsync(`
+    PRAGMA busy_timeout = 5000;
+    PRAGMA journal_mode = WAL;
+    PRAGMA synchronous = NORMAL;
+    PRAGMA foreign_keys = ON;
+    PRAGMA cache_size = -8000;
+    PRAGMA mmap_size = 67108864;
+    PRAGMA temp_store = MEMORY;
+  `);
+}
 
+async function runMigrations(database: SQLite.SQLiteDatabase): Promise<void> {
   const versionRow = await database.getFirstAsync<{ user_version: number }>(
     "PRAGMA user_version"
   );
@@ -49,7 +72,7 @@ async function runMigrations(database: SQLite.SQLiteDatabase): Promise<void> {
 
 export async function clearDatabase(): Promise<void> {
   const database = await getDatabase();
-  // Order matters: `PRAGMA foreign_keys = ON` (set in runMigrations) rejects
+  // Order matters: `PRAGMA foreign_keys = ON` (set in applyConnectionPragmas) rejects
   // deletes that would orphan referenced rows. Delete dependent rows first,
   // parents last. Specifically:
   //   budgets.default_category_id → categories (budgets before categories)

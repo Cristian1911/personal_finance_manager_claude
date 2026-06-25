@@ -10,6 +10,66 @@
 
 ---
 
+## Mobile ↔ Webapp parity audit (2026-06-25, branch `audit/mobile-web-parity-2026-06-25`)
+
+Full report: [`docs/audits/2026-06-25-mobile-web-parity.md`](docs/audits/2026-06-25-mobile-web-parity.md) (127 findings, severity-ranked).
+Remediation plan: [`docs/audits/2026-06-25-mobile-web-parity-remediation.md`](docs/audits/2026-06-25-mobile-web-parity-remediation.md).
+Counts: P0:8 · P1:27 · P2:38 · P3:38 · P4:16. Most P1/P2/P3 are already tracked elsewhere in this file (the report flags `already_tracked`); the items below are the **new, untracked, high-severity** ones.
+
+**Structural decision (make ONCE before patching any P0 path):** mobile money-moving writes bypass the webapp server actions and the sync push writes raw PostgREST rows with no trigger reproducing side-effects. Choose: (a) balance/occurrence-aware mobile repo helpers inside `withTransactionAsync`, (b) server-side `AFTER INSERT/UPDATE/DELETE` triggers on `transactions`, or (c) route mobile mutations through server actions online. Spawn `mobile-webapp-parity` + `mobile-sync-doctor`. This dictates every P0 fix below.
+
+### P0 — data corruption / dropped side-effect (verified against source)
+- **[tags] `saveTransactionTags` omits `user_id`** → enqueued `transaction_tags` REPLACE has no `user_id`; push handler reads `payload.user_id` (undefined); table is NOT-NULL + RLS → insert fails forever, only `console.warn`'d. Fix: add `user_id` to payload (copy `recurring.ts:964`). `tags.ts:90-95`. **S — do first.**
+- **[capture/tx-new] Manual capture drops account balance delta** → `createTransaction` (`transactions.ts:174-235`) inserts + queues sync, no `applyLocalBalanceDelta`. Permanent balance drift. **L (or M via trigger).**
+- **[tx-detail/tx-list] Edit/delete drop balance delta** → mobile `updateTransaction`/`deleteTransaction` do zero balance arithmetic (`transactions.ts:557-695`); detail Save realizes the drift. **M.**
+- **[categorizar] Categorize drops `category_rules` learning + destinatario default-category backfill** → auto-categorizer never improves from on-device work. `transactions.ts:623-632` vs `categorize.ts:253-282`. **M.**
+- **[import] Import never updates balance + skips `statement_snapshots` upsert** → balance off by full imported sum; credit-limit/due-date/history never set. `import.tsx:729-872`. **L + M.**
+- **[import] Idempotency key omits `original_amount`+`installment_current`** → cross-platform installment **duplicates** survive dedup. `transactions.ts:178-186`. **S — P0-adjacent, prioritize.**
+
+### Untracked P1 (see remediation doc for the rest)
+- [periodo] Cannot pay standalone (non-recurring/non-debt) expense — `PaymentSheet` errors. **M.**
+- [deudas] No 'Abonar' extra-payment (`applyExtraDebtPayment`) on mobile. **L.**
+- [tags] `/etiquetas` + `/categories` unreachable (nav-orphan; CRUD built). **S.**
+- [capture/import] No occurrence-linking on capture/imported tx. **S–M.**
+
+### Bookkeeping corrections (stale items found during audit)
+- BACKLOG:109 "server balance delta flows back on next pull" is **false** for mobile-originated inserts — correct it.
+- BACKLOG:1189 debt-planner income context marked DONE — **broken** on mobile (dead card).
+- BACKLOG:1086-1088 Pagar/Transferir/Ajustar P0 stubs — **resolved**, close.
+- BACKLOG:1110-1111 tx-detail promote/vincular P0s — **resolved**, strike.
+- BACKLOG:755 onboarding 'en-US' default — **stale** (now `navigator.language || 'es-CO'`).
+- BACKLOG:1119-1123 tx-new 'Formulario en construcción' stub — **stale** (redirects to /capture).
+
+### Mobile perf / offline-first leaks (2026-06-25 perf diagnosis)
+
+Production Android is slow — **confirmed on the installed release build, NOT a debug artifact** (Hermes is on). Root cause: a **dual write architecture** — some paths bypass the local-first repos and write directly to remote Supabase with serial, blocking round-trips. Perf and the P0 side-effect gaps **converge**: routing these to local-first fixes both.
+
+- ~~**[P0-perf] Cold start blocks on network**~~ → ✅ **SHIPPED** (`audit/mobile-web-parity-2026-06-25`): `_layout.tsx` now reads `onboarding_completed` from local SQLite (`getLocalProfile`), background-converges, falls back to network only on fresh install. Offline launch unblocked.
+- ~~**[P0-perf] Email import direct-to-remote + 4-6 serial round-trips**~~ → ✅ **SHIPPED**: `approveEmailTransaction` rewritten local-first (local account read, local insert via `createTransaction` + `idempotency_key` override, local balance delta, local reconcile, non-blocking `markImported`). Typecheck clean; `mobile-sync-doctor` + `mobile-webapp-parity` gates passed. **Gate follow-ups (deferred):**
+  - **[P1] Mobile occurrence-linking is app-wide missing** — webapp marks the matching `recurring_occurrences` paid on every tx create (`linkTransactionToOccurrence`); mobile's `createTransaction`/PDF-import/email-approve all skip it. Fix app-wide (not email-only, to avoid inconsistency): after a non-reconcile create, `findMatchingOccurrence` → `markOccurrencePaid`. Most user-visible on the explicit "Aprobar" action. **M.**
+  - **[P3] `categorization_source` fallback** — `buildInsertPayload` (`transactions.ts:~138`) writes `SYSTEM_DEFAULT` when no category; webapp trigger defaults `USER_CREATED`. Align the fallback. Affects all mobile write paths. **S.**
+  - **[type] `AccountRow` missing `currency_balances`** (`accounts.ts`) — runtime-present via `SELECT *`, but untyped; add `currency_balances?: string | null`. **S.**
+  - **[refactor] email-import non-atomicity** — tx INSERT + balance delta run in two `withTransactionAsync` blocks (crash window; pre-existing). Optional: collapse via `insertLedgerTransaction` with a shared `db` handle. **S.**
+- **[perf] Subscriptions screen network reads every focus** → `subscriptions.tsx:114-130` reads `accounts` + `recurring_transaction_templates` over the network on each open; both are synced tables → read local SQLite. **S.**
+- **[perf] Home/Plan over-fetch** → `useDashboardData` + `PlanRoot` pull 500 full tx rows and aggregate in JS on every focus → SQL aggregation + `limit 20` recent. **M.**
+- **[perf] Feed re-query on every focus** → `MovimientosRoot` reloads all SQLite on navigation return (visible flash) → dirty-flag / version gate. **S.**
+- **[bug] AnimatedAccordion `estimatedHeight` worklet closure** → email-import panel animates to wrong height after the panel measures itself; convert `estimatedHeight` to a shared value. **S.**
+- **[bug] MovimientosRoot `listHeader` useMemo missing `currency` + `handleToolDataChanged` deps** → stale-currency display if preferred currency resolves after first paint. **S.**
+
+### Mobile SQLite / data-layer perf audit (2026-06-25)
+
+Full report: [`docs/audits/2026-06-25-mobile-sqlite-perf.md`](docs/audits/2026-06-25-mobile-sqlite-perf.md) (46 findings) · plan: [`...-plan.md`](docs/audits/2026-06-25-mobile-sqlite-perf-plan.md). Foundation OK (WAL on, 32 indexes). **46 findings: P0:2 · P1:15 · P2:16 · P3:13.**
+
+- ~~**PRAGMA tuning**~~ → ✅ **SHIPPED**: `applyConnectionPragmas` adds `synchronous=NORMAL` (drops per-commit fsync app-wide) + `busy_timeout`/`cache_size`/`mmap_size`/`temp_store` (`database.ts`).
+- ~~**Index coverage**~~ → ✅ **SHIPPED** (migration v18): +`(category_id,date)` +`(account_id,date)`; dropped redundant `idx_transactions_idempotency` (UNIQUE auto-indexes) + `idx_transactions_account` (subsumed by the composite). Net-zero index count, better coverage. (Month-agg already served by `idx_transactions_date`; no new index per sync-doctor gate.)
+- **[P0/P1] Dashboard + Plan 500-row fetch → SQL aggregation** — both run `getTransactions({limit:500})` (`SELECT t.*` ×3 JOINs ≈ 23k cells) + O(500) JS loop on every focus. Use `getMonthlyAggregates` + a 20-row feed. ~95% bridge cut on the two hottest screens. **M.**
+- **[P1] Subscriptions → local SQLite** — reads `accounts` + `recurring_transaction_templates` over the network every focus; both are synced. **M.**
+- **[P1] Sync push round-trip collapse** — replace the per-UPDATE `isLocalFresh` network pre-read (`push.ts:116`, 2 RTTs/update) with a conditional `.lte('updated_at')` write; batch inserts/deletes. **M.**
+- **[P1] Focus-reload gate** — module-level data-version flag so `useFocusEffect` skips a full re-query when nothing changed. **S–M.**
+- **[P2/P3] remainder** — `SELECT *` over-fetch (22), N+1 in 5 repos, serial 20-table pull, `transaction_tags` full DELETE-ALL+refetch each sync. See report.
+
+---
+
 ## Tendencias hub follow-ups (2026-06-24, branch `feat/tendencias-hub`)
 
 New `/tendencias` analytics hub shipped (engine + dataset + 3 lenses + nav + export). Deferred:
