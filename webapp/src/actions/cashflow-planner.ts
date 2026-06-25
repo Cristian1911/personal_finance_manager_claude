@@ -1574,9 +1574,10 @@ export async function confirmIncomeReceived(params: {
     return error?.message ?? null;
   };
 
-  const linkOccurrence = async (transactionId: string) => {
-    if (!entry.recurring_template_id) return;
-    const { data: occurrences } = await supabase
+  // Returns an error message on failure, or null on success.
+  const linkOccurrence = async (transactionId: string): Promise<string | null> => {
+    if (!entry.recurring_template_id) return null;
+    const { data: occurrences, error: occErr } = await supabase
       .from("recurring_occurrences")
       .select("id")
       .eq("template_id", entry.recurring_template_id)
@@ -1585,18 +1586,22 @@ export async function confirmIncomeReceived(params: {
       .gte("occurrence_date", period.start_date)
       .lte("occurrence_date", period.end_date)
       .limit(1);
+    if (occErr) return occErr.message;
     if (occurrences && occurrences.length > 0) {
       const { linkExistingTransactionToOccurrence } = await import("@/actions/occurrences");
-      await linkExistingTransactionToOccurrence(occurrences[0].id, transactionId);
+      const res = await linkExistingTransactionToOccurrence(occurrences[0].id, transactionId);
+      if (!res.success) return res.error;
     }
+    return null;
   };
 
   // ── LINK MODE: connect an already-imported transaction ──
   if (params.existingTransactionId) {
-    const [, markErr] = await Promise.all([
-      linkOccurrence(params.existingTransactionId),
-      markCompleted(),
-    ]);
+    // Sequential: don't mark the entry completed if the occurrence link failed
+    // (nothing else happened in LINK mode — avoids a completed-but-unlinked entry).
+    const linkErr = await linkOccurrence(params.existingTransactionId);
+    if (linkErr) return { success: false, error: linkErr };
+    const markErr = await markCompleted();
     if (markErr) return { success: false, error: markErr };
 
     updateTag(TAG);
@@ -1677,7 +1682,10 @@ export async function confirmIncomeReceived(params: {
       .eq("user_id", user.id);
   }
 
-  const [, markErr] = await Promise.all([linkOccurrence(txId), markCompleted()]);
+  // CREATE: the INFLOW + balance are already recorded, so marking is correct
+  // regardless of link success. Parallel + log (non-blocking secondary writes).
+  const [linkErr, markErr] = await Promise.all([linkOccurrence(txId), markCompleted()]);
+  if (linkErr) console.error("Income confirm link occurrence error:", linkErr);
   if (markErr) console.error("Income confirm entry update error:", markErr);
 
   updateTag(TAG);

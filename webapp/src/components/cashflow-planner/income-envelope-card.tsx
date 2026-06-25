@@ -57,12 +57,7 @@ export function IncomeEnvelopeCard({ envelope, currency, colorIndex, onEdit, onC
   // PLANNED↔COMPLETED check; the left border is tinted by lifecycle state.
   const chip = STATE_CHIP[state] ?? STATE_CHIP.esperado;
   const showConfirm = !!onConfirm && state !== "confirmado";
-  const borderLeftColor =
-    state === "confirmado"
-      ? "var(--z-income)"
-      : state === "atrasado"
-        ? "var(--z-expense)"
-        : envelopeColor.hex;
+  const hasCustomBorder = state === "confirmado" || state === "atrasado";
 
   function handleRemoveAssignment(assignmentId: string) {
     startTransition(async () => {
@@ -90,7 +85,14 @@ export function IncomeEnvelopeCard({ envelope, currency, colorIndex, onEdit, onC
   }
 
   return (
-    <div className="rounded-xl border border-white/6 bg-card p-4 space-y-3 border-l-2" style={{ borderLeftColor }}>
+    <div
+      className={cn(
+        "rounded-xl border border-white/6 bg-card p-4 space-y-3 border-l-2",
+        state === "confirmado" && "border-l-z-income",
+        state === "atrasado" && "border-l-z-expense"
+      )}
+      style={!hasCustomBorder ? { borderLeftColor: envelopeColor.hex } : undefined}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           {!showConfirm && !is_opening_balance && (
