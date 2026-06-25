@@ -20,6 +20,10 @@ New `/tendencias` analytics hub shipped (engine + dataset + 3 lenses + nav + exp
 - **Custom date range UI.** Period control ships 3M/6M/12M/Año; `rangeToWindow` already accepts `{from,to}` but there's no date-picker UI for "Personalizado" yet.
 - **Mobile Tendencias screen.** The `@zeta/shared/analytics` engine is built portable (pure functions). A mobile Lectura/Tendencias screen can reuse it on local SQLite rows — parity gate (mobile-webapp-parity) applies before building.
 
+## Pre-existing test debt (discovered 2026-06-24) — [issue #306](https://github.com/Cristian1911/personal_finance_manager_claude/issues/306)
+
+`@zeta/shared` has ~40 failing unit tests on `main` (unrelated to Tendencias): `auto-categorize.test.ts` (autoCategorize returns null where matches expected — likely rules/seed drift) + `debt-stats.test.ts` (computeDebtStats missing a null-guard edge case). Decide per case whether the test expectation is stale or the impl regressed. Tracked in #306.
+
 ---
 
 ## Mobile design-system follow-ups (2026-06-22, post PR #302)
