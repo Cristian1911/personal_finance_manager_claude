@@ -10,6 +10,38 @@
 
 ---
 
+## Mobile ↔ Webapp parity audit (2026-06-25, branch `audit/mobile-web-parity-2026-06-25`)
+
+Full report: [`docs/audits/2026-06-25-mobile-web-parity.md`](docs/audits/2026-06-25-mobile-web-parity.md) (127 findings, severity-ranked).
+Remediation plan: [`docs/audits/2026-06-25-mobile-web-parity-remediation.md`](docs/audits/2026-06-25-mobile-web-parity-remediation.md).
+Counts: P0:8 · P1:27 · P2:38 · P3:38 · P4:16. Most P1/P2/P3 are already tracked elsewhere in this file (the report flags `already_tracked`); the items below are the **new, untracked, high-severity** ones.
+
+**Structural decision (make ONCE before patching any P0 path):** mobile money-moving writes bypass the webapp server actions and the sync push writes raw PostgREST rows with no trigger reproducing side-effects. Choose: (a) balance/occurrence-aware mobile repo helpers inside `withTransactionAsync`, (b) server-side `AFTER INSERT/UPDATE/DELETE` triggers on `transactions`, or (c) route mobile mutations through server actions online. Spawn `mobile-webapp-parity` + `mobile-sync-doctor`. This dictates every P0 fix below.
+
+### P0 — data corruption / dropped side-effect (verified against source)
+- **[tags] `saveTransactionTags` omits `user_id`** → enqueued `transaction_tags` REPLACE has no `user_id`; push handler reads `payload.user_id` (undefined); table is NOT-NULL + RLS → insert fails forever, only `console.warn`'d. Fix: add `user_id` to payload (copy `recurring.ts:964`). `tags.ts:90-95`. **S — do first.**
+- **[capture/tx-new] Manual capture drops account balance delta** → `createTransaction` (`transactions.ts:174-235`) inserts + queues sync, no `applyLocalBalanceDelta`. Permanent balance drift. **L (or M via trigger).**
+- **[tx-detail/tx-list] Edit/delete drop balance delta** → mobile `updateTransaction`/`deleteTransaction` do zero balance arithmetic (`transactions.ts:557-695`); detail Save realizes the drift. **M.**
+- **[categorizar] Categorize drops `category_rules` learning + destinatario default-category backfill** → auto-categorizer never improves from on-device work. `transactions.ts:623-632` vs `categorize.ts:253-282`. **M.**
+- **[import] Import never updates balance + skips `statement_snapshots` upsert** → balance off by full imported sum; credit-limit/due-date/history never set. `import.tsx:729-872`. **L + M.**
+- **[import] Idempotency key omits `original_amount`+`installment_current`** → cross-platform installment **duplicates** survive dedup. `transactions.ts:178-186`. **S — P0-adjacent, prioritize.**
+
+### Untracked P1 (see remediation doc for the rest)
+- [periodo] Cannot pay standalone (non-recurring/non-debt) expense — `PaymentSheet` errors. **M.**
+- [deudas] No 'Abonar' extra-payment (`applyExtraDebtPayment`) on mobile. **L.**
+- [tags] `/etiquetas` + `/categories` unreachable (nav-orphan; CRUD built). **S.**
+- [capture/import] No occurrence-linking on capture/imported tx. **S–M.**
+
+### Bookkeeping corrections (stale items found during audit)
+- BACKLOG:109 "server balance delta flows back on next pull" is **false** for mobile-originated inserts — correct it.
+- BACKLOG:1189 debt-planner income context marked DONE — **broken** on mobile (dead card).
+- BACKLOG:1086-1088 Pagar/Transferir/Ajustar P0 stubs — **resolved**, close.
+- BACKLOG:1110-1111 tx-detail promote/vincular P0s — **resolved**, strike.
+- BACKLOG:755 onboarding 'en-US' default — **stale** (now `navigator.language || 'es-CO'`).
+- BACKLOG:1119-1123 tx-new 'Formulario en construcción' stub — **stale** (redirects to /capture).
+
+---
+
 ## Tendencias hub follow-ups (2026-06-24, branch `feat/tendencias-hub`)
 
 New `/tendencias` analytics hub shipped (engine + dataset + 3 lenses + nav + export). Deferred:
