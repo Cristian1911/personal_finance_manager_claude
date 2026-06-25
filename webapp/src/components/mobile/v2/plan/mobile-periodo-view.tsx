@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
+import { PeriodHero } from "@/components/cashflow-planner/period-hero";
 import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
 import { getEnvelopeColor } from "@/lib/constants/envelope-colors";
@@ -172,6 +173,8 @@ export function MobilePeriodoView({
 
   return (
     <div className="space-y-4">
+      <PeriodHero data={planData} />
+
       {/* NETO hero — D3 */}
       <div className="rounded-2xl border border-white/6 bg-z-surface-2 p-4">
         <div className="flex items-center justify-between">
