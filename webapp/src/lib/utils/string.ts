@@ -14,7 +14,7 @@ export function capitalize(s: string): string {
 export function foldForSearch(value: string): string {
   return value
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/\p{Mn}/gu, "")
     .toLowerCase();
 }
 
