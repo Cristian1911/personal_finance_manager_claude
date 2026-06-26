@@ -9,6 +9,7 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -23,6 +24,8 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Search, SlidersHorizontal, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { MOBILE_SHEET_SAFE_AREA_CLASS } from "@/lib/constants/styles";
 import type { Account, CategoryWithChildren, Tag } from "@/types/domain";
 
 export function TransactionFilters({
@@ -138,18 +141,24 @@ export function TransactionFilters({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas las categorías</SelectItem>
-                  {categories.map((cat) => (
-                    <SelectGroup key={cat.id}>
-                      <SelectItem value={cat.id}>
+                  {categories.map((cat) =>
+                    cat.children.length > 0 ? (
+                      // Parent zone → non-selectable group label, leaf children selectable
+                      <SelectGroup key={cat.id}>
+                        <SelectLabel>{cat.name_es ?? cat.name}</SelectLabel>
+                        {cat.children.map((child) => (
+                          <SelectItem key={child.id} value={child.id}>
+                            {child.name_es ?? child.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ) : (
+                      // Standalone category (no children) → selectable leaf
+                      <SelectItem key={cat.id} value={cat.id}>
                         {cat.name_es ?? cat.name}
                       </SelectItem>
-                      {cat.children.map((child) => (
-                        <SelectItem key={child.id} value={child.id} className="pl-8">
-                          {child.name_es ?? child.name}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  ))}
+                    )
+                  )}
                 </SelectContent>
               </Select>
             )}
@@ -296,7 +305,7 @@ export function TransactionFilters({
               <SlidersHorizontal className="size-4 mr-2" />
               Filtros
               {activeFilterCount > 0 && (
-                <span className="ml-1.5 size-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
+                <span className="ml-1.5 size-5 rounded-full bg-z-brass text-z-ink text-xs flex items-center justify-center">
                   {activeFilterCount}
                 </span>
               )}
@@ -306,7 +315,7 @@ export function TransactionFilters({
             <SheetHeader>
               <SheetTitle>Filtros</SheetTitle>
             </SheetHeader>
-            <div className="py-4 px-4">
+            <div className={cn("py-4 px-4", MOBILE_SHEET_SAFE_AREA_CLASS)}>
               {renderFilters(true)}
             </div>
           </SheetContent>
