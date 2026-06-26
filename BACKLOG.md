@@ -10,6 +10,13 @@
 
 ---
 
+## Tendencias interactivity (branch `feat/tendencias-drilldown-search`) — deferred polish
+
+Shipped: inline category/recipient drill-down (2-level / 1-level accordions), per-card search + "Ver todas", `getDrilldownTransactions` cached action, `destinatarioId` transactions filter, hero/lens mobile fixes, and short periods **Semana (WTD)** + **Mes (MTD)**. Deferred (cosmetic, non-blocking):
+- **Sub-month hero/deltas.** The hero "Gasto prom/mes" + MoM `DeltaChip`s assume monthly buckets; for `Semana`/`Mes` (1–2 month buckets) the per-month average and MoM read oddly (e.g. a 7-day window split across a month boundary). Options: relabel the hero stat per range, or suppress MoM/sparklines when `months.length < 2`. `range.ts` returns the real (short) window so nothing breaks — presentation only.
+- **Cross-card / merchant-text search.** Category card searches categories, recipient card searches recipients; no unified or merchant-text search (out of original scope).
+- **Visual QA at 375px** not run in-session (build + design-review verified the responsive classes; no live screenshot).
+
 ## Plan living timeline (branch `feat/plan-living-timeline`) — deferred polish
 
 Shipped the living-timeline redesign of the Periodo plan. Review agents flagged these as acceptable follow-ups (none block the feature):

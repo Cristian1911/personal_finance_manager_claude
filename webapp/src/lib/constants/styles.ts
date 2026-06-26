@@ -132,3 +132,11 @@ export const SEGMENTED_TAB_ACTIVE_CLASS =
 /** Neutral pill chip for inline actions (brass icon + label inside) */
 export const CHIP_NEUTRAL_CLASS =
   "inline-flex items-center gap-2 rounded-full border border-white/6 bg-white/[0.03] px-3 py-1.5 text-xs transition-colors focus-visible:ring-2 focus-visible:ring-z-brass/50";
+
+/** Full-width "Ver todas / Ver menos" inline expand toggle (accordion footer). */
+export const INLINE_EXPAND_TOGGLE_CLASS =
+  "flex w-full items-center justify-center gap-1 border-t border-white/6 py-2 text-[11px] font-semibold text-z-brass transition-colors hover:bg-white/[0.02]";
+
+/** Full-width clickable row header that toggles an expandable detail region. */
+export const ROW_EXPAND_TRIGGER_CLASS =
+  "flex w-full items-center gap-2.5 py-2.5 text-left transition-colors hover:bg-white/[0.02]";

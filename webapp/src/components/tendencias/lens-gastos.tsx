@@ -4,11 +4,32 @@ import { CategoryTrendList } from "./category-trend-list";
 import { TopRecipientsCard } from "./top-recipients-card";
 import { FixedVariableCard } from "./fixed-variable-card";
 
-export function LensGastos({ data, currency }: { data: GastosData; currency: CurrencyCode }) {
+export function LensGastos({
+  data,
+  currency,
+  windowFrom,
+  windowTo,
+}: {
+  data: GastosData;
+  currency: CurrencyCode;
+  windowFrom: string;
+  windowTo: string;
+}) {
   return (
     <>
-      <CategoryTrendList categories={data.categories} currency={currency} />
-      <TopRecipientsCard recipients={data.recipients} currency={currency} />
+      <CategoryTrendList
+        hierarchy={data.categoryHierarchy}
+        trends={data.categories}
+        currency={currency}
+        windowFrom={windowFrom}
+        windowTo={windowTo}
+      />
+      <TopRecipientsCard
+        recipients={data.recipientsFull}
+        currency={currency}
+        windowFrom={windowFrom}
+        windowTo={windowTo}
+      />
       <FixedVariableCard data={data.fixedVariable} currency={currency} />
     </>
   );

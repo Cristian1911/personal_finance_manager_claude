@@ -19,7 +19,7 @@ export function MoversCard({ movers, currency }: { movers: Mover[]; currency: Cu
         <div key={m.categoryId} className="flex items-center gap-3 border-t border-white/6 py-2 first:border-t-0">
           <span className="size-2.5 shrink-0 rounded" style={{ background: m.color }} />
           <span className="min-w-0 flex-1 truncate text-sm">{m.nameEs}</span>
-          <span className="text-[11px] tabular-nums text-z-sage-dark">
+          <span className="shrink-0 whitespace-nowrap text-[11px] tabular-nums text-z-sage-dark">
             {formatCurrency(m.from, currency)} → {formatCurrency(m.to, currency)}
           </span>
           <DeltaChip pct={m.deltaPct} />
