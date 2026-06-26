@@ -160,7 +160,7 @@ async function getTendenciasDatasetCached(
     .filter((d) => usedDestIds.has(d.id))
     .map((d) => [d.id, { name: d.name, color: destColor(d.id) }]);
 
-  const categoryHierarchy = buildCategoryHierarchy(rows, catsRes.data ?? [], categoryMeta);
+  const categoryHierarchy = buildCategoryHierarchy(rows, catsRes.data ?? [], categoryMeta, months);
 
   return {
     rows,
@@ -190,6 +190,7 @@ function buildCategoryHierarchy(
   rows: readonly AnalyticsTx[],
   cats: readonly CategoryLink[],
   categoryMeta: ReadonlyMap<string, CategoryMeta>,
+  months: readonly string[],
 ): CategoryHierarchyNode[] {
   const info = new Map<string, { nameEs: string; color: string; parentId: string | null }>();
   for (const c of cats) {
@@ -202,12 +203,29 @@ function buildCategoryHierarchy(
   const nameOf = (id: string) => info.get(id)?.nameEs ?? categoryMeta.get(id)?.nameEs ?? "Sin categoría";
   const colorOf = (id: string) => info.get(id)?.color ?? categoryMeta.get(id)?.color ?? "#768053";
 
-  // Own OUTFLOW spend per category id (matches categorySeries: OUTFLOW only).
-  const own = new Map<string, number>();
+  // Own OUTFLOW monthly series per category id (matches categorySeries: OUTFLOW
+  // only, bucketed by config.months). Scalar own total is the row sum.
+  const monthIndex = new Map(months.map((m, i) => [m, i]));
+  const ownMonthly = new Map<string, number[]>();
   for (const r of rows) {
     if (r.direction !== "OUTFLOW" || !r.categoryId) continue;
-    own.set(r.categoryId, (own.get(r.categoryId) ?? 0) + r.amount);
+    const mi = monthIndex.get(r.date.slice(0, 7));
+    if (mi === undefined) continue;
+    let arr = ownMonthly.get(r.categoryId);
+    if (!arr) {
+      arr = new Array(months.length).fill(0);
+      ownMonthly.set(r.categoryId, arr);
+    }
+    arr[mi] += r.amount;
   }
+  const ownOf = (id: string) => ownMonthly.get(id) ?? new Array(months.length).fill(0);
+  const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
+  // Same MoM as categorySeries: last vs prev month; null when prev is 0.
+  const momOf = (arr: number[]): number | null => {
+    const prev = arr[arr.length - 2] ?? 0;
+    const last = arr[arr.length - 1] ?? 0;
+    return prev === 0 ? null : ((last - prev) / prev) * 100;
+  };
 
   const rootOf = (id: string): string => {
     let cur = id;
@@ -221,7 +239,7 @@ function buildCategoryHierarchy(
 
   const childrenByRoot = new Map<string, string[]>();
   const rootIds = new Set<string>();
-  for (const catId of own.keys()) {
+  for (const catId of ownMonthly.keys()) {
     const root = rootOf(catId);
     rootIds.add(root);
     if (catId !== root) {
@@ -232,17 +250,22 @@ function buildCategoryHierarchy(
   }
 
   const roots = [...rootIds].map((rootId) => {
-    const ownTotal = own.get(rootId) ?? 0;
+    const ownTotal = sum(ownOf(rootId));
     const childIds = (childrenByRoot.get(rootId) ?? []).sort(
-      (a, b) => (own.get(b) ?? 0) - (own.get(a) ?? 0),
+      (a, b) => sum(ownOf(b)) - sum(ownOf(a)),
     );
-    const childSum = childIds.reduce((s, c) => s + (own.get(c) ?? 0), 0);
-    return { rootId, ownTotal, childIds, rolledTotal: ownTotal + childSum };
+    // Rolled monthly = root own + Σ children own, element-wise across months.
+    const rolledMonthly = ownOf(rootId).slice();
+    for (const c of childIds) {
+      const cm = ownOf(c);
+      for (let i = 0; i < rolledMonthly.length; i++) rolledMonthly[i] += cm[i];
+    }
+    return { rootId, ownTotal, childIds, rolledMonthly, rolledTotal: sum(rolledMonthly) };
   });
   roots.sort((a, b) => b.rolledTotal - a.rolledTotal);
 
   const out: CategoryHierarchyNode[] = [];
-  for (const { rootId, ownTotal, childIds, rolledTotal } of roots) {
+  for (const { rootId, ownTotal, childIds, rolledMonthly, rolledTotal } of roots) {
     out.push({
       id: rootId,
       parentId: null,
@@ -252,9 +275,12 @@ function buildCategoryHierarchy(
       childIds,
       ownTotal,
       rolledTotal,
+      // Top-level row shows rolledTotal → its trend is the rolled series.
+      monthly: rolledMonthly,
+      momPct: momOf(rolledMonthly),
     });
     for (const childId of childIds) {
-      const cOwn = own.get(childId) ?? 0;
+      const cMonthly = ownOf(childId);
       out.push({
         id: childId,
         parentId: rootId,
@@ -262,8 +288,11 @@ function buildCategoryHierarchy(
         color: colorOf(childId),
         isLeaf: true,
         childIds: [],
-        ownTotal: cOwn,
-        rolledTotal: cOwn,
+        ownTotal: sum(cMonthly),
+        rolledTotal: sum(cMonthly),
+        // Leaf row shows ownTotal → its trend is the own series.
+        monthly: cMonthly,
+        momPct: momOf(cMonthly),
       });
     }
   }

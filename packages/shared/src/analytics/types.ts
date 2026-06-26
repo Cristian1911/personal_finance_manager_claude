@@ -59,6 +59,11 @@ export interface RecipientRank {
  * `ownTotal`    = windowed OUTFLOW spend on tx whose category_id === id.
  * `rolledTotal` = ownTotal + Σ descendants' ownTotal (== ownTotal for leaves).
  * Totals reconcile with `categorySeries` (OUTFLOW-only, same window).
+ *
+ * `monthly`/`momPct` describe the series for THIS row's displayed total:
+ * rolled for a top-level parent (its row shows `rolledTotal`), own for a leaf
+ * (its row shows `ownTotal`). Aligned to config.months; momPct null when the
+ * prior month is 0. (The synthetic "(directo)" sub-row shows no trend.)
  */
 export interface CategoryHierarchyNode {
   id: string;
@@ -69,6 +74,8 @@ export interface CategoryHierarchyNode {
   childIds: string[]; // sorted by child ownTotal desc; empty for leaves
   ownTotal: number;
   rolledTotal: number;
+  monthly: number[];
+  momPct: number | null;
 }
 
 export interface FixedVariable {

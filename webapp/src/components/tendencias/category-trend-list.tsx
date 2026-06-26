@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ChevronDown, Search } from "lucide-react";
-import type { CategoryHierarchyNode, CategoryTrend } from "@zeta/shared";
+import type { CategoryHierarchyNode } from "@zeta/shared";
 import { formatCurrency } from "@/lib/utils/currency";
 import {
   INLINE_EXPAND_TOGGLE_CLASS,
@@ -17,6 +17,10 @@ import { Expand } from "@/components/mobile/v2/expand";
 import { DrilldownTransactions } from "./drilldown-transactions";
 
 const DEFAULT_VISIBLE = 8;
+
+/** Sparkline/MoM trend matching a row's displayed total (rolled for parents, own for leaves). */
+type TrendInput = { monthly: number[]; momPct: number | null };
+const nodeTrend = (n: CategoryHierarchyNode): TrendInput => ({ monthly: n.monthly, momPct: n.momPct });
 
 /** Accent- + case-insensitive fold for the client search filter. */
 function fold(s: string): string {
@@ -50,8 +54,8 @@ interface RowChromeProps {
   name: string;
   total: number;
   currency: CurrencyCode;
-  /** Optional sparkline/delta trend (own-spend series); only shown for leaf rows. */
-  trend?: CategoryTrend;
+  /** Sparkline/MoM trend matching this row's displayed total. */
+  trend?: TrendInput;
 }
 
 /** Shared clickable header used by both parent and leaf rows. */
@@ -84,7 +88,7 @@ interface LeafRowProps {
   name: string;
   color: string;
   total: number;
-  trend?: CategoryTrend;
+  trend?: TrendInput;
   currency: CurrencyCode;
   windowFrom: string;
   windowTo: string;
@@ -128,14 +132,13 @@ function LeafRow({ categoryId, name, color, total, trend, currency, windowFrom, 
 interface ParentRowProps {
   node: CategoryHierarchyNode;
   nodeById: ReadonlyMap<string, CategoryHierarchyNode>;
-  trendById: ReadonlyMap<string, CategoryTrend>;
   currency: CurrencyCode;
   windowFrom: string;
   windowTo: string;
 }
 
 /** A parent with subcategory children: expands to subtotal leaves (no fetch). */
-function ParentRow({ node, nodeById, trendById, currency, windowFrom, windowTo }: ParentRowProps) {
+function ParentRow({ node, nodeById, currency, windowFrom, windowTo }: ParentRowProps) {
   const [open, setOpen] = useState(false);
   const children = node.childIds
     .map((id) => nodeById.get(id))
@@ -149,6 +152,7 @@ function ParentRow({ node, nodeById, trendById, currency, windowFrom, windowTo }
         name={node.nameEs}
         total={node.rolledTotal}
         currency={currency}
+        trend={nodeTrend(node)}
       />
       <Expand open={open}>
         <div className={NEST_GUIDE_CLASS}>
@@ -159,7 +163,7 @@ function ParentRow({ node, nodeById, trendById, currency, windowFrom, windowTo }
                 name={child.nameEs}
                 color={child.color}
                 total={child.ownTotal}
-                trend={trendById.get(child.id)}
+                trend={nodeTrend(child)}
                 currency={currency}
                 windowFrom={windowFrom}
                 windowTo={windowTo}
@@ -173,7 +177,6 @@ function ParentRow({ node, nodeById, trendById, currency, windowFrom, windowTo }
                 name={`${node.nameEs} (directo)`}
                 color={node.color}
                 total={node.ownTotal}
-                trend={trendById.get(node.id)}
                 currency={currency}
                 windowFrom={windowFrom}
                 windowTo={windowTo}
@@ -187,10 +190,8 @@ function ParentRow({ node, nodeById, trendById, currency, windowFrom, windowTo }
 }
 
 export interface CategoryTrendListProps {
-  /** Flat parent+leaf breakdown (windowed totals) — `vm.gastos.categoryHierarchy`. */
+  /** Flat parent+leaf breakdown (windowed totals + per-row trend) — `vm.gastos.categoryHierarchy`. */
   hierarchy: CategoryHierarchyNode[];
-  /** Top-N own-spend trends — `vm.gastos.categories` — used for sparkline/MoM on leaves. */
-  trends: CategoryTrend[];
   currency: CurrencyCode;
   /** Active period window (YYYY-MM-DD inclusive) — `vm.windowFrom` / `vm.windowTo`. */
   windowFrom: string;
@@ -199,7 +200,6 @@ export interface CategoryTrendListProps {
 
 export function CategoryTrendList({
   hierarchy,
-  trends,
   currency,
   windowFrom,
   windowTo,
@@ -208,7 +208,6 @@ export function CategoryTrendList({
   const [showAll, setShowAll] = useState(false);
 
   const nodeById = useMemo(() => new Map(hierarchy.map((n) => [n.id, n])), [hierarchy]);
-  const trendById = useMemo(() => new Map(trends.map((t) => [t.categoryId, t])), [trends]);
   const topLevel = useMemo(() => hierarchy.filter((n) => n.parentId === null), [hierarchy]);
   const foldedNames = useMemo(() => hierarchy.map((n) => fold(n.nameEs)), [hierarchy]);
 
@@ -259,7 +258,6 @@ export function CategoryTrendList({
               <ParentRow
                 node={node}
                 nodeById={nodeById}
-                trendById={trendById}
                 currency={currency}
                 windowFrom={windowFrom}
                 windowTo={windowTo}
@@ -270,7 +268,7 @@ export function CategoryTrendList({
                 name={node.nameEs}
                 color={node.color}
                 total={node.rolledTotal}
-                trend={trendById.get(node.id)}
+                trend={nodeTrend(node)}
                 currency={currency}
                 windowFrom={windowFrom}
                 windowTo={windowTo}

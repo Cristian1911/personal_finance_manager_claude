@@ -19,7 +19,6 @@ export function LensGastos({
     <>
       <CategoryTrendList
         hierarchy={data.categoryHierarchy}
-        trends={data.categories}
         currency={currency}
         windowFrom={windowFrom}
         windowTo={windowTo}
