@@ -200,6 +200,7 @@ export function MovimientosRoot({
       <MovimientosUtilidades
         accounts={accounts}
         tags={tags}
+        categories={categories}
       />
 
       {/* Feed — date-grouped transaction rows */}

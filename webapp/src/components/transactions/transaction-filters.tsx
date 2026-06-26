@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -22,9 +23,19 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Search, SlidersHorizontal, X } from "lucide-react";
-import type { Account, Tag } from "@/types/domain";
+import type { Account, CategoryWithChildren, Tag } from "@/types/domain";
 
-export function TransactionFilters({ accounts, tags = [], embedded = false }: { accounts: Account[]; tags?: Tag[]; embedded?: boolean }) {
+export function TransactionFilters({
+  accounts,
+  tags = [],
+  categories = [],
+  embedded = false,
+}: {
+  accounts: Account[];
+  tags?: Tag[];
+  categories?: CategoryWithChildren[];
+  embedded?: boolean;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -48,6 +59,7 @@ export function TransactionFilters({ accounts, tags = [], embedded = false }: { 
   const hasFilters =
     searchParams.get("search") ||
     searchParams.get("accountId") ||
+    searchParams.get("categoryId") ||
     searchParams.get("tagId") ||
     searchParams.get("direction") ||
     searchParams.get("source") ||
@@ -61,6 +73,7 @@ export function TransactionFilters({ accounts, tags = [], embedded = false }: { 
   const activeFilterCount = [
     searchParams.get("search"),
     searchParams.get("accountId"),
+    searchParams.get("categoryId"),
     searchParams.get("tagId"),
     searchParams.get("direction"),
     searchParams.get("source"),
@@ -114,6 +127,32 @@ export function TransactionFilters({ accounts, tags = [], embedded = false }: { 
                 ))}
               </SelectContent>
             </Select>
+
+            {categories.length > 0 && (
+              <Select
+                defaultValue={searchParams.get("categoryId") ?? "all"}
+                onValueChange={(v) => updateFilter("categoryId", v)}
+              >
+                <SelectTrigger className={inputWidth}>
+                  <SelectValue placeholder="Todas las categorías" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las categorías</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectGroup key={cat.id}>
+                      <SelectItem value={cat.id}>
+                        {cat.name_es ?? cat.name}
+                      </SelectItem>
+                      {cat.children.map((child) => (
+                        <SelectItem key={child.id} value={child.id} className="pl-8">
+                          {child.name_es ?? child.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
 
             <Select
               defaultValue={searchParams.get("direction") ?? "all"}

@@ -13,11 +13,12 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { TransactionFilters } from "@/components/transactions/transaction-filters";
-import type { Account, Tag } from "@/types/domain";
+import type { Account, CategoryWithChildren, Tag } from "@/types/domain";
 
 interface MovimientosUtilidadesProps {
   accounts: Account[];
   tags: Tag[];
+  categories: CategoryWithChildren[];
 }
 
 const pillClass =
@@ -26,6 +27,7 @@ const pillClass =
 export function MovimientosUtilidades({
   accounts,
   tags,
+  categories,
 }: MovimientosUtilidadesProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -86,7 +88,7 @@ export function MovimientosUtilidades({
             </DrawerHeader>
             <DrawerBody className="space-y-4">
               <Suspense>
-                <TransactionFilters accounts={accounts} tags={tags} embedded />
+                <TransactionFilters accounts={accounts} tags={tags} categories={categories} embedded />
               </Suspense>
             </DrawerBody>
           </DrawerContent>
