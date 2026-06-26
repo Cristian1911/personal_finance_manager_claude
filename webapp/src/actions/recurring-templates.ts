@@ -189,7 +189,9 @@ async function getRecurringSummaryCached(
   for (const t of templates) {
     const monthlyAmount = toMonthlyAmount(t.amount, t.frequency);
     const accountType = (t.accounts as { account_type?: string } | null)?.account_type;
-    const isDebtPayment = !!accountType && isDebtAccountType(accountType);
+    // "Abono a deuda" = an INFLOW on a debt account; an OUTFLOW debt charge is a
+    // plain expense caught by the `t.direction === "OUTFLOW"` clause below.
+    const isDebtPayment = !!accountType && isDebtAccountType(accountType) && t.direction === "INFLOW";
     if (t.direction === "OUTFLOW" || isDebtPayment) {
       totalMonthlyExpenses += monthlyAmount;
     } else {
@@ -1206,7 +1208,9 @@ export async function getRecurringTemplateImpact(
 
     // Resolve effective direction (debt accounts = INFLOW template but behaves as OUTFLOW obligation)
     const accountType = (template.account as { account_type?: string } | null)?.account_type;
-    const isDebtPayment = !!accountType && isDebtAccountType(accountType);
+    // Only an INFLOW abono behaves as an OUTFLOW obligation; an OUTFLOW charge
+    // already is an OUTFLOW, so its effective direction is just its direction.
+    const isDebtPayment = !!accountType && isDebtAccountType(accountType) && template.direction === "INFLOW";
     const effectiveDirection: "INFLOW" | "OUTFLOW" = isDebtPayment ? "OUTFLOW" : template.direction;
 
     const nextDate = getNextOccurrence(

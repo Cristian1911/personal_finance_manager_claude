@@ -53,7 +53,12 @@ export function RecurringConfirmSheet({
     () => (occurrence ? accounts.find((a) => a.id === occurrence.account_id) ?? null : null),
     [occurrence, accounts]
   );
-  const isDebt = isDebtAccountType(templateAccount?.account_type ?? "OTHER");
+  // An "abono a deuda" (needs a source account) is only an INFLOW on a debt
+  // account. An OUTFLOW is a recurring charge billed to the card — confirmed as
+  // a single transaction, no source picker. Mirrors the webapp.
+  const isDebt =
+    isDebtAccountType(templateAccount?.account_type ?? "OTHER") &&
+    occurrence?.direction === "INFLOW";
 
   const sourceAccounts = useMemo(
     () =>

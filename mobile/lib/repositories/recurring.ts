@@ -741,7 +741,14 @@ export async function recordRecurringOccurrencePayment(
     return { success: false, error: "La fecha no coincide con la recurrencia de la plantilla." };
   }
 
-  const isDebtPaymentTemplate = !!template.account_type && isDebtAccountType(template.account_type);
+  // Only an INFLOW template on a debt account is an "abono" (two-leg transfer).
+  // An OUTFLOW template is a recurring charge billed to the card — a single
+  // OUTFLOW transaction, no source account. Mirrors the webapp's
+  // resolveSourceAccountSelection.
+  const isDebtPaymentTemplate =
+    !!template.account_type &&
+    isDebtAccountType(template.account_type) &&
+    template.direction === "INFLOW";
   const effectiveSourceAccountId =
     input.sourceAccountId ?? template.transfer_source_account_id ?? null;
 
