@@ -11,20 +11,13 @@ import {
   ROW_EXPAND_TRIGGER_CLASS,
 } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
+import { foldForSearch } from "@/lib/utils/string";
 import type { CurrencyCode } from "@/types/domain";
 import { DeltaChip } from "./delta-chip";
 import { Expand } from "@/components/mobile/v2/expand";
 import { DrilldownTransactions } from "./drilldown-transactions";
 
 const DEFAULT_VISIBLE = 8;
-
-/** Accent- + case-insensitive fold for the client search filter. */
-function fold(s: string): string {
-  return s
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
-}
 
 /** Nested guide line for expanded (transaction) content. */
 const NEST_GUIDE_CLASS = "ml-2 border-l border-white/6 pl-3";
@@ -124,8 +117,8 @@ export function TopRecipientsCard({ recipients, currency, windowFrom, windowTo }
 
   const max = useMemo(() => Math.max(...recipients.map((r) => r.total), 1), [recipients]);
 
-  const folded = useMemo(() => fold(query.trim()), [query]);
-  const foldedNames = useMemo(() => recipients.map((r) => fold(r.name)), [recipients]);
+  const folded = useMemo(() => foldForSearch(query.trim()), [query]);
+  const foldedNames = useMemo(() => recipients.map((r) => foldForSearch(r.name)), [recipients]);
   const searching = folded.length > 0;
 
   const rows = useMemo(() => {

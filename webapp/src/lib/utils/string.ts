@@ -10,6 +10,14 @@ export function capitalize(s: string): string {
     .join(" ");
 }
 
+/** Accent- and case-insensitive fold for client-side search filters. */
+export function foldForSearch(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+}
+
 /** Generate a URL-safe slug from a string. Strips accents, lowercases, max 50 chars. */
 export function generateSlug(value: string): string {
   return value

@@ -11,6 +11,7 @@ import {
   ROW_EXPAND_TRIGGER_CLASS,
 } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
+import { foldForSearch } from "@/lib/utils/string";
 import type { CurrencyCode } from "@/types/domain";
 import { DeltaChip } from "./delta-chip";
 import { Expand } from "@/components/mobile/v2/expand";
@@ -21,14 +22,6 @@ const DEFAULT_VISIBLE = 8;
 /** Sparkline/MoM trend matching a row's displayed total (rolled for parents, own for leaves). */
 type TrendInput = { monthly: number[]; momPct: number | null };
 const nodeTrend = (n: CategoryHierarchyNode): TrendInput => ({ monthly: n.monthly, momPct: n.momPct });
-
-/** Accent- + case-insensitive fold for the client search filter. */
-function fold(s: string): string {
-  return s
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
-}
 
 /** Nested guide line for expanded (subcategory / transaction) content. */
 const NEST_GUIDE_CLASS = "ml-2 border-l border-white/6 pl-3";
@@ -224,9 +217,9 @@ export function CategoryTrendList({
 
   const nodeById = useMemo(() => new Map(hierarchy.map((n) => [n.id, n])), [hierarchy]);
   const topLevel = useMemo(() => hierarchy.filter((n) => n.parentId === null), [hierarchy]);
-  const foldedNames = useMemo(() => hierarchy.map((n) => fold(n.nameEs)), [hierarchy]);
+  const foldedNames = useMemo(() => hierarchy.map((n) => foldForSearch(n.nameEs)), [hierarchy]);
 
-  const folded = useMemo(() => fold(query.trim()), [query]);
+  const folded = useMemo(() => foldForSearch(query.trim()), [query]);
   const searching = folded.length > 0;
 
   const rows = useMemo(() => {
