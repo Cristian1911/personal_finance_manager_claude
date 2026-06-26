@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { isDebtAccountType } from "@/lib/utils/account-balance";
-import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
 import {
   findCandidateTransactions,
   payPlanningEntry,
@@ -197,7 +197,7 @@ export function PayExpenseDialog({
         {mode === "link" && (
           <div className="space-y-4">
             <p className="text-sm font-medium">
-              Ya hiciste este pago?
+              ¿Ya hiciste este pago?
             </p>
 
             {loadingCandidates && (
@@ -259,7 +259,7 @@ export function PayExpenseDialog({
                 ) : (
                   <Link className="size-4 mr-2" />
                 )}
-                Vincular transaccion
+                Vincular transacción
               </Button>
 
               <button
@@ -396,7 +396,7 @@ export function PayExpenseDialog({
                   onClick={() => setMode("link")}
                   className="text-xs text-z-brass hover:underline text-center py-1"
                 >
-                  Vincular transaccion existente
+                  Vincular transacción existente
                 </button>
               )}
             </div>
