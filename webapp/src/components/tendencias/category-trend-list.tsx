@@ -58,27 +58,42 @@ interface RowChromeProps {
   trend?: TrendInput;
 }
 
-/** Shared clickable header used by both parent and leaf rows. */
+/**
+ * Shared clickable header used by both parent and leaf rows.
+ * Mobile-first two-line layout: name + amount share the top line (name takes
+ * the full remaining width and truncates), the sparkline/MoM drop to a meta
+ * line below — so big COP amounts + the % chip never crush the name. The
+ * sparkline stays desktop-only. Mirrors the recipient card's row shape.
+ */
 function RowHeader({ open, onToggle, color, name, total, currency, trend }: RowChromeProps) {
+  const showDelta = trend?.momPct != null;
   return (
     <button
       type="button"
       onClick={onToggle}
       aria-expanded={open}
-      className={ROW_EXPAND_TRIGGER_CLASS}
+      className={cn(ROW_EXPAND_TRIGGER_CLASS, "items-start")}
     >
       <ChevronDown
-        className={cn("size-4 shrink-0 text-z-sage-dark transition-transform", open && "rotate-180")}
+        className={cn("mt-0.5 size-4 shrink-0 text-z-sage-dark transition-transform", open && "rotate-180")}
       />
-      <span className="size-2.5 shrink-0 rounded" style={{ background: color }} />
-      <span className="min-w-0 flex-1 truncate text-sm">{name}</span>
-      {trend && (
-        <span className="hidden shrink-0 sm:block">
-          <Sparkline points={trend.monthly} color={color} />
-        </span>
-      )}
-      <span className="shrink-0 text-sm font-semibold tabular-nums">{formatCurrency(total, currency)}</span>
-      {trend && trend.momPct != null && <DeltaChip pct={trend.momPct} />}
+      <span className="mt-[5px] size-2.5 shrink-0 rounded" style={{ background: color }} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="min-w-0 flex-1 truncate text-sm">{name}</span>
+          <span className="shrink-0 text-sm font-semibold tabular-nums">
+            {formatCurrency(total, currency)}
+          </span>
+        </div>
+        {trend && (
+          <div className={cn("mt-1 items-center gap-2", showDelta ? "flex" : "hidden sm:flex")}>
+            <span className="hidden sm:block">
+              <Sparkline points={trend.monthly} color={color} />
+            </span>
+            {showDelta && <DeltaChip pct={trend.momPct as number} />}
+          </div>
+        )}
+      </div>
     </button>
   );
 }

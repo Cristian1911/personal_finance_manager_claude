@@ -65,7 +65,7 @@ function RecipientRow({ r, max, currency, windowFrom, windowTo }: RecipientRowPr
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
-          <span className="truncate text-sm font-semibold">{r.name}</span>
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold">{r.name}</span>
           <span className="shrink-0 text-sm font-semibold tabular-nums">{formatCurrency(r.total, currency)}</span>
         </div>
         <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/[0.04]">
