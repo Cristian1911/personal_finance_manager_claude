@@ -234,14 +234,17 @@ export async function createRecurringTemplate(
       )
     )?.account_type;
   const isDebtAccount = !!acctType && DEBT_ACCOUNT_TYPES.has(acctType);
-  if (isDebtAccount && !params.transfer_source_account_id) {
+  // On a debt account the direction is the discriminator: INFLOW = "abono a
+  // deuda" (paid via transfer, needs a source account); OUTFLOW = a recurring
+  // charge billed to the card (no source). Mirrors the webapp's
+  // `normalizeDebtTemplatePayload`.
+  const isDebtPayment = isDebtAccount && params.direction === "INFLOW";
+  if (isDebtPayment && !params.transfer_source_account_id) {
     throw new Error(
       "Debes seleccionar la cuenta origen para un pago de deuda."
     );
   }
-  const effectiveDirection: TransactionDirection = isDebtAccount
-    ? "INFLOW"
-    : params.direction;
+  const effectiveDirection: TransactionDirection = params.direction;
 
   const payload = {
     id,
@@ -259,7 +262,9 @@ export async function createRecurringTemplate(
     merchant_name: params.merchant_name ?? null,
     description: params.description ?? null,
     destinatario_id: params.destinatario_id ?? null,
-    transfer_source_account_id: params.transfer_source_account_id ?? null,
+    transfer_source_account_id: isDebtPayment
+      ? (params.transfer_source_account_id ?? null)
+      : null,
     is_active: true,
     created_at: now,
     updated_at: now,

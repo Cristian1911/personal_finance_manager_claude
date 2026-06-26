@@ -87,9 +87,12 @@ function RecurringCard({
   const [isPending, startTransition] = useTransition();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mergeOpen, setMergeOpen] = useState(false);
+  // "Abono a deuda" = an INFLOW that reduces the debt (paid via transfer).
+  // An OUTFLOW on a debt account is a recurring charge, not an abono.
   const isDebtPayment =
-    template.account.account_type === "CREDIT_CARD" ||
-    template.account.account_type === "LOAN";
+    (template.account.account_type === "CREDIT_CARD" ||
+      template.account.account_type === "LOAN") &&
+    template.direction === "INFLOW";
   const isIncome = template.direction === "INFLOW" && !isDebtPayment;
 
   const nextDate = getNextOccurrence(

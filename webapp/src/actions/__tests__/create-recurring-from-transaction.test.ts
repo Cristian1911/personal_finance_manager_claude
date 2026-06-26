@@ -219,6 +219,46 @@ describe("createRecurringTemplateFromTransaction", () => {
     expect(linkTransactionToOccurrence).not.toHaveBeenCalled();
   });
 
+  it("debt-account OUTFLOW charge succeeds WITHOUT a transfer_source_account_id", async () => {
+    // A recurring charge billed to the card (OUTFLOW) is not an abono, so it
+    // must not require a source account.
+    const tx: TxRow = {
+      id: VALID_TX,
+      account_id: VALID_CARD,
+      amount: 71306,
+      direction: "OUTFLOW",
+      transaction_date: "2026-04-17",
+    };
+    getAuthenticatedClient.mockResolvedValue({
+      user: USER,
+      supabase: buildSupabase({
+        tx,
+        existingLink: null,
+        account: { id: VALID_CARD, account_type: "CREDIT_CARD" },
+      }),
+    });
+
+    const result = await createRecurringTemplateFromTransaction(
+      VALID_TX,
+      { success: false, error: "" },
+      buildFormData({
+        account_id: VALID_CARD,
+        direction: "OUTFLOW",
+        amount: "71306",
+      }),
+    );
+
+    expect(result.success).toBe(true);
+    expect(linkTransactionToOccurrence).toHaveBeenCalledWith(
+      VALID_CARD,
+      "2026-04-17",
+      71306,
+      "OUTFLOW",
+      VALID_TX,
+      null,
+    );
+  });
+
   it("rejects when the source transaction is missing", async () => {
     getAuthenticatedClient.mockResolvedValue({
       user: USER,

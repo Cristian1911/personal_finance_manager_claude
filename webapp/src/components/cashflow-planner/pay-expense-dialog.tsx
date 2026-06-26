@@ -70,8 +70,17 @@ export function PayExpenseDialog({
   const entryAccount = entryAccountId
     ? accounts.find((a) => a.id === entryAccountId)
     : null;
+  // A debt entry is an "abono" the user settles via transfer. A recurring
+  // OUTFLOW template on a debt account is a charge billed to the card (its
+  // planning entry sits on the debt account too) — it must NOT be treated as
+  // an abono. Recurring abonos always point their entry at the source account,
+  // so the only debt-account entries needing the abono flow are manual ones or
+  // INFLOW templates.
+  const isRecurringCharge = entry?.recurring_template?.direction === "OUTFLOW";
   const isDebtEntry =
-    entryAccount != null && isDebtAccountType(entryAccount.account_type);
+    entryAccount != null &&
+    isDebtAccountType(entryAccount.account_type) &&
+    !isRecurringCharge;
   const debtBalance = isDebtEntry ? Math.abs(Number(entryAccount.current_balance)) : 0;
 
   // Source accounts = CHECKING + SAVINGS

@@ -71,8 +71,12 @@ function mapToOccurrenceItem(
   o: RecurringOccurrence,
   accounts: Account[]
 ): OccurrenceItem {
+  // Only an INFLOW occurrence on a debt account is an "abono" needing a source
+  // account. An OUTFLOW occurrence on a debt account is a recurring charge
+  // billed to the card — confirmed as a single transaction, like any expense.
   const isDebtPayment =
-    o.account_type === "CREDIT_CARD" || o.account_type === "LOAN";
+    (o.account_type === "CREDIT_CARD" || o.account_type === "LOAN") &&
+    o.direction === "INFLOW";
   const acct = accounts.find((a) => a.id === o.account_id);
   return {
     key: `${o.template_id}:${o.occurrence_date}`,

@@ -93,7 +93,7 @@ async function hydratePeriodData(
         `*,
          account:accounts!planning_entries_account_id_fkey(id, name, icon, color),
          category:categories!planning_entries_category_id_fkey(id, name, name_es, icon, color),
-         recurring_template:recurring_transaction_templates!planning_entries_recurring_template_id_fkey(id, merchant_name, frequency)`
+         recurring_template:recurring_transaction_templates!planning_entries_recurring_template_id_fkey(id, merchant_name, frequency, direction)`
       )
       .eq("period_id", period.id)
       .eq("user_id", userId)

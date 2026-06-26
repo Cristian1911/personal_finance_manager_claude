@@ -52,7 +52,11 @@ export function RecurringTemplateCard({
   const [loadingStats, setLoadingStats] = useState(false);
   const amount = Number(template.amount);
   const isOnce = template.frequency === "ONCE";
-  const isDebtPayment = isDebtAccountType(template.account.account_type);
+  // "Abono a deuda" = an INFLOW that reduces the debt; an OUTFLOW on a debt
+  // account is a recurring charge billed to the card, not an abono.
+  const isDebtPayment =
+    isDebtAccountType(template.account.account_type) &&
+    template.direction === "INFLOW";
   const isIncome = template.direction === "INFLOW" && !isDebtPayment;
 
   function handleExpand() {

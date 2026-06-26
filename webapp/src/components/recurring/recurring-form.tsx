@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useActionState } from "react";
 import {
   createRecurringTemplate,
@@ -144,29 +144,41 @@ export function RecurringForm({
     return Array.from(currencies).sort();
   }, [selectedAccount]);
 
+  // When the user switches TO a debt account, default to "Abono a deuda"
+  // (the dominant use case). They can still switch to "Gasto" for a recurring
+  // charge billed to the card. Only fire on the transition — not continuously —
+  // so the user's explicit choice isn't overwritten on every render.
+  const prevIsDebtAccountRef = useRef(isDebtAccount);
   useEffect(() => {
-    if (isDebtAccount && direction !== "INFLOW") {
+    if (isDebtAccount && !prevIsDebtAccountRef.current) {
       setDirection("INFLOW");
     }
-  }, [isDebtAccount, direction]);
+    prevIsDebtAccountRef.current = isDebtAccount;
+  }, [isDebtAccount]);
 
   useEffect(() => {
     if (!isDebtAccount) return;
 
-    const isDefault = !categoryId ||
+    const isDebtDefaultCategory =
       categoryId === SUBCATEGORY_PAGO_TARJETA ||
       categoryId === SUBCATEGORY_CUOTA_CREDITO;
 
-    if (isDefault) {
-      const targetCat = selectedAccount?.account_type === "CREDIT_CARD"
-        ? SUBCATEGORY_PAGO_TARJETA
-        : SUBCATEGORY_CUOTA_CREDITO;
+    if (direction === "INFLOW") {
+      // Abono a deuda — pre-seleccionar la categoría de pago de deuda.
+      if (!categoryId || isDebtDefaultCategory) {
+        const targetCat = selectedAccount?.account_type === "CREDIT_CARD"
+          ? SUBCATEGORY_PAGO_TARJETA
+          : SUBCATEGORY_CUOTA_CREDITO;
 
-      if (categoryId !== targetCat) {
-        setCategoryId(targetCat);
+        if (categoryId !== targetCat) {
+          setCategoryId(targetCat);
+        }
       }
+    } else if (isDebtDefaultCategory) {
+      // Cambió a "Gasto" (cargo a la tarjeta): la categoría de abono ya no aplica.
+      setCategoryId(null);
     }
-  }, [isDebtAccount, selectedAccount?.account_type, categoryId]);
+  }, [isDebtAccount, selectedAccount?.account_type, categoryId, direction]);
 
   function nextOccurrenceForDay(dayOfMonth: number): string {
     const now = new Date();
@@ -206,26 +218,24 @@ export function RecurringForm({
         <div className="space-y-2">
           <Label htmlFor="direction">Tipo</Label>
           <Select
-            name={isDebtAccount ? undefined : "direction"}
+            name="direction"
             value={direction}
             onValueChange={(v) => setDirection(v as TransactionDirection)}
-            disabled={isDebtAccount}
           >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="OUTFLOW">Gasto</SelectItem>
+              <SelectItem value="OUTFLOW">{isDebtAccount ? "Gasto con la tarjeta" : "Gasto"}</SelectItem>
               <SelectItem value="INFLOW">{isDebtAccount ? "Abono a deuda" : "Ingreso"}</SelectItem>
             </SelectContent>
           </Select>
           {isDebtAccount && (
             <p className="text-xs text-muted-foreground">
-              Para cuentas de deuda este recurrente se maneja como abono (INFLOW).
+              {direction === "INFLOW"
+                ? "Abono que reduce la deuda. Se registra como transferencia desde la cuenta origen."
+                : "Cargo recurrente a la tarjeta (aumenta la deuda). No requiere cuenta origen."}
             </p>
-          )}
-          {isDebtAccount && (
-            <input type="hidden" name="direction" value="INFLOW" />
           )}
         </div>
 
@@ -246,15 +256,15 @@ export function RecurringForm({
           <p className="text-xs text-muted-foreground">
             {useSubPayments
               ? `Pago mínimo en ${primaryCurrency} del desglose por moneda.`
-              : isDebtAccount
+              : isDebtAccount && direction === "INFLOW"
                 ? "Si importas un extracto con fecha y total a pagar, actualizamos este monto automaticamente. Al confirmar el pago puedes ajustar el monto pagado."
                 : "Este valor es referencia. En el checklist podras registrar el monto pagado."}
           </p>
         </div>
       </div>
 
-      {/* Multi-currency breakdown for debt accounts */}
-      {isDebtAccount && accountCurrencies.length > 1 && (
+      {/* Multi-currency breakdown for debt-payment (abono) templates */}
+      {isDebtAccount && direction === "INFLOW" && accountCurrencies.length > 1 && (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Label>Desglose por moneda</Label>
@@ -384,7 +394,7 @@ export function RecurringForm({
         </div>
       </div>
 
-      {isDebtAccount &&
+      {isDebtAccount && direction === "INFLOW" &&
         (cutoffDay != null || paymentDay != null) && (
           <div className="rounded-md border border-z-alert/20 bg-z-alert/8 p-3 space-y-2">
             <p className="text-sm font-medium text-z-alert">
@@ -419,7 +429,7 @@ export function RecurringForm({
           </div>
         )}
 
-      {isDebtAccount && (
+      {isDebtAccount && direction === "INFLOW" && (
         <div className="space-y-2">
           <Label htmlFor="transfer_source_account_id">
             Cuenta origen del pago
@@ -489,7 +499,7 @@ export function RecurringForm({
           direction={direction}
           name="category_id"
         />
-        {isDebtAccount && (
+        {isDebtAccount && direction === "INFLOW" && (
           <p className="text-xs text-muted-foreground">
             Pre-seleccionada según tipo de cuenta. Puedes cambiarla si lo necesitas.
           </p>

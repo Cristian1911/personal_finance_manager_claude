@@ -235,6 +235,36 @@ export async function getRecurringTemplate(
   }
 }
 
+// Normalizes a parsed template payload against its account type. On a debt
+// account the template's direction is the discriminator:
+//   • INFLOW  → "Abono a deuda": paid as a transfer from a source account.
+//   • OUTFLOW → "Gasto con la tarjeta": a recurring charge billed to the card
+//     that increases the debt — no transfer source.
+// Mutates `payload` in place. Returns an error message, or null when valid.
+function normalizeDebtTemplatePayload(
+  payload: {
+    account_id: string;
+    direction: "INFLOW" | "OUTFLOW";
+    category_id?: string | null;
+    transfer_source_account_id?: string | null;
+  },
+  accountType: string,
+): string | null {
+  if (isDebtAccountType(accountType) && payload.direction === "INFLOW") {
+    payload.category_id = payload.category_id ?? getDebtPaymentCategoryId(accountType);
+    if (!payload.transfer_source_account_id) {
+      return "Selecciona la cuenta origen para el pago de deuda.";
+    }
+    if (payload.transfer_source_account_id === payload.account_id) {
+      return "La cuenta origen no puede ser la misma cuenta de deuda.";
+    }
+  } else {
+    // Non-debt template, or an OUTFLOW charge on a debt account — no transfer.
+    payload.transfer_source_account_id = null;
+  }
+  return null;
+}
+
 // Shared body for the two create-template actions. Parses + validates form
 // data, verifies the account, applies DEBT-account normalization, and inserts.
 // Omits sub_payments when null to sidestep stale PostgREST schema caches.
@@ -277,18 +307,8 @@ async function insertRecurringTemplateFromFormData(
     return { success: false, error: "Cuenta inválida para este usuario." };
   }
 
-  if (isDebtAccountType(account.account_type)) {
-    payload.direction = "INFLOW";
-    payload.category_id = payload.category_id ?? getDebtPaymentCategoryId(account.account_type);
-    if (!payload.transfer_source_account_id) {
-      return { success: false, error: "Selecciona la cuenta origen para el pago de deuda." };
-    }
-    if (payload.transfer_source_account_id === payload.account_id) {
-      return { success: false, error: "La cuenta origen no puede ser la misma cuenta de deuda." };
-    }
-  } else {
-    payload.transfer_source_account_id = null;
-  }
+  const debtError = normalizeDebtTemplatePayload(payload, account.account_type);
+  if (debtError) return { success: false, error: debtError };
 
   const subPaymentsValue = sub_payments && sub_payments.length > 0
     ? (sub_payments as unknown as Database["public"]["Tables"]["recurring_transaction_templates"]["Row"]["sub_payments"])
@@ -446,18 +466,8 @@ export async function updateRecurringTemplate(
     return { success: false, error: "Cuenta inválida para este usuario." };
   }
 
-  if (isDebtAccountType(account.account_type)) {
-    payload.direction = "INFLOW";
-    payload.category_id = payload.category_id ?? getDebtPaymentCategoryId(account.account_type);
-    if (!payload.transfer_source_account_id) {
-      return { success: false, error: "Selecciona la cuenta origen para el pago de deuda." };
-    }
-    if (payload.transfer_source_account_id === payload.account_id) {
-      return { success: false, error: "La cuenta origen no puede ser la misma cuenta de deuda." };
-    }
-  } else {
-    payload.transfer_source_account_id = null;
-  }
+  const debtError = normalizeDebtTemplatePayload(payload, account.account_type);
+  if (debtError) return { success: false, error: debtError };
 
   const subPaymentsValue = sub_payments && sub_payments.length > 0
     ? (sub_payments as unknown as Database["public"]["Tables"]["recurring_transaction_templates"]["Row"]["sub_payments"])
@@ -645,7 +655,12 @@ function resolveSourceAccountSelection(params: {
   effectiveSourceAccountId: string | null;
   error: string | null;
 } {
-  const isDebtPaymentTemplate = isDebtAccountType(params.template.account.account_type);
+  // Only an INFLOW template on a debt account is an "abono" (transfer). An
+  // OUTFLOW template on a debt account is a recurring charge billed to the
+  // card — a single transaction, no source account.
+  const isDebtPaymentTemplate =
+    isDebtAccountType(params.template.account.account_type) &&
+    params.template.direction === "INFLOW";
   const effectiveSourceAccountId =
     params.sourceAccountId ?? params.template.transfer_source_account_id ?? null;
 
