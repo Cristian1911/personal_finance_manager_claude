@@ -66,6 +66,7 @@ export default async function TransactionsPage({
   const activeFilterCount = [
     params.search,
     params.accountId,
+    params.categoryId,
     params.tagId,
     params.direction,
     params.dateFrom,
@@ -198,7 +199,7 @@ export default async function TransactionsPage({
         />
 
         <Suspense>
-          <TransactionFilters accounts={accounts} tags={allTags} />
+          <TransactionFilters accounts={accounts} tags={allTags} categories={categories} />
         </Suspense>
 
         <QuickCaptureBar accounts={accounts} categories={categories} />
