@@ -13,6 +13,29 @@ test("YTD window starts in January of the anchor year", () => {
   expect(months).toEqual(["2026-01", "2026-02", "2026-03", "2026-04"]);
 });
 
+test("MTD window spans the first of the month to the anchor day", () => {
+  const { from, to, months } = rangeToWindow("MTD", "2026-06-15");
+  expect(from).toBe("2026-06-01");
+  expect(to).toBe("2026-06-15");
+  expect(months).toEqual(["2026-06"]);
+});
+
+test("WTD window starts Monday of the anchor week and ends at the anchor", () => {
+  // 2026-06-17 is a Wednesday; its week starts Monday 2026-06-15.
+  const { from, to, months } = rangeToWindow("WTD", "2026-06-17");
+  expect(from).toBe("2026-06-15");
+  expect(to).toBe("2026-06-17");
+  expect(months).toEqual(["2026-06"]);
+});
+
+test("WTD window crossing a month boundary keeps both month keys", () => {
+  // 2026-07-02 is a Thursday; its week starts Monday 2026-06-29.
+  const { from, to, months } = rangeToWindow("WTD", "2026-07-02");
+  expect(from).toBe("2026-06-29");
+  expect(to).toBe("2026-07-02");
+  expect(months).toEqual(["2026-06", "2026-07"]);
+});
+
 test("custom range respects explicit bounds", () => {
   const { months } = rangeToWindow({ from: "2026-03-01", to: "2026-05-31" }, "2026-06-15");
   expect(months).toEqual(["2026-03", "2026-04", "2026-05"]);

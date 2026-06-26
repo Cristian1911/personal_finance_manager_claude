@@ -434,6 +434,7 @@ async function getTransactionsCached(
   dateTo: string | undefined,
   accountId: string | undefined,
   categoryId: string | undefined,
+  destinatarioId: string | undefined,
   direction: string | undefined,
   search: string | undefined,
   amountMin: number | undefined,
@@ -481,6 +482,7 @@ async function getTransactionsCached(
 
   if (accountId) query = query.eq("account_id", accountId);
   if (categoryId) query = query.eq("category_id", categoryId);
+  if (destinatarioId) query = query.eq("destinatario_id", destinatarioId);
   if (direction) query = query.eq("direction", direction as "INFLOW" | "OUTFLOW");
   if (dateFrom) query = query.gte("transaction_date", dateFrom);
   if (dateTo) query = query.lte("transaction_date", dateTo);
@@ -534,6 +536,7 @@ export async function getTransactions(
       params.page, params.pageSize,
       params.dateFrom, params.dateTo,
       params.accountId, params.categoryId,
+      params.destinatarioId,
       params.direction, params.search,
       params.amountMin, params.amountMax,
       params.source, params.showExcluded ?? false,

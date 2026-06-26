@@ -13,11 +13,11 @@ export function VerdictHeader({ verdict }: { verdict: Verdict }) {
           {verdict.sub && <p className="text-xs text-z-sage-dark">{verdict.sub}</p>}
         </div>
       </div>
-      <div className="mt-2 grid grid-cols-3 gap-2">
+      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
         {verdict.tiles.map((t) => (
-          <div key={t.label} className={`${PANEL_INSET_CLASS} p-3`}>
-            <p className={SECTION_EYEBROW_CLASS}>{t.label}</p>
-            <p className="mt-1 text-lg font-bold tabular-nums">{t.value}</p>
+          <div key={t.label} className={`${PANEL_INSET_CLASS} min-w-0 p-3`}>
+            <p className={`${SECTION_EYEBROW_CLASS} break-words`}>{t.label}</p>
+            <p className="mt-1 min-w-0 text-base font-bold tabular-nums sm:text-lg">{t.value}</p>
             {t.deltaLabel && (
               <p
                 className={`mt-0.5 text-[10px] font-semibold ${

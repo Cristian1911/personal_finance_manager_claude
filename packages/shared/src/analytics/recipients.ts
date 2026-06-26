@@ -40,3 +40,17 @@ export function topRecipients(rows: readonly AnalyticsTx[], cfg: AnalyticsConfig
       };
     });
 }
+
+// ponytail: cap the full recipient payload at 150 by spend. Beyond that the
+// search/expand UI is unusable and the RSC payload bloats; nobody scrolls a
+// 600-merchant list. Search + drilldown operate within this ceiling.
+// Trade-off: all N capped recipients ship in the RSC payload so client-side
+// search needs no second fetch; raising this cap meaningfully grows the payload
+// — paginate / lazy-fetch instead if it must grow.
+export const RECIPIENT_FULL_CEILING = 150;
+
+/** Full ranked recipient list (capped at RECIPIENT_FULL_CEILING) for the
+ *  interactive "¿A dónde va?" accordion — search + per-row drilldown. */
+export function allRecipients(rows: readonly AnalyticsTx[], cfg: AnalyticsConfig): RecipientRank[] {
+  return topRecipients(rows, cfg, RECIPIENT_FULL_CEILING);
+}

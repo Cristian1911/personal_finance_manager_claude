@@ -49,6 +49,35 @@ export interface RecipientRank {
   share: number; // 0..1 of total spend in window
 }
 
+/**
+ * Flat per-category breakdown node for the interactive Tendencias accordion.
+ * Top-level rows are nodes with `parentId === null`; their `childIds` are the
+ * subcategory leaves. A leaf (childless parent OR subcategory) drills straight
+ * to its transactions. A parent with direct spend (`ownTotal > 0`) gets a
+ * synthetic "<Parent> (directo)" leaf in the UI that reuses the parent's own id.
+ *
+ * `ownTotal`    = windowed OUTFLOW spend on tx whose category_id === id.
+ * `rolledTotal` = ownTotal + Σ descendants' ownTotal (== ownTotal for leaves).
+ * Totals reconcile with `categorySeries` (OUTFLOW-only, same window).
+ *
+ * `monthly`/`momPct` describe the series for THIS row's displayed total:
+ * rolled for a top-level parent (its row shows `rolledTotal`), own for a leaf
+ * (its row shows `ownTotal`). Aligned to config.months; momPct null when the
+ * prior month is 0. (The synthetic "(directo)" sub-row shows no trend.)
+ */
+export interface CategoryHierarchyNode {
+  id: string;
+  parentId: string | null;
+  nameEs: string;
+  color: string;
+  isLeaf: boolean;
+  childIds: string[]; // sorted by child ownTotal desc; empty for leaves
+  ownTotal: number;
+  rolledTotal: number;
+  monthly: number[];
+  momPct: number | null;
+}
+
 export interface FixedVariable {
   fixed: number;
   variable: number;

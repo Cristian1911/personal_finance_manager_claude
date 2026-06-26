@@ -1,5 +1,6 @@
 import type { AnalyticsConfig } from "@zeta/shared";
 import {
+  allRecipients,
   anomalies,
   budgetAdherenceSeries,
   buildVerdict,
@@ -14,7 +15,7 @@ import {
 import { getTendenciasDataset, type TendenciasDataset } from "@/actions/analytics";
 import { formatCurrency } from "@/lib/utils/currency";
 import type { CurrencyCode } from "@/types/domain";
-import type { AnalyticsRange } from "@/lib/analytics/range";
+import { type AnalyticsRange, rangeToWindow } from "@/lib/analytics/range";
 import { TendenciasShell } from "@/components/tendencias/tendencias-shell";
 import type { TendenciasViewModel } from "@/components/tendencias/types";
 
@@ -38,6 +39,8 @@ export default async function TendenciasPage({
   const ds = await getTendenciasDataset(range, currency);
   const config = buildConfig(ds);
   const { rows } = ds;
+  // Same deterministic window the dataset used — feeds DrilldownTransactions.
+  const { from: windowFrom, to: windowTo } = rangeToWindow(range);
 
   const cats = categorySeries(rows, config);
   const cashflow = incomeVsExpenseSeries(rows, config);
@@ -52,12 +55,16 @@ export default async function TendenciasPage({
     range: typeof range === "string" ? range : "custom",
     currency,
     months: config.months,
+    windowFrom,
+    windowTo,
     verdict: buildVerdict({ savings, movers: moverList, avgExpense, avgIncome }, fmt),
     gastos: {
       // Cap at top-20 by spend to bound the RSC payload (list shows 8, movers/anomalies use full `cats`).
       categories: cats.slice(0, 20),
       recipients: topRecipients(rows, config),
       fixedVariable: fixedVsVariable(rows, config),
+      categoryHierarchy: ds.categoryHierarchy,
+      recipientsFull: allRecipients(rows, config),
     },
     ahorro: { savings, cashflow, adherence: budgetAdherenceSeries(rows, config, cats) },
     cambios: {

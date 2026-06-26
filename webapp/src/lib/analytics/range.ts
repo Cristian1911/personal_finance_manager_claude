@@ -1,6 +1,6 @@
-import { addMonths, endOfMonth, format, parseISO, startOfMonth } from "date-fns";
+import { addMonths, endOfMonth, format, parseISO, startOfMonth, startOfWeek } from "date-fns";
 
-export type AnalyticsRange = "3M" | "6M" | "12M" | "YTD" | { from: string; to: string };
+export type AnalyticsRange = "WTD" | "MTD" | "3M" | "6M" | "12M" | "YTD" | { from: string; to: string };
 
 function monthKeys(from: Date, to: Date): string[] {
   const out: string[] = [];
@@ -18,6 +18,15 @@ export function rangeToWindow(range: AnalyticsRange, anchorIso?: string): { from
   const anchor = anchorIso ? parseISO(anchorIso) : new Date();
   if (typeof range === "object") {
     return { from: range.from, to: range.to, months: monthKeys(parseISO(range.from), parseISO(range.to)) };
+  }
+  // Calendar-to-date windows end at the anchor (today), not month-end.
+  if (range === "WTD" || range === "MTD") {
+    const fromDate = range === "WTD" ? startOfWeek(anchor, { weekStartsOn: 1 }) : startOfMonth(anchor);
+    return {
+      from: format(fromDate, "yyyy-MM-dd"),
+      to: format(anchor, "yyyy-MM-dd"),
+      months: monthKeys(fromDate, anchor),
+    };
   }
   const toDate = endOfMonth(anchor);
   let fromDate: Date;
