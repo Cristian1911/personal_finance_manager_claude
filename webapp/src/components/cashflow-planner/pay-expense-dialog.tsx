@@ -154,7 +154,9 @@ export function PayExpenseDialog({
       toast.error("El monto debe ser mayor a cero");
       return;
     }
-    if (!sourceAccountId) {
+    // A recurring "Gasto con la tarjeta" is billed straight to the card — it has
+    // no source account. Every other entry is settled from a liquid account.
+    if (!isRecurringCharge && !sourceAccountId) {
       toast.error("Selecciona una cuenta origen");
       return;
     }
@@ -163,7 +165,7 @@ export function PayExpenseDialog({
       const result = await payPlanningEntry({
         entryId: entry.id,
         amount,
-        sourceAccountId,
+        sourceAccountId: isRecurringCharge ? undefined : sourceAccountId,
         debtAccountId: isDebtEntry ? entryAccountId! : undefined,
         currencyCode: entry.currency_code ?? currency,
         categoryId: entry.category_id,
@@ -342,7 +344,9 @@ export function PayExpenseDialog({
               </div>
             </div>
 
-            {/* Source account */}
+            {/* Source account — a recurring card charge is billed to the card,
+                so it has no source account to pick. */}
+            {!isRecurringCharge && (
             <div className="space-y-2">
               <Label htmlFor="source-account-trigger">Cuenta origen</Label>
               <Select
@@ -375,11 +379,12 @@ export function PayExpenseDialog({
                 </SelectContent>
               </Select>
             </div>
+            )}
 
             <div className="flex flex-col gap-2">
               <Button
                 className={cn("w-full", BRASS_BUTTON_CLASS)}
-                disabled={isPending || !sourceAccountId || getEffectiveAmount() <= 0}
+                disabled={isPending || (!isRecurringCharge && !sourceAccountId) || getEffectiveAmount() <= 0}
                 onClick={handleCreatePayment}
               >
                 {isPending ? (

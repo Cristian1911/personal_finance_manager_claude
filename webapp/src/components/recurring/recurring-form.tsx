@@ -175,13 +175,14 @@ export function RecurringForm({
     const acctType = acct?.account_type;
     const newIsDebt = acctType === "CREDIT_CARD" || acctType === "LOAN";
     setAccountId(newAccountId);
-    // Default to "Abono a deuda" (the dominant use case) only when switching INTO
-    // a debt account from a non-debt one, so a user who picked "Gasto con la
-    // tarjeta" keeps it when switching between two debt accounts. The user can
-    // always switch the type afterward.
-    if (newIsDebt && !isDebtAccount) {
-      setDirection("INFLOW");
-      syncDebtDefaultCategory("INFLOW", acctType);
+    if (newIsDebt) {
+      // Switching INTO debt from non-debt defaults to "Abono a deuda" (the
+      // dominant use case); a debt→debt switch keeps the chosen type so a
+      // "Gasto con la tarjeta" survives. Either way, re-sync the debt category
+      // so it matches the NEW account type (CREDIT_CARD ↔ LOAN).
+      const nextDirection = isDebtAccount ? direction : "INFLOW";
+      if (!isDebtAccount) setDirection("INFLOW");
+      syncDebtDefaultCategory(nextDirection, acctType);
     }
   }
 
@@ -189,6 +190,13 @@ export function RecurringForm({
     setDirection(newDirection);
     if (isDebtAccount) {
       syncDebtDefaultCategory(newDirection, selectedAccount?.account_type);
+    }
+    // The multi-currency breakdown only applies to an abono (INFLOW); its editor
+    // is hidden for OUTFLOW. Disable it when leaving INFLOW so the amount field
+    // unlocks and the hidden sub_payments input stops serializing abono data
+    // onto an OUTFLOW "Gasto con la tarjeta".
+    if (newDirection !== "INFLOW") {
+      setUseSubPayments(false);
     }
   }
 
