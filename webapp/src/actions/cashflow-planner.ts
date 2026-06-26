@@ -93,7 +93,7 @@ async function hydratePeriodData(
         `*,
          account:accounts!planning_entries_account_id_fkey(id, name, icon, color),
          category:categories!planning_entries_category_id_fkey(id, name, name_es, icon, color),
-         recurring_template:recurring_transaction_templates!planning_entries_recurring_template_id_fkey(id, merchant_name, frequency)`
+         recurring_template:recurring_transaction_templates!planning_entries_recurring_template_id_fkey(id, merchant_name, frequency, direction)`
       )
       .eq("period_id", period.id)
       .eq("user_id", userId)
@@ -1346,11 +1346,14 @@ export async function payPlanningEntry(params: {
   }
 
   // ── CREATE MODE: record a new payment ──
-  if (!params.amount || !params.sourceAccountId) {
-    return { success: false, error: "Monto y cuenta origen son requeridos" };
+  if (!params.amount) {
+    return { success: false, error: "El monto es requerido" };
   }
 
-  // If the entry has a recurring template, delegate to the full payment infrastructure
+  // If the entry has a recurring template, delegate to the full payment
+  // infrastructure. It enforces source-account rules itself: required only for
+  // INFLOW "abono a deuda" templates; an OUTFLOW "Gasto con la tarjeta" charge
+  // bills the card directly and takes no source account.
   if (entry.recurring_template_id) {
     const { recordRecurringOccurrencePayment } = await import("@/actions/recurring-templates");
     const payResult = await recordRecurringOccurrencePayment({
@@ -1358,7 +1361,7 @@ export async function payPlanningEntry(params: {
       occurrenceDate: entry.expected_date,
       paymentDate: toColombiaDateString(new Date()),
       actualAmount: params.amount,
-      sourceAccountId: params.sourceAccountId,
+      sourceAccountId: params.sourceAccountId ?? null,
     });
 
     if (!payResult.success) return { success: false, error: payResult.error };
@@ -1386,7 +1389,10 @@ export async function payPlanningEntry(params: {
     return { success: true, data: { transactionId: createdTx?.id ?? "" } };
   }
 
-  // Standalone entry (no recurring template) — create a simple transaction
+  // Standalone entry (no recurring template) — settled from a liquid account.
+  if (!params.sourceAccountId) {
+    return { success: false, error: "Monto y cuenta origen son requeridos" };
+  }
   const today = toColombiaDateString(new Date());
   const txId = crypto.randomUUID();
   const transferGroupId = params.debtAccountId ? crypto.randomUUID() : null;

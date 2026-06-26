@@ -35,7 +35,10 @@ export function UpcomingRecurringCard({
           <div className="space-y-3">
             {upcoming.slice(0, 5).map((item, i) => {
               const acctType = item.template.account?.account_type;
-              const isDebtPayment = acctType === "CREDIT_CARD" || acctType === "LOAN";
+              // An OUTFLOW on a debt account is a recurring charge, not an abono.
+              const isDebtPayment =
+                (acctType === "CREDIT_CARD" || acctType === "LOAN") &&
+                item.template.direction === "INFLOW";
               const isIncome = item.template.direction === "INFLOW" && !isDebtPayment;
               return (
               <div

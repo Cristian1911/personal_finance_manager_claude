@@ -10,6 +10,12 @@
 
 ---
 
+## Recurring debt charge vs abono (branch `claude/recurring-debt-transaction-type-cqq89p`) — deferred
+
+Shipped: debt-account recurring templates can now be a **Gasto con la tarjeta** (OUTFLOW charge) or **Abono a deuda** (INFLOW transfer), discriminated by `direction`. `/code-review` surfaced two non-blocking follow-ups (no current bug):
+- **DRY: extract `isDebtAbono(accountType, direction)` into `@zeta/shared`.** The predicate `isDebtAccountType(type) && direction === "INFLOW"` is hand-reimplemented at ~15 sites (webapp: `recurring-templates.ts` ×4, `recurring-list.tsx`, `recurring-template-card.tsx`, `upcoming-recurring-card.tsx`, `use-recurring-month.ts`, `cashflow-planner.ts`, `burn-rate.ts`, `charts.ts`, `mobile-recurring-manager.tsx`; mobile: `RecurringConfirmSheet.tsx`, `recurring.ts` ×2, `capture.tsx`). All agree today; a future change to the rule must touch every copy. Add one helper and sweep all sites. Three webapp sites also inline the literal `=== "CREDIT_CARD" || === "LOAN"` instead of calling `isDebtAccountType` — fold those in too.
+- **`confirmIncomeReceived` occurrence link has no `.order()`** (`cashflow-planner.ts` ~1586). The `recurring_occurrences` lookup uses `.limit(1)` with no ordering, so a template with multiple pending occurrences in one period (e.g. quincenal income inside a monthly period) links to an arbitrary one instead of the date-nearest. Self-correcting / cosmetic. Pre-existing (not introduced by this branch). Add `.order("occurrence_date")` and pick nearest.
+
 ## Tendencias interactivity (branch `feat/tendencias-drilldown-search`) — deferred polish
 
 Shipped: inline category/recipient drill-down (2-level / 1-level accordions), per-card search + "Ver todas", `getDrilldownTransactions` cached action, `destinatarioId` transactions filter, hero/lens mobile fixes, and short periods **Semana (WTD)** + **Mes (MTD)**. Deferred (cosmetic, non-blocking):

@@ -19,7 +19,7 @@ export const BALANCE_SEED_NOTES = "[saldo]";
 export interface PlanningEntryWithRelations extends PlanningEntry {
   account: Pick<Account, "id" | "name" | "icon" | "color"> | null;
   category: Pick<Category, "id" | "name" | "name_es" | "icon" | "color"> | null;
-  recurring_template: Pick<RecurringTemplate, "id" | "merchant_name" | "frequency"> | null;
+  recurring_template: Pick<RecurringTemplate, "id" | "merchant_name" | "frequency" | "direction"> | null;
   /** Amount converted to the period's currency (equals amount when same currency) */
   converted_amount: number;
 }

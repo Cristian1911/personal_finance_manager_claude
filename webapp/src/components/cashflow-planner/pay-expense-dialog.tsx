@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { isDebtAccountType } from "@/lib/utils/account-balance";
-import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
 import {
   findCandidateTransactions,
   payPlanningEntry,
@@ -70,8 +70,17 @@ export function PayExpenseDialog({
   const entryAccount = entryAccountId
     ? accounts.find((a) => a.id === entryAccountId)
     : null;
+  // A debt entry is an "abono" the user settles via transfer. A recurring
+  // OUTFLOW template on a debt account is a charge billed to the card (its
+  // planning entry sits on the debt account too) — it must NOT be treated as
+  // an abono. Recurring abonos always point their entry at the source account,
+  // so the only debt-account entries needing the abono flow are manual ones or
+  // INFLOW templates.
+  const isRecurringCharge = entry?.recurring_template?.direction === "OUTFLOW";
   const isDebtEntry =
-    entryAccount != null && isDebtAccountType(entryAccount.account_type);
+    entryAccount != null &&
+    isDebtAccountType(entryAccount.account_type) &&
+    !isRecurringCharge;
   const debtBalance = isDebtEntry ? Math.abs(Number(entryAccount.current_balance)) : 0;
 
   // Source accounts = CHECKING + SAVINGS
@@ -145,7 +154,9 @@ export function PayExpenseDialog({
       toast.error("El monto debe ser mayor a cero");
       return;
     }
-    if (!sourceAccountId) {
+    // A recurring "Gasto con la tarjeta" is billed straight to the card — it has
+    // no source account. Every other entry is settled from a liquid account.
+    if (!isRecurringCharge && !sourceAccountId) {
       toast.error("Selecciona una cuenta origen");
       return;
     }
@@ -154,7 +165,7 @@ export function PayExpenseDialog({
       const result = await payPlanningEntry({
         entryId: entry.id,
         amount,
-        sourceAccountId,
+        sourceAccountId: isRecurringCharge ? undefined : sourceAccountId,
         debtAccountId: isDebtEntry ? entryAccountId! : undefined,
         currencyCode: entry.currency_code ?? currency,
         categoryId: entry.category_id,
@@ -188,7 +199,7 @@ export function PayExpenseDialog({
         {mode === "link" && (
           <div className="space-y-4">
             <p className="text-sm font-medium">
-              Ya hiciste este pago?
+              ¿Ya hiciste este pago?
             </p>
 
             {loadingCandidates && (
@@ -250,7 +261,7 @@ export function PayExpenseDialog({
                 ) : (
                   <Link className="size-4 mr-2" />
                 )}
-                Vincular transaccion
+                Vincular transacción
               </Button>
 
               <button
@@ -333,7 +344,9 @@ export function PayExpenseDialog({
               </div>
             </div>
 
-            {/* Source account */}
+            {/* Source account — a recurring card charge is billed to the card,
+                so it has no source account to pick. */}
+            {!isRecurringCharge && (
             <div className="space-y-2">
               <Label htmlFor="source-account-trigger">Cuenta origen</Label>
               <Select
@@ -366,11 +379,12 @@ export function PayExpenseDialog({
                 </SelectContent>
               </Select>
             </div>
+            )}
 
             <div className="flex flex-col gap-2">
               <Button
                 className={cn("w-full", BRASS_BUTTON_CLASS)}
-                disabled={isPending || !sourceAccountId || getEffectiveAmount() <= 0}
+                disabled={isPending || (!isRecurringCharge && !sourceAccountId) || getEffectiveAmount() <= 0}
                 onClick={handleCreatePayment}
               >
                 {isPending ? (
@@ -387,7 +401,7 @@ export function PayExpenseDialog({
                   onClick={() => setMode("link")}
                   className="text-xs text-z-brass hover:underline text-center py-1"
                 >
-                  Vincular transaccion existente
+                  Vincular transacción existente
                 </button>
               )}
             </div>

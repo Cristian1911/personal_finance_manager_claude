@@ -418,16 +418,18 @@ export default function CaptureScreen() {
       }
 
       if (createRecurring) {
-        // DEBT accounts (CREDIT_CARD/LOAN) require direction=INFLOW +
-        // transfer_source_account_id per webapp validator. Capture doesn't
-        // surface a source picker, so skip rather than write bad data.
+        // An INFLOW on a DEBT account is an "abono a deuda" that needs a
+        // transfer source account, which capture doesn't surface — skip those
+        // rather than write bad data. An OUTFLOW (a charge billed to the card)
+        // is a plain recurring expense and is allowed.
         const isDebtAccount =
           selectedAccount?.account_type === "CREDIT_CARD" ||
           selectedAccount?.account_type === "LOAN";
-        if (isDebtAccount) {
+        const isDebtAbono = isDebtAccount && direction === "INFLOW";
+        if (isDebtAbono) {
           Alert.alert(
             "No disponible en esta cuenta",
-            "Crear pago recurrente en tarjetas de crédito o préstamos requiere elegir una cuenta origen. Hazlo desde la pantalla de Recurrentes."
+            "Registrar un abono recurrente a tarjetas de crédito o préstamos requiere elegir una cuenta origen. Hazlo desde la pantalla de Recurrentes."
           );
         } else {
           try {
