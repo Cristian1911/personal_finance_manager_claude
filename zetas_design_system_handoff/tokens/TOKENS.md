@@ -124,7 +124,7 @@ text-sm  font-semibold tabular-nums          /* inline/compact */
 Three variants defined in `lib/constants/styles.ts`:
 
 ```ts
-BRASS_BUTTON_CLASS       = "bg-z-brass text-z-ink hover:bg-z-brass/90"
+BRASS_BUTTON_CLASS       = "bg-gradient-to-b from-z-brass-hot to-z-brass text-z-ink hover:brightness-110"
 GHOST_BUTTON_CLASS       = "border-white/8 bg-black/10 text-z-sage-light hover:bg-white/5"
 BRASS_GHOST_BUTTON_CLASS = "border-z-brass/20 bg-z-brass/8 text-z-brass hover:bg-z-brass/12"
 MOBILE_ACTION_BUTTON_CLASS = /* small brass-ghost for mobile micro-actions */
@@ -196,7 +196,7 @@ z-expense   #E8875A
 z-debt      #E05545
 z-alert     #D4A843
 z-excellent #3D9E6E
-z-brass     #937844
+z-brass     #a98a51
 z-sage      #768053
 z-sage-dark #938C7E
 ```
