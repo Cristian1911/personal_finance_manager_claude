@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronRight, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Minus } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -194,32 +194,44 @@ export function BudgetBuilder({ groups, income, currency, hasUncategorized, mode
         key={g.id}
         className={cn(PANEL_INSET_CLASS, "p-3", open && "border-z-brass/30")}
       >
-        <button
-          type="button"
-          onClick={() => setOpenId(open ? null : g.id)}
-          aria-expanded={open}
-          className="flex w-full items-center justify-between gap-2 text-left"
-        >
-          <span className="flex min-w-0 items-center gap-2">
-            <span
-              className="flex size-6 shrink-0 items-center justify-center rounded-md"
-              style={{ backgroundColor: `${g.color}20`, color: g.color }}
-            >
-              <CategoryIcon icon={g.icon} className="size-3.5" />
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setOpenId(open ? null : g.id)}
+            aria-expanded={open}
+            className="flex min-w-0 flex-1 items-center justify-between gap-2 text-left"
+          >
+            <span className="flex min-w-0 items-center gap-2">
+              <span
+                className="flex size-6 shrink-0 items-center justify-center rounded-md"
+                style={{ backgroundColor: `${g.color}20`, color: g.color }}
+              >
+                <CategoryIcon icon={g.icon} className="size-3.5" />
+              </span>
+              <span className="truncate text-sm font-semibold">{g.name_es ?? g.name}</span>
             </span>
-            <span className="truncate text-sm font-semibold">{g.name_es ?? g.name}</span>
-          </span>
-          <span className="flex shrink-0 items-center gap-1.5">
-            <span className="text-sm font-semibold tabular-nums text-z-brass">
-              {totalG > 0 ? formatCurrency(totalG, currency) : "—"}
+            <span className="flex shrink-0 items-center gap-1.5">
+              {totalG > 0 && (
+                <span className="text-sm font-semibold tabular-nums text-z-brass">
+                  {formatCurrency(totalG, currency)}
+                </span>
+              )}
+              {open ? (
+                <ChevronDown className="size-3.5 text-z-sage-dark" strokeWidth={1.5} />
+              ) : (
+                <ChevronRight className="size-3.5 text-z-sage-dark" strokeWidth={1.5} />
+              )}
             </span>
-            {open ? (
-              <ChevronDown className="size-3.5 text-z-sage-dark" strokeWidth={1.5} />
-            ) : (
-              <ChevronRight className="size-3.5 text-z-sage-dark" strokeWidth={1.5} />
-            )}
-          </span>
-        </button>
+          </button>
+          <button
+            type="button"
+            onClick={() => removeCategory(g)}
+            aria-label={`Quitar ${g.name_es ?? g.name}`}
+            className="flex size-7 shrink-0 items-center justify-center rounded-full text-z-sage-dark transition-colors hover:bg-z-debt/10 hover:text-z-debt"
+          >
+            <Minus className="size-4" strokeWidth={2} />
+          </button>
+        </div>
 
         {open && (
           <div className="mt-3">
@@ -243,6 +255,18 @@ export function BudgetBuilder({ groups, income, currency, hasUncategorized, mode
   function addCategory(categoryId: string) {
     setLine(categoryId, "");
     setOpenId(categoryId);
+  }
+
+  // Remove a whole category from the budget: clears its base + every line so it
+  // drops back to "available" (re-addable from the picker).
+  function removeCategory(g: CategoryBudgetData) {
+    setDraft((prev) => {
+      const next = { ...prev };
+      delete next[g.id];
+      for (const c of groupWithCreated(g).children) delete next[c.id];
+      return next;
+    });
+    setOpenId((cur) => (cur === g.id ? null : cur));
   }
 
   // Progressive disclosure: one quiet row instead of the chip wall. Opens a
