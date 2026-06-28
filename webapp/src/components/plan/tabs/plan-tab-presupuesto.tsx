@@ -126,7 +126,6 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
           </p>
         </div>
         <BudgetWizard
-          categories={categories}
           estimatedIncome={income}
           currency={currency}
         />

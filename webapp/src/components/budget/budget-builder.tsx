@@ -110,7 +110,6 @@ export function BudgetBuilder({ groups, income, currency, hasUncategorized, mode
   const isActive = useCallback(
     (g: CategoryBudgetData) =>
       draft[g.id] !== undefined ||
-      (parseFloat(draft[g.id] ?? "") || 0) > 0 ||
       g.children.some((c) => draft[c.id] !== undefined),
     [draft]
   );

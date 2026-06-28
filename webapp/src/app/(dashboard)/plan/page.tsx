@@ -45,18 +45,19 @@ export default async function PlanPage({
 
   const monthLabel = formatMonthLabel(parseMonth(month));
 
-  // Hide the month selector during first-budget setup (no saved budget yet) —
-  // the wizard is not month-scoped. Only the presupuesto tab needs the check.
-  const showMonthSelector =
-    activeTab !== "presupuesto" || (await getHasSavedBudget());
+  // Shell: lightweight data for header + tab nav badges. getHasSavedBudget runs
+  // in parallel here (only meaningful on the presupuesto tab) to hide the month
+  // selector during first-budget setup — the wizard is not month-scoped.
+  const [, currency, wishlistSummary, activePeriodResult, hasSavedBudget] =
+    await Promise.all([
+      ensureCurrentOccurrences(),
+      getPreferredCurrency(),
+      getWishlistItemsForDashboard(),
+      getActivePeriod(),
+      activeTab === "presupuesto" ? getHasSavedBudget() : Promise.resolve(true),
+    ]);
 
-  // Shell: lightweight data for header + tab nav badges
-  const [, currency, wishlistSummary, activePeriodResult] = await Promise.all([
-    ensureCurrentOccurrences(),
-    getPreferredCurrency(),
-    getWishlistItemsForDashboard(),
-    getActivePeriod(),
-  ]);
+  const showMonthSelector = activeTab !== "presupuesto" || hasSavedBudget;
 
   const isResumen = activeTab === "resumen";
 

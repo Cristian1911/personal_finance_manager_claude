@@ -76,14 +76,6 @@ export function BudgetTxPickerSheet({
       .finally(() => setLoading(false));
   }, [open]);
 
-  const handleOpenChange = (next: boolean) => {
-    if (!next) {
-      setSelected(new Set());
-      setSearch("");
-    }
-    onOpenChange(next);
-  };
-
   const toggleRow = (id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -112,11 +104,15 @@ export function BudgetTxPickerSheet({
       const results = await Promise.all(
         chosen.map((t) => categorizeTransaction(t.id, targetCategoryId)),
       );
-      const failed = results.filter((r) => !r.success).length;
+      const okIds = new Set(
+        chosen.filter((_, i) => results[i].success).map((t) => t.id),
+      );
+      const failed = chosen.length - okIds.size;
       if (failed > 0) {
         toast.error(`No se pudieron categorizar ${failed} movimiento(s)`);
       }
-      onConfirm(sumSelectedTx(chosen, selected));
+      // Fill the budget only with value actually backed by categorized tx.
+      if (okIds.size > 0) onConfirm(sumSelectedTx(chosen, okIds));
       onOpenChange(false);
     } finally {
       setConfirming(false);
@@ -124,7 +120,7 @@ export function BudgetTxPickerSheet({
   }
 
   return (
-    <Drawer open={open} onOpenChange={handleOpenChange}>
+    <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent>
         <DrawerHeader className="text-left">
           <DrawerTitle>Desde transacciones · {targetCategoryName}</DrawerTitle>

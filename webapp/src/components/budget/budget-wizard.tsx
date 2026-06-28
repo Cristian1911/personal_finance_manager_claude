@@ -14,13 +14,11 @@ import {
   PieChart,
 } from "lucide-react";
 import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
-import type { BudgetMode, CategoryBudgetData, CurrencyCode } from "@/types/domain";
+import type { BudgetMode, CurrencyCode } from "@/types/domain";
 
 interface BudgetWizardProps {
-  categories: CategoryBudgetData[];
   estimatedIncome: number;
   currency: CurrencyCode;
-  onComplete?: () => void;
 }
 
 // ── Main Component ──────────────────────────────────────────
