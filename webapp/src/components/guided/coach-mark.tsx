@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 import { getSeenCoachMarks, markCoachMarkSeen } from "@/actions/guided-experience";
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -15,6 +16,17 @@ import { getSeenCoachMarks, markCoachMarkSeen } from "@/actions/guided-experienc
 let seenCache: Set<string> | null = null;
 let inflight: Promise<string[]> | null = null;
 
+// Reset the shared cache on sign-out so a different account in the same tab
+// (SPA, no full reload) doesn't inherit the previous user's seen coach-marks.
+if (typeof window !== "undefined") {
+  createClient().auth.onAuthStateChange((event) => {
+    if (event === "SIGNED_OUT") {
+      seenCache = null;
+      inflight = null;
+    }
+  });
+}
+
 /**
  * Returns `{ show, dismiss }` for a coach-mark id. `show` is false until the
  * server state has loaded (no flash) and stays false once dismissed/seen.
@@ -23,10 +35,9 @@ export function useCoachMark(id: string): { show: boolean; dismiss: () => void }
   const [, force] = useState(0);
 
   useEffect(() => {
-    if (seenCache) {
-      force((n) => n + 1);
-      return;
-    }
+    // Already loaded (e.g. another coach-mark fetched first): render is already
+    // correct (loaded === true), no forced re-render needed.
+    if (seenCache) return;
     if (!inflight) inflight = getSeenCoachMarks();
     let active = true;
     inflight.then((list) => {

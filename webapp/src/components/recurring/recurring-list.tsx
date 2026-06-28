@@ -58,7 +58,7 @@ export function RecurringList({
         icon={<Repeat className="size-6" strokeWidth={1.5} />}
         title="Registra lo que se repite"
         description="Suscripciones, arriendo, cuotas — Zeta te avisa antes de cada cobro."
-        primary={{ label: "Agregar recurrente", href: "/recurrentes/new", icon: Plus }}
+        primary={{ label: "Agregar recurrente", href: "/recurrentes/new", icon: <Plus className="size-4" strokeWidth={1.5} /> }}
         footer={
           <Link
             href="/suscripciones"
