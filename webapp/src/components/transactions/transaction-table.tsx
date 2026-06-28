@@ -54,8 +54,8 @@ export function TransactionTable({
         icon={<Inbox className="size-6" strokeWidth={1.5} />}
         title="Todavía no hay movimientos"
         description="Sube un extracto y aparecen en segundos. Detectamos el banco automáticamente."
-        primary={{ label: "Importar extracto", href: "/import", icon: FileUp }}
-        secondary={{ label: "Agregar a mano", href: "/transactions/new", icon: Plus }}
+        primary={{ label: "Importar extracto", href: "/import", icon: <FileUp className="size-4" strokeWidth={1.5} /> }}
+        secondary={{ label: "Agregar a mano", href: "/transactions/new", icon: <Plus className="size-4" strokeWidth={1.5} /> }}
       />
     );
   }

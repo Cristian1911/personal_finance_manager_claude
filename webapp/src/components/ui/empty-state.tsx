@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import type { LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,9 @@ export type EmptyStateAction = {
   label: string;
   href?: string;
   onClick?: () => void;
-  icon?: LucideIcon;
+  /** Rendered icon element (e.g. `<Plus className="size-4" />`), not a component
+   *  reference — keeps EmptyState serializable from Server Components. */
+  icon?: React.ReactNode;
 };
 
 export interface EmptyStateProps {
@@ -43,10 +44,9 @@ function ActionButton({
   action: EmptyStateAction;
   variant: "brass" | "ghost";
 }) {
-  const Icon = action.icon;
   const content = (
     <>
-      {Icon ? <Icon className="size-4" strokeWidth={1.5} /> : null}
+      {action.icon}
       {action.label}
     </>
   );
