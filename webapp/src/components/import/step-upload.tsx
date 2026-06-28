@@ -145,10 +145,12 @@ export function StepUpload({
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [passwordRequired, setPasswordRequired] = useState(false);
   const [unsupportedFile, setUnsupportedFile] = useState<File | null>(null);
   const [savingForSupport, setSavingForSupport] = useState(false);
   const [savedForSupport, setSavedForSupport] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
   const initialFileProcessed = useRef(false);
 
   useEffect(() => {
@@ -178,6 +180,7 @@ export function StepUpload({
 
   function addFiles(incoming: File[]) {
     setError("");
+    setPasswordRequired(false);
     setUnsupportedFile(null);
     setSavedForSupport(false);
 
@@ -297,7 +300,19 @@ export function StepUpload({
         const data = await res.json();
 
         if (!res.ok) {
-          if (data.errorType === "unsupported_format") {
+          if (data.errorType === "password_required") {
+            void trackClientEvent({
+              event_name: "import_parse_failed",
+              flow: "import",
+              step: "parse",
+              entry_point: "cta",
+              success: false,
+              error_code: "password_required",
+            });
+            setPasswordRequired(true);
+            // Surface the password field immediately — no scroll hunting.
+            requestAnimationFrame(() => passwordInputRef.current?.focus());
+          } else if (data.errorType === "unsupported_format") {
             void trackClientEvent({
               event_name: "import_parse_failed",
               flow: "import",
@@ -430,8 +445,14 @@ export function StepUpload({
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
+        disabled={loading}
         className={cn(
-          "relative flex w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-10 text-center transition-colors",
+          "relative flex w-full rounded-2xl border-2 border-dashed text-center transition-colors disabled:opacity-60",
+          // Hero state: empty. Compact state: once a file is staged the upload
+          // is no longer the primary action — it shrinks to a quiet "add more".
+          files.length === 0
+            ? "flex-col items-center justify-center gap-3 p-10"
+            : "items-center justify-center gap-2 p-3 text-sm",
           dragging
             ? "border-z-brass bg-z-brass/12"
             : "border-z-brass/30 bg-z-brass/8 hover:border-z-brass/60 hover:bg-z-brass/12",
@@ -448,15 +469,28 @@ export function StepUpload({
           if (dropped.length > 0) addFiles(dropped);
         }}
       >
-        <Upload className="h-10 w-10 text-z-brass" />
-        <div>
-          <p className="text-base font-semibold text-z-white">
-            Arrastra o toca para subir
-          </p>
-          <p className="mt-1 text-xs text-z-sage-dark">
-            PDF hasta 10MB · imágenes hasta 20MB c/u — puedes subir varias capturas parciales
-          </p>
-        </div>
+        {files.length === 0 ? (
+          <>
+            <Upload className="h-10 w-10 text-z-brass" />
+            <div>
+              <p className="text-base font-semibold text-z-white">
+                Arrastra o toca para subir
+              </p>
+              <p className="mt-1 text-xs text-z-sage-dark">
+                PDF hasta 10MB · imágenes hasta 20MB c/u — puedes subir varias capturas parciales
+              </p>
+            </div>
+          </>
+        ) : (
+          <>
+            <Upload className="h-4 w-4 text-z-brass" />
+            <span className="font-medium text-z-white">
+              {isImageFile(files[0].name)
+                ? "Agregar otra captura"
+                : "Reemplazar archivo"}
+            </span>
+          </>
+        )}
         <input
           ref={inputRef}
           type="file"
@@ -481,7 +515,7 @@ export function StepUpload({
         <div className="space-y-3">
           <div className="space-y-2">
             {files.map((f, i) => (
-              <div key={`${f.name}-${f.size}`} className="flex items-center gap-3 rounded-md border p-3">
+              <div key={`${f.name}-${f.size}`} className="flex items-center gap-3 rounded-md border border-white/6 bg-z-surface-2/40 p-3">
                 {isImageFile(f.name) ? (
                   <ImageIcon className="h-5 w-5 shrink-0 text-muted-foreground" />
                 ) : (
@@ -507,36 +541,37 @@ export function StepUpload({
               </div>
             ))}
           </div>
-          <Button
-            className={cn(BRASS_BUTTON_CLASS, "w-full")}
-            onClick={handleUpload}
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                {files.length > 1 && processingIndex != null
-                  ? `Procesando ${processingIndex + 1} de ${files.length}…`
-                  : "Procesando..."}
-              </>
-            ) : files.length > 1 ? (
-              `Procesar ${files.length} imágenes`
-            ) : (
-              "Procesar"
-            )}
-          </Button>
           {!isImageFile(files[0].name) && (
             <>
-              <div className="flex items-center gap-3 rounded-md border p-3">
+              {passwordRequired && (
+                <div className="flex items-start gap-2 rounded-md border border-z-alert/30 bg-z-alert/10 p-3 text-sm text-z-alert">
+                  <Lock className="h-4 w-4 shrink-0 mt-0.5" />
+                  <span>
+                    El PDF está protegido con contraseña. Ingrésala para procesarlo.
+                  </span>
+                </div>
+              )}
+              <div
+                className={cn(
+                  "flex items-center gap-3 rounded-md border border-white/6 p-3 transition-colors",
+                  passwordRequired && "!border-z-alert/50 bg-z-alert/5",
+                )}
+              >
                 <Lock className="h-5 w-5 text-muted-foreground shrink-0" />
                 <div className="flex-1 min-w-0">
                   <input
+                    ref={passwordInputRef}
                     type="password"
-                    placeholder="Contraseña del PDF (opcional)"
+                    placeholder={
+                      passwordRequired
+                        ? "Contraseña del PDF (requerida)"
+                        : "Contraseña del PDF (opcional)"
+                    }
                     value={password}
                     onChange={(e) => {
                       setPassword(e.target.value);
                       setPasswordFromVault(false);
+                      setPasswordRequired(false);
                     }}
                     className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                     {...NO_PASSWORD_AUTOFILL_PROPS}
@@ -609,6 +644,24 @@ export function StepUpload({
               </p>
             </>
           )}
+          <Button
+            className={cn(BRASS_BUTTON_CLASS, "w-full")}
+            onClick={handleUpload}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                {files.length > 1 && processingIndex != null
+                  ? `Procesando ${processingIndex + 1} de ${files.length}…`
+                  : "Procesando..."}
+              </>
+            ) : files.length > 1 ? (
+              `Procesar ${files.length} imágenes`
+            ) : (
+              "Procesar"
+            )}
+          </Button>
         </div>
       )}
 
