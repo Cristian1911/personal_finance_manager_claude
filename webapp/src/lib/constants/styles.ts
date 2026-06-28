@@ -1,5 +1,6 @@
 /** Obsidian & Brass design token: primary action button */
-export const BRASS_BUTTON_CLASS = "bg-z-brass text-z-ink hover:bg-z-brass/90";
+export const BRASS_BUTTON_CLASS =
+  "bg-gradient-to-b from-z-brass-hot to-z-brass text-z-ink hover:brightness-110";
 
 /** Obsidian & Brass design token: secondary/ghost button */
 export const GHOST_BUTTON_CLASS =
