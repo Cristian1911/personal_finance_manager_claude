@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -18,6 +18,7 @@ import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { CategoryIcon } from "@/components/categories/category-icon";
 import { BudgetGroupLines } from "./budget-group-lines";
 import { BudgetTxPickerSheet } from "./budget-tx-picker-sheet";
+import { BudgetCategoryAddSheet } from "./budget-category-add-sheet";
 import { applyBudgetComposition } from "@/actions/budgets";
 import { setBudgetMode } from "@/actions/budget";
 import { createCategory } from "@/actions/categories";
@@ -66,6 +67,7 @@ export function BudgetBuilder({ groups, income, currency, hasUncategorized, mode
   // Subcategories created inline during this session, newest appended.
   const [createdSubs, setCreatedSubs] = useState<Record<string, { parentId: string; name: string }>>({});
   const [picker, setPicker] = useState<{ id: string; name: string } | null>(null);
+  const [addPicker, setAddPicker] = useState<{ title: string; categories: CategoryBudgetData[] } | null>(null);
 
   const diff = useMemo(
     () => computeCompositionDiff(initial, toNumberMap(draft)),
@@ -238,33 +240,26 @@ export function BudgetBuilder({ groups, income, currency, hasUncategorized, mode
     );
   }
 
-  function renderAddChips(avail: CategoryBudgetData[]) {
+  function addCategory(categoryId: string) {
+    setLine(categoryId, "");
+    setOpenId(categoryId);
+  }
+
+  // Progressive disclosure: one quiet row instead of the chip wall. Opens a
+  // picker with the available categories (per set, or all in flat mode).
+  function renderAddRow(avail: CategoryBudgetData[], title: string) {
     if (avail.length === 0) return null;
     return (
-      <div className="space-y-2">
-        <p className={SECTION_EYEBROW_CLASS}>Agregar categoría</p>
-        <div className="flex flex-wrap gap-1.5">
-          {avail.map((g) => (
-            <button
-              key={g.id}
-              type="button"
-              onClick={() => {
-                setLine(g.id, "");
-                setOpenId(g.id);
-              }}
-              className="flex items-center gap-1.5 rounded-full border border-dashed border-white/6 px-2.5 py-1 text-[11px] text-z-sage-light transition-colors active:bg-white/5"
-            >
-              <span
-                className="flex size-4 items-center justify-center rounded"
-                style={{ backgroundColor: `color-mix(in srgb, ${g.color} 18%, transparent)`, color: g.color }}
-              >
-                <CategoryIcon icon={g.icon} className="size-2.5" />
-              </span>
-              {g.name_es ?? g.name}
-            </button>
-          ))}
-        </div>
-      </div>
+      <button
+        type="button"
+        onClick={() => setAddPicker({ title, categories: avail })}
+        className="flex w-full items-center gap-2 rounded-xl border border-dashed border-white/6 px-3 py-2.5 text-left text-[12.5px] font-medium text-z-brass transition-colors active:bg-white/5"
+      >
+        <span className="flex size-5 items-center justify-center rounded-md bg-z-brass/12">
+          <Plus className="size-3" strokeWidth={2.5} />
+        </span>
+        Agregar categoría
+      </button>
     );
   }
 
@@ -290,8 +285,7 @@ export function BudgetBuilder({ groups, income, currency, hasUncategorized, mode
         </div>
 
         <p className="text-xs text-muted-foreground">
-          Arma cada grupo por líneas: lo fijo viene de tus recurrentes, lo variable de tus
-          promedios. La suma define el límite del grupo.
+          Presupuesta <span className="text-z-income">solo lo que te importa</span> — no tienes que llenar todo.
         </p>
 
         {/* Sticky progress — always visible, no scroll needed */}
@@ -345,23 +339,23 @@ export function BudgetBuilder({ groups, income, currency, hasUncategorized, mode
             const over = assigned > s.cap;
             const pct = Math.round((s.cap / income) * 100);
             return (
-              <div key={s.set} className="space-y-2">
-                <div className="space-y-1.5 rounded-xl border border-white/6 bg-z-surface-2/60 p-3">
-                  <div className="flex items-baseline justify-between gap-2 text-sm font-semibold">
-                    <span>
-                      {s.label}{" "}
-                      <span className="font-normal text-muted-foreground">{pct}%</span>
-                    </span>
+              <div key={s.set} className="space-y-2 pt-1">
+                {/* Set header — eyebrow + thin cap bar (calm, not a card) */}
+                <div className="space-y-1 px-0.5">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className={SECTION_EYEBROW_CLASS}>
+                      {s.label} · {pct}%
+                    </p>
                     <span
                       className={cn(
-                        "text-xs tabular-nums",
+                        "text-[11px] tabular-nums",
                         over ? "text-z-debt" : "text-z-income"
                       )}
                     >
                       {formatCurrency(assigned, currency)} / {formatCurrency(s.cap, currency)}
                     </span>
                   </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-white/8">
+                  <div className="h-1 overflow-hidden rounded-full bg-white/6">
                     <div
                       className={cn("h-full rounded-full", over ? "bg-z-debt" : "bg-z-brass")}
                       style={{ width: `${s.cap > 0 ? Math.min(100, (assigned / s.cap) * 100) : 0}%` }}
@@ -369,14 +363,14 @@ export function BudgetBuilder({ groups, income, currency, hasUncategorized, mode
                   </div>
                 </div>
                 {setActive.map(renderGroup)}
-                {renderAddChips(setAvail)}
+                {renderAddRow(setAvail, `Agregar a ${s.label}`)}
               </div>
             );
           })
         ) : (
           <>
             {activeGroups.map(renderGroup)}
-            {renderAddChips(availableGroups)}
+            {renderAddRow(availableGroups, "Agregar categoría")}
           </>
         )}
 
@@ -404,6 +398,16 @@ export function BudgetBuilder({ groups, income, currency, hasUncategorized, mode
           targetCategoryName={picker.name}
           currency={currency}
           onConfirm={(sum) => { setLine(picker.id, String(sum)); setPicker(null); }}
+        />
+      )}
+
+      {addPicker && (
+        <BudgetCategoryAddSheet
+          open={!!addPicker}
+          onOpenChange={(o) => { if (!o) setAddPicker(null); }}
+          title={addPicker.title}
+          categories={addPicker.categories}
+          onPick={addCategory}
         />
       )}
 
