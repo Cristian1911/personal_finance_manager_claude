@@ -5,15 +5,12 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { CurrencyInput } from "@/components/ui/currency-input";
-import { CategoryIcon } from "@/components/categories/category-icon";
 import { Button } from "@/components/ui/button";
 import {
   setBudgetMode,
   updateEstimatedIncome,
-  bulkUpsertBudgets,
 } from "@/actions/budget";
 import {
-  Loader2,
   CheckCircle2,
   Feather,
   Gauge,
@@ -34,100 +31,32 @@ interface BudgetWizardProps {
 // ── Main Component ──────────────────────────────────────────
 
 export function BudgetWizard({
-  categories,
   estimatedIncome,
   currency,
   allocationData,
-  onComplete,
 }: BudgetWizardProps) {
   const router = useRouter();
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2>(1);
   const [selectedMode, setSelectedMode] = useState<BudgetMode | null>(null);
   const [income, setIncome] = useState(estimatedIncome);
-  const [allocations, setAllocations] = useState<Record<string, number>>({});
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
-  const outflowParents = categories.filter((c) => c.direction === "OUTFLOW");
-
-  // Pre-fill allocations with 50/30/20 when entering step 3
-  function initAllocations() {
-    const fixed = outflowParents.filter((c) => c.expense_type === "fixed");
-    const variable = outflowParents.filter(
-      (c) => c.expense_type === "variable" || c.expense_type === null
-    );
-    const savings = outflowParents.filter(
-      (c) => c.slug === "ahorro-e-inversion"
-    );
-
-    const variableMinusSavings = variable.filter(
-      (c) => c.slug !== "ahorro-e-inversion"
-    );
-
-    const fixedTotal = income * 0.5;
-    const variableTotal = income * 0.3;
-    const savingsTotal = income * 0.2;
-
-    const allocs: Record<string, number> = {};
-
-    const distributeEvenly = (
-      cats: CategoryBudgetData[],
-      total: number
-    ) => {
-      if (cats.length === 0) return;
-      const perCat = Math.round(total / cats.length);
-      cats.forEach((c) => {
-        allocs[c.id] = perCat;
-      });
-    };
-
-    distributeEvenly(fixed, fixedTotal);
-    distributeEvenly(variableMinusSavings, variableTotal);
-    distributeEvenly(savings, savingsTotal);
-
-    outflowParents.forEach((c) => {
-      if (!(c.id in allocs)) {
-        allocs[c.id] = 0;
-      }
-    });
-
-    setAllocations(allocs);
-  }
-
-  function handleGoToStep3() {
+  function handleStartBuilding() {
     if (!selectedMode) return;
-    initAllocations();
-    setStep(3);
-  }
-
-  function handleFinalize() {
     startTransition(async () => {
-      if (!selectedMode) return;
-
-      const budgets = Object.entries(allocations)
-        .filter(([, amount]) => amount > 0)
-        .map(([category_id, amount]) => ({ category_id, amount }));
-
       await Promise.all([
         setBudgetMode(selectedMode),
         updateEstimatedIncome(income),
-        bulkUpsertBudgets(budgets),
       ]);
-      router.refresh();
-      onComplete?.();
+      router.push("/presupuesto/armar");
     });
   }
-
-  const totalAllocated = Object.values(allocations).reduce(
-    (sum, v) => sum + v,
-    0
-  );
-  const remaining = income - totalAllocated;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       {/* Step indicator */}
       <div className="flex items-center justify-center gap-2">
-        {[1, 2, 3].map((s) => (
+        {[1, 2].map((s) => (
           <div
             key={s}
             className={cn(
@@ -141,7 +70,7 @@ export function BudgetWizard({
           />
         ))}
         <span className="ml-2 text-xs text-muted-foreground">
-          Paso {step} de 3
+          Paso {step} de 2
         </span>
       </div>
 
@@ -163,27 +92,8 @@ export function BudgetWizard({
           income={income}
           currency={currency}
           allocationData={allocationData ?? null}
-          onContinue={handleGoToStep3}
+          onContinue={handleStartBuilding}
           onBack={() => setStep(1)}
-        />
-      )}
-
-      {/* Step 3: Allocation */}
-      {step === 3 && (
-        <StepAllocation
-          mode={selectedMode!}
-          categories={outflowParents}
-          allocations={allocations}
-          income={income}
-          totalAllocated={totalAllocated}
-          remaining={remaining}
-          currency={currency}
-          isPending={isPending}
-          onUpdateAllocation={(id, amount) =>
-            setAllocations((prev) => ({ ...prev, [id]: amount }))
-          }
-          onFinalize={handleFinalize}
-          onBack={() => setStep(2)}
         />
       )}
     </div>
@@ -564,155 +474,6 @@ function ReferenceBreakdown({
           </p>
         </div>
       )}
-    </div>
-  );
-}
-
-// ── Step 3: Allocation ──────────────────────────────────────
-
-function StepAllocation({
-  mode,
-  categories,
-  allocations,
-  income,
-  totalAllocated,
-  remaining,
-  currency,
-  isPending,
-  onUpdateAllocation,
-  onFinalize,
-  onBack,
-}: {
-  mode: BudgetMode;
-  categories: CategoryBudgetData[];
-  allocations: Record<string, number>;
-  income: number;
-  totalAllocated: number;
-  remaining: number;
-  currency: CurrencyCode;
-  isPending: boolean;
-  onUpdateAllocation: (id: string, amount: number) => void;
-  onFinalize: () => void;
-  onBack: () => void;
-}) {
-  const remainingPct = income > 0 ? (remaining / income) * 100 : 0;
-
-  const remainingColor =
-    mode === "zero_based"
-      ? remaining === 0
-        ? "text-z-income"
-        : remaining < 0
-          ? "text-z-debt"
-          : remainingPct <= 10
-            ? "text-z-expense"
-            : "text-z-income"
-      : "text-muted-foreground";
-
-  return (
-    <div className="space-y-6">
-      <div className="space-y-2 text-center">
-        <h2 className="text-xl font-semibold">Asigna tu primer presupuesto</h2>
-        <p className="text-sm text-muted-foreground">
-          {mode === "per_category"
-            ? "Asigna lo que quieras a cada categoría. No necesitas cuadrar todo."
-            : "Asigna cada peso de tu ingreso. El objetivo es llegar a $0 disponible."}
-        </p>
-      </div>
-
-      {/* Zero-based: sticky remaining bar */}
-      {mode === "zero_based" && (
-        <div
-          className={cn(
-            "sticky top-0 z-10 flex items-center justify-between rounded-xl border border-white/6 bg-card px-4 py-3",
-            remaining === 0 && "border-z-income/30",
-            remaining < 0 && "border-z-debt/30"
-          )}
-        >
-          <span className="text-sm font-medium">Disponible para asignar</span>
-          <div className="flex items-center gap-2">
-            <span className={cn("text-lg font-bold", remainingColor)}>
-              {formatCurrency(remaining, currency)}
-            </span>
-            {remaining === 0 && (
-              <CheckCircle2 className="size-5 text-z-income" />
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Category list */}
-      <div className="space-y-2">
-        {categories.map((cat) => (
-          <div
-            key={cat.id}
-            className="flex items-center gap-3 rounded-xl border border-white/6 bg-card px-4 py-3"
-          >
-            <span
-              className="flex size-8 shrink-0 items-center justify-center rounded-lg"
-              style={{
-                backgroundColor: `${cat.color}20`,
-                color: cat.color,
-              }}
-            >
-              <CategoryIcon icon={cat.icon} className="size-4" />
-            </span>
-
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">
-                {cat.name_es ?? cat.name}
-              </p>
-              {cat.expense_type && (
-                <p className="text-xs text-muted-foreground">
-                  {cat.expense_type === "fixed" ? "Fijo" : "Variable"}
-                </p>
-              )}
-            </div>
-
-            <div className="w-32 shrink-0">
-              <CurrencyInput
-                value={allocations[cat.id] ?? 0}
-                onChange={(e) => {
-                  const v = parseFloat(e.target.value);
-                  onUpdateAllocation(cat.id, isNaN(v) ? 0 : v);
-                }}
-                className="h-9 text-right text-sm"
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Summary */}
-      <div className="flex items-center justify-between rounded-xl bg-muted/50 px-4 py-3">
-        <span className="text-sm text-muted-foreground">Total asignado</span>
-        <span className="text-sm font-semibold">
-          {formatCurrency(totalAllocated, currency)}{" "}
-          <span className="font-normal text-muted-foreground">
-            de {formatCurrency(income, currency)}
-          </span>
-        </span>
-      </div>
-
-      {/* Actions */}
-      <div className="flex justify-between">
-        <Button variant="outline" onClick={onBack} disabled={isPending}>
-          Atrás
-        </Button>
-        <Button
-          onClick={onFinalize}
-          disabled={isPending}
-          className={BRASS_BUTTON_CLASS}
-        >
-          {isPending ? (
-            <>
-              <Loader2 className="mr-2 size-4 animate-spin" />
-              Guardando...
-            </>
-          ) : (
-            "Finalizar"
-          )}
-        </Button>
-      </div>
     </div>
   );
 }
