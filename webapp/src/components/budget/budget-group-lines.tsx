@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Minus } from "lucide-react";
+import { Plus, Minus, ListPlus } from "lucide-react";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -22,6 +22,10 @@ interface BudgetGroupLinesProps {
   onCreateSub?: (name: string) => Promise<string | null>;
   /** Composer mode: show real spend next to each line. */
   showSpend?: boolean;
+  /** Opens the transaction picker for this group (fills the base line from picked tx). */
+  onPickFromTransactions?: (categoryId: string, categoryName: string) => void;
+  /** True when there are uncategorized tx available — gates the "Desde transacciones" chip. */
+  hasUncategorized?: boolean;
 }
 
 export function BudgetGroupLines({
@@ -33,6 +37,8 @@ export function BudgetGroupLines({
   onRemoveLine,
   onCreateSub,
   showSpend = false,
+  onPickFromTransactions,
+  hasUncategorized = false,
 }: BudgetGroupLinesProps) {
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
@@ -105,7 +111,7 @@ export function BudgetGroupLines({
         />
       ))}
 
-      {(suggested.length > 0 || pickable.length > 0 || onCreateSub) && (
+      {(suggested.length > 0 || pickable.length > 0 || onCreateSub || (onPickFromTransactions && hasUncategorized)) && (
         <div className="flex flex-wrap gap-1.5 pt-1">
           {suggested.map((child) => (
             <button
@@ -130,6 +136,16 @@ export function BudgetGroupLines({
               + {child.name_es ?? child.name}
             </button>
           ))}
+
+          {onPickFromTransactions && hasUncategorized && (
+            <button
+              type="button"
+              onClick={() => onPickFromTransactions(group.id, group.name_es ?? group.name)}
+              className="flex items-center gap-1 rounded-full border border-dashed border-z-brass/40 bg-z-brass/8 px-2.5 py-1 text-[10px] font-medium text-z-brass transition-colors active:bg-z-brass/14"
+            >
+              <ListPlus className="size-2.5" strokeWidth={2} /> Desde transacciones
+            </button>
+          )}
 
           {onCreateSub && !creating && (
             <button

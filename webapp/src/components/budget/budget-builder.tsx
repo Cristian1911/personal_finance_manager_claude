@@ -17,6 +17,7 @@ import {
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { CategoryIcon } from "@/components/categories/category-icon";
 import { BudgetGroupLines } from "./budget-group-lines";
+import { BudgetTxPickerSheet } from "./budget-tx-picker-sheet";
 import { applyBudgetComposition } from "@/actions/budgets";
 import { createCategory } from "@/actions/categories";
 import { computeCompositionDiff } from "@/lib/utils/budget-rollup";
@@ -31,6 +32,7 @@ interface BudgetBuilderProps {
   groups: CategoryBudgetData[];
   income: number;
   currency: CurrencyCode;
+  hasUncategorized: boolean;
 }
 
 function initialDraft(groups: CategoryBudgetData[]): Record<string, string> {
@@ -50,7 +52,7 @@ function toNumberMap(draft: Record<string, string>): Record<string, number> {
   return out;
 }
 
-export function BudgetBuilder({ groups, income, currency }: BudgetBuilderProps) {
+export function BudgetBuilder({ groups, income, currency, hasUncategorized }: BudgetBuilderProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const initial = useMemo(() => toNumberMap(initialDraft(groups)), [groups]);
@@ -60,6 +62,7 @@ export function BudgetBuilder({ groups, income, currency }: BudgetBuilderProps) 
   const [exitConfirm, setExitConfirm] = useState(false);
   // Subcategories created inline during this session, newest appended.
   const [createdSubs, setCreatedSubs] = useState<Record<string, { parentId: string; name: string }>>({});
+  const [picker, setPicker] = useState<{ id: string; name: string } | null>(null);
 
   const diff = useMemo(
     () => computeCompositionDiff(initial, toNumberMap(draft)),
@@ -276,6 +279,8 @@ export function BudgetBuilder({ groups, income, currency }: BudgetBuilderProps) 
                     onAddLine={(id, prefill) => setLine(id, prefill)}
                     onRemoveLine={removeLine}
                     onCreateSub={(name) => handleCreateSub(g.id, name)}
+                    onPickFromTransactions={(id, name) => setPicker({ id, name })}
+                    hasUncategorized={hasUncategorized}
                   />
                 </div>
               )}
@@ -317,6 +322,17 @@ export function BudgetBuilder({ groups, income, currency }: BudgetBuilderProps) 
           </button>
         </div>
       </div>
+
+      {picker && (
+        <BudgetTxPickerSheet
+          open={!!picker}
+          onOpenChange={(o) => { if (!o) setPicker(null); }}
+          targetCategoryId={picker.id}
+          targetCategoryName={picker.name}
+          currency={currency}
+          onConfirm={(sum) => { setLine(picker.id, String(sum)); setPicker(null); }}
+        />
+      )}
 
       <AlertDialog open={exitConfirm} onOpenChange={setExitConfirm}>
         <AlertDialogContent>
