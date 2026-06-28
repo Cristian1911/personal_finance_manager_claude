@@ -357,6 +357,7 @@ function CreateFromMerchantDialog({
                 type="button"
                 role="radio"
                 aria-checked={kind === "merchant"}
+                tabIndex={kind === "merchant" ? 0 : -1}
                 onClick={() => setKind("merchant")}
                 className={cn(
                   "rounded-lg border px-3 py-2 text-left text-sm transition-colors",
@@ -371,6 +372,7 @@ function CreateFromMerchantDialog({
                 type="button"
                 role="radio"
                 aria-checked={kind === "person"}
+                tabIndex={kind === "person" ? 0 : -1}
                 onClick={() => setKind("person")}
                 className={cn(
                   "rounded-lg border px-3 py-2 text-left text-sm transition-colors",

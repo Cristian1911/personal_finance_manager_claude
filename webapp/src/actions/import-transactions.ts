@@ -1162,12 +1162,17 @@ export async function importTransactions(
   // existing idempotency keys up front, then batch-insert only the new rows.
   const uniqueKeys = [...new Set(idempotencyKeys)];
   const existingKeys = new Set<string>();
-  for (const chunk of chunkArray(uniqueKeys, 100)) {
-    const { data: existingRows, error: existingErr } = await supabase
-      .from("transactions")
-      .select("idempotency_key")
-      .eq("user_id", user.id)
-      .in("idempotency_key", chunk);
+  // Independent reads — run the chunk lookups concurrently to cut latency.
+  const existingKeyResults = await Promise.all(
+    chunkArray(uniqueKeys, 100).map((chunk) =>
+      supabase
+        .from("transactions")
+        .select("idempotency_key")
+        .eq("user_id", user.id)
+        .in("idempotency_key", chunk),
+    ),
+  );
+  for (const { data: existingRows, error: existingErr } of existingKeyResults) {
     if (existingErr) {
       // Non-fatal: fall back to the DB unique constraint catching dupes during
       // insert (handled by the per-row fallback below).
