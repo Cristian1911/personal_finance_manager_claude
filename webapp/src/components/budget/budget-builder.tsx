@@ -19,12 +19,13 @@ import { CategoryIcon } from "@/components/categories/category-icon";
 import { BudgetGroupLines } from "./budget-group-lines";
 import { BudgetTxPickerSheet } from "./budget-tx-picker-sheet";
 import { applyBudgetComposition } from "@/actions/budgets";
+import { setBudgetMode } from "@/actions/budget";
 import { createCategory } from "@/actions/categories";
 import { computeCompositionDiff } from "@/lib/utils/budget-rollup";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { BRASS_BUTTON_CLASS, PANEL_INSET_CLASS, SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
-import type { CategoryBudgetData, CurrencyCode } from "@/types/domain";
+import type { CategoryBudgetData, CurrencyCode, BudgetMode } from "@/types/domain";
 
 const BACK_TARGET = "/plan?tab=presupuesto";
 
@@ -33,6 +34,7 @@ interface BudgetBuilderProps {
   income: number;
   currency: CurrencyCode;
   hasUncategorized: boolean;
+  mode: BudgetMode;
 }
 
 function initialDraft(groups: CategoryBudgetData[]): Record<string, string> {
@@ -52,7 +54,7 @@ function toNumberMap(draft: Record<string, string>): Record<string, number> {
   return out;
 }
 
-export function BudgetBuilder({ groups, income, currency, hasUncategorized }: BudgetBuilderProps) {
+export function BudgetBuilder({ groups, income, currency, hasUncategorized, mode }: BudgetBuilderProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const initial = useMemo(() => toNumberMap(initialDraft(groups)), [groups]);
@@ -152,6 +154,8 @@ export function BudgetBuilder({ groups, income, currency, hasUncategorized }: Bu
         toast.error(result.error || "No se pudo guardar el presupuesto");
         return;
       }
+      // Persist the budget mode only now — a real budget was saved.
+      await setBudgetMode(mode);
       toast.success("Presupuesto guardado");
       startTransition(() => router.push(BACK_TARGET));
     } finally {

@@ -113,8 +113,10 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
       verdict: normalizeVerdict(w.last_verdict),
     }));
 
-  // If no budget mode configured yet, show wizard
-  if (!budgetMode) {
+  // Show the wizard until a real budget exists. budget_mode alone is not
+  // enough — it can be set without any saved budget rows (the user may have
+  // entered the builder and left); require at least one budgeted category.
+  if (!budgetMode || withBudget === 0) {
     return (
       <div className="mx-auto max-w-2xl space-y-6">
         <div>

@@ -6,10 +6,7 @@ import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Button } from "@/components/ui/button";
-import {
-  setBudgetMode,
-  updateEstimatedIncome,
-} from "@/actions/budget";
+import { updateEstimatedIncome } from "@/actions/budget";
 import {
   CheckCircle2,
   Feather,
@@ -44,11 +41,11 @@ export function BudgetWizard({
   function handleStartBuilding() {
     if (!selectedMode) return;
     startTransition(async () => {
-      await Promise.all([
-        setBudgetMode(selectedMode),
-        updateEstimatedIncome(income),
-      ]);
-      router.push("/presupuesto/armar");
+      // Persist income now; budget_mode is set only when the builder saves a
+      // real budget (avoids the "mode set, zero budgets" limbo). The chosen
+      // mode travels to the builder via the query string.
+      await updateEstimatedIncome(income);
+      router.push(`/presupuesto/armar?mode=${selectedMode}`);
     });
   }
 

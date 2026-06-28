@@ -3,6 +3,7 @@
 import { updateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import type { ActionResult } from "@/types/actions";
+import type { BudgetMode } from "@/types/domain";
 
 // ── Get budget mode ──────────────────────────────────────
 
@@ -23,7 +24,7 @@ export async function getBudgetMode(): Promise<ActionResult<string | null>> {
 // ── Set budget mode ──────────────────────────────────────
 
 export async function setBudgetMode(
-  mode: "per_category" | "zero_based",
+  mode: BudgetMode,
 ): Promise<ActionResult<null>> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
