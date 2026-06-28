@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { updateEstimatedIncome } from "@/actions/budget";
 import {
   CheckCircle2,
@@ -39,7 +40,11 @@ export function BudgetWizard({
       // Persist income now; budget_mode is set only when the builder saves a
       // real budget (avoids the "mode set, zero budgets" limbo). The chosen
       // mode travels to the builder via the query string.
-      await updateEstimatedIncome(income);
+      const result = await updateEstimatedIncome(income);
+      if (!result.success) {
+        toast.error(result.error || "No se pudo guardar el ingreso");
+        return;
+      }
       router.push(`/presupuesto/armar?mode=${selectedMode}`);
     });
   }

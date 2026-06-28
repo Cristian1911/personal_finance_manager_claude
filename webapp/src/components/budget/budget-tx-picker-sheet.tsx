@@ -102,7 +102,12 @@ export function BudgetTxPickerSheet({
     try {
       const chosen = txs.filter((t) => selected.has(t.id));
       const results = await Promise.all(
-        chosen.map((t) => categorizeTransaction(t.id, targetCategoryId)),
+        chosen.map((t) =>
+          categorizeTransaction(t.id, targetCategoryId).catch((e) => ({
+            success: false as const,
+            error: e instanceof Error ? e.message : String(e),
+          })),
+        ),
       );
       const okIds = new Set(
         chosen.filter((_, i) => results[i].success).map((t) => t.id),
@@ -114,6 +119,8 @@ export function BudgetTxPickerSheet({
       // Fill the budget only with value actually backed by categorized tx.
       if (okIds.size > 0) onConfirm(sumSelectedTx(chosen, okIds));
       onOpenChange(false);
+    } catch {
+      toast.error("Ocurrió un error al categorizar las transacciones");
     } finally {
       setConfirming(false);
     }

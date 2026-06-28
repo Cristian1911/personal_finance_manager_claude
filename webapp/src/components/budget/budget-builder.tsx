@@ -170,6 +170,8 @@ export function BudgetBuilder({ groups, income, currency, hasUncategorized, mode
           : "Presupuesto guardado, pero no se pudo guardar el modo"
       );
       startTransition(() => router.push(BACK_TARGET));
+    } catch {
+      toast.error("Ocurrió un error al guardar el presupuesto");
     } finally {
       setSaving(false);
     }
