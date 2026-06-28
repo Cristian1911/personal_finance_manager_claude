@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Feather,
   Gauge,
+  PieChart,
   AlertTriangle,
 } from "lucide-react";
 import type { AllocationData } from "@/actions/allocation";
@@ -182,7 +183,7 @@ function StepStylePreview({
       </div>
 
       {/* Style cards */}
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-3">
         <StyleCard
           mode="per_category"
           title="Flexible"
@@ -200,6 +201,15 @@ function StepStylePreview({
           icon={<Gauge className="size-5" />}
           selected={selectedMode === "zero_based"}
           onSelect={() => onSelect("zero_based")}
+        />
+        <StyleCard
+          mode="50_30_20"
+          title="50/30/20"
+          description="Reparte por sets: 50% necesidades, 30% deseos, 20% ahorro y deuda."
+          badge="Equilibrio simple"
+          icon={<PieChart className="size-5" />}
+          selected={selectedMode === "50_30_20"}
+          onSelect={() => onSelect("50_30_20")}
         />
       </div>
 
@@ -303,6 +313,35 @@ function StylePreview({ mode }: { mode: BudgetMode }) {
           { label: "Hogar", w: "65%", color: "bg-z-sage-dark/60" },
           { label: "Comida", w: "40%", color: "bg-z-sage-dark/60" },
           { label: "Transporte", w: "80%", color: "bg-z-expense/60" },
+        ].map((item) => (
+          <div key={item.label} className="space-y-0.5">
+            <div className="flex items-center justify-between text-[9px] text-muted-foreground">
+              <span>{item.label}</span>
+              <span>{item.w}</span>
+            </div>
+            <div className="h-2 rounded-full bg-muted/50">
+              <div
+                className={cn("h-full rounded-full", item.color)}
+                style={{ width: item.w }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (mode === "50_30_20") {
+    // 50/30/20: the three sets at their target weights
+    return (
+      <div className="space-y-1.5 rounded-lg border border-white/6 bg-z-surface-2 p-3">
+        <div className="text-[10px] font-medium text-muted-foreground">
+          Vista previa
+        </div>
+        {[
+          { label: "Necesidades", w: "50%", color: "bg-z-sage-dark/60" },
+          { label: "Deseos", w: "30%", color: "bg-z-sage-dark/60" },
+          { label: "Ahorro", w: "20%", color: "bg-z-income/60" },
         ].map((item) => (
           <div key={item.label} className="space-y-0.5">
             <div className="flex items-center justify-between text-[9px] text-muted-foreground">

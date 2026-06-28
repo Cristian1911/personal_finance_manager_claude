@@ -22,6 +22,7 @@ import { applyBudgetComposition } from "@/actions/budgets";
 import { setBudgetMode } from "@/actions/budget";
 import { createCategory } from "@/actions/categories";
 import { computeCompositionDiff } from "@/lib/utils/budget-rollup";
+import { groupCategoriesByAllocationSet } from "@/lib/utils/allocation-sets";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { BRASS_BUTTON_CLASS, PANEL_INSET_CLASS, SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
@@ -168,6 +169,98 @@ export function BudgetBuilder({ groups, income, currency, hasUncategorized, mode
     else router.push(BACK_TARGET);
   }
 
+  // 50/30/20 mode groups categories into 3 sets with salary-based caps.
+  // Caps need an income; without one we fall back to the flat list.
+  const allocationSets =
+    mode === "50_30_20" && income > 0
+      ? groupCategoriesByAllocationSet(groups, income)
+      : null;
+
+  function renderGroup(g: CategoryBudgetData) {
+    const open = openId === g.id;
+    const totalG = groupTotal(g);
+    const enriched = groupWithCreated(g);
+    return (
+      <section
+        key={g.id}
+        className={cn(PANEL_INSET_CLASS, "p-3", open && "border-z-brass/30")}
+      >
+        <button
+          type="button"
+          onClick={() => setOpenId(open ? null : g.id)}
+          aria-expanded={open}
+          className="flex w-full items-center justify-between gap-2 text-left"
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            <span
+              className="flex size-6 shrink-0 items-center justify-center rounded-md"
+              style={{ backgroundColor: `${g.color}20`, color: g.color }}
+            >
+              <CategoryIcon icon={g.icon} className="size-3.5" />
+            </span>
+            <span className="truncate text-sm font-semibold">{g.name_es ?? g.name}</span>
+          </span>
+          <span className="flex shrink-0 items-center gap-1.5">
+            <span className="text-sm font-semibold tabular-nums text-z-brass">
+              {totalG > 0 ? formatCurrency(totalG, currency) : "—"}
+            </span>
+            {open ? (
+              <ChevronDown className="size-3.5 text-z-sage-dark" strokeWidth={1.5} />
+            ) : (
+              <ChevronRight className="size-3.5 text-z-sage-dark" strokeWidth={1.5} />
+            )}
+          </span>
+        </button>
+
+        {open && (
+          <div className="mt-3">
+            <BudgetGroupLines
+              group={enriched}
+              currency={currency}
+              draft={draft}
+              onChange={setLine}
+              onAddLine={(id, prefill) => setLine(id, prefill)}
+              onRemoveLine={removeLine}
+              onCreateSub={(name) => handleCreateSub(g.id, name)}
+              onPickFromTransactions={(id, name) => setPicker({ id, name })}
+              hasUncategorized={hasUncategorized}
+            />
+          </div>
+        )}
+      </section>
+    );
+  }
+
+  function renderAddChips(avail: CategoryBudgetData[]) {
+    if (avail.length === 0) return null;
+    return (
+      <div className="space-y-2">
+        <p className={SECTION_EYEBROW_CLASS}>Agregar categoría</p>
+        <div className="flex flex-wrap gap-1.5">
+          {avail.map((g) => (
+            <button
+              key={g.id}
+              type="button"
+              onClick={() => {
+                setLine(g.id, "");
+                setOpenId(g.id);
+              }}
+              className="flex items-center gap-1.5 rounded-full border border-dashed border-white/6 px-2.5 py-1 text-[11px] text-z-sage-light transition-colors active:bg-white/5"
+            >
+              <span
+                className="flex size-4 items-center justify-center rounded"
+                style={{ backgroundColor: `color-mix(in srgb, ${g.color} 18%, transparent)`, color: g.color }}
+              >
+                <CategoryIcon icon={g.icon} className="size-2.5" />
+              </span>
+              {g.name_es ?? g.name}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="pb-8">
       <MobileHeader
@@ -237,78 +330,47 @@ export function BudgetBuilder({ groups, income, currency, hasUncategorized, mode
           </p>
         )}
 
-        {activeGroups.map((g) => {
-          const open = openId === g.id;
-          const totalG = groupTotal(g);
-          const enriched = groupWithCreated(g);
-          return (
-            <section
-              key={g.id}
-              className={cn(PANEL_INSET_CLASS, "p-3", open && "border-z-brass/30")}
-            >
-              <button
-                type="button"
-                onClick={() => setOpenId(open ? null : g.id)}
-                aria-expanded={open}
-                className="flex w-full items-center justify-between gap-2 text-left"
-              >
-                <span className="flex min-w-0 items-center gap-2">
-                  <span
-                    className="flex size-6 shrink-0 items-center justify-center rounded-md"
-                    style={{ backgroundColor: `${g.color}20`, color: g.color }}
-                  >
-                    <CategoryIcon icon={g.icon} className="size-3.5" />
-                  </span>
-                  <span className="truncate text-sm font-semibold">{g.name_es ?? g.name}</span>
-                </span>
-                <span className="flex shrink-0 items-center gap-1.5">
-                  <span className="text-sm font-semibold tabular-nums text-z-brass">
-                    {totalG > 0 ? formatCurrency(totalG, currency) : "—"}
-                  </span>
-                  {open ? (
-                    <ChevronDown className="size-3.5 text-z-sage-dark" strokeWidth={1.5} />
-                  ) : (
-                    <ChevronRight className="size-3.5 text-z-sage-dark" strokeWidth={1.5} />
-                  )}
-                </span>
-              </button>
-
-              {open && (
-                <div className="mt-3">
-                  <BudgetGroupLines
-                    group={enriched}
-                    currency={currency}
-                    draft={draft}
-                    onChange={setLine}
-                    onAddLine={(id, prefill) => setLine(id, prefill)}
-                    onRemoveLine={removeLine}
-                    onCreateSub={(name) => handleCreateSub(g.id, name)}
-                    onPickFromTransactions={(id, name) => setPicker({ id, name })}
-                    hasUncategorized={hasUncategorized}
-                  />
+        {allocationSets ? (
+          allocationSets.map((s) => {
+            const setActive = s.groups.filter(isActive);
+            const setAvail = s.groups.filter((g) => !isActive(g));
+            const assigned = setActive.reduce((sum, g) => sum + groupTotal(g), 0);
+            const over = assigned > s.cap;
+            const pct = Math.round((s.cap / income) * 100);
+            return (
+              <div key={s.set} className="space-y-2">
+                <div className="space-y-1.5 rounded-xl border border-white/6 bg-z-surface-2/60 p-3">
+                  <div className="flex items-baseline justify-between gap-2 text-sm font-semibold">
+                    <span>
+                      {s.label}{" "}
+                      <span className="font-normal text-muted-foreground">{pct}%</span>
+                    </span>
+                    <span
+                      className={cn(
+                        "text-xs tabular-nums",
+                        over ? "text-z-debt" : "text-z-income"
+                      )}
+                    >
+                      {formatCurrency(assigned, currency)} / {formatCurrency(s.cap, currency)}
+                    </span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-white/8">
+                    <div
+                      className={cn("h-full rounded-full", over ? "bg-z-debt" : "bg-z-brass")}
+                      style={{ width: `${s.cap > 0 ? Math.min(100, (assigned / s.cap) * 100) : 0}%` }}
+                    />
+                  </div>
                 </div>
-              )}
-            </section>
-          );
-        })}
-
-        {availableGroups.length > 0 && (
-          <div className="space-y-2">
-            <p className={SECTION_EYEBROW_CLASS}>Agregar categoría</p>
-            <div className="flex flex-wrap gap-1.5">
-              {availableGroups.map((g) => (
-                <button key={g.id} type="button"
-                  onClick={() => { setLine(g.id, ""); setOpenId(g.id); }}
-                  className="flex items-center gap-1.5 rounded-full border border-dashed border-white/6 px-2.5 py-1 text-[11px] text-z-sage-light transition-colors active:bg-white/5">
-                  <span className="flex size-4 items-center justify-center rounded"
-                    style={{ backgroundColor: `color-mix(in srgb, ${g.color} 18%, transparent)`, color: g.color }}>
-                    <CategoryIcon icon={g.icon} className="size-2.5" />
-                  </span>
-                  {g.name_es ?? g.name}
-                </button>
-              ))}
-            </div>
-          </div>
+                {setActive.map(renderGroup)}
+                {renderAddChips(setAvail)}
+              </div>
+            );
+          })
+        ) : (
+          <>
+            {activeGroups.map(renderGroup)}
+            {renderAddChips(availableGroups)}
+          </>
         )}
 
         {/* Sticky save */}
