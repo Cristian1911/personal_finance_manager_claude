@@ -26,7 +26,7 @@ import { computeCompositionDiff } from "@/lib/utils/budget-rollup";
 import { groupCategoriesByAllocationSet } from "@/lib/utils/allocation-sets";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
-import { BRASS_BUTTON_CLASS, PANEL_INSET_CLASS, SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
+import { BRASS_BUTTON_CLASS, BRASS_GHOST_BUTTON_CLASS, PANEL_INSET_CLASS, SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
 import type { CategoryBudgetData, CurrencyCode, BudgetMode } from "@/types/domain";
 
 const BACK_TARGET = "/plan?tab=presupuesto";
@@ -253,7 +253,10 @@ export function BudgetBuilder({ groups, income, currency, hasUncategorized, mode
       <button
         type="button"
         onClick={() => setAddPicker({ title, categories: avail })}
-        className="flex w-full items-center gap-2 rounded-xl border border-dashed border-white/6 px-3 py-2.5 text-left text-[12.5px] font-medium text-z-brass transition-colors active:bg-white/5"
+        className={cn(
+          BRASS_GHOST_BUTTON_CLASS,
+          "flex w-full items-center gap-2 rounded-xl border border-dashed px-3 py-2.5 text-left text-[12.5px] font-medium transition-colors"
+        )}
       >
         <span className="flex size-5 items-center justify-center rounded-md bg-z-brass/12">
           <Plus className="size-3" strokeWidth={2.5} />
@@ -289,7 +292,7 @@ export function BudgetBuilder({ groups, income, currency, hasUncategorized, mode
         </p>
 
         {/* Sticky progress — always visible, no scroll needed */}
-        <div className="sticky top-2 z-10 space-y-2 rounded-xl border border-z-brass/35 bg-z-surface-2/95 p-3 backdrop-blur-sm">
+        <div className="sticky top-2 z-10 space-y-2 rounded-xl border border-white/6 bg-z-surface-2/95 p-3 backdrop-blur-sm">
           <div className="flex items-baseline justify-between gap-2 text-sm font-semibold">
             <span className="tabular-nums">
               Σ {formatCurrency(total, currency)}
@@ -375,7 +378,7 @@ export function BudgetBuilder({ groups, income, currency, hasUncategorized, mode
         )}
 
         {/* Sticky save */}
-        <div className="sticky bottom-2 z-10 rounded-xl border border-z-brass/35 bg-z-surface-2/95 p-3 backdrop-blur-sm">
+        <div className="sticky bottom-2 z-10 rounded-xl border border-white/6 bg-z-surface-2/95 p-3 backdrop-blur-sm">
           <button
             type="button"
             onClick={handleSave}
