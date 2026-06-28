@@ -68,12 +68,12 @@
 }
 
 :root {
-  /* Zeta core tokens — Obsidian & Brass */
-  --z-ink:        #121412;
+  /* Zeta core tokens — Obsidian & Brass (evolved: neutral obsidian + brighter brass) */
+  --z-ink:        #0b0b0c;
   --z-olive-deep: #3F4632;
   --z-sage:       #768053;
-  --z-brass:      #937844;
-  --z-brass-hot:  #B29256;
+  --z-brass:      #a98a51;
+  --z-brass-hot:  #c2a063;
   --z-sage-light: #D9CCB9;
   --z-sage-dark:  #938C7E;
   --z-white:      #F6F0E3;
@@ -85,10 +85,10 @@
   --z-alert:   #D4A843;
   --z-excellent: #3D9E6E;
 
-  /* Surfaces */
-  --z-surface:   #171A17;
-  --z-surface-2: #1E221E;
-  --z-surface-3: #262B26;
+  /* Surfaces — neutral (no green tint), slightly stronger separation */
+  --z-surface:   #161618;
+  --z-surface-2: #1c1c1f;
+  --z-surface-3: #242428;
   --z-border:    rgba(217, 204, 185, 0.08);
   --z-border-strong: rgba(217, 204, 185, 0.16);
 
