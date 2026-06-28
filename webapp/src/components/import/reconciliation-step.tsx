@@ -280,6 +280,51 @@ export function ReconciliationStep({
     });
   }
 
+  // ── Bulk actions: avoid one-by-one tapping across many duplicates/ambiguous ──
+  const autoMergeKeys = useMemo(
+    () =>
+      preview.autoMerge.map(
+        (item) => `${item.statementIndex}:${item.transactionIndex}`,
+      ),
+    [preview.autoMerge],
+  );
+  const reviewKeys = useMemo(
+    () =>
+      preview.review.map(
+        (item) => `${item.statementIndex}:${item.transactionIndex}`,
+      ),
+    [preview.review],
+  );
+
+  // Duplicados: a key in rejectedAutoMerges means "keep both" (override the omit).
+  // Check membership per current key (not set size) so stale keys can't skew it.
+  const allDuplicatesOmitted = autoMergeKeys.every(
+    (key) => !rejectedAutoMerges.has(key),
+  );
+  const allDuplicatesKept =
+    autoMergeKeys.length > 0 &&
+    autoMergeKeys.every((key) => rejectedAutoMerges.has(key));
+
+  function setAllAutoMerge(reject: boolean) {
+    setRejectedAutoMerges(reject ? new Set(autoMergeKeys) : new Set());
+  }
+
+  // Ambiguos: per-key choice MERGE | KEEP_BOTH (default KEEP_BOTH).
+  const allReviewMerge =
+    reviewKeys.length > 0 &&
+    reviewKeys.every((key) => reviewChoices[key] === "MERGE");
+  const allReviewKeepBoth = reviewKeys.every(
+    (key) => (reviewChoices[key] ?? "KEEP_BOTH") === "KEEP_BOTH",
+  );
+
+  function setAllReview(choice: ReviewChoice) {
+    setReviewChoices((prev) => {
+      const next = { ...prev };
+      for (const key of reviewKeys) next[key] = choice;
+      return next;
+    });
+  }
+
   const reconcileCoach = useCoachMark("import-reconciliation");
 
   return (
@@ -387,6 +432,31 @@ export function ReconciliationStep({
           title="Duplicados detectados"
           caption="Coinciden con movimientos ya registrados y se omiten. Puedes forzar mantener ambos si crees que son distintos."
         >
+          {preview.autoMerge.length > 1 && (
+            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-white/6 bg-z-surface-2/40 px-3 py-2">
+              <span className="mr-auto text-[11px] font-medium uppercase tracking-wide text-z-sage-dark">
+                Aplicar a todos ({preview.autoMerge.length})
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant={allDuplicatesOmitted ? "default" : "outline"}
+                onClick={() => setAllAutoMerge(false)}
+              >
+                <GitMerge className="mr-1.5 h-3.5 w-3.5" />
+                Omitir todos
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={allDuplicatesKept ? "default" : "outline"}
+                onClick={() => setAllAutoMerge(true)}
+              >
+                <SplitSquareVertical className="mr-1.5 h-3.5 w-3.5" />
+                Mantener todos
+              </Button>
+            </div>
+          )}
           <div className="space-y-3">
             {preview.autoMerge.map((item) => {
               const key = `${item.statementIndex}:${item.transactionIndex}`;
@@ -426,6 +496,31 @@ export function ReconciliationStep({
           title="Necesitan tu decisión"
           caption="Parece el mismo movimiento pero no estamos seguros. Tú eliges."
         >
+          {preview.review.length > 1 && (
+            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-white/6 bg-z-surface-2/40 px-3 py-2">
+              <span className="mr-auto text-[11px] font-medium uppercase tracking-wide text-z-sage-dark">
+                Aplicar a todas ({preview.review.length})
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant={allReviewMerge ? "default" : "outline"}
+                onClick={() => setAllReview("MERGE")}
+              >
+                <GitMerge className="mr-1.5 h-3.5 w-3.5" />
+                Fusionar todas
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={allReviewKeepBoth ? "default" : "outline"}
+                onClick={() => setAllReview("KEEP_BOTH")}
+              >
+                <SplitSquareVertical className="mr-1.5 h-3.5 w-3.5" />
+                Mantener todas
+              </Button>
+            </div>
+          )}
           <div className="space-y-4">
             {preview.review.map((item) => {
               const key = `${item.statementIndex}:${item.transactionIndex}`;
