@@ -259,17 +259,43 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
           VPS_HOST: ${{ secrets.VPS_HOST }}
         run: |
+          set -euo pipefail
+
+          # Fail fast with a clear message if required secrets are missing,
+          # instead of dying with an opaque exit code further down.
+          if [ -z "${VPS_HOST:-}" ]; then
+            echo "::error::VPS_HOST secret is empty — cannot deploy."
+            exit 1
+          fi
+          if [ -z "${SSH_PRIVATE_KEY:-}" ]; then
+            echo "::error::VPS_SSH_KEY secret is empty — cannot deploy."
+            exit 1
+          fi
+
           # Setup SSH
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          # Populate known_hosts. Do NOT let a transient ssh-keyscan failure abort
+          # the step silently (the old `2>/dev/null` under `set -e` swallowed the
+          # real reason every deploy died). Surface the error and keep going — the
+          # scp/ssh below uses accept-new and will report the true failure.
+          echo ">>> Scanning host key for VPS..."
+          if ! ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/tmp/keyscan.err; then
+            echo "::warning::ssh-keyscan could not reach the VPS:"
+            cat /tmp/keyscan.err || true
+          fi
+
+          SSH_OPTS=(-i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20)
 
           # Sync compose file to VPS
-          scp -i ~/.ssh/deploy_key docker-compose.prod.yml "root@${VPS_HOST}:/docker/personal-finance-manager/docker-compose.yml"
+          echo ">>> Copying docker-compose.prod.yml to VPS..."
+          scp "${SSH_OPTS[@]}" docker-compose.prod.yml "root@${VPS_HOST}:/docker/personal-finance-manager/docker-compose.yml"
 
           # Deploy: down (remove orphans) → pull → up
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new "root@${VPS_HOST}" bash -s <<'DEPLOY_SCRIPT'
+          echo ">>> Running remote deploy..."
+          ssh "${SSH_OPTS[@]}" "root@${VPS_HOST}" bash -s <<'DEPLOY_SCRIPT'
             set -euo pipefail
             cd /docker/personal-finance-manager
             echo ">>> Stopping containers and removing orphans..."

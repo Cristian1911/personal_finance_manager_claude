@@ -28,6 +28,7 @@ supabase/.temp/
 
 # Git worktrees
 .worktrees/
+.claude/worktrees/
 
 # Superpowers brainstorm sessions
 .superpowers/
