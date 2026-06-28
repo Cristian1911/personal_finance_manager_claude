@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronRight, Plus, Minus } from "lucide-react";
 import { toast } from "sonner";
@@ -107,12 +107,15 @@ export function BudgetBuilder({ groups, income, currency, hasUncategorized, mode
     [groups]
   );
 
-  const isActive = (g: CategoryBudgetData) =>
-    draft[g.id] !== undefined ||
-    (parseFloat(draft[g.id] ?? "") || 0) > 0 ||
-    g.children.some((c) => draft[c.id] !== undefined);
-  const activeGroups = useMemo(() => sortedGroups.filter(isActive), [sortedGroups, draft]);
-  const availableGroups = useMemo(() => sortedGroups.filter((g) => !isActive(g)), [sortedGroups, draft]);
+  const isActive = useCallback(
+    (g: CategoryBudgetData) =>
+      draft[g.id] !== undefined ||
+      (parseFloat(draft[g.id] ?? "") || 0) > 0 ||
+      g.children.some((c) => draft[c.id] !== undefined),
+    [draft]
+  );
+  const activeGroups = useMemo(() => sortedGroups.filter(isActive), [sortedGroups, isActive]);
+  const availableGroups = useMemo(() => sortedGroups.filter((g) => !isActive(g)), [sortedGroups, isActive]);
 
   function setLine(categoryId: string, amount: string) {
     setDraft((prev) => ({ ...prev, [categoryId]: amount }));
