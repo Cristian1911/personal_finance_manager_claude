@@ -102,10 +102,13 @@ export async function getFirstStepsData(): Promise<FirstStepsData | null> {
   if (firstSteps?.dismissedAt) return null;
   if (firstSteps?.snoozeUntil && firstSteps.snoozeUntil > new Date().toISOString()) return null;
 
-  const [txRes, acctRes, recRes] = await Promise.all([
+  const [txRes, acctRes, recRes, budgetRes] = await Promise.all([
     supabase.from("transactions").select("id", { count: "exact", head: true }).eq("user_id", user.id),
     supabase.from("accounts").select("account_type").eq("user_id", user.id),
     supabase.from("recurring_transaction_templates").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+    // Budget step completes on a SAVED budget row, not budget_mode — the wizard
+    // sets budget_mode when entering the builder, before anything is saved.
+    supabase.from("budgets").select("id", { count: "exact", head: true }).eq("user_id", user.id),
   ]);
 
   const accounts = acctRes.data ?? [];
@@ -117,7 +120,7 @@ export async function getFirstStepsData(): Promise<FirstStepsData | null> {
     incomeConfigured:
       Number(profile?.estimated_monthly_income ?? 0) > 0 ||
       Number(profile?.monthly_salary ?? 0) > 0,
-    hasBudget: profile?.budget_mode != null,
+    hasBudget: (budgetRes.count ?? 0) > 0,
     hasRecurring: (recRes.count ?? 0) > 0,
   };
 
