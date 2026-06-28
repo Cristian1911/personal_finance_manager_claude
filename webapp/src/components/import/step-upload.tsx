@@ -212,6 +212,13 @@ export function StepUpload({
       if (valid.length > 1 || files.length > 0) {
         toast.info("Los PDF se procesan de a uno — reemplacé la selección con el PDF.");
       }
+      // A freshly staged PDF must not inherit the previous file's password —
+      // otherwise we'd try to decrypt it with the wrong one (or save a wrong
+      // password to the vault).
+      setPassword("");
+      setPasswordFromVault(false);
+      setSavePassword(false);
+      setSaveAlias("");
     } else {
       const stagedPdf = files.find((f) => isPdfFile(f.name));
       if (stagedPdf) {
@@ -620,6 +627,7 @@ export function StepUpload({
                   <input
                     ref={passwordInputRef}
                     type="password"
+                    disabled={loading}
                     placeholder={
                       passwordRequired
                         ? "Contraseña del PDF (requerida)"
@@ -631,7 +639,7 @@ export function StepUpload({
                       setPasswordFromVault(false);
                       setPasswordRequired(false);
                     }}
-                    className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                    className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:opacity-60"
                     {...NO_PASSWORD_AUTOFILL_PROPS}
                   />
                 </div>
@@ -656,6 +664,7 @@ export function StepUpload({
                             setPassword(sug.password);
                             setPasswordFromVault(true);
                             setSavePassword(false);
+                            setPasswordRequired(false);
                           }}
                         >
                           <span className="truncate">{sug.alias}</span>
