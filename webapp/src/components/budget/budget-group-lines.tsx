@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Minus, ListPlus } from "lucide-react";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -16,10 +16,16 @@ interface BudgetGroupLinesProps {
   onChange: (categoryId: string, amount: string) => void;
   /** Adds a line to the draft (chip tap / picker), prefilled by the caller. */
   onAddLine: (categoryId: string, prefill: string) => void;
+  /** Removes a line from the draft (the "−" affordance). Base line is never removable. */
+  onRemoveLine?: (categoryId: string) => void;
   /** Optional inline creation of a subcategory; resolves to the new id. */
   onCreateSub?: (name: string) => Promise<string | null>;
   /** Composer mode: show real spend next to each line. */
   showSpend?: boolean;
+  /** Opens the transaction picker for this group (fills the base line from picked tx). */
+  onPickFromTransactions?: (categoryId: string, categoryName: string) => void;
+  /** True when there are uncategorized tx available — gates the "Desde transacciones" chip. */
+  hasUncategorized?: boolean;
 }
 
 export function BudgetGroupLines({
@@ -28,8 +34,11 @@ export function BudgetGroupLines({
   draft,
   onChange,
   onAddLine,
+  onRemoveLine,
   onCreateSub,
   showSpend = false,
+  onPickFromTransactions,
+  hasUncategorized = false,
 }: BudgetGroupLinesProps) {
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
@@ -98,10 +107,11 @@ export function BudgetGroupLines({
           currency={currency}
           value={draft[child.id] ?? ""}
           onChange={(v) => onChange(child.id, v)}
+          onRemove={onRemoveLine ? () => onRemoveLine(child.id) : undefined}
         />
       ))}
 
-      {(suggested.length > 0 || pickable.length > 0 || onCreateSub) && (
+      {(suggested.length > 0 || pickable.length > 0 || onCreateSub || (onPickFromTransactions && hasUncategorized)) && (
         <div className="flex flex-wrap gap-1.5 pt-1">
           {suggested.map((child) => (
             <button
@@ -126,6 +136,16 @@ export function BudgetGroupLines({
               + {child.name_es ?? child.name}
             </button>
           ))}
+
+          {onPickFromTransactions && hasUncategorized && (
+            <button
+              type="button"
+              onClick={() => onPickFromTransactions(group.id, group.name_es ?? group.name)}
+              className="flex items-center gap-1 rounded-full border border-dashed border-z-brass/40 bg-z-brass/8 px-2.5 py-1 text-[10px] font-medium text-z-brass transition-colors active:bg-z-brass/14"
+            >
+              <ListPlus className="size-2.5" strokeWidth={2} /> Desde transacciones
+            </button>
+          )}
 
           {onCreateSub && !creating && (
             <button
@@ -172,6 +192,7 @@ function LineRow({
   currency,
   value,
   onChange,
+  onRemove,
 }: {
   label: string;
   badge?: string;
@@ -180,6 +201,7 @@ function LineRow({
   currency: CurrencyCode;
   value: string;
   onChange: (value: string) => void;
+  onRemove?: () => void;
 }) {
   return (
     <div
@@ -208,6 +230,16 @@ function LineRow({
           value={value}
           onChange={(e) => onChange(e.target.value)}
         />
+        {onRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            aria-label={`Quitar ${label}`}
+            className="flex size-6 shrink-0 items-center justify-center rounded-full text-z-sage-dark transition-colors hover:bg-z-debt/10 hover:text-z-debt"
+          >
+            <Minus className="size-3.5" strokeWidth={2} />
+          </button>
+        )}
       </span>
     </div>
   );
