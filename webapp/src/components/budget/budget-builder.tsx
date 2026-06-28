@@ -155,9 +155,16 @@ export function BudgetBuilder({ groups, income, currency, hasUncategorized, mode
         toast.error(result.error || "No se pudo guardar el presupuesto");
         return;
       }
-      // Persist the budget mode only now — a real budget was saved.
-      await setBudgetMode(mode);
-      toast.success("Presupuesto guardado");
+      // Persist the budget mode only now — a real budget was saved. If the
+      // mode write fails the budget itself is still saved, so navigate anyway
+      // but surface the partial failure (otherwise plan-tab would re-gate to
+      // the wizard on the next visit).
+      const modeRes = await setBudgetMode(mode);
+      toast[modeRes.success ? "success" : "error"](
+        modeRes.success
+          ? "Presupuesto guardado"
+          : "Presupuesto guardado, pero no se pudo guardar el modo"
+      );
       startTransition(() => router.push(BACK_TARGET));
     } finally {
       setSaving(false);

@@ -15,7 +15,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import type { AllocationData } from "@/actions/allocation";
-import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
+import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import type { BudgetMode, CategoryBudgetData, CurrencyCode } from "@/types/domain";
 
 interface BudgetWizardProps {
@@ -223,7 +223,7 @@ function StepStylePreview({
       )}
 
       <div className="flex justify-between">
-        <Button variant="outline" onClick={onBack}>
+        <Button type="button" onClick={onBack} className={GHOST_BUTTON_CLASS}>
           Atrás
         </Button>
         <Button
