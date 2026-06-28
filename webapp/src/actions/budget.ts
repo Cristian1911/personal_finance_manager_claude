@@ -21,6 +21,20 @@ export async function getBudgetMode(): Promise<ActionResult<string | null>> {
   return { success: true, data: data.budget_mode };
 }
 
+// ── Has at least one saved budget row ────────────────────
+// Cheap signal for "the budget is really configured" (matches the wizard gate:
+// budget_mode can be set without any saved budget). Used to hide month-scoped
+// chrome during first-budget setup.
+export async function getHasSavedBudget(): Promise<boolean> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return false;
+  const { count } = await supabase
+    .from("budgets")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id);
+  return (count ?? 0) > 0;
+}
+
 // ── Set budget mode ──────────────────────────────────────
 
 export async function setBudgetMode(
