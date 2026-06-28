@@ -11,6 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import { ReconcileChip } from "./reconcile-chip";
 import { Narrator } from "./narrator";
 import { WizardActionBar } from "./wizard-action-bar";
+import {
+  SuggestedDestinatariosPanel,
+  type MerchantDecision,
+} from "./suggested-destinatarios-panel";
 import { cn } from "@/lib/utils";
 import { CoachMark, useCoachMark } from "@/components/guided/coach-mark";
 import type { ActionResult } from "@/types/actions";
@@ -114,6 +118,12 @@ export function ReconciliationStep({
   // Allow overriding an auto-merge to keep-both when user expands Duplicados panel.
   const [rejectedAutoMerges, setRejectedAutoMerges] = useState<Set<string>>(new Set());
 
+  // Per-merchant destinatario decisions taken in this panel (keyed by raw
+  // description). Applied to this batch's matching transactions on confirm.
+  const [merchantDecisions, setMerchantDecisions] = useState<
+    Map<string, MerchantDecision>
+  >(new Map());
+
   // Only surface raw descriptions that didn't auto-match any existing
   // destinatario rule during step 2 — those are the truly new merchants.
   const newMerchantNames = useMemo(
@@ -128,6 +138,57 @@ export function ReconciliationStep({
       ),
     [preview.unmatched],
   );
+
+  // How many transactions in this batch each suggested merchant would touch —
+  // unassigned rows sharing the exact raw description.
+  const merchantMatchCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const tx of transactions) {
+      if (tx.destinatario_id) continue;
+      const raw = tx.raw_description;
+      if (!raw) continue;
+      counts.set(raw, (counts.get(raw) ?? 0) + 1);
+    }
+    return counts;
+  }, [transactions]);
+
+  // Apply merchant decisions to the batch: stamp destinatario (and its default
+  // category for uncategorized rows) onto matching unassigned transactions.
+  const decidedTransactions = useMemo<TransactionToImport[]>(() => {
+    if (merchantDecisions.size === 0) return transactions;
+    return transactions.map((tx) => {
+      if (tx.destinatario_id) return tx;
+      const raw = tx.raw_description;
+      if (!raw) return tx;
+      const decision = merchantDecisions.get(raw);
+      if (!decision) return tx;
+      const applyCategory = decision.categoryId != null && !tx.category_id;
+      return {
+        ...tx,
+        destinatario_id: decision.destinatarioId,
+        merchant_name: decision.destinatarioName,
+        ...(applyCategory
+          ? {
+              category_id: decision.categoryId,
+              categorization_source: "USER_LEARNED" as const,
+              categorization_confidence: 0.8,
+            }
+          : {}),
+      };
+    });
+  }, [transactions, merchantDecisions]);
+
+  function decideMerchant(name: string, decision: MerchantDecision) {
+    setMerchantDecisions((prev) => new Map(prev).set(name, decision));
+  }
+
+  function clearMerchant(name: string) {
+    setMerchantDecisions((prev) => {
+      const next = new Map(prev);
+      next.delete(name);
+      return next;
+    });
+  }
 
   const reconciliationDecisions = useMemo<ReconciliationDecisionInput[]>(() => {
     const auto = preview.autoMerge
@@ -158,12 +219,12 @@ export function ReconciliationStep({
   const serializedPayload = useMemo(
     () =>
       JSON.stringify({
-        transactions,
+        transactions: decidedTransactions,
         statementMeta,
         reconciliationDecisions,
         captureMethod,
       }),
-    [transactions, statementMeta, reconciliationDecisions, captureMethod],
+    [decidedTransactions, statementMeta, reconciliationDecisions, captureMethod],
   );
 
   const [state, formAction, pending] = useActionState<
@@ -250,7 +311,11 @@ export function ReconciliationStep({
         <ReconcileChip
           label="Destinatarios"
           value={newMerchantNames.length}
-          hint="sugeridos"
+          hint={
+            merchantDecisions.size > 0
+              ? `${merchantDecisions.size} asignado${merchantDecisions.size === 1 ? "" : "s"}`
+              : "sugeridos"
+          }
           tone="brass"
           active={panel === "merchants"}
           onClick={() => toggle("merchants")}
@@ -301,21 +366,18 @@ export function ReconciliationStep({
       {panel === "merchants" && (
         <Panel
           title="Destinatarios sugeridos"
-          caption="Merchants que aún no están en tu lista. Se importan sin problema — los entrenas después en Destinatarios."
+          caption="Comercios que aún no están en tu lista. Toca uno para crear un destinatario o vincularlo a uno existente — se aplica a esta importación. O déjalos así y los entrenas después en Destinatarios."
         >
           {newMerchantNames.length === 0 ? (
             <EmptyNote>Ya tenías a todos registrados.</EmptyNote>
           ) : (
-            <ul className="space-y-1.5">
-              {newMerchantNames.map((name) => (
-                <li
-                  key={`new-m-${name}`}
-                  className="truncate rounded-lg border border-white/6 bg-z-surface-2/40 px-3 py-2 text-xs text-z-sage-light"
-                >
-                  {name}
-                </li>
-              ))}
-            </ul>
+            <SuggestedDestinatariosPanel
+              merchantNames={newMerchantNames}
+              matchCounts={merchantMatchCounts}
+              decisions={merchantDecisions}
+              onDecide={decideMerchant}
+              onClear={clearMerchant}
+            />
           )}
         </Panel>
       )}
