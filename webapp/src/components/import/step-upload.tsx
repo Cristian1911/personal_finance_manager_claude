@@ -433,6 +433,64 @@ export function StepUpload({
     }
   }
 
+  // Post-Procesar feedback. Rendered above the CTA next to the staged file so
+  // it's never hidden below the fold — same rule the password alert follows.
+  const errorBanner = error ? (
+    <div className="rounded-md border border-z-debt/30 bg-z-debt/10 p-3 text-sm text-z-debt">
+      {error}
+    </div>
+  ) : null;
+
+  const unsupportedBanner = unsupportedFile ? (
+    <div className="rounded-md border border-z-alert/20 bg-z-alert/5 p-4 space-y-3">
+      <div className="flex gap-3">
+        <HelpCircle className="h-5 w-5 text-z-alert shrink-0 mt-0.5" />
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-z-alert">
+            Formato no compatible
+          </p>
+          <p className="text-sm text-z-alert">
+            Este archivo no pudo ser procesado. ¿Quieres enviarlo para que podamos añadir soporte para este banco o formato?
+          </p>
+        </div>
+      </div>
+      {savedForSupport ? (
+        <div className="flex items-center gap-2 text-sm text-z-income">
+          <CheckCircle2 className="h-4 w-4" />
+          ¡Gracias! Lo revisaremos para añadir soporte pronto.
+        </div>
+      ) : (
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            className={cn(GHOST_BUTTON_CLASS, "!border-z-alert/30 hover:!bg-z-alert/10")}
+            onClick={handleSaveForSupport}
+            disabled={savingForSupport}
+          >
+            {savingForSupport ? (
+              <>
+                <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
+                Enviando...
+              </>
+            ) : (
+              "Sí, enviar para soporte"
+            )}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className={GHOST_BUTTON_CLASS}
+            onClick={() => setUnsupportedFile(null)}
+            disabled={savingForSupport}
+          >
+            No, gracias
+          </Button>
+        </div>
+      )}
+    </div>
+  ) : null;
+
   return (
     <div className="space-y-4">
       <div className="flex items-baseline justify-between">
@@ -644,10 +702,12 @@ export function StepUpload({
               </p>
             </>
           )}
+          {errorBanner}
+          {unsupportedBanner}
           <Button
             className={cn(BRASS_BUTTON_CLASS, "w-full")}
             onClick={handleUpload}
-            disabled={loading}
+            disabled={loading || (passwordRequired && !password)}
           >
             {loading ? (
               <>
@@ -665,61 +725,8 @@ export function StepUpload({
         </div>
       )}
 
-      {error && (
-        <div className="bg-destructive/10 text-destructive text-sm rounded-md p-3">
-          {error}
-        </div>
-      )}
-
-      {unsupportedFile && (
-        <div className="rounded-md border border-z-alert/20 bg-z-alert/5 p-4 space-y-3">
-          <div className="flex gap-3">
-            <HelpCircle className="h-5 w-5 text-z-alert shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-z-alert">
-                Formato no compatible
-              </p>
-              <p className="text-sm text-z-alert">
-                Este archivo no pudo ser procesado. ¿Quieres enviarlo para que podamos añadir soporte para este banco o formato?
-              </p>
-            </div>
-          </div>
-          {savedForSupport ? (
-            <div className="flex items-center gap-2 text-sm text-z-income">
-              <CheckCircle2 className="h-4 w-4" />
-              ¡Gracias! Lo revisaremos para añadir soporte pronto.
-            </div>
-          ) : (
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="ghost"
-                className={cn(GHOST_BUTTON_CLASS, "!border-z-alert/30 hover:!bg-z-alert/10")}
-                onClick={handleSaveForSupport}
-                disabled={savingForSupport}
-              >
-                {savingForSupport ? (
-                  <>
-                    <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
-                    Enviando...
-                  </>
-                ) : (
-                  "Sí, enviar para soporte"
-                )}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className={GHOST_BUTTON_CLASS}
-                onClick={() => setUnsupportedFile(null)}
-                disabled={savingForSupport}
-              >
-                No, gracias
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
+      {/* No file staged yet: selection-time errors (bad format/size) still need a home. */}
+      {files.length === 0 && errorBanner}
     </div>
   );
 }
