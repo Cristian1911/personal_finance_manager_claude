@@ -112,7 +112,7 @@ export function PlanBudgetSection({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium">Categorías que merecen revisión</p>
-            <Link href="/categories" className="text-sm text-z-brass hover:underline">
+            <Link href="/plan?tab=presupuesto" className="text-sm text-z-brass hover:underline">
               Ver presupuesto completo
             </Link>
           </div>

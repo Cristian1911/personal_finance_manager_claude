@@ -11,7 +11,7 @@ interface DashboardBudgetBarProps {
 
 export function DashboardBudgetBar({ data, monthLabel }: DashboardBudgetBarProps) {
   return (
-    <Link href="/categories" className="block">
+    <Link href="/plan?tab=presupuesto" className="block">
       <div className="rounded-lg border bg-card p-4 space-y-3 hover:bg-accent/50 transition-colors">
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium">Gasto por categoría</p>

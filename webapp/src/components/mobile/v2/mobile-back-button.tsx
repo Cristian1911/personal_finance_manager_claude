@@ -1,10 +1,22 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 
-export function MobileBackButton({ fallbackHref = "/dashboard" }: { fallbackHref?: string }) {
+/**
+ * Back affordance that returns the user to where they actually were
+ * (browser history), falling back to `fallbackHref` only when there is no
+ * history to pop. Use `exit` for focus-mode "salir" (X) treatment.
+ */
+export function MobileBackButton({
+  fallbackHref = "/dashboard",
+  exit = false,
+}: {
+  fallbackHref?: string;
+  exit?: boolean;
+}) {
   const router = useRouter();
+  const Icon = exit ? X : ArrowLeft;
   return (
     <button
       type="button"
@@ -16,9 +28,9 @@ export function MobileBackButton({ fallbackHref = "/dashboard" }: { fallbackHref
         }
       }}
       className="flex size-8 shrink-0 items-center justify-center rounded-full text-z-sage-light transition-colors hover:bg-white/5"
-      aria-label="Volver"
+      aria-label={exit ? "Salir" : "Volver"}
     >
-      <ArrowLeft className="size-4" />
+      <Icon className="size-4" />
     </button>
   );
 }

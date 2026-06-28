@@ -11,7 +11,7 @@ import {
   LEVEL_PRIORITY,
 } from "@/lib/health-levels";
 import type { HealthMetersData, HealthMeter } from "@/actions/health-meters";
-import type { MeterType, Level } from "@/lib/health-levels";
+import type { MeterType } from "@/lib/health-levels";
 import { HealthMeterExpanded } from "./health-meter-expanded";
 
 // ---------------------------------------------------------------------------
@@ -116,6 +116,9 @@ export function HealthScoreSection({ data }: HealthScoreSectionProps) {
   const [expandedMeter, setExpandedMeter] = useState<MeterType | null>(null);
   const compositeScore = computeCompositeScore(data.meters);
   const scoreLabel = getScoreLabel(compositeScore);
+  // Honesty (design D6): with no meter data the composite is synthetic —
+  // show "Sin datos suficientes" instead of inventing a verdict.
+  const hasAnyData = data.meters.some((m) => m.hasData);
 
   const selectedMeter = expandedMeter
     ? data.meters.find((m) => m.type === expandedMeter) ?? null
@@ -128,8 +131,19 @@ export function HealthScoreSection({ data }: HealthScoreSectionProps) {
   const summaryColor = getLevelColor(worstMeter.level);
 
   return (
-    <div className="rounded-xl bg-z-surface-2 py-6 px-4 space-y-4">
-      <SpeedometerGauge score={compositeScore} label={scoreLabel} />
+    <div className="rounded-xl border border-white/6 bg-z-surface-2 py-6 px-4 space-y-4">
+      {hasAnyData ? (
+        <SpeedometerGauge score={compositeScore} label={scoreLabel} />
+      ) : (
+        <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
+          <p className="text-base font-semibold text-z-sage-light">
+            Sin datos suficientes
+          </p>
+          <p className="max-w-xs text-xs text-muted-foreground">
+            Agrega tu ingreso y algunos movimientos para calcular tu salud financiera.
+          </p>
+        </div>
+      )}
 
       <div className="space-y-1">
         {data.meters.map((meter) => (
@@ -141,17 +155,19 @@ export function HealthScoreSection({ data }: HealthScoreSectionProps) {
         ))}
       </div>
 
-      {/* Summary roast */}
-      <div
-        className="rounded-lg px-3 py-2.5 text-xs"
-        style={{
-          backgroundColor: `color-mix(in srgb, ${summaryColor} 15%, transparent)`,
-        }}
-      >
-        <span style={{ color: summaryColor }} className="font-semibold">
-          {data.summaryRoast}
-        </span>
-      </div>
+      {/* Summary roast — only when there's real data behind it (design D6). */}
+      {hasAnyData && (
+        <div
+          className="rounded-lg px-3 py-2.5 text-xs"
+          style={{
+            backgroundColor: `color-mix(in srgb, ${summaryColor} 15%, transparent)`,
+          }}
+        >
+          <span style={{ color: summaryColor }} className="font-semibold">
+            {data.summaryRoast}
+          </span>
+        </div>
+      )}
 
       {/* Expanded detail dialog/sheet */}
       {selectedMeter && (

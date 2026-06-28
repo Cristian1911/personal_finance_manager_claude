@@ -143,7 +143,7 @@ export function BurndownExpandable({
                   </Link>
                   {hasCriticalCategories && (
                     <Link
-                      href="/categories"
+                      href="/plan?tab=presupuesto"
                       className={MOBILE_ACTION_BUTTON_CLASS}
                     >
                       Ver categorías críticas

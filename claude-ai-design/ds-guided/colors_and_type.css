@@ -1,0 +1,139 @@
+/* ==========================================================================
+   Zeta Design System — Colors & Type  (local QA copy of project root file)
+   "Sage Evolved" — Obsidian & Brass. Dark-mode-first. Spanish-first.
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap');
+
+:root {
+  /* ---------- Brand colors ---------- */
+  --z-ink:        #121412;
+  --z-olive-deep: #3F4632;
+  --z-sage:       #768053;
+  --z-brass:      #937844;
+  --z-brass-hot:  #B29256;
+  --z-sage-light: #D9CCB9;
+  --z-sage-dark:  #938C7E;
+  --z-white:      #F6F0E3;
+
+  /* ---------- Financial semantics ---------- */
+  --z-income:    #5CB88A;
+  --z-expense:   #E8875A;
+  --z-debt:      #E05545;
+  --z-alert:     #D4A843;
+  --z-excellent: #3D9E6E;
+
+  /* ---------- Surfaces ---------- */
+  --z-surface-1: #131720;
+  --z-surface-2: #1E221E;
+  --z-surface-3: #262B26;
+
+  /* ---------- Borders ---------- */
+  --z-border:        rgba(255, 255, 255, 0.06);
+  --z-border-strong: rgba(217, 204, 185, 0.16);
+
+  /* ---------- Semantic mapping ---------- */
+  --background:        var(--z-ink);
+  --foreground:        var(--z-white);
+  --muted-foreground:  var(--z-sage-dark);
+  --primary:           var(--z-brass);
+
+  /* ---------- Type ---------- */
+  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
+  --font-narrator: "Kalam", "Caveat", cursive;
+  --font-hand: "Kalam", "Caveat", cursive;
+
+  --type-hero-size:     clamp(56px, 8vw, 96px);
+  --type-hero-weight:   900;
+  --type-hero-tracking: -0.04em;
+  --type-display-size:     52px;
+  --type-display-weight:   800;
+  --type-display-tracking: -0.04em;
+  --type-h1-size:     28px;
+  --type-h1-weight:   700;
+  --type-h1-tracking: -0.02em;
+  --type-h2-size:   22px;
+  --type-h2-weight: 600;
+  --type-h3-size:   18px;
+  --type-h3-weight: 600;
+  --type-body-size:   15px;
+  --type-body-weight: 400;
+  --type-body-leading: 1.7;
+  --type-body-sm-size:   13px;
+  --type-body-sm-weight: 400;
+  --type-label-size:   11px;
+  --type-label-weight: 500;
+  --type-caption-size:     10px;
+  --type-caption-weight:   600;
+  --type-caption-tracking: 0.18em;
+
+  /* ---------- Radii ---------- */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+
+  /* ---------- Spacing ---------- */
+  --space-xs: 6px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 20px;
+  --space-xl: 28px;
+  --space-2xl: 40px;
+  --space-3xl: 64px;
+
+  --mobile-tab-bar-h: 3.5rem;
+}
+
+html, body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-feature-settings: "tnum" 1, "cv11" 1;
+  -webkit-font-smoothing: antialiased;
+  margin: 0;
+}
+
+/* ---------- Semantic typography ---------- */
+.z-hero { font-family: var(--font-sans); font-size: var(--type-hero-size); font-weight: var(--type-hero-weight); letter-spacing: var(--type-hero-tracking); line-height: 0.95; color: var(--z-white); }
+.z-display { font-family: var(--font-sans); font-size: var(--type-display-size); font-weight: var(--type-display-weight); letter-spacing: var(--type-display-tracking); line-height: 1; color: var(--z-white); }
+.z-h1 { font-family: var(--font-sans); font-size: var(--type-h1-size); font-weight: var(--type-h1-weight); letter-spacing: var(--type-h1-tracking); line-height: 1.2; color: var(--z-white); }
+.z-h2 { font-family: var(--font-sans); font-size: var(--type-h2-size); font-weight: var(--type-h2-weight); line-height: 1.25; color: var(--z-white); }
+.z-h3 { font-family: var(--font-sans); font-size: var(--type-h3-size); font-weight: var(--type-h3-weight); line-height: 1.3; color: var(--z-sage-light); }
+.z-body { font-family: var(--font-sans); font-size: var(--type-body-size); font-weight: var(--type-body-weight); line-height: var(--type-body-leading); color: var(--z-sage-light); }
+.z-body-sm { font-family: var(--font-sans); font-size: var(--type-body-sm-size); color: var(--z-sage-light); }
+.z-label { font-family: var(--font-sans); font-size: var(--type-label-size); font-weight: var(--type-label-weight); color: var(--z-sage-dark); }
+.z-eyebrow { font-family: var(--font-sans); font-size: var(--type-caption-size); font-weight: 600; letter-spacing: var(--type-caption-tracking); text-transform: uppercase; color: var(--z-sage-dark); }
+.z-num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; font-weight: 600; }
+.z-num-hero { font-variant-numeric: tabular-nums; font-weight: 800; font-size: 32px; letter-spacing: -0.02em; color: var(--z-white); }
+.z-mono { font-family: var(--font-mono); }
+.z-serif { font-family: var(--font-serif); font-weight: 400; color: var(--z-white); }
+.z-narrator { font-family: var(--font-narrator); font-weight: 700; color: var(--z-brass); }
+.z-hand { font-family: var(--font-narrator); font-weight: 700; color: var(--z-brass); }
+
+/* ---------- Card tiers ---------- */
+.z-card-surface { border-radius: var(--radius-2xl); border: 1px solid var(--z-border); background: color-mix(in srgb, var(--z-surface-2) 80%, transparent); padding: 16px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03); }
+.z-card-compact { border-radius: var(--radius-md); border: 1px solid var(--z-border); background: #111; padding: 8px 12px; }
+.z-card-stat { border-radius: var(--radius-2xl); border: 1px solid var(--z-border); background: rgba(0, 0, 0, 0.10); padding: 16px; }
+
+/* ---------- Buttons ---------- */
+.z-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 16px; border-radius: 10px; font-size: 14px; font-weight: 600; border: 1px solid transparent; cursor: pointer; transition: background 150ms, color 150ms, border-color 150ms; font-family: var(--font-sans); }
+.z-btn-brass { background: var(--z-brass); color: var(--z-ink); }
+.z-btn-brass:hover { background: color-mix(in srgb, var(--z-brass) 90%, white); }
+.z-btn-ghost { background: rgba(0, 0, 0, 0.10); color: var(--z-sage-light); border-color: var(--z-border); }
+.z-btn-ghost:hover { background: rgba(255, 255, 255, 0.05); }
+.z-btn-brass-ghost { background: color-mix(in srgb, var(--z-brass) 8%, transparent); color: var(--z-brass); border-color: color-mix(in srgb, var(--z-brass) 20%, transparent); }
+.z-btn-brass-ghost:hover { background: color-mix(in srgb, var(--z-brass) 12%, transparent); }
+
+/* ---------- Status surfaces ---------- */
+.surface-income  { color: var(--z-income);  border: 1px solid color-mix(in srgb, var(--z-income) 20%, transparent);  background: color-mix(in srgb, var(--z-income) 8%, transparent); }
+.surface-expense { color: var(--z-expense); border: 1px solid color-mix(in srgb, var(--z-expense) 20%, transparent); background: color-mix(in srgb, var(--z-expense) 8%, transparent); }
+.surface-debt    { color: var(--z-debt);    border: 1px solid color-mix(in srgb, var(--z-debt) 20%, transparent);    background: color-mix(in srgb, var(--z-debt) 8%, transparent); }
+.surface-alert   { color: var(--z-alert);   border: 1px solid color-mix(in srgb, var(--z-alert) 20%, transparent);   background: color-mix(in srgb, var(--z-alert) 8%, transparent); }
+
+/* ---------- Section divider ---------- */
+.z-divider { display: flex; align-items: center; gap: 12px; }
+.z-divider .line { flex: 1; height: 1px; background: rgba(255, 255, 255, 0.06); }

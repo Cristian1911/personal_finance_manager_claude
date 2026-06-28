@@ -310,7 +310,7 @@ export function InicioBurndown({
                   Ver plan
                 </Link>
                 <Link
-                  href="/categories"
+                  href="/plan?tab=presupuesto"
                   className="flex-1 rounded-xl bg-black/20 border border-white/8 px-3 py-2 text-center text-[11px] font-semibold text-z-sage-light transition-colors active:bg-white/[0.03]"
                 >
                   Ver categorías

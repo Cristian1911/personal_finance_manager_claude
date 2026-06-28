@@ -32,6 +32,9 @@ export interface RitmoData extends RitmoResult {
   nextIncomeName: string | null;
   nextIncomeAmount: number;
   nextIncomeDateLabel: string | null;
+  /** Whether the user has a configured income (next-income event or onboarding estimate).
+   *  When false the hero verdict is synthetic — show an honest "Sin datos aún" state. */
+  incomeConfigured: boolean;
 }
 
 export async function getRitmo(
@@ -93,6 +96,7 @@ export async function getRitmo(
         nextIncomeName: heroData.nextIncomeName,
         nextIncomeAmount: heroData.nextIncomeAmount,
         nextIncomeDateLabel,
+        incomeConfigured: heroData.incomeConfigured,
       },
     };
   } catch (error) {

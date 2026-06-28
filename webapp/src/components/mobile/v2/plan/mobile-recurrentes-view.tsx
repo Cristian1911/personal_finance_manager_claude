@@ -2,8 +2,9 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Check, ExternalLink, Tag } from "lucide-react";
+import { Check, ExternalLink, Tag, Repeat, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/empty-state";
 import { MobileRecurrentesTemplatesStrip } from "./mobile-recurrentes-templates-strip";
 import { AccountRowIdentity } from "@/components/accounts/account-row-identity";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -223,6 +224,18 @@ export function MobileRecurrentesView({
 
   function handleRowTap(item: OccurrenceItem) {
     setExpandedKey(expandedKey === item.key ? null : item.key);
+  }
+
+  // No templates yet (fresh account) — teach the feature instead of a $0 hero.
+  if (templates.length === 0) {
+    return (
+      <EmptyState
+        icon={<Repeat className="size-6" strokeWidth={1.5} />}
+        title="Registra lo que se repite"
+        description="Suscripciones, arriendo, cuotas — Zeta te avisa antes de cada cobro."
+        primary={{ label: "Agregar recurrente", href: "/recurrentes/new", icon: Plus }}
+      />
+    );
   }
 
   return (

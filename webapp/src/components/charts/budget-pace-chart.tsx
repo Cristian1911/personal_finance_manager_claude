@@ -32,7 +32,7 @@ export function BudgetPaceChart({ data, totalBudget, totalSpent, monthLabel }: B
             <p className="text-sm text-muted-foreground mb-2">
               No tienes presupuesto configurado
             </p>
-            <a href="/categories" className="text-xs text-primary hover:underline">
+            <a href="/plan?tab=presupuesto" className="text-xs text-primary hover:underline">
               Configurar presupuesto mensual
             </a>
           </div>

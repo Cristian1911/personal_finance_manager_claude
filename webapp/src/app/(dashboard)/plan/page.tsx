@@ -16,9 +16,18 @@ import { PAGE_STACK_CLASS } from "@/lib/constants/styles";
 import { formatMonthLabel, parseMonth } from "@/lib/utils/date";
 import { PlanResumenZone } from "@/components/plan/zones/plan-resumen-zone";
 import { PlanMobileZone } from "@/components/plan/zones/plan-mobile-zone";
+import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import type { CurrencyCode } from "@/types/domain";
 
 const VALID_TABS: PlanTab[] = ["resumen", "presupuesto", "periodo", "recurrentes", "deseos"];
+
+const MOBILE_TAB_TITLES: Record<PlanTab, string> = {
+  resumen: "Plan",
+  presupuesto: "Presupuesto",
+  periodo: "Periodo",
+  recurrentes: "Recurrentes",
+  deseos: "Deseos",
+};
 
 export default async function PlanPage({
   searchParams,
@@ -116,7 +125,8 @@ export default async function PlanPage({
             />
           </Suspense>
         ) : (
-          <div className="mt-4 space-y-4">
+          <div className="space-y-4">
+            <MobileHeader variant="main" title={MOBILE_TAB_TITLES[activeTab] ?? "Plan"} />
             <div className="flex justify-center">
               <Suspense fallback={<div className="h-9 w-40 rounded-md bg-z-surface-2 animate-pulse" />}>
                 <MonthSelector compact />

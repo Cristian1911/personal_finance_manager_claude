@@ -83,7 +83,7 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
   // "income" tone falls through to a muted color when nothing was spent
   // today — there's no "you spent $0" achievement to celebrate in green.
   const todayTone =
-    status.tone === "income" && data.spentToday === 0
+    !data.incomeConfigured || (status.tone === "income" && data.spentToday === 0)
       ? "text-z-sage-light"
       : statusTextClass;
 
@@ -130,18 +130,29 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
           Gasto de hoy
         </p>
-        <span
-          role="status"
-          aria-label={`Estado del gasto: ${status.label}`}
-          className={cn(
-            "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]",
-            "bg-white/[0.04] border border-white/6",
-            statusTextClass,
-          )}
-        >
-          <span className={cn("size-1.5 rounded-full", statusToneClass)} />
-          {status.label}
-        </span>
+        {data.incomeConfigured ? (
+          <span
+            role="status"
+            aria-label={`Estado del gasto: ${status.label}`}
+            className={cn(
+              "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]",
+              "bg-white/[0.04] border border-white/6",
+              statusTextClass,
+            )}
+          >
+            <span className={cn("size-1.5 rounded-full", statusToneClass)} />
+            {status.label}
+          </span>
+        ) : (
+          <span
+            role="status"
+            aria-label="Sin datos suficientes para un veredicto"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/6 bg-white/[0.04] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-z-sage-dark"
+          >
+            <span className="size-1.5 rounded-full bg-z-sage-dark" />
+            Sin datos aún
+          </span>
+        )}
       </div>
 
       {/* Bottom row: today's spend (the headline fact) + sparkline. */}
@@ -166,22 +177,32 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
       {/* Daily allowance context line. Always rendered — it's the
           baseline the headline is being compared against. Tone shifts
           to amber when today is over the daily budget. */}
-      <p
-        className={cn(
-          "mt-2 text-[12px] tabular-nums",
-          overspentToday ? "text-z-alert" : "text-z-sage-light",
-        )}
-      >
-        {overspentToday ? (
-          <>
-            Por encima de {formatCurrency(data.availablePerDay, data.currency)} al día
-          </>
-        ) : (
-          <>
-            de {formatCurrency(data.availablePerDay, data.currency)} al día
-          </>
-        )}
-      </p>
+      {data.incomeConfigured ? (
+        <p
+          className={cn(
+            "mt-2 text-[12px] tabular-nums",
+            overspentToday ? "text-z-alert" : "text-z-sage-light",
+          )}
+        >
+          {overspentToday ? (
+            <>
+              Por encima de {formatCurrency(data.availablePerDay, data.currency)} al día
+            </>
+          ) : (
+            <>
+              de {formatCurrency(data.availablePerDay, data.currency)} al día
+            </>
+          )}
+        </p>
+      ) : (
+        <Link
+          href="/settings/perfil"
+          className="mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-z-brass hover:text-z-brass-hot"
+        >
+          Agrega tu ingreso para calcular tu ritmo
+          <ChevronRight className="size-3.5" aria-hidden />
+        </Link>
+      )}
 
       <p className="mt-5 text-right text-[10px] font-medium text-z-sage-light tabular-nums">
         {Math.round(data.spentFraction * 100)}% del período

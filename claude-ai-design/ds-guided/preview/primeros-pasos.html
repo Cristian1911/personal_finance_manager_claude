@@ -1,0 +1,79 @@
+<!doctype html>
+<!-- @dsCard group="Experiencia guiada" name="Home · Primeros pasos (checklist)" subtitle="Puente onboarding → home, sembrado por meta" viewport="430x560" -->
+<html lang="es"><head><meta charset="utf-8"/>
+<link rel="stylesheet" href="../colors_and_type.css"/>
+<style>
+  html,body{margin:0;background:var(--z-ink);}
+  .wrap{padding:20px;max-width:430px;box-sizing:border-box;}
+  .card-pad{padding:20px;}
+  .top-row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .close-btn{background:none;border:none;color:var(--z-sage-dark);cursor:pointer;
+    font-size:20px;line-height:1;padding:2px 4px;}
+  .intro{margin:10px 0 16px;}
+  .progress-track{height:4px;border-radius:999px;background:var(--z-surface-3);overflow:hidden;}
+  .progress-fill{height:100%;width:25%;border-radius:999px;background:var(--z-brass);}
+  .steps{margin-top:18px;display:flex;flex-direction:column;gap:14px;}
+  .step{display:flex;align-items:center;gap:12px;}
+  .check{flex:none;width:22px;height:22px;border-radius:999px;display:flex;
+    align-items:center;justify-content:center;box-sizing:border-box;}
+  .check-done{background:var(--z-brass);}
+  .check-pending{border:1.5px solid var(--z-border-strong);}
+  .step-text{flex:1 1 auto;}
+  .step-done .step-text{color:var(--z-sage-dark);text-decoration:line-through;}
+  .go-link{flex:none;color:var(--z-brass);text-decoration:none;}
+  .go-link:hover{color:var(--z-brass-hot);}
+  .seed-line{margin-top:20px;display:block;color:var(--z-sage-dark);}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="z-card-surface card-pad">
+      <div class="top-row">
+        <span class="z-eyebrow">Primeros pasos · 1 de 4</span>
+        <button class="close-btn" type="button" aria-label="Cerrar">&times;</button>
+      </div>
+
+      <p class="z-body-sm intro" style="color:var(--z-sage-light);">
+        Activa Zeta en unos minutos. Puedes cerrarlo cuando quieras.
+      </p>
+
+      <div class="progress-track">
+        <div class="progress-fill"></div>
+      </div>
+
+      <div class="steps">
+        <div class="step step-done">
+          <span class="check check-done">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+              stroke="var(--z-ink)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 6 9 17l-5-5"/>
+            </svg>
+          </span>
+          <span class="z-body-sm step-text">Importar extracto</span>
+        </div>
+
+        <div class="step">
+          <span class="check check-pending"></span>
+          <span class="z-body-sm step-text" style="color:var(--z-sage-light);">Marcar cuenta como deuda</span>
+          <a class="z-body-sm go-link" href="#">Ir</a>
+        </div>
+
+        <div class="step">
+          <span class="check check-pending"></span>
+          <span class="z-body-sm step-text" style="color:var(--z-sage-light);">Probar el Planificador de pagos</span>
+          <a class="z-body-sm go-link" href="#">Ir</a>
+        </div>
+
+        <div class="step">
+          <span class="check check-pending"></span>
+          <span class="z-body-sm step-text" style="color:var(--z-sage-light);">Registrar una deuda personal</span>
+          <a class="z-body-sm go-link" href="#">Ir</a>
+        </div>
+      </div>
+
+      <span class="z-label seed-line">
+        Se siembra según tu meta: ahorrar · entender gastos · salir de deudas.
+      </span>
+    </section>
+  </div>
+</body></html>

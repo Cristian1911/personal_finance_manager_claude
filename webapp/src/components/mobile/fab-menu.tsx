@@ -6,6 +6,7 @@ import { Drawer as DrawerPrimitive } from "vaul";
 import { Plus, Mic, Sparkles, Image } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MOBILE_SHEET_SAFE_AREA_CLASS } from "@/lib/constants/styles";
+import { CoachMark, useCoachMark } from "@/components/guided/coach-mark";
 
 export type FabAction = "voice" | "screenshot" | "quick-capture" | "new-recurring" | "new-account";
 
@@ -31,6 +32,7 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
   const pathname = usePathname();
   const router = useRouter();
   const closedViaBackRef = useRef(false);
+  const fabCoach = useCoachMark("fab-menu");
 
   // Close on route change
   useEffect(() => {
@@ -104,6 +106,12 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
             <DrawerPrimitive.Title className="sr-only">Acciones</DrawerPrimitive.Title>
 
             <div className={cn("min-h-0 flex-1 overflow-y-auto px-4", MOBILE_SHEET_SAFE_AREA_CLASS)}>
+              {fabCoach.show && (
+                <CoachMark onDismiss={fabCoach.dismiss} className="mb-4">
+                  <b className="font-semibold text-z-white">Más que registrar a mano:</b>{" "}
+                  dicta por voz, escribe en una línea o sube un pantallazo de tu banco.
+                </CoachMark>
+              )}
               {/* Primary: Nueva transacción */}
               <button
                 type="button"
