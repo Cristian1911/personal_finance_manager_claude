@@ -12,6 +12,7 @@ import { ReconcileChip } from "./reconcile-chip";
 import { Narrator } from "./narrator";
 import { WizardActionBar } from "./wizard-action-bar";
 import { cn } from "@/lib/utils";
+import { CoachMark, useCoachMark } from "@/components/guided/coach-mark";
 import type { ActionResult } from "@/types/actions";
 import type { CurrencyCode } from "@/types/domain";
 import type {
@@ -218,12 +219,23 @@ export function ReconciliationStep({
     });
   }
 
+  const reconcileCoach = useCoachMark("import-reconciliation");
+
   return (
     <div className="space-y-5">
       {!state.success && state.error && (
         <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
           {state.error}
         </div>
+      )}
+
+      {reconcileCoach.show && (
+        <CoachMark onDismiss={reconcileCoach.dismiss}>
+          Encontramos movimientos que parecen el mismo.{" "}
+          <b className="font-semibold text-z-white">Combinar</b> los une;{" "}
+          <b className="font-semibold text-z-white">Mantener ambos</b> los deja
+          separados. Al combinar se conserva la versión del banco.
+        </CoachMark>
       )}
 
       <div className="grid grid-cols-2 gap-2.5">

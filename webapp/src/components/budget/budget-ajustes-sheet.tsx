@@ -36,6 +36,7 @@ interface BudgetAjustesSheetProps {
 const MODES: { value: BudgetMode; label: string; detail: string }[] = [
   { value: "per_category", label: "Flexible", detail: "Cada categoría con su límite" },
   { value: "zero_based", label: "Estricto", detail: "Cada peso tiene destino" },
+  { value: "50_30_20", label: "50/30/20", detail: "Por sets: necesidades, deseos, ahorro" },
 ];
 
 export function BudgetAjustesSheet({

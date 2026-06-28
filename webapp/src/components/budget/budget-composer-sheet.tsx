@@ -101,6 +101,13 @@ export function BudgetComposerSheet({
             draft={draft}
             onChange={(id, v) => setDraft((p) => ({ ...p, [id]: v }))}
             onAddLine={(id, prefill) => setDraft((p) => ({ ...p, [id]: prefill }))}
+            onRemoveLine={(id) =>
+              setDraft((p) => {
+                const next = { ...p };
+                delete next[id];
+                return next;
+              })
+            }
             showSpend
           />
           <button

@@ -28,8 +28,9 @@ import { DestinatarioCreateDialog } from "@/components/destinatarios/destinatari
 import { toast } from "sonner";
 import type { TransactionWithAccount, Category, CategoryWithChildren, CurrencyCode } from "@/types/domain";
 import Link from "next/link";
-import { ArrowDownLeft, ArrowUpRight, Eye, EyeOff, FileText, UserPlus } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Eye, EyeOff, FileUp, Inbox, Plus, UserPlus } from "lucide-react";
 import { flattenCategories } from "@/lib/utils/categories";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export function TransactionTable({
   transactions,
@@ -49,18 +50,13 @@ export function TransactionTable({
 
   if (transactions.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <FileText className="size-12 text-muted-foreground mb-4" />
-        <p className="text-lg font-medium mb-1">Sin transacciones</p>
-        <p className="text-sm text-muted-foreground mb-4">
-          Importa un extracto PDF o registra tu primer movimiento.
-        </p>
-        <div className="flex gap-2">
-          <Link href="/import">
-            <Button size="sm" variant="default">Importar extracto</Button>
-          </Link>
-        </div>
-      </div>
+      <EmptyState
+        icon={<Inbox className="size-6" strokeWidth={1.5} />}
+        title="Todavía no hay movimientos"
+        description="Sube un extracto y aparecen en segundos. Detectamos el banco automáticamente."
+        primary={{ label: "Importar extracto", href: "/import", icon: <FileUp className="size-4" strokeWidth={1.5} /> }}
+        secondary={{ label: "Agregar a mano", href: "/transactions/new", icon: <Plus className="size-4" strokeWidth={1.5} /> }}
+      />
     );
   }
 

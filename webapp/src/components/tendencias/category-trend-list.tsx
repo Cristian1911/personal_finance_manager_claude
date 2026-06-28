@@ -16,6 +16,7 @@ import type { CurrencyCode } from "@/types/domain";
 import { DeltaChip } from "./delta-chip";
 import { Expand } from "@/components/mobile/v2/expand";
 import { DrilldownTransactions } from "./drilldown-transactions";
+import { CoachMark, useCoachMark } from "@/components/guided/coach-mark";
 
 const DEFAULT_VISIBLE = 8;
 
@@ -214,6 +215,7 @@ export function CategoryTrendList({
 }: CategoryTrendListProps) {
   const [query, setQuery] = useState("");
   const [showAll, setShowAll] = useState(false);
+  const drillCoach = useCoachMark("tendencias-drilldown");
 
   const nodeById = useMemo(() => new Map(hierarchy.map((n) => [n.id, n])), [hierarchy]);
   const topLevel = useMemo(() => hierarchy.filter((n) => n.parentId === null), [hierarchy]);
@@ -256,6 +258,12 @@ export function CategoryTrendList({
           className="min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-z-sage-dark focus:outline-none"
         />
       </label>
+
+      {drillCoach.show && (
+        <CoachMark onDismiss={drillCoach.dismiss} className="my-2">
+          Toca una categoría para ver los movimientos detrás.
+        </CoachMark>
+      )}
 
       {rows.length === 0 ? (
         <p className="py-3 text-center text-xs text-z-sage-dark">Sin resultados</p>

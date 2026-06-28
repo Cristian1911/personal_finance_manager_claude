@@ -32,6 +32,25 @@ Shipped the living-timeline redesign of the Periodo plan. Review agents flagged 
 - **Desktop Flujo chart** not added yet (only mobile collapsible). Add under the desktop hero (expanded), drop the duplicate Ingresos/Gastos/Neto footer, lift the "Saldo negativo proyectado" danger banner so it shows even collapsed.
 - **Mobile Ingresos/Gastos tabs** — design had them; current mobile stacks the board. Add if the stacked view feels long.
 
+## Budget participativa — mobile parity (webapp branch `feat/budget-creation-participativa`, 2026-06-28)
+
+The participatory budget-creation flow shipped on the **webapp** (wizard→builder, line breakdown + calculator, "Desde transacciones" categorize-and-fill, 50/30/20 nested sets, `budget_mode="50_30_20"`, mode-on-save, month-selector hidden during setup). Mobile must mirror it (webapp = source of truth). Findings below from a code-level parity scan of `mobile/`. Spawn `mobile-webapp-parity` + `mobile-sync-doctor` before building.
+
+### P0 — data / enum drift (fix before any mobile budget write)
+- **`budget_mode` column + sync** (`mobile/lib/db/schema.ts`, `mobile/lib/sync/pull.ts`): local `profiles` has no `budget_mode`, so `pull.upsertRow()` (filters by `tableColumns.has(col)`) **silently drops** the value the webapp writes — incl. the new `"50_30_20"`. Add the TEXT column (ALTER migration) + ensure no enum/switch throws on `"50_30_20"` (treat as free text). Without it mobile can't replicate the gate, mode-aware UI, or read the chosen mode.
+- **Budget write sets `budget_mode`** (`mobile/lib/repositories/budgets.ts`, `mobile/lib/profile.ts`): mobile budget creates never touch `budget_mode`. Add a `setBudgetMode`-equivalent (UPDATE profiles + `sync_queue`) and call it whenever a budget is first created — else remote ends with budgets present but `budget_mode` NULL → the **webapp re-shows the creation wizard** (gate `!budgetMode || withBudget===0`). Cross-platform repeated-onboarding corruption.
+
+### P1 — feature parity (the participativa flow is largely absent on mobile)
+- **Creation wizard** (new): 2-step (income → 3-mode horizontal style picker) mirroring `budget-wizard.tsx`; persist income via a mobile `updateEstimatedIncome` (column exists locally); carry mode+income into the builder; do NOT set `budget_mode` on exit (only on save). Mobile has no income capture / mode selection today.
+- **Builder by lines** (`mobile/components/budgets/BudgetsRoot.tsx`): replace the flat single-amount-per-category model with start-empty + add-category + per-category line breakdown (calculator input, per-line remove) + atomic save (bulk upsert + delete-diff **+** `setBudgetMode` + `updateEstimatedIncome`), mirroring `applyBudgetComposition`.
+- **Category picker** (new, ~`budget-category-add-sheet.tsx`): "+ Agregar categoría" so users can budget ANY category — cold-start blocker: today the empty state literally says "créalos en la web". Mobile has no first-time creation for zero-spend categories.
+- **Derive-from-transactions + categorize** (new, ~`budget-tx-picker-sheet.tsx`): list uncategorized tx (`getTransactions({uncategorizedOnly})` exists), multi-select, **categorize** them into the target category (queue sync), return the abs summed amount to prefill the line. Mobile has the building blocks but no UI; the categorization side-effect (feeds dashboards) never happens on mobile today.
+- **50/30/20 mode + allocation sets**: when `mode==="50_30_20" && income>0`, group into needs/wants/savings with informative (warn-not-block) caps. **Port `groupCategoriesByAllocationSet` + `AllocationSet` + `BudgetMode` into `@zeta/shared`** (`categoryBudgetGroup` is already there) so both platforms share ONE grouping rule — else silent allocation drift.
+
+### P2 — polish / forward-compat
+- **Month-selector during setup** (`BudgetsRoot.tsx`): hide `<MonthSelector>` until a saved budget exists (mirror `getHasSavedBudget()`); meaningless during first-time setup.
+- **Guided/empty-state copy**: mobile has no guided module; note that IF mobile adds guided onboarding it must key the budget step off **saved-budget-row count**, not `budget_mode` (the webapp bug we just fixed). Update the "créalos en la web" empty-state copy once mobile creation lands.
+
 ## Mobile ↔ Webapp parity audit (2026-06-25, branch `audit/mobile-web-parity-2026-06-25`)
 
 Full report: [`docs/audits/2026-06-25-mobile-web-parity.md`](docs/audits/2026-06-25-mobile-web-parity.md) (127 findings, severity-ranked).

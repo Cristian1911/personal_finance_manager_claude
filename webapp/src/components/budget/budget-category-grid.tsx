@@ -125,7 +125,7 @@ export function BudgetCategoryGrid({ categories }: BudgetCategoryGridProps) {
           Crea categorías y asígnales presupuesto para controlar tus gastos.
         </p>
         <Button asChild size="sm">
-          <Link href="/categories?tab=gestionar">Gestionar categorías</Link>
+          <Link href="/categories">Gestionar categorías</Link>
         </Button>
       </div>
     );
