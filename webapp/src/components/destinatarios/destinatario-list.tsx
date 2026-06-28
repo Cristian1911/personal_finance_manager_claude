@@ -7,11 +7,12 @@ import {
   Search,
   ArrowUpDown,
   Plus,
-  Contact,
   ChevronDown,
   Pencil,
   Search as SearchIcon,
+  UserCheck,
 } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "sonner";
 import { CreateDestinatarioDialog } from "./create-destinatario-dialog";
 import { MergeDialog } from "./merge-dialog";
@@ -306,16 +307,12 @@ export function DestinatarioList({
 
   if (destinatarios.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <Contact className="size-12 text-muted-foreground mb-4" />
-        <p className="text-muted-foreground mb-2">
-          No tienes destinatarios.
-        </p>
-        <p className="text-sm text-muted-foreground mb-6">
-          Importa transacciones o crea uno manualmente.
-        </p>
-        <CreateDestinatarioDialog categories={categories} />
-      </div>
+      <EmptyState
+        icon={<UserCheck className="size-6" strokeWidth={1.5} />}
+        title="Crea una regla, Zeta categoriza siempre"
+        description="Asigna una categoría a un comercio y se aplica a cada movimiento suyo, también a los que importes después."
+        footer={<CreateDestinatarioDialog categories={categories} />}
+      />
     );
   }
 

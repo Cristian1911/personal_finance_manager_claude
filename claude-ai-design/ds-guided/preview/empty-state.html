@@ -1,0 +1,105 @@
+<!doctype html>
+<!-- @dsCard group="Experiencia guiada" name="EmptyState (primitivo) · 3 aplicaciones" subtitle="Periodo · Deudas · Sin movimientos" viewport="760x460" -->
+<html lang="es"><head><meta charset="utf-8"/>
+<link rel="stylesheet" href="../colors_and_type.css"/>
+<style>
+  html,body{margin:0;background:var(--z-ink);color:var(--z-sage-light);}
+  .wrap{padding:24px;}
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:16px;
+    align-items:stretch;
+  }
+  @media (max-width:720px){ .grid{grid-template-columns:1fr;} }
+
+  /* "empty" variant: dashed border on the surface tier */
+  .empty{
+    border-style:dashed;
+    border-color:var(--z-border-strong);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+    gap:12px;
+    padding:24px 20px;
+  }
+  .ico{
+    width:44px;height:44px;
+    border-radius:999px;
+    display:grid;place-items:center;
+    background:color-mix(in srgb, var(--z-brass) 8%, transparent);
+    border:1px solid color-mix(in srgb, var(--z-brass) 20%, transparent);
+    color:var(--z-brass);
+    flex:none;
+  }
+  .ico svg{display:block;}
+  .empty h3{margin:2px 0 0;}
+  .empty p{margin:0;max-width:30ch;}
+  .ctas{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    justify-content:center;
+    margin-top:auto;
+    padding-top:6px;
+  }
+</style>
+</head><body>
+<div class="wrap">
+  <p class="z-eyebrow" style="margin:0 0 16px;">EmptyState — el vacío enseña</p>
+
+  <div class="grid">
+
+    <!-- 1 · Periodo -->
+    <section class="z-card-surface empty">
+      <span class="ico" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4.5" width="18" height="16" rx="2.5"/>
+          <path d="M3 9h18"/>
+          <path d="M8 2.5v4M16 2.5v4"/>
+        </svg>
+      </span>
+      <h3 class="z-h3" style="color:var(--z-white);">Planifica de dónde sale cada peso</h3>
+      <p class="z-body-sm">Asigna cada gasto a un ingreso concreto para saber, en cualquier momento, cuánto te queda realmente.</p>
+      <div class="ctas">
+        <button type="button" class="z-btn z-btn-brass">Crear mi primer periodo</button>
+      </div>
+    </section>
+
+    <!-- 2 · Deudas -->
+    <section class="z-card-surface empty">
+      <span class="ico" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2.5" y="5.5" width="19" height="13" rx="2.5"/>
+          <path d="M2.5 9.5h19"/>
+          <path d="M6 14.5h4"/>
+        </svg>
+      </span>
+      <h3 class="z-h3" style="color:var(--z-white);">Aún no tienes deudas registradas</h3>
+      <p class="z-body-sm">Marca una cuenta como tarjeta o préstamo y se activa tu plan de pago.</p>
+      <div class="ctas">
+        <button type="button" class="z-btn z-btn-brass">Marcar cuenta como deuda</button>
+      </div>
+    </section>
+
+    <!-- 3 · Sin movimientos -->
+    <section class="z-card-surface empty">
+      <span class="ico" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3.5v11"/>
+          <path d="M8 10.5l4 4 4-4"/>
+          <path d="M4.5 19.5h15"/>
+        </svg>
+      </span>
+      <h3 class="z-h3" style="color:var(--z-white);">Aún no hay movimientos</h3>
+      <p class="z-body-sm">Importa un extracto y verás tu dinero real en segundos, o registra un gasto a mano.</p>
+      <div class="ctas">
+        <button type="button" class="z-btn z-btn-brass">Importar extracto</button>
+        <button type="button" class="z-btn z-btn-ghost">Registrar gasto</button>
+      </div>
+    </section>
+
+  </div>
+</div>
+</body></html>

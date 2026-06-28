@@ -14,6 +14,7 @@ import {
   PANEL_SURFACE_CLASS,
   SECTION_EYEBROW_CLASS,
 } from "@/lib/constants/styles";
+import { InfoHint } from "@/components/ui/info-hint";
 import { isDebtAccountType } from "@/lib/utils/account-balance";
 import type { Account } from "@/types/domain";
 import {
@@ -131,9 +132,16 @@ export function AccountCard({ account, allAccounts }: AccountCardProps) {
         <CardContent className="space-y-3 px-4">
           <div>
             <div className="flex items-baseline justify-between gap-3">
-              <p className={SECTION_EYEBROW_CLASS}>
-                {isDebt ? "Saldo pendiente" : "Saldo actual"}
-              </p>
+              <span className="flex items-center gap-1.5">
+                <span className={SECTION_EYEBROW_CLASS}>
+                  {isDebt ? "Saldo pendiente" : "Saldo actual"}
+                </span>
+                <InfoHint label="Sobre el saldo">
+                  {isDebt
+                    ? "Cantidad que debes en esta cuenta."
+                    : "Dinero disponible en esta cuenta."}
+                </InfoHint>
+              </span>
               <span className="text-[10px] font-medium text-muted-foreground">
                 {account.currency_code}
               </span>

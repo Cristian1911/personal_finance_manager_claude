@@ -145,7 +145,7 @@ export function PlanZoneChips({
                   />
                 )}
                 <Link
-                  href="/categories"
+                  href="/plan?tab=presupuesto"
                   className="mt-2 flex items-center justify-center gap-1 rounded-lg border border-white/6 py-1.5 text-[11px] font-medium text-z-brass transition-colors hover:bg-white/[0.03]"
                 >
                   Ver presupuesto

@@ -1,0 +1,110 @@
+<!doctype html>
+<!-- @dsCard group="Experiencia guiada" name="Onboarding · ¿Cómo quieres empezar?" subtitle="Selector de rampa de entrada" viewport="430x900" -->
+<html lang="es"><head><meta charset="utf-8"/>
+<link rel="stylesheet" href="../colors_and_type.css"/>
+<style>
+  html,body{margin:0;background:var(--z-ink);}
+  .frame{
+    width:414px;min-height:900px;margin:0 auto;
+    background:var(--z-ink);
+    padding:24px 20px 28px;
+    box-sizing:border-box;
+    display:flex;flex-direction:column;gap:20px;
+  }
+  .top{display:flex;align-items:center;justify-content:space-between;}
+  .back{
+    width:36px;height:36px;border-radius:var(--radius-md);
+    border:1px solid var(--z-border);
+    background:var(--z-surface-2);
+    display:flex;align-items:center;justify-content:center;
+    color:var(--z-sage-light);
+  }
+  .head{display:flex;flex-direction:column;gap:8px;}
+  .stack{display:flex;flex-direction:column;gap:12px;margin-top:4px;}
+  .opt{
+    display:block;cursor:pointer;
+    position:relative;
+    padding:18px;
+  }
+  .opt .row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+  .opt .meta{display:flex;flex-direction:column;gap:4px;}
+  .opt .foot{margin-top:14px;}
+  .opt-a{
+    border-color:var(--z-border-strong);
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--z-brass) 10%, transparent), color-mix(in srgb, var(--z-brass) 2%, transparent)),
+      var(--z-surface-2);
+  }
+  .brass{color:var(--z-brass);}
+  .badge{
+    display:inline-flex;align-items:center;
+    padding:4px 10px;border-radius:999px;
+    border:1px solid var(--z-border-strong);
+    background:color-mix(in srgb, var(--z-brass) 10%, transparent);
+    white-space:nowrap;
+  }
+  .full{width:100%;}
+  .spacer{flex:1;}
+</style>
+</head><body>
+  <div class="frame">
+
+    <div class="top">
+      <span class="back" aria-label="Regresar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </span>
+      <span class="z-eyebrow">Paso 3 de 3</span>
+    </div>
+
+    <div class="head">
+      <h1 class="z-h1">¿Cómo quieres empezar?</h1>
+      <p class="z-body-sm" style="color:var(--z-sage-light);">Elige el camino más fácil para ti. Puedes cambiar o sumar después.</p>
+    </div>
+
+    <div class="stack">
+
+      <div class="z-card-surface opt opt-a">
+        <div class="row">
+          <div class="meta">
+            <h3 class="z-h3" style="color:var(--z-white);">Sube tus extractos</h3>
+            <span class="z-body-sm" style="color:var(--z-sage-light);">PDF del banco o tarjeta</span>
+          </div>
+          <span class="badge z-eyebrow brass">Recomendado</span>
+        </div>
+        <div class="foot">
+          <span class="z-eyebrow brass">Lo más completo · 1 min</span>
+        </div>
+      </div>
+
+      <div class="z-card-surface opt">
+        <div class="row">
+          <div class="meta">
+            <h3 class="z-h3" style="color:var(--z-white);">Crea tus cuentas y saldo</h3>
+            <span class="z-body-sm" style="color:var(--z-sage-light);">Escribe qué tienes hoy</span>
+          </div>
+        </div>
+        <div class="foot">
+          <span class="z-eyebrow">2 min</span>
+        </div>
+      </div>
+
+      <div class="z-card-surface opt">
+        <div class="row">
+          <div class="meta">
+            <h3 class="z-h3" style="color:var(--z-white);">Tengo claro mi presupuesto</h3>
+            <span class="z-body-sm" style="color:var(--z-sage-light);">Arma tu plan 50/30/20</span>
+          </div>
+        </div>
+        <div class="foot">
+          <span class="z-eyebrow">2 min</span>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="spacer"></div>
+
+    <a class="z-btn z-btn-ghost full" href="#">No estoy seguro — explorar primero</a>
+
+  </div>
+</body></html>

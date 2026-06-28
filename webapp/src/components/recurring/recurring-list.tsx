@@ -26,7 +26,11 @@ import {
   Pencil,
   Trash2,
   Merge,
+  Repeat,
+  Plus,
 } from "lucide-react";
+import Link from "next/link";
+import { EmptyState } from "@/components/ui/empty-state";
 import { RecurringFormDialog } from "./recurring-form-dialog";
 import { RecurringImpactDialog } from "./recurring-impact-dialog";
 import { SubPaymentsBreakdown } from "./sub-payments-breakdown";
@@ -50,14 +54,20 @@ export function RecurringList({
 }) {
   if (templates.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <p className="text-muted-foreground mb-2">
-          No tienes transacciones recurrentes configuradas.
-        </p>
-        <p className="text-sm text-muted-foreground">
-          Crea una para rastrear pagos y cobros automáticos.
-        </p>
-      </div>
+      <EmptyState
+        icon={<Repeat className="size-6" strokeWidth={1.5} />}
+        title="Registra lo que se repite"
+        description="Suscripciones, arriendo, cuotas — Zeta te avisa antes de cada cobro."
+        primary={{ label: "Agregar recurrente", href: "/recurrentes/new", icon: <Plus className="size-4" strokeWidth={1.5} /> }}
+        footer={
+          <Link
+            href="/suscripciones"
+            className="text-xs font-semibold text-z-brass transition-colors hover:text-z-brass-hot"
+          >
+            Ver suscripciones detectadas
+          </Link>
+        }
+      />
     );
   }
 

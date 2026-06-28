@@ -10,7 +10,8 @@ import { PeriodSetupDialog } from "@/components/cashflow-planner/period-setup-di
 import { MobilePeriodoView } from "@/components/mobile/v2/plan/mobile-periodo-view";
 import { MOBILE_TAB_BAR_CLEARANCE_CLASS } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
-import { CalendarPlus } from "lucide-react";
+import { CalendarPlus, CalendarRange } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export async function PlanTabPeriodo() {
   const [periodResult, accountsResult, categoriesResult, currency, timelineData] =
@@ -118,19 +119,12 @@ export async function PlanTabPeriodo() {
 
           {/* No active period */}
           {!planData && (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/10 py-16 px-8 text-center space-y-4">
-              <div className="rounded-full bg-card p-4">
-                <CalendarPlus className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <div className="space-y-2">
-                <h2 className="text-lg font-semibold">No tienes un periodo activo</h2>
-                <p className="text-sm text-muted-foreground max-w-sm">
-                  Crea un periodo para planear tus ingresos y gastos, y asignar cada
-                  compromiso a un ingreso específico.
-                </p>
-              </div>
-              <PeriodSetupDialog currency={currency} />
-            </div>
+            <EmptyState
+              icon={<CalendarRange className="size-6" strokeWidth={1.5} />}
+              title="Aún no tienes un periodo activo"
+              description="Crea un periodo para planear tus ingresos y gastos, y asignar cada compromiso a un ingreso específico."
+              footer={<PeriodSetupDialog currency={currency} />}
+            />
           )}
 
           {planData && !isExpired && (

@@ -97,7 +97,7 @@ export function PlanTeaserCard({
             variant="outline"
             className={GHOST_BUTTON_CLASS}
           >
-            <Link href="/categories">
+            <Link href="/plan?tab=presupuesto">
               {allocationData ? "Ajustar presupuesto" : "Ver detalle"}
             </Link>
           </Button>

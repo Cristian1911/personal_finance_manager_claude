@@ -1,0 +1,145 @@
+<!doctype html>
+<!-- @dsCard group="Experiencia guiada" name="Coach-marks + estados de honestidad" subtitle="FAB · drill-down · conciliación · sin-datos" viewport="760x560" -->
+<html lang="es"><head><meta charset="utf-8"/>
+<link rel="stylesheet" href="../colors_and_type.css"/>
+<style>
+  html,body{margin:0;background:var(--z-ink);color:var(--z-white);
+    font-family:inherit;-webkit-font-smoothing:antialiased;}
+  .wrap{padding:24px;display:flex;flex-direction:column;gap:22px;max-width:760px;}
+  .sec{display:flex;flex-direction:column;gap:14px;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
+
+  /* coach-mark balloon — bespoke component built on tokens */
+  .cm{position:relative;background:var(--z-brass);color:var(--z-ink);
+    border-radius:var(--radius-lg);padding:12px 14px;max-width:300px;
+    line-height:1.4;box-shadow:0 8px 24px rgba(0,0,0,.35);}
+  .cm .cm-strong{font-weight:700;}
+  .cm-tail{position:absolute;width:14px;height:14px;background:var(--z-brass);
+    transform:rotate(45deg);left:28px;bottom:-6px;border-radius:2px;}
+
+  .stack{display:flex;flex-direction:column;gap:14px;align-items:flex-start;}
+
+  /* FAB */
+  .fab{width:52px;height:52px;border-radius:9999px;background:var(--z-brass);
+    color:var(--z-ink);display:flex;align-items:center;justify-content:center;
+    box-shadow:0 10px 26px rgba(0,0,0,.45);}
+
+  /* compact row */
+  .row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .row-right{display:flex;align-items:center;gap:10px;color:var(--z-sage-light);}
+  .chev{color:var(--z-sage-dark);}
+
+  /* inline reconciliation strip — brass-only callout, tokens only */
+  .strip{border-radius:var(--radius-md);padding:12px 14px;
+    background:color-mix(in srgb, var(--z-brass) 8%, transparent);
+    border:1px solid color-mix(in srgb, var(--z-brass) 20%, transparent);}
+
+  /* divider with label */
+  .z-divider{display:flex;align-items:center;gap:12px;margin:4px 0;}
+  .z-divider .ln{flex:1;height:1px;background:var(--z-border-strong);}
+
+  /* honesty states */
+  .gauge{width:120px;height:60px;border-top-left-radius:120px;border-top-right-radius:120px;
+    border:2px solid var(--z-border-strong);border-bottom:none;margin:6px auto 12px;}
+  .chip-neutral{display:inline-flex;align-items:center;background:var(--z-surface-3);
+    color:var(--z-sage-dark);border:1px solid var(--z-border);
+    border-radius:9999px;padding:6px 12px;font-size:13px;}
+  .center{text-align:center;}
+  .num-row{display:flex;align-items:baseline;gap:10px;}
+</style>
+</head><body>
+<div class="wrap">
+
+  <!-- SECCIÓN 1 -->
+  <section class="sec">
+    <div class="z-eyebrow">Coach-marks · se muestran una sola vez</div>
+
+    <div class="grid">
+      <!-- a) FAB -->
+      <div class="z-card-surface stack">
+        <div class="cm">
+          <span class="cm-strong">Más que registrar a mano:</span>
+          dicta por voz, escribe en una línea o sube un pantallazo de tu banco.
+          <span class="cm-tail"></span>
+        </div>
+        <div class="fab" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- b) Tendencias drill-down -->
+      <div class="z-card-surface stack">
+        <div class="cm">
+          Toca cualquier categoría para ver los movimientos detrás.
+          <span class="cm-tail"></span>
+        </div>
+        <div class="z-card-compact row" style="width:100%;box-sizing:border-box;">
+          <span class="z-body">Alimentación</span>
+          <span class="row-right">
+            <span class="z-num">$640.000</span>
+            <span class="chev" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 6 15 12 9 18"/>
+              </svg>
+            </span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- c) Conciliación inline -->
+    <div class="z-card-surface">
+      <div class="z-label" style="color:var(--z-sage-dark);margin-bottom:8px;">Conciliación</div>
+      <div class="strip">
+        <p class="z-body-sm" style="margin:0;">
+          Encontramos movimientos que parecen el mismo. Combinar los une; Mantener ambos los deja
+          separados. Al combinar se conserva la versión del banco.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- divisor -->
+  <div class="z-divider">
+    <span class="ln"></span>
+    <span class="z-eyebrow">Honestidad</span>
+    <span class="ln"></span>
+  </div>
+
+  <!-- SECCIÓN 2 -->
+  <section class="sec">
+    <div class="z-eyebrow">Estados de honestidad · sin inventar números</div>
+
+    <div class="grid">
+      <!-- Gauge incompleto -->
+      <div class="z-card-surface center">
+        <div class="z-eyebrow" style="margin-bottom:6px;">Salud financiera</div>
+        <div class="gauge" aria-hidden="true"></div>
+        <div class="z-h3" style="color:var(--z-sage-dark);">Sin datos suficientes</div>
+        <p class="z-body-sm" style="margin:8px 0 0;color:var(--z-sage-light);">
+          Agrega tu ingreso y algunos movimientos para calcular tu salud financiera.
+        </p>
+      </div>
+
+      <!-- Hero sin gasto real -->
+      <div class="z-card-surface">
+        <div class="z-eyebrow" style="margin-bottom:8px;">Gastado hoy</div>
+        <div class="num-row">
+          <span class="z-num-hero">$0</span>
+        </div>
+        <div style="margin-top:14px;">
+          <span class="chip-neutral">Aún sin movimientos hoy</span>
+        </div>
+        <p class="z-body-sm" style="margin:12px 0 0;color:var(--z-sage-light);">
+          Cuando registres tu primer gasto, aquí verás si vas dentro de tu plan.
+        </p>
+      </div>
+    </div>
+  </section>
+
+</div>
+</body></html>

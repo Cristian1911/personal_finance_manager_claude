@@ -1,7 +1,8 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, TrendingDown } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { getDebtOverview, getDebtTrend, getArchivedDebtObligations } from "@/actions/debt";
 import { getEstimatedIncome } from "@/actions/income";
 import { getNonDebtAccounts } from "@/actions/extra-payment";
@@ -74,14 +75,12 @@ async function MobileDebtSection({
 
   if (overview.accounts.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <p className="text-muted-foreground mb-2">
-          No tienes cuentas de deuda registradas.
-        </p>
-        <Link href="/accounts" className="text-primary hover:underline text-sm">
-          Agregar tarjeta de crédito o préstamo
-        </Link>
-      </div>
+      <EmptyState
+        icon={<TrendingDown className="size-6" strokeWidth={1.5} />}
+        title="Marca una cuenta como deuda"
+        description="Convierte una tarjeta o préstamo en deuda y arma un plan de pago."
+        primary={{ label: "Marcar deuda", href: "/accounts" }}
+      />
     );
   }
 
@@ -170,14 +169,12 @@ async function DesktopDebtSection({
 
   if (overview.accounts.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <p className="text-muted-foreground mb-2">
-          No tienes cuentas de deuda registradas.
-        </p>
-        <Link href="/accounts" className="text-primary hover:underline text-sm">
-          Agregar tarjeta de crédito o préstamo
-        </Link>
-      </div>
+      <EmptyState
+        icon={<TrendingDown className="size-6" strokeWidth={1.5} />}
+        title="Marca una cuenta como deuda"
+        description="Convierte una tarjeta o préstamo en deuda y arma un plan de pago."
+        primary={{ label: "Marcar deuda", href: "/accounts" }}
+      />
     );
   }
 

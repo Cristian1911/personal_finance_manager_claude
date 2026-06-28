@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
 import { ArrowLeft, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MOBILE_BG_CLASS } from "@/lib/constants/styles";
@@ -65,16 +64,8 @@ export function MobileHeader(props: MobileHeaderProps) {
               >
                 <Icon className="size-4" />
               </button>
-            ) : props.backHref ? (
-              <Link
-                href={props.backHref}
-                className="flex size-8 shrink-0 items-center justify-center rounded-full text-z-sage-light transition-colors hover:bg-white/5"
-                aria-label={label}
-              >
-                <Icon className="size-4" />
-              </Link>
             ) : (
-              <MobileBackButton />
+              <MobileBackButton fallbackHref={props.backHref} exit={isExit} />
             )}
             <p className="truncate text-[15px] font-semibold leading-tight text-foreground">
               {props.title}

@@ -1,6 +1,11 @@
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
+import { InfoHint } from "@/components/ui/info-hint";
+import { SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
 import type { AllocationData } from "@/actions/allocation";
+
+const ALLOCATION_HINT =
+  "Una guía: 50% a lo necesario, 30% a deseos, 20% a ahorro y deuda. Punto de partida, no regla fija.";
 
 interface AllocationBars5030Props {
   data: AllocationData | null;
@@ -10,9 +15,10 @@ export function AllocationBars5030({ data }: AllocationBars5030Props) {
   if (!data) {
     return (
       <div className="rounded-xl bg-z-surface-2 border border-white/6 p-4">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em] mb-3">
-          Distribución 50/30/20
-        </p>
+        <div className="mb-3 flex items-center gap-1.5">
+          <p className={SECTION_EYEBROW_CLASS}>Distribución 50/30/20</p>
+          <InfoHint label="Sobre 50/30/20">{ALLOCATION_HINT}</InfoHint>
+        </div>
         <p className="text-sm text-muted-foreground">
           Importa un extracto para ver tu distribución.
         </p>
@@ -43,9 +49,12 @@ export function AllocationBars5030({ data }: AllocationBars5030Props) {
 
   return (
     <div className="rounded-xl bg-z-surface-2 border border-white/6 p-4">
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em] mb-3">
-        Distribucion 50/30/20
-      </p>
+      <div className="mb-3 flex items-center gap-1.5">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em]">
+          Distribución 50/30/20
+        </p>
+        <InfoHint label="Sobre 50/30/20">{ALLOCATION_HINT}</InfoHint>
+      </div>
 
       {bars.map((bar) => (
         <div key={bar.label} className="mb-4 last:mb-0">
