@@ -22,7 +22,7 @@ import { createCategory } from "@/actions/categories";
 import { computeCompositionDiff } from "@/lib/utils/budget-rollup";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
-import { BRASS_BUTTON_CLASS, PANEL_INSET_CLASS } from "@/lib/constants/styles";
+import { BRASS_BUTTON_CLASS, PANEL_INSET_CLASS, SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
 import type { CategoryBudgetData, CurrencyCode } from "@/types/domain";
 
 const BACK_TARGET = "/plan?tab=presupuesto";
@@ -55,7 +55,7 @@ export function BudgetBuilder({ groups, income, currency }: BudgetBuilderProps) 
   const [, startTransition] = useTransition();
   const initial = useMemo(() => toNumberMap(initialDraft(groups)), [groups]);
   const [draft, setDraft] = useState<Record<string, string>>(() => initialDraft(groups));
-  const [openId, setOpenId] = useState<string | null>(groups[0]?.id ?? null);
+  const [openId, setOpenId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [exitConfirm, setExitConfirm] = useState(false);
   // Subcategories created inline during this session, newest appended.
@@ -98,6 +98,13 @@ export function BudgetBuilder({ groups, income, currency }: BudgetBuilderProps) 
       ),
     [groups]
   );
+
+  const isActive = (g: CategoryBudgetData) =>
+    draft[g.id] !== undefined ||
+    (parseFloat(draft[g.id] ?? "") || 0) > 0 ||
+    g.children.some((c) => draft[c.id] !== undefined);
+  const activeGroups = useMemo(() => sortedGroups.filter(isActive), [sortedGroups, draft]);
+  const availableGroups = useMemo(() => sortedGroups.filter((g) => !isActive(g)), [sortedGroups, draft]);
 
   function setLine(categoryId: string, amount: string) {
     setDraft((prev) => ({ ...prev, [categoryId]: amount }));
@@ -180,7 +187,13 @@ export function BudgetBuilder({ groups, income, currency }: BudgetBuilderProps) 
           promedios. La suma define el límite del grupo.
         </p>
 
-        {sortedGroups.map((g) => {
+        {activeGroups.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            Aún no presupuestas nada. Agrega las categorías que te importan abajo.
+          </p>
+        )}
+
+        {activeGroups.map((g) => {
           const open = openId === g.id;
           const totalG = groupTotal(g);
           const enriched = groupWithCreated(g);
@@ -232,6 +245,25 @@ export function BudgetBuilder({ groups, income, currency }: BudgetBuilderProps) 
             </section>
           );
         })}
+
+        {availableGroups.length > 0 && (
+          <div className="space-y-2">
+            <p className={SECTION_EYEBROW_CLASS}>Agregar categoría</p>
+            <div className="flex flex-wrap gap-1.5">
+              {availableGroups.map((g) => (
+                <button key={g.id} type="button"
+                  onClick={() => { setLine(g.id, ""); setOpenId(g.id); }}
+                  className="flex items-center gap-1.5 rounded-full border border-dashed border-white/6 px-2.5 py-1 text-[11px] text-z-sage-light transition-colors active:bg-white/5">
+                  <span className="flex size-4 items-center justify-center rounded"
+                    style={{ backgroundColor: `color-mix(in srgb, ${g.color} 18%, transparent)`, color: g.color }}>
+                    <CategoryIcon icon={g.icon} className="size-2.5" />
+                  </span>
+                  {g.name_es ?? g.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Sticky total */}
         <div className="sticky bottom-2 z-10 space-y-2 rounded-xl border border-z-brass/35 bg-z-surface-2/95 p-3 backdrop-blur-sm">
