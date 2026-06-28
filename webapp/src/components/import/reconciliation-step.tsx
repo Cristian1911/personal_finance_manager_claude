@@ -297,9 +297,13 @@ export function ReconciliationStep({
   );
 
   // Duplicados: a key in rejectedAutoMerges means "keep both" (override the omit).
-  const allDuplicatesOmitted = rejectedAutoMerges.size === 0;
+  // Check membership per current key (not set size) so stale keys can't skew it.
+  const allDuplicatesOmitted = autoMergeKeys.every(
+    (key) => !rejectedAutoMerges.has(key),
+  );
   const allDuplicatesKept =
-    autoMergeKeys.length > 0 && rejectedAutoMerges.size === autoMergeKeys.length;
+    autoMergeKeys.length > 0 &&
+    autoMergeKeys.every((key) => rejectedAutoMerges.has(key));
 
   function setAllAutoMerge(reject: boolean) {
     setRejectedAutoMerges(reject ? new Set(autoMergeKeys) : new Set());
@@ -314,7 +318,11 @@ export function ReconciliationStep({
   );
 
   function setAllReview(choice: ReviewChoice) {
-    setReviewChoices(Object.fromEntries(reviewKeys.map((key) => [key, choice])));
+    setReviewChoices((prev) => {
+      const next = { ...prev };
+      for (const key of reviewKeys) next[key] = choice;
+      return next;
+    });
   }
 
   const reconcileCoach = useCoachMark("import-reconciliation");
