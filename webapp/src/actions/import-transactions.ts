@@ -1,6 +1,8 @@
 "use server";
 
 import { updateTag } from "next/cache";
+import { addDays, parseISO } from "date-fns";
+import { toColombiaDateString } from "@/lib/utils/date";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import {
   computeSnapshotDiffs,
@@ -485,6 +487,121 @@ async function fetchReconciliationCandidates(
     grouped.set(row.account_id, list);
   }
   return grouped;
+}
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+}
+
+/**
+ * Minimal occurrence candidate used to gate the expensive per-transaction
+ * occurrence-linking path during import. We fetch these ONCE for the whole
+ * batch instead of issuing 1–3 queries per transaction inside the loop.
+ */
+type OccurrenceGateCandidate = {
+  accountId: string;
+  transferSourceAccountId: string | null;
+  direction: "INFLOW" | "OUTFLOW";
+  occurrenceDate: string;
+  expectedAmount: number;
+};
+
+/**
+ * Fetch the occurrences (pending + system-paid) that could possibly match any
+ * transaction in this import, in a single query. Returns `null` when the lookup
+ * fails — callers treat null as "gate unavailable, attempt linking for every
+ * transaction" so a transient error never silently drops a real link.
+ */
+async function fetchOccurrenceGateCandidates(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  transactions: TransactionToImport[],
+): Promise<OccurrenceGateCandidate[] | null> {
+  if (transactions.length === 0) return [];
+
+  const dates = transactions.map((tx) => tx.transaction_date).sort();
+  const min = toColombiaDateString(addDays(parseISO(dates[0] + "T12:00:00"), -4));
+  const max = toColombiaDateString(
+    addDays(parseISO(dates[dates.length - 1] + "T12:00:00"), 4),
+  );
+
+  const { data, error } = await supabase
+    .from("recurring_occurrences")
+    .select(
+      `occurrence_date, expected_amount, status,
+       template:recurring_transaction_templates!recurring_occurrences_template_id_fkey!inner(
+         account_id, transfer_source_account_id, direction, is_active
+       )`,
+    )
+    .eq("user_id", userId)
+    .in("status", ["pending", "paid"])
+    .gte("occurrence_date", min)
+    .lte("occurrence_date", max);
+
+  if (error) {
+    console.error("[importTransactions] occurrence gate lookup failed:", error.message);
+    return null;
+  }
+
+  const candidates: OccurrenceGateCandidate[] = [];
+  for (const row of data ?? []) {
+    const template = (row as { template: {
+      account_id: string;
+      transfer_source_account_id: string | null;
+      direction: "INFLOW" | "OUTFLOW";
+      is_active: boolean;
+    } | null }).template;
+    if (!template || template.is_active === false) continue;
+    candidates.push({
+      accountId: template.account_id,
+      transferSourceAccountId: template.transfer_source_account_id,
+      direction: template.direction,
+      occurrenceDate: row.occurrence_date,
+      expectedAmount: row.expected_amount,
+    });
+  }
+  return candidates;
+}
+
+/**
+ * Cheap, deliberately-loose pre-check: is there any occurrence this transaction
+ * could plausibly link to? The thresholds are a SUPERSET of the authoritative
+ * matcher in `findMatchingOccurrence`/`swapPhantomOccurrenceIfMatched`
+ * (date ±4d ⊇ ±3d, amount ±50% ⊇ the 1% direct / 50% anchored bands) so we
+ * never skip a transaction that would have matched — we only skip ones that
+ * provably cannot, saving the per-transaction round-trips.
+ */
+function hasPlausibleOccurrence(
+  tx: TransactionToImport,
+  candidates: OccurrenceGateCandidate[] | null,
+): boolean {
+  if (candidates === null) return true; // gate unavailable — preserve behavior
+  if (candidates.length === 0) return false;
+
+  const txTime = parseISO(tx.transaction_date + "T12:00:00").getTime();
+  for (const occ of candidates) {
+    const occTime = parseISO(occ.occurrenceDate + "T12:00:00").getTime();
+    const dayDiff = Math.abs(occTime - txTime) / 86_400_000;
+    if (dayDiff > 4) continue;
+
+    const within =
+      occ.expectedAmount > 0 &&
+      Math.abs(occ.expectedAmount - tx.amount) / occ.expectedAmount <= 0.51;
+    if (!within) continue;
+
+    const directMatch =
+      occ.accountId === tx.account_id && occ.direction === tx.direction;
+    const crossMatch =
+      tx.direction === "OUTFLOW" &&
+      occ.direction === "INFLOW" &&
+      occ.transferSourceAccountId === tx.account_id;
+    if (directMatch || crossMatch) return true;
+  }
+  return false;
 }
 
 export async function previewImportReconciliation(
@@ -984,58 +1101,154 @@ export async function importTransactions(
   const balanceDeltaTxs: TransactionToImport[] = [];
   const pendingTagInserts: { transaction_id: string; tag_id: string; user_id: string }[] = [];
 
-  for (const [txIndex, tx] of transactions.entries()) {
-    // Use original_amount (full purchase price) for idempotency when available,
-    // so re-imports of the same statement produce the same key regardless of
-    // whether the parser previously used the full price or now uses the cuota.
-    const idempotencyKey = await computeIdempotencyKey({
+  type InsertedRow = {
+    id: string;
+    idempotency_key: string | null;
+    category_id: string | null;
+    categorization_source: Database["public"]["Enums"]["categorization_source"] | null;
+    notes: string | null;
+  };
+  const INSERTED_SELECT = "id, idempotency_key, category_id, categorization_source, notes";
+
+  function buildInsertRow(
+    tx: TransactionToImport,
+    idempotencyKey: string,
+  ): Database["public"]["Tables"]["transactions"]["Insert"] {
+    return {
+      user_id: user!.id,
+      account_id: tx.account_id,
+      amount: tx.amount,
+      currency_code: tx.currency_code as CurrencyCode,
+      direction: tx.direction,
+      transaction_date: tx.transaction_date,
+      raw_description: tx.raw_description,
+      clean_description: tx.raw_description,
+      idempotency_key: idempotencyKey,
       provider: "OCR",
-      transactionDate: tx.transaction_date,
-      amount: tx.original_amount ?? tx.amount,
-      rawDescription: tx.raw_description,
-      installmentCurrent: tx.installment_current,
-    });
+      capture_method: captureMethod,
+      category_id: tx.category_id ?? null,
+      notes: tx.notes ?? null,
+      categorization_source: tx.categorization_source ?? "SYSTEM_DEFAULT",
+      categorization_confidence: tx.categorization_confidence ?? null,
+      status: "POSTED" as const,
+      installment_current: tx.installment_current ?? null,
+      installment_total: tx.installment_total ?? null,
+      installment_group_id: tx.installment_group_id ?? null,
+      original_amount: tx.original_amount ?? null,
+      destinatario_id: tx.destinatario_id ?? null,
+      merchant_name: tx.merchant_name ?? null,
+    };
+  }
 
-    const { data: insertedTx, error } = await supabase
-      .from("transactions")
-      .insert({
-        user_id: user.id,
-        account_id: tx.account_id,
-        amount: tx.amount,
-        currency_code: tx.currency_code,
-        direction: tx.direction,
-        transaction_date: tx.transaction_date,
-        raw_description: tx.raw_description,
-        clean_description: tx.raw_description,
-        idempotency_key: idempotencyKey,
+  // ── 1. Idempotency keys (computed in parallel, not awaited one-by-one) ──
+  // Use original_amount (full purchase price) for idempotency when available,
+  // so re-imports of the same statement produce the same key regardless of
+  // whether the parser previously used the full price or now uses the cuota.
+  const idempotencyKeys = await Promise.all(
+    transactions.map((tx) =>
+      computeIdempotencyKey({
         provider: "OCR",
-        capture_method: captureMethod,
-        category_id: tx.category_id ?? null,
-        notes: tx.notes ?? null,
-        categorization_source: tx.categorization_source ?? "SYSTEM_DEFAULT",
-        categorization_confidence: tx.categorization_confidence ?? null,
-        status: "POSTED",
-        installment_current: tx.installment_current ?? null,
-        installment_total: tx.installment_total ?? null,
-        installment_group_id: tx.installment_group_id ?? null,
-        original_amount: tx.original_amount ?? null,
-        destinatario_id: tx.destinatario_id ?? null,
-        merchant_name: tx.merchant_name ?? null,
-      })
-      .select("id, category_id, categorization_source, notes")
-      .single();
+        transactionDate: tx.transaction_date,
+        amount: tx.original_amount ?? tx.amount,
+        rawDescription: tx.raw_description,
+        installmentCurrent: tx.installment_current,
+      }),
+    ),
+  );
 
-    if (error) {
-      if (error.code === "23505") {
-        skipped++;
-      } else {
-        errors++;
-        details.push(`${tx.raw_description}: ${error.message}`);
+  // ── 2. Pre-filter duplicates against already-imported rows in ONE pass ──
+  // The `transactions` view has an INSTEAD OF trigger, so PostgREST `ON CONFLICT`
+  // (upsert) is unavailable — we can't dedup at insert time. Instead we look up
+  // existing idempotency keys up front, then batch-insert only the new rows.
+  const uniqueKeys = [...new Set(idempotencyKeys)];
+  const existingKeys = new Set<string>();
+  for (const chunk of chunkArray(uniqueKeys, 100)) {
+    const { data: existingRows, error: existingErr } = await supabase
+      .from("transactions")
+      .select("idempotency_key")
+      .eq("user_id", user.id)
+      .in("idempotency_key", chunk);
+    if (existingErr) {
+      // Non-fatal: fall back to the DB unique constraint catching dupes during
+      // insert (handled by the per-row fallback below).
+      console.error("[importTransactions] existing-key lookup failed:", existingErr.message);
+      continue;
+    }
+    for (const row of existingRows ?? []) {
+      if (row.idempotency_key) existingKeys.add(row.idempotency_key);
+    }
+  }
+
+  // ── 3. Build the insert set, skipping DB duplicates and intra-batch dupes ──
+  type PreparedInsert = { tx: TransactionToImport; key: string; index: number };
+  const seenKeys = new Set<string>();
+  const toInsert: PreparedInsert[] = [];
+  transactions.forEach((tx, index) => {
+    const key = idempotencyKeys[index];
+    if (existingKeys.has(key) || seenKeys.has(key)) {
+      skipped++;
+      return;
+    }
+    seenKeys.add(key);
+    toInsert.push({ tx, key, index });
+  });
+
+  // ── 4. Batch-insert through the encrypted view, chunked. On a chunk error
+  //    (e.g. a concurrent insert racing the same idempotency key) fall back to
+  //    per-row inserts so good rows still land and dupes skip cleanly. ──
+  const insertedByKey = new Map<string, InsertedRow>();
+  for (const chunk of chunkArray(toInsert, 100)) {
+    const rows = chunk.map(({ tx, key }) => buildInsertRow(tx, key));
+    const { data: insertedRows, error: insertError } = await supabase
+      .from("transactions")
+      .insert(rows)
+      .select(INSERTED_SELECT);
+
+    if (insertError) {
+      for (const { tx, key } of chunk) {
+        const { data: single, error: singleErr } = await supabase
+          .from("transactions")
+          .insert(buildInsertRow(tx, key))
+          .select(INSERTED_SELECT)
+          .single();
+        if (singleErr) {
+          if (singleErr.code === "23505") {
+            skipped++;
+          } else {
+            errors++;
+            details.push(`${tx.raw_description}: ${singleErr.message}`);
+          }
+          continue;
+        }
+        if (single) {
+          insertedByKey.set(key, single as InsertedRow);
+          imported++;
+        }
       }
       continue;
     }
 
-    imported++;
+    for (const row of (insertedRows ?? []) as InsertedRow[]) {
+      if (row.idempotency_key) {
+        insertedByKey.set(row.idempotency_key, row);
+        imported++;
+      }
+    }
+  }
+
+  // ── 5. Pre-fetch occurrence candidates ONCE to gate the expensive per-tx
+  //    linking path. Most imports (e.g. a savings statement with no recurring
+  //    obligations on the account) skip linking entirely after this. ──
+  const occurrenceCandidates = await fetchOccurrenceGateCandidates(
+    supabase,
+    user.id,
+    transactions,
+  );
+
+  // ── 6. Post-insert pass: auto-tags, occurrence linking, reconciliation. ──
+  for (const { tx, key, index } of toInsert) {
+    const insertedTx = insertedByKey.get(key);
+    if (!insertedTx) continue; // skipped (duplicate) or failed insert
 
     // Accumulate auto-tags from destinatario (batched after loop)
     const tagIds = tx.destinatario_id ? destTagMap.get(tx.destinatario_id) : undefined;
@@ -1045,19 +1258,21 @@ export async function importTransactions(
       }
     }
 
-    await linkTransactionToOccurrence(
-      tx.account_id, tx.transaction_date,
-      tx.amount, tx.direction, insertedTx.id,
-      tx.destinatario_id ?? null,
-      // Statement imports carry the debt-account side themselves (the card
-      // statement's own abono row) — synthesizing a companion INFLOW here
-      // would duplicate it when both statements are imported.
-      { skipDebtCompanionLeg: true },
-    );
+    if (hasPlausibleOccurrence(tx, occurrenceCandidates)) {
+      await linkTransactionToOccurrence(
+        tx.account_id, tx.transaction_date,
+        tx.amount, tx.direction, insertedTx.id,
+        tx.destinatario_id ?? null,
+        // Statement imports carry the debt-account side themselves (the card
+        // statement's own abono row) — synthesizing a companion INFLOW here
+        // would duplicate it when both statements are imported.
+        { skipDebtCompanionLeg: true },
+      );
+    }
 
     const decision = tx.import_key
       ? decisionMap.get(tx.import_key)
-      : decisionMap.get(buildDecisionKey(-1, txIndex));
+      : decisionMap.get(buildDecisionKey(-1, index));
     if (!decision || decision.decision === "KEEP_BOTH") {
       balanceDeltaTxs.push(tx);
       leftAsSeparate++;
@@ -1089,7 +1304,7 @@ export async function importTransactions(
     // add to balanceDeltaTxs to avoid double-counting.
     const merged = mergeTransactionMetadata(existingTx as ReconciliationCandidate, {
       category_id: insertedTx.category_id,
-      categorization_source: insertedTx.categorization_source,
+      categorization_source: insertedTx.categorization_source ?? undefined,
       notes: insertedTx.notes,
       capture_method: captureMethod,
     });
