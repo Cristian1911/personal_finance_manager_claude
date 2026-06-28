@@ -103,6 +103,14 @@ export function BudgetBuilder({ groups, income, currency }: BudgetBuilderProps) 
     setDraft((prev) => ({ ...prev, [categoryId]: amount }));
   }
 
+  function removeLine(categoryId: string) {
+    setDraft((prev) => {
+      const next = { ...prev };
+      delete next[categoryId];
+      return next;
+    });
+  }
+
   async function handleCreateSub(parentId: string, name: string): Promise<string | null> {
     const slug = name
       .toLowerCase()
@@ -216,6 +224,7 @@ export function BudgetBuilder({ groups, income, currency }: BudgetBuilderProps) 
                     draft={draft}
                     onChange={setLine}
                     onAddLine={(id, prefill) => setLine(id, prefill)}
+                    onRemoveLine={removeLine}
                     onCreateSub={(name) => handleCreateSub(g.id, name)}
                   />
                 </div>

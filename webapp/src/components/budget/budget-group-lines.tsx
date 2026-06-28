@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Minus } from "lucide-react";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -16,6 +16,8 @@ interface BudgetGroupLinesProps {
   onChange: (categoryId: string, amount: string) => void;
   /** Adds a line to the draft (chip tap / picker), prefilled by the caller. */
   onAddLine: (categoryId: string, prefill: string) => void;
+  /** Removes a line from the draft (the "−" affordance). Base line is never removable. */
+  onRemoveLine?: (categoryId: string) => void;
   /** Optional inline creation of a subcategory; resolves to the new id. */
   onCreateSub?: (name: string) => Promise<string | null>;
   /** Composer mode: show real spend next to each line. */
@@ -28,6 +30,7 @@ export function BudgetGroupLines({
   draft,
   onChange,
   onAddLine,
+  onRemoveLine,
   onCreateSub,
   showSpend = false,
 }: BudgetGroupLinesProps) {
@@ -98,6 +101,7 @@ export function BudgetGroupLines({
           currency={currency}
           value={draft[child.id] ?? ""}
           onChange={(v) => onChange(child.id, v)}
+          onRemove={onRemoveLine ? () => onRemoveLine(child.id) : undefined}
         />
       ))}
 
@@ -172,6 +176,7 @@ function LineRow({
   currency,
   value,
   onChange,
+  onRemove,
 }: {
   label: string;
   badge?: string;
@@ -180,6 +185,7 @@ function LineRow({
   currency: CurrencyCode;
   value: string;
   onChange: (value: string) => void;
+  onRemove?: () => void;
 }) {
   return (
     <div
@@ -208,6 +214,16 @@ function LineRow({
           value={value}
           onChange={(e) => onChange(e.target.value)}
         />
+        {onRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            aria-label={`Quitar ${label}`}
+            className="flex size-6 shrink-0 items-center justify-center rounded-full text-z-sage-dark transition-colors hover:bg-z-debt/10 hover:text-z-debt"
+          >
+            <Minus className="size-3.5" strokeWidth={2} />
+          </button>
+        )}
       </span>
     </div>
   );
