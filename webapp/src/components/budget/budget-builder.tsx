@@ -368,7 +368,7 @@ export function BudgetBuilder({ groups, income, currency, hasUncategorized, mode
             const setAvail = s.groups.filter((g) => !isActive(g));
             const assigned = setActive.reduce((sum, g) => sum + groupTotal(g), 0);
             const over = assigned > s.cap;
-            const pct = Math.round((s.cap / income) * 100);
+            const pct = s.percent;
             return (
               <div key={s.set} className="space-y-2 pt-1">
                 {/* Set header — eyebrow + thin cap bar (calm, not a card) */}

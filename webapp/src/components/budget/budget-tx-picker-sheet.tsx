@@ -67,13 +67,15 @@ export function BudgetTxPickerSheet({
   // Load uncategorized transactions when the sheet opens
   useEffect(() => {
     if (!open) return;
+    let active = true;
     setLoading(true);
     setSelected(new Set());
     setSearch("");
     getUncategorizedTransactions()
-      .then((data) => setTxs(data))
-      .catch(() => toast.error("No se pudieron cargar las transacciones"))
-      .finally(() => setLoading(false));
+      .then((data) => { if (active) setTxs(data); })
+      .catch(() => { if (active) toast.error("No se pudieron cargar las transacciones"); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
   }, [open]);
 
   const toggleRow = (id: string) => {

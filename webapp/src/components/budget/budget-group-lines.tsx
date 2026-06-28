@@ -107,7 +107,7 @@ export function BudgetGroupLines({
           currency={currency}
           value={draft[child.id] ?? ""}
           onChange={(v) => onChange(child.id, v)}
-          onRemove={onRemoveLine ? () => onRemoveLine(child.id) : undefined}
+          onRemove={onRemoveLine && child.id !== group.id ? () => onRemoveLine(child.id) : undefined}
         />
       ))}
 

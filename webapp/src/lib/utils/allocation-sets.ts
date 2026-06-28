@@ -7,6 +7,8 @@ export interface AllocationSetGroup {
   set: AllocationSet;
   label: string;
   cap: number;
+  /** Fixed share of the 50/30/20 rule (50 | 30 | 20) — avoids cap/income NaN. */
+  percent: number;
   groups: CategoryBudgetData[];
 }
 
@@ -24,6 +26,7 @@ export function groupCategoriesByAllocationSet(
     set,
     label,
     cap: Math.round(income * fraction),
+    percent: Math.round(fraction * 100),
     groups: groups.filter((g) =>
       categoryBudgetGroup({ slug: g.slug, expense_type: g.expense_type, is_essential: g.is_essential }) === set
     ),
