@@ -1,0 +1,88 @@
+<!doctype html>
+<!-- @dsCard group="Experiencia guiada" name="InfoHint (primitivo) · ? explicativo" subtitle="Cerrado y abierto (popover)" viewport="760x420" -->
+<html lang="es"><head><meta charset="utf-8"/>
+<link rel="stylesheet" href="../colors_and_type.css"/>
+<style>
+  html,body{margin:0;background:var(--z-ink);color:var(--z-white);}
+  .wrap{padding:24px;display:flex;flex-direction:column;gap:18px;max-width:720px;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
+  .grid .span2{grid-column:1 / -1;}
+
+  /* InfoHint trigger */
+  .hint-row{display:inline-flex;align-items:center;gap:8px;}
+  .hint{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:16px;height:16px;border-radius:50%;
+    background:var(--z-surface-3);
+    color:var(--z-sage-dark);
+    font-size:11px;line-height:1;font-weight:600;
+    border:1px solid var(--z-border);
+    cursor:default;
+  }
+  .hint.is-open{
+    background:var(--z-brass);color:var(--z-ink);
+    border-color:var(--z-brass);
+  }
+
+  /* Popover */
+  .anchor{position:relative;display:inline-flex;}
+  .popover{
+    position:relative;margin-top:12px;max-width:340px;
+    background:var(--z-surface-1);
+    border:1px solid color-mix(in srgb,var(--z-brass) 20%,transparent);
+    border-radius:10px;
+    padding:12px 14px;
+  }
+  .popover::before{
+    content:"";position:absolute;top:-6px;left:18px;
+    width:10px;height:10px;
+    background:var(--z-surface-1);
+    border-left:1px solid color-mix(in srgb,var(--z-brass) 20%,transparent);
+    border-top:1px solid color-mix(in srgb,var(--z-brass) 20%,transparent);
+    transform:rotate(45deg);
+  }
+  .note{margin-top:6px;}
+  .stack{display:flex;flex-direction:column;gap:4px;}
+</style>
+</head><body>
+  <div class="wrap">
+    <div class="z-eyebrow">InfoHint — toca para entender</div>
+
+    <div class="grid">
+      <!-- 1) CERRADO -->
+      <div class="z-card-surface">
+        <div class="hint-row">
+          <span class="z-eyebrow">DISPONIBLE POR DÍA</span>
+          <span class="hint">?</span>
+        </div>
+        <div class="z-num-hero">$96.400</div>
+        <div class="z-label note">(toca el ? para ver el cálculo)</div>
+      </div>
+
+      <!-- 2) ABIERTO -->
+      <div class="z-card-surface">
+        <div class="hint-row">
+          <span class="z-eyebrow">DISPONIBLE POR DÍA</span>
+          <span class="anchor"><span class="hint is-open">?</span></span>
+        </div>
+        <div class="z-num-hero">$96.400</div>
+        <div class="popover">
+          <p class="z-body-sm" style="margin:0;">Tu gasto disponible de hoy = (saldo líquido − gastos fijos − ya gastado) ÷ días que quedan del mes.</p>
+        </div>
+      </div>
+
+      <!-- 3) Otro ejemplo -->
+      <div class="z-card-surface span2">
+        <div class="stack">
+          <div class="hint-row">
+            <span class="z-h3" style="margin:0;">Modo de presupuesto</span>
+            <span class="anchor"><span class="hint is-open">?</span></span>
+          </div>
+          <div class="popover">
+            <p class="z-body-sm" style="margin:0;">Por categoría: pones un límite a cada categoría. Base cero: repartes cada peso del ingreso hasta que no sobre nada. La mayoría empieza con Por categoría.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body></html>

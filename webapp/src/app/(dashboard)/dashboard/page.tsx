@@ -11,19 +11,9 @@ import {
   parseMonth,
   formatMonthLabel,
 } from "@/lib/utils/date";
-import {
-  ArrowDownLeft,
-  ArrowRight,
-  ArrowUpRight,
-  FileUp,
-  Landmark,
-  Sparkles,
-  Tags,
-  WalletCards,
-} from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { PrefetchLink } from "@/components/ui/prefetch-link";
-import { Button } from "@/components/ui/button";
 import { getAccountsWithSparklineData } from "@/actions/charts";
 import { getAccounts } from "@/actions/accounts";
 import { getRecentTransactions } from "@/actions/transactions";
@@ -35,6 +25,7 @@ import { DashboardAccountPicker } from "@/components/dashboard/dashboard-account
 import { MonthSelector } from "@/components/month-selector";
 import { trackProductEvent } from "@/actions/product-events";
 import { DashboardAlerts } from "@/components/dashboard/dashboard-alerts";
+import { PrimerosPasos } from "@/components/dashboard/primeros-pasos";
 import { getLatestSnapshotDates } from "@/actions/statement-snapshots";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
 import { DashboardConfigProvider } from "@/components/dashboard/dashboard-config-provider";
@@ -157,72 +148,9 @@ export default async function DashboardPage({
           </div>
         </div>
 
-        <Card className="border-z-brass/20 bg-[linear-gradient(180deg,rgba(63,70,50,0.18),rgba(18,20,18,0.94))] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-xl">
-              <Sparkles className="h-5 w-5 text-z-brass" />
-              Primeros pasos recomendados
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-2">
-            <Link
-              href="/import"
-              className="rounded-lg border border-white/6 bg-card/70 p-4 transition-colors hover:bg-white/5"
-            >
-              <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-                <FileUp className="h-4 w-4 text-z-brass" />
-                Importar extracto PDF
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Carga tus movimientos reales para activar métricas, categorías y alertas.
-              </p>
-            </Link>
-            <Link
-              href="/transactions"
-              className="rounded-lg border border-white/6 bg-card/70 p-4 transition-colors hover:bg-white/5"
-            >
-              <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-                <WalletCards className="h-4 w-4 text-z-brass" />
-                Registrar primer movimiento
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Si aún no tienes PDF, crea movimientos manuales para empezar.
-              </p>
-            </Link>
-            <Link
-              href="/categorizar"
-              className="rounded-lg border border-white/6 bg-card/70 p-4 transition-colors hover:bg-white/5"
-            >
-              <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-                <Tags className="h-4 w-4 text-z-brass" />
-                Definir categorías base
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Etiqueta tus primeras compras para entrenar sugerencias automáticas.
-              </p>
-            </Link>
-            <Link
-              href="/categories"
-              className="rounded-lg border border-white/6 bg-card/70 p-4 transition-colors hover:bg-white/5"
-            >
-              <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-                <Landmark className="h-4 w-4 text-z-brass" />
-                Crear presupuesto mensual
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Establece límites desde el inicio para detectar desvíos temprano.
-              </p>
-            </Link>
-          </CardContent>
-          <CardContent className="pt-0">
-            <Link href="/import">
-              <Button className="gap-2 bg-z-brass text-z-ink hover:bg-z-brass/90">
-                Empezar ahora
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
+        <Suspense fallback={null}>
+          <PrimerosPasos />
+        </Suspense>
       </div>
     );
   }
@@ -273,6 +201,11 @@ export default async function DashboardPage({
             {/* ── Hero + Attention + Action strip + Plan teaser ── */}
             <Suspense fallback={<HeroZoneSkeleton />}>
               <HeroZone month={month} currency={currency as CurrencyCode} monthLabel={monthLabel} />
+            </Suspense>
+
+            {/* ── Guided experience · Primeros pasos (D2) ── */}
+            <Suspense fallback={null}>
+              <PrimerosPasos />
             </Suspense>
 
             {/* ── Impact + Pendientes + Deseos ── */}

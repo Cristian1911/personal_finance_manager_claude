@@ -7,7 +7,9 @@ import { getMobileLayout } from "@/actions/dashboard-config";
 import { getLatestSnapshotDates } from "@/actions/statement-snapshots";
 import { getRitmo } from "@/actions/ritmo";
 import type { RecentTransaction } from "@/actions/transactions";
+import { Suspense } from "react";
 import { HybridHero } from "@/components/dashboard/hybrid-hero";
+import { PrimerosPasos } from "@/components/dashboard/primeros-pasos";
 import { InicioRoot } from "@/components/mobile/v2/inicio/inicio-root";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { toColombiaDateString } from "@/lib/utils/date";
@@ -153,6 +155,11 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
           <HybridHero data={ritmoResult.data} primaryAccount={primaryAccount} />
         </div>
       )}
+      <Suspense fallback={null}>
+        <div className="mb-4 empty:hidden">
+          <PrimerosPasos />
+        </div>
+      </Suspense>
       <InicioRoot
         hero={{
           availablePerDay: heroData.availableToSpend / daysRemaining,

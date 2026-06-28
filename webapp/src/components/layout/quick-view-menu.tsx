@@ -246,7 +246,7 @@ function QuickViewContent({
         <div className="grid grid-cols-4 gap-2">
           <QuickJump href="/accounts" icon={Wallet} label="Cuentas" onClose={onClose} />
           <QuickJump
-            href="/plan?tab=presupuesto"
+            href="/categories"
             icon={Folder}
             label="Categorías"
             onClose={onClose}

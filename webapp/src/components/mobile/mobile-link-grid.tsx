@@ -36,7 +36,7 @@ const ORGANIZAR_GROUP: Group = {
   title: "Organizar",
   tiles: [
     { href: "/categorizar", icon: List, label: "Categorizar" },
-    { href: "/plan?tab=presupuesto", icon: Folder, label: "Categorías" },
+    { href: "/categories", icon: Folder, label: "Categorías" },
     { href: "/destinatarios", icon: Contact, label: "Destinatarios" },
     { href: "/etiquetas", icon: Tag, label: "Etiquetas" },
   ],

@@ -13,6 +13,8 @@ import { DeseosNudgeBanner } from "./deseos-nudge-banner";
 import { DeseosReflectionCard } from "./deseos-reflection-card";
 import { DeseosInsights } from "./deseos-insights";
 import { DeseosBoughtSection } from "./deseos-bought-section";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Sparkles } from "lucide-react";
 
 type DeseosListProps = {
   items: ScoredWishlistItem[];
@@ -96,11 +98,11 @@ export function DeseosList({
         </div>
       ) : (
         !optimisticDeleted.size && (
-          <div className="py-12 text-center">
-            <p className="text-muted-foreground">
-              No tienes deseos activos. Agrega uno para empezar.
-            </p>
-          </div>
+          <EmptyState
+            icon={<Sparkles className="size-6" strokeWidth={1.5} />}
+            title="¿Vale la pena?"
+            description="Agrega algo que quieres comprar y Zeta calcula si cabe en tu mes."
+          />
         )
       )}
 

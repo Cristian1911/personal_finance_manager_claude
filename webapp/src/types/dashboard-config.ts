@@ -26,7 +26,25 @@ export type MobilePulseRange = PulseRange;
 export type MobileWidgetInstance = WidgetInstance;
 export type MobileDashboardLayout = DashboardLayout;
 
+/** Persistent state for the "Primeros pasos" Home card (guided experience · D2). */
+export interface FirstStepsState {
+  /** ISO timestamp — card permanently dismissed ("Ocultar por ahora"). */
+  dismissedAt?: string;
+  /** ISO timestamp — card hidden until this moment ("Recordar mañana"). */
+  snoozeUntil?: string;
+  /** User collapsed the card body. */
+  collapsed?: boolean;
+}
+
+/** Server-persisted guided-experience state, stored inside dashboard_config. */
+export interface GuidedExperienceState {
+  firstSteps?: FirstStepsState;
+  /** Coach-mark ids the user has dismissed with "Entendido" (guided experience · D5). */
+  seenCoachMarks?: string[];
+}
+
 export interface DashboardConfig {
   purpose: AppPurpose;
   widgets: WidgetConfig[];
+  guidedExperience?: GuidedExperienceState;
 }
