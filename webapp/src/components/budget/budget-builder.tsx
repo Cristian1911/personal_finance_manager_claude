@@ -187,6 +187,43 @@ export function BudgetBuilder({ groups, income, currency }: BudgetBuilderProps) 
           promedios. La suma define el límite del grupo.
         </p>
 
+        {/* Sticky progress — always visible, no scroll needed */}
+        <div className="sticky top-2 z-10 space-y-2 rounded-xl border border-z-brass/35 bg-z-surface-2/95 p-3 backdrop-blur-sm">
+          <div className="flex items-baseline justify-between gap-2 text-sm font-semibold">
+            <span className="tabular-nums">
+              Σ {formatCurrency(total, currency)}
+              {income > 0 && (
+                <span className="font-normal text-muted-foreground">
+                  {" "}de {formatCurrency(income, currency)}
+                </span>
+              )}
+            </span>
+            {income > 0 && (
+              <span
+                className={cn(
+                  "shrink-0 text-xs tabular-nums",
+                  remaining < 0 ? "text-z-debt" : "text-z-income"
+                )}
+              >
+                {remaining < 0
+                  ? `te pasas ${formatCurrency(-remaining, currency)}`
+                  : `quedan ${formatCurrency(remaining, currency)}`}
+              </span>
+            )}
+          </div>
+          {income > 0 && (
+            <div className="h-1.5 overflow-hidden rounded-full bg-white/8">
+              <div
+                className={cn(
+                  "h-full rounded-full",
+                  total > income ? "bg-z-debt" : "bg-z-brass"
+                )}
+                style={{ width: `${Math.min(100, (total / income) * 100)}%` }}
+              />
+            </div>
+          )}
+        </div>
+
         {activeGroups.length === 0 && (
           <p className="text-sm text-muted-foreground">
             Aún no presupuestas nada. Agrega las categorías que te importan abajo.
@@ -265,41 +302,8 @@ export function BudgetBuilder({ groups, income, currency }: BudgetBuilderProps) 
           </div>
         )}
 
-        {/* Sticky total */}
-        <div className="sticky bottom-2 z-10 space-y-2 rounded-xl border border-z-brass/35 bg-z-surface-2/95 p-3 backdrop-blur-sm">
-          <div className="flex items-baseline justify-between gap-2 text-sm font-semibold">
-            <span className="tabular-nums">
-              Σ {formatCurrency(total, currency)}
-              {income > 0 && (
-                <span className="font-normal text-muted-foreground">
-                  {" "}de {formatCurrency(income, currency)}
-                </span>
-              )}
-            </span>
-            {income > 0 && (
-              <span
-                className={cn(
-                  "shrink-0 text-xs tabular-nums",
-                  remaining < 0 ? "text-z-debt" : "text-z-income"
-                )}
-              >
-                {remaining < 0
-                  ? `te pasas ${formatCurrency(-remaining, currency)}`
-                  : `quedan ${formatCurrency(remaining, currency)}`}
-              </span>
-            )}
-          </div>
-          {income > 0 && (
-            <div className="h-1.5 overflow-hidden rounded-full bg-white/8">
-              <div
-                className={cn(
-                  "h-full rounded-full",
-                  total > income ? "bg-z-debt" : "bg-z-brass"
-                )}
-                style={{ width: `${Math.min(100, (total / income) * 100)}%` }}
-              />
-            </div>
-          )}
+        {/* Sticky save */}
+        <div className="sticky bottom-2 z-10 rounded-xl border border-z-brass/35 bg-z-surface-2/95 p-3 backdrop-blur-sm">
           <button
             type="button"
             onClick={handleSave}
