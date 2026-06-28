@@ -30,7 +30,9 @@ export function sumSelectedTx(
   txs: { id: string; amount: number }[],
   selected: Set<string>,
 ): number {
-  return txs.reduce((s, t) => (selected.has(t.id) ? s + t.amount : s), 0);
+  // Budget amounts are positive; transaction amounts may be signed (expenses
+  // negative). Sum magnitudes so the filled budget and footer are positive.
+  return txs.reduce((s, t) => (selected.has(t.id) ? s + Math.abs(t.amount) : s), 0);
 }
 
 // ─── Public interface ─────────────────────────────────────────────────────────
@@ -101,10 +103,7 @@ export function BudgetTxPickerSheet({
       })
     : txs;
 
-  const sum = sumSelectedTx(
-    txs.filter((t) => selected.has(t.id)),
-    selected,
-  );
+  const sum = sumSelectedTx(txs, selected);
 
   async function handleConfirm() {
     setConfirming(true);
@@ -152,7 +151,9 @@ export function BudgetTxPickerSheet({
 
           {!loading && filtered.length === 0 && (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              No hay movimientos sin categorizar.
+              {search
+                ? `Sin resultados para «${search}»`
+                : "No hay movimientos sin categorizar."}
             </p>
           )}
 
