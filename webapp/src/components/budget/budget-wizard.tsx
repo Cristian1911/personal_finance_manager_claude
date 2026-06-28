@@ -12,9 +12,7 @@ import {
   Feather,
   Gauge,
   PieChart,
-  AlertTriangle,
 } from "lucide-react";
-import type { AllocationData } from "@/actions/allocation";
 import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import type { BudgetMode, CategoryBudgetData, CurrencyCode } from "@/types/domain";
 
@@ -22,7 +20,6 @@ interface BudgetWizardProps {
   categories: CategoryBudgetData[];
   estimatedIncome: number;
   currency: CurrencyCode;
-  allocationData?: AllocationData | null;
   onComplete?: () => void;
 }
 
@@ -31,7 +28,6 @@ interface BudgetWizardProps {
 export function BudgetWizard({
   estimatedIncome,
   currency,
-  allocationData,
 }: BudgetWizardProps) {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
@@ -87,9 +83,6 @@ export function BudgetWizard({
         <StepStylePreview
           selectedMode={selectedMode}
           onSelect={setSelectedMode}
-          income={income}
-          currency={currency}
-          allocationData={allocationData ?? null}
           onContinue={handleStartBuilding}
           onBack={() => setStep(1)}
         />
@@ -157,17 +150,11 @@ function StepIncome({
 function StepStylePreview({
   selectedMode,
   onSelect,
-  income,
-  currency,
-  allocationData,
   onContinue,
   onBack,
 }: {
   selectedMode: BudgetMode | null;
   onSelect: (mode: BudgetMode) => void;
-  income: number;
-  currency: CurrencyCode;
-  allocationData: AllocationData | null;
   onContinue: () => void;
   onBack: () => void;
 }) {
@@ -182,8 +169,8 @@ function StepStylePreview({
         </p>
       </div>
 
-      {/* Style cards */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      {/* Style options — horizontal swipe on mobile, grid on desktop */}
+      <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-4 sm:overflow-visible sm:px-0">
         <StyleCard
           mode="per_category"
           title="Flexible"
@@ -192,6 +179,7 @@ function StepStylePreview({
           icon={<Feather className="size-5" />}
           selected={selectedMode === "per_category"}
           onSelect={() => onSelect("per_category")}
+          className="min-w-[82%] snap-center sm:min-w-0"
         />
         <StyleCard
           mode="zero_based"
@@ -201,6 +189,7 @@ function StepStylePreview({
           icon={<Gauge className="size-5" />}
           selected={selectedMode === "zero_based"}
           onSelect={() => onSelect("zero_based")}
+          className="min-w-[82%] snap-center sm:min-w-0"
         />
         <StyleCard
           mode="50_30_20"
@@ -210,17 +199,9 @@ function StepStylePreview({
           icon={<PieChart className="size-5" />}
           selected={selectedMode === "50_30_20"}
           onSelect={() => onSelect("50_30_20")}
+          className="min-w-[82%] snap-center sm:min-w-0"
         />
       </div>
-
-      {/* 50/30/20 Reference */}
-      {income > 0 && (
-        <ReferenceBreakdown
-          income={income}
-          currency={currency}
-          allocationData={allocationData}
-        />
-      )}
 
       <div className="flex justify-between">
         <Button type="button" onClick={onBack} className={GHOST_BUTTON_CLASS}>
@@ -248,6 +229,7 @@ function StyleCard({
   icon,
   selected,
   onSelect,
+  className,
 }: {
   mode: BudgetMode;
   title: string;
@@ -256,6 +238,7 @@ function StyleCard({
   icon: React.ReactNode;
   selected: boolean;
   onSelect: () => void;
+  className?: string;
 }) {
   return (
     <button
@@ -264,7 +247,8 @@ function StyleCard({
       className={cn(
         "relative rounded-2xl border border-white/6 bg-card p-5 text-left transition-all",
         "hover:border-z-brass/30",
-        selected && "ring-2 ring-z-brass border-z-brass/40"
+        selected && "ring-2 ring-z-brass border-z-brass/40",
+        className
       )}
     >
       <div className="space-y-3">
@@ -391,125 +375,6 @@ function StylePreview({ mode }: { mode: BudgetMode }) {
   );
 }
 
-// ── 50/30/20 Reference Breakdown ────────────────────────────
-
-function ReferenceBreakdown({
-  income,
-  currency,
-  allocationData,
-}: {
-  income: number;
-  currency: CurrencyCode;
-  allocationData: AllocationData | null;
-}) {
-  const segments: {
-    label: string;
-    targetPct: number;
-    targetAmount: number;
-    actualPct: number | null;
-    color: string;
-  }[] = [
-    {
-      label: "Necesidades",
-      targetPct: 50,
-      targetAmount: income * 0.5,
-      actualPct: allocationData?.needs.percent ?? null,
-      color: "bg-z-sage-dark",
-    },
-    {
-      label: "Deseos",
-      targetPct: 30,
-      targetAmount: income * 0.3,
-      actualPct: allocationData?.wants.percent ?? null,
-      color: "bg-z-brass",
-    },
-    {
-      label: "Ahorro",
-      targetPct: 20,
-      targetAmount: income * 0.2,
-      actualPct: allocationData?.savings.percent ?? null,
-      color: "bg-z-income",
-    },
-  ];
-
-  return (
-    <div className="space-y-3 rounded-2xl border border-white/6 bg-card p-4">
-      <div className="space-y-1">
-        <h4 className="text-sm font-semibold">Referencia 50/30/20</h4>
-        <p className="text-xs text-muted-foreground">
-          Distribución ideal para tu ingreso de{" "}
-          {formatCurrency(income, currency)}
-        </p>
-      </div>
-
-      <div className="space-y-3">
-        {segments.map((seg) => {
-          const barWidth = Math.min(seg.targetPct, 100);
-          const actualWidth =
-            seg.actualPct !== null ? Math.min(Math.max(seg.actualPct, 0), 100) : null;
-
-          return (
-            <div key={seg.label} className="space-y-1">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-medium">{seg.label}</span>
-                <span className="text-muted-foreground">
-                  {seg.targetPct}% ={" "}
-                  {formatCurrency(seg.targetAmount, currency)}
-                </span>
-              </div>
-
-              {/* Target bar */}
-              <div className="relative h-2 rounded-full bg-muted/50">
-                <div
-                  className={cn("h-full rounded-full opacity-40", seg.color)}
-                  style={{ width: `${barWidth}%` }}
-                />
-                {/* Actual overlay */}
-                {actualWidth !== null && (
-                  <div
-                    className={cn(
-                      "absolute inset-y-0 left-0 rounded-full",
-                      seg.color
-                    )}
-                    style={{ width: `${actualWidth}%` }}
-                  />
-                )}
-              </div>
-
-              {/* Actual vs target label */}
-              {seg.actualPct !== null && (
-                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                  <span>
-                    Tu gasto actual: {Math.round(seg.actualPct)}%
-                  </span>
-                  {seg.actualPct > seg.targetPct && (
-                    <span className="text-z-expense">
-                      (+{Math.round(seg.actualPct - seg.targetPct)}%)
-                    </span>
-                  )}
-                  {seg.actualPct <= seg.targetPct && (
-                    <span className="text-z-income">
-                      ({Math.round(seg.actualPct - seg.targetPct)}%)
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Untagged categories warning */}
-      {allocationData && allocationData.untaggedCategories > 0 && (
-        <div className="flex items-start gap-2 rounded-lg bg-z-expense/10 px-3 py-2">
-          <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-z-expense" />
-          <p className="text-[11px] text-z-expense">
-            {allocationData.untaggedCategories} categoría
-            {allocationData.untaggedCategories > 1 ? "s" : ""} sin tipo
-            asignado (fijo/variable). Asígnalas para mejorar la distribución.
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
+// ponytail: the 50/30/20 reference breakdown was dropped from Step 2 — the
+// 50/30/20 style card preview + the builder's per-set caps cover it without
+// adding vertical scroll to the style picker.

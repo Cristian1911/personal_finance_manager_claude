@@ -129,7 +129,6 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
           categories={categories}
           estimatedIncome={income}
           currency={currency}
-          allocationData={allocationData}
         />
       </div>
     );
