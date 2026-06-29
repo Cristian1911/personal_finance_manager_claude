@@ -16,22 +16,48 @@ Adopted `docs/design-system/keyboard-handling.md` as the standard + added the co
 `mobile-perf-doctor` agent (§7.5).
 
 **Done:**
-- `mobile/app/capture.tsx` → `AppKeyboardAwareScrollView`.
-- `mobile/app/(tabs)/import.tsx` pick step → `AppKeyboardAwareScrollView` (top-aligned form, scroll lifts
-  the password field; the reconcile `ScrollView` / review `FlatList` have no inputs, left as-is).
-- **All MobileSheet form sheets, via ONE central fix** — `MobileSheet.tsx` now wraps its Modal in a
+- `capture.tsx`, `import.tsx` pick step, `DestinatariosRoot`, `DeseosRoot` → `AppKeyboardAwareScrollView`.
+- **All MobileSheet form sheets, via ONE central fix** — `MobileSheet.tsx` wraps its Modal in a
   `KeyboardAvoidingView` (bottom-anchored → padding lifts the sheet). Covers `CategoryFormSheet`,
   `ReassignSheet`, `CategoryZonePickerSheet`, `MovimientosUtilidades`, + FabMenuSheet / AccountPickerModal.
+- `account/create.tsx` + `account/edit/[id].tsx` were ALREADY handled (wrap in `KeyboardAvoidingView`) —
+  the audit false-flagged the `AccountFormFields` fragment; its parents cover it. No change needed.
 
 **Remaining:**
-- **Full-screen forms → `AppKeyboardAwareScrollView`**: `mobile/components/accounts/AccountFormFields.tsx`,
-  `mobile/components/destinatarios/DestinatariosRoot.tsx` (confirm each is a screen, not sheet-embedded).
-- **`DeseosRoot` (Drawer)** — separate from MobileSheet; not covered by the central fix. Check its own
-  keyboard avoidance.
+- **[P1] `BudgetsRoot` (Presupuestos) budget-edit input occluded** (confirmed on-device, screenshot
+  2026-06-29) — the MONTO MENSUAL input + Guardar are hidden behind the keyboard. It's a `FlatList` (the
+  edit is a list item), so the ScrollView swap doesn't apply; needs FlatList keyboard handling +
+  scroll-the-expanded-row-into-view (see the auto-scroll item below — same fix).
 - **Upgrade MobileSheet's RN `KeyboardAvoidingView` → keyboard-controller's** (UI-thread) once the
   nested-`KeyboardProvider`-in-Modal pattern is validated on a real device. RN's is the modal-safe baseline.
 - **Verify on a real device** — sim ≠ device for keyboard timing (and idb automation suppresses the soft
   keyboard entirely; see the guide's Project notes). Nothing here is sim-verifiable.
+
+## Mobile RN polish review (on-device screenshots, 2026-06-29)
+
+From 13 device screenshots. Severity-ranked:
+
+- **[P1 · bug] CategoryZonePicker renders icon NAMES as text** — the category picker sheet shows
+  `briefcase` / `wallet` / `banknote` / `home` / `shopping-cart` / `zap`… as right-aligned text instead of
+  the icon glyph. The icon name isn't resolving to a `lucide-react-native` component → string fallback.
+  Find the mobile category-icon map/render and map the names to icons (or hide the raw string).
+- **[P1 · feature] Auto-scroll-on-expand (webapp parity)** — webapp scrolls a control into view when it
+  expands (category zone picker, budget category edit, inline pickers); mobile doesn't, so the revealed
+  content/input can be off-screen or under the keyboard. Add scroll-into-view on expand. Pairs with the
+  BudgetsRoot keyboard item (same `FlatList` scroll-to-index-on-expand fix).
+- **[P2] Transaction-detail header cramped under the status bar** — the `Detalle` title + close/edit/trash
+  icons overlap the status bar (no safe-area top padding on the detail header). Add `insets.top`.
+- **[P2] Transaction-detail "Destinatario" label wraps to "Destinatari/o"** — the left label column is too
+  narrow. Widen the label column (or let the value wrap / shrink the label font).
+- **[P2 · refactor] Mobile transaction detail ≠ webapp detail** — mobile is flat rows (Fecha/Cuenta/…);
+  webapp has the hero icon-circle + type pill + CLASIFICACIÓN card. Mirror the webapp detail (and the
+  create-wizard redesign) to mobile for cross-platform parity. (This is the "mirror to mobile" task.)
+- **[P3] Section-eyebrow tracking causes bad wraps** — `PRESUPUE/STO`, `RECURREN/TES`, `MOVIMIENTO/S`,
+  `PRÓXIMO INGR…` truncate/break awkwardly in narrow columns (heavy letter-spacing). Reduce tracking in
+  tight grids, allow a clean 2-line, or shorten labels.
+- **[P3] "Mis cuentas" account-name truncation cuts the mask** — `Bancolombia Ahorros ***…`,
+  `…VISA **…` cut off the ****last4. Truncate the middle so the last-4 stays, or show the mask separately.
+- **[P3] "Plan del periodo" income title wraps** — `Saldo · Bancolombia Ahorros ****4398` wraps to 2 lines.
 
 ## Mobile parity Wave 1 — foundation P0s (branch `feat/mobile-parity-foundation`, 2026-06-29) — gate follow-ups
 
