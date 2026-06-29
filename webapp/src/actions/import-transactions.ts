@@ -28,7 +28,7 @@ import type {
   TransactionToImport,
 } from "@/types/import";
 import { trackProductEvent } from "@/actions/product-events";
-import { linkTransactionToOccurrence, ensureCurrentOccurrences } from "@/actions/occurrences";
+import { linkTransactionToOccurrence, ensureCurrentOccurrences, syncPendingOccurrenceAmounts } from "@/actions/occurrences";
 import { parseSubPayments as parseSubPaymentsShared } from "@/lib/utils/sub-payments";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
 import { runSubscriptionDetection } from "@/actions/subscriptions";
@@ -301,6 +301,12 @@ async function syncCreditCardRecurringTemplate(params: {
 
       if (error) throw error;
       params.templateMap.set(templateKey, data as RecurringTemplateSyncRow);
+      await syncPendingOccurrenceAmounts(
+        params.supabase,
+        params.userId,
+        params.existingTemplate.id,
+        totalAmount,
+      );
       params.details.push(
         IMPORT_DETAIL_MESSAGES.recurringTemplateUpdated(accountName, params.meta.currency)
       );
@@ -408,6 +414,12 @@ async function syncLoanRecurringTemplate(params: {
 
       if (error) throw error;
       params.templateMap.set(templateKey, data as RecurringTemplateSyncRow);
+      await syncPendingOccurrenceAmounts(
+        params.supabase,
+        params.userId,
+        params.existingTemplate.id,
+        totalAmount,
+      );
       params.details.push(
         IMPORT_DETAIL_MESSAGES.recurringTemplateUpdated(accountName, params.meta.currency)
       );

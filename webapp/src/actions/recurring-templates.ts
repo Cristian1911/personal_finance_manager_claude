@@ -14,7 +14,7 @@ import {
   deactivateTemplatesForPaidOffAccount,
 } from "@/lib/debt/payoff";
 import { toMonthlyAmount } from "@/lib/utils/recurring";
-import { ensureCurrentOccurrences, ensureOccurrencesForRange, linkTransactionToOccurrence } from "@/actions/occurrences";
+import { ensureCurrentOccurrences, ensureOccurrencesForRange, linkTransactionToOccurrence, syncPendingOccurrenceAmounts } from "@/actions/occurrences";
 import {
   getOccurrencesBetween,
   getNextOccurrence,
@@ -506,6 +506,11 @@ export async function updateRecurringTemplate(
   );
 
   await ensureCurrentOccurrences();
+
+  // Realign pending occurrences to the edited amount — ensureCurrentOccurrences
+  // uses ON CONFLICT DO NOTHING, so an already-generated pending occurrence
+  // would otherwise keep its stale expected_amount and diverge from the template.
+  await syncPendingOccurrenceAmounts(supabase, user.id, data.id, Number(data.amount));
 
   // Full fan-out: template edits affect charts, budgets, debt projections,
   // and account metrics — not just recurring/occurrences.
