@@ -38,7 +38,6 @@ const TABLES_WITHOUT_UPDATED_AT = new Set<string>([
   "tag_groups",
   "tags",
   "destinatario_rules",
-  "category_rules",
   "recurring_occurrences",
 ]);
 

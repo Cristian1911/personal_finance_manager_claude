@@ -265,7 +265,7 @@ async function resolveIdempotencyKey(params: CreateTransactionParams): Promise<s
       provider: params.provider ?? "MANUAL",
       transactionDate: params.transaction_date,
       amount: params.original_amount ?? params.amount,
-      rawDescription: params.raw_description ?? params.description ?? params.merchant_name ?? "",
+      rawDescription: params.raw_description ?? params.merchant_name ?? "",
       installmentCurrent: params.installment_current ?? undefined,
     },
     expoHashFn
@@ -338,16 +338,6 @@ export async function createTransactionAndApplyBalance(
   });
 
   return txId;
-}
-
-export async function createQuickCaptureTransaction(
-  params: Omit<CreateTransactionParams, "capture_method" | "provider">
-): Promise<string> {
-  return createTransaction({
-    ...params,
-    provider: "MANUAL",
-    capture_method: "TEXT_QUICK_CAPTURE",
-  });
 }
 
 export async function getTransactions(options?: {
@@ -816,6 +806,9 @@ export async function updateTransaction(
     // whenever the caller includes category_id in the update.
     setClauses.push("categorization_source = ?");
     values.push("USER_OVERRIDE");
+    // Webapp clears confidence on any user category override (categorize.ts:243).
+    setClauses.push("categorization_confidence = ?");
+    values.push(null);
   }
   if (params.destinatario_id !== undefined) {
     setClauses.push("destinatario_id = ?");
@@ -858,6 +851,7 @@ export async function updateTransaction(
   if (params.category_id !== undefined) {
     syncPayload.category_id = params.category_id ?? null;
     syncPayload.categorization_source = "USER_OVERRIDE";
+    syncPayload.categorization_confidence = null;
   }
   if (params.destinatario_id !== undefined) syncPayload.destinatario_id = params.destinatario_id ?? null;
   if (params.notes !== undefined) syncPayload.notes = params.notes ?? null;
@@ -946,11 +940,14 @@ export async function categorizeAndLearn(
   const pattern = extractPattern(tx.merchant_name, tx.description, tx.raw_description);
   if (pattern && tx.user_id) {
     const now = new Date().toISOString();
-    const existing = await db.getFirstAsync<{ id: string }>(
-      "SELECT id FROM category_rules WHERE user_id = ? AND pattern = ?",
-      [tx.user_id, pattern]
-    );
     await db.withTransactionAsync(async () => {
+      // SELECT inside the transaction so two rapid categorizations of the same
+      // pattern serialize (the 2nd sees the row and UPDATEs) instead of racing
+      // into a duplicate INSERT that throws UNIQUE(user_id, pattern).
+      const existing = await db.getFirstAsync<{ id: string }>(
+        "SELECT id FROM category_rules WHERE user_id = ? AND pattern = ?",
+        [tx.user_id, pattern]
+      );
       if (existing) {
         await db.runAsync(
           "UPDATE category_rules SET category_id = ?, match_count = match_count + 1, updated_at = ? WHERE id = ?",
