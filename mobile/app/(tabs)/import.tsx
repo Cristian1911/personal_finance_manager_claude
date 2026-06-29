@@ -62,6 +62,9 @@ import {
   getReconciliationCandidateById,
   getReconciliationCandidates,
 } from "../../lib/repositories/transactions";
+import { getDatabase } from "../../lib/db/database";
+import { applyStatementMetaBalance } from "../../lib/repositories/ledger-helpers";
+import { findAndLinkLocalOccurrence } from "../../lib/repositories/recurring";
 import { getDestinatarioRulesForMatching } from "../../lib/repositories/destinatarios";
 import { trackProductEvent } from "../../lib/analytics/product-events";
 import {
@@ -176,6 +179,53 @@ type ParsedStatement = {
   loan_metadata?: LoanMetadata | null;
   transactions: ParsedTransaction[];
 };
+
+/**
+ * Derive the bank-reported balance figures from statement metadata — mirrors
+ * webapp processStatementMeta. CREDIT_CARD: total_payment_due, else
+ * credit_limit − available_credit. LOAN: remaining_balance. SAVINGS/CHECKING:
+ * summary.final_balance. Returns nulls when the parser had no balance metadata.
+ */
+function deriveStatementBalance(
+  stmt: ParsedStatement,
+  accountType: string
+): {
+  currentBalance: number | null;
+  availableBalance: number | null;
+  creditLimit: number | null;
+  totalPaymentDue: number | null;
+} {
+  const cc = stmt.credit_card_metadata;
+  const ln = stmt.loan_metadata;
+  if (accountType === "CREDIT_CARD" && cc) {
+    let currentBalance: number | null = null;
+    if (cc.total_payment_due != null) {
+      currentBalance = cc.total_payment_due;
+    } else if (cc.credit_limit != null && cc.available_credit != null) {
+      currentBalance = Math.max(cc.credit_limit - cc.available_credit, 0);
+    }
+    return {
+      currentBalance,
+      availableBalance: cc.available_credit ?? null,
+      creditLimit: cc.credit_limit ?? null,
+      totalPaymentDue: cc.total_payment_due ?? null,
+    };
+  }
+  if (accountType === "LOAN" && ln) {
+    return {
+      currentBalance: ln.remaining_balance ?? null,
+      availableBalance: null,
+      creditLimit: null,
+      totalPaymentDue: ln.total_payment_due ?? null,
+    };
+  }
+  return {
+    currentBalance: stmt.summary?.final_balance ?? null,
+    availableBalance: null,
+    creditLimit: null,
+    totalPaymentDue: null,
+  };
+}
 
 type Step = "pick" | "review" | "reconcile" | "result";
 type ReviewChoice = "MERGE" | "KEEP_BOTH";
@@ -819,6 +869,9 @@ export default function ImportScreen() {
 
           count++;
 
+          // Auto-link to a matching pending recurring occurrence (best-effort).
+          await findAndLinkLocalOccurrence(txId).catch(() => false);
+
           const autoMatch = autoMergeMap.get(index);
           if (autoMatch) {
             await applyReconciliationMerge({
@@ -848,6 +901,38 @@ export default function ImportScreen() {
         } catch (err) {
           console.warn("Skip imported transaction:", err);
         }
+      }
+
+      // Tier-1 (PDF_IMPORT) balance: OVERWRITE the account to the bank-reported
+      // statement balance (mirror webapp processStatementMeta) — NOT per-tx deltas,
+      // which would double-count the rows just inserted. Best-effort: a parse with
+      // no balance metadata leaves the balance untouched.
+      try {
+        const derived = deriveStatementBalance(parsedData, selectedAccount.account_type);
+        const cb = derived.currentBalance;
+        if (cb != null) {
+          const freshAccount = await getAccountById(selectedAccount.id);
+          if (freshAccount) {
+            const db = await getDatabase();
+            const metaNow = new Date().toISOString();
+            await db.withTransactionAsync(async () => {
+              await applyStatementMetaBalance(
+                db,
+                freshAccount,
+                {
+                  currentBalance: cb,
+                  availableBalance: derived.availableBalance,
+                  creditLimit: derived.creditLimit,
+                  totalPaymentDue: derived.totalPaymentDue,
+                  currencyCode: parsedData.currency ?? freshAccount.currency_code ?? "COP",
+                },
+                metaNow
+              );
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("Statement balance update skipped:", err);
       }
 
       setImportedCount(count);
