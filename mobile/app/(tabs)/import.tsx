@@ -65,6 +65,7 @@ import {
 import { getDatabase } from "../../lib/db/database";
 import { applyStatementMetaBalance } from "../../lib/repositories/ledger-helpers";
 import { findAndLinkLocalOccurrence } from "../../lib/repositories/recurring";
+import { upsertLocalStatementSnapshot } from "../../lib/repositories/statement-snapshots";
 import { getDestinatarioRulesForMatching } from "../../lib/repositories/destinatarios";
 import { trackProductEvent } from "../../lib/analytics/product-events";
 import {
@@ -933,6 +934,44 @@ export default function ImportScreen() {
         }
       } catch (err) {
         console.warn("Statement balance update skipped:", err);
+      }
+
+      // Persist the statement snapshot (credit limit / due date / balances) —
+      // mirror webapp processStatementMeta. Best-effort.
+      try {
+        const cc = parsedData.credit_card_metadata;
+        const ln = parsedData.loan_metadata;
+        const sum = parsedData.summary;
+        await upsertLocalStatementSnapshot({
+          userId,
+          accountId: selectedAccount.id,
+          currencyCode: parsedData.currency ?? selectedAccount.currency_code ?? "COP",
+          periodFrom: parsedData.period_from ?? null,
+          periodTo: parsedData.period_to ?? null,
+          previousBalance: sum?.previous_balance ?? null,
+          totalCredits: sum?.total_credits ?? null,
+          totalDebits: sum?.total_debits ?? null,
+          finalBalance: sum?.final_balance ?? null,
+          purchasesAndCharges: sum?.purchases_and_charges ?? null,
+          interestCharged: sum?.interest_charged ?? null,
+          creditLimit: cc?.credit_limit ?? null,
+          availableCredit: cc?.available_credit ?? null,
+          interestRate: cc?.interest_rate ?? ln?.interest_rate ?? null,
+          lateInterestRate: cc?.late_interest_rate ?? ln?.late_interest_rate ?? null,
+          totalPaymentDue: cc?.total_payment_due ?? ln?.total_payment_due ?? null,
+          minimumPayment: cc?.minimum_payment ?? ln?.minimum_payment ?? null,
+          paymentDueDate: cc?.payment_due_date ?? ln?.payment_due_date ?? null,
+          remainingBalance: ln?.remaining_balance ?? null,
+          initialAmount: ln?.initial_amount ?? null,
+          installmentsInDefault: ln?.installments_in_default ?? null,
+          loanNumber: ln?.loan_number ?? null,
+          sourceFilename: null,
+          importedCount: count,
+          transactionCount: parsedData.transactions.length,
+          skippedCount: Math.max(parsedData.transactions.length - count, 0),
+        });
+      } catch (err) {
+        console.warn("Statement snapshot upsert skipped:", err);
       }
 
       setImportedCount(count);
