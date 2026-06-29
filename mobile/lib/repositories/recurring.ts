@@ -504,10 +504,14 @@ async function computeRecurringGroupUuid(
  */
 export async function linkExistingTransactionToOccurrence(
   occurrenceId: string,
-  transactionId: string
+  transactionId: string,
+  options?: { linkedManually?: boolean }
 ): Promise<void> {
   const db = await getDatabase();
   const now = new Date().toISOString();
+  // Manual "Vincular" sets linked_manually=true; auto-linking on create/import
+  // (findAndLinkLocalOccurrence) passes false to mirror webapp's auto path.
+  const linkedManually = options?.linkedManually ?? true;
 
   const occ = await db.getFirstAsync<{
     id: string;
@@ -585,13 +589,13 @@ export async function linkExistingTransactionToOccurrence(
       status: "paid",
       transaction_id: transactionId,
       paid_at: now,
-      linked_manually: true,
+      linked_manually: linkedManually,
     };
     await db.runAsync(
       `UPDATE recurring_occurrences
-         SET status = 'paid', transaction_id = ?, paid_at = ?, linked_manually = 1
+         SET status = 'paid', transaction_id = ?, paid_at = ?, linked_manually = ?
          WHERE id = ?`,
-      [transactionId, now, occurrenceId]
+      [transactionId, now, linkedManually ? 1 : 0, occurrenceId]
     );
     await enqueueUpdate(db, "recurring_occurrences", occurrenceId, occPayload, now);
 
@@ -610,6 +614,52 @@ export async function linkExistingTransactionToOccurrence(
       );
     }
   });
+}
+
+/**
+ * Auto-link a just-created/imported transaction to its matching pending
+ * recurring occurrence — the mobile mirror of webapp `linkTransactionToOccurrence`
+ * (called after every persistTransaction / import). Best-effort: returns false
+ * (never throws) when there's no confident match.
+ *
+ * Reuses the ±30-day candidate finder but auto-links only a CONFIDENT match
+ * (±3 days AND amount within 50%), tighter than the manual "Vincular" window, so
+ * a create never silently grabs a distant occurrence. Marks the occurrence paid
+ * with linked_manually=false (auto), via the shared link routine.
+ */
+export async function findAndLinkLocalOccurrence(
+  transactionId: string
+): Promise<boolean> {
+  const db = await getDatabase();
+  const tx = await db.getFirstAsync<{ transaction_date: string; amount: number }>(
+    "SELECT transaction_date, amount FROM transactions WHERE id = ?",
+    [transactionId]
+  );
+  if (!tx) return false;
+
+  const candidates = await getCandidateOccurrencesForTransaction(transactionId);
+  if (candidates.length === 0) return false;
+
+  const txTime = new Date(tx.transaction_date + "T12:00:00").getTime();
+  // candidates are sorted by matchScore desc, so the first confident one is best.
+  const best = candidates.find((c) => {
+    const occTime = new Date(c.occurrenceDate + "T12:00:00").getTime();
+    const dayDiff = Math.abs(occTime - txTime) / 86_400_000;
+    if (dayDiff > 3) return false;
+    if (c.expectedAmount <= 0) return false;
+    return Math.abs(c.expectedAmount - tx.amount) / c.expectedAmount <= 0.5;
+  });
+  if (!best) return false;
+
+  try {
+    await linkExistingTransactionToOccurrence(best.id, transactionId, {
+      linkedManually: false,
+    });
+    return true;
+  } catch {
+    // Best-effort — a race (occurrence already paid) must never fail the create.
+    return false;
+  }
 }
 
 /** Mark an occurrence as skipped and enqueue for sync. */

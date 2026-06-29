@@ -72,6 +72,14 @@ export async function saveTransactionTags(
   const db = await getDatabase();
   const now = new Date().toISOString();
 
+  // The transaction_tags REPLACE sync payload needs user_id — the remote table is
+  // NOT-NULL + RLS, so without it the push insert fails forever (was only warned).
+  // user_id is omitted from the LOCAL junction table (derivable), so look it up.
+  const txRow = await db.getFirstAsync<{ user_id: string }>(
+    "SELECT user_id FROM transactions WHERE id = ?",
+    [transactionId]
+  );
+
   await db.withTransactionAsync(async () => {
     // Remove existing tags
     await db.runAsync(
@@ -87,11 +95,21 @@ export async function saveTransactionTags(
       );
     }
 
-    // Enqueue sync — send tag_ids array as payload for the syncer to handle
-    await db.runAsync(
-      `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at)
-       VALUES ('transaction_tags', ?, 'REPLACE', ?, ?)`,
-      [transactionId, JSON.stringify({ transaction_id: transactionId, tag_ids: tagIds }), now]
-    );
+    // Enqueue sync — include user_id so the remote REPLACE (NOT-NULL + RLS) lands.
+    if (txRow?.user_id) {
+      await db.runAsync(
+        `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at)
+         VALUES ('transaction_tags', ?, 'REPLACE', ?, ?)`,
+        [
+          transactionId,
+          JSON.stringify({ transaction_id: transactionId, user_id: txRow.user_id, tag_ids: tagIds }),
+          now,
+        ]
+      );
+    } else {
+      console.warn(
+        `saveTransactionTags: tx ${transactionId} has no local user_id — tags saved locally, sync enqueue skipped`
+      );
+    }
   });
 }

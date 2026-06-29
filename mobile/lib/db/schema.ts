@@ -595,6 +595,63 @@ export const DB_MIGRATIONS: DbMigration[] = [
       // in JS, so a wider composite would add write cost without a read gain.
     ],
   },
+  {
+    version: 19,
+    statements: [
+      // Category learning rules (mirror webapp `category_rules`). Written when a
+      // user categorizes an uncategorized tx so the auto-categorizer improves and
+      // the rule syncs to web / other devices. Same column set as the Supabase
+      // table so pull/push round-trip cleanly. UNIQUE(user_id, pattern) is the
+      // upsert key (auto-indexed).
+      `CREATE TABLE IF NOT EXISTS category_rules (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        pattern TEXT NOT NULL,
+        category_id TEXT NOT NULL,
+        match_count INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        UNIQUE(user_id, pattern),
+        FOREIGN KEY (category_id) REFERENCES categories(id)
+      )`,
+    ],
+  },
+  {
+    version: 20,
+    statements: [
+      // statement_snapshots: mirror the Supabase view columns so PDF-import
+      // snapshots (credit limit, due date, statement balances) persist + sync,
+      // and web-created snapshots pull down. The legacy local-only columns
+      // (period NOT NULL, statement_date, statement_json) stay but are never
+      // synced — the repo supplies `period` on INSERT and omits all three from
+      // the sync payload. SQLite ADD COLUMN can't be NOT NULL without a default,
+      // so every added column is nullable (the repo always populates them).
+      `ALTER TABLE statement_snapshots ADD COLUMN period_from TEXT`,
+      `ALTER TABLE statement_snapshots ADD COLUMN period_to TEXT`,
+      `ALTER TABLE statement_snapshots ADD COLUMN currency_code TEXT`,
+      `ALTER TABLE statement_snapshots ADD COLUMN previous_balance REAL`,
+      `ALTER TABLE statement_snapshots ADD COLUMN total_credits REAL`,
+      `ALTER TABLE statement_snapshots ADD COLUMN total_debits REAL`,
+      `ALTER TABLE statement_snapshots ADD COLUMN final_balance REAL`,
+      `ALTER TABLE statement_snapshots ADD COLUMN purchases_and_charges REAL`,
+      `ALTER TABLE statement_snapshots ADD COLUMN interest_charged REAL`,
+      `ALTER TABLE statement_snapshots ADD COLUMN credit_limit REAL`,
+      `ALTER TABLE statement_snapshots ADD COLUMN available_credit REAL`,
+      `ALTER TABLE statement_snapshots ADD COLUMN interest_rate REAL`,
+      `ALTER TABLE statement_snapshots ADD COLUMN late_interest_rate REAL`,
+      `ALTER TABLE statement_snapshots ADD COLUMN total_payment_due REAL`,
+      `ALTER TABLE statement_snapshots ADD COLUMN minimum_payment REAL`,
+      `ALTER TABLE statement_snapshots ADD COLUMN payment_due_date TEXT`,
+      `ALTER TABLE statement_snapshots ADD COLUMN remaining_balance REAL`,
+      `ALTER TABLE statement_snapshots ADD COLUMN initial_amount REAL`,
+      `ALTER TABLE statement_snapshots ADD COLUMN installments_in_default INTEGER`,
+      `ALTER TABLE statement_snapshots ADD COLUMN loan_number TEXT`,
+      `ALTER TABLE statement_snapshots ADD COLUMN source_filename TEXT`,
+      `ALTER TABLE statement_snapshots ADD COLUMN imported_count INTEGER`,
+      `ALTER TABLE statement_snapshots ADD COLUMN transaction_count INTEGER`,
+      `ALTER TABLE statement_snapshots ADD COLUMN skipped_count INTEGER`,
+    ],
+  },
 ];
 
 export const LATEST_DB_VERSION =

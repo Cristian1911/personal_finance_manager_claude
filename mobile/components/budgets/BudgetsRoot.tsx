@@ -2,7 +2,6 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  KeyboardAvoidingView,
   Platform,
   RefreshControl,
   Text,
@@ -49,6 +48,21 @@ export function BudgetsRoot({ variant = "main" }: BudgetsRootProps) {
 
   /** Guards stale setState when the month changes mid-fetch. */
   const requestIdRef = useRef(0);
+
+  const flatListRef = useRef<FlatList<BudgetProgressRow>>(null);
+
+  /** Lift the focused budget-edit row above the keyboard — the input lives in a
+   * FlatList row, out of any KeyboardAvoidingView's reach. */
+  const handleInputFocus = useCallback((index: number) => {
+    requestAnimationFrame(() => {
+      flatListRef.current?.scrollToIndex({
+        index,
+        viewPosition: 0,
+        viewOffset: 12,
+        animated: true,
+      });
+    });
+  }, []);
 
   const loadData = useCallback(async () => {
     const requestId = ++requestIdRef.current;
@@ -127,19 +141,21 @@ export function BudgetsRoot({ variant = "main" }: BudgetsRootProps) {
   );
 
   const renderItem = useCallback(
-    ({ item }: { item: BudgetProgressRow }) => {
+    ({ item, index }: { item: BudgetProgressRow; index: number }) => {
       const rowId = item.id ?? item.category_id;
       return (
         <BudgetRow
           item={item}
+          index={index}
           currency={CURRENCY}
           saving={savingId === rowId}
           onSave={handleSave}
           onDelete={handleDelete}
+          onInputFocus={handleInputFocus}
         />
       );
     },
-    [savingId, handleSave, handleDelete]
+    [savingId, handleSave, handleDelete, handleInputFocus]
   );
 
   const listHeader = useMemo(
@@ -200,13 +216,11 @@ export function BudgetsRoot({ variant = "main" }: BudgetsRootProps) {
   }
 
   return (
-    <KeyboardAvoidingView
-      className="flex-1 bg-background"
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       <FlatList
+        ref={flatListRef}
         data={items}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
@@ -225,11 +239,18 @@ export function BudgetsRoot({ variant = "main" }: BudgetsRootProps) {
             tintColor={COLORS.brass}
           />
         }
+        automaticallyAdjustKeyboardInsets
+        onScrollToIndexFailed={({ index, averageItemLength }) => {
+          flatListRef.current?.scrollToOffset({
+            offset: averageItemLength * index,
+            animated: true,
+          });
+        }}
         initialNumToRender={10}
         maxToRenderPerBatch={10}
         windowSize={5}
         removeClippedSubviews={Platform.OS === "android"}
       />
-    </KeyboardAvoidingView>
+    </View>
   );
 }

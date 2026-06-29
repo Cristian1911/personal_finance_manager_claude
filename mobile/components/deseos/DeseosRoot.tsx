@@ -3,11 +3,11 @@ import {
   Alert,
   Pressable,
   RefreshControl,
-  ScrollView,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { AppKeyboardAwareScrollView } from "../common/AppKeyboardAwareScrollView";
 import { useFocusEffect } from "expo-router";
 import {
   Check,
@@ -241,8 +241,7 @@ export function DeseosRoot() {
           </Pressable>
         }
       />
-      <ScrollView
-        className="flex-1"
+      <AppKeyboardAwareScrollView
         contentContainerStyle={{
           padding: 16,
           gap: 8,
@@ -371,7 +370,7 @@ export function DeseosRoot() {
             )}
           </View>
         )}
-      </ScrollView>
+      </AppKeyboardAwareScrollView>
 
       <DeseosEnrichDrawer
         visible={enrichTarget !== null}

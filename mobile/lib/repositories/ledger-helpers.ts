@@ -375,6 +375,51 @@ export async function setLocalBalanceOverwrite(
   }
 }
 
+/**
+ * Apply a bank-reported statement balance to an account (Tier-1 PDF import).
+ * Like setLocalBalanceOverwrite this OVERWRITES current_balance (never a delta —
+ * that would double-count against the imported tx rows), but uses the bank's
+ * `available_credit` DIRECTLY rather than recomputing it, and writes the
+ * per-currency entry for the statement's currency — mirroring webapp
+ * processStatementMeta. Idempotent: a re-import sets the same figures.
+ */
+export async function applyStatementMetaBalance(
+  db: SQLiteDatabase,
+  account: LedgerAccountRow,
+  meta: {
+    currentBalance: number;
+    availableBalance?: number | null;
+    creditLimit?: number | null;
+    totalPaymentDue?: number | null;
+    currencyCode: string;
+  },
+  now: string
+): Promise<void> {
+  const payload: Record<string, unknown> = {
+    current_balance: meta.currentBalance,
+    updated_at: now,
+  };
+  if (meta.availableBalance != null) payload.available_balance = meta.availableBalance;
+
+  // Mirror the per-currency entry webapp writes into currency_balances.
+  const currencyBalances = parseCurrencyBalances(account.currency_balances) ?? {};
+  const entry: Record<string, unknown> = {
+    ...(currencyBalances[meta.currencyCode] ?? {}),
+  };
+  entry.current_balance = meta.currentBalance;
+  if (meta.availableBalance != null) entry.available_balance = meta.availableBalance;
+  if (meta.creditLimit != null) entry.credit_limit = meta.creditLimit;
+  if (meta.totalPaymentDue != null) entry.total_payment_due = meta.totalPaymentDue;
+  currencyBalances[meta.currencyCode] = entry;
+  payload.currency_balances = currencyBalances;
+
+  await runAccountBalanceUpdate(db, account.id, payload, now);
+
+  account.current_balance = meta.currentBalance;
+  if (meta.availableBalance != null) account.available_balance = meta.availableBalance;
+  account.currency_balances = currencyBalances;
+}
+
 // ─── Internal: write the account row + coalesce sync ─────────────────────────
 
 /**

@@ -14,7 +14,11 @@ import {
   type UncategorizedSampleRow,
 } from "../../lib/repositories/transactions";
 import { getAllAccounts, type AccountRow } from "../../lib/repositories/accounts";
-import { getAllCategories, type CategoryRow } from "../../lib/repositories/categories";
+import {
+  getAllCategories,
+  filterCategoriesByDirection,
+  type CategoryRow,
+} from "../../lib/repositories/categories";
 import {
   getAllDestinatarios,
   type DestinatarioWithCount,
@@ -40,7 +44,7 @@ import {
   type MovimientosFilters,
 } from "./MovimientosUtilidades";
 import { MovimientosTransactionRow } from "./MovimientosTransactionRow";
-import { CategoryPickerSheet } from "../categorizar/CategoryPickerSheet";
+import { CategoryZonePickerSheet } from "../transactions/CategoryZonePickerSheet";
 import { DestinatarioPicker } from "../transactions/DestinatarioPicker";
 import { TagPickerSheet } from "../transactions/TagPickerSheet";
 import { VincularPicker } from "../transactions/VincularPicker";
@@ -523,10 +527,18 @@ export function MovimientosRoot() {
       />
 
       {pickerTxId !== null && (
-        <CategoryPickerSheet
-          categories={categories}
+        <CategoryZonePickerSheet
+          categories={filterCategoriesByDirection(
+            categories,
+            transactions.find((t) => t.id === pickerTxId)?.direction === "INFLOW"
+              ? "INFLOW"
+              : "OUTFLOW"
+          )}
           visible
-          onSelect={handleCategorySelect}
+          selectedId={
+            transactions.find((t) => t.id === pickerTxId)?.category_id ?? null
+          }
+          onSelect={(id) => id && handleCategorySelect(id)}
           onClose={handleClosePicker}
         />
       )}

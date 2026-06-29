@@ -4,12 +4,13 @@ import { useFocusEffect } from "expo-router";
 import { Tag } from "lucide-react-native";
 import { useSync } from "../../lib/sync/hooks";
 import {
+  categorizeAndLearn,
   getTransactions,
-  updateTransaction,
   type TransactionListRow,
 } from "../../lib/repositories/transactions";
 import {
   getAllCategories,
+  filterCategoriesByDirection,
   type CategoryRow,
 } from "../../lib/repositories/categories";
 import { COLORS } from "../../lib/constants/colors";
@@ -17,7 +18,7 @@ import { MobileHeader } from "../ui/MobileHeader";
 import { MCard } from "../ui/MCard";
 import { MOBILE_TAB_BAR_CLEARANCE, SECTION_EYEBROW_CLASS } from "../../lib/constants/styles";
 import { UncategorizedRow } from "./UncategorizedRow";
-import { CategoryPickerSheet } from "./CategoryPickerSheet";
+import { CategoryZonePickerSheet } from "../transactions/CategoryZonePickerSheet";
 import { trackProductEvent } from "../../lib/analytics/product-events";
 
 export function CategorizarRoot() {
@@ -71,7 +72,7 @@ export function CategorizarRoot() {
       if (!selectedTxId) return;
 
       try {
-        await updateTransaction(selectedTxId, { category_id: categoryId });
+        await categorizeAndLearn(selectedTxId, categoryId);
         trackProductEvent({
           event_name: "categorize_applied",
           flow: "categorize",
@@ -169,10 +170,16 @@ export function CategorizarRoot() {
       </ScrollView>
 
       {/* Category picker bottom sheet */}
-      <CategoryPickerSheet
-        categories={categories}
+      <CategoryZonePickerSheet
+        categories={filterCategoriesByDirection(
+          categories,
+          transactions.find((t) => t.id === selectedTxId)?.direction === "INFLOW"
+            ? "INFLOW"
+            : "OUTFLOW"
+        )}
         visible={pickerVisible}
-        onSelect={handleCategorySelect}
+        selectedId={null}
+        onSelect={(id) => id && handleCategorySelect(id)}
         onClose={handlePickerClose}
       />
     </View>

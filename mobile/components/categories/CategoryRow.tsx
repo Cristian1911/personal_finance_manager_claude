@@ -2,6 +2,7 @@ import { Pressable, Text, View, type ViewStyle } from "react-native";
 import { Lock, Pencil } from "lucide-react-native";
 import type { CategoryRow as CategoryRowType } from "../../lib/repositories/categories";
 import { COLORS } from "../../lib/constants/colors";
+import { CategoryIcon } from "../ui/CategoryIcon";
 
 interface CategoryRowProps {
   category: CategoryRowType;
@@ -41,7 +42,9 @@ export function CategoryRow({ category, isSystem, onEdit }: CategoryRowProps) {
 
       {/* Icon indicator */}
       {category.icon && (
-        <Text className="text-[13px] mr-1">{category.icon}</Text>
+        <View className="mr-1">
+          <CategoryIcon icon={category.icon} size={14} color={COLORS.sageDark} />
+        </View>
       )}
 
       {/* System lock or edit pencil */}

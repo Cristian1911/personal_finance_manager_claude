@@ -8,6 +8,7 @@ import {
   ScrollView,
   TextInput,
 } from "react-native";
+import { AppKeyboardAwareScrollView } from "../../components/common/AppKeyboardAwareScrollView";
 import { AnimatedAccordion } from "../../components/ui/AnimatedAccordion";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -62,6 +63,10 @@ import {
   getReconciliationCandidateById,
   getReconciliationCandidates,
 } from "../../lib/repositories/transactions";
+import { getDatabase } from "../../lib/db/database";
+import { applyStatementMetaBalance } from "../../lib/repositories/ledger-helpers";
+import { findAndLinkLocalOccurrence } from "../../lib/repositories/recurring";
+import { upsertLocalStatementSnapshot } from "../../lib/repositories/statement-snapshots";
 import { getDestinatarioRulesForMatching } from "../../lib/repositories/destinatarios";
 import { trackProductEvent } from "../../lib/analytics/product-events";
 import {
@@ -176,6 +181,53 @@ type ParsedStatement = {
   loan_metadata?: LoanMetadata | null;
   transactions: ParsedTransaction[];
 };
+
+/**
+ * Derive the bank-reported balance figures from statement metadata — mirrors
+ * webapp processStatementMeta. CREDIT_CARD: total_payment_due, else
+ * credit_limit − available_credit. LOAN: remaining_balance. SAVINGS/CHECKING:
+ * summary.final_balance. Returns nulls when the parser had no balance metadata.
+ */
+function deriveStatementBalance(
+  stmt: ParsedStatement,
+  accountType: string
+): {
+  currentBalance: number | null;
+  availableBalance: number | null;
+  creditLimit: number | null;
+  totalPaymentDue: number | null;
+} {
+  const cc = stmt.credit_card_metadata;
+  const ln = stmt.loan_metadata;
+  if (accountType === "CREDIT_CARD" && cc) {
+    let currentBalance: number | null = null;
+    if (cc.total_payment_due != null) {
+      currentBalance = cc.total_payment_due;
+    } else if (cc.credit_limit != null && cc.available_credit != null) {
+      currentBalance = Math.max(cc.credit_limit - cc.available_credit, 0);
+    }
+    return {
+      currentBalance,
+      availableBalance: cc.available_credit ?? null,
+      creditLimit: cc.credit_limit ?? null,
+      totalPaymentDue: cc.total_payment_due ?? null,
+    };
+  }
+  if (accountType === "LOAN" && ln) {
+    return {
+      currentBalance: ln.remaining_balance ?? null,
+      availableBalance: null,
+      creditLimit: null,
+      totalPaymentDue: ln.total_payment_due ?? null,
+    };
+  }
+  return {
+    currentBalance: stmt.summary?.final_balance ?? null,
+    availableBalance: null,
+    creditLimit: null,
+    totalPaymentDue: null,
+  };
+}
 
 type Step = "pick" | "review" | "reconcile" | "result";
 type ReviewChoice = "MERGE" | "KEEP_BOTH";
@@ -819,6 +871,9 @@ export default function ImportScreen() {
 
           count++;
 
+          // Auto-link to a matching pending recurring occurrence (best-effort).
+          await findAndLinkLocalOccurrence(txId).catch(() => false);
+
           const autoMatch = autoMergeMap.get(index);
           if (autoMatch) {
             await applyReconciliationMerge({
@@ -848,6 +903,76 @@ export default function ImportScreen() {
         } catch (err) {
           console.warn("Skip imported transaction:", err);
         }
+      }
+
+      // Tier-1 (PDF_IMPORT) balance: OVERWRITE the account to the bank-reported
+      // statement balance (mirror webapp processStatementMeta) — NOT per-tx deltas,
+      // which would double-count the rows just inserted. Best-effort: a parse with
+      // no balance metadata leaves the balance untouched.
+      try {
+        const derived = deriveStatementBalance(parsedData, selectedAccount.account_type);
+        const cb = derived.currentBalance;
+        if (cb != null) {
+          const freshAccount = await getAccountById(selectedAccount.id);
+          if (freshAccount) {
+            const db = await getDatabase();
+            const metaNow = new Date().toISOString();
+            await db.withTransactionAsync(async () => {
+              await applyStatementMetaBalance(
+                db,
+                freshAccount,
+                {
+                  currentBalance: cb,
+                  availableBalance: derived.availableBalance,
+                  creditLimit: derived.creditLimit,
+                  totalPaymentDue: derived.totalPaymentDue,
+                  currencyCode: parsedData.currency ?? freshAccount.currency_code ?? "COP",
+                },
+                metaNow
+              );
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("Statement balance update skipped:", err);
+      }
+
+      // Persist the statement snapshot (credit limit / due date / balances) —
+      // mirror webapp processStatementMeta. Best-effort.
+      try {
+        const cc = parsedData.credit_card_metadata;
+        const ln = parsedData.loan_metadata;
+        const sum = parsedData.summary;
+        await upsertLocalStatementSnapshot({
+          userId,
+          accountId: selectedAccount.id,
+          currencyCode: parsedData.currency ?? selectedAccount.currency_code ?? "COP",
+          periodFrom: parsedData.period_from ?? null,
+          periodTo: parsedData.period_to ?? null,
+          previousBalance: sum?.previous_balance ?? null,
+          totalCredits: sum?.total_credits ?? null,
+          totalDebits: sum?.total_debits ?? null,
+          finalBalance: sum?.final_balance ?? null,
+          purchasesAndCharges: sum?.purchases_and_charges ?? null,
+          interestCharged: sum?.interest_charged ?? null,
+          creditLimit: cc?.credit_limit ?? null,
+          availableCredit: cc?.available_credit ?? null,
+          interestRate: cc?.interest_rate ?? ln?.interest_rate ?? null,
+          lateInterestRate: cc?.late_interest_rate ?? ln?.late_interest_rate ?? null,
+          totalPaymentDue: cc?.total_payment_due ?? ln?.total_payment_due ?? null,
+          minimumPayment: cc?.minimum_payment ?? ln?.minimum_payment ?? null,
+          paymentDueDate: cc?.payment_due_date ?? ln?.payment_due_date ?? null,
+          remainingBalance: ln?.remaining_balance ?? null,
+          initialAmount: ln?.initial_amount ?? null,
+          installmentsInDefault: ln?.installments_in_default ?? null,
+          loanNumber: ln?.loan_number ?? null,
+          sourceFilename: null,
+          importedCount: count,
+          transactionCount: parsedData.transactions.length,
+          skippedCount: Math.max(parsedData.transactions.length - count, 0),
+        });
+      } catch (err) {
+        console.warn("Statement snapshot upsert skipped:", err);
       }
 
       setImportedCount(count);
@@ -1046,7 +1171,10 @@ export default function ImportScreen() {
   if (step === "pick") {
     return (
       <ImportThemeProvider neutral={neutralTheme}>
-      <View className={`flex-1 ${inkCls} px-4 pb-4`} style={{ paddingTop: topInset + 4 }}>
+      <View className={`flex-1 ${inkCls}`} style={{ paddingTop: topInset + 4 }}>
+        <AppKeyboardAwareScrollView
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
+        >
         <Text className="text-[11px] font-inter-semibold uppercase text-z-sage-dark tracking-[0.18em]">
           Paso 1 de 4
         </Text>
@@ -1162,6 +1290,7 @@ export default function ImportScreen() {
             </Text>
           )}
         </Pressable>
+        </AppKeyboardAwareScrollView>
       </View>
       </ImportThemeProvider>
     );

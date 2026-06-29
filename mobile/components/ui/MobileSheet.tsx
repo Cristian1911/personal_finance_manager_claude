@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Modal, Pressable, View } from "react-native";
+import { KeyboardAvoidingView, Modal, Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export const MODAL_SCRIM_COLOR = "rgba(0,0,0,0.5)";
@@ -36,6 +36,13 @@ export function MobileSheet({
       onRequestClose={onClose}
       statusBarTranslucent
     >
+      {/* Keep the sheet (+ its inputs) above the keyboard. RN's KeyboardAvoidingView
+          is used here on purpose — it's modal-safe; keyboard-controller's variant
+          needs a nested provider inside the Modal window (future UI-thread upgrade). */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ flex: 1 }}
+      >
       <Pressable
         onPress={onClose}
         style={{ backgroundColor: MODAL_SCRIM_COLOR }}
@@ -53,6 +60,7 @@ export function MobileSheet({
           {children}
         </Pressable>
       </Pressable>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

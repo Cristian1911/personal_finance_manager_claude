@@ -238,7 +238,7 @@ function MovimientosLecturaBase({
 
         <View className="flex-row gap-1">
           <View className="flex-1 items-center">
-            <Text className="text-[9px] font-inter-semibold uppercase tracking-[4px] text-muted-foreground">
+            <Text className="text-[9px] font-inter-semibold uppercase tracking-[1px] text-muted-foreground">
               Movimientos
             </Text>
             <Text className="mt-1 text-[18px] font-inter-bold leading-tight text-foreground">
@@ -246,7 +246,7 @@ function MovimientosLecturaBase({
             </Text>
           </View>
           <View className="flex-1 items-center">
-            <Text className="text-[9px] font-inter-semibold uppercase tracking-[4px] text-muted-foreground">
+            <Text className="text-[9px] font-inter-semibold uppercase tracking-[1px] text-muted-foreground">
               Ingresos
             </Text>
             <Text className="mt-1 text-[15px] font-inter-bold leading-tight text-z-income">
@@ -254,7 +254,7 @@ function MovimientosLecturaBase({
             </Text>
           </View>
           <View className="flex-1 items-center">
-            <Text className="text-[9px] font-inter-semibold uppercase tracking-[4px] text-muted-foreground">
+            <Text className="text-[9px] font-inter-semibold uppercase tracking-[1px] text-muted-foreground">
               Gastos
             </Text>
             <Text className="mt-1 text-[15px] font-inter-bold leading-tight text-foreground">

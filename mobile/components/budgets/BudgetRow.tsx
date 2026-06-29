@@ -25,6 +25,8 @@ interface BudgetRowProps {
   saving: boolean;
   onSave: (item: BudgetProgressRow, amount: number) => Promise<void>;
   onDelete: (item: BudgetProgressRow) => Promise<void>;
+  index: number;
+  onInputFocus?: (index: number) => void;
 }
 
 function progressBarClass(progress: number): string {
@@ -33,7 +35,15 @@ function progressBarClass(progress: number): string {
   return "bg-z-income";
 }
 
-function BudgetRowBase({ item, currency, saving, onSave, onDelete }: BudgetRowProps) {
+function BudgetRowBase({
+  item,
+  currency,
+  saving,
+  onSave,
+  onDelete,
+  index,
+  onInputFocus,
+}: BudgetRowProps) {
   const [expanded, setExpanded] = useState(false);
   const [amountInput, setAmountInput] = useState(String(Math.round(item.amount)));
 
@@ -134,6 +144,7 @@ function BudgetRowBase({ item, currency, saving, onSave, onDelete }: BudgetRowPr
           <TextInput
             value={amountInput}
             onChangeText={setAmountInput}
+            onFocus={() => onInputFocus?.(index)}
             keyboardType="numeric"
             placeholder="0"
             placeholderTextColor={COLORS.sageDark}

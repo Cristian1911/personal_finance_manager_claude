@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
-import { View, Text, TextInput, ScrollView, RefreshControl } from "react-native";
+import { View, Text, TextInput, RefreshControl } from "react-native";
+import { AppKeyboardAwareScrollView } from "../common/AppKeyboardAwareScrollView";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Search, Store } from "lucide-react-native";
 import { useSync } from "../../lib/sync/hooks";
@@ -65,8 +66,7 @@ export function DestinatariosRoot() {
     <View className="flex-1 bg-background">
       <MobileHeader variant="sub" title="Destinatarios" />
 
-      <ScrollView
-        className="flex-1"
+      <AppKeyboardAwareScrollView
         contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: MOBILE_TAB_BAR_CLEARANCE }}
         refreshControl={
           <RefreshControl
@@ -149,7 +149,7 @@ export function DestinatariosRoot() {
             </MCard>
           </View>
         )}
-      </ScrollView>
+      </AppKeyboardAwareScrollView>
     </View>
   );
 }

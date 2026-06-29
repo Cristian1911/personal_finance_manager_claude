@@ -11,6 +11,7 @@ import {
   TextInput,
   Modal,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { CalendarClock, Calendar, Link2, Pencil, Tag, Trash2, UserRound, X } from "lucide-react-native";
@@ -45,6 +46,8 @@ import {
 } from "../../components/transactions/CategoryPicker";
 import { DestinatarioPicker } from "../../components/transactions/DestinatarioPicker";
 import { TagSelector } from "../../components/transactions/TagSelector";
+import { CategoryIcon } from "../../components/ui/CategoryIcon";
+import { MODAL_SCRIM_COLOR } from "../../components/ui/MobileSheet";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import {
   DEBT_PAYMENT_CATEGORY_ID,
@@ -53,7 +56,10 @@ import {
 } from "../../lib/transaction-semantics";
 import { parseLocalizedAmount } from "../../lib/amount";
 import { COLORS } from "../../lib/constants/colors";
-import { SECTION_EYEBROW_CLASS } from "../../lib/constants/styles";
+import {
+  MOBILE_CARD_TIGHT_CLASS,
+  SECTION_EYEBROW_CLASS,
+} from "../../lib/constants/styles";
 
 type TransactionDetail = {
   id: string;
@@ -69,6 +75,7 @@ type TransactionDetail = {
   category_id: string | null;
   category_name_es: string | null;
   category_color: string | null;
+  category_icon: string | null;
   account_name: string | null;
   account_icon: string | null;
   account_color: string | null;
@@ -91,9 +98,9 @@ function DetailRow({
 }) {
   if (!value) return null;
   return (
-    <View className="flex-row items-start py-3 border-b border-white-6">
-      <Text className="text-muted-foreground font-inter text-sm w-20 mt-0.5">{label}</Text>
-      <Text className="text-foreground font-inter-medium text-sm text-right flex-1 ml-4 leading-5">
+    <View className="flex-row items-start justify-between gap-4 px-4 py-3 border-b border-white-6">
+      <Text className="text-muted-foreground font-inter text-sm mt-0.5">{label}</Text>
+      <Text className="text-foreground font-inter-medium text-sm text-right flex-1 leading-5">
         {value}
       </Text>
     </View>
@@ -146,6 +153,7 @@ function getHeroAmountColorClass(
 export default function TransactionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { session } = useAuth();
 
   // Data state
@@ -481,7 +489,10 @@ export default function TransactionDetailScreen() {
   if (!transaction) {
     return (
       <View className="flex-1 bg-background">
-        <View className="flex-row items-center justify-between px-4 pt-4 pb-2">
+        <View
+        className="flex-row items-center justify-between px-4 pb-2"
+        style={{ paddingTop: insets.top + 8 }}
+      >
           <Pressable
             onPress={() => router.back()}
             accessibilityLabel="Volver"
@@ -520,7 +531,10 @@ export default function TransactionDetailScreen() {
   return (
     <View className="flex-1 bg-background">
       {/* Header */}
-      <View className="flex-row items-center justify-between px-4 pt-4 pb-2">
+      <View
+        className="flex-row items-center justify-between px-4 pb-2"
+        style={{ paddingTop: insets.top + 8 }}
+      >
         {isEditing ? (
           <>
             <Pressable
@@ -747,6 +761,21 @@ export default function TransactionDetailScreen() {
         <ScrollView className="flex-1">
           {/* Amount hero */}
           <View className="items-center pt-6 pb-5 border-b border-white-6 mx-4">
+            {transaction.category_icon && (
+              <View
+                className="h-14 w-14 items-center justify-center rounded-full mb-3"
+                style={{
+                  backgroundColor:
+                    (transaction.category_color ?? COLORS.brass) + "20",
+                }}
+              >
+                <CategoryIcon
+                  icon={transaction.category_icon}
+                  size={26}
+                  color={transaction.category_color ?? COLORS.brass}
+                />
+              </View>
+            )}
             <Text className="text-muted-foreground font-inter text-sm mb-1">
               {getTransactionTypeLabel({
                 direction: transaction.direction,
@@ -762,7 +791,10 @@ export default function TransactionDetailScreen() {
             )}
             <Text
               className={`font-inter-bold text-4xl ${getHeroAmountColorClass(isExcluded, isDebtPayment, isInflow)}`}
-              style={isExcluded ? { textDecorationLine: "line-through" } : undefined}
+              style={[
+                { fontVariant: ["tabular-nums"] },
+                isExcluded ? { textDecorationLine: "line-through" } : null,
+              ]}
             >
               {isInflow ? "+" : "-"}
               {formatCurrency(
@@ -782,7 +814,10 @@ export default function TransactionDetailScreen() {
           </View>
 
           {/* Details */}
-          <View className="px-4 pt-2 pb-8">
+          <View className="px-4 pt-4 pb-8 gap-5">
+            <View>
+              <Text className={`${SECTION_EYEBROW_CLASS} mb-2`}>Clasificación</Text>
+              <View className={MOBILE_CARD_TIGHT_CLASS}>
             <DetailRow
               label="Fecha"
               value={
@@ -812,16 +847,28 @@ export default function TransactionDetailScreen() {
               value={transaction.destinatario_name ?? "Sin destinatario"}
             />
             <DetailRow label="Estado" value={statusLabel} />
-            <DetailRow label="Descripción" value={transaction.description} />
-            <DetailRow
-              label="Descripción original"
-              value={transaction.raw_description}
-            />
-            <DetailRow label="Notas" value={transaction.notes} />
+              </View>
+            </View>
+
+            {(transaction.description ||
+              transaction.raw_description ||
+              transaction.notes) && (
+              <View>
+                <Text className={`${SECTION_EYEBROW_CLASS} mb-2`}>Detalles</Text>
+                <View className={MOBILE_CARD_TIGHT_CLASS}>
+                  <DetailRow label="Descripción" value={transaction.description} />
+                  <DetailRow
+                    label="Descripción original"
+                    value={transaction.raw_description}
+                  />
+                  <DetailRow label="Notas" value={transaction.notes} />
+                </View>
+              </View>
+            )}
 
             {/* Etiquetas — chips, mirrors webapp pattern */}
             {transactionTags.length > 0 && (
-              <View className="flex-row items-start py-3 border-b border-white-6">
+              <View className="flex-row items-start rounded-2xl border border-white-6 bg-z-surface-2-55 px-4 py-3">
                 <Text className="text-muted-foreground font-inter text-sm w-20 mt-0.5">
                   Etiquetas
                 </Text>
@@ -841,7 +888,7 @@ export default function TransactionDetailScreen() {
             )}
 
             {/* Exclude toggle */}
-            <View className="flex-row items-center justify-between py-3 border-b border-white-6">
+            <View className="flex-row items-center justify-between rounded-2xl border border-white-6 bg-z-surface-2-55 px-4 py-3">
               <View>
                 <Text className="text-muted-foreground font-inter text-sm">
                   Excluir de métricas
@@ -860,7 +907,7 @@ export default function TransactionDetailScreen() {
             </View>
 
             {/* Acciones */}
-            <View className="pt-5 gap-2">
+            <View className="gap-2">
               <Text className={`${SECTION_EYEBROW_CLASS} mb-1`}>Acciones</Text>
               {!isDebtPayment && !linkedToRecurring && (
                 <Pressable
@@ -970,7 +1017,7 @@ export default function TransactionDetailScreen() {
         <Modal transparent animationType="slide">
           <View
             className="flex-1 justify-end"
-            style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+            style={{ backgroundColor: MODAL_SCRIM_COLOR }}
           >
             <View className="border border-white-6 bg-background rounded-t-2xl pt-2 pb-6">
               <View className="flex-row justify-end px-4 pb-2">

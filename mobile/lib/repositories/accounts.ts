@@ -22,6 +22,9 @@ export type AccountRow = {
   currency_code: string;
   current_balance: number;
   available_balance: number | null;
+  /** Per-currency debt detail (JSON string locally). Present via SELECT *; needed
+   * by applyLocalBalanceDelta for multi-currency debt accounts. */
+  currency_balances: string | null;
   credit_limit: number | null;
   interest_rate: number | null;
   is_active: number;

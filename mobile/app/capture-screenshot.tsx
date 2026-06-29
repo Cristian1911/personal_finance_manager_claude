@@ -28,7 +28,8 @@ import {
   getAllAccounts,
   type AccountRow,
 } from "../lib/repositories/accounts";
-import { createTransaction } from "../lib/repositories/transactions";
+import { createTransactionAndApplyBalance } from "../lib/repositories/transactions";
+import { findAndLinkLocalOccurrence } from "../lib/repositories/recurring";
 import {
   DEBT_PAYMENT_CATEGORY_ID,
   isDebtInflow,
@@ -212,20 +213,24 @@ export default function CaptureScreenshotScreen() {
           direction: t.direction,
           accountType: account.account_type,
         });
-        await createTransaction({
-          user_id: userId,
-          account_id: account.id,
-          category_id: isDebtPayment ? DEBT_PAYMENT_CATEGORY_ID : null,
-          amount: t.amount,
-          currency_code: (parsed.currency || account.currency_code) as CurrencyCode,
-          direction: t.direction,
-          description: t.description,
-          merchant_name: t.description,
-          raw_description: t.description,
-          transaction_date: t.date,
-          provider: "OCR",
-          capture_method: "OCR_BATCH",
-        });
+        const txId = await createTransactionAndApplyBalance(
+          {
+            user_id: userId,
+            account_id: account.id,
+            category_id: isDebtPayment ? DEBT_PAYMENT_CATEGORY_ID : null,
+            amount: t.amount,
+            currency_code: (parsed.currency || account.currency_code) as CurrencyCode,
+            direction: t.direction,
+            description: t.description,
+            merchant_name: t.description,
+            raw_description: t.description,
+            transaction_date: t.date,
+            provider: "OCR",
+            capture_method: "OCR_BATCH",
+          },
+          account
+        );
+        await findAndLinkLocalOccurrence(txId).catch(() => false);
         count++;
       }
       setImportedCount(count);

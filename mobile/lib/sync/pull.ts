@@ -8,6 +8,7 @@ const SYNC_TABLES = [
   "profiles",
   "accounts",
   "categories",
+  "category_rules",
   "budgets",
   "tag_groups",
   "tags",
@@ -49,7 +50,6 @@ const BOOLEAN_FIELDS: Record<string, string[]> = {
 
 /** JSON fields per table that need stringification for SQLite */
 const JSON_FIELDS: Record<string, string[]> = {
-  statement_snapshots: ["statement_json"],
   profiles: ["dashboard_config", "mobile_dashboard_config"],
   // Per-currency debt detail (JSONB remote, TEXT locally). Without stringifying
   // it, expo-sqlite can't bind the object and the whole accounts pull throws
@@ -275,6 +275,11 @@ async function upsertRow(
 
   if (table === "statement_snapshots") {
     const inferredPeriod =
+      // period_to/period_from are the real Supabase columns; period/statement_date
+      // are local-only (never in a pulled row). Without period_to first, every
+      // pulled snapshot bucketed by the IMPORT month, not the statement month.
+      inferMonthPeriod(processed.period_to) ??
+      inferMonthPeriod(processed.period_from) ??
       inferMonthPeriod(processed.period) ??
       inferMonthPeriod(processed.statement_date) ??
       inferMonthPeriod(processed.created_at) ??

@@ -10,6 +10,66 @@
 
 ---
 
+## Keyboard-aware input sweep (2026-06-29) — coverage remaining
+
+Adopted `docs/design-system/keyboard-handling.md` as the standard + added the coverage rule to the
+`mobile-perf-doctor` agent (§7.5).
+
+**Done:**
+- `capture.tsx`, `import.tsx` pick step, `DestinatariosRoot`, `DeseosRoot` → `AppKeyboardAwareScrollView`.
+- **All MobileSheet form sheets, via ONE central fix** — `MobileSheet.tsx` wraps its Modal in a
+  `KeyboardAvoidingView` (bottom-anchored → padding lifts the sheet). Covers `CategoryFormSheet`,
+  `ReassignSheet`, `CategoryZonePickerSheet`, `MovimientosUtilidades`, + FabMenuSheet / AccountPickerModal.
+- `account/create.tsx` + `account/edit/[id].tsx` were ALREADY handled (wrap in `KeyboardAvoidingView`) —
+  the audit false-flagged the `AccountFormFields` fragment; its parents cover it. No change needed.
+
+**Remaining:**
+- **Upgrade MobileSheet's RN `KeyboardAvoidingView` → keyboard-controller's** (UI-thread) once the
+  nested-`KeyboardProvider`-in-Modal pattern is validated on a real device. RN's is the modal-safe baseline.
+- **Verify on a real device** — sim ≠ device for keyboard timing (and idb automation suppresses the soft
+  keyboard entirely; see the guide's Project notes). Nothing here is sim-verifiable.
+
+## Mobile RN polish review (on-device screenshots, 2026-06-29)
+
+From 13 device screenshots. Severity-ranked:
+
+- **[DONE] CategoryZonePicker icon names as text** — fixed via the new `CategoryIcon` (name→lucide map);
+  the whole flat picker was replaced by the rich zone grid (icons + child counts + income/expense filter).
+- **[DONE] Auto-scroll-on-expand** — zone picker scrolls the tapped zone to top on expand (+ LayoutAnimation
+  on collapse); BudgetsRoot scrolls the focused budget-edit row above the keyboard on input focus.
+- **[DONE] Transaction-detail redesign (header safe-area + Destinatario wrap + webapp card parity)** —
+  `transaction/[id].tsx` now honors `insets.top`; DetailRow dropped the fixed `w-20` label (no more
+  "Destinatari/o"); read-only view regrouped into Clasificación + Detalles cards with a category
+  icon-circle hero (mirrors the webapp detail).
+- **[DONE] P3 polish** — eyebrow tracking tightened (PlanToolsChips/MovimientosLectura 4px→1px,
+  ChipEyebrow 4px→2px); AccountCard `ellipsizeMode="middle"` keeps the mask; periodo income titles
+  `numberOfLines` + middle-ellipsis.
+
+## Mobile budget page — webapp redesign parity (2026-06-29, screenshots)
+
+The mobile Presupuestos page is the OLD design (Control mensual + flat inline-edit list). The webapp got
+the **budget-participativa** redesign — port it to mobile (this is the existing budget-participativa
+mobile-parity item, now with on-device references):
+- **Hero** — "GASTADO ESTE MES" + an EN CONTROL/ATENCIÓN/EXCEDIDO state pill + big % + spent/target +
+  "Necesario / Deseos / 50·30·20" breakdown.
+- **"Armar presupuesto" builder** — the guided wizard: Σ assigned-of-income with "quedan", per-category
+  lines (Base + named sub-lines), "Desde transacciones" derive, quick-add chips (prom $), "+ Agregar
+  categoría", "Guardar presupuesto".
+- **"Simular un cambio"** entry; **DENTRO DEL LÍMITE / SIN LÍMITE** grouping with counts; **Restante** row.
+- Source of truth lives in the webapp budget actions; mirror the data shapes + side-effects (parity gate).
+
+## Mobile parity Wave 1 — foundation P0s (branch `feat/mobile-parity-foundation`, 2026-06-29) — gate follow-ups
+
+Shipped the 9 foundation P0 data-integrity fixes (balance deltas on create/edit/delete, idempotency+installment key, tags `user_id` sync, categorize learning + `category_rules` v19, PDF-import balance overwrite + `statement_snapshots` mirror v20, app-wide occurrence auto-linking). All `tsc` clean; `mobile-sync-doctor` = SAFE TO SHIP, `mobile-webapp-parity` = parity-mostly-OK; blocking/cheap findings fixed inline. Deferred (from the two gates):
+
+- **[P1] PDF import doesn't write account detail columns** (`mobile/lib/repositories/ledger-helpers.ts` applyStatementMetaBalance + `import.tsx`). Webapp `processStatementMeta` writes `accounts.credit_limit` / `interest_rate` (sanitized via `sanitizeInterestRate`) / `monthly_payment` / `payment_day` (derived from `payment_due_date`) on import; mobile writes only `current_balance`/`available_balance`/`currency_balances`. Effect: an auto-created CC has `credit_limit=null`, so later per-tx `available_balance` recomputation (`buildDebtBalanceUpdatePayload`) drifts until the next import re-sets it (bounded, self-healing). Fix: extend `runAccountBalanceUpdate` to accept those columns (or a separate account UPDATE after the balance write) + derive `payment_day` + sanitize the rate.
+- **[P1] No recurring-template sync on CC/loan import** (`import.tsx`). Webapp calls `syncCreditCardRecurringTemplate` / `syncLoanRecurringTemplate` after the snapshot (auto-creates/updates the "Pago TC" monthly template from `minimum_payment` + due date). Mobile upserts the snapshot but not the template. Port a local `recurring_transaction_templates` upsert. (Pairs with the item above — same import block.)
+- **[P2] `last_synced_at` not written to the account on import** (webapp `import-transactions.ts` ~908). Display-only metadata; add to the account payload at import.
+- **[P2] Snapshot `interest_rate` stored raw, not sanitized.** `upsertLocalStatementSnapshot` stores the parser's `interest_rate`; webapp sanitizes (M.V.→E.A. + bounds) for the snapshot too. Run `sanitizeInterestRate` before storing if a wrong-scale rate shows in snapshot UI.
+- **[P2] Snapshot `source_filename` always null on mobile** — the parsed-statement response (`ParsedStatement`) carries no filename; thread the picked document name through if useful.
+- **[P2] Cross-device snapshot duplicate edge** — device B re-importing the same statement BEFORE pulling device A's snapshot row INSERTs a 2nd remote row (no remote unique on the natural key; webapp reads authoritative DB so never hits it). Now that mobile pulls `statement_snapshots`, the window is small. Display redundancy only.
+- **Accepted divergences (no action, documented):** mobile `category_rules.match_count` increments vs webapp reset-to-1 (mobile is more accurate); per-tx balance delta pushes `available_balance`+`currency_balances` for debt accounts vs webapp's `current_balance`-only (mobile is more complete; watch for flip-flop if both platforms do per-tx updates on the same account between syncs).
+
 ## Recurring debt charge vs abono (branch `claude/recurring-debt-transaction-type-cqq89p`) — deferred
 
 Shipped: debt-account recurring templates can now be a **Gasto con la tarjeta** (OUTFLOW charge) or **Abono a deuda** (INFLOW transfer), discriminated by `direction`. `/code-review` surfaced two non-blocking follow-ups (no current bug):
