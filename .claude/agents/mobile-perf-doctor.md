@@ -390,6 +390,23 @@ If a list has pan-gesture handlers (e.g. swipe-to-delete rows) AND the list is i
 
 Some SQLite queries touch views that decrypt server-side — mobile has no such view. But grep for any repository function calling `/rpc/zeta_decrypt*` or similar network-decrypting patterns in the render path.
 
+### 7.5 Keyboard-aware input (no occlusion, no jank)
+
+Full reference: `docs/design-system/keyboard-handling.md`. The foundation already exists
+(`react-native-keyboard-controller` + reanimated + `<KeyboardProvider>` at the `_layout` root; project
+wrapper `mobile/components/common/AppKeyboardAwareScrollView.tsx`). The review job is **coverage**:
+
+- **Flag any full-screen scroll form containing a `<TextInput>` that uses a plain `<ScrollView>`** (or
+  no scroll container) instead of `AppKeyboardAwareScrollView`. On a real device the soft keyboard
+  overlays the bottom fields + submit button. Fix = swap to `AppKeyboardAwareScrollView` (drop-in,
+  same props; defaults `keyboardShouldPersistTaps="handled"`, `bottomOffset=20`).
+- **Don't over-reach**: bottom **sheets** (MobileSheet / Drawer) must NOT be wrapped in
+  KeyboardAwareScrollView — it fights the sheet transform. Use `KeyboardStickyView` for a pinned input,
+  or the sheet library's own avoidance.
+- **Don't hand-roll** `Keyboard.addListener` + `Animated` for layout — JS-thread, lags;
+  keyboard-controller runs on the UI thread.
+- Known compliant: auth, onboarding, puedo-pagar, `capture.tsx`. Remaining sweep tracked in `BACKLOG.md`.
+
 ---
 
 ## Section 8: Verification

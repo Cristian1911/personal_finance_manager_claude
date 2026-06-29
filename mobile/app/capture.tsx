@@ -4,12 +4,12 @@ import {
   Alert,
   Platform,
   Pressable,
-  ScrollView,
   Switch,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { AppKeyboardAwareScrollView } from "../components/common/AppKeyboardAwareScrollView";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as SecureStore from "expo-secure-store";
@@ -528,10 +528,8 @@ export default function CaptureScreen() {
         <View className="w-8" />
       </View>
 
-      <ScrollView
-        className="flex-1"
+      <AppKeyboardAwareScrollView
         contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
-        keyboardShouldPersistTaps="handled"
       >
         {/* Type */}
         <TypePills value={type} onChange={handleTypeChange} />
@@ -780,7 +778,7 @@ export default function CaptureScreen() {
             {saving ? "Guardando…" : submitLabel}
           </Text>
         </Pressable>
-      </ScrollView>
+      </AppKeyboardAwareScrollView>
 
       <CategoryZonePickerSheet
         visible={showCategoryPicker}

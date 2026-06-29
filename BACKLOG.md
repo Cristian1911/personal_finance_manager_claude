@@ -10,6 +10,21 @@
 
 ---
 
+## Keyboard-aware input sweep (2026-06-29) — coverage remaining
+
+Adopted `docs/design-system/keyboard-handling.md` as the standard + added the coverage rule to the
+`mobile-perf-doctor` agent (§7.5). `mobile/app/capture.tsx` migrated to `AppKeyboardAwareScrollView`.
+Remaining surfaces with a `TextInput` in a plain `<ScrollView>` (from the audit) — apply the RIGHT
+primitive per the guide, not a blind wrap:
+
+- **Full-screen forms → `AppKeyboardAwareScrollView`** (drop-in): `mobile/app/(tabs)/import.tsx`,
+  `mobile/components/accounts/AccountFormFields.tsx`, `mobile/components/destinatarios/DestinatariosRoot.tsx`.
+- **Bottom sheets → `KeyboardStickyView` / sheet-native avoidance** (NOT KeyboardAwareScrollView, which
+  fights the sheet transform): `CategoryFormSheet`, `ReassignSheet`, `CategoryZonePickerSheet`,
+  `MovimientosUtilidades` (MobileSheet); `DeseosRoot` (Drawer).
+- **Verify on a real device** — sim ≠ device for keyboard timing (and idb automation suppresses the
+  soft keyboard entirely; see the guide's Project notes).
+
 ## Mobile parity Wave 1 — foundation P0s (branch `feat/mobile-parity-foundation`, 2026-06-29) — gate follow-ups
 
 Shipped the 9 foundation P0 data-integrity fixes (balance deltas on create/edit/delete, idempotency+installment key, tags `user_id` sync, categorize learning + `category_rules` v19, PDF-import balance overwrite + `statement_snapshots` mirror v20, app-wide occurrence auto-linking). All `tsc` clean; `mobile-sync-doctor` = SAFE TO SHIP, `mobile-webapp-parity` = parity-mostly-OK; blocking/cheap findings fixed inline. Deferred (from the two gates):
