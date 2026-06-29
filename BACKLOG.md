@@ -37,19 +37,26 @@ From 13 device screenshots. Severity-ranked:
   the whole flat picker was replaced by the rich zone grid (icons + child counts + income/expense filter).
 - **[DONE] Auto-scroll-on-expand** — zone picker scrolls the tapped zone to top on expand (+ LayoutAnimation
   on collapse); BudgetsRoot scrolls the focused budget-edit row above the keyboard on input focus.
-- **[P2] Transaction-detail header cramped under the status bar** — the `Detalle` title + close/edit/trash
-  icons overlap the status bar (no safe-area top padding on the detail header). Add `insets.top`.
-- **[P2] Transaction-detail "Destinatario" label wraps to "Destinatari/o"** — the left label column is too
-  narrow. Widen the label column (or let the value wrap / shrink the label font).
-- **[P2 · refactor] Mobile transaction detail ≠ webapp detail** — mobile is flat rows (Fecha/Cuenta/…);
-  webapp has the hero icon-circle + type pill + CLASIFICACIÓN card. Mirror the webapp detail (and the
-  create-wizard redesign) to mobile for cross-platform parity. (This is the "mirror to mobile" task.)
-- **[P3] Section-eyebrow tracking causes bad wraps** — `PRESUPUE/STO`, `RECURREN/TES`, `MOVIMIENTO/S`,
-  `PRÓXIMO INGR…` truncate/break awkwardly in narrow columns (heavy letter-spacing). Reduce tracking in
-  tight grids, allow a clean 2-line, or shorten labels.
-- **[P3] "Mis cuentas" account-name truncation cuts the mask** — `Bancolombia Ahorros ***…`,
-  `…VISA **…` cut off the ****last4. Truncate the middle so the last-4 stays, or show the mask separately.
-- **[P3] "Plan del periodo" income title wraps** — `Saldo · Bancolombia Ahorros ****4398` wraps to 2 lines.
+- **[DONE] Transaction-detail redesign (header safe-area + Destinatario wrap + webapp card parity)** —
+  `transaction/[id].tsx` now honors `insets.top`; DetailRow dropped the fixed `w-20` label (no more
+  "Destinatari/o"); read-only view regrouped into Clasificación + Detalles cards with a category
+  icon-circle hero (mirrors the webapp detail).
+- **[DONE] P3 polish** — eyebrow tracking tightened (PlanToolsChips/MovimientosLectura 4px→1px,
+  ChipEyebrow 4px→2px); AccountCard `ellipsizeMode="middle"` keeps the mask; periodo income titles
+  `numberOfLines` + middle-ellipsis.
+
+## Mobile budget page — webapp redesign parity (2026-06-29, screenshots)
+
+The mobile Presupuestos page is the OLD design (Control mensual + flat inline-edit list). The webapp got
+the **budget-participativa** redesign — port it to mobile (this is the existing budget-participativa
+mobile-parity item, now with on-device references):
+- **Hero** — "GASTADO ESTE MES" + an EN CONTROL/ATENCIÓN/EXCEDIDO state pill + big % + spent/target +
+  "Necesario / Deseos / 50·30·20" breakdown.
+- **"Armar presupuesto" builder** — the guided wizard: Σ assigned-of-income with "quedan", per-category
+  lines (Base + named sub-lines), "Desde transacciones" derive, quick-add chips (prom $), "+ Agregar
+  categoría", "Guardar presupuesto".
+- **"Simular un cambio"** entry; **DENTRO DEL LÍMITE / SIN LÍMITE** grouping with counts; **Restante** row.
+- Source of truth lives in the webapp budget actions; mirror the data shapes + side-effects (parity gate).
 
 ## Mobile parity Wave 1 — foundation P0s (branch `feat/mobile-parity-foundation`, 2026-06-29) — gate follow-ups
 
