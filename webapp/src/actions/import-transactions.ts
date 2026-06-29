@@ -28,7 +28,8 @@ import type {
   TransactionToImport,
 } from "@/types/import";
 import { trackProductEvent } from "@/actions/product-events";
-import { linkTransactionToOccurrence, ensureCurrentOccurrences, syncPendingOccurrenceAmounts } from "@/actions/occurrences";
+import { linkTransactionToOccurrence, ensureCurrentOccurrences } from "@/actions/occurrences";
+import { syncPendingOccurrenceAmounts } from "@/lib/utils/occurrence-sync";
 import { parseSubPayments as parseSubPaymentsShared } from "@/lib/utils/sub-payments";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
 import { runSubscriptionDetection } from "@/actions/subscriptions";

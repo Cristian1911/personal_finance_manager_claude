@@ -14,7 +14,8 @@ import {
   deactivateTemplatesForPaidOffAccount,
 } from "@/lib/debt/payoff";
 import { toMonthlyAmount } from "@/lib/utils/recurring";
-import { ensureCurrentOccurrences, ensureOccurrencesForRange, linkTransactionToOccurrence, syncPendingOccurrenceAmounts } from "@/actions/occurrences";
+import { ensureCurrentOccurrences, ensureOccurrencesForRange, linkTransactionToOccurrence } from "@/actions/occurrences";
+import { syncPendingOccurrenceAmounts } from "@/lib/utils/occurrence-sync";
 import {
   getOccurrencesBetween,
   getNextOccurrence,
