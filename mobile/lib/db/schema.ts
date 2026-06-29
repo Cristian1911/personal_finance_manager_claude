@@ -34,6 +34,7 @@ export const DB_MIGRATIONS: DbMigration[] = [
         name_es TEXT,
         icon TEXT,
         color TEXT,
+        expense_type TEXT,
         parent_id TEXT,
         is_system INTEGER NOT NULL DEFAULT 0,
         display_order INTEGER NOT NULL DEFAULT 0,
@@ -650,6 +651,15 @@ export const DB_MIGRATIONS: DbMigration[] = [
       `ALTER TABLE statement_snapshots ADD COLUMN imported_count INTEGER`,
       `ALTER TABLE statement_snapshots ADD COLUMN transaction_count INTEGER`,
       `ALTER TABLE statement_snapshots ADD COLUMN skipped_count INTEGER`,
+    ],
+  },
+  {
+    version: 21,
+    statements: [
+      // expense_type (fixed/variable/null) drives the budget 50·30·20 split.
+      // Synced automatically once the column exists (pull's upsertRow maps any
+      // Supabase column present in the local table).
+      `ALTER TABLE categories ADD COLUMN expense_type TEXT`,
     ],
   },
 ];

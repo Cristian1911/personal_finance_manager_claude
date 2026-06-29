@@ -6,6 +6,7 @@ export type BudgetProgressRow = {
   category_id: string;
   category_name: string;
   category_color: string | null;
+  expense_type: string | null;
   amount: number;
   spent: number;
   progress: number;
@@ -19,6 +20,7 @@ export async function getBudgetProgress(month: string): Promise<BudgetProgressRo
     category_id: string;
     category_name: string;
     category_color: string | null;
+    expense_type: string | null;
     amount: number | null;
     spent: number | null;
   }>(
@@ -27,6 +29,7 @@ export async function getBudgetProgress(month: string): Promise<BudgetProgressRo
       c.id as category_id,
       COALESCE(c.name_es, c.name) as category_name,
       c.color as category_color,
+      c.expense_type as expense_type,
       COALESCE(b.amount, 0) as amount,
       COALESCE(SUM(CASE WHEN t.is_excluded = 0 THEN ABS(t.amount) ELSE 0 END), 0) as spent
     FROM categories c
@@ -36,7 +39,7 @@ export async function getBudgetProgress(month: string): Promise<BudgetProgressRo
       ON t.category_id = c.id
       AND t.direction = 'OUTFLOW'
       AND t.transaction_date LIKE ?
-    GROUP BY c.id, c.name, c.name_es, c.color, b.id, b.amount
+    GROUP BY c.id, c.name, c.name_es, c.color, c.expense_type, b.id, b.amount
     HAVING b.id IS NOT NULL
       OR COALESCE(SUM(CASE WHEN t.is_excluded = 0 THEN ABS(t.amount) ELSE 0 END), 0) > 0
     ORDER BY COALESCE(SUM(CASE WHEN t.is_excluded = 0 THEN ABS(t.amount) ELSE 0 END), 0) DESC, category_name ASC`,
@@ -52,11 +55,60 @@ export async function getBudgetProgress(month: string): Promise<BudgetProgressRo
       category_id: row.category_id,
       category_name: row.category_name,
       category_color: row.category_color,
+      expense_type: row.expense_type,
       amount,
       spent,
       progress,
     };
   });
+}
+
+/** Current-month income — INFLOW transactions excluding debt-account inflows
+ * (an inflow to a credit card / loan is a payment, not income) and excluded
+ * txs. Mirrors the cashflow income the webapp 50·30·20 allocation uses. */
+export async function getMonthlyIncome(month: string): Promise<number> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ total: number | null }>(
+    `SELECT COALESCE(SUM(ABS(t.amount)), 0) as total
+     FROM transactions t
+     JOIN accounts a ON a.id = t.account_id
+     WHERE t.direction = 'INFLOW'
+       AND t.is_excluded = 0
+       AND a.account_type NOT IN ('CREDIT_CARD', 'LOAN')
+       AND t.transaction_date LIKE ?`,
+    [`${month}%`]
+  );
+  return Number(row?.total ?? 0);
+}
+
+export type Allocation = {
+  income: number;
+  needs: { amount: number; percent: number };
+  wants: { amount: number; percent: number };
+  savings: { amount: number; percent: number };
+};
+
+/** 50·30·20 split: category spend where expense_type === "fixed" is "needs",
+ * everything else is "wants", savings = income − needs − wants. Null when there
+ * is no income to measure against. Mirrors the webapp get503020Allocation. */
+export function compute503020(
+  rows: BudgetProgressRow[],
+  income: number
+): Allocation | null {
+  if (income <= 0) return null;
+  let needs = 0;
+  let wants = 0;
+  for (const r of rows) {
+    if (r.expense_type === "fixed") needs += r.spent;
+    else wants += r.spent;
+  }
+  const savings = income - needs - wants;
+  return {
+    income,
+    needs: { amount: needs, percent: (needs / income) * 100 },
+    wants: { amount: wants, percent: (wants / income) * 100 },
+    savings: { amount: savings, percent: (savings / income) * 100 },
+  };
 }
 
 export async function upsertBudget(params: {

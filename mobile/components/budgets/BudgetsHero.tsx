@@ -3,12 +3,14 @@ import { Text, View } from "react-native";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import { PANEL_SURFACE_SUBTLE_CLASS, SECTION_EYEBROW_CLASS } from "../../lib/constants/styles";
 import { StateChip } from "../ui/StateChip";
+import type { Allocation } from "../../lib/repositories/budgets";
 
 interface BudgetsHeroProps {
   spent: number;
   target: number;
   progress: number;
   currency: CurrencyCode;
+  allocation?: Allocation | null;
 }
 
 /** Verdict pill mirrors the webapp budget hero: <80% en control, 80–99 atención,
@@ -19,7 +21,7 @@ function verdict(pct: number) {
   return { label: "En control", variant: "sage" as const };
 }
 
-function BudgetsHeroBase({ spent, target, progress, currency }: BudgetsHeroProps) {
+function BudgetsHeroBase({ spent, target, progress, currency, allocation }: BudgetsHeroProps) {
   const hasBudgets = target > 0;
   const pct = Math.round(progress);
   const over = pct >= 100;
@@ -63,6 +65,25 @@ function BudgetsHeroBase({ spent, target, progress, currency }: BudgetsHeroProps
               style={{ width: `${Math.min(pct, 100)}%` }}
             />
           </View>
+
+          {allocation && (
+            <View className="mt-3 flex-row items-center justify-between border-t border-white-6 pt-3">
+              <Text className="text-[11px] font-inter text-muted-foreground">
+                Necesario{" "}
+                <Text className="font-inter-semibold text-foreground">
+                  {Math.round(allocation.needs.percent)}%
+                </Text>
+                {"   ·   "}
+                Deseos{" "}
+                <Text className="font-inter-semibold text-foreground">
+                  {Math.round(allocation.wants.percent)}%
+                </Text>
+              </Text>
+              <Text className="text-[10px] font-inter-semibold uppercase tracking-[2px] text-z-sage-dark">
+                50·30·20
+              </Text>
+            </View>
+          )}
         </>
       ) : (
         <Text className="mt-2 text-sm font-inter text-muted-foreground">
