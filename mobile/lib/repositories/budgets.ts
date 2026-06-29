@@ -1,5 +1,6 @@
 import * as Crypto from "expo-crypto";
 import { getDatabase } from "../db/database";
+import { isIncomeCategory } from "./categories";
 
 export type BudgetProgressRow = {
   id: string | null;
@@ -109,6 +110,103 @@ export function compute503020(
     wants: { amount: wants, percent: (wants / income) * 100 },
     savings: { amount: savings, percent: (savings / income) * 100 },
   };
+}
+
+export type BudgetBuilderRow = {
+  budget_id: string | null;
+  category_id: string;
+  category_name: string;
+  category_color: string | null;
+  category_icon: string | null;
+  parent_id: string | null;
+  amount: number;
+  avg3m: number;
+};
+
+/** All OUTFLOW categories (income excluded) with their current monthly budget
+ * and a 3-month average outflow — the rows for the "Armar presupuesto" builder.
+ * The avg powers the "Desde transacciones" suggestion. */
+export async function getBudgetBuilderRows(): Promise<BudgetBuilderRow[]> {
+  const db = await getDatabase();
+  // First day of the month two months back → ~3 full months of history.
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+  const startMonth = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}`;
+
+  const rows = await db.getAllAsync<{
+    budget_id: string | null;
+    category_id: string;
+    category_name: string;
+    category_color: string | null;
+    category_icon: string | null;
+    parent_id: string | null;
+    amount: number | null;
+    avg3m: number | null;
+  }>(
+    `SELECT
+      b.id as budget_id,
+      c.id as category_id,
+      COALESCE(c.name_es, c.name) as category_name,
+      c.color as category_color,
+      c.icon as category_icon,
+      c.parent_id as parent_id,
+      COALESCE(b.amount, 0) as amount,
+      COALESCE(SUM(
+        CASE WHEN t.is_excluded = 0 AND t.transaction_date >= ?
+          THEN ABS(t.amount) ELSE 0 END
+      ), 0) / 3.0 as avg3m
+    FROM categories c
+    LEFT JOIN budgets b
+      ON b.category_id = c.id AND b.period = 'monthly'
+    LEFT JOIN transactions t
+      ON t.category_id = c.id AND t.direction = 'OUTFLOW'
+    GROUP BY b.id, c.id, c.name, c.name_es, c.color, c.icon, c.parent_id, b.amount
+    ORDER BY c.display_order ASC, category_name ASC`,
+    [startMonth]
+  );
+
+  return rows
+    .filter((r) => !isIncomeCategory({ id: r.category_id, parent_id: r.parent_id }))
+    .map((r) => ({
+      budget_id: r.budget_id,
+      category_id: r.category_id,
+      category_name: r.category_name,
+      category_color: r.category_color,
+      category_icon: r.category_icon,
+      parent_id: r.parent_id,
+      amount: Number(r.amount ?? 0),
+      avg3m: Math.round(Number(r.avg3m ?? 0)),
+    }));
+}
+
+/** Persist a budget-builder draft in ONE transaction (single disk flush; no
+ * partial-save risk). Only rows whose amount changed are written. */
+export async function saveBudgetDraft(
+  userId: string,
+  changes: Array<{
+    budgetId: string | null;
+    categoryId: string;
+    amount: number;
+    prev: number;
+  }>
+): Promise<void> {
+  const db = await getDatabase();
+  await db.withTransactionAsync(async () => {
+    for (const c of changes) {
+      if (c.amount === c.prev) continue;
+      if (c.amount > 0) {
+        await upsertBudget({
+          id: c.budgetId ?? undefined,
+          user_id: userId,
+          category_id: c.categoryId,
+          amount: c.amount,
+          period: "monthly",
+        });
+      } else if (c.budgetId) {
+        await deleteBudget(c.budgetId);
+      }
+    }
+  });
 }
 
 export async function upsertBudget(params: {

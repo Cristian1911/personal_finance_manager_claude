@@ -3,11 +3,13 @@ import {
   ActivityIndicator,
   FlatList,
   Platform,
+  Pressable,
   RefreshControl,
   Text,
   View,
 } from "react-native";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
+import { Hammer } from "lucide-react-native";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import { useAuth } from "../../lib/auth";
 import { useSync } from "../../lib/sync/hooks";
@@ -26,6 +28,7 @@ import { MobileHeader } from "../ui/MobileHeader";
 import { AvatarMenuTrigger } from "../ui/AvatarMenu";
 import { MonthSelector } from "../common/MonthSelector";
 import {
+  BRASS_GHOST_BUTTON_CLASS,
   MOBILE_TAB_BAR_CLEARANCE,
   PANEL_SURFACE_SUBTLE_CLASS,
   SECTION_EYEBROW_CLASS,
@@ -46,6 +49,7 @@ interface BudgetsRootProps {
 }
 
 export function BudgetsRoot({ variant = "main" }: BudgetsRootProps) {
+  const router = useRouter();
   const { session } = useAuth();
   const { sync } = useSync();
 
@@ -235,9 +239,20 @@ export function BudgetsRoot({ variant = "main" }: BudgetsRootProps) {
           currency={CURRENCY}
           allocation={allocation}
         />
+        <Pressable
+          onPress={() => router.push("/presupuesto-armar")}
+          accessibilityRole="button"
+          accessibilityLabel="Armar presupuesto"
+          className={`${BRASS_GHOST_BUTTON_CLASS} flex-row items-center justify-center gap-2 rounded-xl px-4 py-3 active:bg-z-brass-20`}
+        >
+          <Hammer size={15} color={COLORS.brass} />
+          <Text className="text-sm font-inter-semibold text-z-brass">
+            Armar presupuesto
+          </Text>
+        </Pressable>
       </View>
     ),
-    [currentMonth, totals.spent, totals.target, totals.progress, allocation]
+    [currentMonth, totals.spent, totals.target, totals.progress, allocation, router]
   );
 
   const listFooter = useMemo(() => {
