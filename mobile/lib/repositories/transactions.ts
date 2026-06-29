@@ -11,6 +11,7 @@ import {
   type TransactionDirection,
 } from "@zeta/shared";
 import { getDatabase } from "../db/database";
+import { applyLocalBalanceDelta, type LedgerAccountRow } from "./ledger-helpers";
 
 const expoHashFn = (payload: string) =>
   Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, payload);
@@ -99,6 +100,20 @@ export type CreateTransactionParams = {
   /** Optional FK to a transaction_locations row. Filled by the location linker. */
   location_id?: string | null;
   /**
+   * Installment metadata (credit-card cuotas). `installment_current` is folded
+   * into the idempotency key so cross-platform re-imports of the same installment
+   * dedup against the webapp's key (which always includes it).
+   */
+  installment_current?: number | null;
+  installment_total?: number | null;
+  installment_group_id?: string | null;
+  /**
+   * Full purchase price. Cuota convention: `amount` is the monthly cuota,
+   * `original_amount` the full price. The idempotency key uses
+   * `original_amount ?? amount` (mirrors webapp import).
+   */
+  original_amount?: number | null;
+  /**
    * Preset idempotency key (e.g. the server-computed pending-email key) to
    * preserve cross-source dedup. When omitted, it is computed from
    * provider/date/amount/description — same as before.
@@ -163,17 +178,109 @@ function buildInsertPayload(id: string, now: string, params: CreateTransactionPa
     capture_input_text: params.capture_input_text ?? null,
     reconciled_into_transaction_id: null,
     reconciliation_score: null,
+    installment_current: params.installment_current ?? null,
+    installment_total: params.installment_total ?? null,
+    installment_group_id: params.installment_group_id ?? null,
+    original_amount: params.original_amount ?? null,
     created_at: now,
     updated_at: now,
   };
 }
 
-async function queueInsertSync(payload: Record<string, unknown>, now: string) {
-  const db = await getDatabase();
+/**
+ * INSERT the transaction row + enqueue its `transactions` INSERT for sync, using
+ * the CALLER's db handle (so it composes inside the caller's withTransactionAsync
+ * alongside a balance delta). Throws on a UNIQUE(idempotency_key) collision —
+ * inside withTransactionAsync that rolls back the whole mutation, so a dupe
+ * leaves no row AND no balance change. Callers catch via isUniqueConstraintError.
+ */
+async function _insertTxBody(
+  db: Awaited<ReturnType<typeof getDatabase>>,
+  payload: ReturnType<typeof buildInsertPayload>,
+  now: string
+) {
+  await db.runAsync(
+    `INSERT INTO transactions
+      (id, user_id, account_id, category_id, categorization_source, categorization_confidence, destinatario_id,
+       amount, currency_code, direction,
+       description, merchant_name, raw_description, transaction_date, transaction_time, location_id, status, idempotency_key,
+       is_excluded, is_subscription, notes, provider, capture_method, capture_input_text, reconciled_into_transaction_id,
+       reconciliation_score, installment_current, installment_total, installment_group_id, original_amount, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      payload.id,
+      payload.user_id,
+      payload.account_id,
+      payload.category_id,
+      payload.categorization_source,
+      payload.categorization_confidence,
+      payload.destinatario_id,
+      payload.amount,
+      payload.currency_code,
+      payload.direction,
+      payload.clean_description,
+      payload.merchant_name,
+      payload.raw_description,
+      payload.transaction_date,
+      payload.transaction_time,
+      payload.location_id,
+      payload.status,
+      payload.idempotency_key,
+      payload.is_excluded ? 1 : 0,
+      payload.is_subscription ? 1 : 0,
+      payload.notes,
+      payload.provider,
+      payload.capture_method,
+      payload.capture_input_text,
+      payload.reconciled_into_transaction_id,
+      payload.reconciliation_score,
+      payload.installment_current,
+      payload.installment_total,
+      payload.installment_group_id,
+      payload.original_amount,
+      payload.created_at,
+      payload.updated_at,
+    ]
+  );
+
   await db.runAsync(
     `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at)
      VALUES ('transactions', ?, 'INSERT', ?, ?)`,
-    [String(payload.id), JSON.stringify(payload), now]
+    [payload.id, JSON.stringify(payload), now]
+  );
+}
+
+/**
+ * Resolve the idempotency key: a preset (e.g. server-computed pending-email key)
+ * wins; otherwise compute it with the SAME inputs as the webapp so cross-platform
+ * rows dedup by construction — using `original_amount ?? amount` (cuota
+ * convention) and `installment_current` (installment dedup).
+ */
+async function resolveIdempotencyKey(params: CreateTransactionParams): Promise<string> {
+  if (params.idempotency_key) return params.idempotency_key;
+  return computeIdempotencyKey(
+    {
+      provider: params.provider ?? "MANUAL",
+      transactionDate: params.transaction_date,
+      amount: params.original_amount ?? params.amount,
+      rawDescription: params.raw_description ?? params.description ?? params.merchant_name ?? "",
+      installmentCurrent: params.installment_current ?? undefined,
+    },
+    expoHashFn
+  );
+}
+
+/** Fetch the account columns applyLocalBalanceDelta needs as a LedgerAccountRow.
+ * Raw SQL (not accounts.ts) to avoid a circular import. */
+async function getLedgerAccountRow(
+  db: Awaited<ReturnType<typeof getDatabase>>,
+  accountId: string
+): Promise<LedgerAccountRow | null> {
+  return db.getFirstAsync<LedgerAccountRow>(
+    `SELECT id, user_id, name, account_type, currency_code, current_balance,
+            available_balance, credit_limit, currency_balances
+     FROM accounts WHERE id = ?`,
+    [accountId]
   );
 }
 
@@ -181,62 +288,51 @@ export async function createTransaction(params: CreateTransactionParams): Promis
   const db = await getDatabase();
   const now = new Date().toISOString();
   const txId = Crypto.randomUUID();
-  const idempotencyKey =
-    params.idempotency_key ??
-    (await computeIdempotencyKey(
-      {
-        provider: params.provider ?? "MANUAL",
-        transactionDate: params.transaction_date,
-        amount: params.amount,
-        rawDescription: params.raw_description ?? params.description ?? params.merchant_name ?? "",
-      },
-      expoHashFn
-    ));
-
+  const idempotencyKey = await resolveIdempotencyKey(params);
   const payload = buildInsertPayload(txId, now, params, idempotencyKey);
 
   await db.withTransactionAsync(async () => {
-    await db.runAsync(
-      `INSERT INTO transactions
-        (id, user_id, account_id, category_id, categorization_source, categorization_confidence, destinatario_id,
-         amount, currency_code, direction,
-         description, merchant_name, raw_description, transaction_date, transaction_time, location_id, status, idempotency_key,
-         is_excluded, is_subscription, notes, provider, capture_method, capture_input_text, reconciled_into_transaction_id,
-         reconciliation_score, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        payload.id,
-        payload.user_id,
-        payload.account_id,
-        payload.category_id,
-        payload.categorization_source,
-        payload.categorization_confidence,
-        payload.destinatario_id,
-        payload.amount,
-        payload.currency_code,
-        payload.direction,
-        payload.clean_description,
-        payload.merchant_name,
-        payload.raw_description,
-        payload.transaction_date,
-        payload.transaction_time,
-        payload.location_id,
-        payload.status,
-        payload.idempotency_key,
-        payload.is_excluded ? 1 : 0,
-        payload.is_subscription ? 1 : 0,
-        payload.notes,
-        payload.provider,
-        payload.capture_method,
-        payload.capture_input_text,
-        payload.reconciled_into_transaction_id,
-        payload.reconciliation_score,
-        payload.created_at,
-        payload.updated_at,
-      ]
-    );
+    await _insertTxBody(db, payload, now);
+  });
 
-    await queueInsertSync(payload, now);
+  return txId;
+}
+
+/**
+ * createTransaction + LOCAL balance delta in ONE withTransactionAsync — the
+ * mobile mirror of webapp persistTransaction (which always calls
+ * adjustBalancesForTransactionChanges after the insert). Use this for EVERY
+ * non-reconciling create path (manual capture, OCR, voice, email approve, PDF
+ * import) so the account balance moves locally; there is NO server trigger.
+ *
+ * The caller resolves `account` locally first (getAccountById). Excluded
+ * transactions never touch the balance (mirrors the webapp skip). A
+ * UNIQUE(idempotency_key) collision throws and rolls back the whole tx (no row,
+ * no delta); callers catch isUniqueConstraintError and treat it as an
+ * already-imported success.
+ */
+export async function createTransactionAndApplyBalance(
+  params: CreateTransactionParams,
+  account: LedgerAccountRow
+): Promise<string> {
+  const db = await getDatabase();
+  const now = new Date().toISOString();
+  const txId = Crypto.randomUUID();
+  const idempotencyKey = await resolveIdempotencyKey(params);
+  const payload = buildInsertPayload(txId, now, params, idempotencyKey);
+
+  await db.withTransactionAsync(async () => {
+    await _insertTxBody(db, payload, now);
+    if (!payload.is_excluded) {
+      await applyLocalBalanceDelta(
+        db,
+        account,
+        params.direction,
+        params.amount,
+        params.currency_code,
+        now
+      );
+    }
   });
 
   return txId;
@@ -564,8 +660,22 @@ async function enqueueTransactionUpdate(
 
 export async function deleteTransaction(id: string) {
   const db = await getDatabase();
+  const now = new Date().toISOString();
 
   await db.withTransactionAsync(async () => {
+    // Snapshot the row BEFORE deleting so we can reverse its balance delta.
+    const snapshot = await db.getFirstAsync<{
+      account_id: string;
+      amount: number;
+      direction: TransactionDirection;
+      is_excluded: number;
+      currency_code: string;
+    }>(
+      `SELECT account_id, amount, direction, is_excluded, currency_code
+       FROM transactions WHERE id = ?`,
+      [id]
+    );
+
     const pendingInsert = await db.getFirstAsync<{ id: number }>(
       `SELECT id FROM sync_queue
        WHERE table_name = 'transactions' AND record_id = ? AND operation = 'INSERT' AND synced_at IS NULL`,
@@ -584,12 +694,30 @@ export async function deleteTransaction(id: string) {
         `DELETE FROM sync_queue WHERE table_name = 'transactions' AND record_id = ? AND operation = 'UPDATE' AND synced_at IS NULL`,
         [id]
       );
-      const now = new Date().toISOString();
       await db.runAsync(
         `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at)
          VALUES ('transactions', ?, 'DELETE', ?, ?)`,
         [id, JSON.stringify({ id }), now]
       );
+    }
+
+    // Reverse the balance delta this tx applied (excluded txs never moved it —
+    // mirror webapp adjustBalancesForTransactionChanges skip). A re-delete sees
+    // snapshot=null and no-ops.
+    if (snapshot && snapshot.is_excluded !== 1) {
+      const account = await getLedgerAccountRow(db, snapshot.account_id);
+      if (account) {
+        const opposite: TransactionDirection =
+          snapshot.direction === "INFLOW" ? "OUTFLOW" : "INFLOW";
+        await applyLocalBalanceDelta(
+          db,
+          account,
+          opposite,
+          snapshot.amount,
+          snapshot.currency_code,
+          now
+        );
+      }
     }
   });
 }
@@ -600,6 +728,55 @@ export async function updateTransaction(
 ): Promise<void> {
   const db = await getDatabase();
   const now = new Date().toISOString();
+
+  // Balance delta (mirror webapp adjustBalancesForTransactionChanges): on mobile
+  // only `amount` and the `is_excluded` toggle can change a tx's balance impact
+  // (direction/account aren't editable here). Read the pre-update row + account
+  // up front so the delta runs inside the same transaction as the UPDATE.
+  let balanceCtx:
+    | {
+        account: LedgerAccountRow;
+        oldAmount: number;
+        newAmount: number;
+        oldExcluded: boolean;
+        newExcluded: boolean;
+        direction: TransactionDirection;
+        currencyCode: string;
+      }
+    | null = null;
+  if (params.amount !== undefined || params.is_excluded !== undefined) {
+    const existing = await db.getFirstAsync<{
+      account_id: string;
+      amount: number;
+      direction: TransactionDirection;
+      is_excluded: number;
+      currency_code: string;
+    }>(
+      `SELECT account_id, amount, direction, is_excluded, currency_code
+       FROM transactions WHERE id = ?`,
+      [id]
+    );
+    if (existing) {
+      const oldAmount = existing.amount;
+      const newAmount = params.amount ?? existing.amount;
+      const oldExcluded = existing.is_excluded === 1;
+      const newExcluded = params.is_excluded ?? oldExcluded;
+      if (newAmount !== oldAmount || newExcluded !== oldExcluded) {
+        const account = await getLedgerAccountRow(db, existing.account_id);
+        if (account) {
+          balanceCtx = {
+            account,
+            oldAmount,
+            newAmount,
+            oldExcluded,
+            newExcluded,
+            direction: existing.direction,
+            currencyCode: existing.currency_code,
+          };
+        }
+      }
+    }
+  }
 
   const setClauses: string[] = [];
   const values: (string | number | null)[] = [];
@@ -699,5 +876,32 @@ export async function updateTransaction(
       values
     );
     await enqueueTransactionUpdate(db, id, syncPayload, now);
+
+    if (balanceCtx) {
+      const opposite: TransactionDirection =
+        balanceCtx.direction === "INFLOW" ? "OUTFLOW" : "INFLOW";
+      // Reverse the OLD effect (if it counted), then apply the NEW effect (if it
+      // counts). For a pure amount change this nets to (new − old) in `direction`.
+      if (!balanceCtx.oldExcluded) {
+        await applyLocalBalanceDelta(
+          db,
+          balanceCtx.account,
+          opposite,
+          balanceCtx.oldAmount,
+          balanceCtx.currencyCode,
+          now
+        );
+      }
+      if (!balanceCtx.newExcluded) {
+        await applyLocalBalanceDelta(
+          db,
+          balanceCtx.account,
+          balanceCtx.direction,
+          balanceCtx.newAmount,
+          balanceCtx.currencyCode,
+          now
+        );
+      }
+    }
   });
 }
