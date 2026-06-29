@@ -24,7 +24,12 @@ function verdict(pct: number) {
 function BudgetsHeroBase({ spent, target, progress, currency, allocation }: BudgetsHeroProps) {
   const hasBudgets = target > 0;
   const pct = Math.round(progress);
-  const over = pct >= 100;
+  // 3-state tone so the % + bar agree with the verdict chip and the rows
+  // (green <80, amber 80–99, red >=100).
+  const numTone =
+    pct >= 100 ? "text-z-debt" : pct >= 80 ? "text-z-alert" : "text-z-income";
+  const barTone =
+    pct >= 100 ? "bg-z-debt" : pct >= 80 ? "bg-z-alert" : "bg-z-income";
   const chip = verdict(pct);
 
   return (
@@ -38,7 +43,7 @@ function BudgetsHeroBase({ spent, target, progress, currency, allocation }: Budg
         <>
           <View className="mt-2 flex-row items-end justify-between">
             <Text
-              className={`text-5xl font-inter-bold leading-none ${over ? "text-z-debt" : "text-z-income"}`}
+              className={`text-5xl font-inter-bold leading-none ${numTone}`}
               style={{ fontVariant: ["tabular-nums"] }}
             >
               {pct}%
@@ -61,7 +66,7 @@ function BudgetsHeroBase({ spent, target, progress, currency, allocation }: Budg
 
           <View className="mt-3 h-2.5 rounded-full bg-black-10">
             <View
-              className={`h-2.5 rounded-full ${over ? "bg-z-debt" : "bg-z-income"}`}
+              className={`h-2.5 rounded-full ${barTone}`}
               style={{ width: `${Math.min(pct, 100)}%` }}
             />
           </View>

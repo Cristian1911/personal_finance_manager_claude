@@ -125,13 +125,16 @@ export function BudgetsRoot({ variant = "main" }: BudgetsRootProps) {
   const sections = useMemo<ListRow[]>(() => {
     const budgeted = items.filter((i) => i.amount > 0);
     const over = budgeted
-      .filter((i) => i.progress > 100)
+      .filter((i) => Math.round(i.progress) >= 100)
       .sort((a, b) => b.progress - a.progress);
     const near = budgeted
-      .filter((i) => i.progress >= 85 && i.progress <= 100)
+      .filter((i) => {
+        const pct = Math.round(i.progress);
+        return pct >= 80 && pct < 100;
+      })
       .sort((a, b) => b.progress - a.progress);
     const safe = budgeted
-      .filter((i) => i.progress < 85)
+      .filter((i) => Math.round(i.progress) < 80)
       .sort((a, b) => a.progress - b.progress);
     const unbudgeted = items
       .filter((i) => i.amount <= 0)
