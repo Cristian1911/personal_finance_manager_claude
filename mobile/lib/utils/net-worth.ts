@@ -37,5 +37,5 @@ export function computeSecondaryNetWorth(
     const delta = DEBT_TYPES.has(acc.account_type) ? -balance : balance;
     byCurrency.set(cc, (byCurrency.get(cc) ?? 0) + delta);
   }
-  return [...byCurrency.entries()];
+  return [...byCurrency.entries()].sort((a, b) => a[0].localeCompare(b[0]));
 }

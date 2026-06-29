@@ -129,7 +129,8 @@ export default function AccountsScreen() {
                         }`}
                         style={{ fontVariant: ["tabular-nums"] }}
                       >
-                        {formatCurrency(total, cc as CurrencyCode)}
+                        {(total < 0 ? "-" : "") +
+                          formatCurrency(Math.abs(total), cc as CurrencyCode)}
                       </Text>
                     </View>
                   ))}

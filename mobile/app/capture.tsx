@@ -791,6 +791,11 @@ export default function CaptureScreen() {
           onSelect={(id, name) => {
             setDestinatarioId(id);
             setDestinatarioName(name);
+            // The picker can create a new destinatario — pull it into the list
+            // so re-opening shows it.
+            if (id && !destinatarios.some((d) => d.id === id)) {
+              getAllDestinatarios().then(setDestinatarios).catch(console.error);
+            }
           }}
           selectedId={destinatarioId}
           destinatarios={destinatarios}
