@@ -8,7 +8,7 @@ import {
   View,
 } from "react-native";
 import { useFocusEffect } from "expo-router";
-import type { CurrencyCode } from "@zeta/shared";
+import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import { useAuth } from "../../lib/auth";
 import { useSync } from "../../lib/sync/hooks";
 import {
@@ -32,6 +32,12 @@ import { BudgetRow } from "./BudgetRow";
 
 const CURRENCY: CurrencyCode = "COP";
 
+/** Flattened list: section headers interleaved with rows so one FlatList keeps
+ * the keyboard scroll-to-focus behaviour while showing risk-grouped sections. */
+type ListRow =
+  | { kind: "header"; key: string; label: string; tone: string; count: number }
+  | { kind: "row"; key: string; item: BudgetProgressRow };
+
 interface BudgetsRootProps {
   variant?: "main" | "sub";
 }
@@ -49,7 +55,7 @@ export function BudgetsRoot({ variant = "main" }: BudgetsRootProps) {
   /** Guards stale setState when the month changes mid-fetch. */
   const requestIdRef = useRef(0);
 
-  const flatListRef = useRef<FlatList<BudgetProgressRow>>(null);
+  const flatListRef = useRef<FlatList<ListRow>>(null);
 
   /** Lift the focused budget-edit row above the keyboard — the input lives in a
    * FlatList row, out of any KeyboardAvoidingView's reach. */
@@ -94,10 +100,43 @@ export function BudgetsRoot({ variant = "main" }: BudgetsRootProps) {
   }, [sync, loadData]);
 
   const totals = useMemo(() => {
-    const target = items.reduce((sum, item) => sum + item.amount, 0);
-    const spent = items.reduce((sum, item) => sum + item.spent, 0);
+    const budgeted = items.filter((item) => item.amount > 0);
+    const target = budgeted.reduce((sum, item) => sum + item.amount, 0);
+    const spent = budgeted.reduce((sum, item) => sum + item.spent, 0);
     const progress = target > 0 ? (spent / target) * 100 : 0;
     return { target, spent, progress };
+  }, [items]);
+
+  /** Group budgeted categories by risk state (mirrors the webapp MobileBudgetList)
+   * plus a "Sin límite" group for categories with spend but no budget. */
+  const sections = useMemo<ListRow[]>(() => {
+    const budgeted = items.filter((i) => i.amount > 0);
+    const over = budgeted
+      .filter((i) => i.progress > 100)
+      .sort((a, b) => b.progress - a.progress);
+    const near = budgeted
+      .filter((i) => i.progress >= 85 && i.progress <= 100)
+      .sort((a, b) => b.progress - a.progress);
+    const safe = budgeted
+      .filter((i) => i.progress < 85)
+      .sort((a, b) => a.progress - b.progress);
+    const unbudgeted = items
+      .filter((i) => i.amount <= 0)
+      .sort((a, b) => b.spent - a.spent);
+
+    const rows: ListRow[] = [];
+    const push = (label: string, tone: string, group: BudgetProgressRow[]) => {
+      if (group.length === 0) return;
+      rows.push({ kind: "header", key: `h:${label}`, label, tone, count: group.length });
+      for (const item of group) {
+        rows.push({ kind: "row", key: item.id ?? item.category_id, item });
+      }
+    };
+    push("Sobre límite", "text-z-expense", over);
+    push("Cerca del límite", "text-z-brass", near);
+    push("Dentro del límite", "text-z-income", safe);
+    push("Sin límite", "text-muted-foreground", unbudgeted);
+    return rows;
   }, [items]);
 
   const handleSave = useCallback(
@@ -135,17 +174,26 @@ export function BudgetsRoot({ variant = "main" }: BudgetsRootProps) {
     [loadData]
   );
 
-  const keyExtractor = useCallback(
-    (item: BudgetProgressRow) => item.id ?? item.category_id,
-    []
-  );
+  const keyExtractor = useCallback((row: ListRow) => row.key, []);
 
   const renderItem = useCallback(
-    ({ item, index }: { item: BudgetProgressRow; index: number }) => {
-      const rowId = item.id ?? item.category_id;
+    ({ item: row, index }: { item: ListRow; index: number }) => {
+      if (row.kind === "header") {
+        return (
+          <View className="mb-2 mt-3 flex-row items-center justify-between">
+            <Text className={`${SECTION_EYEBROW_CLASS} ${row.tone}`}>
+              {row.label}
+            </Text>
+            <Text className="text-[10px] font-inter text-muted-foreground">
+              {row.count}
+            </Text>
+          </View>
+        );
+      }
+      const rowId = row.item.id ?? row.item.category_id;
       return (
         <BudgetRow
-          item={item}
+          item={row.item}
           index={index}
           currency={CURRENCY}
           saving={savingId === rowId}
@@ -160,28 +208,40 @@ export function BudgetsRoot({ variant = "main" }: BudgetsRootProps) {
 
   const listHeader = useMemo(
     () => (
-      <View className="gap-3 pb-2">
+      <View className="gap-3 pb-1">
         <View className="items-center">
           <MonthSelector month={currentMonth} onChange={setCurrentMonth} />
         </View>
-
         <BudgetsHero
           spent={totals.spent}
           target={totals.target}
           progress={totals.progress}
           currency={CURRENCY}
         />
-
-        <Text className={`mt-2 ${SECTION_EYEBROW_CLASS}`}>
-          Presupuestos por categoría
-        </Text>
-        <Text className="text-xs font-inter text-muted-foreground">
-          Toca una categoría para definir o editar su tope mensual.
-        </Text>
       </View>
     ),
     [currentMonth, totals.spent, totals.target, totals.progress]
   );
+
+  const listFooter = useMemo(() => {
+    if (sections.length === 0) return null;
+    const remaining = totals.target - totals.spent;
+    return (
+      <View
+        className={`${PANEL_SURFACE_SUBTLE_CLASS} mt-4 flex-row items-center justify-between px-4 py-3.5`}
+      >
+        <Text className="text-sm font-inter-medium text-muted-foreground">
+          Restante
+        </Text>
+        <Text
+          className={`text-base font-inter-bold ${remaining < 0 ? "text-z-debt" : "text-z-income"}`}
+          style={{ fontVariant: ["tabular-nums"] }}
+        >
+          {(remaining < 0 ? "-" : "") + formatCurrency(Math.abs(remaining), CURRENCY)}
+        </Text>
+      </View>
+    );
+  }, [sections.length, totals.target, totals.spent]);
 
   const listEmpty = useMemo(
     () => (
@@ -190,7 +250,7 @@ export function BudgetsRoot({ variant = "main" }: BudgetsRootProps) {
           Aún no hay presupuestos configurados
         </Text>
         <Text className="mt-1 text-center text-sm font-inter text-muted-foreground">
-          Crea presupuestos desde categorías en la web y aquí podrás revisarlos.
+          Toca una categoría con gasto para fijar su tope mensual.
         </Text>
       </View>
     ),
@@ -221,10 +281,11 @@ export function BudgetsRoot({ variant = "main" }: BudgetsRootProps) {
 
       <FlatList
         ref={flatListRef}
-        data={items}
+        data={sections}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
         ListHeaderComponent={listHeader}
+        ListFooterComponent={listFooter}
         ListEmptyComponent={listEmpty}
         contentContainerStyle={{
           padding: 16,
@@ -246,8 +307,8 @@ export function BudgetsRoot({ variant = "main" }: BudgetsRootProps) {
             animated: true,
           });
         }}
-        initialNumToRender={10}
-        maxToRenderPerBatch={10}
+        initialNumToRender={12}
+        maxToRenderPerBatch={12}
         windowSize={5}
         removeClippedSubviews={Platform.OS === "android"}
       />
