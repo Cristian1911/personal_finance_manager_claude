@@ -299,7 +299,13 @@ export default function PeriodoScreen() {
               <View key={entry.id} className={`px-3.5 py-3 ${i > 0 ? "border-t border-white-6" : ""}`}>
                 <View className="flex-row items-center justify-between">
                   <View className="flex-1">
-                    <Text className="text-xs font-inter-medium text-foreground">{entry.label}</Text>
+                    <Text
+                      className="text-xs font-inter-medium text-foreground"
+                      numberOfLines={1}
+                      ellipsizeMode="middle"
+                    >
+                      {entry.label}
+                    </Text>
                     <Text className="text-[10px] font-inter text-muted-foreground">
                       {formatDate(entry.expected_date, "dd MMM yyyy")}
                       {entry.account_name ? ` · ${entry.account_name}` : ""}
@@ -467,7 +473,13 @@ function IncomeCard({
           {/* Name + amount + status */}
           <View className="flex-row items-start justify-between gap-2">
             <View className="flex-1">
-              <Text className="text-sm font-inter-semibold text-foreground">{entry.label}</Text>
+              <Text
+                className="text-sm font-inter-semibold text-foreground"
+                numberOfLines={1}
+                ellipsizeMode="middle"
+              >
+                {entry.label}
+              </Text>
               <Text className="text-[10px] font-inter text-muted-foreground">
                 {formatDate(entry.expected_date, "dd MMM yyyy")}
                 {entry.account_name ? ` · ${entry.account_name}` : ""}

@@ -36,6 +36,7 @@ export function AccountCard({ account, onPress }: Props) {
         <Text
           className="text-foreground font-inter-semibold text-sm"
           numberOfLines={1}
+          ellipsizeMode="middle"
         >
           {account.name}
         </Text>

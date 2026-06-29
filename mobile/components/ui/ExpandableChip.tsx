@@ -118,7 +118,7 @@ export function ChipEyebrow({
   const t = TONE[tone];
   return (
     <Text
-      className={`text-[10px] font-inter-semibold uppercase tracking-[4px] ${t.label}`}
+      className={`text-[10px] font-inter-semibold uppercase tracking-[2px] ${t.label}`}
       numberOfLines={1}
     >
       {children}

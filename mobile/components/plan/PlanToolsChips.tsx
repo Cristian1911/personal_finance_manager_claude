@@ -3,7 +3,7 @@ import { View, Text, Pressable } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { Wallet, CalendarCheck, RotateCw } from "lucide-react-native";
 import type { LucideIcon } from "lucide-react-native";
-import { PANEL_INSET_CLASS, SECTION_EYEBROW_CLASS } from "../../lib/constants/styles";
+import { PANEL_INSET_CLASS } from "../../lib/constants/styles";
 import { COLORS } from "../../lib/constants/colors";
 
 interface PlanToolsChipsProps {
@@ -108,7 +108,10 @@ function PlanToolsChipsBase({
             className={`${PANEL_INSET_CLASS} flex-1 items-center justify-between px-2 py-3.5`}
             style={{ minHeight: 120 }}
           >
-            <Text className={`${SECTION_EYEBROW_CLASS} text-center`}>
+            <Text
+              className="text-center text-[10px] font-inter-semibold uppercase tracking-[1px] text-z-sage-dark"
+              numberOfLines={1}
+            >
               {tool.label}
             </Text>
             <Icon size={26} color={COLORS.brass} strokeWidth={1.6} />
