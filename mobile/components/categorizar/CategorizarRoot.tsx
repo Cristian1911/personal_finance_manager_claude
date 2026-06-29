@@ -17,7 +17,7 @@ import { MobileHeader } from "../ui/MobileHeader";
 import { MCard } from "../ui/MCard";
 import { MOBILE_TAB_BAR_CLEARANCE, SECTION_EYEBROW_CLASS } from "../../lib/constants/styles";
 import { UncategorizedRow } from "./UncategorizedRow";
-import { CategoryPickerSheet } from "./CategoryPickerSheet";
+import { CategoryZonePickerSheet } from "../transactions/CategoryZonePickerSheet";
 import { trackProductEvent } from "../../lib/analytics/product-events";
 
 export function CategorizarRoot() {
@@ -169,10 +169,11 @@ export function CategorizarRoot() {
       </ScrollView>
 
       {/* Category picker bottom sheet */}
-      <CategoryPickerSheet
+      <CategoryZonePickerSheet
         categories={categories}
         visible={pickerVisible}
-        onSelect={handleCategorySelect}
+        selectedId={null}
+        onSelect={(id) => id && handleCategorySelect(id)}
         onClose={handlePickerClose}
       />
     </View>

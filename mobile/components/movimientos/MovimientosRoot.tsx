@@ -40,7 +40,7 @@ import {
   type MovimientosFilters,
 } from "./MovimientosUtilidades";
 import { MovimientosTransactionRow } from "./MovimientosTransactionRow";
-import { CategoryPickerSheet } from "../categorizar/CategoryPickerSheet";
+import { CategoryZonePickerSheet } from "../transactions/CategoryZonePickerSheet";
 import { DestinatarioPicker } from "../transactions/DestinatarioPicker";
 import { TagPickerSheet } from "../transactions/TagPickerSheet";
 import { VincularPicker } from "../transactions/VincularPicker";
@@ -523,10 +523,13 @@ export function MovimientosRoot() {
       />
 
       {pickerTxId !== null && (
-        <CategoryPickerSheet
+        <CategoryZonePickerSheet
           categories={categories}
           visible
-          onSelect={handleCategorySelect}
+          selectedId={
+            transactions.find((t) => t.id === pickerTxId)?.category_id ?? null
+          }
+          onSelect={(id) => id && handleCategorySelect(id)}
           onClose={handleClosePicker}
         />
       )}

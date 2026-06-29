@@ -9,7 +9,7 @@ import {
 import { rescoreWishlistItem } from "../../lib/services/wishlist-scoring";
 import { getAllCategories, type CategoryRow } from "../../lib/repositories/categories";
 import { getAllAccounts, type AccountRow } from "../../lib/repositories/accounts";
-import { CategoryPickerSheet } from "../categorizar/CategoryPickerSheet";
+import { CategoryZonePickerSheet } from "../transactions/CategoryZonePickerSheet";
 import { MobileSheet } from "../ui/MobileSheet";
 import { FieldGroup, SegmentedRow } from "../ui/FormField";
 import { COLORS } from "../../lib/constants/colors";
@@ -284,9 +284,10 @@ export function DeseosEnrichDrawer({ visible, item, userId, onClose, onSaved }: 
         </View>
       </MobileSheet>
 
-      <CategoryPickerSheet
+      <CategoryZonePickerSheet
         categories={categories}
         visible={pickerOpen}
+        selectedId={categoryId}
         onClose={() => setPickerOpen(false)}
         onSelect={(id) => setCategoryId(id)}
       />

@@ -27,7 +27,7 @@ import { Narrator } from "../components/common/Narrator";
 import { getAllAccounts, type AccountRow } from "../lib/repositories/accounts";
 import { createWishlistItem } from "../lib/repositories/wishlist";
 import { getAllCategories, type CategoryRow } from "../lib/repositories/categories";
-import { CategoryPickerSheet } from "../components/categorizar/CategoryPickerSheet";
+import { CategoryZonePickerSheet } from "../components/transactions/CategoryZonePickerSheet";
 import { FieldGroup, SegmentedRow } from "../components/ui/FormField";
 import { VERDICT_META } from "../lib/constants/verdict";
 import { analyzeLocally } from "../lib/services/purchase-decision";
@@ -704,9 +704,10 @@ export default function PurchaseDecisionScreen() {
         )}
       </AppKeyboardAwareScrollView>
 
-      <CategoryPickerSheet
+      <CategoryZonePickerSheet
         categories={categories}
         visible={categoryPickerOpen}
+        selectedId={selectedCategoryId}
         onClose={() => setCategoryPickerOpen(false)}
         onSelect={(id) => setSelectedCategoryId(id)}
       />
