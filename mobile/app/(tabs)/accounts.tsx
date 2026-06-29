@@ -21,16 +21,11 @@ import {
   PANEL_SURFACE_SUBTLE_CLASS,
   SECTION_EYEBROW_CLASS,
 } from "../../lib/constants/styles";
-
-const DEBT_TYPES = new Set(["CREDIT_CARD", "LOAN"]);
-
-function computeNetWorth(accounts: AccountRow[]) {
-  return accounts.reduce((sum, acc) => {
-    return DEBT_TYPES.has(acc.account_type)
-      ? sum - acc.current_balance
-      : sum + acc.current_balance;
-  }, 0);
-}
+import {
+  computeNetWorth,
+  computeSecondaryNetWorth,
+  DISPLAY_CURRENCY,
+} from "../../lib/utils/net-worth";
 
 export default function AccountsScreen() {
   const router = useRouter();
@@ -66,7 +61,8 @@ export default function AccountsScreen() {
     }
   }, [sync, loadAccounts]);
 
-  const netWorth = computeNetWorth(accounts);
+  const netWorth = computeNetWorth(accounts, DISPLAY_CURRENCY);
+  const secondaryNetWorth = computeSecondaryNetWorth(accounts, DISPLAY_CURRENCY);
   const isNegative = netWorth < 0;
 
   if (loading) {
@@ -112,9 +108,33 @@ export default function AccountsScreen() {
                 className={`font-inter-bold text-3xl mt-2 ${
                   isNegative ? "text-z-debt" : "text-foreground"
                 }`}
+                style={{ fontVariant: ["tabular-nums"] }}
               >
-                {(isNegative ? "-" : "") + formatCurrency(Math.abs(netWorth), "COP" as CurrencyCode)}
+                {(isNegative ? "-" : "") +
+                  formatCurrency(Math.abs(netWorth), DISPLAY_CURRENCY as CurrencyCode)}
               </Text>
+              {secondaryNetWorth.length > 0 && (
+                <View className="mt-3 gap-1.5 border-t border-white-6 pt-3">
+                  {secondaryNetWorth.map(([cc, total]) => (
+                    <View
+                      key={cc}
+                      className="flex-row items-center justify-between"
+                    >
+                      <Text className="text-xs font-inter-medium text-muted-foreground">
+                        {cc}
+                      </Text>
+                      <Text
+                        className={`text-sm font-inter-medium ${
+                          total < 0 ? "text-z-debt" : "text-foreground"
+                        }`}
+                        style={{ fontVariant: ["tabular-nums"] }}
+                      >
+                        {formatCurrency(total, cc as CurrencyCode)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
 
             {/* Nueva cuenta button */}

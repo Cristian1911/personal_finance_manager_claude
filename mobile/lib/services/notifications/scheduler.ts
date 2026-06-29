@@ -115,7 +115,7 @@ export async function reschedulePaymentReminders(): Promise<void> {
         content: {
           title: `💸 Mañana vence ${label}`,
           body: amount,
-          data: { route: "/pendientes", occurrenceId: occ.id },
+          data: { route: "/recurrentes", occurrenceId: occ.id },
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DATE,
