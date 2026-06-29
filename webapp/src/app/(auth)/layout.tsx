@@ -7,8 +7,8 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen w-full bg-background text-foreground">
-      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-5 pb-10 pt-14 sm:pt-20">
+    <div className="min-h-dvh w-full bg-background text-foreground">
+      <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 pb-10 pt-14 sm:pt-20">
         <header className="flex flex-col items-center gap-3 text-center">
           <BrandIcon
             className="h-11 w-11 rounded-2xl shadow-[0_10px_24px_rgba(0,0,0,0.24)]"

@@ -92,7 +92,7 @@ export default async function DashboardLayout({
         : "Todo en orden por ahora";
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-dvh">
       <Sidebar attentionSnapshot={attentionSnapshot} />
       <div className="flex-1 flex flex-col min-w-0">
         {/* Desktop topbar — hidden on mobile */}
