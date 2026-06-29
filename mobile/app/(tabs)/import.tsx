@@ -8,6 +8,7 @@ import {
   ScrollView,
   TextInput,
 } from "react-native";
+import { AppKeyboardAwareScrollView } from "../../components/common/AppKeyboardAwareScrollView";
 import { AnimatedAccordion } from "../../components/ui/AnimatedAccordion";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -1170,7 +1171,10 @@ export default function ImportScreen() {
   if (step === "pick") {
     return (
       <ImportThemeProvider neutral={neutralTheme}>
-      <View className={`flex-1 ${inkCls} px-4 pb-4`} style={{ paddingTop: topInset + 4 }}>
+      <View className={`flex-1 ${inkCls}`} style={{ paddingTop: topInset + 4 }}>
+        <AppKeyboardAwareScrollView
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
+        >
         <Text className="text-[11px] font-inter-semibold uppercase text-z-sage-dark tracking-[0.18em]">
           Paso 1 de 4
         </Text>
@@ -1286,6 +1290,7 @@ export default function ImportScreen() {
             </Text>
           )}
         </Pressable>
+        </AppKeyboardAwareScrollView>
       </View>
       </ImportThemeProvider>
     );

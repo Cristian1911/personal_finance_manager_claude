@@ -13,17 +13,25 @@
 ## Keyboard-aware input sweep (2026-06-29) — coverage remaining
 
 Adopted `docs/design-system/keyboard-handling.md` as the standard + added the coverage rule to the
-`mobile-perf-doctor` agent (§7.5). `mobile/app/capture.tsx` migrated to `AppKeyboardAwareScrollView`.
-Remaining surfaces with a `TextInput` in a plain `<ScrollView>` (from the audit) — apply the RIGHT
-primitive per the guide, not a blind wrap:
+`mobile-perf-doctor` agent (§7.5).
 
-- **Full-screen forms → `AppKeyboardAwareScrollView`** (drop-in): `mobile/app/(tabs)/import.tsx`,
-  `mobile/components/accounts/AccountFormFields.tsx`, `mobile/components/destinatarios/DestinatariosRoot.tsx`.
-- **Bottom sheets → `KeyboardStickyView` / sheet-native avoidance** (NOT KeyboardAwareScrollView, which
-  fights the sheet transform): `CategoryFormSheet`, `ReassignSheet`, `CategoryZonePickerSheet`,
-  `MovimientosUtilidades` (MobileSheet); `DeseosRoot` (Drawer).
-- **Verify on a real device** — sim ≠ device for keyboard timing (and idb automation suppresses the
-  soft keyboard entirely; see the guide's Project notes).
+**Done:**
+- `mobile/app/capture.tsx` → `AppKeyboardAwareScrollView`.
+- `mobile/app/(tabs)/import.tsx` pick step → `AppKeyboardAwareScrollView` (top-aligned form, scroll lifts
+  the password field; the reconcile `ScrollView` / review `FlatList` have no inputs, left as-is).
+- **All MobileSheet form sheets, via ONE central fix** — `MobileSheet.tsx` now wraps its Modal in a
+  `KeyboardAvoidingView` (bottom-anchored → padding lifts the sheet). Covers `CategoryFormSheet`,
+  `ReassignSheet`, `CategoryZonePickerSheet`, `MovimientosUtilidades`, + FabMenuSheet / AccountPickerModal.
+
+**Remaining:**
+- **Full-screen forms → `AppKeyboardAwareScrollView`**: `mobile/components/accounts/AccountFormFields.tsx`,
+  `mobile/components/destinatarios/DestinatariosRoot.tsx` (confirm each is a screen, not sheet-embedded).
+- **`DeseosRoot` (Drawer)** — separate from MobileSheet; not covered by the central fix. Check its own
+  keyboard avoidance.
+- **Upgrade MobileSheet's RN `KeyboardAvoidingView` → keyboard-controller's** (UI-thread) once the
+  nested-`KeyboardProvider`-in-Modal pattern is validated on a real device. RN's is the modal-safe baseline.
+- **Verify on a real device** — sim ≠ device for keyboard timing (and idb automation suppresses the soft
+  keyboard entirely; see the guide's Project notes). Nothing here is sim-verifiable.
 
 ## Mobile parity Wave 1 — foundation P0s (branch `feat/mobile-parity-foundation`, 2026-06-29) — gate follow-ups
 
