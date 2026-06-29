@@ -12,8 +12,11 @@ import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import { useAuth } from "../../lib/auth";
 import { useSync } from "../../lib/sync/hooks";
 import {
+  compute503020,
   deleteBudget,
   getBudgetProgress,
+  getMonthlyIncome,
+  type Allocation,
   type BudgetProgressRow,
   upsertBudget,
 } from "../../lib/repositories/budgets";
@@ -47,6 +50,7 @@ export function BudgetsRoot({ variant = "main" }: BudgetsRootProps) {
   const { sync } = useSync();
 
   const [items, setItems] = useState<BudgetProgressRow[]>([]);
+  const [income, setIncome] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -73,9 +77,13 @@ export function BudgetsRoot({ variant = "main" }: BudgetsRootProps) {
   const loadData = useCallback(async () => {
     const requestId = ++requestIdRef.current;
     try {
-      const data = await getBudgetProgress(currentMonth);
+      const [data, inc] = await Promise.all([
+        getBudgetProgress(currentMonth),
+        getMonthlyIncome(currentMonth),
+      ]);
       if (requestId !== requestIdRef.current) return;
       setItems(data);
+      setIncome(inc);
     } catch (error) {
       console.error("Failed to load budgets:", error);
     } finally {
@@ -106,6 +114,11 @@ export function BudgetsRoot({ variant = "main" }: BudgetsRootProps) {
     const progress = target > 0 ? (spent / target) * 100 : 0;
     return { target, spent, progress };
   }, [items]);
+
+  const allocation = useMemo<Allocation | null>(
+    () => compute503020(items, income),
+    [items, income]
+  );
 
   /** Group budgeted categories by risk state (mirrors the webapp MobileBudgetList)
    * plus a "Sin límite" group for categories with spend but no budget. */
@@ -217,10 +230,11 @@ export function BudgetsRoot({ variant = "main" }: BudgetsRootProps) {
           target={totals.target}
           progress={totals.progress}
           currency={CURRENCY}
+          allocation={allocation}
         />
       </View>
     ),
-    [currentMonth, totals.spent, totals.target, totals.progress]
+    [currentMonth, totals.spent, totals.target, totals.progress, allocation]
   );
 
   const listFooter = useMemo(() => {
