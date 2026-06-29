@@ -80,6 +80,7 @@ const FOCUS_MODE_PATHS: ReadonlyArray<string> = [
   "/transactions/new",
   "/recurrentes/new",
   "/deudas/planificador",
+  "/presupuesto-armar",
 ] as const;
 
 const FOCUS_MODE_PATH_REGEXES: ReadonlyArray<RegExp> = [
