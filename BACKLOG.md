@@ -24,10 +24,6 @@ Adopted `docs/design-system/keyboard-handling.md` as the standard + added the co
   the audit false-flagged the `AccountFormFields` fragment; its parents cover it. No change needed.
 
 **Remaining:**
-- **[P1] `BudgetsRoot` (Presupuestos) budget-edit input occluded** (confirmed on-device, screenshot
-  2026-06-29) — the MONTO MENSUAL input + Guardar are hidden behind the keyboard. It's a `FlatList` (the
-  edit is a list item), so the ScrollView swap doesn't apply; needs FlatList keyboard handling +
-  scroll-the-expanded-row-into-view (see the auto-scroll item below — same fix).
 - **Upgrade MobileSheet's RN `KeyboardAvoidingView` → keyboard-controller's** (UI-thread) once the
   nested-`KeyboardProvider`-in-Modal pattern is validated on a real device. RN's is the modal-safe baseline.
 - **Verify on a real device** — sim ≠ device for keyboard timing (and idb automation suppresses the soft
@@ -37,14 +33,10 @@ Adopted `docs/design-system/keyboard-handling.md` as the standard + added the co
 
 From 13 device screenshots. Severity-ranked:
 
-- **[P1 · bug] CategoryZonePicker renders icon NAMES as text** — the category picker sheet shows
-  `briefcase` / `wallet` / `banknote` / `home` / `shopping-cart` / `zap`… as right-aligned text instead of
-  the icon glyph. The icon name isn't resolving to a `lucide-react-native` component → string fallback.
-  Find the mobile category-icon map/render and map the names to icons (or hide the raw string).
-- **[P1 · feature] Auto-scroll-on-expand (webapp parity)** — webapp scrolls a control into view when it
-  expands (category zone picker, budget category edit, inline pickers); mobile doesn't, so the revealed
-  content/input can be off-screen or under the keyboard. Add scroll-into-view on expand. Pairs with the
-  BudgetsRoot keyboard item (same `FlatList` scroll-to-index-on-expand fix).
+- **[DONE] CategoryZonePicker icon names as text** — fixed via the new `CategoryIcon` (name→lucide map);
+  the whole flat picker was replaced by the rich zone grid (icons + child counts + income/expense filter).
+- **[DONE] Auto-scroll-on-expand** — zone picker scrolls the tapped zone to top on expand (+ LayoutAnimation
+  on collapse); BudgetsRoot scrolls the focused budget-edit row above the keyboard on input focus.
 - **[P2] Transaction-detail header cramped under the status bar** — the `Detalle` title + close/edit/trash
   icons overlap the status bar (no safe-area top padding on the detail header). Add `insets.top`.
 - **[P2] Transaction-detail "Destinatario" label wraps to "Destinatari/o"** — the left label column is too
