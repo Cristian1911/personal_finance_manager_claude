@@ -56,7 +56,10 @@ import {
 } from "../../lib/transaction-semantics";
 import { parseLocalizedAmount } from "../../lib/amount";
 import { COLORS } from "../../lib/constants/colors";
-import { SECTION_EYEBROW_CLASS } from "../../lib/constants/styles";
+import {
+  MOBILE_CARD_TIGHT_CLASS,
+  SECTION_EYEBROW_CLASS,
+} from "../../lib/constants/styles";
 
 type TransactionDetail = {
   id: string;
@@ -814,7 +817,7 @@ export default function TransactionDetailScreen() {
           <View className="px-4 pt-4 pb-8 gap-5">
             <View>
               <Text className={`${SECTION_EYEBROW_CLASS} mb-2`}>Clasificación</Text>
-              <View className="overflow-hidden rounded-2xl border border-white-6 bg-z-surface-2-55">
+              <View className={MOBILE_CARD_TIGHT_CLASS}>
             <DetailRow
               label="Fecha"
               value={
@@ -852,7 +855,7 @@ export default function TransactionDetailScreen() {
               transaction.notes) && (
               <View>
                 <Text className={`${SECTION_EYEBROW_CLASS} mb-2`}>Detalles</Text>
-                <View className="overflow-hidden rounded-2xl border border-white-6 bg-z-surface-2-55">
+                <View className={MOBILE_CARD_TIGHT_CLASS}>
                   <DetailRow label="Descripción" value={transaction.description} />
                   <DetailRow
                     label="Descripción original"
