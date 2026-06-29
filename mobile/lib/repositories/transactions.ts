@@ -2,6 +2,7 @@ import * as Crypto from "expo-crypto";
 import {
   computeIdempotencyKey,
   computeMonthlyAggregates,
+  extractPattern,
   findReconciliationCandidates,
   mergeTransactionMetadata,
   type DataProvider,
@@ -12,6 +13,7 @@ import {
 } from "@zeta/shared";
 import { getDatabase } from "../db/database";
 import { applyLocalBalanceDelta, type LedgerAccountRow } from "./ledger-helpers";
+import { enqueueInsert, enqueueUpdate } from "../sync/queue";
 
 const expoHashFn = (payload: string) =>
   Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, payload);
@@ -904,4 +906,108 @@ export async function updateTransaction(
       }
     }
   });
+}
+
+/**
+ * Categorize a transaction AND learn from it — the mobile mirror of webapp
+ * categorizeTransaction (actions/categorize.ts). Beyond setting the category it
+ * (1) upserts a category_rules row from the merchant pattern so the auto-
+ * categorizer improves and the rule syncs to web / other devices, and (2)
+ * backfills the destinatario's default category when unset. Used by the
+ * Categorizar flow ONLY — generic edits stay on updateTransaction, which does
+ * NOT learn (matching the webapp split).
+ */
+export async function categorizeAndLearn(
+  transactionId: string,
+  categoryId: string
+): Promise<void> {
+  const db = await getDatabase();
+
+  // 1. Set the category (USER_OVERRIDE). No balance side-effect (amount /
+  //    is_excluded untouched), so reusing updateTransaction is safe.
+  await updateTransaction(transactionId, { category_id: categoryId });
+
+  // 2. Read the fields needed to learn.
+  const tx = await db.getFirstAsync<{
+    user_id: string;
+    merchant_name: string | null;
+    description: string | null;
+    raw_description: string | null;
+    destinatario_id: string | null;
+  }>(
+    `SELECT user_id, merchant_name, description, raw_description, destinatario_id
+     FROM transactions WHERE id = ?`,
+    [transactionId]
+  );
+  if (!tx) return;
+
+  // 3. Upsert a category rule from the merchant pattern. A cross-device duplicate
+  //    INSERT is skipped harmlessly by push.ts (23505 → skip), so no stall.
+  const pattern = extractPattern(tx.merchant_name, tx.description, tx.raw_description);
+  if (pattern && tx.user_id) {
+    const now = new Date().toISOString();
+    const existing = await db.getFirstAsync<{ id: string }>(
+      "SELECT id FROM category_rules WHERE user_id = ? AND pattern = ?",
+      [tx.user_id, pattern]
+    );
+    await db.withTransactionAsync(async () => {
+      if (existing) {
+        await db.runAsync(
+          "UPDATE category_rules SET category_id = ?, match_count = match_count + 1, updated_at = ? WHERE id = ?",
+          [categoryId, now, existing.id]
+        );
+        await enqueueUpdate(
+          db,
+          "category_rules",
+          existing.id,
+          { category_id: categoryId, updated_at: now },
+          now
+        );
+      } else {
+        const ruleId = Crypto.randomUUID();
+        await db.runAsync(
+          `INSERT INTO category_rules (id, user_id, pattern, category_id, match_count, created_at, updated_at)
+           VALUES (?, ?, ?, ?, 1, ?, ?)`,
+          [ruleId, tx.user_id, pattern, categoryId, now, now]
+        );
+        await enqueueInsert(
+          db,
+          "category_rules",
+          ruleId,
+          {
+            id: ruleId,
+            user_id: tx.user_id,
+            pattern,
+            category_id: categoryId,
+            match_count: 1,
+            created_at: now,
+            updated_at: now,
+          },
+          now
+        );
+      }
+    });
+  }
+
+  // 4. Backfill the destinatario's default category when unset (conditional
+  //    UPDATE — no-ops if already set). Mirrors webapp.
+  if (tx.destinatario_id) {
+    const destinatarioId = tx.destinatario_id;
+    const now = new Date().toISOString();
+    await db.withTransactionAsync(async () => {
+      const res = await db.runAsync(
+        "UPDATE destinatarios SET default_category_id = ?, updated_at = ? WHERE id = ? AND default_category_id IS NULL",
+        [categoryId, now, destinatarioId]
+      );
+      if (res.changes > 0) {
+        await enqueueUpdate(
+          db,
+          "destinatarios",
+          destinatarioId,
+          { default_category_id: categoryId, updated_at: now },
+          now
+        );
+      }
+    });
+  }
 }

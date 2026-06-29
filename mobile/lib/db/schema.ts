@@ -595,6 +595,27 @@ export const DB_MIGRATIONS: DbMigration[] = [
       // in JS, so a wider composite would add write cost without a read gain.
     ],
   },
+  {
+    version: 19,
+    statements: [
+      // Category learning rules (mirror webapp `category_rules`). Written when a
+      // user categorizes an uncategorized tx so the auto-categorizer improves and
+      // the rule syncs to web / other devices. Same column set as the Supabase
+      // table so pull/push round-trip cleanly. UNIQUE(user_id, pattern) is the
+      // upsert key (auto-indexed).
+      `CREATE TABLE IF NOT EXISTS category_rules (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        pattern TEXT NOT NULL,
+        category_id TEXT NOT NULL,
+        match_count INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        UNIQUE(user_id, pattern),
+        FOREIGN KEY (category_id) REFERENCES categories(id)
+      )`,
+    ],
+  },
 ];
 
 export const LATEST_DB_VERSION =

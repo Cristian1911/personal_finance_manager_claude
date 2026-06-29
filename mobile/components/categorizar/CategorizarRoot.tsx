@@ -4,8 +4,8 @@ import { useFocusEffect } from "expo-router";
 import { Tag } from "lucide-react-native";
 import { useSync } from "../../lib/sync/hooks";
 import {
+  categorizeAndLearn,
   getTransactions,
-  updateTransaction,
   type TransactionListRow,
 } from "../../lib/repositories/transactions";
 import {
@@ -71,7 +71,7 @@ export function CategorizarRoot() {
       if (!selectedTxId) return;
 
       try {
-        await updateTransaction(selectedTxId, { category_id: categoryId });
+        await categorizeAndLearn(selectedTxId, categoryId);
         trackProductEvent({
           event_name: "categorize_applied",
           flow: "categorize",

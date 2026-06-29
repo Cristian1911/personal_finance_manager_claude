@@ -8,6 +8,7 @@ const SYNC_TABLES = [
   "profiles",
   "accounts",
   "categories",
+  "category_rules",
   "budgets",
   "tag_groups",
   "tags",
