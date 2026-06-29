@@ -3,9 +3,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { loginSchema, signupSchema, forgotPasswordSchema, resetPasswordSchema } from "@/lib/validators/auth";
 import { trackProductEvent, trackProductEventForUser } from "@/actions/product-events";
 import { revalidateAllUserData } from "@/lib/cache/revalidation";
+import { derivePublicBaseUrl } from "@/lib/utils/public-base-url";
 
 export type AuthActionResult = {
   error?: string;
@@ -132,13 +134,18 @@ export async function signUp(
     redirect("/dashboard");
   }
 
+  const reqHeaders = await headers();
+  const baseUrl = derivePublicBaseUrl(
+    reqHeaders.get("host"),
+    reqHeaders.get("x-forwarded-proto")
+  );
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
       // Still sent if project-level "Confirm email" is ON. When OFF (recommended),
       // the session is returned immediately and we skip the email dance.
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
+      emailRedirectTo: `${baseUrl}/auth/callback`,
     },
   });
 
@@ -256,8 +263,13 @@ export async function resetPasswordRequest(
   }
 
   const supabase = await createClient();
+  const reqHeaders = await headers();
+  const baseUrl = derivePublicBaseUrl(
+    reqHeaders.get("host"),
+    reqHeaders.get("x-forwarded-proto")
+  );
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?next=/reset-password`,
+    redirectTo: `${baseUrl}/auth/callback?next=/reset-password`,
   });
 
   if (error) {
