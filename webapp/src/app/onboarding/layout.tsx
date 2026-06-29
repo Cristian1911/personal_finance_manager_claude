@@ -17,8 +17,8 @@ export default async function OnboardingLayout({
     }
 
     return (
-        <div className="min-h-screen w-full bg-background text-foreground">
-            <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-5 pb-10 pt-10 sm:pt-14">
+        <div className="min-h-dvh w-full bg-background text-foreground">
+            <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 pb-10 pt-10 sm:pt-14">
                 <header className="flex items-center gap-2">
                     <BrandIcon className="h-7 w-7 rounded-xl" priority />
                     <div className="flex flex-col leading-tight">

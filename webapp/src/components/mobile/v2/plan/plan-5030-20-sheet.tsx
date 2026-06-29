@@ -112,7 +112,7 @@ export function Plan5030Sheet20({
       <SheetContent
         side="bottom"
         className={cn(
-          "max-h-[calc(100vh-1rem)] overflow-y-auto rounded-t-2xl",
+          "max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-t-2xl",
           MOBILE_TAB_BAR_CLEARANCE_CLASS,
         )}
       >
