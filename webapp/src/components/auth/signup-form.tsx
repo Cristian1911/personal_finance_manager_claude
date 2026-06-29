@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { signUp, type AuthActionResult } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/auth/password-input";
 import { Label } from "@/components/ui/label";
 import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
 import { OAuthButtons } from "@/components/auth/oauth-buttons";
@@ -49,10 +50,9 @@ export function SignupForm({ fromGuest = false }: SignupFormProps = {}) {
 
       <div className="space-y-2">
         <Label htmlFor="password">Contraseña</Label>
-        <Input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           placeholder="••••••••"
           required
           minLength={8}
