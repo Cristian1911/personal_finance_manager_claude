@@ -1,5 +1,12 @@
 import { useMemo, useRef, useState } from "react";
-import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import {
+  LayoutAnimation,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { Check, Search, X } from "lucide-react-native";
 import { COLORS } from "../../lib/constants/colors";
 import {
@@ -359,6 +366,9 @@ export function CategoryZonePickerSheet({
                                 zone={zone}
                                 isExpanded={expandedZoneId === zone.id}
                                 onPress={() => {
+                                  LayoutAnimation.configureNext(
+                                    LayoutAnimation.Presets.easeInEaseOut
+                                  );
                                   const willExpand = expandedZoneId !== zone.id;
                                   setExpandedZoneId(willExpand ? zone.id : null);
                                   if (willExpand) {

@@ -14,7 +14,11 @@ import {
   type UncategorizedSampleRow,
 } from "../../lib/repositories/transactions";
 import { getAllAccounts, type AccountRow } from "../../lib/repositories/accounts";
-import { getAllCategories, type CategoryRow } from "../../lib/repositories/categories";
+import {
+  getAllCategories,
+  filterCategoriesByDirection,
+  type CategoryRow,
+} from "../../lib/repositories/categories";
 import {
   getAllDestinatarios,
   type DestinatarioWithCount,
@@ -524,7 +528,12 @@ export function MovimientosRoot() {
 
       {pickerTxId !== null && (
         <CategoryZonePickerSheet
-          categories={categories}
+          categories={filterCategoriesByDirection(
+            categories,
+            transactions.find((t) => t.id === pickerTxId)?.direction === "INFLOW"
+              ? "INFLOW"
+              : "OUTFLOW"
+          )}
           visible
           selectedId={
             transactions.find((t) => t.id === pickerTxId)?.category_id ?? null

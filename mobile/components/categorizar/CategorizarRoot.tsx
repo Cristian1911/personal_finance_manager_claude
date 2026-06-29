@@ -10,6 +10,7 @@ import {
 } from "../../lib/repositories/transactions";
 import {
   getAllCategories,
+  filterCategoriesByDirection,
   type CategoryRow,
 } from "../../lib/repositories/categories";
 import { COLORS } from "../../lib/constants/colors";
@@ -170,7 +171,12 @@ export function CategorizarRoot() {
 
       {/* Category picker bottom sheet */}
       <CategoryZonePickerSheet
-        categories={categories}
+        categories={filterCategoriesByDirection(
+          categories,
+          transactions.find((t) => t.id === selectedTxId)?.direction === "INFLOW"
+            ? "INFLOW"
+            : "OUTFLOW"
+        )}
         visible={pickerVisible}
         selectedId={null}
         onSelect={(id) => id && handleCategorySelect(id)}
