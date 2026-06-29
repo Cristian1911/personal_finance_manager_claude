@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { signIn, type AuthActionResult } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/auth/password-input";
 import { Label } from "@/components/ui/label";
 import { OAuthButtons } from "@/components/auth/oauth-buttons";
 import Link from "next/link";
@@ -44,10 +45,9 @@ export function LoginForm() {
             ¿Olvidaste tu contraseña?
           </Link>
         </div>
-        <Input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           placeholder="••••••••"
           required
           autoComplete="current-password"
