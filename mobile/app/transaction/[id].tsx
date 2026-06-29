@@ -47,6 +47,7 @@ import {
 import { DestinatarioPicker } from "../../components/transactions/DestinatarioPicker";
 import { TagSelector } from "../../components/transactions/TagSelector";
 import { CategoryIcon } from "../../components/ui/CategoryIcon";
+import { MODAL_SCRIM_COLOR } from "../../components/ui/MobileSheet";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import {
   DEBT_PAYMENT_CATEGORY_ID,
@@ -787,7 +788,10 @@ export default function TransactionDetailScreen() {
             )}
             <Text
               className={`font-inter-bold text-4xl ${getHeroAmountColorClass(isExcluded, isDebtPayment, isInflow)}`}
-              style={isExcluded ? { textDecorationLine: "line-through" } : undefined}
+              style={[
+                { fontVariant: ["tabular-nums"] },
+                isExcluded ? { textDecorationLine: "line-through" } : null,
+              ]}
             >
               {isInflow ? "+" : "-"}
               {formatCurrency(
@@ -1010,7 +1014,7 @@ export default function TransactionDetailScreen() {
         <Modal transparent animationType="slide">
           <View
             className="flex-1 justify-end"
-            style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+            style={{ backgroundColor: MODAL_SCRIM_COLOR }}
           >
             <View className="border border-white-6 bg-background rounded-t-2xl pt-2 pb-6">
               <View className="flex-row justify-end px-4 pb-2">

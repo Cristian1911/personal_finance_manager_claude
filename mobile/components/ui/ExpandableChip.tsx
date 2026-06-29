@@ -137,7 +137,7 @@ export function ChipDetailHeading({
   const t = TONE[tone];
   return (
     <Text
-      className={`mb-2 text-[10px] font-inter-semibold uppercase tracking-[4px] ${t.label}`}
+      className={`mb-2 text-[10px] font-inter-semibold uppercase tracking-[2px] ${t.label}`}
     >
       {children}
     </Text>

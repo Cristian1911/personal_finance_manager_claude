@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState } from "react";
 import {
-  LayoutAnimation,
   Pressable,
   ScrollView,
   Text,
@@ -17,6 +16,7 @@ import {
 } from "../../lib/utils/zone-colors";
 import { MobileSheet } from "../ui/MobileSheet";
 import { CategoryIcon } from "../ui/CategoryIcon";
+import { AnimatedAccordion } from "../ui/AnimatedAccordion";
 
 export type CategoryRow = {
   id: string;
@@ -189,6 +189,12 @@ export function CategoryZonePickerSheet({
     return parent?.id ?? null;
   });
 
+  // Lazy-mount each zone's subrows on first expand, then keep them mounted so
+  // the collapse animation always has content (AnimatedAccordion clips empty).
+  const [everExpanded, setEverExpanded] = useState<Set<string>>(
+    () => new Set(expandedZoneId ? [expandedZoneId] : [])
+  );
+
   const scrollRef = useRef<ScrollView>(null);
   const rowYRef = useRef<Record<number, number>>({});
 
@@ -349,9 +355,6 @@ export function CategoryZonePickerSheet({
                     { length: Math.ceil(zones.length / 2) },
                     (_, rowIdx) => {
                       const pair = zones.slice(rowIdx * 2, rowIdx * 2 + 2);
-                      const expandedInRow = pair.find(
-                        (z) => z.id === expandedZoneId
-                      );
                       return (
                         <View
                           key={rowIdx}
@@ -366,12 +369,14 @@ export function CategoryZonePickerSheet({
                                 zone={zone}
                                 isExpanded={expandedZoneId === zone.id}
                                 onPress={() => {
-                                  LayoutAnimation.configureNext(
-                                    LayoutAnimation.Presets.easeInEaseOut
-                                  );
                                   const willExpand = expandedZoneId !== zone.id;
                                   setExpandedZoneId(willExpand ? zone.id : null);
                                   if (willExpand) {
+                                    setEverExpanded((prev) =>
+                                      prev.has(zone.id)
+                                        ? prev
+                                        : new Set(prev).add(zone.id)
+                                    );
                                     requestAnimationFrame(() =>
                                       scrollRef.current?.scrollTo({
                                         y: Math.max(
@@ -387,56 +392,55 @@ export function CategoryZonePickerSheet({
                             ))}
                             {pair.length === 1 && <View className="flex-1" />}
                           </View>
-                          {expandedInRow && (
-                            <View
-                              className="mt-2 rounded-xl border border-white-6 bg-black-10 p-2 gap-0.5"
-                              style={{
-                                borderColor: zoneBorder(expandedInRow.color),
-                              }}
+                          {pair.map((zone) => (
+                            <AnimatedAccordion
+                              key={zone.id}
+                              expanded={expandedZoneId === zone.id}
+                              estimatedHeight={(zone.children.length + 1) * 52 + 24}
                             >
-                              <Pressable
-                                onPress={() =>
-                                  handleSelect(
-                                    expandedInRow.id,
-                                    displayName(expandedInRow)
-                                  )
-                                }
-                                accessibilityRole="button"
-                                accessibilityLabel={`Zona completa: ${displayName(expandedInRow)}`}
-                                accessibilityState={{
-                                  selected: selectedId === expandedInRow.id,
-                                }}
-                                className={`flex-row items-center gap-2.5 rounded-lg px-3 py-2.5 active:bg-z-surface-2/5 ${
-                                  selectedId === expandedInRow.id
-                                    ? "bg-z-surface-2/8"
-                                    : ""
-                                }`}
+                              {everExpanded.has(zone.id) && (
+                              <View
+                                className="mt-2 rounded-xl border border-white-6 bg-black-10 p-2 gap-0.5"
+                                style={{ borderColor: zoneBorder(zone.color) }}
                               >
-                                <Text
-                                  style={{
-                                    color: zoneTextColor(expandedInRow.color),
-                                  }}
-                                  className="flex-1 text-xs font-inter-semibold uppercase tracking-[4px]"
-                                >
-                                  Toda la zona
-                                </Text>
-                                {selectedId === expandedInRow.id && (
-                                  <Check size={14} color={COLORS.brass} />
-                                )}
-                              </Pressable>
-                              {expandedInRow.children.map((c) => (
-                                <SubRow
-                                  key={c.id}
-                                  cat={c}
-                                  color={expandedInRow.color}
-                                  isSelected={selectedId === c.id}
+                                <Pressable
                                   onPress={() =>
-                                    handleSelect(c.id, displayName(c))
+                                    handleSelect(zone.id, displayName(zone))
                                   }
-                                />
-                              ))}
-                            </View>
-                          )}
+                                  accessibilityRole="button"
+                                  accessibilityLabel={`Zona completa: ${displayName(zone)}`}
+                                  accessibilityState={{
+                                    selected: selectedId === zone.id,
+                                  }}
+                                  className={`flex-row items-center gap-2.5 rounded-lg px-3 py-2.5 active:bg-z-surface-2/5 ${
+                                    selectedId === zone.id ? "bg-z-surface-2/8" : ""
+                                  }`}
+                                >
+                                  <Text
+                                    style={{ color: zoneTextColor(zone.color) }}
+                                    className="flex-1 text-xs font-inter-semibold uppercase tracking-[4px]"
+                                  >
+                                    Toda la zona
+                                  </Text>
+                                  {selectedId === zone.id && (
+                                    <Check size={14} color={COLORS.brass} />
+                                  )}
+                                </Pressable>
+                                {zone.children.map((c) => (
+                                  <SubRow
+                                    key={c.id}
+                                    cat={c}
+                                    color={zone.color}
+                                    isSelected={selectedId === c.id}
+                                    onPress={() =>
+                                      handleSelect(c.id, displayName(c))
+                                    }
+                                  />
+                                ))}
+                              </View>
+                              )}
+                            </AnimatedAccordion>
+                          ))}
                         </View>
                       );
                     }

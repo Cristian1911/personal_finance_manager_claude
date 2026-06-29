@@ -70,6 +70,7 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react-native";
+import { COLORS } from "../../lib/constants/colors";
 
 /** Maps Lucide icon name strings (stored in DB for system categories) to RN
  * components. Mirrors the webapp `category-icon.tsx` ICON_MAP exactly so both
@@ -162,7 +163,7 @@ interface CategoryIconProps {
  * and emojis (user-created categories). The RN mirror of the webapp CategoryIcon;
  * fixes the bug where the raw icon-name string was printed as text.
  */
-export function CategoryIcon({ icon, size = 16, color = "#8b8b86" }: CategoryIconProps) {
+export function CategoryIcon({ icon, size = 16, color = COLORS.sageDark }: CategoryIconProps) {
   if (isEmoji(icon)) {
     return <Text style={{ fontSize: size }}>{icon}</Text>;
   }
