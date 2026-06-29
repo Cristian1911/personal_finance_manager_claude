@@ -57,7 +57,11 @@ import {
   captureCurrentLocation,
   linkNearestPingToTransaction,
 } from "../lib/services/location";
-import { createDestinatarioWithPattern } from "../lib/repositories/destinatarios";
+import {
+  getAllDestinatarios,
+  type DestinatarioWithCount,
+} from "../lib/repositories/destinatarios";
+import { DestinatarioPicker } from "../components/transactions/DestinatarioPicker";
 import { createRecurringTemplate } from "../lib/repositories/recurring";
 import { toLocalDateString } from "../lib/utils/date";
 import {
@@ -234,7 +238,10 @@ export default function CaptureScreen() {
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [categoryName, setCategoryName] = useState<string | null>(null);
   const [isSubscription, setIsSubscription] = useState(false);
-  const [createDestinatario, setCreateDestinatario] = useState(false);
+  const [destinatarios, setDestinatarios] = useState<DestinatarioWithCount[]>([]);
+  const [showDestinatarioPicker, setShowDestinatarioPicker] = useState(false);
+  const [destinatarioId, setDestinatarioId] = useState<string | null>(null);
+  const [destinatarioName, setDestinatarioName] = useState<string | null>(null);
   const [createRecurring, setCreateRecurring] = useState(false);
   const [showTransferSheet, setShowTransferSheet] = useState(false);
 
@@ -243,16 +250,23 @@ export default function CaptureScreen() {
       let active = true;
       (async () => {
         try {
-          const [accountRows, categoryRows, explicitDefault, lastUsed] =
-            await Promise.all([
-              getAllAccounts(),
-              getAllCategories(),
-              SecureStore.getItemAsync(EXPLICIT_DEFAULT_ACCOUNT_KEY),
-              SecureStore.getItemAsync(DEFAULT_ACCOUNT_KEY),
-            ]);
+          const [
+            accountRows,
+            categoryRows,
+            destinatarioRows,
+            explicitDefault,
+            lastUsed,
+          ] = await Promise.all([
+            getAllAccounts(),
+            getAllCategories(),
+            getAllDestinatarios(),
+            SecureStore.getItemAsync(EXPLICIT_DEFAULT_ACCOUNT_KEY),
+            SecureStore.getItemAsync(DEFAULT_ACCOUNT_KEY),
+          ]);
           if (!active) return;
           setAccounts(accountRows);
           setCategories(categoryRows);
+          setDestinatarios(destinatarioRows);
           const pick = (id: string | null) =>
             id && accountRows.some((row) => row.id === id) ? id : null;
           const resolved =
@@ -356,26 +370,6 @@ export default function CaptureScreen() {
     try {
       const trimmedDescription = description.trim();
 
-      // Resolve the destinatario *before* persisting the transaction so the
-      // new transaction row carries `destinatario_id` from the start. This
-      // mirrors webapp's persistTransaction (actions/transactions.ts:706),
-      // where destinatarioId is passed into the insert payload — not stamped
-      // afterwards. If destinatario creation fails the tx still saves.
-      let newDestinatarioId: string | null = null;
-      if (createDestinatario) {
-        try {
-          const { destinatarioId } = await createDestinatarioWithPattern({
-            user_id: session.user.id,
-            name: trimmedDescription,
-            default_category_id: categoryId,
-            pattern: trimmedDescription,
-          });
-          newDestinatarioId = destinatarioId;
-        } catch (err) {
-          console.error("Create destinatario from capture failed:", err);
-        }
-      }
-
       const createParams: CreateTransactionParams = {
         user_id: session.user.id,
         account_id: accountId,
@@ -388,7 +382,7 @@ export default function CaptureScreen() {
         merchant_name: trimmedDescription,
         raw_description: trimmedDescription,
         category_id: categoryId,
-        destinatario_id: newDestinatarioId,
+        destinatario_id: destinatarioId,
         notes: notes.trim() || null,
         provider: "MANUAL",
         capture_method: "MANUAL_FORM",
@@ -461,7 +455,7 @@ export default function CaptureScreen() {
               merchant_name: trimmedDescription,
               description: trimmedDescription,
               category_id: categoryId,
-              destinatario_id: newDestinatarioId,
+              destinatario_id: destinatarioId,
               account_type: selectedAccount?.account_type ?? null,
             });
           } catch (err) {
@@ -607,6 +601,26 @@ export default function CaptureScreen() {
           </Pressable>
         </View>
 
+        {/* Destinatario */}
+        <View className="mb-4">
+          <FieldLabel>Destinatario</FieldLabel>
+          <Pressable
+            onPress={() => setShowDestinatarioPicker(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Elegir destinatario"
+            className={`${PANEL_INSET_CLASS} flex-row items-center justify-between px-4 py-3`}
+          >
+            <Text
+              className={`text-sm font-inter-medium ${
+                destinatarioName ? "text-foreground" : "text-muted-foreground"
+              }`}
+            >
+              {destinatarioName ?? "Sin destinatario"}
+            </Text>
+            <ChevronRight size={16} color={COLORS.sageDark} />
+          </Pressable>
+        </View>
+
         {/* Date */}
         <View className="mb-4">
           <FieldLabel>Fecha</FieldLabel>
@@ -692,7 +706,7 @@ export default function CaptureScreen() {
                 Opciones relacionadas
               </Text>
               <Text className="mt-0.5 text-[11px] font-inter text-muted-foreground">
-                Expande para crear un destinatario o sembrar este gasto como recurrente.
+                Expande para sembrar este gasto como recurrente.
               </Text>
             </View>
             <ChevronDown
@@ -705,27 +719,6 @@ export default function CaptureScreen() {
             <View
               className={`${PANEL_INSET_CLASS} mt-2 px-4 py-4 gap-4`}
             >
-              <View className="flex-row items-start gap-3">
-                <View className="flex-1">
-                  <Text className="text-sm font-inter-semibold text-foreground">
-                    Crear destinatario
-                  </Text>
-                  <Text className="mt-0.5 text-[11px] font-inter text-muted-foreground">
-                    Guarda este comercio para reconocerlo más rápido la próxima vez.
-                  </Text>
-                </View>
-                <Switch
-                  value={createDestinatario}
-                  onValueChange={setCreateDestinatario}
-                  trackColor={{ false: COLORS.switchTrack, true: COLORS.income }}
-                  thumbColor={COLORS.foreground}
-                  ios_backgroundColor={COLORS.switchTrack}
-                  accessibilityLabel="Crear destinatario al guardar"
-                />
-              </View>
-
-              <View className="h-px bg-z-surface-2-6" />
-
               <View className="flex-row items-start gap-3">
                 <View className="flex-1">
                   <Text className="text-sm font-inter-semibold text-foreground">
@@ -790,6 +783,24 @@ export default function CaptureScreen() {
         selectedId={categoryId}
         categories={filteredCategories as PickerCategoryRow[]}
       />
+
+      {showDestinatarioPicker && (
+        <DestinatarioPicker
+          visible={showDestinatarioPicker}
+          onClose={() => setShowDestinatarioPicker(false)}
+          onSelect={(id, name) => {
+            setDestinatarioId(id);
+            setDestinatarioName(name);
+            // The picker can create a new destinatario — pull it into the list
+            // so re-opening shows it.
+            if (id && !destinatarios.some((d) => d.id === id)) {
+              getAllDestinatarios().then(setDestinatarios).catch(console.error);
+            }
+          }}
+          selectedId={destinatarioId}
+          destinatarios={destinatarios}
+        />
+      )}
 
       <TransferSheet
         visible={showTransferSheet}

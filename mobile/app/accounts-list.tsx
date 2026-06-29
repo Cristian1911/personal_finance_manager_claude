@@ -23,15 +23,11 @@ import {
   PANEL_SURFACE_SUBTLE_CLASS,
   SECTION_EYEBROW_CLASS,
 } from "../lib/constants/styles";
-
-const DEBT_TYPES = new Set(["CREDIT_CARD", "LOAN"]);
-
-function computeNetWorth(accounts: AccountRow[]) {
-  return accounts.reduce((sum, acc) => {
-    const balance = acc.current_balance ?? 0;
-    return DEBT_TYPES.has(acc.account_type) ? sum - balance : sum + balance;
-  }, 0);
-}
+import {
+  computeNetWorth,
+  computeSecondaryNetWorth,
+  DISPLAY_CURRENCY,
+} from "../lib/utils/net-worth";
 
 export default function AccountsListScreen() {
   const router = useRouter();
@@ -64,7 +60,14 @@ export default function AccountsListScreen() {
     }
   }, [sync, loadAccounts]);
 
-  const netWorth = useMemo(() => computeNetWorth(accounts), [accounts]);
+  const netWorth = useMemo(
+    () => computeNetWorth(accounts, DISPLAY_CURRENCY),
+    [accounts]
+  );
+  const secondaryNetWorth = useMemo(
+    () => computeSecondaryNetWorth(accounts, DISPLAY_CURRENCY),
+    [accounts]
+  );
   const isNegative = netWorth < 0;
 
   const listHeader = useMemo(
@@ -76,9 +79,31 @@ export default function AccountsListScreen() {
             className={`font-inter-bold text-3xl mt-2 ${
               isNegative ? "text-z-debt" : "text-foreground"
             }`}
+            style={{ fontVariant: ["tabular-nums"] }}
           >
-            {(isNegative ? "-" : "") + formatCurrency(Math.abs(netWorth), "COP" as CurrencyCode)}
+            {(isNegative ? "-" : "") +
+              formatCurrency(Math.abs(netWorth), DISPLAY_CURRENCY as CurrencyCode)}
           </Text>
+          {secondaryNetWorth.length > 0 && (
+            <View className="mt-3 gap-1.5 border-t border-white-6 pt-3">
+              {secondaryNetWorth.map(([cc, total]) => (
+                <View key={cc} className="flex-row items-center justify-between">
+                  <Text className="text-xs font-inter-medium text-muted-foreground">
+                    {cc}
+                  </Text>
+                  <Text
+                    className={`text-sm font-inter-medium ${
+                      total < 0 ? "text-z-debt" : "text-foreground"
+                    }`}
+                    style={{ fontVariant: ["tabular-nums"] }}
+                  >
+                    {(total < 0 ? "-" : "") +
+                      formatCurrency(Math.abs(total), cc as CurrencyCode)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
 
         <Pressable
@@ -98,7 +123,7 @@ export default function AccountsListScreen() {
         )}
       </View>
     ),
-    [netWorth, isNegative, accounts.length, router],
+    [netWorth, secondaryNetWorth, isNegative, accounts.length, router],
   );
 
   return (

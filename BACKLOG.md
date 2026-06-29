@@ -10,6 +10,22 @@
 
 ---
 
+## ★ Mobile↔webapp parity redesign — roadmap (2026-06-29)
+
+Full 3-cluster audit → `docs/audits/2026-06-29-mobile-parity-redesign-roadmap.md`. Root cause: mobile
+ships the read/consume half of most surfaces, omits the author/manage half. Tackle by phase (each = own PR):
+
+- **P0 redesigns:** **Budget** (legacy flat list → verdict hero + 50·30·20 + "Armar presupuesto" builder),
+  **Tendencias** (missing entirely — net-new screen, `@zeta/shared/analytics` is portable),
+  **Recurrentes** (create + edit forms missing entirely).
+- **Phase 0 quick wins:** Pendientes notification deep-link → `/recurrentes` (S); Accounts net-worth
+  COP-hardcoded **bug** (S); Capture destinatario picker — select existing (M); Etiquetas screen orphaned.
+- **P1 authoring/correctness:** Destinatarios authoring; Settings subpages (perfil/integraciones/email/
+  pdf-passwords); **Suscripciones** off the `subscriptions` table (correctness); Import (loan/OCR/multi);
+  Categorizar auto-review; Dashboard PrimerosPasos; Plan resumen zone.
+- **P2/P3 polish:** Deudas secondary widgets + Personas writes; Categories manager; Deseos reflexiones;
+  tx filters + detail account-reassignment; Puedo-pagar copy.
+
 ## Keyboard-aware input sweep (2026-06-29) — coverage remaining
 
 Adopted `docs/design-system/keyboard-handling.md` as the standard + added the coverage rule to the
