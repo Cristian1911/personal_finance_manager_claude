@@ -10,9 +10,15 @@ import {
   type TransactionDirection,
 } from "@zeta/shared";
 import { getDatabase } from "../db/database";
-import { applyLocalBalanceDelta, enqueueAccountUpdateCoalesced } from "./ledger-helpers";
+import { enqueueAccountUpdateCoalesced } from "./ledger-helpers";
 import { getAccountById } from "./accounts";
-import { createTransaction, updateTransaction } from "./transactions";
+import {
+  createTransaction,
+  createTransactionAndApplyBalance,
+  updateTransaction,
+  type CreateTransactionParams,
+} from "./transactions";
+import { findAndLinkLocalOccurrence } from "./recurring";
 import { getDestinatarioRulesForMatching } from "./destinatarios";
 
 /**
@@ -27,10 +33,9 @@ import { getDestinatarioRulesForMatching } from "./destinatarios";
  * caller runs `syncAll()` so the newly-inserted transaction + updated account
  * balance get pulled down into local SQLite (Movimientos/Inicio refresh).
  *
- * NOTE: the webapp's approve also runs `linkTransactionToOccurrence` to mark a
- * matching recurring occurrence paid. Mobile's own transaction-creation paths
- * (createTransaction, PDF import) don't auto-link occurrences either, so we
- * intentionally match that app-wide mobile convention here rather than diverge.
+ * NOTE: like the webapp's approve, this now runs `findAndLinkLocalOccurrence` to
+ * mark a matching pending recurring occurrence paid — app-wide on mobile as of the
+ * 2026-06-29 parity wave (the capture paths auto-link too; PDF import in its pass).
  *
  * Defense-in-depth: every query filters on `user_id` explicitly even though RLS
  * already enforces it, matching the project-wide policy.
@@ -490,28 +495,35 @@ export async function approveEmailTransaction(
   // Insert the transaction LOCALLY. createTransaction computes the same EMAIL
   // idempotency key when `pending.idempotency_key` is null (provider/date/amount/
   // raw_description match the old fallback), so cross-source dedup is preserved.
+  const createParams: CreateTransactionParams = {
+    user_id: userId,
+    account_id: accountId,
+    amount: parsed.amount,
+    currency_code: account.currency_code,
+    direction: parsed.direction,
+    transaction_date: parsed.transaction_date,
+    transaction_time: normalizeEmailTime(parsed.transaction_time),
+    raw_description: rawDescription,
+    description: cleanDescription,
+    merchant_name: merchantName,
+    category_id: categoryId,
+    categorization_source: categorizationSource,
+    destinatario_id: destinatarioId,
+    notes: reconcileNotes,
+    provider: "EMAIL",
+    capture_method: captureMethod,
+    status: "POSTED",
+    idempotency_key: pending.idempotency_key ?? undefined,
+  };
+
   let newTxId: string;
   try {
-    newTxId = await createTransaction({
-      user_id: userId,
-      account_id: accountId,
-      amount: parsed.amount,
-      currency_code: account.currency_code,
-      direction: parsed.direction,
-      transaction_date: parsed.transaction_date,
-      transaction_time: normalizeEmailTime(parsed.transaction_time),
-      raw_description: rawDescription,
-      description: cleanDescription,
-      merchant_name: merchantName,
-      category_id: categoryId,
-      categorization_source: categorizationSource,
-      destinatario_id: destinatarioId,
-      notes: reconcileNotes,
-      provider: "EMAIL",
-      capture_method: captureMethod,
-      status: "POSTED",
-      idempotency_key: pending.idempotency_key ?? undefined,
-    });
+    // Reconcile path: the manual tx already moved the balance, so insert WITHOUT
+    // a delta. Normal path: insert + local balance delta in ONE transaction
+    // (createTransactionAndApplyBalance) — replaces the old separate delta block.
+    newTxId = reconcileWithTransactionId
+      ? await createTransaction(createParams)
+      : await createTransactionAndApplyBalance(createParams, account);
   } catch (err) {
     // Local UNIQUE(idempotency_key) collision = already imported. Mark the
     // pending row imported (non-blocking) so it leaves the queue, and report
@@ -534,19 +546,10 @@ export async function approveEmailTransaction(
     });
   }
 
-  // Balance delta — skip when reconciling (the manual tx already moved it). This
-  // is the local side-effect the old remote-only insert dropped on mobile.
+  // Auto-link to a matching pending recurring occurrence (best-effort) — only on
+  // the normal path; the reconcile path preserves the manual tx's occurrence state.
   if (!reconcileWithTransactionId) {
-    await db.withTransactionAsync(async () => {
-      await applyLocalBalanceDelta(
-        db,
-        account,
-        parsed.direction,
-        parsed.amount,
-        account.currency_code,
-        now
-      );
-    });
+    await findAndLinkLocalOccurrence(newTxId).catch(() => false);
   }
 
   // REMOTE write, non-blocking — return the instant the local writes finish.

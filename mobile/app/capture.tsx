@@ -39,12 +39,17 @@ import {
 } from "../components/transactions/CategoryZonePickerSheet";
 import { formatAmountInput, parseFormattedAmount } from "../lib/amount";
 import { useAuth } from "../lib/auth";
-import { getAllAccounts, type AccountRow } from "../lib/repositories/accounts";
+import { getAccountById, getAllAccounts, type AccountRow } from "../lib/repositories/accounts";
 import {
   getAllCategories,
   type CategoryRow,
 } from "../lib/repositories/categories";
-import { createTransaction } from "../lib/repositories/transactions";
+import {
+  createTransaction,
+  createTransactionAndApplyBalance,
+  type CreateTransactionParams,
+} from "../lib/repositories/transactions";
+import { findAndLinkLocalOccurrence } from "../lib/repositories/recurring";
 import { trackProductEvent } from "../lib/analytics/product-events";
 import { getLocalProfile } from "../lib/profile";
 import {
@@ -371,7 +376,7 @@ export default function CaptureScreen() {
         }
       }
 
-      const newTxId = await createTransaction({
+      const createParams: CreateTransactionParams = {
         user_id: session.user.id,
         account_id: accountId,
         amount: parsedAmount,
@@ -388,7 +393,17 @@ export default function CaptureScreen() {
         provider: "MANUAL",
         capture_method: "MANUAL_FORM",
         is_subscription: isSubscription,
-      });
+      };
+      // Apply the local balance delta with the insert (mirror webapp
+      // persistTransaction). Falls back to a delta-less insert only if the
+      // account row can't be read (should not happen for a selected account).
+      const account = await getAccountById(accountId);
+      const newTxId = account
+        ? await createTransactionAndApplyBalance(createParams, account)
+        : await createTransaction(createParams);
+
+      // Auto-link to a matching pending recurring occurrence (best-effort).
+      await findAndLinkLocalOccurrence(newTxId).catch(() => false);
 
       trackProductEvent({
         event_name: "transaction_created",

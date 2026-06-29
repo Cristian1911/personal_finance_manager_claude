@@ -33,7 +33,8 @@ import {
   getAllAccounts,
   type AccountRow,
 } from "../lib/repositories/accounts";
-import { createTransaction } from "../lib/repositories/transactions";
+import { createTransactionAndApplyBalance } from "../lib/repositories/transactions";
+import { findAndLinkLocalOccurrence } from "../lib/repositories/recurring";
 import {
   DEBT_PAYMENT_CATEGORY_ID,
   isDebtInflow,
@@ -254,21 +255,25 @@ export default function CaptureVoiceScreen() {
         direction: parsed.direction,
         accountType: account.account_type,
       });
-      await createTransaction({
-        user_id: userId,
-        account_id: account.id,
-        category_id: isDebtPayment ? DEBT_PAYMENT_CATEGORY_ID : null,
-        amount: parsed.amount,
-        currency_code: account.currency_code as CurrencyCode,
-        direction: parsed.direction,
-        description: parsed.description,
-        merchant_name: parsed.description,
-        raw_description: parsed.description,
-        transaction_date: parsed.transaction_date,
-        provider: "MANUAL",
-        capture_method: "TEXT_QUICK_CAPTURE",
-        capture_input_text: finalTranscript || transcript,
-      });
+      const txId = await createTransactionAndApplyBalance(
+        {
+          user_id: userId,
+          account_id: account.id,
+          category_id: isDebtPayment ? DEBT_PAYMENT_CATEGORY_ID : null,
+          amount: parsed.amount,
+          currency_code: account.currency_code as CurrencyCode,
+          direction: parsed.direction,
+          description: parsed.description,
+          merchant_name: parsed.description,
+          raw_description: parsed.description,
+          transaction_date: parsed.transaction_date,
+          provider: "MANUAL",
+          capture_method: "TEXT_QUICK_CAPTURE",
+          capture_input_text: finalTranscript || transcript,
+        },
+        account
+      );
+      await findAndLinkLocalOccurrence(txId).catch(() => false);
       setStep("done");
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo guardar.");
