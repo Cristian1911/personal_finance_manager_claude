@@ -3,6 +3,8 @@ import { ActivityIndicator, ScrollView, View } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
+  anomalies,
+  budgetAdherenceSeries,
   buildVerdict,
   categorySeries,
   formatCurrency,
@@ -23,10 +25,20 @@ import {
   VerdictHeader,
   type RangeKey,
 } from "../components/tendencias/TendenciasView";
+import {
+  AnomaliesCard,
+  BudgetAdherenceCard,
+  IncomeExpenseCard,
+  LensTabs,
+  MoversCard,
+  SavingsRateCard,
+  type Lens,
+} from "../components/tendencias/TendenciasLenses";
 
 export default function TendenciasScreen() {
   const insets = useSafeAreaInsets();
   const [range, setRange] = useState<RangeKey>("6M");
+  const [lens, setLens] = useState<Lens>("gastos");
   const [dataset, setDataset] = useState<TendenciasDataset | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -83,7 +95,13 @@ export default function TendenciasScreen() {
         { savings, movers: moverList, avgExpense, avgIncome },
         fmt
       ),
-      categories: [...cats].sort((a, b) => b.total - a.total),
+      // categorySeries already returns total-desc; spread to snapshot before exit.
+      categories: [...cats],
+      savings,
+      cashflow,
+      adherence: budgetAdherenceSeries(rows, config, cats),
+      movers: moverList,
+      anomalies: anomalies(rows, config, cats),
     };
   }, [dataset]);
 
@@ -98,7 +116,23 @@ export default function TendenciasScreen() {
         <ScrollView className="flex-1" contentContainerStyle={contentStyle}>
           {vm ? <VerdictHeader verdict={vm.verdict} /> : null}
           <PeriodControl range={range} onChange={setRange} />
-          {vm ? <CategoryTrendList categories={vm.categories} /> : null}
+          {vm ? <LensTabs lens={lens} onChange={setLens} /> : null}
+          {vm && lens === "gastos" ? (
+            <CategoryTrendList categories={vm.categories} />
+          ) : null}
+          {vm && lens === "ahorro" ? (
+            <>
+              <SavingsRateCard savings={vm.savings} />
+              <IncomeExpenseCard cashflow={vm.cashflow} />
+              <BudgetAdherenceCard adherence={vm.adherence} />
+            </>
+          ) : null}
+          {vm && lens === "cambios" ? (
+            <>
+              <MoversCard movers={vm.movers} />
+              <AnomaliesCard anomalies={vm.anomalies} />
+            </>
+          ) : null}
         </ScrollView>
       )}
     </View>

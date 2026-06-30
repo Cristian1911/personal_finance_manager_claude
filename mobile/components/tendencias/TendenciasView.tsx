@@ -51,6 +51,7 @@ export function PeriodControl({
             onPress={() => onChange(r)}
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
+            hitSlop={{ top: 10, bottom: 10 }}
             className={`rounded-full border px-3 py-1.5 active:opacity-80 ${
               active
                 ? "border-z-brass-20 bg-z-brass-10"
@@ -72,7 +73,7 @@ export function PeriodControl({
 }
 
 /** MoM delta for a spend row: up = spending more (concerning, red), down = green. */
-function DeltaChip({ pct }: { pct: number }) {
+export function DeltaChip({ pct }: { pct: number }) {
   if (!isFinite(pct)) return null;
   const rounded = Math.round(pct);
   if (rounded === 0) return null;
@@ -88,7 +89,7 @@ function DeltaChip({ pct }: { pct: number }) {
   );
 }
 
-const Sparkline = memo(function Sparkline({
+export const Sparkline = memo(function Sparkline({
   points,
   color,
 }: {
@@ -226,7 +227,7 @@ export function CategoryTrendList({
   const hidden = categories.length - DEFAULT_VISIBLE;
 
   return (
-    <View className={`${PANEL_SURFACE_SUBTLE_CLASS} mt-4 p-4`}>
+    <View className={`${PANEL_SURFACE_SUBTLE_CLASS} mt-3 p-4`}>
       <Text className="mb-1 text-sm font-inter-semibold text-foreground">
         Gasto por categoría
       </Text>
