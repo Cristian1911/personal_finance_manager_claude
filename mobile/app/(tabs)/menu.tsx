@@ -7,6 +7,7 @@ import {
   PiggyBank,
   Repeat,
   Users,
+  TrendingUp,
 } from "lucide-react-native";
 import { MobileHeader } from "../../components/ui/MobileHeader";
 import { HubEntry } from "../../components/ui/HubEntry";
@@ -38,6 +39,12 @@ export default function MenuScreen() {
           title="Presupuestos"
           hint="Control mensual por categoría"
           onPress={() => router.push("/(tabs)/plan" as any)}
+        />
+        <HubEntry
+          icon={TrendingUp}
+          title="Tendencias"
+          hint="¿A dónde va tu dinero?"
+          onPress={() => router.push("/tendencias" as any)}
         />
         <HubEntry
           icon={Repeat}
