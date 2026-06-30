@@ -1,4 +1,5 @@
 export * from "./types";
+export * from "./range";
 export * from "./category-series";
 export * from "./cashflow";
 export * from "./recipients";

@@ -673,6 +673,20 @@ export const DB_MIGRATIONS: DbMigration[] = [
       `ALTER TABLE categories ADD COLUMN direction TEXT`,
     ],
   },
+  {
+    version: 23,
+    statements: [
+      // Composite partial index for the Tendencias analytics query — it filters
+      // account_id + transaction_date with these always-present visibility
+      // guards, so this lets SQLite satisfy the whole WHERE with one range scan
+      // (keeps load fast on multi-year import history).
+      `CREATE INDEX IF NOT EXISTS idx_transactions_analytics
+        ON transactions(account_id, transaction_date)
+        WHERE is_excluded = 0
+          AND reconciled_into_transaction_id IS NULL
+          AND transfer_group_id IS NULL`,
+    ],
+  },
 ];
 
 export const LATEST_DB_VERSION =
