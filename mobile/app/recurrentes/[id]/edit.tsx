@@ -1,51 +1,81 @@
 import { useCallback, useState } from "react";
 import { ActivityIndicator, Alert, View } from "react-native";
-import { useFocusEffect, useRouter } from "expo-router";
-import type { RecurrenceFrequency } from "@zeta/shared";
-import { MobileHeader } from "../../components/ui/MobileHeader";
-import { COLORS } from "../../lib/constants/colors";
-import { useAuth } from "../../lib/auth";
-import { getAllAccounts, type AccountRow } from "../../lib/repositories/accounts";
-import { getAllCategories, type CategoryRow } from "../../lib/repositories/categories";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import type { RecurrenceFrequency, TransactionDirection } from "@zeta/shared";
+import { MobileHeader } from "../../../components/ui/MobileHeader";
+import { COLORS } from "../../../lib/constants/colors";
+import { useAuth } from "../../../lib/auth";
+import { getAllAccounts, type AccountRow } from "../../../lib/repositories/accounts";
+import {
+  getAllCategories,
+  type CategoryRow,
+} from "../../../lib/repositories/categories";
 import {
   getAllDestinatarios,
   type DestinatarioWithCount,
-} from "../../lib/repositories/destinatarios";
-import { createRecurringTemplate } from "../../lib/repositories/recurring";
+} from "../../../lib/repositories/destinatarios";
+import {
+  getTemplateById,
+  updateRecurringTemplate,
+} from "../../../lib/repositories/recurring";
 import {
   RecurringForm,
   type RecurringFormValues,
-} from "../../components/recurrentes/RecurringForm";
+} from "../../../components/recurrentes/RecurringForm";
 
-export default function NewRecurrenteScreen() {
+export default function EditRecurrenteScreen() {
   const router = useRouter();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [categories, setCategories] = useState<CategoryRow[]>([]);
   const [destinatarios, setDestinatarios] = useState<DestinatarioWithCount[]>([]);
+  const [initial, setInitial] = useState<Partial<RecurringFormValues> | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
+    if (!id) return;
     try {
-      const [a, c, d] = await Promise.all([
+      const [a, c, d, tpl] = await Promise.all([
         getAllAccounts(),
         getAllCategories(),
         getAllDestinatarios(),
+        getTemplateById(id),
       ]);
       setAccounts(a);
       setCategories(c);
       setDestinatarios(d);
+      if (!tpl) {
+        Alert.alert("Error", "No se encontró la recurrente.");
+        router.back();
+        return;
+      }
+      setInitial({
+        merchant_name: tpl.merchant_name ?? "",
+        direction: tpl.direction as TransactionDirection,
+        amount: tpl.amount,
+        account_id: tpl.account_id,
+        currency_code: tpl.currency_code,
+        frequency: tpl.frequency,
+        start_date: tpl.start_date,
+        end_date: tpl.end_date,
+        category_id: tpl.category_id,
+        destinatario_id: tpl.destinatario_id,
+        transfer_source_account_id: tpl.transfer_source_account_id,
+        description: tpl.description,
+        day_of_month: tpl.day_of_month,
+        day_of_week: tpl.day_of_week,
+      });
     } catch (error) {
-      console.error("Failed to load recurrente form data:", error);
-      Alert.alert(
-        "Error",
-        "No se pudieron cargar los datos para crear la recurrente."
-      );
+      console.error("Failed to load recurrente:", error);
+      Alert.alert("Error", "No se pudo cargar la recurrente.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [id, router]);
 
   useFocusEffect(
     useCallback(() => {
@@ -55,11 +85,11 @@ export default function NewRecurrenteScreen() {
 
   const handleSubmit = useCallback(
     async (values: RecurringFormValues) => {
-      if (!session?.user?.id) return;
+      if (!session?.user?.id || !id) return;
       setSaving(true);
       try {
         const account = accounts.find((a) => a.id === values.account_id);
-        await createRecurringTemplate({
+        await updateRecurringTemplate(id, {
           user_id: session.user.id,
           account_id: values.account_id,
           amount: values.amount,
@@ -79,24 +109,27 @@ export default function NewRecurrenteScreen() {
         });
         router.back();
       } catch (error) {
-        console.error("Failed to create recurrente:", error);
+        console.error("Failed to update recurrente:", error);
         Alert.alert(
           "Error",
           error instanceof Error
             ? error.message
-            : "No se pudo crear la recurrente."
+            : "No se pudo actualizar la recurrente."
         );
         setSaving(false);
       }
     },
-    [accounts, session?.user?.id, router]
+    [accounts, session?.user?.id, id, router]
   );
 
   return (
     <View className="flex-1 bg-background">
-      <MobileHeader variant="sub" title="Nueva recurrente" />
-      {loading ? (
-        <View className="flex-1 items-center justify-center">
+      <MobileHeader variant="sub" title="Editar recurrente" />
+      {loading || !initial ? (
+        <View
+          className="flex-1 items-center justify-center"
+          accessibilityLabel="Cargando recurrente"
+        >
           <ActivityIndicator size="large" color={COLORS.brass} />
         </View>
       ) : (
@@ -104,7 +137,8 @@ export default function NewRecurrenteScreen() {
           accounts={accounts}
           categories={categories}
           destinatarios={destinatarios}
-          submitLabel="Crear recurrente"
+          initial={initial}
+          submitLabel="Actualizar"
           saving={saving}
           onSubmit={handleSubmit}
         />

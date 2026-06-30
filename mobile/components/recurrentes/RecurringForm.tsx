@@ -53,6 +53,10 @@ export type RecurringFormValues = {
   destinatario_id: string | null;
   transfer_source_account_id: string | null;
   description: string | null;
+  // Preserved as-is on edit (no UI — the generator anchors on start_date, but
+  // we round-trip them rather than null an existing value).
+  day_of_month: number | null;
+  day_of_week: number | null;
 };
 
 function FieldLabel({ children }: { children: ReactNode }) {
@@ -219,6 +223,8 @@ export function RecurringForm({
       destinatario_id: destinatarioId,
       transfer_source_account_id: isDebtPayment ? transferSourceId : null,
       description: description.trim() || null,
+      day_of_month: initial?.day_of_month ?? null,
+      day_of_week: initial?.day_of_week ?? null,
     });
   }
 
