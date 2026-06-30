@@ -45,6 +45,27 @@ Two parts on that branch:
   dropping the column. No mobile WRITE path yet — read parity only (mobile reads webapp-created
   shared payments). Mobile create/split UI is a later phase (tracks with Personas mobile writes).
 
+## Pago compartido — factura persistente / storage (2026-06-30)
+
+V1 (full-page wizard) attaches the invoice as a **client-side reference only** — `URL.createObjectURL`
+shown in the zoom/pan viewer while filling values, discarded on submit/leave. Nothing is uploaded.
+Persisting it is deferred because storage cost could become a paid/subscription feature.
+
+When building the persisted version:
+- **Storage**: private bucket `shared-payment-invoices` + table `public.shared_payment_invoices`
+  (`user_id`, `split_group_id`, `storage_path`, `mime_type`, `file_size_bytes`). The migration SQL +
+  the exact `database.ts` type block were already drafted by `supabase-migrator` (in the
+  2026-06-30 session transcript) following the `bug-reports`/`design-reviews` storage-policy
+  convention (`(select auth.uid())::text = (storage.foldername(name))[1]`, 4 ops). Re-generate.
+- **Resize + readability confirmation** before upload (compress client-side, ask the user to confirm
+  the receipt is legible) to cap storage size — only relevant once we actually upload.
+- **Upload flow**: create split → browser upload to `<user>/<split_group_id>.<ext>` → `attachSharedPaymentInvoice`
+  server action inserts the metadata row. `getSharedPaymentGroups` adds a 1h `createSignedUrl`;
+  `shared-payment-card.tsx` shows a thumbnail/"Factura" button → opens `ImageZoomPan` in a Dialog.
+- **Retroactive attach/replace** the invoice from the card (v1 is attach-at-create only).
+- **Mobile**: view the invoice on the native app (mobile reads shared payments; viewer is later).
+- Reuse the existing `webapp/src/components/ui/image-zoom-pan.tsx` (shipped in v1) for all viewers.
+
 ## Keyboard-aware input sweep (2026-06-29) — coverage remaining
 
 Adopted `docs/design-system/keyboard-handling.md` as the standard + added the coverage rule to the

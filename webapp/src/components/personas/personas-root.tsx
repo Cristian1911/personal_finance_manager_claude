@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, Users, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -8,7 +9,6 @@ import { BRASS_BUTTON_CLASS, BRASS_GHOST_BUTTON_CLASS } from "@/lib/constants/st
 import { formatCurrency } from "@/lib/utils/currency";
 import { PersonaCard } from "./persona-card";
 import { CreatePersonalDebtSheet } from "./create-personal-debt-sheet";
-import { CreateSharedPaymentSheet } from "./create-shared-payment-sheet";
 import { SharedPaymentCard } from "./shared-payment-card";
 import type {
   PersonalDebtWithDetails,
@@ -25,8 +25,8 @@ interface PersonasRootProps {
 }
 
 export function PersonasRoot({ debts, overview, currency, sharedGroups }: PersonasRootProps) {
+  const router = useRouter();
   const [createOpen, setCreateOpen] = useState(false);
-  const [splitOpen, setSplitOpen] = useState(false);
 
   // Shared-payment debts live in their own grouped cards — keep them out of the
   // standalone Debo / Me deben lists to avoid showing each person twice.
@@ -58,7 +58,7 @@ export function PersonasRoot({ debts, overview, currency, sharedGroups }: Person
         <Button
           variant="ghost"
           className={cn(BRASS_GHOST_BUTTON_CLASS)}
-          onClick={() => setSplitOpen(true)}
+          onClick={() => router.push("/deudas-personales/pago-compartido/nuevo")}
         >
           <Receipt className="mr-1.5 size-4" />
           Pago compartido
@@ -108,9 +108,6 @@ export function PersonasRoot({ debts, overview, currency, sharedGroups }: Person
       {/* Conditionally mounted so internal state resets on every open. */}
       {createOpen && (
         <CreatePersonalDebtSheet open={createOpen} onOpenChange={setCreateOpen} currency={currency} />
-      )}
-      {splitOpen && (
-        <CreateSharedPaymentSheet open={splitOpen} onOpenChange={setSplitOpen} currency={currency} />
       )}
     </div>
   );
