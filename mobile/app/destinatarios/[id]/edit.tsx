@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
 import { COLORS } from "../../../lib/constants/colors";
 import {
@@ -77,11 +77,11 @@ export default function EditDestinatarioScreen() {
     }
   }, [id, router]);
 
-  useFocusEffect(
-    useCallback(() => {
-      void load();
-    }, [load])
-  );
+  // useEffect (not useFocusEffect): load once / on id change. Reloading on
+  // refocus would silently clobber the user's unsaved edits.
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const handleSave = useCallback(async () => {
     if (!id) return;

@@ -193,9 +193,11 @@ export async function createDestinatarioWithPattern(
 
 export type UpdateDestinatarioParams = {
   name: string;
-  default_category_id?: string | null;
-  notes?: string | null;
-  is_active?: boolean;
+  // Required (not optional) — the UPDATE writes every column, so an omitted
+  // field would wipe the existing value. Callers must pass the full set.
+  default_category_id: string | null;
+  notes: string | null;
+  is_active: boolean;
 };
 
 /**
