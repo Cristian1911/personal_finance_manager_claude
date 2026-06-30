@@ -3,19 +3,30 @@ import {
   type AnalyticsRange,
   type AnalyticsTx,
   type CategoryMeta,
+  type DestinatarioMeta,
 } from "@zeta/shared";
 import { getDatabase } from "../db/database";
 import { isDebtAccountType } from "../constants/accounts";
 
+/** Deterministic brand-palette color for a destinatario id (no color column).
+ * Mirrors the webapp `destColor` so both platforms render the same swatch. */
+const D_PALETTE = ["#937844", "#5CB88A", "#E8875A", "#768053", "#B29256", "#D9CCB9"];
+function destColor(id: string): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return D_PALETTE[h % D_PALETTE.length];
+}
+
 /** Local mirror of the webapp `TendenciasDataset` — the rows + config inputs the
  * `@zeta/shared/analytics` engine needs. Ports `getTendenciasDataset` against
- * local SQLite. (destinatarioMeta + categoryHierarchy land with top-recipients
- * and drill-down in later slices.) */
+ * local SQLite. (categoryHierarchy lands with drill-down in a later slice.) */
 export interface TendenciasDataset {
   rows: AnalyticsTx[];
   months: string[];
   debtAccountIds: string[];
   categoryMeta: [string, CategoryMeta][];
+  destinatarioMeta: [string, DestinatarioMeta][];
+  currentBalance: number;
 }
 
 export async function getTendenciasDataset(
@@ -28,17 +39,35 @@ export async function getTendenciasDataset(
   const accounts = await db.getAllAsync<{
     id: string;
     account_type: string;
-  }>("SELECT id, account_type FROM accounts WHERE is_active = 1");
+    current_balance: number | null;
+    currency_code: string | null;
+  }>(
+    "SELECT id, account_type, current_balance, currency_code FROM accounts WHERE is_active = 1"
+  );
   if (accounts.length === 0) {
-    return { rows: [], months, debtAccountIds: [], categoryMeta: [] };
+    return {
+      rows: [],
+      months,
+      debtAccountIds: [],
+      categoryMeta: [],
+      destinatarioMeta: [],
+      currentBalance: 0,
+    };
   }
   const debtAccountIds = accounts
     .filter((a) => isDebtAccountType(a.account_type))
     .map((a) => a.id);
+  // Net worth in the active currency from non-debt accounts (forecast seed).
+  let currentBalance = 0;
+  for (const a of accounts) {
+    if (!isDebtAccountType(a.account_type) && a.currency_code === currency) {
+      currentBalance += Number(a.current_balance ?? 0);
+    }
+  }
   const accountIds = accounts.map((a) => a.id);
   const placeholders = accountIds.map(() => "?").join(",");
 
-  const [txRows, budgetRows] = await Promise.all([
+  const [txRows, budgetRows, destRows] = await Promise.all([
     db.getAllAsync<{
       transaction_date: string;
       amount: number;
@@ -71,6 +100,9 @@ export async function getTendenciasDataset(
     ),
     db.getAllAsync<{ category_id: string | null; amount: number }>(
       "SELECT category_id, amount FROM budgets WHERE period = 'monthly'"
+    ),
+    db.getAllAsync<{ id: string; name: string }>(
+      "SELECT id, name FROM destinatarios"
     ),
   ]);
 
@@ -105,10 +137,19 @@ export async function getTendenciasDataset(
     }
   }
 
+  const usedDestIds = new Set(
+    rows.map((r) => r.destinatarioId).filter((id): id is string => Boolean(id))
+  );
+  const destinatarioMeta: [string, DestinatarioMeta][] = destRows
+    .filter((d) => usedDestIds.has(d.id))
+    .map((d) => [d.id, { name: d.name, color: destColor(d.id) }]);
+
   return {
     rows,
     months,
     debtAccountIds,
     categoryMeta: [...categoryMeta.entries()],
+    destinatarioMeta,
+    currentBalance,
   };
 }

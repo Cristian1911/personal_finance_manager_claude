@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import Svg, { Polyline, Rect } from "react-native-svg";
 import { AlertTriangle } from "lucide-react-native";
@@ -7,7 +7,10 @@ import {
   type AdherencePoint,
   type Anomaly,
   type CashflowPoint,
+  type FixedVariable,
+  type ForecastPoint,
   type Mover,
+  type RecipientRank,
   type SavingsPoint,
 } from "@zeta/shared";
 import { COLORS } from "../../lib/constants/colors";
@@ -297,6 +300,174 @@ export function AnomaliesCard({ anomalies }: { anomalies: Anomaly[] }) {
           </View>
         ))
       )}
+    </View>
+  );
+}
+
+const RECIPIENTS_VISIBLE = 8;
+// "Ver todas" renders all recipients inline — bounded by distinct merchants in
+// the window (typically 20–80, same blessed regime as the category list). A 200+
+// merchant user over a 12M range should route to a FlatList screen instead of an
+// inline mount (~120 threshold). Tracked in BACKLOG.
+
+export function TopRecipientsCard({ recipients }: { recipients: RecipientRank[] }) {
+  const [showAll, setShowAll] = useState(false);
+  const max = useMemo(
+    () => Math.max(...recipients.map((r) => r.total), 1),
+    [recipients]
+  );
+  if (recipients.length === 0) return null;
+  const visible = showAll ? recipients : recipients.slice(0, RECIPIENTS_VISIBLE);
+  const hidden = recipients.length - RECIPIENTS_VISIBLE;
+  return (
+    <View className={`${PANEL_SURFACE_SUBTLE_CLASS} mt-3 p-4`}>
+      <Text className="mb-1 text-sm font-inter-semibold text-foreground">
+        ¿A dónde va? · Destinatarios
+      </Text>
+      {visible.map((r, i) => (
+        <View
+          key={r.destinatarioId ?? "none"}
+          className={`flex-row items-center gap-2.5 py-2.5 ${i === 0 ? "" : "border-t border-white-6"}`}
+        >
+          <View
+            accessible={false}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            className="h-7 w-7 items-center justify-center rounded-lg"
+            style={{ backgroundColor: r.color }}
+          >
+            <Text className="text-xs font-inter-bold text-z-ink">
+              {r.name.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+          <View className="min-w-0 flex-1">
+            <View className="flex-row items-baseline justify-between gap-2">
+              <Text
+                numberOfLines={1}
+                className="min-w-0 flex-1 text-sm font-inter-semibold text-foreground"
+              >
+                {r.name}
+              </Text>
+              <Text className="text-sm font-inter-semibold text-foreground" style={TABULAR}>
+                {formatCurrency(r.total, CURRENCY)}
+              </Text>
+            </View>
+            <View className="mt-1 h-1.5 overflow-hidden rounded-full bg-black-10">
+              <View
+                className="h-full rounded-full"
+                style={{ width: `${(r.total / max) * 100}%`, backgroundColor: r.color }}
+              />
+            </View>
+            <View className="mt-1 flex-row items-center gap-2">
+              <Text className="text-[11px] font-inter text-z-sage-dark">
+                {r.count} mov.
+              </Text>
+              {r.momPct != null ? <DeltaChip pct={r.momPct} /> : null}
+            </View>
+          </View>
+        </View>
+      ))}
+      {hidden > 0 ? (
+        <Pressable
+          onPress={() => setShowAll((s) => !s)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: showAll }}
+          className="mt-2 flex-row items-center justify-center gap-1 py-2 active:opacity-80"
+        >
+          <Text className="text-xs font-inter-semibold text-z-brass">
+            {showAll ? "Ver menos" : `Ver todas (${recipients.length})`}
+          </Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+export function FixedVariableCard({ data }: { data: FixedVariable }) {
+  const total = data.fixed + data.variable || 1;
+  const fixedPct = Math.round((data.fixed / total) * 100);
+  const mom = data.variableMoM;
+  return (
+    <View className={`${PANEL_SURFACE_SUBTLE_CLASS} mt-3 p-4`}>
+      <Text className="mb-2 text-sm font-inter-semibold text-foreground">
+        Fijos vs. variables
+      </Text>
+      <View className="h-7 flex-row overflow-hidden rounded-lg border border-white-6">
+        <View
+          className="items-center justify-center"
+          style={{ width: `${fixedPct}%`, backgroundColor: COLORS.brass }}
+        >
+          <Text className="text-[11px] font-inter-semibold text-z-ink" numberOfLines={1}>
+            Fijos {fixedPct}%
+          </Text>
+        </View>
+        <View
+          className="items-center justify-center"
+          style={{ width: `${100 - fixedPct}%`, backgroundColor: COLORS.expense }}
+        >
+          <Text className="text-[11px] font-inter-semibold text-z-ink" numberOfLines={1}>
+            Variables {100 - fixedPct}%
+          </Text>
+        </View>
+      </View>
+      <View className="mt-2 flex-row justify-between">
+        <Text className="text-[11px] font-inter text-z-sage-dark">
+          Fijos{" "}
+          <Text className="font-inter-semibold text-foreground" style={TABULAR}>
+            {formatCurrency(data.fixed, CURRENCY)}
+          </Text>
+        </Text>
+        <View className="flex-row items-center gap-1.5">
+          <Text className="text-[11px] font-inter text-z-sage-dark">
+            Variables{" "}
+            <Text className="font-inter-semibold text-foreground" style={TABULAR}>
+              {formatCurrency(data.variable, CURRENCY)}
+            </Text>
+          </Text>
+          {mom != null && isFinite(mom) && Math.round(mom) !== 0 ? (
+            <DeltaChip pct={mom} />
+          ) : null}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+export function ForecastCard({
+  points,
+  currentBalance,
+}: {
+  points: ForecastPoint[];
+  currentBalance: number;
+}) {
+  if (points.length === 0) return null;
+  const last = points[points.length - 1];
+  const values = [Math.round(currentBalance), ...points.map((p) => p.balance)];
+  return (
+    <View className={`${PANEL_SURFACE_SUBTLE_CLASS} mt-3 p-4`}>
+      <Text className="mb-2 text-sm font-inter-semibold text-foreground">
+        Proyección de saldo
+      </Text>
+      <TrendLine values={values} color={COLORS.brass} height={56} />
+      <View className="mt-2 flex-row justify-between">
+        <Text className="text-[11px] font-inter text-z-sage-dark">
+          Saldo hoy{" "}
+          <Text className="font-inter-semibold text-foreground" style={TABULAR}>
+            {formatCurrency(currentBalance, CURRENCY)}
+          </Text>
+        </Text>
+        {last ? (
+          <Text className="text-[11px] font-inter text-z-sage-dark">
+            Proy. {monthShort(last.month)}{" "}
+            <Text className="font-inter-semibold text-z-brass" style={TABULAR}>
+              {formatCurrency(last.balance, CURRENCY)}
+            </Text>
+          </Text>
+        ) : null}
+      </View>
+      <Text className="mt-2 text-[11px] font-inter text-z-sage-dark">
+        Proyección lineal sobre tu neto promedio. No incluye ingresos no confirmados.
+      </Text>
     </View>
   );
 }
