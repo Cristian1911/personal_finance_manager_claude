@@ -134,6 +134,7 @@ export default function EditRecurrenteScreen() {
         </View>
       ) : (
         <RecurringForm
+          key={id}
           accounts={accounts}
           categories={categories}
           destinatarios={destinatarios}
