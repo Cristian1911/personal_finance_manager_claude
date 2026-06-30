@@ -11,6 +11,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import { AppKeyboardAwareScrollView } from "../components/common/AppKeyboardAwareScrollView";
+import { Plus } from "lucide-react-native";
 import { MobileHeader } from "../components/ui/MobileHeader";
 import { CategoryIcon } from "../components/ui/CategoryIcon";
 import { useAuth } from "../lib/auth";
@@ -20,6 +21,7 @@ import {
   saveBudgetDraft,
   type BudgetBuilderRow,
 } from "../lib/repositories/budgets";
+import { createCategory } from "../lib/repositories/categories";
 import { toLocalMonthString } from "../lib/utils/date";
 import { parseLocalizedAmount } from "../lib/amount";
 import { COLORS } from "../lib/constants/colors";
@@ -111,6 +113,9 @@ export default function ArmarPresupuestoScreen() {
   const [original, setOriginal] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [addingZoneId, setAddingZoneId] = useState<string | null>(null);
+  const [newLineName, setNewLineName] = useState("");
+  const [creating, setCreating] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -168,6 +173,43 @@ export default function ArmarPresupuestoScreen() {
   const setAmount = useCallback(
     (id: string, v: string) => setDraft((p) => ({ ...p, [id]: v })),
     []
+  );
+
+  const handleAddLine = useCallback(
+    async (parent: BudgetBuilderRow) => {
+      const name = newLineName.trim();
+      if (!name || !session?.user?.id) return;
+      setCreating(true);
+      try {
+        await createCategory({
+          user_id: session.user.id,
+          name,
+          parent_id: parent.category_id,
+          color: parent.category_color,
+          // Builder zones are all expense (income is filtered out), so a new
+          // line is always OUTFLOW — keeps it out of the webapp income picker.
+          direction: "OUTFLOW",
+        });
+        setAddingZoneId(null);
+        setNewLineName("");
+        // Refresh rows but keep the in-progress draft (don't wipe unsaved edits).
+        const fresh = await getBudgetBuilderRows();
+        setRows(fresh);
+        setOriginal((prev) => {
+          const next = { ...prev };
+          for (const r of fresh) {
+            if (!(r.category_id in next)) next[r.category_id] = r.amount;
+          }
+          return next;
+        });
+      } catch (error) {
+        console.error("Failed to add budget line:", error);
+        Alert.alert("Error", "No se pudo crear la línea.");
+      } finally {
+        setCreating(false);
+      }
+    },
+    [newLineName, session?.user?.id]
   );
 
   const handleSave = useCallback(async () => {
@@ -300,6 +342,54 @@ export default function ArmarPresupuestoScreen() {
                     last={i === lineRows.length - 1}
                   />
                 ))}
+
+                {addingZoneId === zone.parent.category_id ? (
+                  <View className="flex-row items-center gap-2 border-t border-white-6 px-3.5 py-3">
+                    <TextInput
+                      accessibilityLabel="Nombre de la línea"
+                      value={newLineName}
+                      onChangeText={setNewLineName}
+                      placeholder="Nombre de la línea"
+                      placeholderTextColor={COLORS.sageDark}
+                      autoFocus
+                      returnKeyType="done"
+                      onSubmitEditing={() => handleAddLine(zone.parent)}
+                      className="flex-1 rounded-xl border border-white-6 bg-black-10 px-3 py-2 text-sm font-inter-medium text-foreground"
+                    />
+                    <Pressable
+                      onPress={() =>
+                        newLineName.trim()
+                          ? handleAddLine(zone.parent)
+                          : setAddingZoneId(null)
+                      }
+                      disabled={creating}
+                      accessibilityRole="button"
+                      accessibilityLabel={newLineName.trim() ? "Crear línea" : "Cancelar"}
+                      accessibilityState={{ disabled: creating }}
+                      className="rounded-xl bg-z-brass-10 px-3 py-2 active:opacity-80"
+                      style={creating ? { opacity: 0.5 } : undefined}
+                    >
+                      <Text className="text-[13px] font-inter-semibold text-z-brass">
+                        {newLineName.trim() ? "Crear" : "Cancelar"}
+                      </Text>
+                    </Pressable>
+                  </View>
+                ) : (
+                  <Pressable
+                    onPress={() => {
+                      setAddingZoneId(zone.parent.category_id);
+                      setNewLineName("");
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Agregar línea a ${zone.parent.category_name}`}
+                    className="flex-row items-center gap-2 border-t border-white-6 px-3.5 py-3 active:opacity-80"
+                  >
+                    <Plus size={14} color={COLORS.brass} />
+                    <Text className="text-[13px] font-inter-medium text-z-brass">
+                      Otra línea
+                    </Text>
+                  </Pressable>
+                )}
               </View>
             </View>
           );
