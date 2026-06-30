@@ -1,7 +1,7 @@
 import * as Crypto from "expo-crypto";
 import type { DestinatarioRule } from "@zeta/shared";
 import { getDatabase } from "../db/database";
-import { enqueueInsert } from "../sync/queue";
+import { enqueueInsert, enqueueUpdate } from "../sync/queue";
 
 export type DestinatarioRow = {
   id: string;
@@ -189,4 +189,48 @@ export async function createDestinatarioWithPattern(
   });
 
   return { destinatarioId, ruleId };
+}
+
+export type UpdateDestinatarioParams = {
+  name: string;
+  default_category_id?: string | null;
+  notes?: string | null;
+  is_active?: boolean;
+};
+
+/**
+ * Update a destinatario's editable fields + enqueue the sync UPDATE. `name_hmac`
+ * is recomputed server-side from the (encrypted) name on the next sync, exactly
+ * as on create — mobile sends plaintext name only. Mirrors webapp
+ * `updateDestinatario` (its other effects are Next.js cache revalidation only).
+ */
+export async function updateDestinatario(
+  id: string,
+  params: UpdateDestinatarioParams
+): Promise<void> {
+  const db = await getDatabase();
+  const now = new Date().toISOString();
+  const fields = {
+    name: params.name,
+    default_category_id: params.default_category_id ?? null,
+    notes: params.notes ?? null,
+    is_active: params.is_active ?? true,
+    updated_at: now,
+  };
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(
+      `UPDATE destinatarios
+         SET name = ?, default_category_id = ?, notes = ?, is_active = ?, updated_at = ?
+       WHERE id = ?`,
+      [
+        fields.name,
+        fields.default_category_id,
+        fields.notes,
+        fields.is_active ? 1 : 0,
+        now,
+        id,
+      ]
+    );
+    await enqueueUpdate(db, "destinatarios", id, fields, now);
+  });
 }

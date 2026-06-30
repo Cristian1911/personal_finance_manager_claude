@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
-import { View, Text, ScrollView, RefreshControl } from "react-native";
-import { useFocusEffect } from "expo-router";
-import { ArrowDownLeft, ArrowUpRight, FileText, Shield, Store } from "lucide-react-native";
+import { View, Text, ScrollView, RefreshControl, Pressable } from "react-native";
+import { useFocusEffect, useRouter } from "expo-router";
+import { ArrowDownLeft, ArrowUpRight, FileText, Pencil, Shield, Store } from "lucide-react-native";
 import { formatCurrency, formatDate, type CurrencyCode } from "@zeta/shared";
 import { useSync } from "../../lib/sync/hooks";
 import {
@@ -34,6 +34,7 @@ interface DestinatarioDetailProps {
 
 export function DestinatarioDetail({ id }: DestinatarioDetailProps) {
   const { sync } = useSync();
+  const router = useRouter();
 
   const [refreshing, setRefreshing] = useState(false);
   const [destinatario, setDestinatario] =
@@ -89,7 +90,21 @@ export function DestinatarioDetail({ id }: DestinatarioDetailProps) {
 
   return (
     <View className="flex-1 bg-background">
-      <MobileHeader variant="sub" title={title} />
+      <MobileHeader
+        variant="sub"
+        title={title}
+        right={
+          <Pressable
+            onPress={() => router.push(`/destinatarios/${id}/edit` as any)}
+            accessibilityRole="button"
+            accessibilityLabel="Editar destinatario"
+            className="flex-row items-center gap-1 rounded-full border border-z-brass-20 bg-z-brass-8 px-3 py-1.5 active:opacity-80"
+          >
+            <Pencil size={13} color={COLORS.brass} />
+            <Text className="text-xs font-inter-semibold text-z-brass">Editar</Text>
+          </Pressable>
+        }
+      />
 
       <ScrollView
         className="flex-1"
