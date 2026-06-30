@@ -85,7 +85,7 @@ async function getCategorySpendingCached(
       .is("transfer_group_id", null)
       // Exclude personal-debt origin legs (e.g. a shared-payment "me deben"
       // portion) — they are not the user's spend. See net-out rules.
-      .or("personal_debt_id.is.null,pd_role.neq.origin"),
+      .or("pd_role.is.null,pd_role.neq.origin"),
 
     supabase
       .from("budgets")
@@ -175,7 +175,7 @@ async function getMonthlyCashflowCached(
     .order("transaction_date")
     .is("reconciled_into_transaction_id", null)
     .is("transfer_group_id", null)
-    .or("personal_debt_id.is.null,pd_role.neq.origin");
+    .or("pd_role.is.null,pd_role.neq.origin");
 
   if (error) throw error;
   if (!transactions || transactions.length === 0) return [];
@@ -242,7 +242,7 @@ async function getDailySpendingCached(
     .order("transaction_date")
     .is("reconciled_into_transaction_id", null)
     .is("transfer_group_id", null)
-    .or("personal_debt_id.is.null,pd_role.neq.origin");
+    .or("pd_role.is.null,pd_role.neq.origin");
 
   if (error) throw error;
   if (!transactions || transactions.length === 0) return [];
@@ -305,7 +305,7 @@ async function getMonthMetricsCached(
     .lte("transaction_date", monthEndStr(target))
     .is("reconciled_into_transaction_id", null)
     .is("transfer_group_id", null)
-    .or("personal_debt_id.is.null,pd_role.neq.origin");
+    .or("pd_role.is.null,pd_role.neq.origin");
 
   if (error) throw error;
   if (!transactions) return { income: 0, expenses: 0 };
@@ -358,7 +358,7 @@ async function getDailyCashflowCached(
     .order("transaction_date")
     .is("reconciled_into_transaction_id", null)
     .is("transfer_group_id", null)
-    .or("personal_debt_id.is.null,pd_role.neq.origin");
+    .or("pd_role.is.null,pd_role.neq.origin");
 
   if (error) throw error;
   if (!transactions || transactions.length === 0) return [];

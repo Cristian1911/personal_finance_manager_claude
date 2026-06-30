@@ -22,6 +22,8 @@ import type {
 } from "@/types/domain";
 
 type CurrencyEnum = Database["public"]["Enums"]["currency_code"];
+type PersonalDebtInsert = Database["public"]["Tables"]["personal_debts"]["Insert"];
+type TransactionInsert = Database["public"]["Tables"]["transactions"]["Insert"];
 
 export type CreateSharedPaymentResult = ActionResult<{
   split_group_id: string;
@@ -161,111 +163,124 @@ export async function createSharedPayment(
   const currencyEnum = currency as CurrencyEnum;
   const description = p.description ?? "Pago compartido";
 
-  // Helper: insert a transaction leg, return its id. NEVER applies a balance
-  // delta — callers control balance explicitly per mode.
-  async function insertLeg(opts: {
+  // Build one transaction-leg insert row (UUID pre-generated so debts can carry
+  // origin_transaction_id without a follow-up round-trip, and so all legs batch
+  // into a single insert). NEVER carries a balance delta — balance is handled
+  // explicitly per mode below.
+  async function buildLeg(opts: {
+    id: string;
     amount: number;
-    raw_description: string;
     destinatario_id: string | null;
     personal_debt_id: string | null;
     pd_role: "origin" | null;
     idemSuffix: string;
-  }): Promise<{ id: string } | { error: string }> {
+  }) {
     const idempotencyKey = await computeIdempotencyKey({
       provider: "MANUAL",
       providerTransactionId: `split:${splitGroupId}:${opts.idemSuffix}`,
       transactionDate: paidOn,
       amount: opts.amount,
-      rawDescription: opts.raw_description,
+      rawDescription: description,
     });
-    const { data, error } = await supabase
-      .from("transactions")
-      .insert({
-        user_id: user!.id,
-        account_id: accountId,
-        amount: opts.amount,
-        direction: "OUTFLOW",
-        currency_code: currencyEnum,
-        transaction_date: paidOn,
-        raw_description: opts.raw_description,
-        destinatario_id: opts.destinatario_id,
-        provider: "MANUAL",
-        capture_method: "MANUAL_FORM",
-        idempotency_key: idempotencyKey,
-        personal_debt_id: opts.personal_debt_id,
-        pd_role: opts.pd_role,
-        split_group_id: splitGroupId,
-      })
-      .select("id")
-      .single();
-    if (error || !data) return { error: "Error al registrar el pago compartido" };
-    return { id: data.id };
+    return {
+      id: opts.id,
+      user_id: user!.id,
+      account_id: accountId,
+      amount: opts.amount,
+      direction: "OUTFLOW" as const,
+      currency_code: currencyEnum,
+      transaction_date: paidOn,
+      raw_description: description,
+      destinatario_id: opts.destinatario_id,
+      provider: "MANUAL" as const,
+      capture_method: "MANUAL_FORM" as const,
+      idempotency_key: idempotencyKey,
+      personal_debt_id: opts.personal_debt_id,
+      pd_role: opts.pd_role,
+      split_group_id: splitGroupId,
+    };
   }
 
   // ----------------------------------------------------------------
-  // 1) One personal_debts (lent) + one lent-origin leg per participant.
-  //    These legs never touch the account balance (the full-total delta in
-  //    new mode, or the already-posted original in existing mode, covers them).
+  // 1) Build N personal_debts (lent) + N lent-origin legs (+ the user-share leg
+  //    in "new" mode), then insert each table in ONE batch. UUIDs are generated
+  //    up front so each debt carries its origin_transaction_id directly — no
+  //    follow-up update. Cuts round-trips from 3*N+1 to 2. The legs never touch
+  //    the account balance (the full-total delta in new mode, or the
+  //    already-posted original in existing mode, covers them).
   // ----------------------------------------------------------------
   const debtIds: string[] = [];
+  const debtsToInsert: PersonalDebtInsert[] = [];
+  const legsToInsert: TransactionInsert[] = [];
+
   for (let i = 0; i < shares.length; i++) {
     const share = shares[i];
-    const { data: debt, error: debtErr } = await supabase
-      .from("personal_debts")
-      .insert({
-        user_id: user.id,
-        destinatario_id: share.destinatario_id!,
-        direction: "lent",
-        principal_amount: share.amount,
-        outstanding_amount: share.amount,
-        currency_code: currency,
-        opened_on: paidOn,
-        due_date: p.due_date ?? null,
-        notes: p.description ?? null,
-        status: "active",
-        split_group_id: splitGroupId,
-      })
-      .select("id")
-      .single();
-    if (debtErr || !debt) {
-      return { success: false, error: "Error al crear las deudas del reparto" };
-    }
-    debtIds.push(debt.id);
+    const debtId = crypto.randomUUID();
+    const legId = crypto.randomUUID();
+    debtIds.push(debtId);
 
-    const leg = await insertLeg({
-      amount: share.amount,
-      raw_description: description,
-      destinatario_id: share.destinatario_id,
-      personal_debt_id: debt.id,
-      pd_role: "origin",
-      idemSuffix: `p${i}`,
+    debtsToInsert.push({
+      id: debtId,
+      user_id: user.id,
+      destinatario_id: share.destinatario_id!,
+      direction: "lent",
+      principal_amount: share.amount,
+      outstanding_amount: share.amount,
+      currency_code: currency,
+      opened_on: paidOn,
+      due_date: p.due_date ?? null,
+      notes: p.description ?? null,
+      status: "active",
+      split_group_id: splitGroupId,
+      origin_transaction_id: legId,
     });
-    if ("error" in leg) return { success: false, error: leg.error };
 
-    const { error: linkErr } = await supabase
-      .from("personal_debts")
-      .update({ origin_transaction_id: leg.id })
-      .eq("id", debt.id)
-      .eq("user_id", user.id);
-    if (linkErr) return { success: false, error: "Error al vincular el origen del reparto" };
+    legsToInsert.push(
+      await buildLeg({
+        id: legId,
+        amount: share.amount,
+        destinatario_id: share.destinatario_id,
+        personal_debt_id: debtId,
+        pd_role: "origin",
+        idemSuffix: `p${i}`,
+      }),
+    );
   }
 
-  // ----------------------------------------------------------------
-  // 2) The user's own share + balance handling, per mode.
-  // ----------------------------------------------------------------
-  if (p.mode === "new") {
-    if (userShare > 0) {
-      const selfLeg = await insertLeg({
+  // The user's own share = a normal expense leg (counts in cashflow). Only in
+  // "new" mode; in "existing" mode the original transaction becomes that leg.
+  if (p.mode === "new" && userShare > 0) {
+    legsToInsert.push(
+      await buildLeg({
+        id: crypto.randomUUID(),
         amount: userShare,
-        raw_description: description,
         destinatario_id: null,
         personal_debt_id: null,
         pd_role: null,
         idemSuffix: "self",
-      });
-      if ("error" in selfLeg) return { success: false, error: selfLeg.error };
-    }
+      }),
+    );
+  }
 
+  // Insert debts BEFORE legs: transactions.personal_debt_id has an FK to
+  // personal_debts, so the debt rows must exist first. Each .insert() is a
+  // single atomic statement.
+  const { error: debtsErr } = await supabase.from("personal_debts").insert(debtsToInsert);
+  if (debtsErr) {
+    return { success: false, error: "Error al crear las deudas del reparto" };
+  }
+  const { error: legsErr } = await supabase.from("transactions").insert(legsToInsert);
+  if (legsErr) {
+    if (legsErr.code === "23505") {
+      return { success: false, error: "Este pago compartido ya existe (duplicado)" };
+    }
+    return { success: false, error: "Error al registrar el pago compartido" };
+  }
+
+  // ----------------------------------------------------------------
+  // 2) Balance handling, per mode.
+  // ----------------------------------------------------------------
+  if (p.mode === "new") {
     // Apply ONE balance delta for the full total (the cash that left the
     // account). The legs above are bookkeeping and carry no delta.
     const { data: acct, error: acctErr } = await supabase

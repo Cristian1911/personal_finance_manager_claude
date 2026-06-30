@@ -42,7 +42,7 @@ async function getAttentionSnapshotCached(
       .is("reconciled_into_transaction_id", null)
       // Exclude personal-debt origin legs (shared-payment "me deben" portion) —
       // they aren't user spend and shouldn't show as uncategorized.
-      .or("personal_debt_id.is.null,pd_role.neq.origin"),
+      .or("pd_role.is.null,pd_role.neq.origin"),
 
     // Signal 2: Transactions without destinatario but with raw_description
     // Used as a proxy for pending destinatario suggestions (grouped by pattern)
