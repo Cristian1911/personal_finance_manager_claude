@@ -3,13 +3,17 @@ import { ActivityIndicator, ScrollView, View } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
+  allRecipients,
   anomalies,
   budgetAdherenceSeries,
   buildVerdict,
   categorySeries,
+  fixedVsVariable,
+  forecast,
   formatCurrency,
   incomeVsExpenseSeries,
   movers,
+  nextMonths,
   savingsRateSeries,
   type AnalyticsConfig,
 } from "@zeta/shared";
@@ -28,10 +32,13 @@ import {
 import {
   AnomaliesCard,
   BudgetAdherenceCard,
+  FixedVariableCard,
+  ForecastCard,
   IncomeExpenseCard,
   LensTabs,
   MoversCard,
   SavingsRateCard,
+  TopRecipientsCard,
   type Lens,
 } from "../components/tendencias/TendenciasLenses";
 
@@ -79,7 +86,7 @@ export default function TendenciasScreen() {
       months: dataset.months,
       debtAccountIds: new Set(dataset.debtAccountIds),
       categoryMeta: new Map(dataset.categoryMeta),
-      destinatarioMeta: new Map(),
+      destinatarioMeta: new Map(dataset.destinatarioMeta),
     };
     const { rows } = dataset;
     const cats = categorySeries(rows, config);
@@ -97,11 +104,24 @@ export default function TendenciasScreen() {
       ),
       // categorySeries already returns total-desc; spread to snapshot before exit.
       categories: [...cats],
+      recipients: allRecipients(rows, config),
+      fixedVariable: fixedVsVariable(rows, config),
       savings,
       cashflow,
       adherence: budgetAdherenceSeries(rows, config, cats),
       movers: moverList,
       anomalies: anomalies(rows, config, cats),
+      forecast: dataset.months.length
+        ? forecast(
+            cashflow,
+            dataset.currentBalance,
+            [],
+            nextMonths(dataset.months[dataset.months.length - 1], 3)
+          )
+        : [],
+      currentBalance: dataset.currentBalance,
+      windowFrom: dataset.windowFrom,
+      windowTo: dataset.windowTo,
     };
   }, [dataset]);
 
@@ -118,7 +138,19 @@ export default function TendenciasScreen() {
           <PeriodControl range={range} onChange={setRange} />
           {vm ? <LensTabs lens={lens} onChange={setLens} /> : null}
           {vm && lens === "gastos" ? (
-            <CategoryTrendList categories={vm.categories} />
+            <>
+              <CategoryTrendList
+                categories={vm.categories}
+                windowFrom={vm.windowFrom}
+                windowTo={vm.windowTo}
+              />
+              <TopRecipientsCard
+                recipients={vm.recipients}
+                windowFrom={vm.windowFrom}
+                windowTo={vm.windowTo}
+              />
+              <FixedVariableCard data={vm.fixedVariable} />
+            </>
           ) : null}
           {vm && lens === "ahorro" ? (
             <>
@@ -131,6 +163,7 @@ export default function TendenciasScreen() {
             <>
               <MoversCard movers={vm.movers} />
               <AnomaliesCard anomalies={vm.anomalies} />
+              <ForecastCard points={vm.forecast} currentBalance={vm.currentBalance} />
             </>
           ) : null}
         </ScrollView>
