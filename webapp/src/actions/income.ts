@@ -118,7 +118,7 @@ async function getEstimatedIncomeCached(
     .eq("currency_code", baseCurrency)
     .in("account_id", liquidAccountIds)
     .gte("transaction_date", twelveMonthsAgo)
-    .or("personal_debt_id.is.null,pd_role.neq.origin")
+    .is("personal_debt_id", null)
     .order("transaction_date", { ascending: false })
     .limit(500);
 

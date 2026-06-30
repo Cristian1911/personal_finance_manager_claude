@@ -23,7 +23,8 @@ import type {
 
 type CurrencyEnum = Database["public"]["Enums"]["currency_code"];
 type PersonalDebtInsert = Database["public"]["Tables"]["personal_debts"]["Insert"];
-type TransactionInsert = Database["public"]["Tables"]["transactions"]["Insert"];
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type CreateSharedPaymentResult = ActionResult<{
   split_group_id: string;
@@ -41,21 +42,23 @@ const SPLIT_ERROR_MESSAGES: Record<SplitErrorReason, string> = {
 };
 
 /**
- * Create a shared payment ("Pago compartido", Splitwise-style): one payment the
- * user made, split across themselves and N other people. Modeled as N+1
- * transaction legs sharing a `split_group_id`:
- *   - the user's own share = a normal expense leg (counts in cashflow), and
- *   - each participant's share = a "lent-origin" leg (pd_role='origin',
- *     excluded from cashflow) linked 1:1 to a personal_debts row (direction
- *     'lent'). Per-person repayments reuse the existing recordRepayment flow.
+ * Create a shared payment ("Pago compartido", Splitwise-style): ONE real
+ * transaction (the full payment) plus N personal_debts (direction 'lent'),
+ * grouped by a `split_group_id`. The debts reference the transaction via
+ * `origin_transaction_id` (one tx can be the origin for N debts).
+ *
+ * The transaction keeps its full amount and stays a normal expense
+ * (`personal_debt_id = NULL`). Its EFFECTIVE spend is `amount −
+ * split_repaid_amount`, which starts at the full amount and decreases as
+ * participants repay (recordRepayment recomputes split_repaid_amount). This
+ * means a single transaction matches the bank statement on import (no
+ * duplicate legs) while the user's spend still converges to their own share.
  *
  * Two entry modes:
- *   - "new": creates the payment from scratch; applies ONE balance delta for the
- *     full total (the cash leaving the account).
- *   - "existing": splits an already-recorded OUTFLOW. The cash already moved at
- *     import, so NO balance delta is applied; the original transaction becomes
- *     the user-share leg (amount reduced to the user's share) or, when the user
- *     does not participate, is kept as a fully-excluded balance carrier.
+ *   - "existing": split an already-recorded OUTFLOW. The tx is kept UNMODIFIED
+ *     (amount, category, merchant); we only tag it with the split_group_id and
+ *     reset split_repaid_amount. No balance change (cash already posted).
+ *   - "new": create ONE transaction for the full total + apply one balance delta.
  */
 export async function createSharedPayment(
   _prev: CreateSharedPaymentResult | undefined,
@@ -97,10 +100,7 @@ export async function createSharedPayment(
   let accountId: string;
   let currency: string;
   let paidOn: string;
-  // The existing transaction to convert (existing mode only).
-  let originTx:
-    | { id: string; amount: number; account_id: string; currency_code: string; transaction_date: string }
-    | null = null;
+  let existingTxId: string | null = null;
 
   if (p.mode === "existing") {
     const { data: tx, error: txErr } = await supabase
@@ -126,13 +126,7 @@ export async function createSharedPayment(
     accountId = tx.account_id;
     currency = tx.currency_code;
     paidOn = tx.transaction_date;
-    originTx = {
-      id: tx.id,
-      amount: total,
-      account_id: tx.account_id,
-      currency_code: tx.currency_code,
-      transaction_date: tx.transaction_date,
-    };
+    existingTxId = tx.id;
   } else {
     total = p.total_amount!;
     accountId = p.account_id!;
@@ -141,7 +135,8 @@ export async function createSharedPayment(
   }
 
   // ----------------------------------------------------------------
-  // Compute the split (exact-sum guaranteed by @zeta/shared).
+  // Compute the split (exact-sum guaranteed by @zeta/shared). The participant
+  // shares are what is owed to the user; their sum = total − userShare.
   // ----------------------------------------------------------------
   const decimals = getCurrencyDecimals(currency as CurrencyCode);
   const split = computeSplit({
@@ -157,69 +152,70 @@ export async function createSharedPayment(
   if (!split.ok) {
     return { success: false, error: SPLIT_ERROR_MESSAGES[split.reason] };
   }
-  const { userShare, shares } = split;
+  const { shares } = split;
 
   const splitGroupId = crypto.randomUUID();
   const currencyEnum = currency as CurrencyEnum;
   const description = p.description ?? "Pago compartido";
 
-  // Build one transaction-leg insert row (UUID pre-generated so debts can carry
-  // origin_transaction_id without a follow-up round-trip, and so all legs batch
-  // into a single insert). NEVER carries a balance delta — balance is handled
-  // explicitly per mode below.
-  async function buildLeg(opts: {
-    id: string;
-    amount: number;
-    destinatario_id: string | null;
-    personal_debt_id: string | null;
-    pd_role: "origin" | null;
-    idemSuffix: string;
-  }) {
+  // ----------------------------------------------------------------
+  // 1) Establish the single origin transaction. The account balance is applied
+  //    LAST (step 3) so a failed debts insert leaves no balance drift — only
+  //    after the tx + debts both land do we move the cash.
+  // ----------------------------------------------------------------
+  let originTransactionId: string;
+
+  if (p.mode === "existing") {
+    // Keep the original transaction UNMODIFIED (amount, category, merchant) — only
+    // tag it to the split group and reset the repaid tracker. No balance change.
+    originTransactionId = existingTxId!;
+    const { error: updErr } = await supabase
+      .from("transactions")
+      .update({ split_group_id: splitGroupId, split_repaid_amount: 0 })
+      .eq("id", originTransactionId)
+      .eq("user_id", user.id);
+    if (updErr) return { success: false, error: "Error al marcar la transacción como pago compartido" };
+  } else {
+    // Create ONE real expense transaction for the full total.
+    originTransactionId = crypto.randomUUID();
     const idempotencyKey = await computeIdempotencyKey({
       provider: "MANUAL",
-      providerTransactionId: `split:${splitGroupId}:${opts.idemSuffix}`,
+      providerTransactionId: `split:${splitGroupId}:origin`,
       transactionDate: paidOn,
-      amount: opts.amount,
+      amount: total,
       rawDescription: description,
     });
-    return {
-      id: opts.id,
-      user_id: user!.id,
+    const { error: insErr } = await supabase.from("transactions").insert({
+      id: originTransactionId,
+      user_id: user.id,
       account_id: accountId,
-      amount: opts.amount,
-      direction: "OUTFLOW" as const,
+      amount: total,
+      direction: "OUTFLOW",
       currency_code: currencyEnum,
       transaction_date: paidOn,
       raw_description: description,
-      destinatario_id: opts.destinatario_id,
-      provider: "MANUAL" as const,
-      capture_method: "MANUAL_FORM" as const,
+      provider: "MANUAL",
+      capture_method: "MANUAL_FORM",
       idempotency_key: idempotencyKey,
-      personal_debt_id: opts.personal_debt_id,
-      pd_role: opts.pd_role,
       split_group_id: splitGroupId,
-    };
+      split_repaid_amount: 0,
+    });
+    if (insErr) {
+      if (insErr.code === "23505") {
+        return { success: false, error: "Este pago compartido ya existe (duplicado)" };
+      }
+      return { success: false, error: "Error al registrar el pago compartido" };
+    }
   }
 
   // ----------------------------------------------------------------
-  // 1) Build N personal_debts (lent) + N lent-origin legs (+ the user-share leg
-  //    in "new" mode), then insert each table in ONE batch. UUIDs are generated
-  //    up front so each debt carries its origin_transaction_id directly — no
-  //    follow-up update. Cuts round-trips from 3*N+1 to 2. The legs never touch
-  //    the account balance (the full-total delta in new mode, or the
-  //    already-posted original in existing mode, covers them).
+  // 2) One personal_debts (lent) per participant, all pointing at the origin tx.
   // ----------------------------------------------------------------
   const debtIds: string[] = [];
-  const debtsToInsert: PersonalDebtInsert[] = [];
-  const legsToInsert: TransactionInsert[] = [];
-
-  for (let i = 0; i < shares.length; i++) {
-    const share = shares[i];
+  const debtsToInsert: PersonalDebtInsert[] = shares.map((share) => {
     const debtId = crypto.randomUUID();
-    const legId = crypto.randomUUID();
     debtIds.push(debtId);
-
-    debtsToInsert.push({
+    return {
       id: debtId,
       user_id: user.id,
       destinatario_id: share.destinatario_id!,
@@ -232,57 +228,29 @@ export async function createSharedPayment(
       notes: p.description ?? null,
       status: "active",
       split_group_id: splitGroupId,
-      origin_transaction_id: legId,
-    });
-
-    legsToInsert.push(
-      await buildLeg({
-        id: legId,
-        amount: share.amount,
-        destinatario_id: share.destinatario_id,
-        personal_debt_id: debtId,
-        pd_role: "origin",
-        idemSuffix: `p${i}`,
-      }),
-    );
-  }
-
-  // The user's own share = a normal expense leg (counts in cashflow). Only in
-  // "new" mode; in "existing" mode the original transaction becomes that leg.
-  if (p.mode === "new" && userShare > 0) {
-    legsToInsert.push(
-      await buildLeg({
-        id: crypto.randomUUID(),
-        amount: userShare,
-        destinatario_id: null,
-        personal_debt_id: null,
-        pd_role: null,
-        idemSuffix: "self",
-      }),
-    );
-  }
-
-  // Insert debts BEFORE legs: transactions.personal_debt_id has an FK to
-  // personal_debts, so the debt rows must exist first. Each .insert() is a
-  // single atomic statement.
+      origin_transaction_id: originTransactionId,
+    };
+  });
   const { error: debtsErr } = await supabase.from("personal_debts").insert(debtsToInsert);
   if (debtsErr) {
-    return { success: false, error: "Error al crear las deudas del reparto" };
-  }
-  const { error: legsErr } = await supabase.from("transactions").insert(legsToInsert);
-  if (legsErr) {
-    if (legsErr.code === "23505") {
-      return { success: false, error: "Este pago compartido ya existe (duplicado)" };
+    // Compensating cleanup so we never leave an orphaned split tx with no debts
+    // (and, in new mode, no balance has been applied yet — see step 3).
+    if (p.mode === "new") {
+      await supabase.from("transactions").delete().eq("id", originTransactionId).eq("user_id", user.id);
+    } else {
+      await supabase
+        .from("transactions")
+        .update({ split_group_id: null, split_repaid_amount: null })
+        .eq("id", originTransactionId)
+        .eq("user_id", user.id);
     }
-    return { success: false, error: "Error al registrar el pago compartido" };
+    return { success: false, error: "Error al crear las deudas del reparto" };
   }
 
   // ----------------------------------------------------------------
-  // 2) Balance handling, per mode.
+  // 3) New mode: tx + debts are in place — apply the ONE balance delta now.
   // ----------------------------------------------------------------
   if (p.mode === "new") {
-    // Apply ONE balance delta for the full total (the cash that left the
-    // account). The legs above are bookkeeping and carry no delta.
     const { data: acct, error: acctErr } = await supabase
       .from("accounts")
       .select("id, account_type, current_balance")
@@ -304,34 +272,72 @@ export async function createSharedPayment(
       .eq("id", accountId)
       .eq("user_id", user.id);
     if (balErr) return { success: false, error: "Error al actualizar el saldo de la cuenta" };
-  } else {
-    // existing mode: the original transaction already posted the full total to
-    // the balance — make NO balance change.
-    if (userShare > 0) {
-      // The original becomes the user-share leg (its amount is reduced to the
-      // user's portion, so only that counts as the user's spend).
-      const { error: updErr } = await supabase
-        .from("transactions")
-        .update({ amount: userShare, split_group_id: splitGroupId })
-        .eq("id", originTx!.id)
-        .eq("user_id", user.id);
-      if (updErr) return { success: false, error: "Error al actualizar la transacción original" };
-    } else {
-      // User does not participate: the whole payment is "me deben". Keep the
-      // original as a fully-excluded balance carrier (it preserves the record
-      // of the full amount paid) and tag it to the split group.
-      const { error: updErr } = await supabase
-        .from("transactions")
-        .update({ is_excluded: true, split_group_id: splitGroupId })
-        .eq("id", originTx!.id)
-        .eq("user_id", user.id);
-      if (updErr) return { success: false, error: "Error al actualizar la transacción original" };
-    }
   }
 
   revalidateFinancialViews();
   updateTag("personal-debts");
   return { success: true, data: { split_group_id: splitGroupId, debt_ids: debtIds } };
+}
+
+// ============================================================
+// Delete a shared payment: removes the group's debts and un-splits the origin
+// transaction (the real payment is KEPT — only the split metadata is cleared).
+// Also cleans legacy "lent-origin legs" from the old N+1 model (txs tagged to the
+// group that carry a personal_debt_id); repayments are never deleted (they have
+// no split_group_id).
+// ============================================================
+export async function deleteSharedPayment(
+  splitGroupId: string,
+): Promise<ActionResult<undefined>> {
+  if (!UUID_RE.test(splitGroupId)) return { success: false, error: "ID inválido" };
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  // Legacy cleanup: old per-participant legs carried split_group_id + a
+  // personal_debt_id. The new-model origin tx has personal_debt_id null, so this
+  // is a no-op there.
+  const { error: legacyErr } = await supabase
+    .from("transactions")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("split_group_id", splitGroupId)
+    .not("personal_debt_id", "is", null);
+  if (legacyErr) {
+    console.error("deleteSharedPayment legacy-leg cleanup failed:", legacyErr);
+    return { success: false, error: "Error al eliminar el pago compartido" };
+  }
+
+  // Deleting the debts cascades `ON DELETE SET NULL` onto their repayment
+  // transactions (transactions.personal_debt_id). Those INFLOWs then pass the
+  // `.is("personal_debt_id", null)` cashflow filter and start counting as income
+  // — net cash-correct, but a visible metric swing. Repayments are real money
+  // received, so they are intentionally NOT deleted here.
+  const { error: debtErr } = await supabase
+    .from("personal_debts")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("split_group_id", splitGroupId);
+  if (debtErr) {
+    console.error("deleteSharedPayment debt delete failed:", debtErr);
+    return { success: false, error: "Error al eliminar el pago compartido" };
+  }
+
+  // Un-split the real transaction(s): keep them, drop the split metadata. Surface
+  // a failure here — otherwise the debts are gone but the tx stays tagged as a
+  // split (inconsistent state).
+  const { error: untagErr } = await supabase
+    .from("transactions")
+    .update({ split_group_id: null, split_repaid_amount: null })
+    .eq("user_id", user.id)
+    .eq("split_group_id", splitGroupId);
+  if (untagErr) {
+    console.error("deleteSharedPayment un-split failed:", untagErr);
+    return { success: false, error: "Error al eliminar el pago compartido" };
+  }
+
+  revalidateFinancialViews();
+  updateTag("personal-debts");
+  return { success: true, data: undefined };
 }
 
 // ============================================================
@@ -362,33 +368,19 @@ async function getSharedPaymentGroupsCached(
   if (error) throw error;
   if (!debts || debts.length === 0) return [];
 
-  const groupIds = [
-    ...new Set(debts.map((d) => d.split_group_id).filter((g): g is string => !!g)),
+  // The single origin transaction per group carries the full total + how much
+  // has been repaid so far (split_repaid_amount).
+  const originIds = [
+    ...new Set(debts.map((d) => d.origin_transaction_id).filter((x): x is string => !!x)),
   ];
-
-  // The user-share leg(s): non-debt, non-excluded transactions tagged to the
-  // group. Excluded carriers (user-not-included existing-mode splits) are left
-  // out, so userShare is 0 there.
-  const { data: legs } = await supabase
-    .from("transactions")
-    .select("split_group_id, amount, raw_description")
-    .eq("user_id", userId)
-    .in("split_group_id", groupIds)
-    .is("personal_debt_id", null)
-    .eq("is_excluded", false);
-
-  const userShareByGroup = new Map<string, number>();
-  const descByGroup = new Map<string, string>();
-  for (const leg of legs ?? []) {
-    if (!leg.split_group_id) continue;
-    userShareByGroup.set(
-      leg.split_group_id,
-      (userShareByGroup.get(leg.split_group_id) ?? 0) + Number(leg.amount ?? 0),
-    );
-    if (leg.raw_description && !descByGroup.has(leg.split_group_id)) {
-      descByGroup.set(leg.split_group_id, leg.raw_description);
-    }
-  }
+  const { data: originTxs } = originIds.length
+    ? await supabase
+        .from("transactions")
+        .select("id, amount, split_repaid_amount, raw_description, transaction_date")
+        .eq("user_id", userId)
+        .in("id", originIds)
+    : { data: [] as { id: string; amount: number | null; split_repaid_amount: number | null; raw_description: string | null; transaction_date: string }[] };
+  const txById = new Map((originTxs ?? []).map((t) => [t.id, t]));
 
   const today = toColombiaDateString(new Date());
   const byGroup = new Map<string, PersonalDebtWithDetails[]>();
@@ -416,17 +408,24 @@ async function getSharedPaymentGroupsCached(
   const groups: SharedPaymentGroup[] = [];
   for (const [gid, gdebts] of byGroup) {
     const principalSum = gdebts.reduce((s, d) => s + d.principal_amount, 0);
-    const userShare = userShareByGroup.get(gid) ?? 0;
+    const originTx = gdebts[0].origin_transaction_id
+      ? txById.get(gdebts[0].origin_transaction_id)
+      : undefined;
+    // total = the real payment; userShare = total − Σ(owed); recovered = repaid.
+    const total = originTx?.amount != null ? Number(originTx.amount) : principalSum;
+    const recovered = Number(originTx?.split_repaid_amount ?? 0);
+    const userShare = Math.max(0, total - principalSum);
     const outstanding = gdebts
       .filter((d) => d.status === "active")
       .reduce((s, d) => s + d.outstanding_amount, 0);
     groups.push({
       split_group_id: gid,
-      total: principalSum + userShare,
+      total,
       userShare,
+      recovered,
       currency_code: gdebts[0].currency_code,
-      paid_on: gdebts[0].opened_on,
-      description: gdebts[0].notes ?? descByGroup.get(gid) ?? null,
+      paid_on: originTx?.transaction_date ?? gdebts[0].opened_on,
+      description: gdebts[0].notes ?? originTx?.raw_description ?? null,
       outstanding_total: outstanding,
       debts: gdebts,
     });

@@ -80,13 +80,14 @@ async function getBurnRateCached(
     // This overestimates runway for users who also spend in foreign currencies.
     // Per-transaction historical rate conversion would be needed for full accuracy.
     supabase.from("transactions")
-      .select("id, amount, transaction_date, direction, is_recurring")
+      .select("id, amount, split_repaid_amount, transaction_date, direction, is_recurring")
       .eq("user_id", userId).eq("direction", "OUTFLOW")
       .eq("is_excluded", false).is("reconciled_into_transaction_id", null)
       .eq("currency_code", baseCurrency).gte("transaction_date", threeMonthsAgo)
-      // Exclude personal-debt origin legs (shared-payment "me deben" portion)
-      // so runway reflects only the user's real spend.
-      .or("pd_role.is.null,pd_role.neq.origin")
+      // Exclude all personal-debt movements (origins + repayments). The
+      // shared-payment tx stays; its effective spend (amount − repaid) is
+      // applied in computeBurnRate so runway reflects the user's real spend.
+      .is("personal_debt_id", null)
       .order("transaction_date", { ascending: true }),
     getNextIncomeOccurrenceCached(userId, todayStr, baseCurrency, accessToken),
     getPendingOccurrencesCached(userId, todayStr, rangeEnd, accessToken),
@@ -203,12 +204,15 @@ export async function getBurnRate(
 }
 
 function computeBurnRate(
-  transactions: { amount: number; transaction_date: string }[],
+  transactions: { amount: number; transaction_date: string; split_repaid_amount?: number | null }[],
   balance: number,
   today: Date,
   mode: "total" | "discretionary",
   windowEndDate: string,
 ): BurnRateResult {
+  // Shared-payment effective spend = amount − repaid (0 for normal txs).
+  const spendOf = (t: { amount: number; split_repaid_amount?: number | null }) =>
+    t.amount - Number(t.split_repaid_amount ?? 0);
   if (transactions.length === 0) {
     return {
       mode,
@@ -234,8 +238,9 @@ function computeBurnRate(
   const dailySpending = new Map<string, number>();
   let totalSpent = 0;
   for (const t of transactions) {
-    dailySpending.set(t.transaction_date, (dailySpending.get(t.transaction_date) ?? 0) + t.amount);
-    totalSpent += t.amount;
+    const spend = spendOf(t);
+    dailySpending.set(t.transaction_date, (dailySpending.get(t.transaction_date) ?? 0) + spend);
+    totalSpent += spend;
   }
 
   const spendingDays = dailySpending.size;
@@ -283,7 +288,7 @@ function computeBurnRate(
   for (const t of currentMonthTxns) {
     dailySums.set(
       t.transaction_date,
-      (dailySums.get(t.transaction_date) ?? 0) + t.amount
+      (dailySums.get(t.transaction_date) ?? 0) + spendOf(t)
     );
   }
 

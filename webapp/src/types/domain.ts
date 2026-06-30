@@ -78,10 +78,12 @@ export type PersonalDebtWithDetails = PersonalDebt & {
  */
 export type SharedPaymentGroup = {
   split_group_id: string;
-  /** Total of the payment = userShare + Σ debts.principal_amount. */
+  /** Total of the payment = the real transaction's full amount. */
   total: number;
-  /** The payer's own (non-debt) portion of the payment. */
+  /** The payer's own portion = total − Σ debts.principal_amount. */
   userShare: number;
+  /** Amount repaid so far by participants (origin tx split_repaid_amount). */
+  recovered: number;
   currency_code: string;
   paid_on: string;
   description: string | null;
