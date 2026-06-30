@@ -73,7 +73,7 @@ async function getCategorySpendingCached(
   const [txRes, budgetsRes] = await Promise.all([
     supabase
       .from("transactions")
-      .select("amount, category_id, categories!category_id(name_es, name, color, expense_type)")
+      .select("amount, split_repaid_amount, category_id, categories!category_id(name_es, name, color, expense_type)")
       .eq("user_id", userId)
       .in("account_id", accountIds)
       .eq("direction", "OUTFLOW")
@@ -83,9 +83,10 @@ async function getCategorySpendingCached(
       .lte("transaction_date", monthEndStr(target))
       .is("reconciled_into_transaction_id", null)
       .is("transfer_group_id", null)
-      // Exclude personal-debt origin legs (e.g. a shared-payment "me deben"
-      // portion) — they are not the user's spend. See net-out rules.
-      .or("pd_role.is.null,pd_role.neq.origin"),
+      // Exclude all personal-debt movements (standalone lend/borrow origins +
+      // every repayment) — they're balance movements, not the user's spend. The
+      // shared-payment tx itself has personal_debt_id NULL, so it stays.
+      .is("personal_debt_id", null),
 
     supabase
       .from("budgets")
@@ -132,10 +133,13 @@ async function getCategorySpendingCached(
       });
     }
 
+    // Shared-payment effective spend = amount − repaid (converges to the user's
+    // own share as participants pay back). NULL/0 for every normal transaction.
+    const spend = tx.amount - Number(tx.split_repaid_amount ?? 0);
     const entry = map.get(id)!;
-    entry.amount += tx.amount;
+    entry.amount += spend;
     entry.count += 1;
-    total += tx.amount;
+    total += spend;
   }
 
   return Array.from(map.values())
@@ -165,7 +169,7 @@ async function getMonthlyCashflowCached(
 
   const { data: transactions, error } = await supabase
     .from("transactions")
-    .select("transaction_date, amount, direction, accounts!account_id(account_type)")
+    .select("transaction_date, amount, split_repaid_amount, direction, accounts!account_id(account_type)")
     .eq("user_id", userId)
     .in("account_id", accountIds)
     .eq("is_excluded", false)
@@ -175,7 +179,7 @@ async function getMonthlyCashflowCached(
     .order("transaction_date")
     .is("reconciled_into_transaction_id", null)
     .is("transfer_group_id", null)
-    .or("pd_role.is.null,pd_role.neq.origin");
+    .is("personal_debt_id", null);
 
   if (error) throw error;
   if (!transactions || transactions.length === 0) return [];
@@ -196,7 +200,7 @@ async function getMonthlyCashflowCached(
     if (tx.direction === "INFLOW" && !isDebtAccount) {
       entry.income += tx.amount;
     } else if (tx.direction === "OUTFLOW") {
-      entry.expenses += tx.amount;
+      entry.expenses += tx.amount - Number(tx.split_repaid_amount ?? 0);
     }
     // Debt INFLOW is neither income nor expense in this context
   }
@@ -231,7 +235,7 @@ async function getDailySpendingCached(
 
   const { data: transactions, error } = await supabase
     .from("transactions")
-    .select("transaction_date, amount")
+    .select("transaction_date, amount, split_repaid_amount")
     .eq("user_id", userId)
     .in("account_id", accountIds)
     .eq("direction", "OUTFLOW")
@@ -242,7 +246,7 @@ async function getDailySpendingCached(
     .order("transaction_date")
     .is("reconciled_into_transaction_id", null)
     .is("transfer_group_id", null)
-    .or("pd_role.is.null,pd_role.neq.origin");
+    .is("personal_debt_id", null);
 
   if (error) throw error;
   if (!transactions || transactions.length === 0) return [];
@@ -250,7 +254,8 @@ async function getDailySpendingCached(
   const map = new Map<string, number>();
 
   for (const tx of transactions) {
-    map.set(tx.transaction_date, (map.get(tx.transaction_date) ?? 0) + tx.amount);
+    const spend = tx.amount - Number(tx.split_repaid_amount ?? 0);
+    map.set(tx.transaction_date, (map.get(tx.transaction_date) ?? 0) + spend);
   }
 
   return Array.from(map.entries())
@@ -297,7 +302,7 @@ async function getMonthMetricsCached(
 
   const { data: transactions, error } = await supabase
     .from("transactions")
-    .select("amount, direction, accounts!account_id(account_type)")
+    .select("amount, split_repaid_amount, direction, accounts!account_id(account_type)")
     .eq("user_id", userId)
     .in("account_id", accountIds)
     .eq("is_excluded", false)
@@ -305,7 +310,7 @@ async function getMonthMetricsCached(
     .lte("transaction_date", monthEndStr(target))
     .is("reconciled_into_transaction_id", null)
     .is("transfer_group_id", null)
-    .or("pd_role.is.null,pd_role.neq.origin");
+    .is("personal_debt_id", null);
 
   if (error) throw error;
   if (!transactions) return { income: 0, expenses: 0 };
@@ -316,7 +321,7 @@ async function getMonthMetricsCached(
     const acctType = (tx.accounts as { account_type: string } | null)?.account_type;
     const isDebtAccount = acctType === "CREDIT_CARD" || acctType === "LOAN";
     if (tx.direction === "INFLOW" && !isDebtAccount) income += tx.amount;
-    else if (tx.direction === "OUTFLOW") expenses += tx.amount;
+    else if (tx.direction === "OUTFLOW") expenses += tx.amount - Number(tx.split_repaid_amount ?? 0);
   }
 
   return { income, expenses };
@@ -349,7 +354,7 @@ async function getDailyCashflowCached(
 
   const { data: transactions, error } = await supabase
     .from("transactions")
-    .select("transaction_date, amount, direction, accounts!account_id(account_type)")
+    .select("transaction_date, amount, split_repaid_amount, direction, accounts!account_id(account_type)")
     .eq("user_id", userId)
     .in("account_id", accountIds)
     .eq("is_excluded", false)
@@ -358,7 +363,7 @@ async function getDailyCashflowCached(
     .order("transaction_date")
     .is("reconciled_into_transaction_id", null)
     .is("transfer_group_id", null)
-    .or("pd_role.is.null,pd_role.neq.origin");
+    .is("personal_debt_id", null);
 
   if (error) throw error;
   if (!transactions || transactions.length === 0) return [];
@@ -373,7 +378,7 @@ async function getDailyCashflowCached(
     if (tx.direction === "INFLOW" && !isDebtAccount) {
       day.income += tx.amount;
     } else if (tx.direction === "OUTFLOW") {
-      day.expenses += tx.amount;
+      day.expenses += tx.amount - Number(tx.split_repaid_amount ?? 0);
     }
     // Debt INFLOW is neither income nor expense in this context
     map.set(tx.transaction_date, day);

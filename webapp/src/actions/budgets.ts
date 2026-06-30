@@ -11,6 +11,7 @@ import type { Budget } from "@/types/domain";
 
 type BudgetSummaryTransactionRow = {
     amount: number;
+    split_repaid_amount: number | null;
 };
 
 // ─── Cached inner functions ───────────────────────────────────────────────────
@@ -50,7 +51,7 @@ async function getBudgetSummaryCached(userId: string, month: string | undefined,
 
     const { data: transactions } = await supabase
         .from("transactions")
-        .select("amount")
+        .select("amount, split_repaid_amount")
         .eq("user_id", userId)
         .in("account_id", accountIds)
         .eq("direction", "OUTFLOW")
@@ -59,13 +60,15 @@ async function getBudgetSummaryCached(userId: string, month: string | undefined,
         .gte("transaction_date", monthStartStr(target))
         .lte("transaction_date", monthEndStr(target))
         .is("reconciled_into_transaction_id", null)
-        // Exclude personal-debt origin legs (shared-payment "me deben" portion)
-        // — they are not the user's spend against the budget.
-        .or("pd_role.is.null,pd_role.neq.origin");
+        // Exclude all personal-debt movements (origins + repayments). The
+        // shared-payment tx stays (personal_debt_id null); its budget spend is
+        // amount − repaid (converges to the user's share).
+        .is("personal_debt_id", null);
 
     const totalSpent =
         (transactions as BudgetSummaryTransactionRow[] | null)?.reduce(
-            (sum: number, tx: BudgetSummaryTransactionRow) => sum + Number(tx.amount),
+            (sum: number, tx: BudgetSummaryTransactionRow) =>
+                sum + Number(tx.amount) - Number(tx.split_repaid_amount ?? 0),
             0
         ) ?? 0;
     const progress = totalTarget > 0 ? (totalSpent / totalTarget) * 100 : 0;

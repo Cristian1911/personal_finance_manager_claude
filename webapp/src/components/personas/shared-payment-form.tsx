@@ -204,7 +204,7 @@ export function SharedPaymentForm({ currency, existingTransaction }: SharedPayme
       {/* Persistent invoice viewer — stays pinned below the header while the form
           scrolls, so the receipt stays in view as a reference. */}
       {invoiceUrl && (
-        <div className="sticky top-12 z-[var(--z-layer-sticky)] -mx-4 border-b border-white/6 bg-background px-4 py-2 lg:top-0">
+        <div className="sticky top-12 z-[var(--z-layer-sticky)] -mx-4 border-b border-white/6 bg-z-surface px-4 py-2 lg:top-0">
           <div className="flex items-center justify-between pb-1.5">
             <p className={SECTION_EYEBROW_CLASS}>Factura (referencia)</p>
             <button
@@ -419,7 +419,7 @@ function SplitPreview({
   if (!preview) return null;
   if (!preview.ok) {
     return (
-      <p className="rounded-lg border border-z-debt/30 bg-z-debt/10 px-3 py-2 text-sm text-z-debt">
+      <p className="rounded-xl border border-z-debt/30 bg-z-debt/10 px-3 py-2 text-sm text-z-debt">
         {ERROR_TEXT[preview.reason] ?? "Revisa los montos del reparto."}
       </p>
     );

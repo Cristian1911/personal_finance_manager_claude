@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 import { Plus, Users, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { BRASS_BUTTON_CLASS, BRASS_GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import {
+  BRASS_BUTTON_CLASS,
+  BRASS_GHOST_BUTTON_CLASS,
+  SECTION_EYEBROW_CLASS,
+} from "@/lib/constants/styles";
 import { formatCurrency } from "@/lib/utils/currency";
 import { PersonaCard } from "./persona-card";
 import { CreatePersonalDebtSheet } from "./create-personal-debt-sheet";
@@ -75,9 +79,7 @@ export function PersonasRoot({ debts, overview, currency, sharedGroups }: Person
         <>
           {sharedGroups.length > 0 && (
             <section className="space-y-3">
-              <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-light">
-                Pagos compartidos
-              </h2>
+              <h2 className={SECTION_EYEBROW_CLASS}>Pagos compartidos</h2>
               <div className="grid gap-3 lg:grid-cols-2">
                 {sharedGroups.map((g) => (
                   <SharedPaymentCard key={g.split_group_id} group={g} currency={currency} />
@@ -124,7 +126,7 @@ function SummaryStat({
 }) {
   return (
     <div className="rounded-2xl border border-white/6 bg-black/10 p-4">
-      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+      <p className={SECTION_EYEBROW_CLASS}>{label}</p>
       <p
         className={cn(
           "mt-1 text-lg font-semibold tabular-nums",
@@ -152,12 +154,7 @@ function Section({
 }) {
   return (
     <section className="space-y-3">
-      <h2
-        className={cn(
-          "text-xs font-semibold uppercase tracking-[0.18em]",
-          muted ? "text-muted-foreground" : "text-z-sage-light",
-        )}
-      >
+      <h2 className={cn(SECTION_EYEBROW_CLASS, muted && "opacity-70")}>
         {title}
       </h2>
       {items.length === 0 ? (
