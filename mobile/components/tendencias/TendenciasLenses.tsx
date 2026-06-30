@@ -355,7 +355,7 @@ const RecipientRow = memo(function RecipientRow({
         style={{ backgroundColor: r.color }}
       >
         <Text className="text-xs font-inter-bold text-z-ink">
-          {r.name.charAt(0).toUpperCase()}
+          {(r.name.charAt(0) || "?").toUpperCase()}
         </Text>
       </View>
       <View className="min-w-0 flex-1">

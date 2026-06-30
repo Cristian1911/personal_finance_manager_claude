@@ -147,7 +147,7 @@ export async function getTendenciasDataset(
   );
   const destinatarioMeta: [string, DestinatarioMeta][] = destRows
     .filter((d) => usedDestIds.has(d.id))
-    .map((d) => [d.id, { name: d.name, color: destColor(d.id) }]);
+    .map((d) => [d.id, { name: d.name || "Sin nombre", color: destColor(d.id) }]);
 
   return {
     rows,
