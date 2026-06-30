@@ -84,6 +84,9 @@ async function getBurnRateCached(
       .eq("user_id", userId).eq("direction", "OUTFLOW")
       .eq("is_excluded", false).is("reconciled_into_transaction_id", null)
       .eq("currency_code", baseCurrency).gte("transaction_date", threeMonthsAgo)
+      // Exclude personal-debt origin legs (shared-payment "me deben" portion)
+      // so runway reflects only the user's real spend.
+      .or("pd_role.is.null,pd_role.neq.origin")
       .order("transaction_date", { ascending: true }),
     getNextIncomeOccurrenceCached(userId, todayStr, baseCurrency, accessToken),
     getPendingOccurrencesCached(userId, todayStr, rangeEnd, accessToken),

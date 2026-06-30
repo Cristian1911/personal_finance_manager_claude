@@ -26,6 +26,25 @@ ships the read/consume half of most surfaces, omits the author/manage half. Tack
 - **P2/P3 polish:** Deudas secondary widgets + Personas writes; Categories manager; Deseos reflexiones;
   tx filters + detail account-reassignment; Puedo-pagar copy.
 
+## Pago compartido — mobile parity (2026-06-30)
+
+The webapp "Pago compartido" (Splitwise split-ledger) shipped on `claude/shared-payment-debt-duq182`
+(migration `20260630120000` already APPLIED to prod; columns `split_group_id` exist on
+`transactions` + `personal_debts`). Mobile parity was implemented + reviewed by `mobile-sync-doctor`
+but pulled out of the webapp PR to ship separately. **The work is preserved on branch
+`mobile/shared-payment-parity` (cherry-pick / open its own PR) — don't redo from scratch.**
+
+Two parts on that branch:
+- **(P1, correctness BUG)** `mobile/lib/repositories/transactions.ts` `getMonthlyAggregates` and
+  `mobile/lib/repositories/budgets.ts` `getBudgetProgress` must exclude `pd_role='origin'` legs
+  (`AND (t.pd_role IS NULL OR t.pd_role != 'origin')`) — mirrors the webapp net-out fix. Without it
+  the mobile cashflow hero + budget spend inflate by the lent portion of every shared payment
+  (N× per payment). Latent since personal-debts; this feature amplifies it.
+- **(P2)** SQLite migration **v23** (`mobile/lib/db/schema.ts`) adds `split_group_id TEXT` to
+  `transactions` + `personal_debts` so the sync upsert (allow-list by local columns) stops silently
+  dropping the column. No mobile WRITE path yet — read parity only (mobile reads webapp-created
+  shared payments). Mobile create/split UI is a later phase (tracks with Personas mobile writes).
+
 ## Keyboard-aware input sweep (2026-06-29) — coverage remaining
 
 Adopted `docs/design-system/keyboard-handling.md` as the standard + added the coverage rule to the
