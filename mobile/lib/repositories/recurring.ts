@@ -45,6 +45,7 @@ export type RecurringTemplateRow = {
   end_date: string | null;
   merchant_name: string | null;
   description: string | null;
+  destinatario_id: string | null;
   transfer_source_account_id: string | null;
   is_active: number;
   created_at: string;
@@ -303,6 +304,108 @@ export async function createRecurringTemplate(
   });
 
   return id;
+}
+
+/**
+ * Update an existing recurring template + enqueue the sync UPDATE. Same debt
+ * rules as create. Occurrences are reconciled server-side (ensureCurrentOccurrences)
+ * on pull, exactly as on create — mobile doesn't regenerate them locally.
+ */
+export async function updateRecurringTemplate(
+  id: string,
+  params: CreateRecurringTemplateParams
+): Promise<void> {
+  const db = await getDatabase();
+  const now = new Date().toISOString();
+
+  const acctType =
+    params.account_type ??
+    (
+      await db.getFirstAsync<{ account_type: string }>(
+        "SELECT account_type FROM accounts WHERE id = ?",
+        [params.account_id]
+      )
+    )?.account_type;
+  const isDebtAccount = !!acctType && DEBT_ACCOUNT_TYPES.has(acctType);
+  const isDebtPayment = isDebtAccount && params.direction === "INFLOW";
+  if (isDebtPayment && !params.transfer_source_account_id) {
+    throw new Error(
+      "Debes seleccionar la cuenta origen para un pago de deuda."
+    );
+  }
+
+  const fields = {
+    account_id: params.account_id,
+    category_id: params.category_id ?? null,
+    amount: params.amount,
+    currency_code: params.currency_code,
+    direction: params.direction,
+    frequency: params.frequency,
+    day_of_month: params.day_of_month ?? null,
+    day_of_week: params.day_of_week ?? null,
+    start_date: params.start_date,
+    end_date: params.end_date ?? null,
+    merchant_name: params.merchant_name ?? null,
+    description: params.description ?? null,
+    destinatario_id: params.destinatario_id ?? null,
+    transfer_source_account_id: isDebtPayment
+      ? (params.transfer_source_account_id ?? null)
+      : null,
+    updated_at: now,
+  };
+
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(
+      `UPDATE recurring_transaction_templates SET
+        account_id = ?, category_id = ?, amount = ?, currency_code = ?, direction = ?,
+        frequency = ?, day_of_month = ?, day_of_week = ?, start_date = ?, end_date = ?,
+        merchant_name = ?, description = ?, destinatario_id = ?,
+        transfer_source_account_id = ?, updated_at = ?
+       WHERE id = ?`,
+      [
+        fields.account_id,
+        fields.category_id,
+        fields.amount,
+        fields.currency_code,
+        fields.direction,
+        fields.frequency,
+        fields.day_of_month,
+        fields.day_of_week,
+        fields.start_date,
+        fields.end_date,
+        fields.merchant_name,
+        fields.description,
+        fields.destinatario_id,
+        fields.transfer_source_account_id,
+        now,
+        id,
+      ]
+    );
+
+    // Keep pending occurrences' expected amount aligned with the new template
+    // amount (mirrors the webapp's syncPendingOccurrenceAmounts after update).
+    const pendingOccurrences = await db.getAllAsync<{ id: string }>(
+      "SELECT id FROM recurring_occurrences WHERE template_id = ? AND status = 'pending'",
+      [id]
+    );
+    if (pendingOccurrences.length > 0) {
+      await db.runAsync(
+        "UPDATE recurring_occurrences SET expected_amount = ? WHERE template_id = ? AND status = 'pending'",
+        [params.amount, id]
+      );
+      for (const occ of pendingOccurrences) {
+        await enqueueUpdate(
+          db,
+          "recurring_occurrences",
+          occ.id,
+          { expected_amount: params.amount },
+          now
+        );
+      }
+    }
+
+    await enqueueUpdate(db, "recurring_transaction_templates", id, fields, now);
+  });
 }
 
 /** True when a `recurring_occurrences` row already points to this transaction. */

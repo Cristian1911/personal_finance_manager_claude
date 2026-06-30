@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { Pressable, Text, View, ScrollView, RefreshControl } from "react-native";
-import { useFocusEffect } from "expo-router";
-import { ChevronDown, ChevronUp } from "lucide-react-native";
+import { useFocusEffect, useRouter } from "expo-router";
+import { ChevronDown, ChevronUp, Plus } from "lucide-react-native";
 import type { CurrencyCode } from "@zeta/shared";
 import { toLocalMonthString } from "../../lib/utils/date";
 import { useSync } from "../../lib/sync/hooks";
@@ -38,6 +38,7 @@ const EMPTY_SUMMARY: RecurringSummary = {
 
 export function RecurrentesRoot() {
   const { sync } = useSync();
+  const router = useRouter();
 
   const [refreshing, setRefreshing] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(
@@ -121,7 +122,21 @@ export function RecurrentesRoot() {
 
   return (
     <View className="flex-1 bg-background">
-      <MobileHeader variant="sub" title="Recurrentes" />
+      <MobileHeader
+        variant="sub"
+        title="Recurrentes"
+        right={
+          <Pressable
+            onPress={() => router.push("/recurrentes/new" as any)}
+            accessibilityRole="button"
+            accessibilityLabel="Nueva recurrente"
+            className="flex-row items-center gap-1 rounded-full border border-z-brass-20 bg-z-brass-8 px-3 py-1.5 active:opacity-80"
+          >
+            <Plus size={14} color={COLORS.brass} />
+            <Text className="text-xs font-inter-semibold text-z-brass">Nueva</Text>
+          </Pressable>
+        }
+      />
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: MOBILE_TAB_BAR_CLEARANCE }}
