@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Minus, Plus, Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 6;
@@ -203,7 +204,10 @@ function ZoomButton({
       type="button"
       aria-label={label}
       onClick={onClick}
-      className="flex size-8 items-center justify-center rounded-lg border border-white/6 bg-black/40 text-z-sage-light backdrop-blur transition-colors hover:bg-black/60"
+      className={cn(
+        GHOST_BUTTON_CLASS,
+        "flex size-8 items-center justify-center rounded-lg bg-black/40 backdrop-blur hover:bg-black/60",
+      )}
     >
       {children}
     </button>

@@ -2958,6 +2958,7 @@ export type Database = {
           personal_debt_id: string | null
           pd_role: Database["public"]["Enums"]["pd_role"] | null
           split_group_id: string | null
+          split_repaid_amount: number | null
           updated_at: string
           user_id: string
         }
@@ -3009,6 +3010,7 @@ export type Database = {
           personal_debt_id?: string | null
           pd_role?: Database["public"]["Enums"]["pd_role"] | null
           split_group_id?: string | null
+          split_repaid_amount?: number | null
           updated_at?: string
           user_id: string
         }
@@ -3060,6 +3062,7 @@ export type Database = {
           personal_debt_id?: string | null
           pd_role?: Database["public"]["Enums"]["pd_role"] | null
           split_group_id?: string | null
+          split_repaid_amount?: number | null
           updated_at?: string
           user_id?: string
         }
@@ -3185,6 +3188,7 @@ export type Database = {
           personal_debt_id: string | null
           pd_role: Database["public"]["Enums"]["pd_role"] | null
           split_group_id: string | null
+          split_repaid_amount: number | null
           updated_at: string
           user_id: string
         }
@@ -3236,6 +3240,7 @@ export type Database = {
           personal_debt_id?: string | null
           pd_role?: Database["public"]["Enums"]["pd_role"] | null
           split_group_id?: string | null
+          split_repaid_amount?: number | null
           updated_at?: string
           user_id: string
         }
@@ -3287,6 +3292,7 @@ export type Database = {
           personal_debt_id?: string | null
           pd_role?: Database["public"]["Enums"]["pd_role"] | null
           split_group_id?: string | null
+          split_repaid_amount?: number | null
           updated_at?: string
           user_id?: string
         }

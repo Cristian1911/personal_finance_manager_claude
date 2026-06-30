@@ -175,6 +175,7 @@ export function PersonaCard({ persona, currency }: PersonaCardProps) {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={pending}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
+              variant="ghost"
               className={cn(DESTRUCTIVE_GHOST_BUTTON_CLASS)}
               disabled={pending}
               onClick={() => runAction(() => deletePersonalDebt(persona.id), "Deuda eliminada")}

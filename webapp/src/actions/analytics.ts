@@ -103,7 +103,7 @@ async function getTendenciasDatasetCached(
       .lte("transaction_date", to)
       .is("reconciled_into_transaction_id", null)
       .is("transfer_group_id", null)
-      .or("personal_debt_id.is.null,pd_role.neq.origin"),
+      .is("personal_debt_id", null),
     supabase.from("budgets").select("category_id, amount").eq("user_id", userId),
     supabase.from("destinatarios").select("id, name").eq("user_id", userId),
     // Parent/child links for the hierarchy. No is_active filter: a deactivated
@@ -408,7 +408,7 @@ async function getDrilldownTransactionsCached(
     .lte("transaction_date", dateTo)
     .is("reconciled_into_transaction_id", null)
     .is("transfer_group_id", null)
-    .or("personal_debt_id.is.null,pd_role.neq.origin")
+    .is("personal_debt_id", null)
     .order("transaction_date", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(limit);

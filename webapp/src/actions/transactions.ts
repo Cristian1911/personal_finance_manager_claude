@@ -584,13 +584,17 @@ async function getMonthlyAggregatesCached(
   let query = supabase
     .from("transactions")
     .select(
-      "amount, direction, account_id, category_id, is_excluded, reconciled_into_transaction_id, transaction_date",
+      "amount, split_repaid_amount, direction, account_id, category_id, is_excluded, reconciled_into_transaction_id, transaction_date",
     )
     .eq("user_id", userId)
     .in("account_id", demoAccountIds)
     .gte("transaction_date", dateFrom)
     .lte("transaction_date", dateTo)
-    .is("reconciled_into_transaction_id", null);
+    .is("reconciled_into_transaction_id", null)
+    // Exclude personal-debt movements (standalone lend/borrow origins + every
+    // repayment) — balance movements, not income/expense. The shared-payment tx
+    // stays (personal_debt_id null); its outflow nets out via split_repaid_amount.
+    .is("personal_debt_id", null);
 
   if (accountId) query = query.eq("account_id", accountId);
 
