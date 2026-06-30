@@ -120,6 +120,8 @@ export default function TendenciasScreen() {
           )
         : [],
       currentBalance: dataset.currentBalance,
+      windowFrom: dataset.windowFrom,
+      windowTo: dataset.windowTo,
     };
   }, [dataset]);
 
@@ -137,8 +139,16 @@ export default function TendenciasScreen() {
           {vm ? <LensTabs lens={lens} onChange={setLens} /> : null}
           {vm && lens === "gastos" ? (
             <>
-              <CategoryTrendList categories={vm.categories} />
-              <TopRecipientsCard recipients={vm.recipients} />
+              <CategoryTrendList
+                categories={vm.categories}
+                windowFrom={vm.windowFrom}
+                windowTo={vm.windowTo}
+              />
+              <TopRecipientsCard
+                recipients={vm.recipients}
+                windowFrom={vm.windowFrom}
+                windowTo={vm.windowTo}
+              />
               <FixedVariableCard data={vm.fixedVariable} />
             </>
           ) : null}

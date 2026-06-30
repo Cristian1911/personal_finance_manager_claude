@@ -23,6 +23,9 @@ function destColor(id: string): string {
 export interface TendenciasDataset {
   rows: AnalyticsTx[];
   months: string[];
+  /** Active window (YYYY-MM-DD inclusive) — feeds the drill-down query. */
+  windowFrom: string;
+  windowTo: string;
   debtAccountIds: string[];
   categoryMeta: [string, CategoryMeta][];
   destinatarioMeta: [string, DestinatarioMeta][];
@@ -48,6 +51,8 @@ export async function getTendenciasDataset(
     return {
       rows: [],
       months,
+      windowFrom: from,
+      windowTo: to,
       debtAccountIds: [],
       categoryMeta: [],
       destinatarioMeta: [],
@@ -147,9 +152,78 @@ export async function getTendenciasDataset(
   return {
     rows,
     months,
+    windowFrom: from,
+    windowTo: to,
     debtAccountIds,
     categoryMeta: [...categoryMeta.entries()],
     destinatarioMeta,
     currentBalance,
   };
+}
+
+export interface DrilldownTransaction {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  direction: "INFLOW" | "OUTFLOW";
+  accountLabel: string;
+}
+
+/** The OUTFLOW transactions behind a single category OR destinatario, in the
+ * active window (newest first). Ports the webapp `getDrilldownTransactions`.
+ * Pass exactly one of categoryId / destinatarioId. */
+export async function getDrilldownTransactions(params: {
+  categoryId?: string;
+  destinatarioId?: string;
+  dateFrom: string;
+  dateTo: string;
+  currency?: string;
+  limit?: number;
+}): Promise<DrilldownTransaction[]> {
+  // Exactly one of categoryId / destinatarioId — both or neither is ambiguous.
+  if (!params.categoryId === !params.destinatarioId) return [];
+  const db = await getDatabase();
+  const currency = params.currency ?? "COP";
+  const limit = Math.min(200, Math.max(1, Math.round(params.limit ?? 100)));
+  const filterCol = params.categoryId ? "t.category_id" : "t.destinatario_id";
+  const filterVal = params.categoryId ?? params.destinatarioId;
+
+  const rows = await db.getAllAsync<{
+    id: string;
+    transaction_date: string;
+    amount: number;
+    direction: string;
+    merchant_name: string | null;
+    description: string | null;
+    raw_description: string | null;
+    account_name: string | null;
+  }>(
+    `SELECT t.id, t.transaction_date, ABS(t.amount) as amount, t.direction,
+       t.merchant_name, t.description, t.raw_description, a.name as account_name
+     FROM transactions t
+     JOIN accounts a ON a.id = t.account_id
+     WHERE a.is_active = 1
+       AND t.is_excluded = 0
+       AND t.currency_code = ?
+       AND t.direction = 'OUTFLOW'
+       AND t.transaction_date >= ? AND t.transaction_date <= ?
+       AND t.reconciled_into_transaction_id IS NULL
+       AND t.transfer_group_id IS NULL
+       AND (t.personal_debt_id IS NULL OR t.pd_role != 'origin')
+       AND ${filterCol} = ?
+     ORDER BY t.transaction_date DESC, t.created_at DESC
+     LIMIT ?`,
+    [currency, params.dateFrom, params.dateTo, filterVal as string, limit]
+  );
+
+  return rows.map((t) => ({
+    id: t.id,
+    date: t.transaction_date,
+    description:
+      t.merchant_name || t.description || t.raw_description || "Sin descripción",
+    amount: Number(t.amount),
+    direction: t.direction as "INFLOW" | "OUTFLOW",
+    accountLabel: t.account_name ?? "Cuenta",
+  }));
 }
