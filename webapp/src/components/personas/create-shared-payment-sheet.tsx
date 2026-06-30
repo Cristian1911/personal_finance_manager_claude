@@ -25,6 +25,8 @@ import {
   BRASS_GHOST_BUTTON_CLASS,
   GHOST_BUTTON_CLASS,
   MOBILE_SHEET_SAFE_AREA_CLASS,
+  PANEL_INSET_CLASS,
+  SECTION_EYEBROW_CLASS,
 } from "@/lib/constants/styles";
 import { formatCurrency } from "@/lib/utils/currency";
 import { useAccounts } from "@/components/providers/app-data-provider";
@@ -184,10 +186,8 @@ export function CreateSharedPaymentSheet({
           <div className="space-y-5 pb-4 pt-2">
             {/* Total + cuenta */}
             {isExisting ? (
-              <div className="rounded-xl border border-white/6 bg-black/10 p-4 text-center">
-                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                  Total del pago
-                </p>
+              <div className={cn("p-4 text-center", PANEL_INSET_CLASS)}>
+                <p className={SECTION_EYEBROW_CLASS}>Total del pago</p>
                 <p className="mt-1 text-2xl font-extrabold tabular-nums text-z-sage-light">
                   {formatCurrency(totalNum, sheetCurrency)}
                 </p>
@@ -369,7 +369,7 @@ function SplitPreview({
     );
   }
   return (
-    <div className="space-y-1.5 rounded-xl border border-white/6 bg-black/10 p-4">
+    <div className={cn("space-y-1.5 p-4", PANEL_INSET_CLASS)}>
       {userIncluded && (
         <Row label="Tu parte" value={formatCurrency(preview.userShare, currency)} highlight />
       )}

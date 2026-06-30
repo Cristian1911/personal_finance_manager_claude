@@ -6,7 +6,11 @@ import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { Button } from "@/components/ui/button";
-import { BRASS_GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import {
+  BRASS_GHOST_BUTTON_CLASS,
+  PANEL_INSET_CLASS,
+  SECTION_EYEBROW_CLASS,
+} from "@/lib/constants/styles";
 import { RecordRepaymentDialog } from "./record-repayment-dialog";
 import type { CurrencyCode, SharedPaymentGroup } from "@/types/domain";
 
@@ -20,7 +24,7 @@ export function SharedPaymentCard({ group, currency }: SharedPaymentCardProps) {
   const repayDebt = group.debts.find((d) => d.id === repayDebtId) ?? null;
 
   return (
-    <div className="space-y-3 rounded-2xl border border-white/6 bg-black/10 p-4">
+    <div className={cn("space-y-3 p-4", PANEL_INSET_CLASS)}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="flex items-center gap-1.5 truncate text-sm font-medium text-z-sage-light">
@@ -32,9 +36,7 @@ export function SharedPaymentCard({ group, currency }: SharedPaymentCardProps) {
           </p>
         </div>
         <div className="shrink-0 text-right">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-            Tu parte
-          </p>
+          <p className={SECTION_EYEBROW_CLASS}>Tu parte</p>
           <p className="text-sm font-semibold tabular-nums text-z-brass">
             {formatCurrency(group.userShare, currency)}
           </p>
