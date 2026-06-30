@@ -73,6 +73,7 @@ export function PeriodControl({
 
 /** MoM delta for a spend row: up = spending more (concerning, red), down = green. */
 function DeltaChip({ pct }: { pct: number }) {
+  if (!isFinite(pct)) return null;
   const rounded = Math.round(pct);
   if (rounded === 0) return null;
   const up = rounded > 0;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, View } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -47,23 +47,14 @@ export default function TendenciasScreen() {
     }
   }, [range]);
 
-  // Initial load + reload on every tab refocus.
+  // useFocusEffect re-runs its effect whenever the callback identity changes —
+  // and `load` changes with `range` — so this one effect covers the initial
+  // mount, tab refocus, AND range changes (the loadIdRef guard drops stale ones).
   useFocusEffect(
     useCallback(() => {
       void load();
     }, [load])
   );
-
-  // useFocusEffect doesn't re-fire while already focused, so reload when the
-  // range changes (load identity changes) — skipping the mount double-fire.
-  const hasMounted = useRef(false);
-  useEffect(() => {
-    if (!hasMounted.current) {
-      hasMounted.current = true;
-      return;
-    }
-    void load();
-  }, [load]);
 
   const contentStyle = useMemo(
     () => ({ paddingHorizontal: 16, paddingBottom: insets.bottom + 32 }),
