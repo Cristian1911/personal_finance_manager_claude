@@ -289,13 +289,33 @@ jobs:
 
           SSH_OPTS=(-i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20)
 
+          # The VPS is occasionally unreachable from the runner on the first try
+          # (transient blip), so retry the connection-bound steps. 3 attempts,
+          # fixed backoff. Both remote operations are idempotent, so re-running
+          # is safe.
+          retry() {
+            local n=1 max=3 delay=10
+            until "$@"; do
+              if [ "$n" -ge "$max" ]; then
+                echo "::error::command failed after ${max} attempts: $*"
+                return 1
+              fi
+              echo "::warning::attempt ${n}/${max} failed; retrying in ${delay}s..."
+              sleep "$delay"
+              n=$((n + 1))
+            done
+          }
+
           # Sync compose file to VPS
           echo ">>> Copying docker-compose.prod.yml to VPS..."
-          scp "${SSH_OPTS[@]}" docker-compose.prod.yml "root@${VPS_HOST}:/docker/personal-finance-manager/docker-compose.yml"
+          retry scp "${SSH_OPTS[@]}" docker-compose.prod.yml "root@${VPS_HOST}:/docker/personal-finance-manager/docker-compose.yml"
 
-          # Deploy: down (remove orphans) → pull → up
+          # Deploy: down (remove orphans) → pull → up. The remote script lives in
+          # a file so each retry re-reads it — a heredoc on stdin is consumed by
+          # the first attempt, leaving later attempts with empty input.
           echo ">>> Running remote deploy..."
-          ssh "${SSH_OPTS[@]}" "root@${VPS_HOST}" bash -s <<'DEPLOY_SCRIPT'
+          DEPLOY_SCRIPT_FILE="$(mktemp)"
+          cat > "$DEPLOY_SCRIPT_FILE" <<'DEPLOY_SCRIPT'
             set -euo pipefail
             cd /docker/personal-finance-manager
             echo ">>> Stopping containers and removing orphans..."
@@ -307,6 +327,11 @@ jobs:
             echo ">>> Waiting for health checks..."
             docker compose ps
           DEPLOY_SCRIPT
+          deploy_remote() {
+            ssh "${SSH_OPTS[@]}" "root@${VPS_HOST}" bash -s < "$DEPLOY_SCRIPT_FILE"
+          }
+          retry deploy_remote
+          rm -f "$DEPLOY_SCRIPT_FILE"
 
           # Cleanup
           rm -f ~/.ssh/deploy_key
