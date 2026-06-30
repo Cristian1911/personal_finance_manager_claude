@@ -30,5 +30,6 @@ export * from "./utils/monthly-aggregates";
 export * from "./utils/ritmo";
 export * from "./utils/subscription-detector";
 export * from "./utils/personal-debt";
+export * from "./utils/split";
 export * from "./utils/weekly-digest";
 export * from "./analytics";

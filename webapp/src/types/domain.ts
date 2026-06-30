@@ -71,6 +71,25 @@ export type PersonalDebtWithDetails = PersonalDebt & {
   is_overdue: boolean;
 };
 
+/**
+ * A shared payment ("Pago compartido"): the user's own share plus the group of
+ * `lent` personal_debts created from one payment, all sharing a split_group_id.
+ * Derived client-side by grouping PersonalDebtWithDetails by split_group_id.
+ */
+export type SharedPaymentGroup = {
+  split_group_id: string;
+  /** Total of the payment = userShare + Σ debts.principal_amount. */
+  total: number;
+  /** The payer's own (non-debt) portion of the payment. */
+  userShare: number;
+  currency_code: string;
+  paid_on: string;
+  description: string | null;
+  /** Sum of outstanding across the group's active debts. */
+  outstanding_total: number;
+  debts: PersonalDebtWithDetails[];
+};
+
 // Cashflow planner
 export type PlanningPeriodPreset = "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "CUSTOM";
 export type PlanningEntryType = "INCOME" | "EXPENSE";

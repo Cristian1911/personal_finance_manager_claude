@@ -13,6 +13,7 @@ import {
   Repeat,
   UserPlus,
   UserRound,
+  Receipt,
   MoreHorizontal,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -33,6 +34,7 @@ import {
 } from "@/components/ui/drawer";
 import { LinkPickerSheet, type LinkCandidate } from "@/components/recurring/link-picker-sheet";
 import { CreatePersonalDebtSheet } from "@/components/personas/create-personal-debt-sheet";
+import { CreateSharedPaymentSheet } from "@/components/personas/create-shared-payment-sheet";
 import { useDestinatarios } from "@/components/providers/app-data-provider";
 import {
   categorizeTransaction,
@@ -94,6 +96,7 @@ export interface QuickActionTransaction {
   recurrence_group_id: string | null;
   personal_debt_id: string | null;
   transfer_group_id: string | null;
+  split_group_id?: string | null;
 }
 
 export interface TransactionQuickActionsProps {
@@ -141,9 +144,17 @@ export function TransactionQuickActions({
   const [personaPickerOpen, setPersonaPickerOpen] = useState(false);
   const [personaCandidates, setPersonaCandidates] = useState<LinkCandidate[]>([]);
   const [personaCreateOpen, setPersonaCreateOpen] = useState(false);
+  const [sharedSplitOpen, setSharedSplitOpen] = useState(false);
 
   const canLinkRecurring = linkableAccountIds?.has(tx.account_id) && !tx.recurrence_group_id;
   const canLinkPersona = !tx.personal_debt_id && !tx.transfer_group_id;
+  // A shared payment splits a spend the user fronted: only OUTFLOWs, not already
+  // linked to a person/transfer, and not already split.
+  const canSplit =
+    tx.direction === "OUTFLOW" &&
+    !tx.personal_debt_id &&
+    !tx.transfer_group_id &&
+    !tx.split_group_id;
 
   const description =
     tx.merchant_name || tx.clean_description || tx.raw_description || "Sin descripción";
@@ -452,6 +463,16 @@ export function TransactionQuickActions({
               {canLinkPersona && (
                 <ActionRow icon={<Users className="size-4" />} label="Vincular a deuda personal" onClick={handleOpenPersonaPicker} disabled={isLinking} />
               )}
+              {canSplit && (
+                <ActionRow
+                  icon={<Receipt className="size-4" />}
+                  label="Repartir (pago compartido)"
+                  onClick={() => {
+                    setMoreOpen(false);
+                    setSharedSplitOpen(true);
+                  }}
+                />
+              )}
               <ActionRow
                 icon={excluded ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
                 label={excluded ? "Incluir en métricas" : "Excluir de métricas"}
@@ -525,6 +546,22 @@ export function TransactionQuickActions({
           defaultDestinatarioName={debtCounterparty?.name ?? null}
           defaultOpenedOn={tx.transaction_date}
           onCreated={(debtId) => handleConfirmPersonaLink(debtId, true)}
+        />
+      )}
+
+      {/* Split this transaction into a shared payment */}
+      {sharedSplitOpen && (
+        <CreateSharedPaymentSheet
+          open={sharedSplitOpen}
+          onOpenChange={setSharedSplitOpen}
+          currency={tx.currency_code as CurrencyCode}
+          existingTransaction={{
+            id: tx.id,
+            amount: tx.amount,
+            currencyCode: tx.currency_code as CurrencyCode,
+            transactionDate: tx.transaction_date,
+            description,
+          }}
         />
       )}
     </div>

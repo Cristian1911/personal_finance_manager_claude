@@ -30,3 +30,8 @@ export function formatCurrency(
 export function getCurrencySymbol(currencyCode: CurrencyCode): string {
   return CURRENCY_CONFIG[currencyCode].symbol;
 }
+
+/** Number of decimal places a currency tracks (0 for COP/CLP, 2 for most). */
+export function getCurrencyDecimals(currencyCode: CurrencyCode = "COP"): number {
+  return CURRENCY_CONFIG[currencyCode]?.decimals ?? 2;
+}

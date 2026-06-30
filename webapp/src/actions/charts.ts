@@ -82,7 +82,10 @@ async function getCategorySpendingCached(
       .gte("transaction_date", monthStartStr(target))
       .lte("transaction_date", monthEndStr(target))
       .is("reconciled_into_transaction_id", null)
-      .is("transfer_group_id", null),
+      .is("transfer_group_id", null)
+      // Exclude personal-debt origin legs (e.g. a shared-payment "me deben"
+      // portion) — they are not the user's spend. See net-out rules.
+      .or("personal_debt_id.is.null,pd_role.neq.origin"),
 
     supabase
       .from("budgets")

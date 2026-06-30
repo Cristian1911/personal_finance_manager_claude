@@ -1,29 +1,41 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Users } from "lucide-react";
+import { Plus, Users, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
+import { BRASS_BUTTON_CLASS, BRASS_GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import { formatCurrency } from "@/lib/utils/currency";
 import { PersonaCard } from "./persona-card";
 import { CreatePersonalDebtSheet } from "./create-personal-debt-sheet";
-import type { PersonalDebtWithDetails, CurrencyCode } from "@/types/domain";
+import { CreateSharedPaymentSheet } from "./create-shared-payment-sheet";
+import { SharedPaymentCard } from "./shared-payment-card";
+import type {
+  PersonalDebtWithDetails,
+  CurrencyCode,
+  SharedPaymentGroup,
+} from "@/types/domain";
 import type { PersonalDebtsOverview } from "@/actions/personal-debts";
 
 interface PersonasRootProps {
   debts: PersonalDebtWithDetails[];
   overview: PersonalDebtsOverview;
   currency: CurrencyCode;
+  sharedGroups: SharedPaymentGroup[];
 }
 
-export function PersonasRoot({ debts, overview, currency }: PersonasRootProps) {
+export function PersonasRoot({ debts, overview, currency, sharedGroups }: PersonasRootProps) {
   const [createOpen, setCreateOpen] = useState(false);
+  const [splitOpen, setSplitOpen] = useState(false);
 
-  const debo = debts.filter((d) => d.direction === "borrowed" && d.status === "active");
-  const meDeben = debts.filter((d) => d.direction === "lent" && d.status === "active");
-  const settled = debts.filter((d) => d.status !== "active");
+  // Shared-payment debts live in their own grouped cards — keep them out of the
+  // standalone Debo / Me deben lists to avoid showing each person twice.
+  const standalone = debts.filter((d) => !d.split_group_id);
+  const debo = standalone.filter((d) => d.direction === "borrowed" && d.status === "active");
+  const meDeben = standalone.filter((d) => d.direction === "lent" && d.status === "active");
+  const settled = standalone.filter((d) => d.status !== "active");
   const neto = overview.owedToMe.total - overview.iOwe.total;
+  const hasContent = debts.length > 0 || sharedGroups.length > 0;
 
   return (
     <div className="space-y-6">
@@ -42,17 +54,37 @@ export function PersonasRoot({ debts, overview, currency }: PersonasRootProps) {
         />
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button
+          variant="ghost"
+          className={cn(BRASS_GHOST_BUTTON_CLASS)}
+          onClick={() => setSplitOpen(true)}
+        >
+          <Receipt className="mr-1.5 size-4" />
+          Pago compartido
+        </Button>
         <Button className={cn(BRASS_BUTTON_CLASS)} onClick={() => setCreateOpen(true)}>
           <Plus className="mr-1.5 size-4" />
           Nueva deuda personal
         </Button>
       </div>
 
-      {debts.length === 0 ? (
+      {!hasContent ? (
         <EmptyState />
       ) : (
         <>
+          {sharedGroups.length > 0 && (
+            <section className="space-y-3">
+              <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-light">
+                Pagos compartidos
+              </h2>
+              <div className="grid gap-3 lg:grid-cols-2">
+                {sharedGroups.map((g) => (
+                  <SharedPaymentCard key={g.split_group_id} group={g} currency={currency} />
+                ))}
+              </div>
+            </section>
+          )}
           <div className="grid gap-6 lg:grid-cols-2">
             <Section
               title="Debo"
@@ -76,6 +108,9 @@ export function PersonasRoot({ debts, overview, currency }: PersonasRootProps) {
       {/* Conditionally mounted so internal state resets on every open. */}
       {createOpen && (
         <CreatePersonalDebtSheet open={createOpen} onOpenChange={setCreateOpen} currency={currency} />
+      )}
+      {splitOpen && (
+        <CreateSharedPaymentSheet open={splitOpen} onOpenChange={setSplitOpen} currency={currency} />
       )}
     </div>
   );

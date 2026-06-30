@@ -58,7 +58,10 @@ async function getBudgetSummaryCached(userId: string, month: string | undefined,
         .in("category_id", budgetedCategoryIds)
         .gte("transaction_date", monthStartStr(target))
         .lte("transaction_date", monthEndStr(target))
-        .is("reconciled_into_transaction_id", null);
+        .is("reconciled_into_transaction_id", null)
+        // Exclude personal-debt origin legs (shared-payment "me deben" portion)
+        // — they are not the user's spend against the budget.
+        .or("personal_debt_id.is.null,pd_role.neq.origin");
 
     const totalSpent =
         (transactions as BudgetSummaryTransactionRow[] | null)?.reduce(
