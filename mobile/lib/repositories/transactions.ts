@@ -439,7 +439,10 @@ export async function getMonthlyAggregates(options: {
             t.reconciled_into_transaction_id, t.transaction_date
        FROM transactions t
       WHERE t.transaction_date LIKE ?
-        AND t.reconciled_into_transaction_id IS NULL${accountFilter}`,
+        AND t.reconciled_into_transaction_id IS NULL
+        -- Exclude personal-debt origin legs (shared-payment "me deben" portion);
+        -- mirrors the webapp net-out exclusion so mobile spend isn't inflated.
+        AND (t.pd_role IS NULL OR t.pd_role != 'origin')${accountFilter}`,
     params
   );
 

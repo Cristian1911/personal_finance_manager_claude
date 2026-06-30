@@ -673,6 +673,18 @@ export const DB_MIGRATIONS: DbMigration[] = [
       `ALTER TABLE categories ADD COLUMN direction TEXT`,
     ],
   },
+  {
+    version: 23,
+    statements: [
+      // split_group_id groups the legs/debts of one shared payment ("Pago
+      // compartido"). Webapp-only writes for now; mobile only needs the columns
+      // so the sync upsert (allow-list by local columns) stops silently dropping
+      // them. Synced automatically once the columns exist.
+      `ALTER TABLE transactions ADD COLUMN split_group_id TEXT`,
+      `ALTER TABLE personal_debts ADD COLUMN split_group_id TEXT`,
+      `CREATE INDEX IF NOT EXISTS idx_transactions_split_group ON transactions(split_group_id)`,
+    ],
+  },
 ];
 
 export const LATEST_DB_VERSION =

@@ -1,0 +1,646 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Zeta — evolución de tema</title><style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:#050506;color:#e8e6e0;font:14px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:26px 20px 80px}
+h1{font-size:21px;font-weight:680;margin:0 0 4px}
+.lead{color:#8a8a8e;margin:0 0 8px;font-size:13px}
+.legend{color:#6f6f73;font-size:12px;margin:0 0 26px}
+.legend b{color:#c2a063}
+section.cmp{margin:0 0 40px}
+section.cmp > h2{font-size:13px;font-weight:680;color:#bdbcb7;margin:0 0 12px;text-transform:uppercase;letter-spacing:.1em}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+@media(max-width:880px){.pair{grid-template-columns:1fr;max-width:412px}}
+.col .tag{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:99px;display:inline-block;margin:0 0 8px}
+.tag.now{background:rgba(201,123,107,.16);color:#d08c7e}
+.tag.rec{background:rgba(194,160,99,.18);color:#c2a063}
+/* phone frame */
+.phone{width:100%;border-radius:24px;overflow:hidden;border:1px solid var(--line);background:var(--bg);color:var(--text);box-shadow:0 22px 60px -34px #000}
+/* themes — the ONLY difference */
+.theme-current{--bg:#121412;--card:#171A17;--card2:#1E221E;--line:rgba(255,255,255,.06);--brass:#937844;--brass-hot:#B29256;--text:#F6F0E3;--muted:#8b8f88;--pos:#7ba886;--neg:#c97b6b;--cta-bg:#937844;--cta-text:#121412}
+.theme-evolved{--bg:#0b0b0c;--card:#161618;--card2:#1c1c1f;--line:rgba(255,255,255,.08);--brass:#a98a51;--brass-hot:#c2a063;--text:#f4efe4;--muted:#8a8a8e;--pos:#84b58e;--neg:#d4847a;--cta-bg:linear-gradient(180deg,#c2a063,#9c7f47);--cta-text:#1a1407}
+/* shared class vocabulary (colors come from the theme vars) */
+.card{background:var(--card);border:1px solid var(--line)}
+.card2{background:var(--card2);border:1px solid var(--line)}
+.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.14em;font-size:10px;font-weight:700}
+.title{color:var(--text)}
+.sub,.muted{color:var(--muted)}
+.amount{color:var(--text);font-variant-numeric:tabular-nums}
+.pos{color:var(--pos)}
+.neg{color:var(--neg)}
+.bar{background:rgba(255,255,255,.07)}
+.bar-fill{background:var(--brass)}
+.bar-fill.over,.bar-fill.neg{background:var(--neg)}
+.chip{background:var(--card2);border:1px solid var(--line);color:var(--text)}
+.chip.pos{color:var(--pos)}
+.chip-dash{border:1px dashed var(--brass);color:var(--brass-hot);background:transparent}
+.cta{background:var(--cta-bg);color:var(--cta-text);border:none}
+.av{border:1px solid var(--brass);color:var(--brass-hot);border-radius:999px}
+</style></head>
+<body><div class="wrap">
+<h1>Zeta — Obsidian &amp; Brass evolucionado</h1>
+<p class="lead">Mismo markup, misma marca. La única diferencia es la paleta.</p>
+<p class="legend"><b>Actual</b>: obsidian con tinte verde (#121412) + CTA brass plano. &nbsp;·&nbsp; <b>Evolucionado</b>: near-black neutro (#0b0b0c), más separación fondo/superficie, y CTA brass en degradado más brillante.</p>
+<section class="cmp">
+  <h2>Armar presupuesto</h2>
+  <div class="pair">
+    <div class="col"><div class="tag now">Actual</div><div class="phone theme-current"><div class="scr" style="display:flex;flex-direction:column;gap:16px;padding:16px;padding-bottom:88px;">
+  <div class="topbar" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button class="muted" style="font-size:20px;line-height:1;background:none;border:none;padding:0;">✕</button>
+      <div>
+        <div class="eyebrow">Presupuesto</div>
+        <div class="title" style="font-size:18px;font-weight:700;">Armar presupuesto</div>
+      </div>
+    </div>
+    <div class="av" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;">HE</div>
+  </div>
+
+  <p class="sub" style="font-size:13px;line-height:1.4;margin:0;">Presupuesta solo lo que te importa — no tienes que llenar todo.</p>
+
+  <div class="card" style="display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:16px;">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;">
+      <div class="amount" style="font-size:22px;font-weight:700;">Σ $ 0</div>
+      <div class="muted" style="font-size:13px;">de $ 5.000.000</div>
+    </div>
+    <div class="pos" style="font-size:13px;font-weight:600;">quedan $ 5.000.000</div>
+    <div class="bar" style="height:8px;border-radius:999px;overflow:hidden;">
+      <div class="bar-fill" style="width:0%;height:100%;"></div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+      <div class="eyebrow">Necesidades · 50%</div>
+      <div class="pos" style="font-size:12px;font-weight:600;">$ 0 / $ 2.500.000</div>
+    </div>
+    <div class="bar" style="height:5px;border-radius:999px;overflow:hidden;">
+      <div class="bar-fill" style="width:0%;height:100%;"></div>
+    </div>
+    <div class="card2 row" style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;">
+      <div class="icon-badge" style="background:#7d8cf0;color:#fff;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:9px;font-size:15px;">🏠</div>
+      <div style="flex:1;font-size:14px;font-weight:600;">Hogar</div>
+      <div class="muted" style="font-size:14px;">—</div>
+      <div class="muted" style="font-size:16px;">›</div>
+    </div>
+    <button class="chip-dash" style="align-self:flex-start;padding:7px 14px;border-radius:999px;font-size:13px;background:none;">+ Agregar categoría</button>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+      <div class="eyebrow">Deseos · 30%</div>
+      <div class="pos" style="font-size:12px;font-weight:600;">$ 0 / $ 1.500.000</div>
+    </div>
+    <div class="bar" style="height:5px;border-radius:999px;overflow:hidden;">
+      <div class="bar-fill" style="width:0%;height:100%;"></div>
+    </div>
+    <button class="chip-dash" style="align-self:flex-start;padding:7px 14px;border-radius:999px;font-size:13px;background:none;">+ Agregar categoría</button>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+      <div class="eyebrow">Ahorro · 20%</div>
+      <div class="pos" style="font-size:12px;font-weight:600;">$ 0 / $ 1.000.000</div>
+    </div>
+    <div class="bar" style="height:5px;border-radius:999px;overflow:hidden;">
+      <div class="bar-fill" style="width:0%;height:100%;"></div>
+    </div>
+    <button class="chip-dash" style="align-self:flex-start;padding:7px 14px;border-radius:999px;font-size:13px;background:none;">+ Agregar categoría</button>
+  </div>
+
+  <button class="cta" style="position:sticky;bottom:16px;margin-top:4px;padding:14px;border-radius:14px;font-size:15px;font-weight:700;width:100%;">Guardar presupuesto</button>
+</div></div></div>
+    <div class="col"><div class="tag rec">Evolucionado</div><div class="phone theme-evolved"><div class="scr" style="display:flex;flex-direction:column;gap:16px;padding:16px;padding-bottom:88px;">
+  <div class="topbar" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button class="muted" style="font-size:20px;line-height:1;background:none;border:none;padding:0;">✕</button>
+      <div>
+        <div class="eyebrow">Presupuesto</div>
+        <div class="title" style="font-size:18px;font-weight:700;">Armar presupuesto</div>
+      </div>
+    </div>
+    <div class="av" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;">HE</div>
+  </div>
+
+  <p class="sub" style="font-size:13px;line-height:1.4;margin:0;">Presupuesta solo lo que te importa — no tienes que llenar todo.</p>
+
+  <div class="card" style="display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:16px;">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;">
+      <div class="amount" style="font-size:22px;font-weight:700;">Σ $ 0</div>
+      <div class="muted" style="font-size:13px;">de $ 5.000.000</div>
+    </div>
+    <div class="pos" style="font-size:13px;font-weight:600;">quedan $ 5.000.000</div>
+    <div class="bar" style="height:8px;border-radius:999px;overflow:hidden;">
+      <div class="bar-fill" style="width:0%;height:100%;"></div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+      <div class="eyebrow">Necesidades · 50%</div>
+      <div class="pos" style="font-size:12px;font-weight:600;">$ 0 / $ 2.500.000</div>
+    </div>
+    <div class="bar" style="height:5px;border-radius:999px;overflow:hidden;">
+      <div class="bar-fill" style="width:0%;height:100%;"></div>
+    </div>
+    <div class="card2 row" style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;">
+      <div class="icon-badge" style="background:#7d8cf0;color:#fff;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:9px;font-size:15px;">🏠</div>
+      <div style="flex:1;font-size:14px;font-weight:600;">Hogar</div>
+      <div class="muted" style="font-size:14px;">—</div>
+      <div class="muted" style="font-size:16px;">›</div>
+    </div>
+    <button class="chip-dash" style="align-self:flex-start;padding:7px 14px;border-radius:999px;font-size:13px;background:none;">+ Agregar categoría</button>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+      <div class="eyebrow">Deseos · 30%</div>
+      <div class="pos" style="font-size:12px;font-weight:600;">$ 0 / $ 1.500.000</div>
+    </div>
+    <div class="bar" style="height:5px;border-radius:999px;overflow:hidden;">
+      <div class="bar-fill" style="width:0%;height:100%;"></div>
+    </div>
+    <button class="chip-dash" style="align-self:flex-start;padding:7px 14px;border-radius:999px;font-size:13px;background:none;">+ Agregar categoría</button>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+      <div class="eyebrow">Ahorro · 20%</div>
+      <div class="pos" style="font-size:12px;font-weight:600;">$ 0 / $ 1.000.000</div>
+    </div>
+    <div class="bar" style="height:5px;border-radius:999px;overflow:hidden;">
+      <div class="bar-fill" style="width:0%;height:100%;"></div>
+    </div>
+    <button class="chip-dash" style="align-self:flex-start;padding:7px 14px;border-radius:999px;font-size:13px;background:none;">+ Agregar categoría</button>
+  </div>
+
+  <button class="cta" style="position:sticky;bottom:16px;margin-top:4px;padding:14px;border-radius:14px;font-size:15px;font-weight:700;width:100%;">Guardar presupuesto</button>
+</div></div></div>
+  </div>
+</section>
+<section class="cmp">
+  <h2>Inicio (hero + salud)</h2>
+  <div class="pair">
+    <div class="col"><div class="tag now">Actual</div><div class="phone theme-current"><div class="scr" style="display:flex;flex-direction:column;gap:16px;padding:16px;">
+
+  <div class="topbar" style="display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <span class="eyebrow" style="font-size:11px;letter-spacing:.08em;">JUNIO · MIÉRCOLES</span>
+      <span class="title" style="font-size:22px;font-weight:700;">Inicio</span>
+    </div>
+    <div class="av" style="width:40px;height:40px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;">CG</div>
+  </div>
+
+  <div class="card" style="display:flex;flex-direction:column;gap:10px;padding:20px;border-radius:20px;">
+    <span class="eyebrow" style="font-size:11px;letter-spacing:.08em;">DISPONIBLE HOY</span>
+    <span class="amount" style="font-size:40px;font-weight:700;line-height:1;">$1.842.300</span>
+    <span class="sub" style="font-size:13px;">de tu ritmo mensual</span>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+      <span class="chip pos" style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;font-size:12px;font-weight:600;">
+        <span style="width:7px;height:7px;border-radius:999px;background:#4caf8e;display:inline-block;"></span>
+        En control
+      </span>
+      <span class="muted" style="font-size:12px;">$61.400 / día</span>
+    </div>
+  </div>
+
+  <div class="card" style="display:flex;flex-direction:column;gap:14px;padding:18px;border-radius:20px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <span class="title" style="font-size:15px;font-weight:600;">Salud financiera</span>
+      <span class="muted" style="font-size:12px;">Buen estado</span>
+    </div>
+
+    <div class="row" style="display:flex;align-items:center;gap:12px;">
+      <span class="icon-badge" style="width:34px;height:34px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;background:#7d8cf0;color:#fff;">L</span>
+      <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:13px;font-weight:500;">Liquidez</span>
+          <span class="pos" style="font-size:13px;font-weight:600;">82%</span>
+        </div>
+        <div class="bar" style="height:7px;border-radius:999px;overflow:hidden;">
+          <div class="bar-fill" style="height:100%;width:82%;border-radius:999px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="display:flex;align-items:center;gap:12px;">
+      <span class="icon-badge" style="width:34px;height:34px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;background:#d97a86;color:#fff;">D</span>
+      <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:13px;font-weight:500;">Deuda</span>
+          <span class="neg" style="font-size:13px;font-weight:600;">38%</span>
+        </div>
+        <div class="bar" style="height:7px;border-radius:999px;overflow:hidden;">
+          <div class="bar-fill over" style="height:100%;width:38%;border-radius:999px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="display:flex;align-items:center;gap:12px;">
+      <span class="icon-badge" style="width:34px;height:34px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;background:#d4a24a;color:#fff;">A</span>
+      <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:13px;font-weight:500;">Ahorro</span>
+          <span class="pos" style="font-size:13px;font-weight:600;">64%</span>
+        </div>
+        <div class="bar" style="height:7px;border-radius:999px;overflow:hidden;">
+          <div class="bar-fill" style="height:100%;width:64%;border-radius:999px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button class="cta" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;border-radius:14px;font-size:15px;font-weight:600;border:none;width:100%;">
+    Registrar movimiento
+  </button>
+
+</div></div></div>
+    <div class="col"><div class="tag rec">Evolucionado</div><div class="phone theme-evolved"><div class="scr" style="display:flex;flex-direction:column;gap:16px;padding:16px;">
+
+  <div class="topbar" style="display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <span class="eyebrow" style="font-size:11px;letter-spacing:.08em;">JUNIO · MIÉRCOLES</span>
+      <span class="title" style="font-size:22px;font-weight:700;">Inicio</span>
+    </div>
+    <div class="av" style="width:40px;height:40px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;">CG</div>
+  </div>
+
+  <div class="card" style="display:flex;flex-direction:column;gap:10px;padding:20px;border-radius:20px;">
+    <span class="eyebrow" style="font-size:11px;letter-spacing:.08em;">DISPONIBLE HOY</span>
+    <span class="amount" style="font-size:40px;font-weight:700;line-height:1;">$1.842.300</span>
+    <span class="sub" style="font-size:13px;">de tu ritmo mensual</span>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+      <span class="chip pos" style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;font-size:12px;font-weight:600;">
+        <span style="width:7px;height:7px;border-radius:999px;background:#4caf8e;display:inline-block;"></span>
+        En control
+      </span>
+      <span class="muted" style="font-size:12px;">$61.400 / día</span>
+    </div>
+  </div>
+
+  <div class="card" style="display:flex;flex-direction:column;gap:14px;padding:18px;border-radius:20px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <span class="title" style="font-size:15px;font-weight:600;">Salud financiera</span>
+      <span class="muted" style="font-size:12px;">Buen estado</span>
+    </div>
+
+    <div class="row" style="display:flex;align-items:center;gap:12px;">
+      <span class="icon-badge" style="width:34px;height:34px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;background:#7d8cf0;color:#fff;">L</span>
+      <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:13px;font-weight:500;">Liquidez</span>
+          <span class="pos" style="font-size:13px;font-weight:600;">82%</span>
+        </div>
+        <div class="bar" style="height:7px;border-radius:999px;overflow:hidden;">
+          <div class="bar-fill" style="height:100%;width:82%;border-radius:999px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="display:flex;align-items:center;gap:12px;">
+      <span class="icon-badge" style="width:34px;height:34px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;background:#d97a86;color:#fff;">D</span>
+      <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:13px;font-weight:500;">Deuda</span>
+          <span class="neg" style="font-size:13px;font-weight:600;">38%</span>
+        </div>
+        <div class="bar" style="height:7px;border-radius:999px;overflow:hidden;">
+          <div class="bar-fill over" style="height:100%;width:38%;border-radius:999px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="display:flex;align-items:center;gap:12px;">
+      <span class="icon-badge" style="width:34px;height:34px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;background:#d4a24a;color:#fff;">A</span>
+      <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:13px;font-weight:500;">Ahorro</span>
+          <span class="pos" style="font-size:13px;font-weight:600;">64%</span>
+        </div>
+        <div class="bar" style="height:7px;border-radius:999px;overflow:hidden;">
+          <div class="bar-fill" style="height:100%;width:64%;border-radius:999px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button class="cta" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;border-radius:14px;font-size:15px;font-weight:600;border:none;width:100%;">
+    Registrar movimiento
+  </button>
+
+</div></div></div>
+  </div>
+</section>
+<section class="cmp">
+  <h2>Movimientos</h2>
+  <div class="pair">
+    <div class="col"><div class="tag now">Actual</div><div class="phone theme-current"><div class="scr" style="display:flex;flex-direction:column;gap:14px;padding:16px;">
+  <div class="topbar" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <span class="eyebrow">Cuenta</span>
+      <span class="title" style="font-size:22px;font-weight:700;">Movimientos</span>
+    </div>
+    <div class="av" style="width:40px;height:40px;border-radius:9999px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;">CG</div>
+  </div>
+
+  <div class="card2 row" style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;">
+    <span class="muted" style="font-size:16px;">⌕</span>
+    <span class="muted" style="font-size:14px;">Buscar comercio, monto o nota…</span>
+  </div>
+
+  <div class="eyebrow" style="margin-top:2px;">Hoy</div>
+
+  <div class="card" style="display:flex;flex-direction:column;gap:4px;padding:6px;border-radius:16px;">
+    <div class="row" style="display:flex;align-items:center;gap:12px;padding:12px;">
+      <div class="icon-badge" style="background:#d97a86;color:#fff;width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;flex:0 0 auto;">🍔</div>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;">
+        <span class="title" style="font-size:15px;font-weight:600;">Frisby</span>
+        <span class="muted" style="font-size:12px;">Hoy · 13:24 · Restaurantes</span>
+      </div>
+      <span class="amount neg" style="font-size:15px;font-weight:600;white-space:nowrap;">−$38.900</span>
+    </div>
+
+    <div class="row" style="display:flex;align-items:center;gap:12px;padding:12px;">
+      <div class="icon-badge" style="background:#7d8cf0;color:#fff;width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;flex:0 0 auto;">🛒</div>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;">
+        <span class="title" style="font-size:15px;font-weight:600;">Éxito</span>
+        <span class="muted" style="font-size:12px;">Hoy · 11:05 · Mercado</span>
+      </div>
+      <span class="amount neg" style="font-size:15px;font-weight:600;white-space:nowrap;">−$124.300</span>
+    </div>
+
+    <div class="row" style="display:flex;align-items:center;gap:12px;padding:12px;">
+      <div class="icon-badge" style="background:#4caf8e;color:#fff;width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;flex:0 0 auto;">↓</div>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;">
+        <span class="title" style="font-size:15px;font-weight:600;">Nómina · ACME S.A.</span>
+        <span class="muted" style="font-size:12px;">Hoy · 09:00 · Ingreso</span>
+      </div>
+      <span class="amount pos" style="font-size:15px;font-weight:600;white-space:nowrap;">+$3.200.000</span>
+    </div>
+
+    <div class="row" style="display:flex;align-items:center;gap:12px;padding:12px;">
+      <div class="icon-badge" style="background:#d4a24a;color:#1a1a1a;width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;flex:0 0 auto;">⛽</div>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;">
+        <span class="title" style="font-size:15px;font-weight:600;">Terpel</span>
+        <span class="muted" style="font-size:12px;">Hoy · 08:12 · Transporte</span>
+      </div>
+      <span class="amount neg" style="font-size:15px;font-weight:600;white-space:nowrap;">−$95.000</span>
+    </div>
+
+    <div class="row" style="display:flex;align-items:center;gap:12px;padding:12px;">
+      <div class="icon-badge" style="background:#a86fd1;color:#fff;width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;flex:0 0 auto;">▶</div>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;">
+        <span class="title" style="font-size:15px;font-weight:600;">Netflix</span>
+        <span class="muted" style="font-size:12px;">Hoy · 07:40 · Suscripciones</span>
+      </div>
+      <span class="amount neg" style="font-size:15px;font-weight:600;white-space:nowrap;">−$44.900</span>
+    </div>
+  </div>
+</div></div></div>
+    <div class="col"><div class="tag rec">Evolucionado</div><div class="phone theme-evolved"><div class="scr" style="display:flex;flex-direction:column;gap:14px;padding:16px;">
+  <div class="topbar" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <span class="eyebrow">Cuenta</span>
+      <span class="title" style="font-size:22px;font-weight:700;">Movimientos</span>
+    </div>
+    <div class="av" style="width:40px;height:40px;border-radius:9999px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;">CG</div>
+  </div>
+
+  <div class="card2 row" style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;">
+    <span class="muted" style="font-size:16px;">⌕</span>
+    <span class="muted" style="font-size:14px;">Buscar comercio, monto o nota…</span>
+  </div>
+
+  <div class="eyebrow" style="margin-top:2px;">Hoy</div>
+
+  <div class="card" style="display:flex;flex-direction:column;gap:4px;padding:6px;border-radius:16px;">
+    <div class="row" style="display:flex;align-items:center;gap:12px;padding:12px;">
+      <div class="icon-badge" style="background:#d97a86;color:#fff;width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;flex:0 0 auto;">🍔</div>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;">
+        <span class="title" style="font-size:15px;font-weight:600;">Frisby</span>
+        <span class="muted" style="font-size:12px;">Hoy · 13:24 · Restaurantes</span>
+      </div>
+      <span class="amount neg" style="font-size:15px;font-weight:600;white-space:nowrap;">−$38.900</span>
+    </div>
+
+    <div class="row" style="display:flex;align-items:center;gap:12px;padding:12px;">
+      <div class="icon-badge" style="background:#7d8cf0;color:#fff;width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;flex:0 0 auto;">🛒</div>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;">
+        <span class="title" style="font-size:15px;font-weight:600;">Éxito</span>
+        <span class="muted" style="font-size:12px;">Hoy · 11:05 · Mercado</span>
+      </div>
+      <span class="amount neg" style="font-size:15px;font-weight:600;white-space:nowrap;">−$124.300</span>
+    </div>
+
+    <div class="row" style="display:flex;align-items:center;gap:12px;padding:12px;">
+      <div class="icon-badge" style="background:#4caf8e;color:#fff;width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;flex:0 0 auto;">↓</div>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;">
+        <span class="title" style="font-size:15px;font-weight:600;">Nómina · ACME S.A.</span>
+        <span class="muted" style="font-size:12px;">Hoy · 09:00 · Ingreso</span>
+      </div>
+      <span class="amount pos" style="font-size:15px;font-weight:600;white-space:nowrap;">+$3.200.000</span>
+    </div>
+
+    <div class="row" style="display:flex;align-items:center;gap:12px;padding:12px;">
+      <div class="icon-badge" style="background:#d4a24a;color:#1a1a1a;width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;flex:0 0 auto;">⛽</div>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;">
+        <span class="title" style="font-size:15px;font-weight:600;">Terpel</span>
+        <span class="muted" style="font-size:12px;">Hoy · 08:12 · Transporte</span>
+      </div>
+      <span class="amount neg" style="font-size:15px;font-weight:600;white-space:nowrap;">−$95.000</span>
+    </div>
+
+    <div class="row" style="display:flex;align-items:center;gap:12px;padding:12px;">
+      <div class="icon-badge" style="background:#a86fd1;color:#fff;width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;flex:0 0 auto;">▶</div>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;">
+        <span class="title" style="font-size:15px;font-weight:600;">Netflix</span>
+        <span class="muted" style="font-size:12px;">Hoy · 07:40 · Suscripciones</span>
+      </div>
+      <span class="amount neg" style="font-size:15px;font-weight:600;white-space:nowrap;">−$44.900</span>
+    </div>
+  </div>
+</div></div></div>
+  </div>
+</section>
+<section class="cmp">
+  <h2>Plan · presupuesto (lleno)</h2>
+  <div class="pair">
+    <div class="col"><div class="tag now">Actual</div><div class="phone theme-current"><div class="scr" style="display:flex;flex-direction:column;gap:14px;padding:16px;">
+
+  <div class="topbar" style="display:flex;align-items:center;justify-content:space-between;">
+    <div>
+      <div class="eyebrow">Plan</div>
+      <div class="title" style="font-size:22px;font-weight:700;">Presupuesto</div>
+    </div>
+    <div class="av" style="width:38px;height:38px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;">CG</div>
+  </div>
+
+  <div class="card" style="display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:18px;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <div class="eyebrow">Gastado este mes</div>
+        <div class="amount" style="font-size:42px;font-weight:700;line-height:1;">62%</div>
+      </div>
+      <span class="chip" style="font-size:11px;padding:5px 10px;border-radius:999px;white-space:nowrap;">En control</span>
+    </div>
+
+    <div class="bar" style="height:8px;border-radius:999px;overflow:hidden;">
+      <div class="bar-fill" style="width:62%;height:100%;border-radius:999px;"></div>
+    </div>
+
+    <div class="muted" style="font-size:12px;display:flex;justify-content:space-between;">
+      <span>Necesario · $1.860.000</span>
+      <span>Deseos · $740.000</span>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:8px;">
+
+    <div class="row" style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;">
+      <div class="icon-badge" style="background:#7d8cf0;color:#fff;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">🏠</div>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <span style="font-size:14px;font-weight:600;">Hogar</span>
+          <span class="amount" style="font-size:13px;font-weight:600;">$680.000</span>
+        </div>
+        <div class="bar" style="height:4px;border-radius:999px;overflow:hidden;">
+          <div class="bar-fill" style="width:48%;height:100%;border-radius:999px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;">
+      <div class="icon-badge" style="background:#d4a24a;color:#fff;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">🚌</div>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <span style="font-size:14px;font-weight:600;">Transporte</span>
+          <span class="amount" style="font-size:13px;font-weight:600;">$320.000</span>
+        </div>
+        <div class="bar" style="height:4px;border-radius:999px;overflow:hidden;">
+          <div class="bar-fill" style="width:64%;height:100%;border-radius:999px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;">
+      <div class="icon-badge" style="background:#d97a86;color:#fff;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">🍽️</div>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <span style="font-size:14px;font-weight:600;">Comida</span>
+          <span class="amount neg" style="font-size:13px;font-weight:600;">$540.000</span>
+        </div>
+        <div class="bar" style="height:4px;border-radius:999px;overflow:hidden;">
+          <div class="bar-fill over" style="width:100%;height:100%;border-radius:999px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;">
+      <div class="icon-badge" style="background:#5fb09a;color:#fff;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">➕</div>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <span style="font-size:14px;font-weight:600;">Salud</span>
+          <span class="amount" style="font-size:13px;font-weight:600;">$120.000</span>
+        </div>
+        <div class="bar" style="height:4px;border-radius:999px;overflow:hidden;">
+          <div class="bar-fill" style="width:30%;height:100%;border-radius:999px;"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="chip-dash" style="align-self:center;font-size:13px;padding:9px 16px;border-radius:999px;text-align:center;">+ Armar presupuesto</div>
+
+</div></div></div>
+    <div class="col"><div class="tag rec">Evolucionado</div><div class="phone theme-evolved"><div class="scr" style="display:flex;flex-direction:column;gap:14px;padding:16px;">
+
+  <div class="topbar" style="display:flex;align-items:center;justify-content:space-between;">
+    <div>
+      <div class="eyebrow">Plan</div>
+      <div class="title" style="font-size:22px;font-weight:700;">Presupuesto</div>
+    </div>
+    <div class="av" style="width:38px;height:38px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;">CG</div>
+  </div>
+
+  <div class="card" style="display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:18px;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <div class="eyebrow">Gastado este mes</div>
+        <div class="amount" style="font-size:42px;font-weight:700;line-height:1;">62%</div>
+      </div>
+      <span class="chip" style="font-size:11px;padding:5px 10px;border-radius:999px;white-space:nowrap;">En control</span>
+    </div>
+
+    <div class="bar" style="height:8px;border-radius:999px;overflow:hidden;">
+      <div class="bar-fill" style="width:62%;height:100%;border-radius:999px;"></div>
+    </div>
+
+    <div class="muted" style="font-size:12px;display:flex;justify-content:space-between;">
+      <span>Necesario · $1.860.000</span>
+      <span>Deseos · $740.000</span>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:8px;">
+
+    <div class="row" style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;">
+      <div class="icon-badge" style="background:#7d8cf0;color:#fff;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">🏠</div>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <span style="font-size:14px;font-weight:600;">Hogar</span>
+          <span class="amount" style="font-size:13px;font-weight:600;">$680.000</span>
+        </div>
+        <div class="bar" style="height:4px;border-radius:999px;overflow:hidden;">
+          <div class="bar-fill" style="width:48%;height:100%;border-radius:999px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;">
+      <div class="icon-badge" style="background:#d4a24a;color:#fff;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">🚌</div>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <span style="font-size:14px;font-weight:600;">Transporte</span>
+          <span class="amount" style="font-size:13px;font-weight:600;">$320.000</span>
+        </div>
+        <div class="bar" style="height:4px;border-radius:999px;overflow:hidden;">
+          <div class="bar-fill" style="width:64%;height:100%;border-radius:999px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;">
+      <div class="icon-badge" style="background:#d97a86;color:#fff;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">🍽️</div>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <span style="font-size:14px;font-weight:600;">Comida</span>
+          <span class="amount neg" style="font-size:13px;font-weight:600;">$540.000</span>
+        </div>
+        <div class="bar" style="height:4px;border-radius:999px;overflow:hidden;">
+          <div class="bar-fill over" style="width:100%;height:100%;border-radius:999px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;">
+      <div class="icon-badge" style="background:#5fb09a;color:#fff;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">➕</div>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <span style="font-size:14px;font-weight:600;">Salud</span>
+          <span class="amount" style="font-size:13px;font-weight:600;">$120.000</span>
+        </div>
+        <div class="bar" style="height:4px;border-radius:999px;overflow:hidden;">
+          <div class="bar-fill" style="width:30%;height:100%;border-radius:999px;"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="chip-dash" style="align-self:center;font-size:13px;padding:9px 16px;border-radius:999px;text-align:center;">+ Armar presupuesto</div>
+
+</div></div></div>
+  </div>
+</section>
+</div></body></html>

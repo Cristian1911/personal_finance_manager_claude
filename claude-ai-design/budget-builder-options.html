@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Armar presupuesto — opciones</title>
+<style>
+  :root{
+    --bg:#0a0a0b; --s1:#111113; --s2:#15161a; --s3:#1b1c21;
+    --line:rgba(255,255,255,.06); --line2:rgba(255,255,255,.10);
+    --white:#f4efe4; --muted:#8b8a86; --dim:#6a6967;
+    --brass:#937844; --brass-hot:#b29256; --brass-soft:rgba(147,120,68,.12);
+    --green:#7ba886; --debt:#c97b6b;
+    --indigo:#7d8cf0; --amber:#d4a24a; --rose:#d97a86; --blue:#6aa6d0; --pink:#cf7bbf; --violet:#9b7bd9; --sage:#86b08a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#070708;color:var(--white);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1320px;margin:0 auto;padding:28px 20px 60px}
+  h1{font-size:20px;font-weight:680;letter-spacing:-.02em;margin:0 0 4px}
+  .sub{color:var(--muted);margin:0 0 24px;font-size:13px}
+  .cols{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;align-items:start}
+  @media(max-width:1100px){.cols{grid-template-columns:1fr;max-width:420px}}
+  .col h2{font-size:13px;font-weight:680;margin:0 0 2px;display:flex;align-items:center;gap:8px}
+  .tag{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:2px 7px;border-radius:99px}
+  .tag.now{background:rgba(201,123,107,.14);color:var(--debt)}
+  .tag.rec{background:var(--brass-soft);color:var(--brass-hot)}
+  .tag.alt{background:rgba(123,168,134,.14);color:var(--green)}
+  .note{color:var(--dim);font-size:11.5px;margin:2px 0 12px;min-height:32px}
+  /* phone */
+  .phone{background:var(--bg);border:1px solid var(--line);border-radius:26px;padding:14px 12px 16px;box-shadow:0 24px 60px -30px #000}
+  .top{display:flex;align-items:center;gap:10px;padding:2px 4px 12px;border-bottom:1px solid var(--line)}
+  .top .x{color:var(--muted)}
+  .top .t{font-weight:680;font-size:15px}
+  .top .av{margin-left:auto;width:30px;height:30px;border-radius:99px;border:1px solid var(--brass);color:var(--brass-hot);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+  .intro{color:var(--muted);font-size:11.5px;padding:11px 4px 12px}
+  .calm{color:var(--green)}
+  /* sigma */
+  .sigma{border:1px solid rgba(147,120,68,.3);background:rgba(21,22,26,.9);border-radius:14px;padding:11px 13px;margin-bottom:12px}
+  .sigma .r{display:flex;justify-content:space-between;align-items:baseline;font-weight:680}
+  .sigma .of{color:var(--muted);font-weight:400}
+  .sigma .left{color:var(--green);font-size:12px}
+  .bar{height:6px;border-radius:99px;background:rgba(255,255,255,.07);margin-top:8px;overflow:hidden}
+  .bar > i{display:block;height:100%;border-radius:99px;background:var(--brass)}
+  .barmini{height:5px;border-radius:99px;background:rgba(255,255,255,.07);margin-top:5px;overflow:hidden}
+  .barmini > i{display:block;height:100%;background:var(--brass)}
+  /* set header */
+  .set{border:1px solid var(--line);background:rgba(21,22,26,.55);border-radius:14px;padding:11px 13px;margin:12px 0 8px}
+  .set .r{display:flex;justify-content:space-between;align-items:baseline}
+  .set .name{font-weight:680}
+  .set .pct{color:var(--muted);font-weight:400;font-size:12px}
+  .set .cap{color:var(--green);font-size:12px;font-weight:680}
+  /* category card */
+  .cat{display:flex;align-items:center;gap:10px;border:1px solid var(--line);background:var(--s1);border-radius:13px;padding:11px 13px;margin:7px 0}
+  .ic{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex:none}
+  .cat .nm{font-weight:680;font-size:13.5px}
+  .cat .rt{margin-left:auto;color:var(--brass-hot);font-weight:680;font-size:13px;display:flex;align-items:center;gap:8px}
+  .cat .chev{color:var(--dim)}
+  /* eyebrow */
+  .eyebrow{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin:10px 2px 7px}
+  /* chips (current = wall) */
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin:2px 2px 4px}
+  .chip{display:inline-flex;align-items:center;gap:6px;border:1px dashed var(--line2);border-radius:99px;padding:5px 10px;font-size:11.5px;color:#bdbcb7}
+  .dot{width:15px;height:15px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:9px}
+  /* add row (option A) */
+  .addrow{display:flex;align-items:center;gap:8px;border:1px dashed var(--line);border-radius:13px;padding:10px 13px;margin:7px 0 2px;color:var(--brass-hot);font-size:12.5px;font-weight:600}
+  .addrow .plus{width:18px;height:18px;border-radius:6px;background:var(--brass-soft);display:flex;align-items:center;justify-content:center}
+  /* save */
+  .save{margin-top:14px;height:42px;border-radius:11px;background:linear-gradient(180deg,var(--brass-hot),var(--brass));color:#1a1407;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:14px}
+  .stack{margin-top:10px}
+  .smallcap{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:2px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin:18px 0 0;color:var(--dim);font-size:11.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Armar presupuesto — 3 direcciones</h1>
+  <p class="sub">Mismos datos (ingreso $5.000.000, solo "Hogar" empezado). Compara la carga visual y la jerarquía.</p>
+
+  <div class="cols">
+
+    <!-- ─────────── CURRENT ─────────── -->
+    <div class="col">
+      <h2><span class="tag now">Actual</span> Abrumador</h2>
+      <p class="note">Cabeceras de set, categorías y 12 chips de "agregar", todos al mismo nivel. Sensación de formulario por llenar.</p>
+      <div class="phone">
+        <div class="top"><span class="x">✕</span><span class="t">Armar presupuesto</span><span class="av">HE</span></div>
+        <div class="intro">Arma cada grupo por líneas: lo fijo viene de tus recurrentes, lo variable de tus promedios.</div>
+        <div class="sigma"><div class="r"><span>Σ $ 0 <span class="of">de $ 5.000.000</span></span><span class="left">quedan $ 5.000.000</span></div><div class="bar"><i style="width:0"></i></div></div>
+
+        <div class="set"><div class="r"><span class="name">Necesidades <span class="pct">50%</span></span><span class="cap">$ 0 / $ 2.500.000</span></div><div class="barmini"><i style="width:0"></i></div></div>
+        <div class="cat"><span class="ic" style="background:rgba(125,140,240,.15);color:var(--indigo)">⌂</span><span class="nm">Hogar</span><span class="rt">— <span class="chev">›</span></span></div>
+        <div class="eyebrow">Agregar categoría</div>
+        <div class="chips">
+          <span class="chip"><span class="dot" style="background:rgba(212,162,74,.18);color:var(--amber)">🚗</span>Transporte</span>
+          <span class="chip"><span class="dot" style="background:rgba(217,122,134,.18);color:var(--rose)">♥</span>Salud</span>
+          <span class="chip"><span class="dot" style="background:rgba(106,166,208,.18);color:var(--blue)">🛡</span>Seguros</span>
+          <span class="chip"><span class="dot" style="background:rgba(139,138,134,.18);color:#aaa">≣</span>Obligaciones</span>
+        </div>
+
+        <div class="set"><div class="r"><span class="name">Deseos <span class="pct">30%</span></span><span class="cap">$ 0 / $ 1.500.000</span></div><div class="barmini"><i style="width:0"></i></div></div>
+        <div class="eyebrow">Agregar categoría</div>
+        <div class="chips">
+          <span class="chip"><span class="dot" style="background:rgba(207,123,191,.18);color:var(--pink)">🛍</span>Compras</span>
+          <span class="chip"><span class="dot" style="background:rgba(155,123,217,.18);color:var(--violet)">🎓</span>Educación</span>
+          <span class="chip"><span class="dot" style="background:rgba(155,123,217,.18);color:var(--violet)">🎬</span>Entretenimiento</span>
+          <span class="chip"><span class="dot" style="background:rgba(217,122,134,.18);color:var(--rose)">✦</span>Cuidado Personal</span>
+          <span class="chip"><span class="dot" style="background:rgba(207,123,191,.18);color:var(--pink)">🛍</span>Estilo de vida</span>
+          <span class="chip"><span class="dot" style="background:rgba(134,176,138,.18);color:var(--sage)">🍴</span>Comer Fuera</span>
+          <span class="chip"><span class="dot" style="background:rgba(139,138,134,.18);color:#aaa">🏷</span>Otros Gastos</span>
+        </div>
+
+        <div class="set"><div class="r"><span class="name">Ahorro/Deuda <span class="pct">20%</span></span><span class="cap">$ 0 / $ 1.000.000</span></div><div class="barmini"><i style="width:0"></i></div></div>
+        <div class="eyebrow">Agregar categoría</div>
+        <div class="chips"><span class="chip"><span class="dot" style="background:rgba(134,176,138,.18);color:var(--sage)">🐷</span>Ahorro e Inversión</span></div>
+      </div>
+    </div>
+
+    <!-- ─────────── OPTION A ─────────── -->
+    <div class="col">
+      <h2><span class="tag rec">A · recom.</span> Disclosure progresiva</h2>
+      <p class="note">Solo Σ + 3 sets + tus categorías activas. Los chips se esconden tras un "+ Agregar" discreto. Jerarquía clara, sin presión de llenar.</p>
+      <div class="phone">
+        <div class="top"><span class="x">✕</span><span class="t">Armar presupuesto</span><span class="av">HE</span></div>
+        <div class="intro">Presupuesta <span class="calm">solo lo que te importa</span> — no tienes que llenar todo.</div>
+        <div class="sigma"><div class="r"><span>Σ $ 0 <span class="of">de $ 5.000.000</span></span><span class="left">quedan $ 5.000.000</span></div><div class="bar"><i style="width:0"></i></div></div>
+
+        <div class="eyebrow">Necesidades · 50% · cupo $ 2.500.000</div>
+        <div class="cat"><span class="ic" style="background:rgba(125,140,240,.15);color:var(--indigo)">⌂</span><span class="nm">Hogar</span><span class="rt">— <span class="chev">›</span></span></div>
+        <div class="addrow"><span class="plus">+</span> Agregar categoría</div>
+
+        <div class="eyebrow">Deseos · 30% · cupo $ 1.500.000</div>
+        <div class="addrow"><span class="plus">+</span> Agregar categoría</div>
+
+        <div class="eyebrow">Ahorro/Deuda · 20% · cupo $ 1.000.000</div>
+        <div class="addrow"><span class="plus">+</span> Agregar categoría</div>
+
+        <div class="save">Guardar presupuesto</div>
+      </div>
+    </div>
+
+    <!-- ─────────── OPTION B ─────────── -->
+    <div class="col">
+      <h2><span class="tag alt">B</span> Simple + caps arriba</h2>
+      <p class="note">Sin anidado. Σ + 3 mini-barras de cupos arriba; debajo solo tus categorías activas y un único "+ Agregar". Lo más liviano.</p>
+      <div class="phone">
+        <div class="top"><span class="x">✕</span><span class="t">Armar presupuesto</span><span class="av">HE</span></div>
+        <div class="intro">Presupuesta <span class="calm">solo lo que te importa</span> — no tienes que llenar todo.</div>
+        <div class="sigma">
+          <div class="r"><span>Σ $ 0 <span class="of">de $ 5.000.000</span></span><span class="left">quedan $ 5.000.000</span></div>
+          <div class="bar"><i style="width:0"></i></div>
+          <div class="stack">
+            <div class="smallcap"><span>Necesidades 50%</span><span>$ 0 / $ 2.5M</span></div><div class="barmini"><i style="width:0"></i></div>
+            <div class="smallcap"><span>Deseos 30%</span><span>$ 0 / $ 1.5M</span></div><div class="barmini"><i style="width:0"></i></div>
+            <div class="smallcap"><span>Ahorro/Deuda 20%</span><span>$ 0 / $ 1M</span></div><div class="barmini"><i style="width:0"></i></div>
+          </div>
+        </div>
+
+        <div class="eyebrow">Tus categorías</div>
+        <div class="cat"><span class="ic" style="background:rgba(125,140,240,.15);color:var(--indigo)">⌂</span><span class="nm">Hogar</span><span class="rt">— <span class="chev">›</span></span></div>
+        <div class="addrow"><span class="plus">+</span> Agregar categoría</div>
+
+        <div class="save">Guardar presupuesto</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="legend">
+    <span>· "+ Agregar categoría" abre un picker (sheet) con las categorías del set / todas.</span>
+    <span>· Al elegir una, aparece como tarjeta con su monto y se expande para líneas/calculadora/transacciones.</span>
+  </div>
+</div>
+</body>
+</html>

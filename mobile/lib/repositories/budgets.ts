@@ -40,6 +40,9 @@ export async function getBudgetProgress(month: string): Promise<BudgetProgressRo
       ON t.category_id = c.id
       AND t.direction = 'OUTFLOW'
       AND t.transaction_date LIKE ?
+      -- Exclude personal-debt origin legs (shared-payment "me deben" portion)
+      -- so the lent amount doesn't inflate per-category budget spend.
+      AND (t.pd_role IS NULL OR t.pd_role != 'origin')
     GROUP BY c.id, c.name, c.name_es, c.color, c.expense_type, b.id, b.amount
     HAVING b.id IS NOT NULL
       OR COALESCE(SUM(CASE WHEN t.is_excluded = 0 THEN ABS(t.amount) ELSE 0 END), 0) > 0

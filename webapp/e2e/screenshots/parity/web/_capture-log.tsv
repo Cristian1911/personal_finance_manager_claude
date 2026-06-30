@@ -1,0 +1,35 @@
+home	/dashboard	ok
+tx-list	/transactions	ok
+tx-new	/transactions/new	ok
+accounts	/accounts	ok
+categories	/categories	REDIRECTED→/plan
+categorizar	/categorizar	ok
+deseos	/deseos	REDIRECTED→/plan
+destinatarios	/destinatarios	ok
+deudas	/deudas	ok
+personas	/deudas-personales	ok
+debt-planner	/deudas/planificador	ok
+etiquetas	/etiquetas	ok
+hub	/gestionar	ok
+import	/import	ok
+pendientes	/pendientes	REDIRECTED→/gestionar
+plan	/plan	ok
+plan-periodo	/plan/periodo	REDIRECTED→/plan
+presupuesto	/presupuesto	REDIRECTED→/plan
+presupuesto-armar	/presupuesto/armar	ok
+puedo-pagar	/puedo-pagar	ok
+recurrentes	/recurrentes	REDIRECTED→/plan
+recurrentes-new	/recurrentes/new	ok
+settings	/settings	ok
+settings-analytics	/settings/analytics	ok
+settings-email	/settings/email	ok
+settings-etiquetas	/settings/etiquetas	ok
+settings-integraciones	/settings/integraciones	ok
+settings-pdf-passwords	/settings/pdf-passwords	ok
+settings-perfil	/settings/perfil	ok
+reportar-bug	/settings/reportar-bug	ok
+suscripciones	/suscripciones	ok
+tendencias	/tendencias	ok
+tx-detail	/transactions	ERROR: locator.click: Test timeout of 400000ms exceeded.
+account-detail	/accounts	ERROR: page.goto: Target page, context or browser has been closed
+destinatario-detail	/destinatarios	ERROR: page.goto: Target page, context or browser has been closed
