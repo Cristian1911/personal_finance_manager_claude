@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { X } from "lucide-react-native";
 import { formatCurrency, formatDate, type CurrencyCode } from "@zeta/shared";
 import type { AccountRow } from "../../lib/repositories/accounts";
@@ -49,6 +50,7 @@ export function RecurringConfirmSheet({
   onClose,
   onSuccess,
 }: RecurringConfirmSheetProps) {
+  const router = useRouter();
   const templateAccount = useMemo(
     () => (occurrence ? accounts.find((a) => a.id === occurrence.account_id) ?? null : null),
     [occurrence, accounts]
@@ -195,6 +197,20 @@ export function RecurringConfirmSheet({
                 Confirmar pago
               </Text>
             )}
+          </Pressable>
+
+          <Pressable
+            onPress={() => {
+              onClose();
+              router.push(`/recurrentes/${occurrence.template_id}/edit` as any);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Editar plantilla"
+            className="items-center py-2"
+          >
+            <Text className="text-sm font-inter-medium text-z-brass">
+              Editar plantilla
+            </Text>
           </Pressable>
 
           <Pressable onPress={onClose} className="items-center py-2">
