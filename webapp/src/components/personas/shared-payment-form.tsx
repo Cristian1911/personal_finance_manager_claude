@@ -25,6 +25,7 @@ import {
   BRASS_BUTTON_CLASS,
   BRASS_GHOST_BUTTON_CLASS,
   GHOST_BUTTON_CLASS,
+  ICON_DESTRUCTIVE_TRIGGER_CLASS,
   PANEL_INSET_CLASS,
   SECTION_EYEBROW_CLASS,
 } from "@/lib/constants/styles";
@@ -210,7 +211,7 @@ export function SharedPaymentForm({ currency, existingTransaction }: SharedPayme
             <button
               type="button"
               onClick={removeInvoice}
-              className="text-xs text-muted-foreground hover:text-z-debt"
+              className={cn(ICON_DESTRUCTIVE_TRIGGER_CLASS, "text-xs")}
             >
               Quitar
             </button>
@@ -363,7 +364,7 @@ export function SharedPaymentForm({ currency, existingTransaction }: SharedPayme
                   type="button"
                   onClick={() => removeParticipant(p.key)}
                   aria-label="Quitar persona"
-                  className="mt-1 shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-z-debt"
+                  className={cn(ICON_DESTRUCTIVE_TRIGGER_CLASS, "mt-1 shrink-0 p-1.5")}
                 >
                   <X className="size-4" />
                 </button>

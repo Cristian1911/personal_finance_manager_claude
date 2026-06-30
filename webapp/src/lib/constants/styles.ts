@@ -23,6 +23,15 @@ export const DESTRUCTIVE_GHOST_BUTTON_CLASS =
   "border-z-debt/25 bg-black/10 text-z-expense hover:bg-z-debt/10";
 
 /**
+ * Minimal icon/text destructive trigger — borderless, no surface. For inline
+ * "remove" affordances (X to remove a row, trash icon, "Quitar" link) that
+ * shouldn't read as full buttons. Resting color is the muted eyebrow token for
+ * AA contrast; reddens on hover.
+ */
+export const ICON_DESTRUCTIVE_TRIGGER_CLASS =
+  "rounded-md text-z-sage-dark transition-colors hover:text-z-debt disabled:opacity-50";
+
+/**
  * Z-index — single ascending, spaced token scale (defined in globals.css as
  * `--z-layer-*` tokens, referenced via the arbitrary form, e.g.
  * `z-[var(--z-layer-modal)]`). Overlay order follows

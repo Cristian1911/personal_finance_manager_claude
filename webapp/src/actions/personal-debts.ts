@@ -584,10 +584,17 @@ async function recomputeSplitRepaid(
 ): Promise<void> {
   const { data: groupDebts } = await supabase
     .from("personal_debts")
-    .select("id")
+    .select("id, principal_amount")
     .eq("user_id", userId)
     .eq("split_group_id", splitGroupId);
   const ids: string[] = (groupDebts ?? []).map((d: { id: string }) => d.id);
+  // The most that can be repaid is the total owed (Σ participant principals).
+  // Clamp to it so an over-payment can't push split_repaid_amount above the
+  // transaction's amount and make the effective spend go negative.
+  const owed: number = (groupDebts ?? []).reduce(
+    (s: number, d: { principal_amount: number }) => s + Number(d.principal_amount ?? 0),
+    0,
+  );
   let repaid = 0;
   if (ids.length > 0) {
     const { data: reps } = await supabase
@@ -601,6 +608,7 @@ async function recomputeSplitRepaid(
       0,
     );
   }
+  repaid = Math.min(repaid, owed);
   // The origin transaction is the only group-tagged tx without a personal_debt_id.
   const { error } = await supabase
     .from("transactions")

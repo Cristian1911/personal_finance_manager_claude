@@ -286,6 +286,11 @@ export async function deleteSharedPayment(
     .eq("split_group_id", splitGroupId)
     .not("personal_debt_id", "is", null);
 
+  // Deleting the debts cascades `ON DELETE SET NULL` onto their repayment
+  // transactions (transactions.personal_debt_id). Those INFLOWs then pass the
+  // `.is("personal_debt_id", null)` cashflow filter and start counting as income
+  // — net cash-correct, but a visible metric swing. Repayments are real money
+  // received, so they are intentionally NOT deleted here.
   const { error: debtErr } = await supabase
     .from("personal_debts")
     .delete()

@@ -45,6 +45,27 @@ Two parts on that branch:
   dropping the column. No mobile WRITE path yet — read parity only (mobile reads webapp-created
   shared payments). Mobile create/split UI is a later phase (tracks with Personas mobile writes).
 
+## Pago compartido — riesgos de reconciliación + abono (2026-06-30, post-rediseño)
+
+El rediseño a "1 transacción + gasto dinámico" (`split_repaid_amount`) arregló la duplicación en import.
+Residuales detectados por los gates (`import-flow-doctor`, `server-action-reviewer`):
+- **(P1) Net-out se pierde tras reconciliar (solo modo "nuevo" + import posterior):** si creas un pago
+  compartido manual y luego importas el extracto con ese pago, la reconciliación deja la tx del banco
+  como sobreviviente **sin** `split_group_id`/`split_repaid_amount` (la manual queda
+  `reconciled_into_transaction_id`). Las métricas cuentan el sobreviviente → vuelven a mostrar el monto
+  completo, no el efectivo. Las deudas y la UI del grupo NO se rompen (leen vía `origin_transaction_id`).
+  Fix: al reconciliar una tx con `split_group_id`, transferir `split_group_id`+`split_repaid_amount` al
+  sobreviviente y re-apuntar `personal_debts.origin_transaction_id` (en `import-transactions.ts` merge ~L1330).
+  El modo "existente" (repartir una tx ya importada) NO sufre esto.
+- **(P2) Desfase de fecha en reconciliación:** banco postea 2–3 días después + descripción distinta →
+  score 0.65 → NO_MATCH → duplicado. Limitación pre-existente de `reconciliation.ts` (afecta cualquier tx
+  manual). Mitigación: ampliar la ventana de fecha para tx MANUAL_FORM, o pedir fecha de causación.
+- **(P2) Cap de abono:** `recordRepayment` no limita el abono al `outstanding` de la deuda (solo `>0`).
+  `recomputeSplitRepaid` ya hace clamp a Σ principales (evita gasto negativo), pero el `outstanding` de la
+  deuda individual puede sobre-abonarse. Considerar validar `amount ≤ outstanding` en el schema/acción.
+- **(P3) Limpieza:** `isPersonalDebtOrigin` (`@zeta/shared/personal-debt.ts`) quedó muerto (solo su test);
+  encoda la semántica vieja "abonos cuentan como cashflow". Borrar para evitar mal uso.
+
 ## Pago compartido — factura persistente / storage (2026-06-30)
 
 V1 (full-page wizard) attaches the invoice as a **client-side reference only** — `URL.createObjectURL`
