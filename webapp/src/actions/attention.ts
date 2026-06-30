@@ -40,8 +40,9 @@ async function getAttentionSnapshotCached(
       .is("category_id", null)
       .eq("is_excluded", false)
       .is("reconciled_into_transaction_id", null)
-      // Exclude personal-debt origin legs (shared-payment "me deben" portion) —
-      // they aren't user spend and shouldn't show as uncategorized.
+      // Exclude personal-debt movements (standalone debt origins + repayments).
+      // The shared-payment tx itself has personal_debt_id null, so it stays — and
+      // in "new" mode it is uncategorized, so it correctly surfaces here.
       .is("personal_debt_id", null),
 
     // Signal 2: Transactions without destinatario but with raw_description

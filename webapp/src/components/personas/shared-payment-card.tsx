@@ -23,6 +23,7 @@ import {
   BRASS_GHOST_BUTTON_CLASS,
   DESTRUCTIVE_GHOST_BUTTON_CLASS,
   GHOST_BUTTON_CLASS,
+  ICON_DESTRUCTIVE_TRIGGER_CLASS,
   PANEL_INSET_CLASS,
   SECTION_EYEBROW_CLASS,
 } from "@/lib/constants/styles";
@@ -84,7 +85,7 @@ export function SharedPaymentCard({ group, currency }: SharedPaymentCardProps) {
                 type="button"
                 aria-label="Eliminar pago compartido"
                 disabled={pending}
-                className="mt-0.5 rounded-md p-1 text-muted-foreground transition-colors hover:text-z-debt disabled:opacity-50"
+                className={cn(ICON_DESTRUCTIVE_TRIGGER_CLASS, "mt-0.5 p-1")}
               >
                 <Trash2 className="size-4" />
               </button>
