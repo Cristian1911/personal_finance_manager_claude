@@ -99,13 +99,20 @@ export async function createSharedPayment(
   let paidOn: string;
   // The existing transaction to convert (existing mode only).
   let originTx:
-    | { id: string; amount: number; account_id: string; currency_code: string; transaction_date: string }
+    | {
+        id: string;
+        amount: number;
+        account_id: string;
+        currency_code: string;
+        transaction_date: string;
+        category_id: string | null;
+      }
     | null = null;
 
   if (p.mode === "existing") {
     const { data: tx, error: txErr } = await supabase
       .from("transactions")
-      .select("id, amount, direction, account_id, currency_code, transaction_date, personal_debt_id, split_group_id")
+      .select("id, amount, direction, account_id, currency_code, transaction_date, category_id, personal_debt_id, split_group_id")
       .eq("id", p.origin_transaction_id!)
       .eq("user_id", user.id)
       .single();
@@ -132,6 +139,7 @@ export async function createSharedPayment(
       account_id: tx.account_id,
       currency_code: tx.currency_code,
       transaction_date: tx.transaction_date,
+      category_id: tx.category_id ?? null,
     };
   } else {
     total = p.total_amount!;
@@ -162,6 +170,10 @@ export async function createSharedPayment(
   const splitGroupId = crypto.randomUUID();
   const currencyEnum = currency as CurrencyEnum;
   const description = p.description ?? "Pago compartido";
+  // Propagate the source transaction's category to the participant legs so the
+  // split rows match the original spend (e.g. "Restaurante") instead of landing
+  // uncategorized. New mode has no source → null.
+  const legCategoryId: string | null = originTx?.category_id ?? null;
 
   // Build one transaction-leg insert row (UUID pre-generated so debts can carry
   // origin_transaction_id without a follow-up round-trip, and so all legs batch
@@ -173,6 +185,7 @@ export async function createSharedPayment(
     destinatario_id: string | null;
     personal_debt_id: string | null;
     pd_role: "origin" | null;
+    category_id: string | null;
     idemSuffix: string;
   }) {
     const idempotencyKey = await computeIdempotencyKey({
@@ -192,6 +205,7 @@ export async function createSharedPayment(
       transaction_date: paidOn,
       raw_description: description,
       destinatario_id: opts.destinatario_id,
+      category_id: opts.category_id,
       provider: "MANUAL" as const,
       capture_method: "MANUAL_FORM" as const,
       idempotency_key: idempotencyKey,
@@ -242,6 +256,7 @@ export async function createSharedPayment(
         destinatario_id: share.destinatario_id,
         personal_debt_id: debtId,
         pd_role: "origin",
+        category_id: legCategoryId,
         idemSuffix: `p${i}`,
       }),
     );
@@ -257,6 +272,7 @@ export async function createSharedPayment(
         destinatario_id: null,
         personal_debt_id: null,
         pd_role: null,
+        category_id: legCategoryId,
         idemSuffix: "self",
       }),
     );
