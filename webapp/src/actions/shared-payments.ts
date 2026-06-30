@@ -159,7 +159,9 @@ export async function createSharedPayment(
   const description = p.description ?? "Pago compartido";
 
   // ----------------------------------------------------------------
-  // 1) The single origin transaction.
+  // 1) Establish the single origin transaction. The account balance is applied
+  //    LAST (step 3) so a failed debts insert leaves no balance drift — only
+  //    after the tx + debts both land do we move the cash.
   // ----------------------------------------------------------------
   let originTransactionId: string;
 
@@ -174,8 +176,7 @@ export async function createSharedPayment(
       .eq("user_id", user.id);
     if (updErr) return { success: false, error: "Error al marcar la transacción como pago compartido" };
   } else {
-    // Create ONE real expense transaction for the full total, then apply a single
-    // balance delta (the cash leaving the account).
+    // Create ONE real expense transaction for the full total.
     originTransactionId = crypto.randomUUID();
     const idempotencyKey = await computeIdempotencyKey({
       provider: "MANUAL",
@@ -205,28 +206,6 @@ export async function createSharedPayment(
       }
       return { success: false, error: "Error al registrar el pago compartido" };
     }
-
-    const { data: acct, error: acctErr } = await supabase
-      .from("accounts")
-      .select("id, account_type, current_balance")
-      .eq("id", accountId)
-      .eq("user_id", user.id)
-      .single();
-    if (acctErr || !acct || acct.account_type == null) {
-      return { success: false, error: "Cuenta no encontrada para aplicar el saldo" };
-    }
-    const nextBalance = applyAccountBalanceDelta({
-      currentBalance: acct.current_balance ?? 0,
-      accountType: acct.account_type,
-      direction: "OUTFLOW",
-      amount: total,
-    });
-    const { error: balErr } = await supabase
-      .from("accounts")
-      .update({ current_balance: nextBalance })
-      .eq("id", accountId)
-      .eq("user_id", user.id);
-    if (balErr) return { success: false, error: "Error al actualizar el saldo de la cuenta" };
   }
 
   // ----------------------------------------------------------------
@@ -254,7 +233,45 @@ export async function createSharedPayment(
   });
   const { error: debtsErr } = await supabase.from("personal_debts").insert(debtsToInsert);
   if (debtsErr) {
+    // Compensating cleanup so we never leave an orphaned split tx with no debts
+    // (and, in new mode, no balance has been applied yet — see step 3).
+    if (p.mode === "new") {
+      await supabase.from("transactions").delete().eq("id", originTransactionId).eq("user_id", user.id);
+    } else {
+      await supabase
+        .from("transactions")
+        .update({ split_group_id: null, split_repaid_amount: null })
+        .eq("id", originTransactionId)
+        .eq("user_id", user.id);
+    }
     return { success: false, error: "Error al crear las deudas del reparto" };
+  }
+
+  // ----------------------------------------------------------------
+  // 3) New mode: tx + debts are in place — apply the ONE balance delta now.
+  // ----------------------------------------------------------------
+  if (p.mode === "new") {
+    const { data: acct, error: acctErr } = await supabase
+      .from("accounts")
+      .select("id, account_type, current_balance")
+      .eq("id", accountId)
+      .eq("user_id", user.id)
+      .single();
+    if (acctErr || !acct || acct.account_type == null) {
+      return { success: false, error: "Cuenta no encontrada para aplicar el saldo" };
+    }
+    const nextBalance = applyAccountBalanceDelta({
+      currentBalance: acct.current_balance ?? 0,
+      accountType: acct.account_type,
+      direction: "OUTFLOW",
+      amount: total,
+    });
+    const { error: balErr } = await supabase
+      .from("accounts")
+      .update({ current_balance: nextBalance })
+      .eq("id", accountId)
+      .eq("user_id", user.id);
+    if (balErr) return { success: false, error: "Error al actualizar el saldo de la cuenta" };
   }
 
   revalidateFinancialViews();
@@ -279,12 +296,16 @@ export async function deleteSharedPayment(
   // Legacy cleanup: old per-participant legs carried split_group_id + a
   // personal_debt_id. The new-model origin tx has personal_debt_id null, so this
   // is a no-op there.
-  await supabase
+  const { error: legacyErr } = await supabase
     .from("transactions")
     .delete()
     .eq("user_id", user.id)
     .eq("split_group_id", splitGroupId)
     .not("personal_debt_id", "is", null);
+  if (legacyErr) {
+    console.error("deleteSharedPayment legacy-leg cleanup failed:", legacyErr);
+    return { success: false, error: "Error al eliminar el pago compartido" };
+  }
 
   // Deleting the debts cascades `ON DELETE SET NULL` onto their repayment
   // transactions (transactions.personal_debt_id). Those INFLOWs then pass the
@@ -296,14 +317,23 @@ export async function deleteSharedPayment(
     .delete()
     .eq("user_id", user.id)
     .eq("split_group_id", splitGroupId);
-  if (debtErr) return { success: false, error: "Error al eliminar el pago compartido" };
+  if (debtErr) {
+    console.error("deleteSharedPayment debt delete failed:", debtErr);
+    return { success: false, error: "Error al eliminar el pago compartido" };
+  }
 
-  // Un-split the real transaction(s): keep them, drop the split metadata.
-  await supabase
+  // Un-split the real transaction(s): keep them, drop the split metadata. Surface
+  // a failure here — otherwise the debts are gone but the tx stays tagged as a
+  // split (inconsistent state).
+  const { error: untagErr } = await supabase
     .from("transactions")
     .update({ split_group_id: null, split_repaid_amount: null })
     .eq("user_id", user.id)
     .eq("split_group_id", splitGroupId);
+  if (untagErr) {
+    console.error("deleteSharedPayment un-split failed:", untagErr);
+    return { success: false, error: "Error al eliminar el pago compartido" };
+  }
 
   revalidateFinancialViews();
   updateTag("personal-debts");

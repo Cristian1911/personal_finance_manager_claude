@@ -582,11 +582,17 @@ async function recomputeSplitRepaid(
   userId: string,
   splitGroupId: string,
 ): Promise<void> {
-  const { data: groupDebts } = await supabase
+  const { data: groupDebts, error: groupErr } = await supabase
     .from("personal_debts")
     .select("id, principal_amount")
     .eq("user_id", userId)
     .eq("split_group_id", splitGroupId);
+  // Don't swallow a failed fetch — treating it as "no debts" would write
+  // split_repaid_amount = 0 and silently corrupt the tx's effective spend.
+  if (groupErr) {
+    console.error("recomputeSplitRepaid: failed to fetch group debts:", groupErr);
+    throw new Error("No se pudieron recomputar las deudas del pago compartido");
+  }
   const ids: string[] = (groupDebts ?? []).map((d: { id: string }) => d.id);
   // The most that can be repaid is the total owed (Σ participant principals).
   // Clamp to it so an over-payment can't push split_repaid_amount above the
