@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/collapsible";
 import { AmountInput } from "@/components/ui/amount-input";
 import { DatePicker } from "@/components/ui/date-picker";
+import { TimePicker } from "@/components/ui/time-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
@@ -168,6 +169,10 @@ export function MobileTransactionForm({
   const today = new Date().toISOString().split("T")[0];
   const [merchantName, setMerchantName] = useState("");
   const [transactionDate, setTransactionDate] = useState<string>(today);
+  // Default to the current time-of-day so FAB-created transactions carry an hour.
+  const [transactionTime, setTransactionTime] = useState<string>(() =>
+    new Date().toTimeString().slice(0, 5),
+  );
   const [isSubscription, setIsSubscription] = useState(false);
   const [notes, setNotes] = useState("");
   const [destinatarioId, setDestinatarioId] = useState<string | null>(null);
@@ -379,14 +384,24 @@ export function MobileTransactionForm({
         </div>
       )}
 
-      {/* Fecha */}
-      <div className="space-y-2">
-        <Label>Fecha</Label>
-        <DatePicker
-          value={transactionDate}
-          onChange={(v) => setTransactionDate(v ?? today)}
-          placeholder="Seleccionar fecha"
-        />
+      {/* Fecha + hora */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label>Fecha</Label>
+          <DatePicker
+            value={transactionDate}
+            onChange={(v) => setTransactionDate(v ?? today)}
+            placeholder="Seleccionar fecha"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="transaction_time">Hora</Label>
+          <TimePicker
+            name="transaction_time"
+            value={transactionTime}
+            onChange={(v) => setTransactionTime(v ?? "")}
+          />
+        </div>
       </div>
 
       {/* Category — full width (not used for transfers) */}
