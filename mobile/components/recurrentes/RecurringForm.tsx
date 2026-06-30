@@ -157,9 +157,18 @@ export function RecurringForm({
   const [startDate, setStartDate] = useState(initial?.start_date ?? today);
   const [endDate, setEndDate] = useState<string | null>(initial?.end_date ?? null);
   const [categoryId, setCategoryId] = useState<string | null>(initial?.category_id ?? null);
-  const [categoryName, setCategoryName] = useState<string | null>(null);
+  const [categoryName, setCategoryName] = useState<string | null>(() => {
+    if (!initial?.category_id) return null;
+    const c = categories.find((x) => x.id === initial.category_id);
+    return c?.name_es ?? c?.name ?? null;
+  });
   const [destinatarioId, setDestinatarioId] = useState<string | null>(initial?.destinatario_id ?? null);
-  const [destinatarioName, setDestinatarioName] = useState<string | null>(null);
+  const [destinatarioName, setDestinatarioName] = useState<string | null>(
+    () =>
+      initial?.destinatario_id
+        ? (destinatarios.find((x) => x.id === initial.destinatario_id)?.name ?? null)
+        : null
+  );
   const [transferSourceId, setTransferSourceId] = useState<string | null>(
     initial?.transfer_source_account_id ?? null
   );
@@ -188,6 +197,8 @@ export function RecurringForm({
     if (!amount || amount <= 0) return setError("El monto debe ser mayor a 0.");
     if (isDebtPayment && !transferSourceId)
       return setError("Selecciona la cuenta origen del pago de deuda.");
+    if (frequency !== "ONCE" && endDate && endDate < startDate)
+      return setError("La fecha fin no puede ser anterior a la fecha de inicio.");
     setError(null);
     // Mirror the webapp: a debt abono (INFLOW) with no category chosen defaults
     // to the debt-payment category, so it isn't "sin categoría" in the web list.
@@ -259,7 +270,13 @@ export function RecurringForm({
             return (
               <Pressable
                 key={d}
-                onPress={() => setDirection(d)}
+                onPress={() => {
+                  if (d === direction) return;
+                  setDirection(d);
+                  // Category is direction-scoped — clear the stale selection.
+                  setCategoryId(null);
+                  setCategoryName(null);
+                }}
                 accessibilityRole="radio"
                 accessibilityState={{ selected: sel }}
                 className={`flex-1 items-center rounded-lg py-2 ${sel ? "bg-z-surface-2-80" : ""}`}
@@ -295,7 +312,11 @@ export function RecurringForm({
         <SelectRow
           options={accounts.map((a) => ({ value: a.id, label: a.name }))}
           value={accountId || null}
-          onChange={setAccountId}
+          onChange={(val) => {
+            setAccountId(val);
+            // A transfer can't be to/from the same account (the repo throws).
+            if (val === transferSourceId) setTransferSourceId(null);
+          }}
           placeholder="Seleccionar cuenta"
         />
       </View>

@@ -38,6 +38,10 @@ export default function NewRecurrenteScreen() {
       setDestinatarios(d);
     } catch (error) {
       console.error("Failed to load recurrente form data:", error);
+      Alert.alert(
+        "Error",
+        "No se pudieron cargar los datos para crear la recurrente."
+      );
     } finally {
       setLoading(false);
     }
