@@ -426,7 +426,7 @@ export async function assignDestinatario(
   transactionId: string,
   destinatarioId: string,
   overwriteTitle = false
-): Promise<ActionResult> {
+): Promise<ActionResult<{ appliedCategoryId: string | null }>> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
@@ -474,10 +474,14 @@ export async function assignDestinatario(
     updatePayload.merchant_name = dest.name;
   }
 
-  // If the destinatario has a default category and the transaction has none, apply it
+  // If the destinatario has a default category and the transaction has none, apply it.
+  // Report it back so the caller can reflect the auto-applied category optimistically
+  // (the chip + collapsed-row subtitle) instead of waiting for a navigation/refresh.
+  let appliedCategoryId: string | null = null;
   if (dest.default_category_id && !tx.category_id) {
     updatePayload.category_id = dest.default_category_id;
     updatePayload.categorization_source = "USER_LEARNED";
+    appliedCategoryId = dest.default_category_id;
   }
 
   const { error: updateError } = await supabase
@@ -507,7 +511,7 @@ export async function assignDestinatario(
 
   revalidateFinancialViews();
   updateTag("destinatarios");
-  return { success: true, data: undefined };
+  return { success: true, data: { appliedCategoryId } };
 }
 
 /**

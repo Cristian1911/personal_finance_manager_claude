@@ -184,6 +184,19 @@ export function TransactionQuickActions({
         if (!result.success) {
           setLocalDestinatario(tx.destinatario);
           toast.error("Error al asignar destinatario");
+        } else if (result.data.appliedCategoryId) {
+          // The destinatario carried a default category and the transaction had
+          // none, so the action just categorized it server-side. Reflect that
+          // optimistically — the category chip here and the collapsed-row
+          // subtitle (via onCategorized) — instead of waiting for a refresh.
+          const appliedId = result.data.appliedCategoryId;
+          const cat = categories
+            .flatMap((c) => [c, ...(c.children ?? [])])
+            .find((c) => c.id === appliedId);
+          if (cat) {
+            setLocalCategory({ id: cat.id, name: cat.name, name_es: cat.name_es, icon: cat.icon, color: cat.color });
+          }
+          onCategorized?.(tx.id, appliedId);
         }
       });
     } else {
