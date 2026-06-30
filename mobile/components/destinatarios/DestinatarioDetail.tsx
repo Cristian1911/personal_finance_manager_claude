@@ -1,10 +1,12 @@
 import { useCallback, useState } from "react";
-import { View, Text, ScrollView, RefreshControl, Pressable } from "react-native";
+import { View, Text, ScrollView, RefreshControl, Pressable, TextInput, Alert } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import { ArrowDownLeft, ArrowUpRight, FileText, Pencil, Shield, Store } from "lucide-react-native";
+import { ArrowDownLeft, ArrowUpRight, FileText, Pencil, Plus, Shield, Store, Trash2 } from "lucide-react-native";
 import { formatCurrency, formatDate, type CurrencyCode } from "@zeta/shared";
 import { useSync } from "../../lib/sync/hooks";
 import {
+  addDestinatarioRule,
+  deleteDestinatarioRule,
   getDestinatarioById,
   getRulesForDestinatario,
   type DestinatarioWithCount,
@@ -41,6 +43,9 @@ export function DestinatarioDetail({ id }: DestinatarioDetailProps) {
     useState<DestinatarioWithCount | null>(null);
   const [rules, setRules] = useState<DestinatarioRuleRow[]>([]);
   const [transactions, setTransactions] = useState<TransactionSummary[]>([]);
+  const [addingRule, setAddingRule] = useState(false);
+  const [newPattern, setNewPattern] = useState("");
+  const [newMatchType, setNewMatchType] = useState<"contains" | "exact">("contains");
 
   const loadData = useCallback(async () => {
     try {
@@ -85,6 +90,50 @@ export function DestinatarioDetail({ id }: DestinatarioDetailProps) {
       setRefreshing(false);
     }
   }, [sync, loadData]);
+
+  const handleAddRule = useCallback(async () => {
+    const pattern = newPattern.trim();
+    if (!pattern) return;
+    if (pattern.length < 2) {
+      Alert.alert("Error", "El patrón debe tener al menos 2 caracteres.");
+      return;
+    }
+    try {
+      await addDestinatarioRule({
+        destinatario_id: id,
+        pattern,
+        match_type: newMatchType,
+      });
+      setNewPattern("");
+      setAddingRule(false);
+      await loadData();
+    } catch (error) {
+      console.error("Failed to add rule:", error);
+      Alert.alert("Error", (error as Error).message || "No se pudo agregar la regla.");
+    }
+  }, [id, newPattern, newMatchType, loadData]);
+
+  const handleDeleteRule = useCallback(
+    (ruleId: string, pattern: string) => {
+      Alert.alert("Eliminar regla", `¿Quitar el patrón "${pattern}"?`, [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteDestinatarioRule(ruleId);
+              await loadData();
+            } catch (error) {
+              console.error("Failed to delete rule:", error);
+              Alert.alert("Error", "No se pudo eliminar la regla.");
+            }
+          },
+        },
+      ]);
+    },
+    [loadData]
+  );
 
   const title = destinatario?.name ?? "Destinatario";
 
@@ -163,13 +212,98 @@ export function DestinatarioDetail({ id }: DestinatarioDetailProps) {
 
         {/* Rules section */}
         <View className="mt-2">
-          <Text className={`${SECTION_EYEBROW_CLASS} mb-2 px-1`}>REGLAS</Text>
-          {rules.length === 0 ? (
-            <MCard>
-              <Text className="text-sm font-inter text-muted-foreground text-center py-2">
-                No hay reglas configuradas
-              </Text>
+          <View className="mb-2 flex-row items-center justify-between px-1">
+            <Text className={SECTION_EYEBROW_CLASS}>REGLAS</Text>
+            {!addingRule && (
+              <Pressable
+                onPress={() => setAddingRule(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Agregar regla"
+                hitSlop={{ top: 12, bottom: 12, left: 0, right: 8 }}
+                className="flex-row items-center gap-1 active:opacity-80"
+              >
+                <Plus size={13} color={COLORS.brass} />
+                <Text className="text-[11px] font-inter-semibold text-z-brass">
+                  Agregar
+                </Text>
+              </Pressable>
+            )}
+          </View>
+
+          {addingRule && (
+            <MCard className="gap-2 mb-2">
+              <TextInput
+                value={newPattern}
+                onChangeText={setNewPattern}
+                placeholder="Patrón (ej: NETFLIX)"
+                placeholderTextColor={COLORS.sageDark}
+                autoFocus
+                autoCapitalize="characters"
+                accessibilityLabel="Patrón de la regla"
+                className="rounded-xl border border-white-6 bg-black-10 px-3 py-2.5 text-sm font-inter text-foreground"
+              />
+              <View
+                accessibilityRole="radiogroup"
+                accessibilityLabel="Tipo de coincidencia"
+                className="flex-row gap-1 rounded-xl border border-white-6 bg-black-10 p-1"
+              >
+                {(["contains", "exact"] as const).map((mt) => {
+                  const sel = mt === newMatchType;
+                  return (
+                    <Pressable
+                      key={mt}
+                      onPress={() => setNewMatchType(mt)}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: sel }}
+                      className={`flex-1 items-center rounded-lg py-2 ${sel ? "bg-z-surface-2-80" : ""}`}
+                    >
+                      <Text
+                        className={`text-[12px] font-inter-semibold ${sel ? "text-foreground" : "text-muted-foreground"}`}
+                      >
+                        {mt === "contains" ? "Contiene" : "Exacto"}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <View className="flex-row gap-2">
+                <Pressable
+                  onPress={() => {
+                    setAddingRule(false);
+                    setNewPattern("");
+                  }}
+                  accessibilityRole="button"
+                  className="flex-1 items-center rounded-xl border border-white-6 py-2.5 active:opacity-80"
+                >
+                  <Text className="text-sm font-inter-medium text-muted-foreground">
+                    Cancelar
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleAddRule}
+                  disabled={!newPattern.trim()}
+                  accessibilityRole="button"
+                  accessibilityLabel="Agregar regla"
+                  accessibilityState={{ disabled: !newPattern.trim() }}
+                  className="flex-1 items-center rounded-xl bg-z-brass-10 py-2.5 active:opacity-80"
+                  style={!newPattern.trim() ? { opacity: 0.5 } : undefined}
+                >
+                  <Text className="text-sm font-inter-semibold text-z-brass">
+                    Agregar
+                  </Text>
+                </Pressable>
+              </View>
             </MCard>
+          )}
+
+          {rules.length === 0 ? (
+            !addingRule && (
+              <MCard>
+                <Text className="text-sm font-inter text-muted-foreground text-center py-2">
+                  No hay reglas configuradas
+                </Text>
+              </MCard>
+            )
           ) : (
             <MCard className="p-0 overflow-hidden">
               {rules.map((rule, idx) => (
@@ -199,6 +333,15 @@ export function DestinatarioDetail({ id }: DestinatarioDetailProps) {
                         </Text>
                       </View>
                     )}
+                    <Pressable
+                      onPress={() => handleDeleteRule(rule.id, rule.pattern)}
+                      hitSlop={15}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Eliminar regla ${rule.pattern}`}
+                      className="active:opacity-60"
+                    >
+                      <Trash2 size={14} color={COLORS.sageDark} />
+                    </Pressable>
                   </View>
                 </MListRow>
               ))}

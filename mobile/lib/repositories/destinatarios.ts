@@ -1,7 +1,7 @@
 import * as Crypto from "expo-crypto";
 import type { DestinatarioRule } from "@zeta/shared";
 import { getDatabase } from "../db/database";
-import { enqueueInsert, enqueueUpdate } from "../sync/queue";
+import { enqueueDelete, enqueueInsert, enqueueUpdate } from "../sync/queue";
 
 export type DestinatarioRow = {
   id: string;
@@ -232,5 +232,66 @@ export async function updateDestinatario(
       ]
     );
     await enqueueUpdate(db, "destinatarios", id, fields, now);
+  });
+}
+
+/**
+ * Add a matching rule (pattern) to a destinatario + enqueue the sync INSERT.
+ * Mirrors webapp `addDestinatarioRule` (its findPatternConflicts is an advisory
+ * check + cache revalidation only). user_id is derived from the destinatario.
+ */
+export async function addDestinatarioRule(params: {
+  destinatario_id: string;
+  pattern: string;
+  match_type?: "contains" | "exact";
+  priority?: number;
+}): Promise<string> {
+  const db = await getDatabase();
+  const owner = await db.getFirstAsync<{ user_id: string }>(
+    "SELECT user_id FROM destinatarios WHERE id = ?",
+    [params.destinatario_id]
+  );
+  if (!owner) throw new Error("Destinatario no encontrado.");
+  // Mirror Supabase's UNIQUE INDEX ON (user_id, lower(pattern)) — case-insensitive.
+  // Pre-check prevents a ghost local row: without this, a duplicate is accepted
+  // into SQLite then silently dropped on push (23505 skip), leaving a rule
+  // visible in the UI with no Supabase counterpart. Surfaces the same error
+  // the webapp shows immediately.
+  const dup = await db.getFirstAsync<{ id: string }>(
+    "SELECT id FROM destinatario_rules WHERE user_id = ? AND lower(pattern) = lower(?)",
+    [owner.user_id, params.pattern]
+  );
+  if (dup) throw new Error("Este patrón ya está en uso.");
+  const id = Crypto.randomUUID();
+  const matchType = params.match_type ?? "contains";
+  const priority = params.priority ?? 100;
+  const now = new Date().toISOString();
+  const payload = {
+    id,
+    user_id: owner.user_id,
+    destinatario_id: params.destinatario_id,
+    pattern: params.pattern,
+    match_type: matchType,
+    priority,
+  };
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(
+      `INSERT INTO destinatario_rules
+        (id, user_id, destinatario_id, pattern, match_type, priority, match_count, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, 0, ?)`,
+      [id, owner.user_id, params.destinatario_id, params.pattern, matchType, priority, now]
+    );
+    await enqueueInsert(db, "destinatario_rules", id, payload, now);
+  });
+  return id;
+}
+
+/** Delete a destinatario matching rule + enqueue the sync DELETE. */
+export async function deleteDestinatarioRule(ruleId: string): Promise<void> {
+  const db = await getDatabase();
+  const now = new Date().toISOString();
+  await db.withTransactionAsync(async () => {
+    await db.runAsync("DELETE FROM destinatario_rules WHERE id = ?", [ruleId]);
+    await enqueueDelete(db, "destinatario_rules", ruleId, now);
   });
 }
