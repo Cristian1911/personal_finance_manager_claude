@@ -35,6 +35,7 @@ export const DB_MIGRATIONS: DbMigration[] = [
         icon TEXT,
         color TEXT,
         expense_type TEXT,
+        direction TEXT,
         parent_id TEXT,
         is_system INTEGER NOT NULL DEFAULT 0,
         display_order INTEGER NOT NULL DEFAULT 0,
@@ -660,6 +661,16 @@ export const DB_MIGRATIONS: DbMigration[] = [
       // Synced automatically once the column exists (pull's upsertRow maps any
       // Supabase column present in the local table).
       `ALTER TABLE categories ADD COLUMN expense_type TEXT`,
+    ],
+  },
+  {
+    version: 22,
+    statements: [
+      // direction (INFLOW/OUTFLOW/null) — so mobile-created budget lines carry
+      // their parent's side instead of landing NULL, which the webapp category
+      // query (direction.eq.X,direction.is.null) would leak into BOTH pickers.
+      // Synced automatically once the column exists (pull's upsertRow maps it).
+      `ALTER TABLE categories ADD COLUMN direction TEXT`,
     ],
   },
 ];
