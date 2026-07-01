@@ -10,6 +10,7 @@ import {
   Users,
   Settings,
   TrendingUp,
+  MapPin,
   type LucideIcon,
 } from "lucide-react";
 
@@ -55,6 +56,7 @@ export const WORKSPACE_NAV: NavItem[] = [
   { title: "Cuentas", href: "/accounts", icon: Wallet },
   { title: "Deudas", href: "/deudas", icon: Landmark },
   { title: "Deudas personales", href: "/deudas-personales", icon: Users },
+  { title: "Modos", href: "/modos", icon: MapPin },
 ];
 
 export const BOTTOM_NAV: NavItem[] = [
