@@ -63,7 +63,7 @@ export function TransactionFilters({
     searchParams.get("search") ||
     searchParams.get("accountId") ||
     searchParams.get("categoryId") ||
-    searchParams.get("tagId") ||
+    searchParams.get("tags") ||
     searchParams.get("direction") ||
     searchParams.get("source") ||
     searchParams.get("dateFrom") ||
@@ -77,7 +77,7 @@ export function TransactionFilters({
     searchParams.get("search"),
     searchParams.get("accountId"),
     searchParams.get("categoryId"),
-    searchParams.get("tagId"),
+    searchParams.get("tags"),
     searchParams.get("direction"),
     searchParams.get("source"),
     searchParams.get("dateFrom"),
@@ -194,22 +194,35 @@ export function TransactionFilters({
             </Select>
 
             {tags.length > 0 && (
-              <Select
-                defaultValue={searchParams.get("tagId") ?? "all"}
-                onValueChange={(v) => updateFilter("tagId", v)}
-              >
-                <SelectTrigger className={inputWidth}>
-                  <SelectValue placeholder="Todas las etiquetas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas las etiquetas</SelectItem>
-                  {tags.map((tag) => (
-                    <SelectItem key={tag.id} value={tag.id}>
+              <div className={cn("flex flex-wrap gap-1.5", mobile ? "w-full" : "")}>
+                {tags.map((tag) => {
+                  const selectedTags = (searchParams.get("tags") ?? "")
+                    .split(",")
+                    .filter(Boolean);
+                  const selected = selectedTags.includes(tag.id);
+                  return (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      onClick={() => {
+                        const next = selected
+                          ? selectedTags.filter((id) => id !== tag.id)
+                          : [...selectedTags, tag.id];
+                        updateFilter("tags", next.join(","));
+                      }}
+                      aria-pressed={selected}
+                      className={cn(
+                        "rounded-full border px-2.5 py-1 text-xs transition-colors",
+                        selected
+                          ? "border-z-brass bg-z-brass text-z-ink"
+                          : "border-white/6 text-muted-foreground hover:bg-z-surface-2"
+                      )}
+                    >
                       {tag.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    </button>
+                  );
+                })}
+              </div>
             )}
 
             {!activeMonth && (
