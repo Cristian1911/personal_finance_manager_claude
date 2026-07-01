@@ -83,14 +83,26 @@ export function RecordRepaymentDialog({
   const [candidates, setCandidates] = useState<LinkableTransaction[] | null>(null);
   const [loadingCandidates, setLoadingCandidates] = useState(false);
 
+  // Reset form + cached candidates whenever the dialog closes, so reopening it
+  // always starts clean. Otherwise (the dialog stays mounted in persona-card)
+  // stale candidates / amounts leak across opens.
   useEffect(() => {
-    if (mode !== "vincular" || candidates !== null || loadingCandidates) return;
+    if (open) return;
+    setMode("abono");
+    setAmount("");
+    setDate(today);
+    setNotes("");
+    setCandidates(null);
+  }, [open, today]);
+
+  useEffect(() => {
+    if (!open || mode !== "vincular" || candidates !== null || loadingCandidates) return;
     setLoadingCandidates(true);
     getLinkableRepaymentTransactions(personalDebtId)
       .then((res) => setCandidates(res.success ? res.data : []))
       .catch(() => setCandidates([]))
       .finally(() => setLoadingCandidates(false));
-  }, [mode, candidates, loadingCandidates, personalDebtId]);
+  }, [open, mode, candidates, loadingCandidates, personalDebtId]);
 
   function done(ok: string) {
     toast.success(ok);
