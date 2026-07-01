@@ -181,6 +181,7 @@ export function TransactionDetailClient({
   const [optDate, setOptDate] = useState(tx.transaction_date);
   const [optTime, setOptTime] = useState<string | null>(tx.transaction_time);
   const [editDataOpen, setEditDataOpen] = useState(false);
+  const [sharedExpanded, setSharedExpanded] = useState(false);
   const [draftAmount, setDraftAmount] = useState(String(tx.amount));
   const [draftDate, setDraftDate] = useState(tx.transaction_date);
   const [draftTime, setDraftTime] = useState(tx.transaction_time?.slice(0, 5) ?? "");
@@ -859,31 +860,70 @@ export function TransactionDetailClient({
       {sharedPayment && (
         <section className="px-4 pt-4">
           <p className={cn(SECTION_EYEBROW_CLASS, "mb-2")}>Pago compartido</p>
-          <Link
-            href="/deudas-personales"
-            className="flex items-center gap-3 rounded-xl border border-z-brass/20 bg-z-brass/8 px-3 py-2.5 transition-colors hover:bg-z-brass/12"
-          >
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-z-brass/15 text-z-brass">
-              <Receipt className="size-4" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-semibold tabular-nums text-z-brass">
-                {sharedPayment.debts.length}{" "}
-                {sharedPayment.debts.length === 1 ? "persona" : "personas"} · Te deben{" "}
-                {formatCurrency(sharedPayment.outstanding_total, sharedPayment.currency_code as CurrencyCode)}
+          <div className="overflow-hidden rounded-xl border border-z-brass/20 bg-z-brass/8">
+            <button
+              type="button"
+              onClick={() => setSharedExpanded((v) => !v)}
+              aria-expanded={sharedExpanded}
+              className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-z-brass/12"
+            >
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-z-brass/15 text-z-brass">
+                <Receipt className="size-4" />
               </span>
-              <span className="block truncate text-[11px] tabular-nums text-muted-foreground">
-                Recuperado{" "}
-                {formatCurrency(sharedPayment.recovered, sharedPayment.currency_code as CurrencyCode)} ·
-                {" "}Gasto actual{" "}
-                {formatCurrency(
-                  Math.max(0, sharedPayment.total - sharedPayment.recovered),
-                  sharedPayment.currency_code as CurrencyCode,
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold tabular-nums text-z-brass">
+                  {sharedPayment.debts.length}{" "}
+                  {sharedPayment.debts.length === 1 ? "persona" : "personas"} · Te deben{" "}
+                  {formatCurrency(sharedPayment.outstanding_total, sharedPayment.currency_code as CurrencyCode)}
+                </span>
+                <span className="block truncate text-[11px] tabular-nums text-muted-foreground">
+                  Recuperado{" "}
+                  {formatCurrency(sharedPayment.recovered, sharedPayment.currency_code as CurrencyCode)} ·
+                  {" "}Gasto actual{" "}
+                  {formatCurrency(
+                    Math.max(0, sharedPayment.total - sharedPayment.recovered),
+                    sharedPayment.currency_code as CurrencyCode,
+                  )}
+                </span>
+              </span>
+              <ChevronRight
+                className={cn(
+                  "size-4 shrink-0 text-z-brass/60 transition-transform",
+                  sharedExpanded && "rotate-90",
                 )}
-              </span>
-            </span>
-            <ChevronRight className="size-4 shrink-0 text-z-brass/60" />
-          </Link>
+              />
+            </button>
+            {sharedExpanded && (
+              <div className="space-y-1 border-t border-z-brass/20 px-3 py-2.5">
+                {sharedPayment.debts.map((d) => {
+                  const settled = d.status !== "active";
+                  return (
+                    <div key={d.id} className="flex items-center justify-between gap-3 text-sm">
+                      <span className="min-w-0 flex-1 truncate">{d.destinatario_name}</span>
+                      <span
+                        className={cn(
+                          "shrink-0 tabular-nums",
+                          settled ? "text-muted-foreground line-through" : "text-z-sage-light",
+                        )}
+                      >
+                        {formatCurrency(
+                          settled ? d.principal_amount : d.outstanding_amount,
+                          d.currency_code as CurrencyCode,
+                        )}
+                      </span>
+                    </div>
+                  );
+                })}
+                <Link
+                  href="/deudas-personales"
+                  className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-z-brass hover:underline"
+                >
+                  Ver en Deudas personales
+                  <ChevronRight className="size-3" />
+                </Link>
+              </div>
+            )}
+          </div>
         </section>
       )}
 

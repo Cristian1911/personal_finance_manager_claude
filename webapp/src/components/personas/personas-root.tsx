@@ -9,6 +9,8 @@ import {
   BRASS_BUTTON_CLASS,
   BRASS_GHOST_BUTTON_CLASS,
   SECTION_EYEBROW_CLASS,
+  SEGMENTED_TAB_CLASS,
+  SEGMENTED_TAB_ACTIVE_CLASS,
 } from "@/lib/constants/styles";
 import { formatCurrency } from "@/lib/utils/currency";
 import { PersonaCard } from "./persona-card";
@@ -40,6 +42,12 @@ export function PersonasRoot({ debts, overview, currency, sharedGroups }: Person
   const settled = standalone.filter((d) => d.status !== "active");
   const neto = overview.owedToMe.total - overview.iOwe.total;
   const hasContent = debts.length > 0 || sharedGroups.length > 0;
+  const personalesCount = debo.length + meDeben.length;
+
+  // Land on Compartidas only when there's nothing person-to-person to show.
+  const [tab, setTab] = useState<"personales" | "compartidas">(
+    personalesCount === 0 && sharedGroups.length > 0 ? "compartidas" : "personales",
+  );
 
   return (
     <div className="space-y-6">
@@ -58,51 +66,137 @@ export function PersonasRoot({ debts, overview, currency, sharedGroups }: Person
         />
       </div>
 
-      <div className="flex flex-wrap justify-end gap-2">
-        <Button
-          variant="ghost"
-          className={cn(BRASS_GHOST_BUTTON_CLASS)}
-          onClick={() => router.push("/deudas-personales/pago-compartido/nuevo")}
-        >
-          <Receipt className="mr-1.5 size-4" />
-          Pago compartido
-        </Button>
-        <Button className={cn(BRASS_BUTTON_CLASS)} onClick={() => setCreateOpen(true)}>
-          <Plus className="mr-1.5 size-4" />
-          Nueva deuda personal
-        </Button>
-      </div>
-
       {!hasContent ? (
-        <EmptyState />
+        <>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              variant="ghost"
+              className={cn(BRASS_GHOST_BUTTON_CLASS)}
+              onClick={() => router.push("/deudas-personales/pago-compartido/nuevo")}
+            >
+              <Receipt className="mr-1.5 size-4" />
+              Pago compartido
+            </Button>
+            <Button className={cn(BRASS_BUTTON_CLASS)} onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-1.5 size-4" />
+              Nueva deuda personal
+            </Button>
+          </div>
+          <EmptyState />
+        </>
       ) : (
         <>
-          {sharedGroups.length > 0 && (
-            <section className="space-y-3">
-              <h2 className={SECTION_EYEBROW_CLASS}>Pagos compartidos</h2>
-              <div className="grid gap-3 lg:grid-cols-2">
-                {sharedGroups.map((g) => (
-                  <SharedPaymentCard key={g.split_group_id} group={g} currency={currency} />
-                ))}
-              </div>
-            </section>
-          )}
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Section
-              title="Debo"
-              items={debo}
-              currency={currency}
-              emptyLabel="No le debes a nadie."
-            />
-            <Section
-              title="Me deben"
-              items={meDeben}
-              currency={currency}
-              emptyLabel="Nadie te debe."
-            />
+          {/* División: deudas persona-a-persona vs. facturas compartidas */}
+          <div
+            role="tablist"
+            aria-label="Tipo de deuda"
+            className="flex gap-1 rounded-full border border-white/6 bg-black/10 p-1"
+            onKeyDown={(e) => {
+              // Roving-tabindex nav: arrows move (and activate) between the two
+              // tabs so keyboard users don't Tab through each one.
+              let next: "personales" | "compartidas" | null = null;
+              if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+                next = tab === "personales" ? "compartidas" : "personales";
+              } else if (e.key === "Home") next = "personales";
+              else if (e.key === "End") next = "compartidas";
+              if (!next) return;
+              e.preventDefault();
+              setTab(next);
+              document.getElementById(`deudas-tab-${next}`)?.focus();
+            }}
+          >
+            <button
+              role="tab"
+              type="button"
+              id="deudas-tab-personales"
+              aria-controls="deudas-panel-personales"
+              aria-selected={tab === "personales"}
+              tabIndex={tab === "personales" ? 0 : -1}
+              onClick={() => setTab("personales")}
+              className={cn(tab === "personales" ? SEGMENTED_TAB_ACTIVE_CLASS : SEGMENTED_TAB_CLASS)}
+            >
+              Personales
+              {personalesCount > 0 && (
+                <span className="ml-1.5 text-[10px] tabular-nums opacity-70">{personalesCount}</span>
+              )}
+            </button>
+            <button
+              role="tab"
+              type="button"
+              id="deudas-tab-compartidas"
+              aria-controls="deudas-panel-compartidas"
+              aria-selected={tab === "compartidas"}
+              tabIndex={tab === "compartidas" ? 0 : -1}
+              onClick={() => setTab("compartidas")}
+              className={cn(tab === "compartidas" ? SEGMENTED_TAB_ACTIVE_CLASS : SEGMENTED_TAB_CLASS)}
+            >
+              Compartidas
+              {sharedGroups.length > 0 && (
+                <span className="ml-1.5 text-[10px] tabular-nums opacity-70">{sharedGroups.length}</span>
+              )}
+            </button>
           </div>
-          {settled.length > 0 && (
-            <Section title="Saldadas y canceladas" items={settled} currency={currency} muted />
+
+          {tab === "personales" ? (
+            <div
+              role="tabpanel"
+              id="deudas-panel-personales"
+              aria-labelledby="deudas-tab-personales"
+              className="space-y-6"
+            >
+              <div className="flex justify-end">
+                <Button className={cn(BRASS_BUTTON_CLASS)} onClick={() => setCreateOpen(true)}>
+                  <Plus className="mr-1.5 size-4" />
+                  Nueva deuda personal
+                </Button>
+              </div>
+              <div className="grid gap-6 lg:grid-cols-2">
+                <Section
+                  title="Debo"
+                  items={debo}
+                  currency={currency}
+                  emptyLabel="No le debes a nadie."
+                />
+                <Section
+                  title="Me deben"
+                  items={meDeben}
+                  currency={currency}
+                  emptyLabel="Nadie te debe."
+                />
+              </div>
+              {settled.length > 0 && (
+                <Section title="Saldadas y canceladas" items={settled} currency={currency} muted />
+              )}
+            </div>
+          ) : (
+            <div
+              role="tabpanel"
+              id="deudas-panel-compartidas"
+              aria-labelledby="deudas-tab-compartidas"
+              className="space-y-4"
+            >
+              <div className="flex justify-end">
+                <Button
+                  variant="ghost"
+                  className={cn(BRASS_GHOST_BUTTON_CLASS)}
+                  onClick={() => router.push("/deudas-personales/pago-compartido/nuevo")}
+                >
+                  <Receipt className="mr-1.5 size-4" />
+                  Nuevo pago compartido
+                </Button>
+              </div>
+              {sharedGroups.length > 0 ? (
+                <div className="grid gap-3 lg:grid-cols-2">
+                  {sharedGroups.map((g) => (
+                    <SharedPaymentCard key={g.split_group_id} group={g} currency={currency} />
+                  ))}
+                </div>
+              ) : (
+                <p className="rounded-xl border border-dashed border-white/6 px-4 py-8 text-center text-sm text-muted-foreground">
+                  Aún no tienes facturas compartidas. Reparte un gasto entre varias personas.
+                </p>
+              )}
+            </div>
           )}
         </>
       )}
