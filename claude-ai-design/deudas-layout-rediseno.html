@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Deudas — expand en detalle + layout dividido (mockup fiel)</title>
+<style>
+  :root{
+    --bg:#0a0a0a; --card:rgba(255,255,255,.022); --card2:#121212; --line:rgba(255,255,255,.07);
+    --line2:rgba(255,255,255,.10); --fg:#efe9dc; --sage:#D9CCB9; --sage-dark:#7c766c; --muted:#6f6a60;
+    --brass:#B78B3E; --brass-hot:#E0B25A; --brass-soft:#b78b3e14; --brass-line:#b78b3e33;
+    --green:#7FB08A; --red:#C6553F; --redtext:#e2917c;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:#040404;color:var(--fg);font:14.5px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    display:flex;flex-direction:column;align-items:center;gap:14px;padding:22px 10px 70px}
+  h1{font-size:15px;color:var(--sage);font-weight:700;margin:2px 0 0;text-align:center}
+  .sub{color:var(--muted);font-size:12px;max-width:760px;text-align:center;margin:0}
+  .row{display:flex;gap:22px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .cap{color:var(--sage-dark);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;text-align:center;margin:0 0 8px}
+
+  .phone{width:min(390px,94vw);background:var(--bg);border:1px solid var(--line);border-radius:28px;overflow:hidden;
+    box-shadow:0 26px 64px rgba(0,0,0,.6);position:relative}
+  .hdr{display:flex;align-items:center;justify-content:space-between;height:48px;padding:0 16px;border-bottom:1px solid var(--line);
+    background:#0d0d0dcc}
+  .hdr .l{display:flex;align-items:center;gap:10px}.hdr .back{color:var(--sage);font-size:20px;opacity:.9}
+  .hdr .title{font-weight:600;font-size:15px}
+  .screen{padding:16px 16px 26px}
+
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.19em;text-transform:uppercase;color:var(--muted);margin:20px 0 10px}
+  .eyebrow:first-child{margin-top:2px}
+  .pagetitle{font-size:26px;font-weight:800;letter-spacing:-.5px;margin:2px 0 14px}
+
+  /* shared-payment linked block — now an expandable disclosure (was a link) */
+  .disc{border:1px solid var(--brass-line);background:var(--brass-soft);border-radius:16px;overflow:hidden}
+  .disc-head{display:flex;align-items:center;gap:12px;padding:13px 14px;cursor:pointer;transition:background .15s;width:100%;border:0;background:transparent;text-align:left}
+  .disc-head:hover{background:#b78b3e14}
+  .link-ic{width:36px;height:36px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;
+    background:#b78b3e26;color:var(--brass-hot);font-size:16px}
+  .grow{min-width:0;flex:1}
+  .link-title{color:var(--brass-hot);font-weight:600;font-size:14px;font-variant-numeric:tabular-nums}
+  .link-sub{color:var(--muted);font-size:12px;margin-top:2px;line-height:1.4;font-variant-numeric:tabular-nums}
+  .chev2{color:#b78b3e88;font-size:16px;transition:transform .18s}
+  .disc.open .chev2{transform:rotate(90deg)}
+  .disc-body{display:none;border-top:1px solid var(--brass-line);padding:6px 14px 12px}
+  .disc.open .disc-body{display:block}
+  .pline{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 2px;border-bottom:1px solid var(--line)}
+  .pline:last-of-type{border-bottom:0}
+  .pline .nm{font-size:14px}
+  .pline .amt{font-variant-numeric:tabular-nums;color:var(--sage)}
+  .pline .amt.done{color:var(--muted);text-decoration:line-through}
+  .disc-foot{display:inline-flex;align-items:center;gap:6px;color:var(--brass-hot);font-size:12.5px;font-weight:600;margin-top:11px;cursor:pointer}
+  .notes{margin-top:14px;border:1px solid var(--line);border-radius:14px;background:var(--card);padding:15px;color:var(--muted);font-style:italic;font-size:13.5px}
+
+  /* summary stats */
+  .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .stat{border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.02);padding:13px 12px}
+  .stat .k{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--sage-dark)}
+  .stat .v{margin-top:5px;font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+  .v.red{color:var(--redtext)} .v.grn{color:var(--sage)}
+
+  /* segmented tabs — the division */
+  .seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:#00000040;border:1px solid var(--line);border-radius:14px;padding:5px;margin:16px 0 6px}
+  .seg button{border:1px solid transparent;background:transparent;color:var(--muted);font-weight:600;font-size:13.5px;padding:10px 4px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px}
+  .seg button .b{font-size:11px;background:#ffffff10;color:var(--muted);border-radius:999px;padding:1px 7px;font-variant-numeric:tabular-nums}
+  .seg button.on{border-color:var(--brass-line);background:#b78b3e26;color:var(--brass-hot)}
+  .seg button.on .b{background:#b78b3e2e;color:var(--brass-hot)}
+
+  .pane{display:none}.pane.on{display:block}
+  .actbar{display:flex;justify-content:flex-end;margin:14px 0 4px}
+  .primary{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:12px;padding:11px 16px;font-weight:700;font-size:13.5px;cursor:pointer;
+    background:linear-gradient(180deg,var(--brass-hot),var(--brass));color:#241a08}
+
+  /* persona card (standalone) */
+  .pcard{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:16px;background:var(--card);padding:14px 14px;margin-bottom:10px}
+  .av2{width:38px;height:38px;border-radius:50%;background:#1a160f;border:1px solid var(--brass-line);color:var(--brass-hot);
+    display:flex;align-items:center;justify-content:center;font-size:14px;flex:0 0 auto}
+  .pcard .nm{flex:1;font-size:15px;font-weight:500}
+  .pcard .amt{font-variant-numeric:tabular-nums;color:var(--sage);font-weight:600}
+  .pcard .chv{color:#5a554c;margin-left:8px}
+  .muted-empty{color:var(--muted);font-size:14px;padding:2px 2px 6px}
+
+  /* shared-payment card (compartidas tab) */
+  .spcard{border:1px solid var(--line);border-radius:16px;background:var(--card);padding:15px 15px 6px;margin-bottom:12px}
+  .sphead{display:flex;justify-content:space-between;gap:10px}
+  .sptitle{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:600;color:var(--sage)}
+  .sptitle .ic{color:var(--brass-hot)}
+  .spmeta{color:var(--muted);font-size:12px;margin-top:3px}
+  .spshare{text-align:right}
+  .spshare .k{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--sage-dark)}
+  .spshare .v{color:var(--brass-hot);font-weight:700;font-variant-numeric:tabular-nums}
+  .spprog{color:var(--muted);font-size:12px;margin:10px 0 2px;font-variant-numeric:tabular-nums}
+  .spprog b{color:var(--sage);font-weight:600}
+  .sprow{display:flex;align-items:center;gap:10px;justify-content:space-between;border-top:1px solid var(--line);padding:11px 0}
+  .sprow .nm{flex:1;font-size:14px}
+  .sprow .amt{font-variant-numeric:tabular-nums;color:var(--sage)}
+  .mini{border:1px solid var(--brass-line);background:var(--brass-soft);color:var(--brass-hot);border-radius:9px;padding:7px 11px;font-size:12.5px;font-weight:600;cursor:pointer}
+
+  .tabbar{display:flex;justify-content:space-around;align-items:center;height:60px;border-top:1px solid var(--line);background:#0b0b0b;color:var(--sage-dark);font-size:10px;position:relative}
+  .tabbar .fab{position:absolute;top:-16px;left:50%;transform:translateX(-50%);width:52px;height:52px;border-radius:50%;
+    background:linear-gradient(180deg,var(--brass-hot),var(--brass));color:#241a08;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 6px 18px rgba(0,0,0,.5)}
+  .tb{display:flex;flex-direction:column;align-items:center;gap:3px}
+</style>
+</head>
+<body>
+  <h1>Deudas — expandir en detalle + layout dividido</h1>
+  <p class="sub">Mockup fiel a la app (webapp en móvil). Izquierda: el bloque “Pago compartido” del detalle de la transacción ahora <b>se expande en el sitio</b> (ya no redirige). Derecha: la página de Deudas dividida en <b>Personales</b> / <b>Compartidas</b> con segmented tabs; el resumen global se queda arriba.</p>
+
+  <div class="row">
+
+    <!-- ─────────────── A · Detalle de la transacción ─────────────── -->
+    <div>
+      <p class="cap">A · Detalle de transacción · bloque expandible</p>
+      <div class="phone">
+        <div class="hdr"><div class="l"><span class="back">‹</span><span class="title">Detalle</span></div></div>
+        <div class="screen">
+          <div class="eyebrow">Pago compartido</div>
+
+          <div class="disc open" id="discA">
+            <button class="disc-head" onclick="document.getElementById('discA').classList.toggle('open')">
+              <span class="link-ic">🧾</span>
+              <span class="grow">
+                <span class="link-title">2 personas · Te deben&nbsp;$&nbsp;38.033</span>
+                <span class="link-sub">Recuperado&nbsp;$&nbsp;0 · Gasto actual&nbsp;$&nbsp;114.098</span>
+              </span>
+              <span class="chev2">›</span>
+            </button>
+            <div class="disc-body">
+              <div class="pline"><span class="nm">Mateo BC</span><span class="amt">$&nbsp;38.033</span></div>
+              <div class="pline"><span class="nm">Pablo BC</span><span class="amt">$&nbsp;38.032</span></div>
+              <span class="disc-foot">Ver en Deudas personales ›</span>
+            </div>
+          </div>
+
+          <div class="eyebrow">Notas</div>
+          <div class="notes">Sin notas.</div>
+        </div>
+      </div>
+      <p class="sub" style="margin-top:9px;max-width:390px">Toca el bloque para abrir/cerrar. Muestra cada persona y su parte pendiente (tachada cuando ya pagó). El enlace a la página completa queda como acción secundaria, no como comportamiento principal.</p>
+    </div>
+
+    <!-- ─────────────── B · Página de deudas dividida ─────────────── -->
+    <div>
+      <p class="cap">B · Deudas personales · layout dividido</p>
+      <div class="phone">
+        <div class="hdr"><div class="l"><span class="back">‹</span><span class="title">Más</span></div></div>
+        <div class="screen">
+          <div class="pagetitle">Deudas personales</div>
+
+          <!-- resumen global: se queda arriba, responde “¿cómo voy?” de un vistazo -->
+          <div class="stats">
+            <div class="stat"><div class="k">Debo</div><div class="v red">$&nbsp;0</div></div>
+            <div class="stat"><div class="k">Me deben</div><div class="v grn">$&nbsp;679.655</div></div>
+            <div class="stat"><div class="k">Neto</div><div class="v grn">$&nbsp;679.655</div></div>
+          </div>
+
+          <!-- la división -->
+          <div class="seg">
+            <button class="on" onclick="pane('p','per')" id="tab-per">Personales <span class="b">2</span></button>
+            <button onclick="pane('p','com')" id="tab-com">Compartidas <span class="b">1</span></button>
+          </div>
+
+          <!-- PANE: Personales -->
+          <div class="pane on" id="pane-per">
+            <div class="actbar"><button class="primary">＋ Nueva deuda personal</button></div>
+            <div class="eyebrow">Debo</div>
+            <div class="muted-empty">No le debes a nadie.</div>
+            <div class="eyebrow">Me deben</div>
+            <div class="pcard"><span class="av2">M</span><span class="nm">Mateo BC</span><span class="amt">$&nbsp;38.033</span><span class="chv">›</span></div>
+            <div class="pcard"><span class="av2">P</span><span class="nm">Pablo BC</span><span class="amt">$&nbsp;38.032</span><span class="chv">›</span></div>
+          </div>
+
+          <!-- PANE: Compartidas -->
+          <div class="pane" id="pane-com">
+            <div class="actbar"><button class="primary">🧾&nbsp; Nuevo pago compartido</button></div>
+            <div class="eyebrow">Facturas compartidas</div>
+            <div class="spcard">
+              <div class="sphead">
+                <div>
+                  <div class="sptitle"><span class="ic">🧾</span>Pago BBC Venti5</div>
+                  <div class="spmeta">29 jun 2026 · Total&nbsp;$&nbsp;114.098</div>
+                </div>
+                <div class="spshare"><div class="k">Tu parte</div><div class="v">$&nbsp;38.033</div></div>
+              </div>
+              <div class="spprog">Recuperado <b>$&nbsp;0</b> de $&nbsp;76.065 · Gasto actual <b>$&nbsp;114.098</b></div>
+              <div class="sprow"><span class="nm">Mateo BC</span><span class="amt">$&nbsp;38.033</span><button class="mini">Registrar pago</button></div>
+              <div class="sprow"><span class="nm">Pablo BC</span><span class="amt">$&nbsp;38.032</span><button class="mini">Registrar pago</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tb"><span>▦</span>Inicio</div>
+          <div class="tb"><span>⇄</span>Movim.</div>
+          <div class="fab">＋</div>
+          <div class="tb"><span>🐷</span>Plan</div>
+          <div class="tb" style="color:var(--brass-hot)"><span>▦</span>Más</div>
+        </div>
+      </div>
+      <p class="sub" style="margin-top:9px;max-width:390px">El resumen (Debo/Me deben/Neto) sigue siendo global. Los tabs separan las <b>deudas persona-a-persona</b> de las <b>facturas compartidas</b>, cada uno con su acción propia. Así una misma persona ya no aparece dos veces.</p>
+    </div>
+
+  </div>
+
+<script>
+  function pane(g, which){
+    document.querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));
+    document.getElementById('pane-'+which).classList.add('on');
+    document.getElementById('tab-per').classList.toggle('on', which==='per');
+    document.getElementById('tab-com').classList.toggle('on', which==='com');
+  }
+</script>
+</body>
+</html>
