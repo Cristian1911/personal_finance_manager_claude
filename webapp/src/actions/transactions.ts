@@ -21,6 +21,7 @@ import {
   transactionSchema,
 } from "@/lib/validators/transaction";
 import { parseMonth, monthStartStr, monthEndStr } from "@/lib/utils/date";
+import { dedupeTransactionIds } from "@/lib/utils/tag-ids";
 import {
   applyAccountBalanceDelta,
   reverseAccountBalanceDelta,
@@ -441,7 +442,7 @@ async function getTransactionsCached(
   amountMax: number | undefined,
   source: string | undefined,
   showExcluded: boolean,
-  tagId: string | undefined,
+  tagIds: string[] | undefined,
 ): Promise<PaginatedResult<TransactionWithAccount>> {
   "use cache";
   cacheTag("transactions");
@@ -451,16 +452,17 @@ async function getTransactionsCached(
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  // Tag filter: pre-fetch matching transaction IDs
+  // Tag filter (OR): pre-fetch matching transaction IDs
   let taggedTransactionIds: string[] | null = null;
-  if (tagId) {
+  if (tagIds && tagIds.length > 0) {
     const { data: taggedIds } = await supabase
       .from("transaction_tags")
       .select("transaction_id")
-      .eq("tag_id", tagId);
+      .eq("user_id", userId)
+      .in("tag_id", tagIds);
 
     if (taggedIds && taggedIds.length > 0) {
-      taggedTransactionIds = taggedIds.map((r) => r.transaction_id);
+      taggedTransactionIds = dedupeTransactionIds(taggedIds);
     } else {
       return { data: [], count: 0, page, pageSize, totalPages: 0 };
     }
@@ -540,7 +542,7 @@ export async function getTransactions(
       params.direction, params.search,
       params.amountMin, params.amountMax,
       params.source, params.showExcluded ?? false,
-      params.tagId,
+      params.tags ? params.tags.split(",").map((s) => s.trim()).filter(Boolean) : undefined,
     );
   } catch {
     return { data: [], count: 0, page: params.page, pageSize: params.pageSize, totalPages: 0 };

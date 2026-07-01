@@ -23,9 +23,10 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { Bookmark, Search, SlidersHorizontal, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { MOBILE_SHEET_SAFE_AREA_CLASS } from "@/lib/constants/styles";
+import { MOBILE_SHEET_SAFE_AREA_CLASS, chipToggleClass } from "@/lib/constants/styles";
+import { ModoFormDialog } from "@/components/modos/modo-form-dialog";
 import type { Account, CategoryWithChildren, Tag } from "@/types/domain";
 
 export function TransactionFilters({
@@ -63,7 +64,7 @@ export function TransactionFilters({
     searchParams.get("search") ||
     searchParams.get("accountId") ||
     searchParams.get("categoryId") ||
-    searchParams.get("tagId") ||
+    searchParams.get("tags") ||
     searchParams.get("direction") ||
     searchParams.get("source") ||
     searchParams.get("dateFrom") ||
@@ -77,7 +78,7 @@ export function TransactionFilters({
     searchParams.get("search"),
     searchParams.get("accountId"),
     searchParams.get("categoryId"),
-    searchParams.get("tagId"),
+    searchParams.get("tags"),
     searchParams.get("direction"),
     searchParams.get("source"),
     searchParams.get("dateFrom"),
@@ -194,23 +195,51 @@ export function TransactionFilters({
             </Select>
 
             {tags.length > 0 && (
-              <Select
-                defaultValue={searchParams.get("tagId") ?? "all"}
-                onValueChange={(v) => updateFilter("tagId", v)}
-              >
-                <SelectTrigger className={inputWidth}>
-                  <SelectValue placeholder="Todas las etiquetas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas las etiquetas</SelectItem>
-                  {tags.map((tag) => (
-                    <SelectItem key={tag.id} value={tag.id}>
+              <div className={cn("flex flex-wrap gap-1.5", mobile ? "w-full" : "")}>
+                {tags.map((tag) => {
+                  const selectedTags = (searchParams.get("tags") ?? "")
+                    .split(",")
+                    .filter(Boolean);
+                  const selected = selectedTags.includes(tag.id);
+                  return (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      onClick={() => {
+                        const next = selected
+                          ? selectedTags.filter((id) => id !== tag.id)
+                          : [...selectedTags, tag.id];
+                        updateFilter("tags", next.join(","));
+                      }}
+                      aria-pressed={selected}
+                      className={chipToggleClass(selected)}
+                    >
                       {tag.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    </button>
+                  );
+                })}
+              </div>
             )}
+
+            {(() => {
+              const selectedTagIds = (searchParams.get("tags") ?? "")
+                .split(",")
+                .filter(Boolean);
+              if (selectedTagIds.length === 0) return null;
+              return (
+                <ModoFormDialog
+                  presetTagIds={selectedTagIds}
+                  presetDateFrom={searchParams.get("dateFrom") ?? undefined}
+                  presetDateTo={searchParams.get("dateTo") ?? undefined}
+                  trigger={
+                    <Button variant="outline" size="sm">
+                      <Bookmark className="h-4 w-4 mr-1" />
+                      Guardar como Modo
+                    </Button>
+                  }
+                />
+              );
+            })()}
 
             {!activeMonth && (
               <>
