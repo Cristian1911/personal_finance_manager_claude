@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { format } from "date-fns";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { chipToggleClass } from "@/lib/constants/styles";
@@ -18,8 +19,10 @@ const SEGMENTS: { key: Segment; label: string }[] = [
 export function ModosList({ modos }: { modos: Modo[] }) {
   const [query, setQuery] = useState("");
   const [segment, setSegment] = useState<Segment>("todos");
-  // ISO date (local) for comparing against date_to strings — both "YYYY-MM-DD".
-  const today = new Date().toISOString().slice(0, 10);
+  // Local date for comparing against date_to strings — both "YYYY-MM-DD".
+  // format() uses local time; toISOString() would shift to UTC and mis-bucket
+  // Activos/Pasados near midnight in Colombia (UTC-5).
+  const today = format(new Date(), "yyyy-MM-dd");
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

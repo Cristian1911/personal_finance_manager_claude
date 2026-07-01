@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type ReactNode } from "react";
+import { useEffect, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   Dialog,
@@ -74,6 +74,33 @@ export function ModoFormDialog({
       value: p.value != null ? String(p.value) : "",
     }))
   );
+
+  // The dialog stays mounted while closed, so useState initializers only run
+  // once. Reset local state when it closes so stale values (or changed presets)
+  // don't leak into the next open — including the compartido config.
+  useEffect(() => {
+    if (!open) {
+      setName(initial?.name ?? "");
+      setEmoji(initial?.emoji ?? "");
+      setColor(initial?.color ?? "#8a6d3b");
+      setDateFrom(initial?.date_from ?? presetDateFrom ?? "");
+      setDateTo(initial?.date_to ?? presetDateTo ?? "");
+      setSelectedTagIds(initial?.tag_ids ?? presetTagIds ?? []);
+      setIsShared(initial?.is_shared ?? false);
+      setSplitMethod((initial?.split_method as "equal" | "percent") ?? "equal");
+      setUserIncluded(initial?.user_included ?? true);
+      setParticipants(
+        (initialParticipants ?? []).map((p) => ({
+          key: crypto.randomUUID(),
+          destinatarioId: p.destinatario_id,
+          name: p.name ?? "",
+          value: p.value != null ? String(p.value) : "",
+        })),
+      );
+      setError(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initial, presetTagIds, presetDateFrom, presetDateTo]);
 
   function toggleTag(id: string) {
     setSelectedTagIds((cur) =>
