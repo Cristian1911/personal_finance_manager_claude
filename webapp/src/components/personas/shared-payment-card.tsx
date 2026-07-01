@@ -177,6 +177,7 @@ export function SharedPaymentCard({ group, currency }: SharedPaymentCardProps) {
           personName={repayDebt.destinatario_name}
           outstandingAmount={repayDebt.outstanding_amount}
           currency={repayDebt.currency_code as CurrencyCode}
+          defaultAccountId={group.origin_account_id}
         />
       )}
     </div>

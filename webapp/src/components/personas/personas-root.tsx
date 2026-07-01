@@ -91,6 +91,19 @@ export function PersonasRoot({ debts, overview, currency, sharedGroups }: Person
             role="tablist"
             aria-label="Tipo de deuda"
             className="flex gap-1 rounded-full border border-white/6 bg-black/10 p-1"
+            onKeyDown={(e) => {
+              // Roving-tabindex nav: arrows move (and activate) between the two
+              // tabs so keyboard users don't Tab through each one.
+              let next: "personales" | "compartidas" | null = null;
+              if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+                next = tab === "personales" ? "compartidas" : "personales";
+              } else if (e.key === "Home") next = "personales";
+              else if (e.key === "End") next = "compartidas";
+              if (!next) return;
+              e.preventDefault();
+              setTab(next);
+              document.getElementById(`deudas-tab-${next}`)?.focus();
+            }}
           >
             <button
               role="tab"
@@ -98,6 +111,7 @@ export function PersonasRoot({ debts, overview, currency, sharedGroups }: Person
               id="deudas-tab-personales"
               aria-controls="deudas-panel-personales"
               aria-selected={tab === "personales"}
+              tabIndex={tab === "personales" ? 0 : -1}
               onClick={() => setTab("personales")}
               className={cn(tab === "personales" ? SEGMENTED_TAB_ACTIVE_CLASS : SEGMENTED_TAB_CLASS)}
             >
@@ -112,6 +126,7 @@ export function PersonasRoot({ debts, overview, currency, sharedGroups }: Person
               id="deudas-tab-compartidas"
               aria-controls="deudas-panel-compartidas"
               aria-selected={tab === "compartidas"}
+              tabIndex={tab === "compartidas" ? 0 : -1}
               onClick={() => setTab("compartidas")}
               className={cn(tab === "compartidas" ? SEGMENTED_TAB_ACTIVE_CLASS : SEGMENTED_TAB_CLASS)}
             >

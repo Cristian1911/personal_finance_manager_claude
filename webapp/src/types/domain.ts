@@ -90,6 +90,8 @@ export type SharedPaymentGroup = {
   description: string | null;
   /** Sum of outstanding across the group's active debts. */
   outstanding_total: number;
+  /** Account the origin expense was paid from — default target for repayments. */
+  origin_account_id: string | null;
   debts: PersonalDebtWithDetails[];
 };
 

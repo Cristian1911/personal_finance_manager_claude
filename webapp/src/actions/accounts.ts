@@ -231,6 +231,44 @@ export async function updateAccount(
   return { success: true, data: result };
 }
 
+/**
+ * Mark an account as "principal" (the default account every form pre-selects).
+ * "Principal" is just the first account in display_order — accounts are read
+ * ordered by it and forms default to accounts[0]. We push the chosen account
+ * strictly ahead of the current minimum: a single-row update, no rebalancing.
+ * ponytail: display_order drifts negative over repeated calls — harmless, it's
+ * only a sort key; switch to an is_primary column if that ever matters.
+ */
+export async function setPrimaryAccount(id: string): Promise<ActionResult> {
+  const { supabase, user } = await getAuthenticatedClient();
+
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { data: rows, error: minErr } = await supabase
+    .from("accounts")
+    .select("display_order")
+    .eq("user_id", user.id)
+    .order("display_order", { ascending: true })
+    .limit(1);
+  if (minErr) return { success: false, error: minErr.message };
+  const min = rows?.[0]?.display_order ?? 0;
+
+  const { error } = await supabase
+    .from("accounts")
+    .update({ display_order: min - 1 })
+    .eq("user_id", user.id)
+    .eq("id", id);
+
+  if (error) return { success: false, error: error.message };
+
+  updateTag("accounts");
+  updateTag("dashboard:accounts");
+  updateTag("dashboard:hero");
+  updateTag("debt");
+  updateTag("attention");
+  return { success: true, data: undefined };
+}
+
 export async function deleteAccount(id: string): Promise<ActionResult> {
   const { supabase, user } = await getAuthenticatedClient();
 
