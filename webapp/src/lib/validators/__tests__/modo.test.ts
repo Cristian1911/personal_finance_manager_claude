@@ -47,6 +47,45 @@ describe("modoSchema", () => {
     expect(r.success).toBe(true);
     if (r.success) expect(r.data.is_shared).toBe(false);
   });
+
+  const pid = (n: number) => `1111111${n}-1111-1111-1111-111111111111`;
+
+  it("percent con user_included acepta Σ ≤ 100", () => {
+    const r = modoSchema.safeParse({
+      ...base, is_shared: true, split_method: "percent", user_included: true,
+      participants: [{ destinatario_id: pid(1), value: 40 }],
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("percent sin user_included exige Σ == 100", () => {
+    const bad = modoSchema.safeParse({
+      ...base, is_shared: true, split_method: "percent", user_included: false,
+      participants: [{ destinatario_id: pid(1), value: 40 }, { destinatario_id: pid(2), value: 40 }],
+    });
+    expect(bad.success).toBe(false);
+    const ok = modoSchema.safeParse({
+      ...base, is_shared: true, split_method: "percent", user_included: false,
+      participants: [{ destinatario_id: pid(1), value: 60 }, { destinatario_id: pid(2), value: 40 }],
+    });
+    expect(ok.success).toBe(true);
+  });
+
+  it("percent con valores faltantes falla", () => {
+    const r = modoSchema.safeParse({
+      ...base, is_shared: true, split_method: "percent", user_included: true,
+      participants: [{ destinatario_id: pid(1) }],
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("percent con user_included rechaza Σ > 100", () => {
+    const r = modoSchema.safeParse({
+      ...base, is_shared: true, split_method: "percent", user_included: true,
+      participants: [{ destinatario_id: pid(1), value: 70 }, { destinatario_id: pid(2), value: 50 }],
+    });
+    expect(r.success).toBe(false);
+  });
 });
 
 describe("parseTagsParam", () => {

@@ -10,6 +10,7 @@ import { shareModoTransactions, unshareModoTransactions } from "@/actions/modos"
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RecordRepaymentDialog } from "@/components/personas/record-repayment-dialog";
+import { useDestinatarios } from "@/components/providers/app-data-provider";
 import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
 import type { CurrencyCode, Modo, ModoParticipant, SharedPaymentGroup } from "@/types/domain";
@@ -19,6 +20,7 @@ export function ModoSummaryView({
   summary,
   sharedGroups,
   transactions,
+  participants,
 }: {
   modo: Modo;
   summary: ModoSummary;
@@ -27,6 +29,7 @@ export function ModoSummaryView({
   participants: ModoParticipant[];
 }) {
   const applyHref = `/transactions?tags=${modo.tag_ids.join(",")}&dateFrom=${modo.date_from}&dateTo=${modo.date_to}`;
+  const destinatarios = useDestinatarios();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pending, startTransition] = useTransition();
   const [repayFor, setRepayFor] = useState<
@@ -74,6 +77,13 @@ export function ModoSummaryView({
   const people = modo.is_shared
     ? settleUpByPerson(sharedGroups, transactions.map((t) => t.id))
     : [];
+  // Miembros del pool aún sin pagos compartidos → mostrarlos en $0 para que el
+  // modo compartido revele con quién se comparte antes de repartir nada.
+  const nameById = new Map(destinatarios.map((d) => [d.id, d.name]));
+  const withDebts = new Set(people.map((p) => p.destinatarioId));
+  const emptyMembers = modo.is_shared
+    ? participants.filter((mp) => !withDebts.has(mp.destinatario_id))
+    : [];
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-4">
@@ -118,13 +128,13 @@ export function ModoSummaryView({
         </section>
       )}
 
-      {/* Bloque 3: settle-up por persona (solo pagos de este modo) */}
-      {modo.is_shared && people.length > 0 && (
+      {/* Bloque 3: saldo por persona (solo pagos de este modo) + miembros sin pagos aún */}
+      {modo.is_shared && (people.length > 0 || emptyMembers.length > 0) && (
         <section className="space-y-2">
           <h2 className="font-medium">Saldo por persona</h2>
           {people.map((p) => (
             <div
-              key={p.destinatarioId}
+              key={`${p.destinatarioId}|${p.currency}`}
               className="flex items-center justify-between rounded-xl border border-white/6 bg-z-surface-2 px-3 py-2 text-sm"
             >
               <span>{p.name}</span>
@@ -133,8 +143,8 @@ export function ModoSummaryView({
                   pendiente {formatCurrency(p.outstanding, p.currency as CurrencyCode)}
                 </span>
                 {/* ponytail: abono a la deuda activa más antigua de la persona en el modo (FIFO);
-                    allocation multi-deuda si se pide. */}
-                {p.oldestActiveDebtId && p.outstanding > 0 && (
+                    tope = saldo de ESA deuda (no el agregado); allocation multi-deuda si se pide. */}
+                {p.oldestActiveDebtId && p.oldestActiveDebtOutstanding > 0 && (
                   <Button
                     type="button"
                     variant="ghost"
@@ -144,7 +154,7 @@ export function ModoSummaryView({
                       setRepayFor({
                         debtId: p.oldestActiveDebtId!,
                         name: p.name,
-                        outstanding: p.outstanding,
+                        outstanding: p.oldestActiveDebtOutstanding,
                         currency: p.currency as CurrencyCode,
                       })
                     }
@@ -153,6 +163,15 @@ export function ModoSummaryView({
                   </Button>
                 )}
               </span>
+            </div>
+          ))}
+          {emptyMembers.map((mp) => (
+            <div
+              key={mp.id}
+              className="flex items-center justify-between rounded-xl border border-white/6 bg-z-surface-2 px-3 py-2 text-sm"
+            >
+              <span>{nameById.get(mp.destinatario_id) ?? "Persona"}</span>
+              <span className="text-muted-foreground">Sin pagos compartidos aún</span>
             </div>
           ))}
         </section>

@@ -72,37 +72,50 @@ export type SettleUpPerson = {
   currency: string;
   principal: number;
   outstanding: number;
+  /** Deuda activa objetivo del abono (la más antigua por opened_on). */
   oldestActiveDebtId: string | null;
+  /** Saldo de ESA deuda — tope del abono; nunca el agregado (evita sobre-abono). */
+  oldestActiveDebtOutstanding: number;
 };
 
 /**
- * Settle-up agregado por persona, considerando SOLO las deudas cuyo pago origen
- * cae dentro del modo (txIds). No refleja la deuda global con la persona.
+ * Settle-up agregado por persona+moneda, considerando SOLO las deudas cuyo pago
+ * origen cae dentro del modo (txIds). No refleja la deuda global con la persona.
+ * Separa por moneda (una fila por persona+moneda) para no sumar COP con USD.
  */
 export function settleUpByPerson(
   groups: SharedPaymentGroup[],
   txIds: string[],
 ): SettleUpPerson[] {
   const set = new Set(txIds);
-  const byPerson = new Map<string, SettleUpPerson>();
+  const byKey = new Map<string, SettleUpPerson>();
+  const chosenOpenedOn = new Map<string, string>();
   for (const g of groups) {
     for (const d of g.debts) {
       if (d.origin_transaction_id == null || !set.has(d.origin_transaction_id)) continue;
-      const cur = byPerson.get(d.destinatario_id) ?? {
+      const currency = d.currency_code ?? "COP";
+      const key = `${d.destinatario_id}|${currency}`;
+      const cur = byKey.get(key) ?? {
         destinatarioId: d.destinatario_id,
         name: d.destinatario_name ?? "—",
-        currency: d.currency_code ?? "COP",
+        currency,
         principal: 0,
         outstanding: 0,
         oldestActiveDebtId: null,
+        oldestActiveDebtOutstanding: 0,
       };
       cur.principal += d.principal_amount;
       if (d.status === "active") {
         cur.outstanding += d.outstanding_amount;
-        if (cur.oldestActiveDebtId == null) cur.oldestActiveDebtId = d.id;
+        const prevOpened = chosenOpenedOn.get(key);
+        if (prevOpened == null || d.opened_on < prevOpened) {
+          chosenOpenedOn.set(key, d.opened_on);
+          cur.oldestActiveDebtId = d.id;
+          cur.oldestActiveDebtOutstanding = d.outstanding_amount;
+        }
       }
-      byPerson.set(d.destinatario_id, cur);
+      byKey.set(key, cur);
     }
   }
-  return [...byPerson.values()].sort((a, b) => b.outstanding - a.outstanding);
+  return [...byKey.values()].sort((a, b) => b.outstanding - a.outstanding);
 }

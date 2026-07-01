@@ -246,9 +246,13 @@ export async function shareModoTransactions(
     return { success: false, error: "El modo no tiene personas para compartir" };
   }
 
+  // Membresía del modo = fuente de verdad. Los txIds del cliente se intersectan
+  // con ella para no repartir pagos fuera del modo (evita fuga de alcance).
+  const membership = await getModoTransactionIds(modo, user.id, accessToken);
+  const memberSet = new Set(membership);
   const candidateIds = txIds && txIds.length
-    ? txIds
-    : await getModoTransactionIds(modo, user.id, accessToken);
+    ? txIds.filter((id) => memberSet.has(id))
+    : membership;
   if (candidateIds.length === 0) return { success: true, data: { shared: 0, skipped: [], failed: [] } };
 
   const { data: txs } = await supabase
@@ -298,9 +302,12 @@ export async function unshareModoTransactions(
     .from("modos").select("*").eq("id", modoId).eq("user_id", user.id).single();
   if (modoErr || !modo) return { success: false, error: "Modo no encontrado" };
 
+  // Intersectar con la membresía del modo (misma razón que en compartir).
+  const membership = await getModoTransactionIds(modo, user.id, accessToken);
+  const memberSet = new Set(membership);
   const scope = txIds && txIds.length
-    ? txIds
-    : await getModoTransactionIds(modo, user.id, accessToken);
+    ? txIds.filter((id) => memberSet.has(id))
+    : membership;
   if (scope.length === 0) return { success: true, data: { unshared: 0 } };
 
   const { data: txs } = await supabase

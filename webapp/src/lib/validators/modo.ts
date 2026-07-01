@@ -30,7 +30,23 @@ export const modoSchema = z
   .refine((d) => !d.is_shared || d.participants.length >= 1, {
     message: "Agrega al menos una persona para compartir",
     path: ["participants"],
-  });
+  })
+  // Percent: falla rápido al guardar (si no, computeSplit rechaza cada tx en el
+  // reparto con un toast genérico). Regla espejo de computeSplit: los valores son
+  // el % de las OTRAS personas — si te incluyes tomas el resto (Σ ≤ 100), si no
+  // deben sumar 100. Todos los participantes deben tener % definido.
+  .refine(
+    (d) => {
+      if (!d.is_shared || d.split_method !== "percent") return true;
+      if (d.participants.some((p) => p.value == null)) return false;
+      const sum = d.participants.reduce((s, p) => s + (p.value ?? 0), 0);
+      return d.user_included ? sum <= 100 + 1e-6 : Math.abs(sum - 100) < 1e-6;
+    },
+    {
+      message: "Los porcentajes deben sumar 100% (o menos si te incluyes en el reparto)",
+      path: ["participants"],
+    },
+  );
 
 export type ModoInput = z.infer<typeof modoSchema>;
 
