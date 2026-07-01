@@ -3,7 +3,7 @@
 import { cacheTag, cacheLife, updateTag as expireTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
-import { modoSchema } from "@/lib/validators/modo";
+import { modoSchema, type ModoInput } from "@/lib/validators/modo";
 import { dedupeTransactionIds } from "@/lib/utils/tag-ids";
 import {
   summarizeModo,
@@ -30,6 +30,7 @@ export async function getModoTransactionIds(
   const { data: tagged } = await supabase
     .from("transaction_tags")
     .select("transaction_id")
+    .eq("user_id", userId)
     .in("tag_id", modo.tag_ids);
   const candidateIds = dedupeTransactionIds(tagged ?? []);
   if (candidateIds.length === 0) return [];
@@ -110,22 +111,34 @@ export async function getModoSummary(id: string): Promise<
 }
 
 // ── Mutations ────────────────────────────────────────────
-function parseModoForm(formData: FormData) {
-  return modoSchema.safeParse({
+type ParsedForm =
+  | { success: true; data: ModoInput }
+  | { success: false; error: string };
+
+function parseModoForm(formData: FormData): ParsedForm {
+  let tagIds: unknown;
+  try {
+    tagIds = JSON.parse((formData.get("tag_ids") as string) || "[]");
+  } catch {
+    return { success: false, error: "Etiquetas inválidas" };
+  }
+  const parsed = modoSchema.safeParse({
     name: formData.get("name"),
     color: formData.get("color") || null,
     emoji: formData.get("emoji") || null,
     date_from: formData.get("date_from"),
     date_to: formData.get("date_to"),
-    tag_ids: JSON.parse((formData.get("tag_ids") as string) || "[]"),
+    tag_ids: tagIds,
   });
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
+  return { success: true, data: parsed.data };
 }
 
 export async function createModo(formData: FormData): Promise<ActionResult<{ id: string }>> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
   const parsed = parseModoForm(formData);
-  if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
+  if (!parsed.success) return { success: false, error: parsed.error };
 
   const { data, error } = await supabase
     .from("modos")
@@ -141,7 +154,7 @@ export async function updateModo(id: string, formData: FormData): Promise<Action
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
   const parsed = parseModoForm(formData);
-  if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
+  if (!parsed.success) return { success: false, error: parsed.error };
 
   const { error } = await supabase
     .from("modos").update(parsed.data).eq("id", id).eq("user_id", user.id);

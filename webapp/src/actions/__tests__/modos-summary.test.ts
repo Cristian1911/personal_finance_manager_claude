@@ -20,10 +20,12 @@ function makeClient() {
       if (table === "transaction_tags") {
         return {
           select: () => ({
-            in: () => Promise.resolve({
-              data: [
-                { transaction_id: "t1" }, { transaction_id: "t2" }, { transaction_id: "t1" },
-              ],
+            eq: () => ({
+              in: () => Promise.resolve({
+                data: [
+                  { transaction_id: "t1" }, { transaction_id: "t2" }, { transaction_id: "t1" },
+                ],
+              }),
             }),
           }),
         };
