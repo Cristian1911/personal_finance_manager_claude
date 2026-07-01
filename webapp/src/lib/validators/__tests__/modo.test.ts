@@ -86,6 +86,14 @@ describe("modoSchema", () => {
     });
     expect(r.success).toBe(false);
   });
+
+  it("rechaza participantes duplicados", () => {
+    const r = modoSchema.safeParse({
+      ...base, is_shared: true, split_method: "equal", user_included: true,
+      participants: [{ destinatario_id: pid(1) }, { destinatario_id: pid(1) }],
+    });
+    expect(r.success).toBe(false);
+  });
 });
 
 describe("parseTagsParam", () => {

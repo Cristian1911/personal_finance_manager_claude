@@ -20,13 +20,13 @@ export function ModoSummaryView({
   summary,
   sharedGroups,
   transactions,
-  participants,
+  participants = [],
 }: {
   modo: Modo;
   summary: ModoSummary;
   sharedGroups: SharedPaymentGroup[];
   transactions: ModoTxRow[];
-  participants: ModoParticipant[];
+  participants?: ModoParticipant[];
 }) {
   const applyHref = `/transactions?tags=${modo.tag_ids.join(",")}&dateFrom=${modo.date_from}&dateTo=${modo.date_to}`;
   const destinatarios = useDestinatarios();
@@ -79,7 +79,7 @@ export function ModoSummaryView({
     : [];
   // Miembros del pool aún sin pagos compartidos → mostrarlos en $0 para que el
   // modo compartido revele con quién se comparte antes de repartir nada.
-  const nameById = new Map(destinatarios.map((d) => [d.id, d.name]));
+  const nameById = new Map((destinatarios ?? []).map((d) => [d.id, d.name]));
   const withDebts = new Set(people.map((p) => p.destinatarioId));
   const emptyMembers = modo.is_shared
     ? participants.filter((mp) => !withDebts.has(mp.destinatario_id))

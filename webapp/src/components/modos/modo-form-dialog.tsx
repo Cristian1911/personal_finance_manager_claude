@@ -99,8 +99,7 @@ export function ModoFormDialog({
       );
       setError(null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, initial, presetTagIds, presetDateFrom, presetDateTo]);
+  }, [open, initial, initialParticipants, presetTagIds, presetDateFrom, presetDateTo]);
 
   function toggleTag(id: string) {
     setSelectedTagIds((cur) =>

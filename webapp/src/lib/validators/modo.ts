@@ -31,6 +31,19 @@ export const modoSchema = z
     message: "Agrega al menos una persona para compartir",
     path: ["participants"],
   })
+  // Sin duplicados: la tabla tiene unique(modo_id, destinatario_id); atajar aquí
+  // da un mensaje claro en vez de un 23505 genérico al insertar.
+  .refine(
+    (d) => {
+      if (!d.is_shared) return true;
+      const ids = d.participants.map((p) => p.destinatario_id);
+      return new Set(ids).size === ids.length;
+    },
+    {
+      message: "No puedes agregar a la misma persona más de una vez",
+      path: ["participants"],
+    },
+  )
   // Percent: falla rápido al guardar (si no, computeSplit rechaza cada tx en el
   // reparto con un toast genérico). Regla espejo de computeSplit: los valores son
   // el % de las OTRAS personas — si te incluyes tomas el resto (Σ ≤ 100), si no

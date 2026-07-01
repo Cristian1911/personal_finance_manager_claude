@@ -117,5 +117,9 @@ export function settleUpByPerson(
       byKey.set(key, cur);
     }
   }
-  return [...byKey.values()].sort((a, b) => b.outstanding - a.outstanding);
+  // Agrupar por moneda (alfabético) y luego desc por pendiente dentro de cada
+  // moneda — nunca restar montos de monedas distintas.
+  return [...byKey.values()].sort(
+    (a, b) => a.currency.localeCompare(b.currency) || b.outstanding - a.outstanding,
+  );
 }
