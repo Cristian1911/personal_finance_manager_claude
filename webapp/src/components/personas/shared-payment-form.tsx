@@ -47,6 +47,8 @@ interface SharedPaymentFormProps {
   currency: CurrencyCode;
   /** When provided, split an already-recorded transaction (existing mode). */
   existingTransaction?: ExistingTransactionInput;
+  /** Reports whether the user has entered data worth an unsaved-changes guard. */
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 interface ParticipantRow {
@@ -65,7 +67,11 @@ const METHOD_LABELS: { value: SplitMethod; label: string }[] = [
 const ACCEPTED_IMAGE = ["image/jpeg", "image/png", "image/webp"];
 const MAX_INVOICE_BYTES = 8 * 1024 * 1024; // 8 MB — client-side reference only
 
-export function SharedPaymentForm({ currency, existingTransaction }: SharedPaymentFormProps) {
+export function SharedPaymentForm({
+  currency,
+  existingTransaction,
+  onDirtyChange,
+}: SharedPaymentFormProps) {
   const router = useRouter();
   const accounts = useAccounts();
   const today = format(new Date(), "yyyy-MM-dd");
@@ -96,6 +102,19 @@ export function SharedPaymentForm({ currency, existingTransaction }: SharedPayme
       if (invoiceUrl) URL.revokeObjectURL(invoiceUrl);
     };
   }, [invoiceUrl]);
+
+  // Dirty = the user entered something that leaving would silently discard.
+  // Bare toggles (método, "yo participo", fecha) don't count on their own.
+  const initialDescription = existingTransaction?.description ?? "";
+  const dirty =
+    (!isExisting && total.trim() !== "") ||
+    description !== initialDescription ||
+    invoiceUrl !== null ||
+    participants.some((p) => p.destinatarioId !== null || p.value.trim() !== "");
+
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
 
   const totalNum = isExisting ? existingTransaction!.amount : Number.parseFloat(total) || 0;
   const validParticipants = participants.filter((p) => p.destinatarioId);

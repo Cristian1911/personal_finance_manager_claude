@@ -18,10 +18,18 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
-import { GHOST_BUTTON_CLASS, DESTRUCTIVE_GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import {
+  BRASS_GHOST_BUTTON_CLASS,
+  GHOST_BUTTON_CLASS,
+  DESTRUCTIVE_GHOST_BUTTON_CLASS,
+} from "@/lib/constants/styles";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
-import { settlePersonalDebt, cancelPersonalDebt, deletePersonalDebt } from "@/actions/personal-debts";
+import {
+  cancelPersonalDebt,
+  deletePersonalDebt,
+  reopenPersonalDebt,
+} from "@/actions/personal-debts";
 import { RecordRepaymentDialog } from "./record-repayment-dialog";
 import type { PersonalDebtWithDetails, CurrencyCode } from "@/types/domain";
 
@@ -114,36 +122,41 @@ export function PersonaCard({ persona, currency }: PersonaCardProps) {
           {persona.notes && <p className="text-xs text-muted-foreground">{persona.notes}</p>}
 
           <div className="flex flex-wrap gap-2 pt-1">
-            {isActive && (
+            {isActive ? (
               <>
                 <Button
                   size="sm"
-                  className={cn(GHOST_BUTTON_CLASS)}
+                  variant="ghost"
+                  className={cn(BRASS_GHOST_BUTTON_CLASS)}
                   disabled={pending}
                   onClick={() => setRepayOpen(true)}
                 >
-                  Registrar abono
+                  Registrar pago
                 </Button>
                 <Button
                   size="sm"
+                  variant="ghost"
                   className={cn(GHOST_BUTTON_CLASS)}
-                  disabled={pending}
-                  onClick={() => runAction(() => settlePersonalDebt(persona.id), "Cuenta saldada")}
-                >
-                  Saldar
-                </Button>
-                <Button
-                  size="sm"
-                  className={cn(DESTRUCTIVE_GHOST_BUTTON_CLASS)}
                   disabled={pending}
                   onClick={() => runAction(() => cancelPersonalDebt(persona.id), "Cuenta cancelada")}
                 >
                   Cancelar
                 </Button>
               </>
+            ) : (
+              <Button
+                size="sm"
+                variant="ghost"
+                className={cn(GHOST_BUTTON_CLASS)}
+                disabled={pending}
+                onClick={() => runAction(() => reopenPersonalDebt(persona.id), "Deuda reabierta")}
+              >
+                Reabrir
+              </Button>
             )}
             <Button
               size="sm"
+              variant="ghost"
               className={cn(DESTRUCTIVE_GHOST_BUTTON_CLASS)}
               disabled={pending}
               onClick={() => setDeleteOpen(true)}
@@ -160,6 +173,8 @@ export function PersonaCard({ persona, currency }: PersonaCardProps) {
         onOpenChange={setRepayOpen}
         personalDebtId={persona.id}
         personName={persona.destinatario_name}
+        outstandingAmount={persona.outstanding_amount}
+        currency={code}
       />
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>

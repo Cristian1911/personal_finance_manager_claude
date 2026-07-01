@@ -16,6 +16,7 @@ import {
   MapPin,
   Pencil,
   Plus,
+  Receipt,
   Repeat,
   Trash2,
   UserRound,
@@ -85,6 +86,7 @@ import type {
   Account,
   CategoryWithChildren,
   CurrencyCode,
+  SharedPaymentGroup,
   Tag as TagType,
   Transaction,
   TransactionLocation,
@@ -107,6 +109,8 @@ interface TransactionDetailClientProps {
   linkedRecurring: LinkedRecurringInfo | null;
   /** Account IDs that have at least one pending occurrence — enables "Vincular". */
   linkableAccountIds: string[];
+  /** Set when this tx is a shared-payment origin — surfaces a summary block. */
+  sharedPayment: SharedPaymentGroup | null;
 }
 
 function findLeafCategory(
@@ -141,6 +145,7 @@ export function TransactionDetailClient({
   isLinkedToOccurrence,
   linkedRecurring,
   linkableAccountIds,
+  sharedPayment,
 }: TransactionDetailClientProps) {
   const router = useRouter();
   const isInflow = tx.direction === "INFLOW";
@@ -843,6 +848,38 @@ export function TransactionDetailClient({
                   linkedRecurring.expectedAmount,
                   linkedRecurring.currencyCode as CurrencyCode,
                 )}{" "}esperado
+              </span>
+            </span>
+            <ChevronRight className="size-4 shrink-0 text-z-brass/60" />
+          </Link>
+        </section>
+      )}
+
+      {/* ── Pago compartido ────────────────────────────────────────── */}
+      {sharedPayment && (
+        <section className="px-4 pt-4">
+          <p className={cn(SECTION_EYEBROW_CLASS, "mb-2")}>Pago compartido</p>
+          <Link
+            href="/deudas-personales"
+            className="flex items-center gap-3 rounded-xl border border-z-brass/20 bg-z-brass/8 px-3 py-2.5 transition-colors hover:bg-z-brass/12"
+          >
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-z-brass/15 text-z-brass">
+              <Receipt className="size-4" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold tabular-nums text-z-brass">
+                {sharedPayment.debts.length}{" "}
+                {sharedPayment.debts.length === 1 ? "persona" : "personas"} · Te deben{" "}
+                {formatCurrency(sharedPayment.outstanding_total, sharedPayment.currency_code as CurrencyCode)}
+              </span>
+              <span className="block truncate text-[11px] tabular-nums text-muted-foreground">
+                Recuperado{" "}
+                {formatCurrency(sharedPayment.recovered, sharedPayment.currency_code as CurrencyCode)} ·
+                {" "}Gasto actual{" "}
+                {formatCurrency(
+                  Math.max(0, sharedPayment.total - sharedPayment.recovered),
+                  sharedPayment.currency_code as CurrencyCode,
+                )}
               </span>
             </span>
             <ChevronRight className="size-4 shrink-0 text-z-brass/60" />

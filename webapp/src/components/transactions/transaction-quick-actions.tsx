@@ -286,7 +286,14 @@ export function TransactionQuickActions({
           .map((d) => ({
             id: d.id,
             label: d.destinatario_name,
-            sublabel: d.direction === "borrowed" ? "Le debes" : "Te debe",
+            // Distinguish debts that belong to a shared payment from standalone
+            // ones: linking here also updates the shared payment's recovered/spend.
+            sublabel: d.split_group_id
+              ? d.notes || "Parte de un pago compartido"
+              : d.direction === "borrowed"
+                ? "Le debes"
+                : "Te debe",
+            badge: d.split_group_id ? "Pago compartido" : undefined,
             amount: d.outstanding_amount,
             currencyCode: d.currency_code,
             direction: d.direction === "borrowed" ? "OUTFLOW" : "INFLOW",

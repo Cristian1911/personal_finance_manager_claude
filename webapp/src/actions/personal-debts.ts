@@ -341,7 +341,7 @@ export async function linkTransactionToPersonalDebt(
 
   const { data: debt, error: debtErr } = await supabase
     .from("personal_debts")
-    .select("id, direction, principal_amount, origin_transaction_id")
+    .select("id, direction, principal_amount, origin_transaction_id, split_group_id")
     .eq("id", personalDebtId)
     .eq("user_id", user.id)
     .single();
@@ -382,11 +382,76 @@ export async function linkTransactionToPersonalDebt(
     if (originErr) return { success: false, error: "Error al vincular el origen" };
   } else {
     await recomputeOutstanding(supabase, user.id, personalDebtId, debt.principal_amount);
+    // Linking an incoming transfer as a repayment of a shared-payment debt must
+    // also lower the origin transaction's effective spend — otherwise the debt
+    // settles but the "Pago compartido" stays at "Recuperado $0".
+    if (debt.split_group_id) {
+      await recomputeSplitRepaid(supabase, user.id, debt.split_group_id);
+    }
   }
 
   revalidateFinancialViews();
   updateTag("personal-debts");
   return { success: true, data: undefined };
+}
+
+// ============================================================
+// Candidate transactions to link as a repayment of a debt (the "Vincular
+// movimiento existente" mode of the Registrar-pago dialog). A repayment moves
+// opposite to the origin: lent -> INFLOW, borrowed -> OUTFLOW. Only unlinked,
+// non-excluded, non-reconciled rows from the last ~90 days.
+// ============================================================
+export interface LinkableTransaction {
+  id: string;
+  description: string;
+  amount: number;
+  transaction_date: string;
+  currency_code: string;
+}
+
+export async function getLinkableRepaymentTransactions(
+  personalDebtId: string,
+): Promise<ActionResult<LinkableTransaction[]>> {
+  if (!personalDebtIdSchema.safeParse(personalDebtId).success) {
+    return { success: false, error: "ID inválido" };
+  }
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { data: debt, error: debtErr } = await supabase
+    .from("personal_debts")
+    .select("direction")
+    .eq("id", personalDebtId)
+    .eq("user_id", user.id)
+    .single();
+  if (debtErr || !debt) return { success: false, error: "Deuda no encontrada" };
+
+  const direction: "INFLOW" | "OUTFLOW" = debt.direction === "borrowed" ? "OUTFLOW" : "INFLOW";
+  const since = new Date();
+  since.setDate(since.getDate() - 90);
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("id, amount, transaction_date, merchant_name, clean_description, raw_description, currency_code")
+    .eq("user_id", user.id)
+    .eq("direction", direction)
+    .is("personal_debt_id", null)
+    .is("split_group_id", null)
+    .eq("is_excluded", false)
+    .is("reconciled_into_transaction_id", null)
+    .gte("transaction_date", toColombiaDateString(since))
+    .order("transaction_date", { ascending: false })
+    .limit(30);
+  if (error) return { success: false, error: "Error al cargar los movimientos" };
+
+  const rows: LinkableTransaction[] = (data ?? []).map((t) => ({
+    id: t.id,
+    description: t.merchant_name || t.clean_description || t.raw_description || "Movimiento",
+    amount: Number(t.amount ?? 0),
+    transaction_date: t.transaction_date,
+    currency_code: t.currency_code ?? "COP",
+  }));
+  return { success: true, data: rows };
 }
 
 export async function unlinkTransactionFromPersonalDebt(

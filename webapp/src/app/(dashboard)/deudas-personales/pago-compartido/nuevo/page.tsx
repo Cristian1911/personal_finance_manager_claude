@@ -1,13 +1,8 @@
 import { connection } from "next/server";
-import { MobileHeader } from "@/components/mobile/v2/mobile-header";
-import {
-  SharedPaymentForm,
-  type ExistingTransactionInput,
-} from "@/components/personas/shared-payment-form";
+import { SharedPaymentCreator } from "@/components/personas/shared-payment-creator";
+import type { ExistingTransactionInput } from "@/components/personas/shared-payment-form";
 import { getPreferredCurrency } from "@/actions/profile";
 import { getTransaction } from "@/actions/transactions";
-import { MOBILE_TAB_BAR_CLEARANCE_CLASS, PAGE_STACK_CLASS } from "@/lib/constants/styles";
-import { cn } from "@/lib/utils";
 import type { CurrencyCode } from "@/types/domain";
 
 export default async function NuevoPagoCompartidoPage({
@@ -43,16 +38,6 @@ export default async function NuevoPagoCompartidoPage({
   }
 
   return (
-    <div className={PAGE_STACK_CLASS}>
-      <MobileHeader
-        variant="sub"
-        title="Pago compartido"
-        backHref="/deudas-personales"
-        backStyle="exit"
-      />
-      <div className={cn("px-4", MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
-        <SharedPaymentForm currency={currency} existingTransaction={existingTransaction} />
-      </div>
-    </div>
+    <SharedPaymentCreator currency={currency} existingTransaction={existingTransaction} />
   );
 }
