@@ -26,6 +26,11 @@ import type {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// System income subcategory "Devolución de préstamos" (seeded in
+// 20260701120000_add_loan_repayment_income_category.sql). Stamped on `lent`
+// repayment INFLOWs so returned loans are categorized, not counted as salary.
+const LOAN_REPAYMENT_CATEGORY_ID = "c0000001-0008-4000-8000-000000000005";
+
 // ============================================================
 // Cached read
 // ============================================================
@@ -570,6 +575,11 @@ export async function recordRepayment(
       idempotency_key: idempotencyKey,
       personal_debt_id: personalDebtId,
       pd_role: "repayment",
+      // A repaid `lent` debt is money coming back from a loan — tag it with the
+      // dedicated income subcategory so it doesn't land uncategorized (nor get
+      // mistaken for salary/bonus). Borrowed repayments are OUTFLOWs (you paying
+      // back) and get no income category.
+      category_id: debt.direction === "lent" ? LOAN_REPAYMENT_CATEGORY_ID : null,
     })
     .select("id, account_id, amount, direction, is_excluded")
     .single();

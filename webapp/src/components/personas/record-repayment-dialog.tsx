@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -40,6 +40,7 @@ import {
   getLinkableRepaymentTransactions,
   type LinkableTransaction,
 } from "@/actions/personal-debts";
+import { isDebtAccountType } from "@zeta/shared";
 import type { CurrencyCode } from "@/types/domain";
 
 interface RecordRepaymentDialogProps {
@@ -50,6 +51,12 @@ interface RecordRepaymentDialogProps {
   /** Remaining balance — enables "Pagar todo" and is shown as "Pendiente". */
   outstandingAmount: number;
   currency: CurrencyCode;
+  /**
+   * Preferred account for the repayment (e.g. the account the shared expense was
+   * paid from). Falls back to the first non-debt account so an incoming payment
+   * never defaults onto a credit card.
+   */
+  defaultAccountId?: string | null;
 }
 
 type Mode = "abono" | "vincular" | "saldar";
@@ -67,14 +74,25 @@ export function RecordRepaymentDialog({
   personName,
   outstandingAmount,
   currency,
+  defaultAccountId,
 }: RecordRepaymentDialogProps) {
   const router = useRouter();
   const accounts = useAccounts();
   const today = format(new Date(), "yyyy-MM-dd");
 
+  // Prefer the origin account; else the first non-debt account (never default a
+  // received payment onto a credit card); else whatever exists.
+  const preferredAccountId = useMemo(() => {
+    if (defaultAccountId && accounts.some((a) => a.id === defaultAccountId)) {
+      return defaultAccountId;
+    }
+    const nonDebt = accounts.find((a) => !isDebtAccountType(a.account_type));
+    return nonDebt?.id ?? accounts[0]?.id ?? "";
+  }, [defaultAccountId, accounts]);
+
   const [mode, setMode] = useState<Mode>("abono");
   const [amount, setAmount] = useState("");
-  const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
+  const [accountId, setAccountId] = useState(preferredAccountId);
   const [date, setDate] = useState(today);
   const [notes, setNotes] = useState("");
   const [pending, startTransition] = useTransition();
@@ -90,10 +108,11 @@ export function RecordRepaymentDialog({
     if (open) return;
     setMode("abono");
     setAmount("");
+    setAccountId(preferredAccountId);
     setDate(today);
     setNotes("");
     setCandidates(null);
-  }, [open, today]);
+  }, [open, today, preferredAccountId]);
 
   useEffect(() => {
     if (!open || mode !== "vincular" || candidates !== null || loadingCandidates) return;
@@ -207,6 +226,9 @@ export function RecordRepaymentDialog({
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-[11px] text-muted-foreground">
+                El movimiento queda registrado en esta cuenta.
+              </p>
             </div>
             <div className="space-y-2">
               <Label>Fecha</Label>
