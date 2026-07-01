@@ -376,10 +376,10 @@ async function getSharedPaymentGroupsCached(
   const { data: originTxs } = originIds.length
     ? await supabase
         .from("transactions")
-        .select("id, amount, split_repaid_amount, raw_description, transaction_date")
+        .select("id, amount, split_repaid_amount, raw_description, transaction_date, account_id")
         .eq("user_id", userId)
         .in("id", originIds)
-    : { data: [] as { id: string; amount: number | null; split_repaid_amount: number | null; raw_description: string | null; transaction_date: string }[] };
+    : { data: [] as { id: string; amount: number | null; split_repaid_amount: number | null; raw_description: string | null; transaction_date: string; account_id: string | null }[] };
   const txById = new Map((originTxs ?? []).map((t) => [t.id, t]));
 
   const today = toColombiaDateString(new Date());
@@ -427,6 +427,10 @@ async function getSharedPaymentGroupsCached(
       paid_on: originTx?.transaction_date ?? gdebts[0].opened_on,
       description: gdebts[0].notes ?? originTx?.raw_description ?? null,
       outstanding_total: outstanding,
+      // Where the shared expense was actually paid from — the sensible default
+      // account for repayments (money comes back to the account it left from,
+      // never onto a credit card).
+      origin_account_id: originTx?.account_id ?? null,
       debts: gdebts,
     });
   }

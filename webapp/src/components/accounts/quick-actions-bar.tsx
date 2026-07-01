@@ -12,6 +12,7 @@ import {
   Pencil,
   Trash2,
   Archive,
+  Star,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -32,7 +33,7 @@ import { QuickPaymentDialog } from "./quick-payment-dialog";
 import { ReconcileBalanceDialog } from "./reconcile-balance-dialog";
 import { SpecializedAccountForm } from "./specialized-account-form";
 import { TransferDialog } from "./transfer-dialog";
-import { deleteAccount, archiveDebtObligation } from "@/actions/accounts";
+import { deleteAccount, archiveDebtObligation, setPrimaryAccount } from "@/actions/accounts";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { Account } from "@/types/domain";
@@ -171,6 +172,21 @@ export function QuickActionsBar({ account, allAccounts }: QuickActionsBarProps) 
 
   const isDebt = accountType === "CREDIT_CARD" || accountType === "LOAN";
 
+  // "Principal" = the account first in display_order (what every form defaults
+  // to). Hide the action when this account already holds that spot.
+  const minOrder = Math.min(...allAccounts.map((a) => a.display_order ?? 0));
+  const isPrimary = (account.display_order ?? 0) === minOrder;
+
+  async function handleMakePrimary() {
+    const result = await setPrimaryAccount(accountId);
+    if (result.success) {
+      router.refresh();
+      toast.success("Ahora es tu cuenta principal");
+    } else {
+      toast.error(result.error);
+    }
+  }
+
   async function handleArchive() {
     setArchiving(true);
     const result = await archiveDebtObligation(accountId);
@@ -246,6 +262,12 @@ export function QuickActionsBar({ account, allAccounts }: QuickActionsBarProps) 
                 </span>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
+                {!isPrimary && (
+                  <DropdownMenuItem onClick={handleMakePrimary}>
+                    <Star className="mr-2 h-4 w-4" />
+                    Hacer principal
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => setEditOpen(true)}>
                   <Pencil className="mr-2 h-4 w-4" />
                   Editar
