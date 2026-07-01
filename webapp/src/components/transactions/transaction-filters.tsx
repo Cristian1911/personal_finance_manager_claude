@@ -23,9 +23,10 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { Bookmark, Search, SlidersHorizontal, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MOBILE_SHEET_SAFE_AREA_CLASS } from "@/lib/constants/styles";
+import { ModoFormDialog } from "@/components/modos/modo-form-dialog";
 import type { Account, CategoryWithChildren, Tag } from "@/types/domain";
 
 export function TransactionFilters({
@@ -224,6 +225,26 @@ export function TransactionFilters({
                 })}
               </div>
             )}
+
+            {(() => {
+              const selectedTagIds = (searchParams.get("tags") ?? "")
+                .split(",")
+                .filter(Boolean);
+              if (selectedTagIds.length === 0) return null;
+              return (
+                <ModoFormDialog
+                  presetTagIds={selectedTagIds}
+                  presetDateFrom={searchParams.get("dateFrom") ?? undefined}
+                  presetDateTo={searchParams.get("dateTo") ?? undefined}
+                  trigger={
+                    <Button variant="outline" size="sm">
+                      <Bookmark className="h-4 w-4 mr-1" />
+                      Guardar como Modo
+                    </Button>
+                  }
+                />
+              );
+            })()}
 
             {!activeMonth && (
               <>
