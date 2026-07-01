@@ -867,12 +867,12 @@ export function TransactionDetailClient({
               <Receipt className="size-4" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-semibold text-z-brass">
+              <span className="block truncate text-sm font-semibold tabular-nums text-z-brass">
                 {sharedPayment.debts.length}{" "}
                 {sharedPayment.debts.length === 1 ? "persona" : "personas"} · Te deben{" "}
                 {formatCurrency(sharedPayment.outstanding_total, sharedPayment.currency_code as CurrencyCode)}
               </span>
-              <span className="block truncate text-[11px] text-muted-foreground">
+              <span className="block truncate text-[11px] tabular-nums text-muted-foreground">
                 Recuperado{" "}
                 {formatCurrency(sharedPayment.recovered, sharedPayment.currency_code as CurrencyCode)} ·
                 {" "}Gasto actual{" "}

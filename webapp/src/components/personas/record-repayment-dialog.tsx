@@ -149,8 +149,10 @@ export function RecordRepaymentDialog({
               type="button"
               onClick={() => setMode(m.value)}
               className={cn(
-                "rounded-lg py-2 text-sm font-semibold transition-colors",
-                mode === m.value ? "bg-z-brass/15 text-z-brass" : "text-muted-foreground hover:text-foreground",
+                "rounded-lg border py-2 text-sm font-semibold transition-colors",
+                mode === m.value
+                  ? "border-z-brass/30 bg-z-brass/15 text-z-brass"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
               )}
             >
               {m.label}

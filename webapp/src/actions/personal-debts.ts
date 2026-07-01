@@ -436,6 +436,7 @@ export async function getLinkableRepaymentTransactions(
     .eq("user_id", user.id)
     .eq("direction", direction)
     .is("personal_debt_id", null)
+    .is("split_group_id", null)
     .eq("is_excluded", false)
     .is("reconciled_into_transaction_id", null)
     .gte("transaction_date", toColombiaDateString(since))
