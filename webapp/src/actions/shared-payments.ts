@@ -13,6 +13,7 @@ import {
   isPersonalDebtOverdue,
   type SplitErrorReason,
 } from "@zeta/shared";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ActionResult } from "@/types/actions";
 import type { Database } from "@/types/database";
 import type {
@@ -40,6 +41,91 @@ const SPLIT_ERROR_MESSAGES: Record<SplitErrorReason, string> = {
   percent_out_of_range: "Los porcentajes superan el 100%",
   percent_sum_mismatch: "Los porcentajes deben sumar 100%",
 };
+
+export type SplitTxConfig = {
+  method: "equal" | "amount" | "percent";
+  userIncluded: boolean;
+  participants: { destinatario_id: string; value?: number }[];
+  opened_on: string;
+  due_date?: string | null;
+  description?: string | null;
+};
+
+/**
+ * Repartir UNA transacción existente (OUTFLOW, sin split_group_id ni
+ * personal_debt_id): la tx se mantiene intacta (monto/categoría/comercio), solo
+ * se tagea al split group + se resetea split_repaid_amount, y se insertan N
+ * personal_debts (lent) que la referencian. NO aplica delta de saldo (la tx ya
+ * posteó su efectivo). El caller garantiza la elegibilidad de la tx.
+ *
+ * Compartido por `createSharedPayment` (modo "existing") y el batch del modo
+ * compartido (`shareModoTransactions`) — una sola regla de reparto.
+ */
+export async function splitExistingTransaction(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  tx: { id: string; amount: number; currency_code: string },
+  config: SplitTxConfig,
+): Promise<
+  | { ok: true; split_group_id: string; debt_ids: string[] }
+  | { ok: false; error: string }
+> {
+  const decimals = getCurrencyDecimals(tx.currency_code as CurrencyCode);
+  const split = computeSplit({
+    total: tx.amount,
+    method: config.method,
+    participants: config.participants.map((x) => ({
+      destinatario_id: x.destinatario_id,
+      value: x.value,
+    })),
+    userIncluded: config.userIncluded,
+    decimals,
+  });
+  if (!split.ok) return { ok: false, error: SPLIT_ERROR_MESSAGES[split.reason] };
+
+  const splitGroupId = crypto.randomUUID();
+  const { error: updErr } = await supabase
+    .from("transactions")
+    .update({ split_group_id: splitGroupId, split_repaid_amount: 0 })
+    .eq("id", tx.id)
+    .eq("user_id", userId);
+  if (updErr) {
+    return { ok: false, error: "Error al marcar la transacción como pago compartido" };
+  }
+
+  const debtIds: string[] = [];
+  const debtsToInsert: PersonalDebtInsert[] = split.shares.map((share) => {
+    const debtId = crypto.randomUUID();
+    debtIds.push(debtId);
+    return {
+      id: debtId,
+      user_id: userId,
+      destinatario_id: share.destinatario_id!,
+      direction: "lent",
+      principal_amount: share.amount,
+      outstanding_amount: share.amount,
+      currency_code: tx.currency_code,
+      opened_on: config.opened_on,
+      due_date: config.due_date ?? null,
+      notes: config.description ?? null,
+      status: "active",
+      split_group_id: splitGroupId,
+      origin_transaction_id: tx.id,
+    };
+  });
+  const { error: debtsErr } = await supabase.from("personal_debts").insert(debtsToInsert);
+  if (debtsErr) {
+    // Compensating: un-tag (no hubo delta de saldo — la tx ya estaba posteada).
+    await supabase
+      .from("transactions")
+      .update({ split_group_id: null, split_repaid_amount: null })
+      .eq("id", tx.id)
+      .eq("user_id", userId);
+    return { ok: false, error: "Error al crear las deudas del reparto" };
+  }
+
+  return { ok: true, split_group_id: splitGroupId, debt_ids: debtIds };
+}
 
 /**
  * Create a shared payment ("Pago compartido", Splitwise-style): ONE real
@@ -135,6 +221,33 @@ export async function createSharedPayment(
   }
 
   // ----------------------------------------------------------------
+  // "existing" mode: la tx ya está posteada — repartirla vía el helper
+  // compartido (misma regla que el batch del modo). Sin delta de saldo.
+  // ----------------------------------------------------------------
+  if (p.mode === "existing") {
+    const res = await splitExistingTransaction(
+      supabase,
+      user.id,
+      { id: existingTxId!, amount: total, currency_code: currency },
+      {
+        method: p.method,
+        userIncluded: p.user_included,
+        participants: p.participants,
+        opened_on: paidOn,
+        due_date: p.due_date,
+        description: p.description,
+      },
+    );
+    if (!res.ok) return { success: false, error: res.error };
+    revalidateFinancialViews();
+    updateTag("personal-debts");
+    return {
+      success: true,
+      data: { split_group_id: res.split_group_id, debt_ids: res.debt_ids },
+    };
+  }
+
+  // ----------------------------------------------------------------
   // Compute the split (exact-sum guaranteed by @zeta/shared). The participant
   // shares are what is owed to the user; their sum = total − userShare.
   // ----------------------------------------------------------------
@@ -159,53 +272,39 @@ export async function createSharedPayment(
   const description = p.description ?? "Pago compartido";
 
   // ----------------------------------------------------------------
-  // 1) Establish the single origin transaction. The account balance is applied
-  //    LAST (step 3) so a failed debts insert leaves no balance drift — only
-  //    after the tx + debts both land do we move the cash.
+  // 1) Create ONE real expense transaction for the full total. The account
+  //    balance is applied LAST (step 3) so a failed debts insert leaves no
+  //    balance drift — only after tx + debts both land do we move the cash.
+  //    ("existing" mode returned early above via splitExistingTransaction.)
   // ----------------------------------------------------------------
-  let originTransactionId: string;
-
-  if (p.mode === "existing") {
-    // Keep the original transaction UNMODIFIED (amount, category, merchant) — only
-    // tag it to the split group and reset the repaid tracker. No balance change.
-    originTransactionId = existingTxId!;
-    const { error: updErr } = await supabase
-      .from("transactions")
-      .update({ split_group_id: splitGroupId, split_repaid_amount: 0 })
-      .eq("id", originTransactionId)
-      .eq("user_id", user.id);
-    if (updErr) return { success: false, error: "Error al marcar la transacción como pago compartido" };
-  } else {
-    // Create ONE real expense transaction for the full total.
-    originTransactionId = crypto.randomUUID();
-    const idempotencyKey = await computeIdempotencyKey({
-      provider: "MANUAL",
-      providerTransactionId: `split:${splitGroupId}:origin`,
-      transactionDate: paidOn,
-      amount: total,
-      rawDescription: description,
-    });
-    const { error: insErr } = await supabase.from("transactions").insert({
-      id: originTransactionId,
-      user_id: user.id,
-      account_id: accountId,
-      amount: total,
-      direction: "OUTFLOW",
-      currency_code: currencyEnum,
-      transaction_date: paidOn,
-      raw_description: description,
-      provider: "MANUAL",
-      capture_method: "MANUAL_FORM",
-      idempotency_key: idempotencyKey,
-      split_group_id: splitGroupId,
-      split_repaid_amount: 0,
-    });
-    if (insErr) {
-      if (insErr.code === "23505") {
-        return { success: false, error: "Este pago compartido ya existe (duplicado)" };
-      }
-      return { success: false, error: "Error al registrar el pago compartido" };
+  const originTransactionId = crypto.randomUUID();
+  const idempotencyKey = await computeIdempotencyKey({
+    provider: "MANUAL",
+    providerTransactionId: `split:${splitGroupId}:origin`,
+    transactionDate: paidOn,
+    amount: total,
+    rawDescription: description,
+  });
+  const { error: insErr } = await supabase.from("transactions").insert({
+    id: originTransactionId,
+    user_id: user.id,
+    account_id: accountId,
+    amount: total,
+    direction: "OUTFLOW",
+    currency_code: currencyEnum,
+    transaction_date: paidOn,
+    raw_description: description,
+    provider: "MANUAL",
+    capture_method: "MANUAL_FORM",
+    idempotency_key: idempotencyKey,
+    split_group_id: splitGroupId,
+    split_repaid_amount: 0,
+  });
+  if (insErr) {
+    if (insErr.code === "23505") {
+      return { success: false, error: "Este pago compartido ya existe (duplicado)" };
     }
+    return { success: false, error: "Error al registrar el pago compartido" };
   }
 
   // ----------------------------------------------------------------
@@ -234,23 +333,15 @@ export async function createSharedPayment(
   const { error: debtsErr } = await supabase.from("personal_debts").insert(debtsToInsert);
   if (debtsErr) {
     // Compensating cleanup so we never leave an orphaned split tx with no debts
-    // (and, in new mode, no balance has been applied yet — see step 3).
-    if (p.mode === "new") {
-      await supabase.from("transactions").delete().eq("id", originTransactionId).eq("user_id", user.id);
-    } else {
-      await supabase
-        .from("transactions")
-        .update({ split_group_id: null, split_repaid_amount: null })
-        .eq("id", originTransactionId)
-        .eq("user_id", user.id);
-    }
+    // (no balance has been applied yet — see step 3).
+    await supabase.from("transactions").delete().eq("id", originTransactionId).eq("user_id", user.id);
     return { success: false, error: "Error al crear las deudas del reparto" };
   }
 
   // ----------------------------------------------------------------
-  // 3) New mode: tx + debts are in place — apply the ONE balance delta now.
+  // 3) tx + debts are in place — apply the ONE balance delta now.
   // ----------------------------------------------------------------
-  if (p.mode === "new") {
+  {
     const { data: acct, error: acctErr } = await supabase
       .from("accounts")
       .select("id, account_type, current_balance")
