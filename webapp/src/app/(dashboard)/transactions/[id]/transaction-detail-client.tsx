@@ -906,7 +906,10 @@ export function TransactionDetailClient({
                           settled ? "text-muted-foreground line-through" : "text-z-sage-light",
                         )}
                       >
-                        {formatCurrency(d.outstanding_amount, d.currency_code as CurrencyCode)}
+                        {formatCurrency(
+                          settled ? d.principal_amount : d.outstanding_amount,
+                          d.currency_code as CurrencyCode,
+                        )}
                       </span>
                     </div>
                   );
