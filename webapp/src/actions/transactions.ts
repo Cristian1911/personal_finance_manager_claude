@@ -458,6 +458,7 @@ async function getTransactionsCached(
     const { data: taggedIds } = await supabase
       .from("transaction_tags")
       .select("transaction_id")
+      .eq("user_id", userId)
       .in("tag_id", tagIds);
 
     if (taggedIds && taggedIds.length > 0) {

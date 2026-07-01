@@ -24,10 +24,10 @@ export function ModoSummaryView({
         <Link href={applyHref} className="text-sm text-z-brass hover:underline">
           Ver en Movimientos →
         </Link>
-        <h1 className="text-2xl font-semibold">
+        <h1 className="text-2xl font-semibold tracking-tight lg:text-3xl">
           {modo.emoji ?? "📍"} {modo.name}
         </h1>
-        <p className="text-3xl font-bold">{formatCurrency(summary.total)}</p>
+        <p className="text-3xl font-bold tabular-nums">{formatCurrency(summary.total)}</p>
         <p className="text-sm text-muted-foreground">
           {summary.count} transacciones ·{" "}
           {formatDate(summary.observedFrom ?? modo.date_from, "d MMM")} –{" "}
@@ -45,7 +45,7 @@ export function ModoSummaryView({
                 {b.name}{" "}
                 <span className="text-muted-foreground">({b.count})</span>
               </span>
-              <span>{formatCurrency(b.total)}</span>
+              <span className="tabular-nums">{formatCurrency(b.total)}</span>
             </div>
           ))}
         </section>
@@ -60,15 +60,15 @@ export function ModoSummaryView({
             return (
               <div
                 key={g.split_group_id}
-                className="rounded-lg border border-white/6 bg-z-surface-2 p-3 text-sm"
+                className="rounded-xl border border-white/6 bg-[#111] px-3 py-2 text-sm"
               >
                 <div className="flex justify-between">
                   <span>{g.description ?? "Pago compartido"}</span>
-                  <span>{formatCurrency(g.total, cc)}</span>
+                  <span className="tabular-nums">{formatCurrency(g.total, cc)}</span>
                 </div>
                 <p className="text-muted-foreground">
-                  Tu parte {formatCurrency(g.userShare, cc)} · pendiente{" "}
-                  {formatCurrency(g.outstanding_total, cc)}
+                  Tu parte <span className="tabular-nums">{formatCurrency(g.userShare, cc)}</span> · pendiente{" "}
+                  <span className="tabular-nums">{formatCurrency(g.outstanding_total, cc)}</span>
                 </p>
               </div>
             );
@@ -89,7 +89,7 @@ export function ModoSummaryView({
                 {t.category?.name_es ?? t.category?.name ?? "Sin categoría"} ·{" "}
                 {formatDate(t.transaction_date, "d MMM")}
               </span>
-              <span>{formatCurrency(t.amount ?? 0)}</span>
+              <span className="tabular-nums">{formatCurrency(t.amount ?? 0)}</span>
             </div>
           ))}
         </section>

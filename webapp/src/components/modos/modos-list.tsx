@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { chipToggleClass } from "@/lib/constants/styles";
 import type { Modo } from "@/types/domain";
 import { ModoCard } from "./modo-card";
 
@@ -50,12 +50,7 @@ export function ModosList({ modos }: { modos: Modo[] }) {
             type="button"
             onClick={() => setSegment(s.key)}
             aria-pressed={segment === s.key}
-            className={cn(
-              "rounded-full border px-3 py-1 text-xs transition-colors",
-              segment === s.key
-                ? "border-z-brass bg-z-brass text-z-ink"
-                : "border-white/6 text-muted-foreground hover:bg-z-surface-2"
-            )}
+            className={chipToggleClass(segment === s.key)}
           >
             {s.label}
           </button>

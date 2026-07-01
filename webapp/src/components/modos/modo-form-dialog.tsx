@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useAllTags } from "@/components/providers/app-data-provider";
 import { createModo, updateModo } from "@/actions/modos";
-import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
+import { BRASS_BUTTON_CLASS, chipToggleClass } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
 import type { Modo } from "@/types/domain";
 
@@ -150,12 +150,7 @@ export function ModoFormDialog({
                       type="button"
                       onClick={() => toggleTag(tag.id)}
                       aria-pressed={selected}
-                      className={cn(
-                        "rounded-full border px-2.5 py-1 text-xs transition-colors",
-                        selected
-                          ? "border-z-brass bg-z-brass text-z-ink"
-                          : "border-white/6 text-muted-foreground hover:bg-z-surface-2"
-                      )}
+                      className={chipToggleClass(selected)}
                     >
                       {tag.name}
                     </button>
@@ -165,7 +160,7 @@ export function ModoFormDialog({
             )}
           </div>
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
 
         <DialogFooter>

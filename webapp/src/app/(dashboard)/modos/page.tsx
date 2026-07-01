@@ -1,6 +1,8 @@
+import { MapPin } from "lucide-react";
 import { listModos } from "@/actions/modos";
 import { ModosList } from "@/components/modos/modos-list";
 import { ModoFormDialog } from "@/components/modos/modo-form-dialog";
+import { EmptyState } from "@/components/ui/empty-state";
 import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
 
 export default async function ModosPage() {
@@ -10,7 +12,7 @@ export default async function ModosPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-4 p-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Modos</h1>
+        <h1 className="text-2xl font-semibold tracking-tight lg:text-3xl">Modos</h1>
         <ModoFormDialog
           trigger={
             <button type="button" className={BRASS_BUTTON_CLASS}>
@@ -20,10 +22,11 @@ export default async function ModosPage() {
         />
       </div>
       {modos.length === 0 ? (
-        <p className="text-muted-foreground">
-          Aún no tienes modos. Crea uno desde el filtro de una lista de
-          transacciones etiquetadas.
-        </p>
+        <EmptyState
+          icon={<MapPin className="size-6" strokeWidth={1.5} />}
+          title="Agrupa un viaje o evento en un Modo"
+          description="Un Modo guarda las etiquetas y el rango de fechas de un gasto puntual. Créalo desde el filtro de una lista de transacciones etiquetadas, o con “Nuevo modo”."
+        />
       ) : (
         <ModosList modos={modos} />
       )}

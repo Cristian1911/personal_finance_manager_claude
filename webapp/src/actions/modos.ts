@@ -85,8 +85,12 @@ export async function getModoSummary(id: string): Promise<
   const { user, accessToken, supabase } = await getAuthenticatedClient();
   if (!user || !accessToken) return { success: false, error: "No autenticado" };
 
-  const { data: modo, error } = await supabase
-    .from("modos").select("*").eq("id", id).eq("user_id", user.id).single();
+  // getSharedPaymentGroups depends only on the user — kick it off in parallel
+  // with the modo fetch instead of waiting behind the tx waterfall.
+  const [{ data: modo, error }, groupsResult] = await Promise.all([
+    supabase.from("modos").select("*").eq("id", id).eq("user_id", user.id).single(),
+    getSharedPaymentGroups(),
+  ]);
   if (error || !modo) return { success: false, error: "Modo no encontrado" };
 
   const txIds = await getModoTransactionIds(modo, user.id, accessToken);
@@ -102,7 +106,6 @@ export async function getModoSummary(id: string): Promise<
   }
 
   const summary = summarizeModo(transactions);
-  const groupsResult = await getSharedPaymentGroups();
   const sharedGroups = groupsResult.success
     ? filterSharedGroupsByOrigin(groupsResult.data, txIds)
     : [];

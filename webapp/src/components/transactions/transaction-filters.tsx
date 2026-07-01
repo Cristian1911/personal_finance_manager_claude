@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/sheet";
 import { Bookmark, Search, SlidersHorizontal, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { MOBILE_SHEET_SAFE_AREA_CLASS } from "@/lib/constants/styles";
+import { MOBILE_SHEET_SAFE_AREA_CLASS, chipToggleClass } from "@/lib/constants/styles";
 import { ModoFormDialog } from "@/components/modos/modo-form-dialog";
 import type { Account, CategoryWithChildren, Tag } from "@/types/domain";
 
@@ -212,12 +212,7 @@ export function TransactionFilters({
                         updateFilter("tags", next.join(","));
                       }}
                       aria-pressed={selected}
-                      className={cn(
-                        "rounded-full border px-2.5 py-1 text-xs transition-colors",
-                        selected
-                          ? "border-z-brass bg-z-brass text-z-ink"
-                          : "border-white/6 text-muted-foreground hover:bg-z-surface-2"
-                      )}
+                      className={chipToggleClass(selected)}
                     >
                       {tag.name}
                     </button>
