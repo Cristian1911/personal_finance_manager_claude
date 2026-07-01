@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type ReactNode } from "react";
+import { useEffect, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   Dialog,
@@ -48,6 +48,21 @@ export function ModoFormDialog({
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>(
     initial?.tag_ids ?? presetTagIds ?? []
   );
+
+  // The dialog stays mounted while closed, so useState initializers only run
+  // once. Reset local state when it closes so stale values (or changed presets)
+  // don't leak into the next open.
+  useEffect(() => {
+    if (!open) {
+      setName(initial?.name ?? "");
+      setEmoji(initial?.emoji ?? "");
+      setColor(initial?.color ?? "#8a6d3b");
+      setDateFrom(initial?.date_from ?? presetDateFrom ?? "");
+      setDateTo(initial?.date_to ?? presetDateTo ?? "");
+      setSelectedTagIds(initial?.tag_ids ?? presetTagIds ?? []);
+      setError(null);
+    }
+  }, [open, initial, presetTagIds, presetDateFrom, presetDateTo]);
 
   function toggleTag(id: string) {
     setSelectedTagIds((cur) =>
