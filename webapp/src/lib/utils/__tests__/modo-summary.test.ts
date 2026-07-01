@@ -1,0 +1,47 @@
+import { describe, expect, it } from "vitest";
+import { summarizeModo, filterSharedGroupsByOrigin } from "@/lib/utils/modo-summary";
+import type { ModoTxRow } from "@/lib/utils/modo-summary";
+
+const cat = (id: string, name: string) => ({ id, name, name_es: name, color: "#fff" });
+
+const txs: ModoTxRow[] = [
+  { id: "t1", amount: 100, direction: "OUTFLOW", transaction_date: "2026-07-02", category: cat("c1", "Comida") },
+  { id: "t2", amount: 50, direction: "OUTFLOW", transaction_date: "2026-07-01", category: cat("c1", "Comida") },
+  { id: "t3", amount: 200, direction: "OUTFLOW", transaction_date: "2026-07-04", category: cat("c2", "Hotel") },
+  { id: "t4", amount: 999, direction: "INFLOW", transaction_date: "2026-07-03", category: null },
+];
+
+describe("summarizeModo", () => {
+  it("suma solo OUTFLOW y cuenta esas tx", () => {
+    const s = summarizeModo(txs);
+    expect(s.total).toBe(350);
+    expect(s.count).toBe(3);
+  });
+  it("calcula rango observado (min/max) sobre OUTFLOW", () => {
+    const s = summarizeModo(txs);
+    expect(s.observedFrom).toBe("2026-07-01");
+    expect(s.observedTo).toBe("2026-07-04");
+  });
+  it("agrupa por categoría ordenado desc por total", () => {
+    const s = summarizeModo(txs);
+    expect(s.byCategory.map((b) => [b.name, b.total])).toEqual([
+      ["Hotel", 200],
+      ["Comida", 150],
+    ]);
+  });
+  it("maneja lista vacía", () => {
+    const s = summarizeModo([]);
+    expect(s).toEqual({ total: 0, count: 0, observedFrom: null, observedTo: null, byCategory: [] });
+  });
+});
+
+describe("filterSharedGroupsByOrigin", () => {
+  it("mantiene solo grupos cuyo origin_transaction_id está en el set", () => {
+    const groups = [
+      { split_group_id: "g1", debts: [{ origin_transaction_id: "t1" }] },
+      { split_group_id: "g2", debts: [{ origin_transaction_id: "tX" }] },
+    ] as unknown as import("@/types/domain").SharedPaymentGroup[];
+    const out = filterSharedGroupsByOrigin(groups, ["t1", "t2"]);
+    expect(out.map((g) => g.split_group_id)).toEqual(["g1"]);
+  });
+});
