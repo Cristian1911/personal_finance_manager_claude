@@ -10,6 +10,17 @@
 
 ---
 
+## Modo compartido F1 (branch `feat/modos`, 2026-07-01) — follow-ups
+
+Shipped F1: un modo puede ser pool de gastos compartidos single-user (Estefa = destinatario). `modos` += `is_shared/split_method/user_included` + tabla `modo_participants`; acciones `shareModoTransactions`/`unshareModoTransactions` (batch) reusan `splitExistingTransaction`; resumen con "Saldo por persona" + abono. Spec: `docs/superpowers/specs/2026-07-01-modo-compartido-design.md`, plan: `docs/superpowers/plans/2026-07-01-modo-compartido-f1.md`. Migración `20260701190000_modo_compartido.sql`.
+
+- **(Fase 2 — couples reales) El pool como objeto multi-usuario.** Invitar a la contraparte como usuario real: `modo_participants` += `member_user_id` + `invite_status` (pending/accepted), flujo de invitación por email, RLS de 2º usuario, y **publicación de entradas del pool** (monto + descripción + reparto + settle-up) a un store legible por el miembro vía RLS — NUNCA la tx origen ni el ledger privado (muro de cifrado por-usuario). Realiza el backlog `shared_pools`/`pool_members`/`pool_allocations`. Decisión de cifrado de las entradas (plano-para-miembros vs por-clave) se define en su propio spec. El modo = pool, `modo_participants` = miembros (forward-compat ya en el schema).
+- **(P1) Abono multi-deuda por persona.** Hoy "Registrar abono" salda la deuda activa más antigua (FIFO) con tope = saldo de ESA deuda. Una persona con N pagos compartidos en el modo requiere N abonos. Añadir allocation de un abono único repartido FIFO entre las deudas activas de esa persona (nueva acción o extender `recordRepayment`).
+- **(P2) `updateModo`/`createModo` participantes no atómicos.** delete-all + re-insert sin transacción; un insert fallido tras el delete deja el modo con 0 participantes (devuelve error, recuperable). Envolver en RPC/transacción si molesta.
+- **(P2) Editar modo no está cableado en UI.** `updateModo` existe pero ningún trigger de "Editar" lo invoca; al cablearlo, pasar `initialParticipants` (de `getModoSummary().participants`) al `ModoFormDialog` para prefill.
+- **(P2) `shareModoTransactions` reparto secuencial.** Loop `await` por tx (2 round-trips c/u). OK para decenas; si un modo escala a cientos, `Promise.all` acotado (chunks ~10).
+- **(P1 — mobile parity) `modos`/`modo_participants` son webapp-only.** Correr `mobile-webapp-parity` + `mobile-sync-doctor` antes de cualquier trabajo de modos en móvil (enum/columna drift, la tabla nueva no está en SQLite).
+
 ## ★ Mobile↔webapp parity redesign — roadmap (2026-06-29)
 
 Full 3-cluster audit → `docs/audits/2026-06-29-mobile-parity-redesign-roadmap.md`. Root cause: mobile
