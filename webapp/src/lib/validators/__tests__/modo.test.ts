@@ -25,6 +25,28 @@ describe("modoSchema", () => {
   it("acepta tag_ids vacío", () => {
     expect(modoSchema.safeParse({ ...base, tag_ids: [] }).success).toBe(true);
   });
+
+  it("acepta un modo compartido con participantes", () => {
+    const r = modoSchema.safeParse({
+      ...base,
+      is_shared: true,
+      split_method: "equal",
+      user_included: true,
+      participants: [{ destinatario_id: "11111111-1111-1111-1111-111111111111" }],
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("rechaza modo compartido sin participantes", () => {
+    const r = modoSchema.safeParse({ ...base, is_shared: true, participants: [] });
+    expect(r.success).toBe(false);
+  });
+
+  it("modo no compartido no exige participantes (default false)", () => {
+    const r = modoSchema.safeParse(base);
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.is_shared).toBe(false);
+  });
 });
 
 describe("parseTagsParam", () => {

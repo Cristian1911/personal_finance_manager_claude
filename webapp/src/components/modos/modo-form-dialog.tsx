@@ -10,17 +10,28 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
+import { DestinatarioZonePicker } from "@/components/destinatarios/destinatario-zone-picker";
 import { useAllTags } from "@/components/providers/app-data-provider";
 import { createModo, updateModo } from "@/actions/modos";
-import { BRASS_BUTTON_CLASS, chipToggleClass } from "@/lib/constants/styles";
+import {
+  BRASS_BUTTON_CLASS,
+  GHOST_BUTTON_CLASS,
+  DESTRUCTIVE_GHOST_BUTTON_CLASS,
+  chipToggleClass,
+} from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
 import type { Modo } from "@/types/domain";
 
+type ParticipantRow = { key: string; destinatarioId: string | null; name: string; value: string };
+
 interface ModoFormDialogProps {
   initial?: Partial<Modo> & { id?: string };
+  initialParticipants?: { destinatario_id: string; value: number | null; name?: string }[];
   trigger: ReactNode;
   presetTagIds?: string[];
   presetDateFrom?: string;
@@ -29,6 +40,7 @@ interface ModoFormDialogProps {
 
 export function ModoFormDialog({
   initial,
+  initialParticipants,
   trigger,
   presetTagIds,
   presetDateFrom,
@@ -48,11 +60,34 @@ export function ModoFormDialog({
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>(
     initial?.tag_ids ?? presetTagIds ?? []
   );
+  const [isShared, setIsShared] = useState(initial?.is_shared ?? false);
+  const [splitMethod, setSplitMethod] = useState<"equal" | "percent">(
+    (initial?.split_method as "equal" | "percent") ?? "equal"
+  );
+  const [userIncluded, setUserIncluded] = useState(initial?.user_included ?? true);
+  const [participants, setParticipants] = useState<ParticipantRow[]>(
+    (initialParticipants ?? []).map((p) => ({
+      key: crypto.randomUUID(),
+      destinatarioId: p.destinatario_id,
+      name: p.name ?? "",
+      value: p.value != null ? String(p.value) : "",
+    }))
+  );
 
   function toggleTag(id: string) {
     setSelectedTagIds((cur) =>
       cur.includes(id) ? cur.filter((t) => t !== id) : [...cur, id]
     );
+  }
+
+  function addParticipant() {
+    setParticipants((cur) => [...cur, { key: crypto.randomUUID(), destinatarioId: null, name: "", value: "" }]);
+  }
+  function updateParticipant(key: string, patch: Partial<ParticipantRow>) {
+    setParticipants((cur) => cur.map((p) => (p.key === key ? { ...p, ...patch } : p)));
+  }
+  function removeParticipant(key: string) {
+    setParticipants((cur) => cur.filter((p) => p.key !== key));
   }
 
   function submit() {
@@ -64,6 +99,16 @@ export function ModoFormDialog({
     fd.set("date_from", dateFrom);
     fd.set("date_to", dateTo);
     fd.set("tag_ids", JSON.stringify(selectedTagIds));
+    fd.set("is_shared", String(isShared));
+    fd.set("split_method", splitMethod);
+    fd.set("user_included", String(userIncluded));
+    const validParticipants = participants
+      .filter((p) => p.destinatarioId)
+      .map((p) => ({
+        destinatario_id: p.destinatarioId as string,
+        value: splitMethod === "percent" && p.value.trim() !== "" ? Number(p.value) : undefined,
+      }));
+    fd.set("participants", JSON.stringify(isShared ? validParticipants : []));
 
     startTransition(async () => {
       const res = initial?.id
@@ -156,6 +201,93 @@ export function ModoFormDialog({
                     </button>
                   );
                 })}
+              </div>
+            )}
+          </div>
+
+          {/* Compartir gastos */}
+          <div className="space-y-3 rounded-xl border border-white/6 bg-z-surface-2 p-3">
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={isShared}
+                onCheckedChange={(v) => setIsShared(v === true)}
+              />
+              Compartir gastos de este modo
+            </label>
+
+            {isShared && (
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label>Personas</Label>
+                  {participants.map((p) => (
+                    <div key={p.key} className="flex items-start gap-2">
+                      <div className="flex-1">
+                        <DestinatarioZonePicker
+                          value={p.destinatarioId}
+                          onValueChange={(id, personName) =>
+                            updateParticipant(p.key, { destinatarioId: id, name: personName ?? "" })
+                          }
+                          selectedName={p.name}
+                          placeholder="Elegir o crear persona"
+                          triggerClassName="w-full"
+                          kindFilter={["person"]}
+                          createKind="person"
+                          variant="dialog"
+                        />
+                      </div>
+                      {splitMethod === "percent" && (
+                        <div className="relative w-20 shrink-0">
+                          <Input
+                            inputMode="decimal"
+                            value={p.value}
+                            onChange={(e) => updateParticipant(p.key, { value: e.target.value })}
+                            placeholder="0"
+                            className="pr-6 text-right tabular-nums"
+                          />
+                          <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                            %
+                          </span>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeParticipant(p.key)}
+                        aria-label="Quitar persona"
+                        className={cn(DESTRUCTIVE_GHOST_BUTTON_CLASS, "mt-1 shrink-0 p-1.5")}
+                      >
+                        <X className="size-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button type="button" onClick={addParticipant} className={GHOST_BUTTON_CLASS}>
+                    + Agregar persona
+                  </button>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Reparto</Label>
+                  <div className="flex gap-2">
+                    {(["equal", "percent"] as const).map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setSplitMethod(m)}
+                        aria-pressed={splitMethod === m}
+                        className={chipToggleClass(splitMethod === m)}
+                      >
+                        {m === "equal" ? "Partes iguales" : "Porcentaje"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={userIncluded}
+                    onCheckedChange={(v) => setUserIncluded(v === true)}
+                  />
+                  Incluirme en el reparto
+                </label>
               </div>
             )}
           </div>

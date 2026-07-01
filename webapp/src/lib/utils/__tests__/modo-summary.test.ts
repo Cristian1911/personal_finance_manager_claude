@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { summarizeModo, filterSharedGroupsByOrigin } from "@/lib/utils/modo-summary";
+import { summarizeModo, filterSharedGroupsByOrigin, settleUpByPerson } from "@/lib/utils/modo-summary";
 import type { ModoTxRow } from "@/lib/utils/modo-summary";
+import type { SharedPaymentGroup } from "@/types/domain";
 
 const cat = (id: string, name: string) => ({ id, name, name_es: name, color: "#fff" });
 
@@ -43,5 +44,33 @@ describe("filterSharedGroupsByOrigin", () => {
     ] as unknown as import("@/types/domain").SharedPaymentGroup[];
     const out = filterSharedGroupsByOrigin(groups, ["t1", "t2"]);
     expect(out.map((g) => g.split_group_id)).toEqual(["g1"]);
+  });
+});
+
+describe("settleUpByPerson", () => {
+  const groups = [
+    { split_group_id: "g1", debts: [
+      { destinatario_id: "p1", destinatario_name: "Estefa", principal_amount: 100, outstanding_amount: 60, status: "active", origin_transaction_id: "tx1", id: "d1" },
+    ] },
+    { split_group_id: "g2", debts: [
+      { destinatario_id: "p1", destinatario_name: "Estefa", principal_amount: 50, outstanding_amount: 0, status: "paid", origin_transaction_id: "tx2", id: "d2" },
+    ] },
+    { split_group_id: "g3", debts: [
+      { destinatario_id: "p2", destinatario_name: "Ana", principal_amount: 30, outstanding_amount: 30, status: "active", origin_transaction_id: "txZ", id: "d3" },
+    ] },
+  ] as unknown as SharedPaymentGroup[];
+
+  it("agrega pendiente por persona solo de tx del modo", () => {
+    const res = settleUpByPerson(groups, ["tx1", "tx2"]); // txZ fuera del modo
+    expect(res).toHaveLength(1);
+    expect(res[0].destinatarioId).toBe("p1");
+    expect(res[0].principal).toBe(150);
+    expect(res[0].outstanding).toBe(60);
+    expect(res[0].oldestActiveDebtId).toBe("d1");
+  });
+
+  it("ordena por pendiente desc e incluye varias personas", () => {
+    const res = settleUpByPerson(groups, ["tx1", "txZ"]);
+    expect(res.map((r) => r.destinatarioId)).toEqual(["p1", "p2"]);
   });
 });

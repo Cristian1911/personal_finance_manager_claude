@@ -7,6 +7,7 @@ export type AccountRow = Tables<"accounts">;
 export type Account = Omit<AccountRow, "pdf_password">;
 export type Transaction = Tables<"transactions">;
 export type Modo = Tables<"modos">;
+export type ModoParticipant = Tables<"modo_participants">;
 
 /** Approximate location captured by mobile and linked to a transaction. */
 export interface TransactionLocation {

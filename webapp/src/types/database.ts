@@ -1722,9 +1722,12 @@ export type Database = {
           date_to: string
           emoji: string | null
           id: string
+          is_shared: boolean
           name: string
+          split_method: string
           tag_ids: string[]
           user_id: string
+          user_included: boolean
         }
         Insert: {
           color?: string | null
@@ -1733,9 +1736,12 @@ export type Database = {
           date_to: string
           emoji?: string | null
           id?: string
+          is_shared?: boolean
           name: string
+          split_method?: string
           tag_ids?: string[]
           user_id: string
+          user_included?: boolean
         }
         Update: {
           color?: string | null
@@ -1744,8 +1750,41 @@ export type Database = {
           date_to?: string
           emoji?: string | null
           id?: string
+          is_shared?: boolean
           name?: string
+          split_method?: string
           tag_ids?: string[]
+          user_id?: string
+          user_included?: boolean
+        }
+        Relationships: []
+      }
+      modo_participants: {
+        Row: {
+          created_at: string
+          destinatario_id: string
+          id: string
+          modo_id: string
+          position: number
+          share_value: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          destinatario_id: string
+          id?: string
+          modo_id: string
+          position?: number
+          share_value?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          destinatario_id?: string
+          id?: string
+          modo_id?: string
+          position?: number
+          share_value?: number | null
           user_id?: string
         }
         Relationships: []

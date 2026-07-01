@@ -65,3 +65,44 @@ export function filterSharedGroupsByOrigin(
     g.debts.some((d) => d.origin_transaction_id != null && set.has(d.origin_transaction_id)),
   );
 }
+
+export type SettleUpPerson = {
+  destinatarioId: string;
+  name: string;
+  currency: string;
+  principal: number;
+  outstanding: number;
+  oldestActiveDebtId: string | null;
+};
+
+/**
+ * Settle-up agregado por persona, considerando SOLO las deudas cuyo pago origen
+ * cae dentro del modo (txIds). No refleja la deuda global con la persona.
+ */
+export function settleUpByPerson(
+  groups: SharedPaymentGroup[],
+  txIds: string[],
+): SettleUpPerson[] {
+  const set = new Set(txIds);
+  const byPerson = new Map<string, SettleUpPerson>();
+  for (const g of groups) {
+    for (const d of g.debts) {
+      if (d.origin_transaction_id == null || !set.has(d.origin_transaction_id)) continue;
+      const cur = byPerson.get(d.destinatario_id) ?? {
+        destinatarioId: d.destinatario_id,
+        name: d.destinatario_name ?? "—",
+        currency: d.currency_code ?? "COP",
+        principal: 0,
+        outstanding: 0,
+        oldestActiveDebtId: null,
+      };
+      cur.principal += d.principal_amount;
+      if (d.status === "active") {
+        cur.outstanding += d.outstanding_amount;
+        if (cur.oldestActiveDebtId == null) cur.oldestActiveDebtId = d.id;
+      }
+      byPerson.set(d.destinatario_id, cur);
+    }
+  }
+  return [...byPerson.values()].sort((a, b) => b.outstanding - a.outstanding);
+}
