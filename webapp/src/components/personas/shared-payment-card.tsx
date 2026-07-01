@@ -28,7 +28,7 @@ import {
   SECTION_EYEBROW_CLASS,
 } from "@/lib/constants/styles";
 import { RecordRepaymentDialog } from "./record-repayment-dialog";
-import { settlePersonalDebt, reopenPersonalDebt } from "@/actions/personal-debts";
+import { reopenPersonalDebt } from "@/actions/personal-debts";
 import { deleteSharedPayment } from "@/actions/shared-payments";
 import type { CurrencyCode, SharedPaymentGroup } from "@/types/domain";
 
@@ -141,28 +141,16 @@ export function SharedPaymentCard({ group, currency }: SharedPaymentCardProps) {
               </span>
               <div className="flex shrink-0 items-center gap-1">
                 {isActive ? (
-                  <>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      disabled={pending}
-                      className={cn(BRASS_GHOST_BUTTON_CLASS, "h-7 px-2 text-xs")}
-                      onClick={() => setRepayDebtId(d.id)}
-                    >
-                      Abono
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      disabled={pending}
-                      className={cn(GHOST_BUTTON_CLASS, "h-7 px-2 text-xs")}
-                      onClick={() => run(() => settlePersonalDebt(d.id), "Deuda saldada")}
-                    >
-                      Saldar
-                    </Button>
-                  </>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={pending}
+                    className={cn(BRASS_GHOST_BUTTON_CLASS, "h-7 px-2 text-xs")}
+                    onClick={() => setRepayDebtId(d.id)}
+                  >
+                    Registrar pago
+                  </Button>
                 ) : (
                   <Button
                     type="button"
@@ -187,6 +175,8 @@ export function SharedPaymentCard({ group, currency }: SharedPaymentCardProps) {
           onOpenChange={(o) => !o && setRepayDebtId(null)}
           personalDebtId={repayDebt.id}
           personName={repayDebt.destinatario_name}
+          outstandingAmount={repayDebt.outstanding_amount}
+          currency={repayDebt.currency_code as CurrencyCode}
         />
       )}
     </div>

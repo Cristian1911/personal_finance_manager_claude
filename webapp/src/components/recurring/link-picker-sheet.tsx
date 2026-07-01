@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { CalendarPlus, Link2 } from "lucide-react";
+import { CalendarPlus, Link2, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -26,6 +26,8 @@ export interface LinkCandidate {
   currencyCode: string;
   direction: "INFLOW" | "OUTFLOW";
   matchScore: number;
+  /** Optional brass chip next to the label (e.g. "Pago compartido"). */
+  badge?: string;
 }
 
 interface LinkPickerSheetProps {
@@ -215,11 +217,20 @@ function CandidateRow({
         isSelected
           ? "bg-z-brass/10 ring-1 ring-z-brass/30"
           : "hover:bg-white/[0.03]",
-        isBest && !isSelected && "border-l-2 border-l-z-income bg-z-income/[0.04]"
+        isBest && !isSelected && "border-l-2 border-l-z-income bg-z-income/[0.04]",
+        candidate.badge && !isBest && !isSelected && "border-l-2 border-l-z-brass/60 bg-z-brass/[0.04]"
       )}
     >
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{candidate.label}</p>
+        <div className="flex items-center gap-1.5">
+          <p className="truncate text-sm font-medium">{candidate.label}</p>
+          {candidate.badge && (
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-z-brass/30 bg-z-brass/10 px-2 py-0.5 text-[10px] font-semibold text-z-brass">
+              <Receipt className="size-2.5" aria-hidden="true" />
+              {candidate.badge}
+            </span>
+          )}
+        </div>
         <p className="truncate text-xs text-muted-foreground">
           {candidate.sublabel}
         </p>

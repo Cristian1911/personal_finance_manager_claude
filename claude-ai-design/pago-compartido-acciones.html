@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pago compartido — acciones (mockup fiel a la app)</title>
+<style>
+  :root{
+    --bg:#0a0a0a; --card:rgba(255,255,255,.022); --card2:#121212; --line:rgba(255,255,255,.07);
+    --line2:rgba(255,255,255,.10); --fg:#efe9dc; --sage:#D9CCB9; --sage-dark:#7c766c; --muted:#6f6a60;
+    --brass:#B78B3E; --brass-hot:#E0B25A; --brass-soft:#b78b3e14; --brass-line:#b78b3e33;
+    --green:#7FB08A; --red:#C6553F; --redtext:#e2917c;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:#040404;color:var(--fg);font:14.5px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    display:flex;flex-direction:column;align-items:center;gap:16px;padding:22px 10px 70px}
+  h1{font-size:15px;color:var(--sage);font-weight:700;margin:2px 0 0;text-align:center}
+  .sub{color:var(--muted);font-size:12px;max-width:720px;text-align:center;margin:0}
+  .tabs{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;max-width:96vw}
+  .tab{border:1px solid var(--brass-line);background:var(--brass-soft);color:var(--brass-hot);
+    padding:7px 11px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+  .tab.off{border-color:var(--line);background:var(--card);color:var(--sage-dark)}
+
+  .phone{width:min(390px,94vw);background:var(--bg);border:1px solid var(--line);border-radius:28px;overflow:hidden;
+    box-shadow:0 26px 64px rgba(0,0,0,.6);position:relative}
+  .hdr{display:flex;align-items:center;justify-content:space-between;height:48px;padding:0 16px;border-bottom:1px solid var(--line);
+    background:#0d0d0dcc;backdrop-filter:blur(8px)}
+  .hdr .l{display:flex;align-items:center;gap:10px}.hdr .back{color:var(--sage);font-size:20px;opacity:.9}
+  .hdr .title{font-weight:600;font-size:15px}
+  .hdr .av{width:30px;height:30px;border-radius:50%;border:1px solid var(--brass-line);background:#1a160f;
+    display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--brass-hot)}
+  .screen{display:none;padding:18px 16px 24px}.screen.on{display:block}
+
+  /* hero */
+  .hero{text-align:center;padding:6px 0 2px}
+  .heroIc{width:52px;height:52px;border-radius:50%;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;
+    background:#241d16;font-size:20px}
+  .heroIc.in{background:#16241a}
+  .amt{font-size:40px;font-weight:800;letter-spacing:-1px;line-height:1}
+  .amt.in{color:var(--green)}
+  .heroTitle{font-size:19px;font-weight:600;margin:10px 0 8px;display:flex;gap:8px;align-items:center;justify-content:center}
+  .heroTitle .pen{opacity:.5;font-size:14px}
+  .pill{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+    padding:4px 11px;border-radius:999px;background:#3a2a1a;color:var(--brass-hot)}
+  .pill.in{background:#1d2a20;color:var(--green)}
+  .metaline{color:var(--muted);font-size:12.5px;letter-spacing:.02em;margin:16px 0 12px;text-transform:uppercase}
+  .editbtn{display:inline-flex;gap:7px;align-items:center;border:1px solid var(--line2);background:transparent;color:var(--sage);
+    border-radius:999px;padding:8px 16px;font-size:13px;cursor:pointer}
+
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.19em;text-transform:uppercase;color:var(--muted);margin:22px 0 10px}
+  /* classification grouped card */
+  .group{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--card)}
+  .grow-row{display:flex;align-items:center;justify-content:space-between;padding:15px 16px;border-bottom:1px solid var(--line);font-size:14.5px}
+  .grow-row:last-child{border-bottom:0}
+  .grow-row .k{color:var(--muted)} .grow-row .v{color:var(--fg);display:flex;align-items:center;gap:7px}
+  .grow-row .chev{color:#5a554c;margin-left:6px}
+  .cat{color:var(--green);display:inline-flex;align-items:center;gap:6px}
+  .add{color:var(--brass-hot)}
+
+  /* shared-payment linked block (native, like "recurrente vinculada") */
+  .link-card{display:flex;align-items:center;gap:12px;border:1px solid var(--brass-line);background:var(--brass-soft);
+    border-radius:16px;padding:13px 14px;cursor:pointer;transition:background .15s}
+  .link-card:hover{background:#b78b3e22}
+  .link-ic{width:36px;height:36px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;
+    background:#b78b3e26;color:var(--brass-hot);font-size:16px}
+  .grow{min-width:0;flex:1}
+  .link-title{color:var(--brass-hot);font-weight:600;font-size:14px}
+  .link-sub{color:var(--muted);font-size:12px;margin-top:2px;line-height:1.4}
+  .chev2{color:#b78b3e88;font-size:18px}
+
+  /* actions 2x2 grid (like real detail) */
+  .agrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .abtn{display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line2);background:var(--card);
+    color:var(--fg);border-radius:13px;padding:14px 10px;font-size:14px;font-weight:500;cursor:pointer}
+  .abtn.danger{border-color:#c6553f38;color:var(--redtext)}
+  .notes{margin-top:12px;border:1px solid var(--line);border-radius:14px;background:var(--card);padding:15px;color:var(--muted);font-style:italic;font-size:13.5px}
+
+  /* "Más acciones" sheet */
+  .sheet{border-radius:20px 20px 0 0;background:#111;border-top:1px solid var(--line);padding:8px 18px 22px}
+  .grab{width:38px;height:4px;border-radius:2px;background:#333;margin:8px auto 14px}
+  .sheet h3{margin:0 0 14px;font-size:17px}
+  .selrow{border:1px solid var(--line);border-radius:12px;padding:12px 14px;color:var(--muted);display:flex;justify-content:space-between;margin-bottom:6px}
+  .arow{display:flex;align-items:center;gap:12px;padding:13px 6px;font-size:15px;color:var(--fg);cursor:pointer;border-radius:10px}
+  .arow:hover{background:#ffffff07}
+  .arow.hot{background:#ffffff08}
+  .arow .i{color:var(--sage-dark);width:20px;text-align:center}
+  .arow.brass .i,.arow.brass span{color:var(--brass-hot)}
+
+  /* Deudas card + expanded debt */
+  .dcard{border:1px solid var(--line);border-radius:16px;background:var(--card);padding:6px 4px}
+  .drow{display:flex;align-items:center;gap:12px;padding:12px 12px}
+  .av2{width:38px;height:38px;border-radius:50%;background:#1a160f;border:1px solid var(--brass-line);color:var(--brass-hot);
+    display:flex;align-items:center;justify-content:center;font-size:14px}
+  .expand{border-top:1px solid var(--line);margin:6px 10px 8px;padding-top:12px}
+  .actwrap{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .mini{border:1px solid var(--brass-line);background:var(--brass-soft);color:var(--brass-hot);border-radius:10px;padding:9px 13px;font-size:13px;font-weight:600;cursor:pointer}
+  .mini.ghost{border-color:var(--line2);background:var(--card);color:var(--sage)}
+
+  /* dialog (bottom sheet) — faithful to real "Registrar abono" */
+  .dlg{border-radius:22px 22px 0 0;background:#0f0f0f;border-top:1px solid var(--line);padding:6px 20px 24px}
+  .dlg .top{display:flex;align-items:center;justify-content:space-between;margin:8px 0 4px}
+  .dlg h3{margin:0;font-size:17px;font-weight:600}
+  .x{color:var(--muted);font-size:20px;cursor:pointer}
+  .pending{color:var(--muted);font-size:13px;text-align:center;margin:2px 0 14px}
+  .pending b{color:var(--sage)}
+  .seg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;background:#00000040;border:1px solid var(--line);border-radius:13px;padding:5px;margin-bottom:18px}
+  .seg button{border:0;background:transparent;color:var(--muted);font-weight:600;font-size:13.5px;padding:9px 4px;border-radius:9px;cursor:pointer}
+  .seg button.on{background:#b78b3e1f;color:var(--brass-hot)}
+  .mode{display:none}.mode.on{display:block}
+  .cop{text-align:center;color:var(--muted);font-size:13px;margin-bottom:2px}
+  .bigamt{width:100%;border:0;background:transparent;text-align:center;color:var(--fg);font-size:34px;font-weight:800;
+    outline:none;font-variant-numeric:tabular-nums;padding:4px 0}
+  .payall{display:block;margin:2px auto 16px;border:1px solid var(--brass-line);background:var(--brass-soft);color:var(--brass-hot);
+    border-radius:999px;padding:8px 16px;font-size:12.5px;font-weight:600;cursor:pointer}
+  .field{margin-bottom:13px}.lbl{font-size:13.5px;color:var(--sage);margin-bottom:7px;display:block}
+  .control{width:100%;border:1px solid var(--line2);background:transparent;border-radius:12px;padding:12px 14px;color:var(--fg);font-size:14px;display:flex;justify-content:space-between;align-items:center}
+  .control .mut{color:var(--muted)}
+  .btn{width:100%;border:0;border-radius:14px;padding:14px;font-weight:700;font-size:15px;cursor:pointer;margin-top:6px;
+    background:linear-gradient(180deg,var(--brass-hot),var(--brass));color:#241a08}
+  .btn.danger{background:var(--red);color:#fff}
+  .btn.ghost{background:var(--card);border:1px solid var(--line2);color:var(--sage)}
+  .hint{font-size:12.5px;color:var(--muted);margin-top:11px;line-height:1.5;text-align:center}
+  .picklist .pk{display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid var(--line);border-radius:13px;padding:13px 14px;margin-bottom:9px;cursor:pointer}
+  .picklist .pk:hover{border-color:var(--brass-line)}
+  .picklist .pk .amtc{color:var(--green);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+  /* shared-payment differentiation */
+  .spchip{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;color:var(--brass-hot);
+    background:var(--brass-soft);border:1px solid var(--brass-line);border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:middle;white-space:nowrap}
+  .dpick{display:flex;align-items:center;gap:11px;border:1px solid var(--line);border-radius:13px;padding:11px 13px;margin-bottom:9px;cursor:pointer;background:var(--card)}
+  .dpick:hover{border-color:var(--brass-line)}
+  .dpick.shared{border-color:var(--brass-line);background:linear-gradient(90deg,#b78b3e12,transparent 60%);border-left:2px solid var(--brass)}
+  .dpick .amt2{margin-left:auto;color:var(--green);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .dpick .nm{font-weight:600;font-size:14px;display:flex;align-items:center;flex-wrap:wrap;gap:2px}
+  .dpick .sb{color:var(--muted);font-size:11.5px;margin-top:1px}
+  .newdebt{display:flex;align-items:center;gap:10px;padding:12px 6px;color:var(--brass-hot);font-weight:600;cursor:pointer}
+  .warnbox{border:1px solid #c6553f40;background:#c6553f10;border-radius:14px;padding:14px;font-size:13px;color:#e6b3a5;line-height:1.55;margin-bottom:14px}
+  .warnbox b{color:#f0c0b2}
+
+  .legend{max-width:720px;font-size:12.5px;color:var(--muted);line-height:1.65;border-top:1px solid var(--line);padding-top:12px}
+  .legend b{color:var(--sage)}
+  .result{display:none;margin-top:12px;border:1px solid #7fb08a40;background:#7fb08a12;border-radius:14px;padding:13px;font-size:12.5px}
+  .result.on{display:block}.result .ok{color:var(--green)}.result .warn{color:#e0b070}.result b{color:var(--sage)}
+  #toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#1b1b1b;border:1px solid var(--line2);
+    color:var(--sage);padding:10px 15px;border-radius:12px;font-size:12.5px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:92vw;text-align:center;z-index:9}
+</style>
+</head>
+<body>
+  <h1>Pago compartido · acciones (fiel a la app)</h1>
+  <p class="sub">Mockup interactivo. Cambia de pantalla arriba y cliquea las acciones. En <b>rojo/verde/brass</b> se resaltan los cambios propuestos sobre la app actual.</p>
+
+  <div class="tabs">
+    <button class="tab" data-go="s-parent">1 · Detalle: pago compartido</button>
+    <button class="tab off" data-go="s-mas">2 · Transferencia → “Más acciones”</button>
+    <button class="tab off" data-go="s-deudas">3 · Deudas: card expandida</button>
+    <button class="tab off" data-go="s-dialog">4 · Diálogo Registrar pago</button>
+  </div>
+
+  <div class="phone">
+    <div class="hdr">
+      <div class="l"><span class="back">‹</span><span class="title" id="hdrTitle">Detalle</span></div>
+      <div class="av">CG</div>
+    </div>
+
+    <!-- ===== 1 · DETALLE DEL PAGO COMPARTIDO (fiel a la app) ===== -->
+    <div class="screen on" id="s-parent">
+      <div class="hero">
+        <div class="heroIc">↗</div>
+        <div class="amt">−$ 114.098</div>
+        <div class="heroTitle">Pago BBC Venti5 <span class="pen">✎</span></div>
+        <span class="pill">Gasto</span>
+        <div class="metaline">MANUAL · 29 jun 2026 · 19:17</div>
+        <button class="editbtn">✎ Editar datos</button>
+      </div>
+
+      <!-- NUEVO: bloque Pago compartido (mismo estilo que "Recurrente vinculada") -->
+      <p class="eyebrow" style="color:var(--brass-hot);opacity:.85">Pago compartido ✦ nuevo</p>
+      <div class="link-card" onclick="toast('Abre /deudas-personales · grupo Pago BBC Venti5')">
+        <span class="link-ic">🧾</span>
+        <span class="grow">
+          <span class="link-title">2 personas · Te deben $76.065</span>
+          <span class="link-sub">Recuperado $38.033 de $76.065 · Gasto actual $76.065</span>
+        </span>
+        <span class="chev2">›</span>
+      </div>
+
+      <p class="eyebrow">Clasificación</p>
+      <div class="group">
+        <div class="grow-row"><span class="k">Cuenta</span><span class="v">🟠 Bancolombia Ahorros ****4398<span class="chev">›</span></span></div>
+        <div class="grow-row"><span class="k">Categoría</span><span class="v"><span class="cat">🍴 Restaurantes</span><span class="chev">›</span></span></div>
+        <div class="grow-row"><span class="k">Destinatario</span><span class="v mut" style="color:var(--muted)">Asignar<span class="chev">›</span></span></div>
+        <div class="grow-row"><span class="k">Etiquetas</span><span class="v add">+ Agregar</span></div>
+      </div>
+
+      <p class="eyebrow">Acciones</p>
+      <div class="agrid">
+        <button class="abtn">🕑 Hacer recurrente</button>
+        <button class="abtn">🔗 Vincular</button>
+        <button class="abtn">🚫 Excluir de métricas</button>
+        <button class="abtn danger">🗑 Eliminar</button>
+      </div>
+      <p class="hint" style="text-align:left">El único cambio en esta pantalla es el bloque <b style="color:var(--brass-hot)">Pago compartido</b> (arriba). Todo lo demás queda idéntico.</p>
+    </div>
+
+    <!-- ===== 2 · TRANSFERENCIA ENTRANTE → “Más acciones” (fiel a la app) ===== -->
+    <div class="screen" id="s-mas">
+      <div class="hero" style="padding-bottom:10px">
+        <div class="heroIc in">↙</div>
+        <div class="amt in">+$ 38.033</div>
+        <div class="heroTitle">Pago Pablo BBC</div>
+        <span class="pill in">Ingreso</span>
+      </div>
+      <p class="hint">Este es un ingreso (la transferencia de Pablo). Desde su fila en Movimientos → <b>Más acciones</b>:</p>
+      <div class="sheet" style="margin:6px -16px -24px">
+        <div class="grab"></div>
+        <h3>Más acciones</h3>
+        <div class="selrow"><span>Etiquetas</span><span>⌄</span></div>
+        <div class="arow"><span class="i">🔗</span><span>Vincular a recurrente</span></div>
+        <div class="arow brass hot" onclick="openDebtPicker()"><span class="i">👥</span><span>Vincular a deuda personal</span></div>
+        <div class="arow"><span class="i">🧾</span><span>Repartir (pago compartido)</span></div>
+        <div class="arow"><span class="i">🚫</span><span>Excluir de métricas</span></div>
+        <div class="arow"><span class="i">✎</span><span>Ver / editar detalle</span></div>
+      </div>
+
+      <!-- Picker de deuda personal: diferencia deudas de pago compartido vs sueltas -->
+      <div class="sheet" id="debtPicker" style="margin:14px -16px -24px;display:none">
+        <div class="grab"></div>
+        <h3>Vincular a deuda personal</h3>
+        <p class="hint" style="text-align:left;margin:-6px 0 12px">Pago Pablo BBC · +$38.033</p>
+        <div class="dpick shared" onclick="linkPick()">
+          <span class="av2">P</span>
+          <span class="grow"><span class="nm">Pablo BC <span class="spchip">🧾 Pago BBC Venti5</span></span><span class="sb">Parte del pago compartido</span></span>
+          <span class="amt2">Te debe $38.032</span>
+        </div>
+        <div class="dpick shared">
+          <span class="av2">M</span>
+          <span class="grow"><span class="nm">Mateo BC <span class="spchip">🧾 Pago BBC Venti5</span></span><span class="sb">Parte del pago compartido</span></span>
+          <span class="amt2">Te debe $38.033</span>
+        </div>
+        <div class="dpick">
+          <span class="av2">E</span>
+          <span class="grow"><span class="nm">Emerson</span><span class="sb">Deuda personal suelta</span></span>
+          <span class="amt2">Te debe $344.217</span>
+        </div>
+        <div class="dpick">
+          <span class="av2">J</span>
+          <span class="grow"><span class="nm">Jeferson Primo</span><span class="sb">Deuda personal suelta</span></span>
+          <span class="amt2">Te debe $259.373</span>
+        </div>
+        <div class="newdebt">＋ Crear deuda personal nueva</div>
+        <p class="hint" style="text-align:left">Las deudas con el chip <span class="spchip">🧾 pago</span> son parte de un pago compartido; vincular ahí actualiza el pago compartido. Las demás son sueltas.</p>
+      </div>
+
+      <div class="result" id="linkResult" style="margin:14px 0 0">
+        <p style="margin:0 0 6px"><b>Vincular a deuda personal → Pablo BC</b></p>
+        <p class="ok" style="margin:3px 0">✓ La deuda de Pablo se salda (abono $38.033).</p>
+        <p class="ok" style="margin:3px 0">✓ El pago compartido suma el recuperado y baja el “Gasto actual” $114.098 → $76.065.</p>
+        <p class="warn" style="margin:9px 0 0">Hoy (bug): solo se saldaba la deuda; el pago compartido quedaba en “Recuperado $0”. <b>Esta corrección lo arregla</b> — sin UI nueva, la acción ya existe.</p>
+      </div>
+    </div>
+
+    <!-- ===== 3 · DEUDAS PERSONALES — card expandida (fiel a la app) ===== -->
+    <div class="screen" id="s-deudas">
+      <p class="eyebrow" style="margin-top:2px">Me deben</p>
+      <!-- Deuda de un pago compartido: badge brass + acento izquierdo -->
+      <div class="dcard" style="border-left:2px solid var(--brass);background:linear-gradient(90deg,#b78b3e0e,transparent 55%)">
+        <div class="drow">
+          <span class="av2">P</span>
+          <span class="grow"><span style="font-weight:600">Pablo BC</span> <span class="spchip">🧾 Pago BBC Venti5</span></span>
+          <span style="font-weight:600">$38.032</span><span style="color:#5a554c;margin-left:6px">⌃</span>
+        </div>
+        <div class="expand">
+          <div class="rowmini" style="display:flex;justify-content:space-between;color:var(--muted);font-size:13px;padding:3px 2px"><span>Pendiente</span><span style="color:var(--sage)">$38.032</span></div>
+          <div class="actwrap">
+            <button class="mini" onclick="go('s-dialog')">Registrar pago</button>
+            <button class="mini ghost">Ver movimientos</button>
+          </div>
+          <p class="hint" style="text-align:left;margin-top:10px">Antes eran 2 botones sueltos (<b>Abono</b> + <b>Saldar</b>). Ahora <b style="color:var(--brass-hot)">un solo</b> “Registrar pago” abre el diálogo con los 3 modos. Y las <b>saldadas</b> muestran <b>Reabrir</b> (ya existía en la card de grupo; se agrega también aquí).</p>
+        </div>
+      </div>
+
+      <!-- Deuda personal suelta: sin badge ni acento -->
+      <div class="dcard" style="margin-top:10px">
+        <div class="drow">
+          <span class="av2">E</span>
+          <span class="grow"><span style="font-weight:600">Emerson</span><div class="link-sub" style="color:var(--muted)">vence 30 ago 2026</div></span>
+          <span style="font-weight:600">$344.217</span><span style="color:#5a554c;margin-left:6px">⌄</span>
+        </div>
+      </div>
+
+      <p class="eyebrow">Saldadas y canceladas</p>
+      <div class="dcard">
+        <div class="drow">
+          <span class="av2">M</span>
+          <span class="grow"><b style="font-weight:600">Mateo BC</b> <span class="pill" style="font-size:9px;padding:2px 8px;margin-left:4px">Saldada</span></span>
+          <span style="color:var(--muted)">$0</span>
+          <button class="mini ghost" style="margin-left:8px" onclick="toast('reopenPersonalDebt(): reabre y restaura el saldo')">Reabrir</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 4 · DIÁLOGO REGISTRAR PAGO (fiel a la app + 3 modos) ===== -->
+    <div class="screen" id="s-dialog" style="padding:0">
+      <div class="dlg">
+        <div class="grab"></div>
+        <div class="top"><h3>Registrar pago · Pablo BC</h3><span class="x">✕</span></div>
+        <div class="pending">Pendiente <b>$38.032</b></div>
+
+        <div class="seg">
+          <button class="on" data-mode="m-abono">Abono</button>
+          <button data-mode="m-vincular">Vincular</button>
+          <button data-mode="m-saldar">Saldar</button>
+        </div>
+
+        <div class="mode on" id="m-abono">
+          <div class="cop">COP</div>
+          <input class="bigamt" id="abonoAmt" value="0" />
+          <button class="payall" onclick="document.getElementById('abonoAmt').value='38.032'">Pagar todo · $38.032</button>
+          <div class="field"><span class="lbl">Cuenta</span><div class="control">Bancolombia VISA ****7022 <span class="mut">⌄</span></div></div>
+          <div class="field"><span class="lbl">Fecha</span><div class="control">📅 01 jul 2026</div></div>
+          <div class="field"><span class="lbl">Notas (opcional)</span><div class="control mut">Detalle</div></div>
+          <button class="btn" onclick="toast('recordRepayment(): crea un movimiento nuevo (INFLOW). Auto-salda al llegar a 0.')">Registrar abono</button>
+          <p class="hint">Crea un <b>movimiento nuevo</b>. Para efectivo o dinero que aún no está en tus movimientos.</p>
+        </div>
+
+        <div class="mode" id="m-vincular">
+          <p class="hint" style="text-align:left;margin:0 0 12px">Elige el movimiento entrante que corresponde a este pago (<b>no crea uno nuevo</b> — ideal para transferencias que ya te llegaron al banco):</p>
+          <div class="picklist">
+            <div class="pk" onclick="toast('linkTransactionToPersonalDebt(): vincula + salda + actualiza el pago compartido')"><span>Pago Pablo BBC<div class="link-sub" style="color:var(--muted)">30 jun · Ahorros</div></span><span class="amtc">+$38.033</span></div>
+            <div class="pk" onclick="toast('Vincularía este movimiento como abono')"><span>Nómina<div class="link-sub" style="color:var(--muted)">30 jun · Ahorros</div></span><span class="amtc">+$2.500.000</span></div>
+          </div>
+        </div>
+
+        <div class="mode" id="m-saldar">
+          <div class="warnbox"><b>⚠ Saldar sin registrar movimiento</b><br>No se crea ninguna transacción ni se mueve tu saldo. Úsalo solo si <b>perdonaste</b> la deuda o el pago fue en <b>efectivo</b> y no quieres registrarlo.</div>
+          <button class="btn danger" onclick="toast('settlePersonalDebt(): marca saldada, sin movimiento')">Saldar de todas formas</button>
+          <button class="btn ghost" style="margin-top:9px" onclick="switchMode('m-abono')">Mejor registro el pago</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <b>Cambios propuestos (mínimos y sobre la app actual):</b><br>
+    1 · <b>Detalle del pago compartido:</b> solo se agrega el bloque brass “Pago compartido” (te deben / recuperado / gasto actual), estilo idéntico al de “Recurrente vinculada”.<br>
+    2 · <b>Transferencia entrante:</b> la acción ya existe — <b style="color:var(--brass-hot)">“Vincular a deuda personal”</b> en “Más acciones”. El fix hace que además actualice el pago compartido (corrige tu bug). Sin UI nueva.<br>
+    3 · <b>Deudas / card:</b> los botones “Abono”+“Saldar” se unifican en <b>“Registrar pago”</b>; las saldadas ganan <b>Reabrir</b>.<br>
+    4 · <b>Diálogo Registrar pago:</b> mismo estilo del actual (COP + monto centrado), + segmentado <b>Abono / Vincular / Saldar</b> y chip “Pagar todo”.<br>
+    5 · <b style="color:var(--brass-hot)">Diferenciación (nuevo pedido):</b> las deudas de un pago compartido se distinguen con el chip <span class="spchip">🧾 pago</span> + acento brass a la izquierda — tanto en la lista de Deudas personales como <b>al vincular</b> (pantalla 2 → “Vincular a deuda personal”). Las sueltas van sin adorno.
+  </div>
+
+  <div id="toast"></div>
+<script>
+  function go(id){
+    document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('off', x.dataset.go!==id));
+    document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on', s.id===id));
+    document.getElementById('hdrTitle').textContent = (id==='s-deudas'||id==='s-dialog')?'Deudas personales':'Detalle';
+    document.getElementById('linkResult')?.classList.remove('on');
+    const dp=document.getElementById('debtPicker'); if(dp) dp.style.display='none';
+  }
+  document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>go(t.dataset.go));
+  document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>switchMode(b.dataset.mode));
+  function switchMode(id){
+    document.querySelectorAll('.seg button').forEach(x=>x.classList.toggle('on', x.dataset.mode===id));
+    document.querySelectorAll('.mode').forEach(m=>m.classList.toggle('on', m.id===id));
+  }
+  function openDebtPicker(){ document.getElementById('debtPicker').style.display='block'; document.getElementById('linkResult').classList.remove('on'); }
+  function linkPick(){ document.getElementById('debtPicker').style.display='none'; document.getElementById('linkResult').classList.add('on'); }
+  let tt; function toast(m){const e=document.getElementById('toast');e.textContent=m;e.style.opacity=1;clearTimeout(tt);tt=setTimeout(()=>e.style.opacity=0,2800);}
+</script>
+</body>
+</html>

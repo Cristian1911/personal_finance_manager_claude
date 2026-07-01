@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import { getTransaction } from "@/actions/transactions";
+import { getSharedPaymentGroups } from "@/actions/shared-payments";
 import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
 import { getDestinatarios } from "@/actions/destinatarios";
@@ -55,6 +56,14 @@ export default async function TransactionDetailPage({
     ? destinatarios.find((d) => d.id === tx.destinatario_id)?.name ?? null
     : null;
 
+  // If this transaction is a shared-payment origin, surface a summary block.
+  const sharedPayment =
+    tx.split_group_id && !tx.personal_debt_id
+      ? await getSharedPaymentGroups().then((r) =>
+          r.success ? r.data.find((g) => g.split_group_id === tx.split_group_id) ?? null : null,
+        )
+      : null;
+
   return (
     <div className="mx-auto w-full max-w-xl lg:max-w-4xl">
       <MobileHeader variant="sub" title="Detalle" backHref="/transactions" />
@@ -67,6 +76,7 @@ export default async function TransactionDetailPage({
         isLinkedToOccurrence={isLinkedToOccurrence}
         linkedRecurring={linkedRecurring}
         linkableAccountIds={linkableAccountIds}
+        sharedPayment={sharedPayment}
       />
     </div>
   );
