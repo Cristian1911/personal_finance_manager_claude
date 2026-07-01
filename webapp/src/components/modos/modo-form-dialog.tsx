@@ -13,6 +13,7 @@ import {
 import { X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
 import { DestinatarioZonePicker } from "@/components/destinatarios/destinatario-zone-picker";
@@ -21,7 +22,7 @@ import { createModo, updateModo } from "@/actions/modos";
 import {
   BRASS_BUTTON_CLASS,
   GHOST_BUTTON_CLASS,
-  DESTRUCTIVE_GHOST_BUTTON_CLASS,
+  ICON_DESTRUCTIVE_TRIGGER_CLASS,
   chipToggleClass,
 } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
@@ -253,15 +254,15 @@ export function ModoFormDialog({
                         type="button"
                         onClick={() => removeParticipant(p.key)}
                         aria-label="Quitar persona"
-                        className={cn(DESTRUCTIVE_GHOST_BUTTON_CLASS, "mt-1 shrink-0 p-1.5")}
+                        className={cn(ICON_DESTRUCTIVE_TRIGGER_CLASS, "mt-1 shrink-0 p-1.5")}
                       >
                         <X className="size-4" />
                       </button>
                     </div>
                   ))}
-                  <button type="button" onClick={addParticipant} className={GHOST_BUTTON_CLASS}>
+                  <Button type="button" variant="ghost" onClick={addParticipant} className={GHOST_BUTTON_CLASS}>
                     + Agregar persona
-                  </button>
+                  </Button>
                 </div>
 
                 <div className="space-y-1.5">
@@ -296,14 +297,14 @@ export function ModoFormDialog({
         </div>
 
         <DialogFooter>
-          <button
+          <Button
             type="button"
             onClick={submit}
             disabled={pending}
             className={cn(BRASS_BUTTON_CLASS, "disabled:opacity-60")}
           >
             {pending ? "Guardando..." : initial?.id ? "Guardar cambios" : "Crear modo"}
-          </button>
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

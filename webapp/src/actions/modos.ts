@@ -163,7 +163,7 @@ export async function createModo(formData: FormData): Promise<ActionResult<{ id:
   if (error || !data) return { success: false, error: error?.message ?? "Error al crear el modo" };
 
   if (modoRow.is_shared && participants.length > 0) {
-    await supabase.from("modo_participants").insert(
+    const { error: partErr } = await supabase.from("modo_participants").insert(
       participants.map((p, i) => ({
         modo_id: data.id,
         user_id: user.id,
@@ -172,6 +172,7 @@ export async function createModo(formData: FormData): Promise<ActionResult<{ id:
         position: i,
       })),
     );
+    if (partErr) return { success: false, error: "Error al guardar las personas del modo" };
   }
 
   expireTag("modos");
@@ -190,9 +191,11 @@ export async function updateModo(id: string, formData: FormData): Promise<Action
   if (error) return { success: false, error: error.message };
 
   // Reemplazar participantes (N ≈ 1–3; delete-all + re-insert en vez de diff fino).
-  await supabase.from("modo_participants").delete().eq("modo_id", id).eq("user_id", user.id);
+  const { error: delErr } = await supabase
+    .from("modo_participants").delete().eq("modo_id", id).eq("user_id", user.id);
+  if (delErr) return { success: false, error: "Error al actualizar las personas del modo" };
   if (modoRow.is_shared && participants.length > 0) {
-    await supabase.from("modo_participants").insert(
+    const { error: partErr } = await supabase.from("modo_participants").insert(
       participants.map((p, i) => ({
         modo_id: id,
         user_id: user.id,
@@ -201,6 +204,7 @@ export async function updateModo(id: string, formData: FormData): Promise<Action
         position: i,
       })),
     );
+    if (partErr) return { success: false, error: "Error al guardar las personas del modo" };
   }
 
   expireTag("modos");
@@ -310,10 +314,13 @@ export async function unshareModoTransactions(
   // Mismo efecto que deleteSharedPayment, batcheado por los grupos del modo.
   // ponytail: no borra los abonos (pd_role='repayment', sin split_group_id) —
   // dinero real recibido; el ON DELETE SET NULL los deja como INFLOW.
-  await supabase.from("personal_debts").delete().eq("user_id", user.id).in("split_group_id", groupIds);
-  await supabase.from("transactions")
+  const { error: debtErr } = await supabase
+    .from("personal_debts").delete().eq("user_id", user.id).in("split_group_id", groupIds);
+  if (debtErr) return { success: false, error: "Error al quitar los pagos compartidos" };
+  const { error: untagErr } = await supabase.from("transactions")
     .update({ split_group_id: null, split_repaid_amount: null })
     .eq("user_id", user.id).in("split_group_id", groupIds);
+  if (untagErr) return { success: false, error: "Error al quitar los pagos compartidos" };
 
   revalidateFinancialViews();
   expireTag("personal-debts");

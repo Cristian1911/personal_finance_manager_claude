@@ -7,6 +7,7 @@ import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { settleUpByPerson, type ModoSummary, type ModoTxRow } from "@/lib/utils/modo-summary";
 import { shareModoTransactions, unshareModoTransactions } from "@/actions/modos";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RecordRepaymentDialog } from "@/components/personas/record-repayment-dialog";
 import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
@@ -91,14 +92,14 @@ export function ModoSummaryView({
           {formatDate(summary.observedTo ?? modo.date_to, "d MMM yyyy")}
         </p>
         {modo.is_shared && (
-          <button
+          <Button
             type="button"
             onClick={runShareAll}
             disabled={pending}
             className={cn(BRASS_BUTTON_CLASS, "mt-2 disabled:opacity-60")}
           >
             Compartir todos los pagos
-          </button>
+          </Button>
         )}
       </header>
 
@@ -120,7 +121,7 @@ export function ModoSummaryView({
       {/* Bloque 3: settle-up por persona (solo pagos de este modo) */}
       {modo.is_shared && people.length > 0 && (
         <section className="space-y-2">
-          <h2 className="font-medium">Settle-up por persona</h2>
+          <h2 className="font-medium">Saldo por persona</h2>
           {people.map((p) => (
             <div
               key={p.destinatarioId}
@@ -134,8 +135,10 @@ export function ModoSummaryView({
                 {/* ponytail: abono a la deuda activa más antigua de la persona en el modo (FIFO);
                     allocation multi-deuda si se pide. */}
                 {p.oldestActiveDebtId && p.outstanding > 0 && (
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     className={GHOST_BUTTON_CLASS}
                     onClick={() =>
                       setRepayFor({
@@ -147,7 +150,7 @@ export function ModoSummaryView({
                     }
                   >
                     Registrar abono
-                  </button>
+                  </Button>
                 )}
               </span>
             </div>
@@ -168,7 +171,7 @@ export function ModoSummaryView({
                 <Checkbox
                   checked={selected.has(t.id)}
                   onCheckedChange={() => toggle(t.id)}
-                  aria-label="Seleccionar transacción"
+                  aria-label={`Seleccionar ${t.category?.name_es ?? t.category?.name ?? "transacción"} del ${formatDate(t.transaction_date, "d MMM")}`}
                 />
               )}
               <span className="flex-1">
@@ -181,32 +184,42 @@ export function ModoSummaryView({
         </section>
       )}
 
-      {/* Barra de selección (mínima; el BulkActionBar de categorizar es específico) */}
+      {/* Barra de selección (mínima; el BulkActionBar de categorizar es específico).
+          Anclada sobre el tab bar + FAB con el mismo calc que MOBILE_TAB_BAR_CLEARANCE. */}
       {modo.is_shared && selected.size > 0 && (
-        <div className="sticky bottom-4 flex items-center justify-between gap-2 rounded-xl border border-white/6 bg-z-surface-2 px-3 py-2 shadow-lg">
+        <div className="fixed bottom-[calc(var(--z-mobile-tab-bar-h)_+_var(--z-mobile-fab-overshoot)_+_env(safe-area-inset-bottom))] left-1/2 z-[var(--z-layer-nav)] flex -translate-x-1/2 items-center gap-3 rounded-xl border border-white/6 bg-z-surface-2 px-4 py-3 shadow-lg">
           <span className="text-sm">
             {selected.size} {selected.size === 1 ? "seleccionada" : "seleccionadas"}
           </span>
           <span className="flex gap-2">
-            <button
+            <Button
               type="button"
+              size="sm"
               onClick={runShareSelected}
               disabled={pending}
               className={cn(BRASS_BUTTON_CLASS, "disabled:opacity-60")}
             >
               Compartir
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={runUnshareSelected}
               disabled={pending}
               className={cn(GHOST_BUTTON_CLASS, "disabled:opacity-60")}
             >
               Quitar
-            </button>
-            <button type="button" onClick={() => setSelected(new Set())} className={GHOST_BUTTON_CLASS}>
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelected(new Set())}
+              className={GHOST_BUTTON_CLASS}
+            >
               Limpiar
-            </button>
+            </Button>
           </span>
         </div>
       )}

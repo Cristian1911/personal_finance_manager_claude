@@ -11,7 +11,9 @@ create table public.modo_participants (
   id uuid primary key default gen_random_uuid(),
   modo_id uuid not null references public.modos(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade,
-  destinatario_id uuid not null references public.destinatarios(id) on delete cascade,
+  -- FK al TABLE real (_enc), no a la vista: Postgres no permite FK contra una vista.
+  -- El id es plano (PK sin cifrar); la identidad sigue protegida en _enc. Precedente: personal_debts.
+  destinatario_id uuid not null references public.destinatarios_enc(id) on delete cascade,
   share_value numeric,
   position int not null default 0,
   created_at timestamptz not null default now(),
