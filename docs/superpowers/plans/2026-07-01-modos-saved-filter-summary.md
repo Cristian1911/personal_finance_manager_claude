@@ -811,6 +811,8 @@ git commit -m "feat(modos): actions CRUD + resumen derivado"
 
 ---
 
+> **Decisión UI (2026-07-01):** Modos viven en el hub **Gestionar/Bandeja** → agregar a `WORKSPACE_NAV` en `navigation.ts` (NO `PRIMARY_NAV`, NO barra inferior de `mobile-nav.ts` — está llena con 5). Descubrimiento principal = "Guardar como Modo" desde el filtro (Task 8). La página `/modos` incluye búsqueda client-side: input por nombre + segmento **Activos/Pasados** (derivado de `date_to` vs hoy).
+
 ### Task 6: Ruta `/modos` (lista de tarjetas) + entrada en nav
 
 **Files:**
@@ -852,9 +854,15 @@ export function ModoCard({ modo }: { modo: Modo }) {
 }
 ```
 
+**Step 1b: Lista buscable (client)** — `webapp/src/components/modos/modos-list.tsx` (client). Recibe `modos: Modo[]`, renderiza:
+- Un `<input>` de búsqueda por nombre (filtra client-side, case-insensitive).
+- Un segmento **Activos / Pasados / Todos** (toggle) donde "Activo" = `date_to >= hoy` (comparar strings ISO `YYYY-MM-DD`), "Pasado" = `date_to < hoy`. Default: Todos.
+- Las `ModoCard` filtradas por ambos criterios. Estado vacío si el filtro no deja ninguna.
+Sin backend ni dependencias nuevas (dataset pequeño). `hoy` = `new Date().toISOString().slice(0,10)`.
+
 - [ ] **Step 2: Página `/modos`**
 
-`webapp/src/app/(dashboard)/modos/page.tsx` (server component):
+`webapp/src/app/(dashboard)/modos/page.tsx` (server component) — carga `listModos()` y pasa los datos a `<ModosList modos={...} />` (client) en vez de mapear las tarjetas directamente:
 
 ```tsx
 import { listModos } from "@/actions/modos";
@@ -925,6 +933,13 @@ export function ModoSummaryView({ modo, summary, sharedGroups, transactions }: {
     <div className="mx-auto max-w-3xl space-y-6 p-4">
       {/* Bloque 1: header total + conteo */}
       <header>
+        {/* "Ver en Movimientos": aplica el filtro del Modo a la lista de transacciones (round-trip) */}
+        <Link
+          href={`/transactions?tags=${modo.tag_ids.join(",")}&dateFrom=${modo.date_from}&dateTo=${modo.date_to}`}
+          className="text-sm text-z-brass hover:underline"
+        >
+          Ver en Movimientos →
+        </Link>
         <h1 className="text-2xl font-semibold">{modo.emoji ?? "📍"} {modo.name}</h1>
         <p className="text-3xl font-bold mt-2">{formatCurrency(summary.total, cc)}</p>
         <p className="text-sm text-muted-foreground">
