@@ -6,6 +6,7 @@ export type AccountRow = Tables<"accounts">;
 /** Account without sensitive fields — safe for client serialization */
 export type Account = Omit<AccountRow, "pdf_password">;
 export type Transaction = Tables<"transactions">;
+export type Modo = Tables<"modos">;
 
 /** Approximate location captured by mobile and linked to a transaction. */
 export interface TransactionLocation {

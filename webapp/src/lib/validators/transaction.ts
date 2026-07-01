@@ -79,7 +79,7 @@ export const transactionFiltersSchema = z.object({
   accountId: uuidStr().optional(),
   categoryId: uuidStr().optional(),
   destinatarioId: uuidStr().optional(),
-  tagId: uuidStr().optional(),
+  tags: z.string().optional(), // CSV de uuids, OR
   direction: z.enum(["INFLOW", "OUTFLOW"]).optional(),
   month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).optional(),
   dateFrom: z.string().optional(),
