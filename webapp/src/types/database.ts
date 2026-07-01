@@ -1714,6 +1714,42 @@ export type Database = {
           },
         ]
       }
+      modos: {
+        Row: {
+          color: string | null
+          created_at: string
+          date_from: string
+          date_to: string
+          emoji: string | null
+          id: string
+          name: string
+          tag_ids: string[]
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          date_from: string
+          date_to: string
+          emoji?: string | null
+          id?: string
+          name: string
+          tag_ids?: string[]
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          date_from?: string
+          date_to?: string
+          emoji?: string | null
+          id?: string
+          name?: string
+          tag_ids?: string[]
+          user_id?: string
+        }
+        Relationships: []
+      }
       planning_entries: {
         Row: {
           account_id: string | null
