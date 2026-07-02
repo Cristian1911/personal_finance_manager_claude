@@ -78,8 +78,10 @@ BEGIN
   IF NOT FOUND THEN RETURN; END IF;
   IF NOT v_is_active THEN RETURN; END IF;
 
-  v_range_start := date_trunc('month', now())::date;
-  v_range_end   := (date_trunc('month', now())
+  -- Colombia-local "today": plain now() is UTC, which rolls the month over at
+  -- ~7pm COT on the last day of the month and would generate the wrong range.
+  v_range_start := date_trunc('month', now() AT TIME ZONE 'America/Bogota')::date;
+  v_range_end   := (date_trunc('month', now() AT TIME ZONE 'America/Bogota')
                      + interval '1 month'
                      - interval '1 day'
                      + interval '14 days')::date;
@@ -144,7 +146,7 @@ BEGIN
     WHERE template_id = t.id
       AND status = 'pending'
       AND transaction_id IS NULL
-      AND occurrence_date >= date_trunc('month', CURRENT_DATE)::date;
+      AND occurrence_date >= date_trunc('month', now() AT TIME ZONE 'America/Bogota')::date;
     PERFORM generate_occurrences_for_template(t.id);
   END LOOP;
 END $$;

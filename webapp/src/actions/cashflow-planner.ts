@@ -289,6 +289,13 @@ async function hydratePeriodData(
     (sum, a) => sum + Number(a.assigned_amount),
     0
   );
+  // Sum of what's still missing per assignable expense. NOT totalExpenses −
+  // totalAssigned: that would count card charges (never assignable) and keep
+  // the "sin asignar" banner from ever reaching 0.
+  const totalUnassigned = unassignedExpenses.reduce(
+    (sum, e) => sum + (e.converted_amount - (assignedPerExpense.get(e.id) ?? 0)),
+    0
+  );
 
   // Time-aware commitments (cuenta ahora vs cubierto) over unpaid expenses.
   const incomeRefs: CommitmentIncomeRef[] = incomeEnvelopes.map((env) => ({
@@ -336,7 +343,7 @@ async function hydratePeriodData(
     total_income: totalIncome,
     total_expenses: totalExpenses,
     total_assigned: totalAssigned,
-    total_unassigned: totalExpenses - totalAssigned,
+    total_unassigned: totalUnassigned,
     exchange_rates: exchangeRates,
     is_multi_currency: isMultiCurrency,
     saldo_actual: saldoActual,
