@@ -809,6 +809,11 @@ export default function SettingsScreen() {
           <SectionHeading label="Perfil y conexiones" />
           <View className="gap-2">
             <NavRow
+              title="Perfil"
+              meta="Nombre y moneda predeterminada"
+              onPress={() => router.push("/settings/perfil" as never)}
+            />
+            <NavRow
               title="Administrar cuentas"
               meta="Bancos, tarjetas y efectivo"
               onPress={() => router.navigate("/(tabs)/accounts")}
@@ -827,6 +832,11 @@ export default function SettingsScreen() {
               title="Suscripciones"
               meta="Pagos recurrentes"
               onPress={() => router.push("/subscriptions" as never)}
+            />
+            <NavRow
+              title="Etiquetas"
+              meta="Grupos y etiquetas de movimientos"
+              onPress={() => router.push("/etiquetas" as never)}
             />
           </View>
         </View>
