@@ -71,7 +71,9 @@ function commitTag(commitment: ExpenseCommitment | undefined) {
   return null;
 }
 
-const ACTION_BUTTON_CLASS = "h-8 gap-1.5 px-2.5 text-xs";
+// Taller than the app-wide h-8 row convention: this row moves money and hosts
+// a destructive action, so its touch targets get closer to the 44px guideline.
+const ACTION_BUTTON_CLASS = "h-9 gap-1.5 px-3 text-xs";
 
 export function ExpenseEntryRow({
   entry,
@@ -127,7 +129,7 @@ export function ExpenseEntryRow({
         type="button"
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
-        className="flex w-full items-start gap-3 p-3 text-left transition-colors hover:bg-white/[0.02]"
+        className="flex w-full items-start gap-3 rounded-xl p-3 text-left transition-colors hover:bg-white/[0.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-z-brass/50"
       >
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
@@ -251,7 +253,7 @@ export function ExpenseEntryRow({
           </div>
 
           {/* Actions — explicit buttons; paying always confirms via dialog */}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2.5">
             {onPay && entry.status === "PLANNED" && (
               <Button
                 variant="outline"
