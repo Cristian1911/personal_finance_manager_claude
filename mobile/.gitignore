@@ -46,3 +46,10 @@ yarn-error.*
 # EAS Build outputs (AAB/APK) — never commit; can exceed GitHub 100MB limit
 *.aab
 *.apk
+
+# Google Play service account (fastlane + eas submit) — secreto, nunca versionar
+credentials/
+
+# Artefactos generados por fastlane
+fastlane/report.xml
+fastlane/README.md

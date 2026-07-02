@@ -1,0 +1,8 @@
+Novedades:
+• Tendencias: nueva pantalla de análisis con 3 lentes, buscador y detalle por categoría.
+• Presupuesto renovado: veredicto del mes, 50·30·20 y armado guiado.
+• Recurrentes: crea y edita plantillas desde la app.
+• Destinatarios: reglas, fusión de duplicados y sugerencias automáticas.
+• Suscripciones: compromiso mensual real y marcar para cancelar.
+• Etiquetas y perfil en Ajustes.
+• Arreglos de inicio de sesión con Google/Apple y estabilidad.

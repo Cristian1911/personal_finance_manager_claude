@@ -1,0 +1,4 @@
+# Credenciales de Google Play (mismo path que usa eas.json para submit).
+# El JSON NO se versiona — ver mobile/.gitignore.
+json_key_file("./credentials/google-play-service-account.json")
+package_name("com.venti5.zeta")

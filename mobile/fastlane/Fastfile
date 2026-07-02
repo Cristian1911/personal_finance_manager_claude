@@ -1,0 +1,53 @@
+# Automatización de releases Android (Google Play).
+# Requisito único: mobile/credentials/google-play-service-account.json (no versionado).
+#
+# Flujo típico de release:
+#   1. eas build --platform android --profile production-android --local --output zeta.aab
+#   2. fastlane android upload aab:zeta.aab      → sube AAB + notas de versión a alpha
+#   3. (probar en alpha)
+#   4. fastlane android promote                  → alpha → production, sin re-subir nada
+#
+# Las notas de versión viven en fastlane/metadata/android/<locale>/changelogs/default.txt
+# (default.txt aplica a cualquier versionCode — compatible con el autoIncrement de EAS).
+#
+# Descripciones/título/imágenes: primero baja lo que hay en Play con
+#   fastlane supply init
+# y desde entonces edítalas en el repo y publícalas con `fastlane android metadata`.
+
+default_platform(:android)
+
+platform :android do
+  desc "Sube un AAB + notas de versión al track alpha. No toca descripciones ni imágenes."
+  lane :upload do |options|
+    aab_path = options[:aab] || UI.user_error!("Falta el AAB: fastlane android upload aab:ruta.aab")
+    supply(
+      aab: aab_path,
+      track: "alpha",
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+  end
+
+  desc "Promociona el build actual de alpha a production (lo que hoy haces con clicks)."
+  lane :promote do
+    supply(
+      track: "alpha",
+      track_promote_to: "production",
+      skip_upload_aab: true,
+      skip_upload_metadata: true,
+      skip_upload_changelogs: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+  end
+
+  desc "Publica título/descripciones del repo a Play. Corre `fastlane supply init` antes de la primera vez."
+  lane :metadata do
+    supply(
+      skip_upload_aab: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+  end
+end
