@@ -27,6 +27,13 @@ Shipped: fix auth social EAS env (#346), Settings Etiquetas+Perfil (#347), Suscr
 - **(P1 — activación) Helpers mobile faltantes** (audit 2026-07-02): `EmptyState` compartido RN (~20 empty states ad-hoc sin CTA) e `InfoHint` (ambos client-only, quick wins); "Primeros pasos" checklist mobile (necesita estado `guidedExperience` sincronizado — gates parity/sync); coach-marks; exchange-rate nudge.
 - **(Diseño) Brief de evolución entregado** → `claude-ai-design/design-evolution-brief-2026-07-02.md`. Próximo: correr T1 (sistema de veredicto unificado) en Claude Design con Fable 5; heroes objetivo: deudas/recurrentes/plan.
 
+## Plan de periodo UX + quincenal (branch `claude/period-plan-page-ux-dvwrxi`, 2026-07-02) — follow-ups
+
+- **(P1) `seedPeriodFromRecurring` no reconcilia fechas viejas:** dedup solo por `(template_id, expected_date)` e insert-only — periodos existentes con entradas BIWEEKLY sembradas en fechas desfasadas (regla vieja de 14 días) duplicarán líneas al re-sincronizar. Fix: podar entradas `PLANNED` con `recurring_template_id` cuya `expected_date` ya no esté en el set de `getOccurrencesBetween` del periodo (nunca tocar `COMPLETED`/vinculadas). Detalle en review recurring-doctor 2026-07-02.
+- **(P1 — parity) Cargos a tarjeta en móvil:** `mobile/app/periodo.tsx` es implementación SQLite independiente (no reusa `EnvelopeBoard`); replicar la exclusión de cargos a tarjeta (template OUTFLOW + cuenta deuda) de comprometido/sin-asignar/auto-asignar. Gate `mobile-webapp-parity` antes de tocar.
+- **(P2) `period-hero.tsx` `pendingCount`** cuenta cargos a tarjeta en "N gastos por pagar" aunque no descuentan de efectivo — excluirlos o re-etiquetar para consistencia de mensaje.
+- **(P2) Deuda de diseño del envelope board (preexistente):** fondo `bg-card` difiere del spec Tier 2 (`bg-[#111]`) en expense-entry-row + income-envelope-card; `envelope-colors.ts` usa paleta stock de Tailwind (no z-brand); `ROW_EXPAND_TRIGGER_CLASS` podría ganar variante para headers de dos líneas.
+
 ## Modo compartido F1 (branch `feat/modos`, 2026-07-01) — follow-ups
 
 Shipped F1: un modo puede ser pool de gastos compartidos single-user (Estefa = destinatario). `modos` += `is_shared/split_method/user_included` + tabla `modo_participants`; acciones `shareModoTransactions`/`unshareModoTransactions` (batch) reusan `splitExistingTransaction`; resumen con "Saldo por persona" + abono. Spec: `docs/superpowers/specs/2026-07-01-modo-compartido-design.md`, plan: `docs/superpowers/plans/2026-07-01-modo-compartido-f1.md`. Migración `20260701190000_modo_compartido.sql`.

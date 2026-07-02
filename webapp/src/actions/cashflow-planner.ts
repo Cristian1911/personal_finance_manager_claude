@@ -24,6 +24,7 @@ import type {
 } from "@/types/domain";
 import {
   BALANCE_SEED_NOTES,
+  isCardChargeEntry,
   type PlanningEntryWithRelations,
   type IncomeEnvelope,
   type AssignmentDetail,
@@ -91,7 +92,7 @@ async function hydratePeriodData(
       .from("planning_entries")
       .select(
         `*,
-         account:accounts!planning_entries_account_id_fkey(id, name, icon, color),
+         account:accounts!planning_entries_account_id_fkey(id, name, icon, color, account_type),
          category:categories!planning_entries_category_id_fkey(id, name, name_es, icon, color),
          recurring_template:recurring_transaction_templates!planning_entries_recurring_template_id_fkey(id, merchant_name, frequency, direction)`
       )
@@ -268,7 +269,10 @@ async function hydratePeriodData(
     assignedPerExpense.set(a.expense_entry_id, prev + Number(a.assigned_amount));
   }
 
+  // Card charges never need income assignment — cash leaves when the
+  // card-payment entry is settled, not when the charge posts.
   const unassignedExpenses = expenseEntries.filter((e) => {
+    if (isCardChargeEntry(e)) return false;
     const assigned = assignedPerExpense.get(e.id) ?? 0;
     return assigned < e.converted_amount;
   });
@@ -283,6 +287,13 @@ async function hydratePeriodData(
   );
   const totalAssigned = assignments.reduce(
     (sum, a) => sum + Number(a.assigned_amount),
+    0
+  );
+  // Sum of what's still missing per assignable expense. NOT totalExpenses −
+  // totalAssigned: that would count card charges (never assignable) and keep
+  // the "sin asignar" banner from ever reaching 0.
+  const totalUnassigned = unassignedExpenses.reduce(
+    (sum, e) => sum + (e.converted_amount - (assignedPerExpense.get(e.id) ?? 0)),
     0
   );
 
@@ -304,8 +315,11 @@ async function hydratePeriodData(
     assignmentsByExpense.set(a.expense_entry_id, list);
   }
 
+  // Card charges are excluded: they bill to the card, not to cash in hand, so
+  // counting them in "cuenta ahora" would double-count against the separate
+  // card-payment entry.
   const commitmentInputs: CommitmentExpenseInput[] = expenseEntries
-    .filter((e) => e.status !== "COMPLETED" && e.status !== "SKIPPED")
+    .filter((e) => e.status !== "COMPLETED" && e.status !== "SKIPPED" && !isCardChargeEntry(e))
     .map((e) => ({
       entryId: e.id,
       dueDate: e.expected_date,
@@ -329,7 +343,7 @@ async function hydratePeriodData(
     total_income: totalIncome,
     total_expenses: totalExpenses,
     total_assigned: totalAssigned,
-    total_unassigned: totalExpenses - totalAssigned,
+    total_unassigned: totalUnassigned,
     exchange_rates: exchangeRates,
     is_multi_currency: isMultiCurrency,
     saldo_actual: saldoActual,
@@ -1121,6 +1135,7 @@ export async function autoAssignExpenses(
   let assignedCount = 0;
 
   for (const expense of sortedExpenses) {
+    if (isCardChargeEntry(expense)) continue; // billed to the card — no income envelope needed
     const alreadyAssigned = assignedPerExpense.get(expense.id) ?? 0;
     let needsAssignment = expense.converted_amount - alreadyAssigned;
     if (needsAssignment <= 0) continue;
