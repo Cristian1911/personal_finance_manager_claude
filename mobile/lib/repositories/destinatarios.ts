@@ -302,9 +302,15 @@ export async function deleteDestinatarioRule(ruleId: string): Promise<void> {
 
 /**
  * Merge `sourceIds` into `targetId`, mirroring webapp `mergeDestinatarios`
- * exactly: reassign transactions, reassign rules, delete sources — nothing
- * else (templates/subscriptions/personal_debts keep their FK on both
- * platforms; pre-existing webapp behavior).
+ * exactly: reassign transactions, reassign rules, delete sources.
+ *
+ * The source delete also mirrors the remote FK actions locally (FKs are ON in
+ * SQLite and default to NO ACTION, so without this the delete would throw):
+ * - subscriptions.destinatario_id      → remote ON DELETE CASCADE  → local DELETE
+ * - recurring_templates.destinatario_id → remote ON DELETE SET NULL → local NULL
+ * - personal_debts.destinatario_id     → remote ON DELETE RESTRICT → pre-check +
+ *   abort (the webapp merge fails identically; we just say it in Spanish)
+ * None of these child ops are enqueued — remote applies its own FK actions.
  *
  * Rule reassignment dedups locally against the target's `lower(pattern)` set:
  * the remote UNIQUE(user_id, lower(pattern)) makes a colliding UPDATE fail,
@@ -320,6 +326,18 @@ export async function mergeDestinatarios(
   const db = await getDatabase();
   const now = new Date().toISOString();
   const placeholders = sourceIds.map(() => "?").join(", ");
+
+  // Remote personal_debts FK is ON DELETE RESTRICT — fail fast with a clear
+  // message instead of a raw FK error mid-transaction.
+  const debtRow = await db.getFirstAsync<{ id: string }>(
+    `SELECT id FROM personal_debts WHERE destinatario_id IN (${placeholders}) LIMIT 1`,
+    sourceIds
+  );
+  if (debtRow) {
+    throw new Error(
+      "No se puede fusionar: uno de los destinatarios tiene deudas personales vinculadas."
+    );
+  }
 
   const txs = await db.getAllAsync<{ id: string }>(
     `SELECT id FROM transactions WHERE destinatario_id IN (${placeholders})`,
@@ -364,6 +382,18 @@ export async function mergeDestinatarios(
         targetPatterns.add(rule.pattern.toLowerCase());
       }
     }
+
+    // Mirror remote FK actions before the source delete (not enqueued —
+    // remote CASCADE/SET NULL apply server-side on the destinatarios delete).
+    await db.runAsync(
+      `DELETE FROM subscriptions WHERE destinatario_id IN (${placeholders})`,
+      sourceIds
+    );
+    await db.runAsync(
+      `UPDATE recurring_transaction_templates SET destinatario_id = NULL
+       WHERE destinatario_id IN (${placeholders})`,
+      sourceIds
+    );
 
     for (const sourceId of sourceIds) {
       await db.runAsync("DELETE FROM destinatarios WHERE id = ?", [sourceId]);
