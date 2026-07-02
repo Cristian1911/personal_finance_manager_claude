@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { toColombiaDateString, toColombiaTimeString } from "@/lib/utils/date";
 import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
 import type {
   Account,
@@ -101,25 +102,33 @@ export function MobileTransactionForm({
   // Two action states: regular transactions vs. paired account transfers.
   // Transfers go through createTransfer (outflow + inflow + balance updates);
   // everything else through createTransaction.
-  const [txState, txFormAction, txPending] = useActionState(createTransaction, {
-    success: false,
-    error: "",
-  });
+  //
+  // onSuccess is called INSIDE the wrapped action — never from an effect on
+  // `state.success`. /transactions/new sits in the client Router Cache, and a
+  // re-entry within the cache window restores the last action state
+  // (success: true); an effect would replay onSuccess on mount (stale
+  // "Guardado" toast + instant router.back() before the form ever shows).
+  // Same pattern as TransactionForm / RecurringForm / MobileQuickCaptureSheet.
+  const [txState, txFormAction, txPending] = useActionState(
+    async (prev: Awaited<ReturnType<typeof createTransaction>>, formData: FormData) => {
+      const result = await createTransaction(prev, formData);
+      if (result.success) onSuccess?.();
+      return result;
+    },
+    { success: false, error: "" },
+  );
   const [transferState, transferFormAction, transferPending] = useActionState(
-    createTransfer,
-    { success: false, error: "" }
+    async (prev: Awaited<ReturnType<typeof createTransfer>>, formData: FormData) => {
+      const result = await createTransfer(prev, formData);
+      if (result.success) onSuccess?.();
+      return result;
+    },
+    { success: false, error: "" },
   );
 
   const state = isTransferMode ? transferState : txState;
   const formAction = isTransferMode ? transferFormAction : txFormAction;
   const pending = isTransferMode ? transferPending : txPending;
-
-  // Close form after action transition commits (route already revalidated)
-  useEffect(() => {
-    if (state.success) {
-      onSuccess?.();
-    }
-  }, [state.success]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const STORAGE_KEY = "zeta:quick-capture-account";
   const [selectedAccountId, setSelectedAccountId] = useState<string>(() => {
@@ -166,12 +175,16 @@ export function MobileTransactionForm({
     selectedAccount?.account_type === "CREDIT_CARD" ||
     selectedAccount?.account_type === "LOAN";
 
-  const today = new Date().toISOString().split("T")[0];
+  // Colombian calendar day / time-of-day — never the device tz or UTC, which
+  // drift the default a day off (toISOString is UTC; toTimeString is device-local).
+  // Lazy state (not a plain const): controlled inputs re-render the whole form
+  // per keystroke, and the Intl-backed formatter shouldn't re-run on each one.
+  const [today] = useState(() => toColombiaDateString(new Date()));
   const [merchantName, setMerchantName] = useState("");
   const [transactionDate, setTransactionDate] = useState<string>(today);
   // Default to the current time-of-day so FAB-created transactions carry an hour.
   const [transactionTime, setTransactionTime] = useState<string>(() =>
-    new Date().toTimeString().slice(0, 5),
+    toColombiaTimeString(new Date()),
   );
   const [isSubscription, setIsSubscription] = useState(false);
   const [notes, setNotes] = useState("");

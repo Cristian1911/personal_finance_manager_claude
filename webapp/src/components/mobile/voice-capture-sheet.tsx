@@ -21,6 +21,7 @@ import { useVoiceCapture } from "@/hooks/use-voice-capture";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/utils/currency";
+import { toColombiaDateString } from "@/lib/utils/date";
 import { cn } from "@/lib/utils";
 import type { Account, CategoryWithChildren, CurrencyCode } from "@/types/domain";
 
@@ -163,7 +164,7 @@ export function VoiceCaptureSheet({
         const partial: Partial<ParsedQuickCapture> = {
           raw_description: input,
           capture_input_text: input,
-          transaction_date: new Date().toISOString().split("T")[0],
+          transaction_date: toColombiaDateString(new Date()),
         };
 
         setCaptured(partial);
@@ -186,7 +187,7 @@ export function VoiceCaptureSheet({
         input: data.capture_input_text ?? latestInput,
         amount: data.amount!,
         direction: data.direction!,
-        transaction_date: data.transaction_date ?? new Date().toISOString().split("T")[0],
+        transaction_date: data.transaction_date ?? toColombiaDateString(new Date()),
         description: data.description!,
         merchant_name: data.merchant_name ?? data.description!,
         raw_description: data.raw_description ?? latestInput,
@@ -237,7 +238,7 @@ export function VoiceCaptureSheet({
     formData.set("amount", String(captured.amount));
     formData.set("currency_code", currencyCode);
     formData.set("direction", captured.direction);
-    formData.set("transaction_date", captured.transaction_date ?? new Date().toISOString().split("T")[0]);
+    formData.set("transaction_date", captured.transaction_date ?? toColombiaDateString(new Date()));
     formData.set("merchant_name", captured.description);
     formData.set("raw_description", captured.raw_description ?? captured.description);
     formData.set("capture_input_text", captured.capture_input_text ?? captured.description);

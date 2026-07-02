@@ -43,7 +43,10 @@ export function MovimientosUtilidades({
         params.delete("search");
       }
       params.set("page", "1");
-      router.push(`/transactions?${params.toString()}`);
+      // replace, not push: the debounced search would otherwise mint a history
+      // entry per keystroke burst, and the phone's back button would replay
+      // every stale query (re-opening the filter UI) instead of leaving the page.
+      router.replace(`/transactions?${params.toString()}`);
     },
     [router, searchParams]
   );

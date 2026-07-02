@@ -7,6 +7,7 @@ import { ChevronDown } from "lucide-react";
 import { createTransaction, updateTransaction } from "@/actions/transactions";
 import { addTagToEntity } from "@/actions/tags";
 import { cn } from "@/lib/utils";
+import { toColombiaDateString } from "@/lib/utils/date";
 import { Button } from "@/components/ui/button";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import {
@@ -85,8 +86,9 @@ export function TransactionForm({
   );
 
   const defaultAccount = accounts[0];
+  // Colombian calendar day, never UTC (toISOString rolls the date past ~7pm COT).
   const defaultDate =
-    transaction?.transaction_date ?? new Date().toISOString().split("T")[0];
+    transaction?.transaction_date ?? toColombiaDateString(new Date());
   const [direction, setDirection] = useState<TransactionDirection>(
     transaction?.direction ?? "OUTFLOW"
   );

@@ -68,6 +68,21 @@ export function toColombiaDateString(date: Date): string {
 }
 
 /**
+ * Format a Date as "HH:mm" (24h) in Colombia timezone (America/Bogota, UTC-5).
+ * Transaction times are Colombian local time, so "now" defaults must use
+ * Colombian time — not the device's system timezone (which may differ) nor UTC
+ * (`toTimeString()`/`toISOString()` both drift from the intended local clock).
+ */
+export function toColombiaTimeString(date: Date): string {
+  return date.toLocaleTimeString("en-GB", {
+    timeZone: "America/Bogota",
+    hour12: false,
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/**
  * Get the day-of-month in Colombia timezone.
  * Used for daysRemaining calculations that must match Colombian calendar day.
  */

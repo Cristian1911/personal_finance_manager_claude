@@ -43,6 +43,9 @@ export function TransactionFilters({
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  // replace, not push: filter tweaks are view state of the SAME list, not
+  // navigation. Pushing would mint one history entry per tweak and the phone's
+  // back button would replay every stale filter state instead of leaving the page.
   function updateFilter(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString());
     if (value && value !== "all") {
@@ -51,11 +54,11 @@ export function TransactionFilters({
       params.delete(key);
     }
     params.set("page", "1");
-    router.push(`/transactions?${params.toString()}`);
+    router.replace(`/transactions?${params.toString()}`);
   }
 
   function clearFilters() {
-    router.push("/transactions");
+    router.replace("/transactions");
   }
 
   const activeMonth = searchParams.get("month");
