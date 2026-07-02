@@ -33,6 +33,7 @@ function configureGoogle() {
       "[google-signin] Missing EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID / _IOS_CLIENT_ID — " +
         "Google sign-in will fail in this build. Add them to eas.json build profile env."
     );
+    return;
   }
   GoogleSignin.configure({
     webClientId: WEB_CLIENT_ID, // token audience Supabase validates
@@ -76,7 +77,7 @@ export async function signInWithGoogle(): Promise<SocialResult> {
     // Supabase provider allow-list) so real failures are diagnosable in logs.
     console.error("[google-signin] sign-in failed", {
       code,
-      message: (err as { message?: string }).message,
+      message: (err as { message?: string } | null)?.message ?? String(err),
     });
     return { error: "No se pudo iniciar sesión con Google" };
   }
