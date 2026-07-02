@@ -356,15 +356,20 @@ export async function mergeDestinatarios(
   );
 
   await db.withTransactionAsync(async () => {
-    for (const tx of txs) {
+    // Bulk local UPDATE (one write instead of N), then per-row enqueue — the
+    // remote push still needs one sync_queue row per transaction.
+    if (txs.length > 0) {
       await db.runAsync(
-        "UPDATE transactions SET destinatario_id = ?, updated_at = ? WHERE id = ?",
-        [targetId, now, tx.id]
+        `UPDATE transactions SET destinatario_id = ?, updated_at = ?
+         WHERE destinatario_id IN (${placeholders})`,
+        [targetId, now, ...sourceIds]
       );
-      await enqueueUpdate(db, "transactions", tx.id, {
-        destinatario_id: targetId,
-        updated_at: now,
-      }, now);
+      for (const tx of txs) {
+        await enqueueUpdate(db, "transactions", tx.id, {
+          destinatario_id: targetId,
+          updated_at: now,
+        }, now);
+      }
     }
 
     for (const rule of sourceRules) {
@@ -395,8 +400,11 @@ export async function mergeDestinatarios(
       sourceIds
     );
 
+    await db.runAsync(
+      `DELETE FROM destinatarios WHERE id IN (${placeholders})`,
+      sourceIds
+    );
     for (const sourceId of sourceIds) {
-      await db.runAsync("DELETE FROM destinatarios WHERE id = ?", [sourceId]);
       await enqueueDelete(db, "destinatarios", sourceId, now);
     }
   });

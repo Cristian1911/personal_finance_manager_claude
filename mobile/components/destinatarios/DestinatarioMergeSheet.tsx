@@ -45,20 +45,33 @@ export function DestinatarioMergeSheet({
   const [merging, setMerging] = useState(false);
 
   useEffect(() => {
-    if (!visible) return;
+    if (!visible) {
+      // Reset on close so a reopen never shows stale options/selection.
+      setOptions([]);
+      setSelected(new Set());
+      setLoading(true);
+      setMerging(false);
+      return;
+    }
     setSelected(new Set());
     setLoading(true);
+    let active = true;
     void (async () => {
       try {
         const all = await getAllDestinatarios();
-        setOptions(all.filter((d) => d.id !== targetId));
+        if (active) setOptions(all.filter((d) => d.id !== targetId));
       } catch (error) {
-        console.error("Failed to load destinatarios for merge:", error);
-        Alert.alert("Error", "No se pudieron cargar los destinatarios.");
+        if (active) {
+          console.error("Failed to load destinatarios for merge:", error);
+          Alert.alert("Error", "No se pudieron cargar los destinatarios.");
+        }
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     })();
+    return () => {
+      active = false;
+    };
   }, [visible, targetId]);
 
   const toggle = useCallback((id: string) => {
