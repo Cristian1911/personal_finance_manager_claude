@@ -177,7 +177,9 @@ export function MobileTransactionForm({
 
   // Colombian calendar day / time-of-day — never the device tz or UTC, which
   // drift the default a day off (toISOString is UTC; toTimeString is device-local).
-  const today = toColombiaDateString(new Date());
+  // Lazy state (not a plain const): controlled inputs re-render the whole form
+  // per keystroke, and the Intl-backed formatter shouldn't re-run on each one.
+  const [today] = useState(() => toColombiaDateString(new Date()));
   const [merchantName, setMerchantName] = useState("");
   const [transactionDate, setTransactionDate] = useState<string>(today);
   // Default to the current time-of-day so FAB-created transactions carry an hour.
