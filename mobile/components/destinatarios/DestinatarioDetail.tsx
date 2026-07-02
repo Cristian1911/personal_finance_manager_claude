@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { View, Text, ScrollView, RefreshControl, Pressable, TextInput, Alert } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import { ArrowDownLeft, ArrowUpRight, FileText, Pencil, Plus, Shield, Store, Trash2 } from "lucide-react-native";
+import { ArrowDownLeft, ArrowUpRight, FileText, GitMerge, Pencil, Plus, Shield, Store, Trash2 } from "lucide-react-native";
 import { formatCurrency, formatDate, type CurrencyCode } from "@zeta/shared";
 import { useSync } from "../../lib/sync/hooks";
 import {
@@ -18,6 +18,8 @@ import { MOBILE_TAB_BAR_CLEARANCE, SECTION_EYEBROW_CLASS } from "../../lib/const
 import { MobileHeader } from "../ui/MobileHeader";
 import { MCard, MListRow } from "../ui/MCard";
 import { StateChip } from "../ui/StateChip";
+import { HubEntry } from "../ui/HubEntry";
+import { DestinatarioMergeSheet } from "./DestinatarioMergeSheet";
 
 type TransactionSummary = {
   id: string;
@@ -46,6 +48,7 @@ export function DestinatarioDetail({ id }: DestinatarioDetailProps) {
   const [addingRule, setAddingRule] = useState(false);
   const [newPattern, setNewPattern] = useState("");
   const [newMatchType, setNewMatchType] = useState<"contains" | "exact">("contains");
+  const [showMergeSheet, setShowMergeSheet] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -420,7 +423,28 @@ export function DestinatarioDetail({ id }: DestinatarioDetailProps) {
             </MCard>
           )}
         </View>
+
+        {/* D3: merge duplicates into this destinatario */}
+        <HubEntry
+          icon={GitMerge}
+          title="Fusionar duplicados"
+          hint="Mueve movimientos y reglas de otros destinatarios aquí"
+          onPress={() => setShowMergeSheet(true)}
+          className="mt-2"
+        />
       </ScrollView>
+
+      <DestinatarioMergeSheet
+        visible={showMergeSheet}
+        onClose={() => setShowMergeSheet(false)}
+        targetId={id}
+        targetName={title}
+        onMerged={() => {
+          setShowMergeSheet(false);
+          void loadData();
+          void sync();
+        }}
+      />
     </View>
   );
 }

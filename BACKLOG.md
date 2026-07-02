@@ -10,6 +10,23 @@
 
 ---
 
+## Mobile parity wave 2026-07-02 — follow-ups (PRs #346–#349)
+
+Shipped: fix auth social EAS env (#346), Settings Etiquetas+Perfil (#347), Suscripciones → tabla `subscriptions` (#348), Destinatarios D3 fusionar + D4 sugerencias + fix logout wipe (#349).
+
+- **(OPERADOR — bloqueadores de auth en prod, consolas externas)**
+  - Supabase → Auth → Providers → **Apple: habilitar** (error observado: `validation_failed: Unsupported provider`). Rellenar Services ID/Team ID/Key ID/.p8.
+  - Google Cloud → Credentials → crear **Android OAuth client** para `com.venti5.zeta` con SHA-1 de firma (`eas credentials` + Play App Signing SHA-1 de Play Console) — `DEVELOPER_ERROR` observado en build prod Android.
+  - Supabase → Google provider → "Authorized Client IDs" debe incluir el **Web** client id (audiencia de Android) y el iOS id.
+- **(P1) Suscripciones mobile — writes faltantes:** `runSubscriptionDetection` tras imports mobile (hoy solo corre en imports webapp → usuarios mobile-only nunca ven sugeridas); `upsertSubscriptionFromTemplate` / flag `is_subscription` en create/edit de recurrentes mobile (el empty state apunta a Recurrentes pero ahí no se puede marcar como suscripción).
+- **(P1) Settings subpáginas restantes:** Integraciones (`capture_tokens` remote-only, mirror `pending-email.ts`; necesita `TELEGRAM_BOT_USERNAME` en config Expo), Email (address + allowed-senders, remote-only; `EMAIL_INGEST_DOMAIN` en config), PDF-passwords (vista encriptada, remote-only, NUNCA persistir plaintext local — su propio PR). Plan detallado en transcript sesión 2026-07-02.
+- **(P2) Etiquetas mobile:** UI de rename de tags (`updateTag` webapp sin par mobile) + rename de grupos (repo `updateTagGroup` ya existe, sin UI).
+- **(P2) D4 accept sin picker de categoría** (webapp lo tiene opcional; parity-neutral en datos).
+- **(P2) Reuse debt:** `FieldLabel` compartido (3 copias) + `SegmentedRow` variante wrap; `generateSlug` a `@zeta/shared` (port manual en `mobile/lib/repositories/tags.ts` puede driftar); `StateChip` variante `muted` (StatusBadge local en subscriptions.tsx); consolidar pill-trays ad-hoc sobre `PANEL_INSET_CLASS`.
+- **(P2) Guard `(user_id, lower(pattern))`** en otros paths de inserción de `destinatario_rules` (merge ya defiende; revisar create/import).
+- **(P1 — activación) Helpers mobile faltantes** (audit 2026-07-02): `EmptyState` compartido RN (~20 empty states ad-hoc sin CTA) e `InfoHint` (ambos client-only, quick wins); "Primeros pasos" checklist mobile (necesita estado `guidedExperience` sincronizado — gates parity/sync); coach-marks; exchange-rate nudge.
+- **(Diseño) Brief de evolución entregado** → `claude-ai-design/design-evolution-brief-2026-07-02.md`. Próximo: correr T1 (sistema de veredicto unificado) en Claude Design con Fable 5; heroes objetivo: deudas/recurrentes/plan.
+
 ## Modo compartido F1 (branch `feat/modos`, 2026-07-01) — follow-ups
 
 Shipped F1: un modo puede ser pool de gastos compartidos single-user (Estefa = destinatario). `modos` += `is_shared/split_method/user_included` + tabla `modo_participants`; acciones `shareModoTransactions`/`unshareModoTransactions` (batch) reusan `splitExistingTransaction`; resumen con "Saldo por persona" + abono. Spec: `docs/superpowers/specs/2026-07-01-modo-compartido-design.md`, plan: `docs/superpowers/plans/2026-07-01-modo-compartido-f1.md`. Migración `20260701190000_modo_compartido.sql`.
