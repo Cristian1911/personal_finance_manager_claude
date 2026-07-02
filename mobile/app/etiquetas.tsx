@@ -293,7 +293,7 @@ export default function EtiquetasScreen() {
                 </Text>
               )}
 
-              {!group.isSystem && (
+              {(!group.isSystem || group.id === UNGROUPED_ID) && (
                 <View className="flex-row items-center gap-2">
                   <TextInput
                     accessibilityLabel={`Nueva etiqueta en ${group.name}`}
