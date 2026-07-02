@@ -140,7 +140,9 @@ export function useRecurringMonth(
         params.set("month", formatMonthParam(date));
       }
       const qs = params.toString();
-      router.push(qs ? `${pathname}?${qs}` : pathname);
+      // replace, not push: month cursor = view state of the same page (see
+      // MonthSelector) — back should exit the page, not replay months.
+      router.replace(qs ? `${pathname}?${qs}` : pathname);
     },
     [router, pathname, searchParams],
   );

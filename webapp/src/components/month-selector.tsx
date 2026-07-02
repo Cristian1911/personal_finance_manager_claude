@@ -35,7 +35,9 @@ export function MonthSelector({ compact = false }: { compact?: boolean }) {
     }
 
     const qs = params.toString();
-    router.push(qs ? `${pathname}?${qs}` : pathname);
+    // replace, not push: the month cursor is view state of the same page — the
+    // phone's back button should leave the page, not step through old months.
+    router.replace(qs ? `${pathname}?${qs}` : pathname);
   }
 
   const isCurrent = isCurrentMonth(currentMonth);

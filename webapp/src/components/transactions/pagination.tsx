@@ -16,10 +16,12 @@ export function Pagination({
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  // replace, not push: paging is view state of the same list — back should
+  // leave the page, not un-page it one history entry at a time.
   function goToPage(p: number) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", String(p));
-    router.push(`/transactions?${params.toString()}`);
+    router.replace(`/transactions?${params.toString()}`);
   }
 
   if (totalPages <= 1) return null;
