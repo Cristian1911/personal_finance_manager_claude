@@ -102,25 +102,33 @@ export function MobileTransactionForm({
   // Two action states: regular transactions vs. paired account transfers.
   // Transfers go through createTransfer (outflow + inflow + balance updates);
   // everything else through createTransaction.
-  const [txState, txFormAction, txPending] = useActionState(createTransaction, {
-    success: false,
-    error: "",
-  });
+  //
+  // onSuccess is called INSIDE the wrapped action — never from an effect on
+  // `state.success`. /transactions/new sits in the client Router Cache, and a
+  // re-entry within the cache window restores the last action state
+  // (success: true); an effect would replay onSuccess on mount (stale
+  // "Guardado" toast + instant router.back() before the form ever shows).
+  // Same pattern as TransactionForm / RecurringForm / MobileQuickCaptureSheet.
+  const [txState, txFormAction, txPending] = useActionState(
+    async (prev: Awaited<ReturnType<typeof createTransaction>>, formData: FormData) => {
+      const result = await createTransaction(prev, formData);
+      if (result.success) onSuccess?.();
+      return result;
+    },
+    { success: false, error: "" },
+  );
   const [transferState, transferFormAction, transferPending] = useActionState(
-    createTransfer,
-    { success: false, error: "" }
+    async (prev: Awaited<ReturnType<typeof createTransfer>>, formData: FormData) => {
+      const result = await createTransfer(prev, formData);
+      if (result.success) onSuccess?.();
+      return result;
+    },
+    { success: false, error: "" },
   );
 
   const state = isTransferMode ? transferState : txState;
   const formAction = isTransferMode ? transferFormAction : txFormAction;
   const pending = isTransferMode ? transferPending : txPending;
-
-  // Close form after action transition commits (route already revalidated)
-  useEffect(() => {
-    if (state.success) {
-      onSuccess?.();
-    }
-  }, [state.success]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const STORAGE_KEY = "zeta:quick-capture-account";
   const [selectedAccountId, setSelectedAccountId] = useState<string>(() => {
