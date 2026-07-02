@@ -25,6 +25,15 @@ const IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
 let googleConfigured = false;
 function configureGoogle() {
   if (googleConfigured) return;
+  // Guard: these EXPO_PUBLIC vars must be injected into the build (eas.json env
+  // or EAS dashboard). If they're only in local .env they inline to undefined in
+  // built binaries → GoogleSignin.configure({ undefined }) → DEVELOPER_ERROR.
+  if (!WEB_CLIENT_ID || !IOS_CLIENT_ID) {
+    console.warn(
+      "[google-signin] Missing EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID / _IOS_CLIENT_ID — " +
+        "Google sign-in will fail in this build. Add them to eas.json build profile env."
+    );
+  }
   GoogleSignin.configure({
     webClientId: WEB_CLIENT_ID, // token audience Supabase validates
     iosClientId: IOS_CLIENT_ID,
@@ -63,6 +72,12 @@ export async function signInWithGoogle(): Promise<SocialResult> {
     ) {
       return { error: null }; // user cancelled — silent
     }
+    // Log the native code (DEVELOPER_ERROR=10 → config/SHA-1; audience errors →
+    // Supabase provider allow-list) so real failures are diagnosable in logs.
+    console.error("[google-signin] sign-in failed", {
+      code,
+      message: (err as { message?: string }).message,
+    });
     return { error: "No se pudo iniciar sesión con Google" };
   }
 }
