@@ -58,6 +58,45 @@ export async function setLocationTrackingEnabled(enabled: boolean): Promise<void
 }
 
 /**
+ * Update editable profile fields (name + preferred currency), mirroring the
+ * webapp `updateProfile` action. Writes locally + enqueues a `profiles` UPDATE.
+ * The remote `profiles` view's INSTEAD OF trigger re-encrypts full_name — the
+ * same proven push path used by `setLocationTrackingEnabled`.
+ */
+export async function updateProfile(params: {
+  full_name: string;
+  preferred_currency: CurrencyCode;
+}): Promise<void> {
+  const db = await getDatabase();
+  const now = new Date().toISOString();
+  const profile = await getLocalProfile();
+  if (!profile) return;
+  const fullName = params.full_name.trim();
+
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(
+      `UPDATE profiles SET full_name = ?, preferred_currency = ?, updated_at = ? WHERE id = ?`,
+      [fullName, params.preferred_currency, now, profile.id]
+    );
+    await db.runAsync(
+      `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at)
+       VALUES ('profiles', ?, 'UPDATE', ?, ?)`,
+      [
+        profile.id,
+        JSON.stringify({
+          full_name: fullName,
+          preferred_currency: params.preferred_currency,
+          updated_at: now,
+        }),
+        now,
+      ]
+    );
+  });
+
+  invalidatePreferredCurrency();
+}
+
+/**
  * In-memory cache for the preferred currency. The profile row is effectively
  * immutable during a session (changing it requires a Supabase write via
  * Settings), so there's no reason to re-hit SQLite on every filter change in
