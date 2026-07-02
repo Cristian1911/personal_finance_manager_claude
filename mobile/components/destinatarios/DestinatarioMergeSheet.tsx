@@ -104,7 +104,7 @@ export function DestinatarioMergeSheet({
     <MobileSheet visible={visible} onClose={onClose}>
       <View className="flex-row items-center justify-between border-b border-white-6 px-4 pb-3">
         <Text className="text-base font-inter-bold text-foreground">
-          Fusionar en “{targetName}”
+          Fusionar en "{targetName}"
         </Text>
         <Pressable
           onPress={onClose}
@@ -177,8 +177,9 @@ export function DestinatarioMergeSheet({
               accessibilityRole="button"
               accessibilityLabel="Fusionar seleccionados"
               accessibilityState={{ disabled: merging || selected.size === 0 }}
-              className={`${BRASS_BUTTON_CLASS} items-center rounded-xl py-3 active:opacity-80`}
-              style={merging || selected.size === 0 ? { opacity: 0.5 } : undefined}
+              className={`${BRASS_BUTTON_CLASS} items-center rounded-xl py-3 active:opacity-80 ${
+                merging || selected.size === 0 ? "opacity-50" : ""
+              }`}
             >
               {merging ? (
                 <ActivityIndicator size="small" color={COLORS.ink} />

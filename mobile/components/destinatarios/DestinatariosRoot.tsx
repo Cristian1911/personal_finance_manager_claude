@@ -11,7 +11,11 @@ import {
   type DestinatarioWithCount,
 } from "../../lib/repositories/destinatarios";
 import { COLORS } from "../../lib/constants/colors";
-import { MOBILE_TAB_BAR_CLEARANCE, SECTION_EYEBROW_CLASS } from "../../lib/constants/styles";
+import {
+  MOBILE_TAB_BAR_CLEARANCE,
+  PANEL_INSET_CLASS,
+  SECTION_EYEBROW_CLASS,
+} from "../../lib/constants/styles";
 import { MobileHeader } from "../ui/MobileHeader";
 import { MCard } from "../ui/MCard";
 import { DestinatarioRow } from "./DestinatarioRow";
@@ -100,7 +104,7 @@ export function DestinatariosRoot() {
         {/* Lista / Sugerencias segmented toggle */}
         <View
           accessibilityRole="tablist"
-          className="flex-row gap-1 rounded-xl border border-white-6 bg-black-10 p-1"
+          className={`${PANEL_INSET_CLASS} flex-row gap-1 p-1`}
         >
           {(
             [

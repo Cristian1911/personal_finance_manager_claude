@@ -18,6 +18,7 @@ import { MOBILE_TAB_BAR_CLEARANCE, SECTION_EYEBROW_CLASS } from "../../lib/const
 import { MobileHeader } from "../ui/MobileHeader";
 import { MCard, MListRow } from "../ui/MCard";
 import { StateChip } from "../ui/StateChip";
+import { HubEntry } from "../ui/HubEntry";
 import { DestinatarioMergeSheet } from "./DestinatarioMergeSheet";
 
 type TransactionSummary = {
@@ -424,22 +425,13 @@ export function DestinatarioDetail({ id }: DestinatarioDetailProps) {
         </View>
 
         {/* D3: merge duplicates into this destinatario */}
-        <Pressable
+        <HubEntry
+          icon={GitMerge}
+          title="Fusionar duplicados"
+          hint="Mueve movimientos y reglas de otros destinatarios aquí"
           onPress={() => setShowMergeSheet(true)}
-          accessibilityRole="button"
-          accessibilityLabel="Fusionar duplicados"
-          className="mt-2 flex-row items-center gap-3 rounded-2xl border border-white-6 bg-black-10 px-4 py-3 active:opacity-80"
-        >
-          <GitMerge size={16} color={COLORS.brass} />
-          <View className="min-w-0 flex-1">
-            <Text className="text-sm font-inter-semibold text-foreground">
-              Fusionar duplicados
-            </Text>
-            <Text className="mt-0.5 text-xs font-inter text-muted-foreground">
-              Mueve movimientos y reglas de otros destinatarios aquí
-            </Text>
-          </View>
-        </Pressable>
+          className="mt-2"
+        />
       </ScrollView>
 
       <DestinatarioMergeSheet

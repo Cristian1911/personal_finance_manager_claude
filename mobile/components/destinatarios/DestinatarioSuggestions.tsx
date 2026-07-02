@@ -11,7 +11,11 @@ import { Sparkles } from "lucide-react-native";
 import { formatDate } from "@zeta/shared";
 import { useAuth } from "../../lib/auth";
 import { COLORS } from "../../lib/constants/colors";
-import { FORM_INPUT_CLASS } from "../../lib/constants/styles";
+import {
+  BRASS_GHOST_BUTTON_CLASS,
+  FORM_INPUT_CLASS,
+  GHOST_BUTTON_CLASS,
+} from "../../lib/constants/styles";
 import { MCard } from "../ui/MCard";
 import {
   createDestinatarioFromSuggestion,
@@ -181,7 +185,7 @@ export function DestinatarioSuggestions({
                     accessibilityState={{
                       disabled: busy || draftName.trim().length < 2,
                     }}
-                    className="rounded-xl border border-z-brass-30 bg-z-brass-10 px-3.5 py-2 active:opacity-80"
+                    className={`${BRASS_GHOST_BUTTON_CLASS} rounded-xl px-3.5 py-2 active:opacity-80`}
                     style={
                       busy || draftName.trim().length < 2
                         ? { opacity: 0.5 }
@@ -202,9 +206,9 @@ export function DestinatarioSuggestions({
                     accessibilityRole="button"
                     accessibilityLabel="Cancelar creación"
                     accessibilityState={{ disabled: busy }}
-                    className="rounded-xl border border-white-6 bg-z-surface-2 px-3.5 py-2 active:opacity-80"
+                    className={`${GHOST_BUTTON_CLASS} rounded-xl px-3.5 py-2 active:opacity-80`}
                   >
-                    <Text className="text-xs font-inter-medium text-muted-foreground">
+                    <Text className="text-xs font-inter-medium text-z-sage-light">
                       Cancelar
                     </Text>
                   </Pressable>
@@ -218,7 +222,7 @@ export function DestinatarioSuggestions({
                   accessibilityRole="button"
                   accessibilityLabel={`Crear destinatario para ${s.cleanedPattern}`}
                   accessibilityState={{ disabled: busy }}
-                  className="rounded-xl border border-z-brass-30 bg-z-brass-10 px-3.5 py-2 active:opacity-80"
+                  className={`${BRASS_GHOST_BUTTON_CLASS} rounded-xl px-3.5 py-2 active:opacity-80`}
                   style={busy ? { opacity: 0.5 } : undefined}
                 >
                   <Text className="text-xs font-inter-semibold text-z-brass">
@@ -231,10 +235,10 @@ export function DestinatarioSuggestions({
                   accessibilityRole="button"
                   accessibilityLabel={`Ignorar ${s.cleanedPattern}`}
                   accessibilityState={{ disabled: busy }}
-                  className="rounded-xl border border-white-6 bg-z-surface-2 px-3.5 py-2 active:opacity-80"
+                  className={`${GHOST_BUTTON_CLASS} rounded-xl px-3.5 py-2 active:opacity-80`}
                   style={busy ? { opacity: 0.5 } : undefined}
                 >
-                  <Text className="text-xs font-inter-medium text-muted-foreground">
+                  <Text className="text-xs font-inter-medium text-z-sage-light">
                     Ignorar
                   </Text>
                 </Pressable>
