@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { toColombiaDateString, toColombiaTimeString } from "@/lib/utils/date";
 import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
 import type {
   Account,
@@ -166,12 +167,14 @@ export function MobileTransactionForm({
     selectedAccount?.account_type === "CREDIT_CARD" ||
     selectedAccount?.account_type === "LOAN";
 
-  const today = new Date().toISOString().split("T")[0];
+  // Colombian calendar day / time-of-day — never the device tz or UTC, which
+  // drift the default a day off (toISOString is UTC; toTimeString is device-local).
+  const today = toColombiaDateString(new Date());
   const [merchantName, setMerchantName] = useState("");
   const [transactionDate, setTransactionDate] = useState<string>(today);
   // Default to the current time-of-day so FAB-created transactions carry an hour.
   const [transactionTime, setTransactionTime] = useState<string>(() =>
-    new Date().toTimeString().slice(0, 5),
+    toColombiaTimeString(new Date()),
   );
   const [isSubscription, setIsSubscription] = useState(false);
   const [notes, setNotes] = useState("");
