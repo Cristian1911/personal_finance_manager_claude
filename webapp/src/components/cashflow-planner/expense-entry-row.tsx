@@ -18,6 +18,7 @@ import {
   Ban,
   Check,
   ChevronDown,
+  CreditCard,
   Pencil,
   Trash2,
   Undo2,
@@ -35,7 +36,7 @@ import { getEnvelopeColor } from "@/lib/constants/envelope-colors";
 import { CategoryIcon } from "@/components/categories/category-icon";
 import { toast } from "sonner";
 import type { CurrencyCode, PlanningEntryStatus } from "@/types/domain";
-import type { PlanningEntryWithRelations } from "@/types/cashflow-planner";
+import { isCardChargeEntry, type PlanningEntryWithRelations } from "@/types/cashflow-planner";
 import type { ExpenseCommitment } from "@/lib/utils/plan-commitments";
 
 interface ExpenseEntryRowProps {
@@ -92,7 +93,10 @@ export function ExpenseEntryRow({
   // Assignments are in period currency, so remaining uses converted_amount
   const remaining = entry.converted_amount - assignedAmount;
   const isForeignCurrency = entry.currency_code !== currency;
-  const tag = entry.status === "PLANNED" ? commitTag(commitment) : null;
+  // A card charge bills to the card, not to cash in hand — it gets its own
+  // chip and skips the cash-commitment tags and income assignment entirely.
+  const isCardCharge = isCardChargeEntry(entry);
+  const tag = entry.status === "PLANNED" && !isCardCharge ? commitTag(commitment) : null;
 
   function setStatus(nextStatus: PlanningEntryStatus) {
     startTransition(async () => {
@@ -113,7 +117,8 @@ export function ExpenseEntryRow({
   }
 
   const badge = STATUS_BADGE[entry.status];
-  const canAssign = showAssignButton && remaining > 0 && entry.status !== "SKIPPED" && !!onAssign;
+  const canAssign =
+    showAssignButton && !isCardCharge && remaining > 0 && entry.status !== "SKIPPED" && !!onAssign;
 
   return (
     <div
@@ -150,6 +155,15 @@ export function ExpenseEntryRow({
             {tag && (
               <Badge variant="outline" className={cn("shrink-0 px-1.5 text-[10px]", tag.className)}>
                 {tag.label}
+              </Badge>
+            )}
+            {isCardCharge && (
+              <Badge
+                variant="outline"
+                className="shrink-0 gap-1 border-z-brass/25 px-1.5 text-[10px] text-z-brass"
+              >
+                <CreditCard className="h-2.5 w-2.5" />
+                tarjeta
               </Badge>
             )}
             <span className="min-w-0 truncate text-xs text-muted-foreground">
@@ -230,6 +244,13 @@ export function ExpenseEntryRow({
                 </div>
               )}
             </dl>
+            {isCardCharge && (
+              <p className="flex items-start gap-1.5 pt-0.5 text-[11px] text-muted-foreground">
+                <CreditCard className="mt-0.5 h-3 w-3 shrink-0 text-z-brass" />
+                Se factura a la tarjeta: no sale de tu efectivo este periodo, sino
+                cuando pagues la tarjeta.
+              </p>
+            )}
             {assignmentChips && assignmentChips.length > 0 && (
               <div className="flex flex-wrap gap-1 pt-0.5">
                 {assignmentChips.map((chip, i) => {

@@ -18,7 +18,7 @@ export interface TemplateStats {
 
 const FREQUENCY_MULTIPLIER: Record<string, number> = {
   WEEKLY: 52,
-  BIWEEKLY: 26,
+  BIWEEKLY: 24, // quincenal anclada al mes: 2 por mes
   MONTHLY: 12,
   QUARTERLY: 4,
   ANNUAL: 1,

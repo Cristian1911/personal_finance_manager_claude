@@ -23,7 +23,7 @@ interface RecurringTemplateCardProps {
 }
 
 const FREQUENCY_MULTIPLIER: Record<string, number> = {
-  WEEKLY: 52, BIWEEKLY: 26, MONTHLY: 12, QUARTERLY: 4, ANNUAL: 1, ONCE: 1,
+  WEEKLY: 52, BIWEEKLY: 24, MONTHLY: 12, QUARTERLY: 4, ANNUAL: 1, ONCE: 1,
 };
 
 function yearlyEstimate(amount: number, frequency: string): number {

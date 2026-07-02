@@ -1,5 +1,28 @@
-import { addWeeks, addMonths, addYears, format, parseISO, isBefore, isAfter, startOfDay } from "date-fns";
+import { addWeeks, addMonths, addYears, format, parseISO, isBefore, isAfter, startOfDay, getDaysInMonth, setDate } from "date-fns";
 import type { RecurrenceFrequency } from "../types/domain";
+
+/**
+ * BIWEEKLY = quincenal, anchored to two fixed days of the month derived from
+ * the start date: D and D+15 when D ≤ 15 (e.g. 15 → {15, 30}), or D−15 and D
+ * when D > 15 (e.g. 20 → {5, 20}). The second day clamps to month end in
+ * shorter months (30 → Feb 28) but returns to its anchor afterwards.
+ *
+ * NOT literal 14-day jumps: those drift ~2 days per month, so a quincena that
+ * starts on the 15th ends up falling on the 7th within a few months.
+ *
+ * Mirrors generate_occurrences_for_template() in SQL — keep both in sync.
+ */
+function quincenalOccurrenceAt(start: Date, k: number): Date {
+  const D = start.getDate();
+  const dayLow = D <= 15 ? D : D - 15;
+  const dayHigh = D <= 15 ? D + 15 : D;
+  // Position within the combined low/high series; offset 1 when the series
+  // starts on the high day so k=0 still lands exactly on `start`.
+  const idx = k + (D <= 15 ? 0 : 1);
+  const base = addMonths(start, Math.floor(idx / 2));
+  const day = idx % 2 === 0 ? dayLow : dayHigh;
+  return setDate(base, Math.min(day, getDaysInMonth(base)));
+}
 
 /**
  * Compute the k-th occurrence of a recurring series from its anchor start date.
@@ -12,7 +35,7 @@ function occurrenceAt(start: Date, k: number, frequency: RecurrenceFrequency): D
     case "WEEKLY":
       return addWeeks(start, k);
     case "BIWEEKLY":
-      return addWeeks(start, k * 2);
+      return quincenalOccurrenceAt(start, k);
     case "MONTHLY":
       return addMonths(start, k);
     case "QUARTERLY":

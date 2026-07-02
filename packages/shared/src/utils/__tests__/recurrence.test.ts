@@ -81,6 +81,94 @@ describe("getOccurrencesBetween — end-of-month anchor", () => {
   });
 });
 
+describe("BIWEEKLY — quincenal anclada al mes (no cada 14 días)", () => {
+  it("ancla el 15 genera 15 y 30 de cada mes, clampando febrero", () => {
+    const dates = getOccurrencesBetween(
+      "2026-01-15",
+      "BIWEEKLY",
+      null,
+      new Date("2026-01-01T00:00:00"),
+      new Date("2026-04-30T00:00:00")
+    );
+    expect(dates).toEqual([
+      "2026-01-15",
+      "2026-01-30",
+      "2026-02-15",
+      "2026-02-28",
+      "2026-03-15",
+      "2026-03-30",
+      "2026-04-15",
+      "2026-04-30",
+    ]);
+  });
+
+  it("no acumula drift: seis meses después sigue cayendo en 15 y 30", () => {
+    // Con addWeeks(k*2) la quincena del 15 caía en el 7 a los pocos meses.
+    const dates = getOccurrencesBetween(
+      "2026-01-15",
+      "BIWEEKLY",
+      null,
+      new Date("2026-07-01T00:00:00"),
+      new Date("2026-07-31T00:00:00")
+    );
+    expect(dates).toEqual(["2026-07-15", "2026-07-30"]);
+  });
+
+  it("ancla > 15 usa el par {D−15, D}: 20 → 5 y 20", () => {
+    const dates = getOccurrencesBetween(
+      "2026-01-20",
+      "BIWEEKLY",
+      null,
+      new Date("2026-01-01T00:00:00"),
+      new Date("2026-03-31T00:00:00")
+    );
+    expect(dates).toEqual([
+      "2026-01-20",
+      "2026-02-05",
+      "2026-02-20",
+      "2026-03-05",
+      "2026-03-20",
+    ]);
+  });
+
+  it("ancla fin de mes: 31 → 16 y 31, clampa febrero y se recupera", () => {
+    const dates = getOccurrencesBetween(
+      "2026-01-31",
+      "BIWEEKLY",
+      null,
+      new Date("2026-01-01T00:00:00"),
+      new Date("2026-03-31T00:00:00")
+    );
+    expect(dates).toEqual([
+      "2026-01-31",
+      "2026-02-16",
+      "2026-02-28",
+      "2026-03-16",
+      "2026-03-31",
+    ]);
+  });
+
+  it("getNextOccurrence cae en la quincena anclada", () => {
+    expect(
+      getNextOccurrence("2026-01-15", "BIWEEKLY", null, new Date("2026-07-02T00:00:00"))
+    ).toBe("2026-07-15");
+    expect(
+      getNextOccurrence("2026-01-15", "BIWEEKLY", null, new Date("2026-07-16T00:00:00"))
+    ).toBe("2026-07-30");
+  });
+
+  it("respeta la fecha de fin", () => {
+    const dates = getOccurrencesBetween(
+      "2026-01-15",
+      "BIWEEKLY",
+      "2026-02-15",
+      new Date("2026-01-01T00:00:00"),
+      new Date("2026-03-31T00:00:00")
+    );
+    expect(dates).toEqual(["2026-01-15", "2026-01-30", "2026-02-15"]);
+  });
+});
+
 describe("getNextOccurrence — drift anchor", () => {
   it("Jan 31 template returns Mar 31 when asked from Mar 1", () => {
     const next = getNextOccurrence(

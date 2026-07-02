@@ -8,6 +8,7 @@ import type {
   RecurringTemplate,
 } from "./domain";
 import type { IncomeState, ExpenseCommitment } from "@/lib/utils/plan-commitments";
+import { isDebtAccountType } from "@/lib/utils/account-balance";
 
 /**
  * Sentinel stored in `planning_entries.notes` to flag entries that mirror an
@@ -17,11 +18,28 @@ import type { IncomeState, ExpenseCommitment } from "@/lib/utils/plan-commitment
 export const BALANCE_SEED_NOTES = "[saldo]";
 
 export interface PlanningEntryWithRelations extends PlanningEntry {
-  account: Pick<Account, "id" | "name" | "icon" | "color"> | null;
+  account: Pick<Account, "id" | "name" | "icon" | "color" | "account_type"> | null;
   category: Pick<Category, "id" | "name" | "name_es" | "icon" | "color"> | null;
   recurring_template: Pick<RecurringTemplate, "id" | "merchant_name" | "frequency" | "direction"> | null;
   /** Amount converted to the period's currency (equals amount when same currency) */
   converted_amount: number;
+}
+
+/**
+ * A card charge is an expense billed straight to a debt account (recurring
+ * OUTFLOW template on a CREDIT_CARD/LOAN) — same convention as
+ * PayExpenseDialog's `isRecurringCharge`. It doesn't consume cash this period
+ * (cash leaves later, when the card-payment entry is settled), so it's
+ * excluded from cash commitments, income assignment, and auto-assign.
+ * Manual entries on a debt account remain "abonos" (real cash outflows).
+ */
+export function isCardChargeEntry(entry: PlanningEntryWithRelations): boolean {
+  return (
+    entry.entry_type === "EXPENSE" &&
+    entry.recurring_template?.direction === "OUTFLOW" &&
+    entry.account != null &&
+    isDebtAccountType(entry.account.account_type)
+  );
 }
 
 export interface AssignmentDetail {
