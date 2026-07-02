@@ -10,6 +10,7 @@ import {
   Heart,
   Landmark,
   List,
+  MapPin,
   PiggyBank,
   Settings,
   Tag,
@@ -39,6 +40,7 @@ const ORGANIZAR_GROUP: Group = {
     { href: "/categories", icon: Folder, label: "Categorías" },
     { href: "/destinatarios", icon: Contact, label: "Destinatarios" },
     { href: "/etiquetas", icon: Tag, label: "Etiquetas" },
+    { href: "/modos", icon: MapPin, label: "Modos" },
   ],
 };
 
