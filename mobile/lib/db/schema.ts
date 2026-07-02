@@ -494,10 +494,10 @@ export const DB_MIGRATIONS: DbMigration[] = [
   {
     version: 15,
     statements: [
-      // ── Subscriptions: read-only pull-only sync ───────────────────────────
+      // ── Subscriptions ─────────────────────────────────────────────────────
       // Mirrors the plain (non-encrypted) `subscriptions` Supabase table.
-      // Mobile has no UI for subscriptions yet — only synced for future reads.
-      // Do NOT add to push.ts (mobile produces no subscription mutations).
+      // Bidirectional: pulled since v15; status mutations pushed since the
+      // Suscripciones screen moved onto this table (repositories/subscriptions.ts).
       `CREATE TABLE IF NOT EXISTS subscriptions (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,

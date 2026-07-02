@@ -26,6 +26,7 @@ type SyncTableName =
   | "transaction_tags"
   | "wishlist_items"
   | "statement_snapshots"
+  | "subscriptions"
   | "transactions"
   | "transaction_locations"
   | "planning_periods"

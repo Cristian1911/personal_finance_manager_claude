@@ -3,144 +3,90 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
+  ScrollView,
   Text,
-  TextInput,
   View,
 } from "react-native";
-import { useFocusEffect, useRouter } from "expo-router";
-import { Repeat, Trash2 } from "lucide-react-native";
-import {
-  formatCurrency,
-  SUBSCRIPTIONS_CATEGORY_ID,
-  type CurrencyCode,
-  type Database,
-} from "@zeta/shared";
-import { supabase } from "../lib/supabase";
-import { parseLocalizedAmount } from "../lib/amount";
-import { useAuth } from "../lib/auth";
-import { KeyboardScreen } from "../components/common/KeyboardScreen";
-import { BRASS_BUTTON_CLASS } from "../lib/constants/styles";
+import { Stack, useFocusEffect, useRouter } from "expo-router";
+import { Repeat } from "lucide-react-native";
+import { formatCurrency, type CurrencyCode } from "@zeta/shared";
+import { MobileHeader } from "../components/ui/MobileHeader";
 import { COLORS } from "../lib/constants/colors";
-const SUGGESTED_NAMES = [
-  "Gym",
-  "Netflix",
-  "YouTube Premium",
-  "Codex",
-  "Supabase",
-  "Notion",
-];
+import {
+  MOBILE_TAB_BAR_CLEARANCE,
+  PANEL_INSET_CLASS,
+  SECTION_EYEBROW_CLASS,
+} from "../lib/constants/styles";
+import { getPreferredCurrency } from "../lib/profile";
+import {
+  cancelSubscription,
+  confirmSubscription,
+  dismissSubscription,
+  getActiveSubscriptions,
+  getMonthlyOutflowOccurrences,
+  markForCancellation,
+  type SubscriptionWithDetails,
+} from "../lib/repositories/subscriptions";
 
-const FREQUENCY_OPTIONS: Array<{
-  value: Database["public"]["Enums"]["recurrence_frequency"];
-  label: string;
-}> = [
-  { value: "MONTHLY", label: "Mensual" },
-  { value: "ANNUAL", label: "Anual" },
-];
-
-type AccountRow = Pick<
-  Database["public"]["Tables"]["accounts"]["Row"],
-  "id" | "name" | "currency_code" | "is_active"
->;
-
-type RecurringTemplateRow = Pick<
-  Database["public"]["Tables"]["recurring_transaction_templates"]["Row"],
-  | "id"
-  | "account_id"
-  | "amount"
-  | "currency_code"
-  | "frequency"
-  | "merchant_name"
-  | "description"
-  | "day_of_month"
-  | "start_date"
-  | "is_active"
->;
-
-function getTodayIsoDate(): string {
+/** Calendar bounds of the current month in device-local time (YYYY-MM-DD). */
+function currentMonthBounds(): { start: string; end: string } {
   const now = new Date();
   const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  const m = now.getMonth();
+  const mm = String(m + 1).padStart(2, "0");
+  const lastDay = new Date(y, m + 1, 0).getDate();
+  return {
+    start: `${y}-${mm}-01`,
+    end: `${y}-${mm}-${String(lastDay).padStart(2, "0")}`,
+  };
 }
 
-function getScheduleLabel(template: RecurringTemplateRow): string {
-  const day = template.day_of_month ?? 1;
-  if (template.frequency === "ANNUAL") {
-    return `Anual (día ${day})`;
-  }
-  return `Mensual (día ${day})`;
+function StatusBadge({ label, tone }: { label: string; tone: "alert" | "muted" }) {
+  return (
+    <View
+      className={`rounded-full px-2.5 py-1 ${
+        tone === "alert" ? "bg-z-alert-12" : "bg-black-10"
+      }`}
+    >
+      <Text
+        className={`font-inter-medium text-xs ${
+          tone === "alert" ? "text-z-alert" : "text-muted-foreground"
+        }`}
+      >
+        {label}
+      </Text>
+    </View>
+  );
 }
 
 export default function SubscriptionsScreen() {
   const router = useRouter();
-  const { session } = useAuth();
-
+  const [subs, setSubs] = useState<SubscriptionWithDetails[]>([]);
+  const [occurrences, setOccurrences] = useState<
+    { template_id: string; expected_amount: number }[]
+  >([]);
+  const [currency, setCurrency] = useState<CurrencyCode>("COP");
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [togglingId, setTogglingId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  const [accounts, setAccounts] = useState<AccountRow[]>([]);
-  const [items, setItems] = useState<RecurringTemplateRow[]>([]);
-
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [merchantName, setMerchantName] = useState("");
-  const [description, setDescription] = useState("");
-  const [amountInput, setAmountInput] = useState("");
-  const [accountId, setAccountId] = useState("");
-  const [frequency, setFrequency] =
-    useState<Database["public"]["Enums"]["recurrence_frequency"]>("MONTHLY");
-  const [dayOfMonthInput, setDayOfMonthInput] = useState(
-    String(new Date().getDate())
-  );
-  const [startDate, setStartDate] = useState(getTodayIsoDate());
-
-  const accountsById = useMemo(() => {
-    return new Map(accounts.map((acc) => [acc.id, acc]));
-  }, [accounts]);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
-    if (!session?.user?.id) {
-      setAccounts([]);
-      setItems([]);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
     try {
-      const [accountsResult, templatesResult] = await Promise.all([
-        supabase
-          .from("accounts")
-          .select("id, name, currency_code, is_active")
-          .eq("user_id", session.user.id)
-          .eq("is_active", true)
-          .order("name", { ascending: true }),
-        supabase
-          .from("recurring_transaction_templates")
-          .select(
-            "id, account_id, amount, currency_code, frequency, merchant_name, description, day_of_month, start_date, is_active"
-          )
-          .eq("user_id", session.user.id)
-          .eq("direction", "OUTFLOW")
-          .eq("category_id", SUBSCRIPTIONS_CATEGORY_ID)
-          .order("created_at", { ascending: false }),
+      const { start, end } = currentMonthBounds();
+      const [rows, occs, preferred] = await Promise.all([
+        getActiveSubscriptions(),
+        getMonthlyOutflowOccurrences(start, end),
+        getPreferredCurrency(),
       ]);
-
-      if (accountsResult.error) throw accountsResult.error;
-      if (templatesResult.error) throw templatesResult.error;
-
-      setAccounts((accountsResult.data ?? []) as AccountRow[]);
-      setItems((templatesResult.data ?? []) as RecurringTemplateRow[]);
+      setSubs(rows);
+      setOccurrences(occs);
+      setCurrency(preferred);
     } catch (error) {
       console.error("Load subscriptions error:", error);
       Alert.alert("Error", "No se pudieron cargar las suscripciones.");
     } finally {
       setLoading(false);
     }
-  }, [session?.user?.id]);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -148,450 +94,195 @@ export default function SubscriptionsScreen() {
     }, [loadData])
   );
 
-  function resetForm() {
-    setEditingId(null);
-    setMerchantName("");
-    setDescription("");
-    setAmountInput("");
-    setAccountId("");
-    setFrequency("MONTHLY");
-    setDayOfMonthInput(String(new Date().getDate()));
-    setStartDate(getTodayIsoDate());
-  }
+  // Mirrors the webapp suscripciones hero: occurrence-backed current-month sum
+  // for template-linked subs + estimated for unscheduled ones — NOT a smoothed
+  // average, so both platforms show the same "Compromiso mensual".
+  const { suggested, tracked, monthlyTotal, markedMonthly, estimatedMonthly } =
+    useMemo(() => {
+      const sug = subs.filter((s) => s.status === "suggested");
+      const trk = subs.filter((s) => s.status !== "suggested");
 
-  function beginEdit(item: RecurringTemplateRow) {
-    setEditingId(item.id);
-    setMerchantName(item.merchant_name ?? "");
-    setDescription(item.description ?? "");
-    setAmountInput(String(item.amount));
-    setAccountId(item.account_id);
-    setFrequency(item.frequency);
-    setDayOfMonthInput(String(item.day_of_month ?? 1));
-    setStartDate(item.start_date);
-  }
-
-  function useSuggestedName(name: string) {
-    setMerchantName(name);
-    if (!description.trim()) {
-      setDescription(`Suscripción de ${name}`);
-    }
-  }
-
-  async function handleSave() {
-    if (!session?.user?.id) {
-      Alert.alert("Requiere cuenta", "Debes iniciar sesión para guardar suscripciones.");
-      return;
-    }
-
-    const cleanName = merchantName.trim();
-    if (cleanName.length < 2) {
-      Alert.alert("Dato faltante", "Ingresa el nombre de la suscripción.");
-      return;
-    }
-
-    const parsedAmount = parseLocalizedAmount(amountInput);
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      Alert.alert("Monto inválido", "El monto debe ser mayor a 0.");
-      return;
-    }
-
-    if (!accountId) {
-      Alert.alert("Dato faltante", "Selecciona la cuenta de cobro.");
-      return;
-    }
-
-    const parsedDay = Number(dayOfMonthInput);
-    if (!Number.isInteger(parsedDay) || parsedDay < 1 || parsedDay > 31) {
-      Alert.alert("Día inválido", "Ingresa un día entre 1 y 31.");
-      return;
-    }
-
-    const selectedAccount = accountsById.get(accountId);
-
-    const payload: Database["public"]["Tables"]["recurring_transaction_templates"]["Insert"] = {
-      user_id: session.user.id,
-      account_id: accountId,
-      category_id: SUBSCRIPTIONS_CATEGORY_ID,
-      amount: parsedAmount,
-      currency_code: selectedAccount?.currency_code ?? "COP",
-      direction: "OUTFLOW",
-      merchant_name: cleanName,
-      description: description.trim() || null,
-      frequency,
-      day_of_month: parsedDay,
-      day_of_week: null,
-      start_date: startDate,
-      end_date: null,
-      is_active: true,
-      transfer_source_account_id: null,
-    };
-
-    setSaving(true);
-    try {
-      if (editingId) {
-        const current = items.find((item) => item.id === editingId);
-        const { error } = await supabase
-          .from("recurring_transaction_templates")
-          .update({
-            account_id: payload.account_id,
-            category_id: payload.category_id,
-            amount: payload.amount,
-            currency_code: payload.currency_code,
-            merchant_name: payload.merchant_name,
-            description: payload.description,
-            frequency: payload.frequency,
-            day_of_month: payload.day_of_month,
-            start_date: payload.start_date,
-            is_active: current?.is_active ?? true,
-          })
-          .eq("id", editingId)
-          .eq("user_id", session.user.id);
-
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("recurring_transaction_templates")
-          .insert(payload);
-        if (error) throw error;
+      const subTemplateIds = new Set(
+        trk.map((s) => s.recurring_template_id).filter(Boolean) as string[]
+      );
+      const monthlyByTemplate = new Map<string, number>();
+      let authoritative = 0;
+      for (const o of occurrences) {
+        if (!subTemplateIds.has(o.template_id)) continue;
+        authoritative += o.expected_amount;
+        monthlyByTemplate.set(
+          o.template_id,
+          (monthlyByTemplate.get(o.template_id) ?? 0) + o.expected_amount
+        );
       }
 
-      resetForm();
-      await loadData();
-    } catch (error) {
-      console.error("Save subscription error:", error);
-      Alert.alert("Error", "No se pudo guardar la suscripción.");
-    } finally {
-      setSaving(false);
-    }
-  }
+      let estimated = 0;
+      for (const s of trk) {
+        if (!s.recurring_template_id && s.estimated_amount) {
+          estimated += s.estimated_amount;
+        }
+      }
 
-  function handleDelete(item: RecurringTemplateRow) {
-    if (!session?.user?.id) return;
+      let marked = 0;
+      for (const s of trk) {
+        if (s.status !== "marked_for_cancellation") continue;
+        marked += s.recurring_template_id
+          ? (monthlyByTemplate.get(s.recurring_template_id) ?? 0)
+          : (s.estimated_amount ?? 0);
+      }
 
-    Alert.alert(
-      "Eliminar suscripción",
-      `¿Eliminar "${item.merchant_name ?? "Suscripción"}"?`,
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Eliminar",
-          style: "destructive",
-          onPress: async () => {
-            setDeletingId(item.id);
-            try {
-              const { error } = await supabase
-                .from("recurring_transaction_templates")
-                .delete()
-                .eq("id", item.id)
-                .eq("user_id", session.user.id);
-              if (error) throw error;
+      return {
+        suggested: sug,
+        tracked: trk,
+        monthlyTotal: authoritative + estimated,
+        markedMonthly: marked,
+        estimatedMonthly: estimated,
+      };
+    }, [subs, occurrences]);
 
-              if (editingId === item.id) {
-                resetForm();
-              }
-              await loadData();
-            } catch (error) {
-              console.error("Delete subscription error:", error);
-              Alert.alert("Error", "No se pudo eliminar la suscripción.");
-            } finally {
-              setDeletingId(null);
-            }
+  const run = useCallback(
+    async (id: string, fn: (id: string) => Promise<void>) => {
+      setBusyId(id);
+      try {
+        await fn(id);
+        await loadData();
+      } catch (error) {
+        console.error("Subscription action error:", error);
+        Alert.alert(
+          "Error",
+          error instanceof Error && error.message
+            ? error.message
+            : "No se pudo actualizar la suscripción."
+        );
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [loadData]
+  );
+
+  const handleCancel = useCallback(
+    (sub: SubscriptionWithDetails) => {
+      Alert.alert(
+        "Confirmar cancelación",
+        `¿Ya cancelaste "${sub.destinatario_name ?? "esta suscripción"}" con el proveedor? Se desactivará su cobro recurrente.`,
+        [
+          { text: "Volver", style: "cancel" },
+          {
+            text: "Ya la cancelé",
+            style: "destructive",
+            onPress: () => void run(sub.id, cancelSubscription),
           },
-        },
-      ]
-    );
-  }
-
-  async function toggleActive(item: RecurringTemplateRow) {
-    if (!session?.user?.id) return;
-
-    const nextValue = !item.is_active;
-    setTogglingId(item.id);
-    try {
-      const { error } = await supabase
-        .from("recurring_transaction_templates")
-        .update({ is_active: nextValue })
-        .eq("id", item.id)
-        .eq("user_id", session.user.id);
-      if (error) throw error;
-
-      setItems((prev) =>
-        prev.map((row) =>
-          row.id === item.id ? { ...row, is_active: nextValue } : row
-        )
+        ]
       );
-    } catch (error) {
-      console.error("Toggle subscription error:", error);
-      Alert.alert("Error", "No se pudo actualizar el estado.");
-    } finally {
-      setTogglingId(null);
-    }
-  }
+    },
+    [run]
+  );
 
   return (
-    <KeyboardScreen
-      title="Suscripciones"
-      onBack={() => router.back()}
-      footer={
-        <View className="flex-row gap-2">
-          <Pressable
-            onPress={handleSave}
-            disabled={saving || loading}
-            className={`${BRASS_BUTTON_CLASS} flex-1 rounded-xl py-3 items-center ${
-              saving || loading ? "opacity-40" : ""
-            }`}
-          >
-            {saving ? (
-              <ActivityIndicator color={COLORS.ink} />
-            ) : (
-              <Text className="text-z-ink font-inter-bold text-sm">
-                {editingId ? "Guardar cambios" : "Agregar suscripción"}
-              </Text>
-            )}
-          </Pressable>
-
-          {editingId ? (
-            <Pressable
-              onPress={resetForm}
-              disabled={saving || loading}
-              className="rounded-xl border border-white-6 px-4 py-3 items-center justify-center"
-            >
-              <Text className="text-foreground font-inter-medium text-sm">Cancelar</Text>
-            </Pressable>
-          ) : null}
-        </View>
-      }
-    >
+    <View className="flex-1 bg-background">
+      <Stack.Screen options={{ headerShown: false }} />
+      <MobileHeader variant="sub" title="Suscripciones" />
       {loading ? (
-        <View className="flex-1 items-center justify-center py-16">
-          <ActivityIndicator size="large" color={COLORS.sageLight} />
+        <View
+          className="flex-1 items-center justify-center"
+          accessibilityLabel="Cargando suscripciones"
+        >
+          <ActivityIndicator size="large" color={COLORS.brass} />
         </View>
       ) : (
-        <>
-          <View className="rounded-xl border border-white-6 bg-z-surface-2-55 p-4">
-            <Text className="text-foreground font-inter-semibold text-base">
-              {editingId ? "Editar suscripción" : "Nueva suscripción"}
+        <ScrollView
+          contentContainerStyle={{
+            padding: 16,
+            gap: 16,
+            paddingBottom: MOBILE_TAB_BAR_CLEARANCE,
+          }}
+        >
+          {/* Hero */}
+          <View className={`${PANEL_INSET_CLASS} p-4 gap-1`}>
+            <Text className={SECTION_EYEBROW_CLASS}>Compromiso mensual</Text>
+            <Text className="text-2xl font-inter-bold text-foreground tabular-nums">
+              {formatCurrency(monthlyTotal, currency)}
             </Text>
-            <Text className="text-muted-foreground font-inter text-xs mt-1">
-              Registra pagos como gym, Netflix, YouTube Premium, Codex, Supabase o Notion.
+            <Text className="text-[12px] font-inter text-muted-foreground">
+              {tracked.length}{" "}
+              {tracked.length === 1 ? "suscripción activa" : "suscripciones activas"} ·{" "}
+              <Text className="tabular-nums">
+                {formatCurrency(monthlyTotal * 12, currency)}
+              </Text>{" "}
+              al año
             </Text>
-
-            <View className="mt-3 flex-row flex-wrap gap-2">
-              {SUGGESTED_NAMES.map((name) => (
-                <Pressable
-                  key={name}
-                  onPress={() => useSuggestedName(name)}
-                  className="rounded-full border border-z-brass-30 bg-z-brass-10 px-3 py-1.5 active:bg-z-brass-20"
-                >
-                  <Text className="text-z-brass font-inter-medium text-xs">{name}</Text>
-                </Pressable>
-              ))}
-            </View>
-
-            <Text className="mt-4 mb-1 text-sm font-inter-medium text-foreground">
-              Servicio / Membresía
-            </Text>
-            <TextInput
-              value={merchantName}
-              onChangeText={setMerchantName}
-              placeholder="Ej: Netflix"
-              placeholderTextColor={COLORS.sageDark}
-              className="rounded-xl border border-white-6 bg-black-10 px-3 py-2.5 text-foreground"
-            />
-
-            <Text className="mt-3 mb-1 text-sm font-inter-medium text-foreground">Monto</Text>
-            <TextInput
-              value={amountInput}
-              onChangeText={setAmountInput}
-              keyboardType="decimal-pad"
-              placeholder="Ej: 49900"
-              placeholderTextColor={COLORS.sageDark}
-              className="rounded-xl border border-white-6 bg-black-10 px-3 py-2.5 text-foreground"
-            />
-
-            <Text className="mt-3 mb-1 text-sm font-inter-medium text-foreground">
-              Cuenta de cobro
-            </Text>
-            {accounts.length === 0 ? (
-              <View className="rounded-xl border border-z-alert-25 bg-z-alert-12 px-3 py-2.5">
-                <Text className="text-z-alert font-inter text-xs">
-                  Crea una cuenta primero para registrar suscripciones.
+            {markedMonthly > 0 && (
+              <Text className="text-[12px] font-inter text-z-income">
+                Cancelar las marcadas ahorra{" "}
+                <Text className="tabular-nums">
+                  {formatCurrency(markedMonthly, currency)}
                 </Text>
-              </View>
-            ) : (
-              <View className="flex-row flex-wrap gap-2">
-                {accounts.map((account) => {
-                  const selected = accountId === account.id;
-                  return (
-                    <Pressable
-                      key={account.id}
-                      onPress={() => setAccountId(account.id)}
-                      className={`rounded-xl border px-3 py-2 ${
-                        selected
-                          ? "border-z-brass bg-z-brass-15"
-                          : "border-white-6 bg-black-10"
-                      }`}
-                    >
-                      <Text
-                        className={`font-inter-medium text-xs ${
-                          selected ? "text-z-brass" : "text-foreground"
-                        }`}
-                      >
-                        {account.name}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            )}
-
-            <Text className="mt-3 mb-1 text-sm font-inter-medium text-foreground">Frecuencia</Text>
-            <View className="flex-row gap-2">
-              {FREQUENCY_OPTIONS.map((option) => {
-                const selected = frequency === option.value;
-                return (
-                  <Pressable
-                    key={option.value}
-                    onPress={() => setFrequency(option.value)}
-                    className={`rounded-xl border px-3 py-2 ${
-                      selected ? "border-z-brass bg-z-brass-15" : "border-white-6 bg-black-10"
-                    }`}
-                  >
-                    <Text
-                      className={`font-inter-medium text-xs ${
-                        selected ? "text-z-brass" : "text-foreground"
-                      }`}
-                    >
-                      {option.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            <Text className="mt-3 mb-1 text-sm font-inter-medium text-foreground">Día de cobro</Text>
-            <TextInput
-              value={dayOfMonthInput}
-              onChangeText={setDayOfMonthInput}
-              keyboardType="number-pad"
-              placeholder="1 - 31"
-              placeholderTextColor={COLORS.sageDark}
-              className="rounded-xl border border-white-6 bg-black-10 px-3 py-2.5 text-foreground"
-            />
-
-            <Text className="mt-3 mb-1 text-sm font-inter-medium text-foreground">
-              Nota (opcional)
-            </Text>
-            <TextInput
-              value={description}
-              onChangeText={setDescription}
-              placeholder="Ej: Plan familiar"
-              placeholderTextColor={COLORS.sageDark}
-              className="rounded-xl border border-white-6 bg-black-10 px-3 py-2.5 text-foreground"
-            />
-
-          </View>
-
-          <View className="pt-5 pb-2">
-            <Text className="text-muted-foreground font-inter-semibold text-xs uppercase">
-              Suscripciones registradas
-            </Text>
-          </View>
-
-          {items.length === 0 ? (
-            <View className="rounded-2xl bg-z-surface-2-55 p-5">
-              <Text className="text-center text-sm text-muted-foreground font-inter">
-                No hay suscripciones todavía.
+                /mes
               </Text>
-            </View>
-          ) : (
-            <View>
-              {items.map((item) => {
-                const account = accountsById.get(item.account_id);
-                const isBusy = togglingId === item.id || deletingId === item.id;
+            )}
+            {estimatedMonthly > 0 && (
+              <Text className="text-[12px] font-inter text-muted-foreground">
+                Incluye{" "}
+                <Text className="tabular-nums">
+                  {formatCurrency(estimatedMonthly, currency)}
+                </Text>
+                /mes estimado (sin programar)
+              </Text>
+            )}
+          </View>
+
+          {/* Sugerencias del detector */}
+          {suggested.length > 0 && (
+            <View className="gap-2">
+              <Text className={SECTION_EYEBROW_CLASS}>Detectadas</Text>
+              {suggested.map((sub) => {
+                const amount = sub.estimated_amount;
+                const busy = busyId === sub.id;
                 return (
-                  <View key={item.id} className="mb-3 rounded-2xl bg-z-surface-2-55 p-4">
-                    <View className="flex-row items-start justify-between">
-                      <View className="flex-1 pr-3">
-                        <Text className="text-foreground font-inter-semibold text-base">
-                          {item.merchant_name ?? "Suscripción"}
-                        </Text>
-                        <Text className="text-muted-foreground font-inter text-xs mt-1">
-                          {account?.name ?? "Cuenta no disponible"}
-                        </Text>
-                      </View>
-
-                      <View
-                        className={`rounded-full px-2.5 py-1 ${
-                          item.is_active ? "bg-z-income-10" : "bg-black-10"
-                        }`}
+                  <View key={sub.id} className={`${PANEL_INSET_CLASS} p-4 gap-2`}>
+                    <View className="flex-row items-center justify-between gap-3">
+                      <Text
+                        className="flex-1 text-sm font-inter-semibold text-foreground"
+                        numberOfLines={1}
                       >
-                        <Text
-                          className={`font-inter-medium text-xs ${
-                            item.is_active ? "text-z-income" : "text-muted-foreground"
-                          }`}
-                        >
-                          {item.is_active ? "Activa" : "Pausada"}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View className="mt-3 flex-row items-center justify-between">
-                      <Text className="text-foreground font-inter-bold text-base">
-                        {formatCurrency(item.amount, item.currency_code as CurrencyCode)}
+                        {sub.destinatario_name ?? "Suscripción"}
                       </Text>
-                      <View className="flex-row items-center">
-                        <Repeat size={14} color={COLORS.sageDark} />
-                        <Text className="ml-1 text-muted-foreground font-inter text-xs">
-                          {getScheduleLabel(item)}
+                      {amount != null && (
+                        <Text className="text-sm font-inter-bold text-foreground tabular-nums">
+                          {formatCurrency(amount, (sub.currency_code as CurrencyCode) ?? currency)}
                         </Text>
-                      </View>
+                      )}
                     </View>
-
-                    {item.description ? (
-                      <Text className="mt-2 text-muted-foreground font-inter text-xs">
-                        {item.description}
-                      </Text>
-                    ) : null}
-
-                    <View className="mt-3 flex-row gap-2">
+                    <Text className="text-[12px] font-inter text-muted-foreground">
+                      Detectamos cobros mensuales repetidos de este comercio.
+                    </Text>
+                    <View className="flex-row gap-2">
                       <Pressable
-                        onPress={() => beginEdit(item)}
-                        className="rounded-xl border border-white-6 px-3 py-2 active:bg-black-10"
-                        disabled={isBusy || saving}
+                        onPress={() => void run(sub.id, confirmSubscription)}
+                        disabled={busyId !== null}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Rastrear ${sub.destinatario_name ?? "suscripción"}`}
+                        accessibilityState={{ disabled: busyId !== null }}
+                        className="rounded-xl border border-z-brass-30 bg-z-brass-10 px-3.5 py-2 active:opacity-80"
+                        style={busy ? { opacity: 0.5 } : undefined}
                       >
-                        <Text className="text-foreground font-inter-medium text-xs">Editar</Text>
+                        <Text className="text-xs font-inter-semibold text-z-brass">
+                          Rastrear
+                        </Text>
                       </Pressable>
-
                       <Pressable
-                        onPress={() => toggleActive(item)}
-                        className="rounded-xl border border-z-brass-20 px-3 py-2 active:bg-z-brass-8"
-                        disabled={isBusy || saving}
+                        onPress={() => void run(sub.id, dismissSubscription)}
+                        disabled={busyId !== null}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Descartar ${sub.destinatario_name ?? "sugerencia"}`}
+                        accessibilityState={{ disabled: busyId !== null }}
+                        className="rounded-xl border border-white-6 bg-z-surface-2 px-3.5 py-2 active:opacity-80"
+                        style={busy ? { opacity: 0.5 } : undefined}
                       >
-                        {togglingId === item.id ? (
-                          <ActivityIndicator size="small" color={COLORS.brass} />
-                        ) : (
-                          <Text className="text-z-brass font-inter-medium text-xs">
-                            {item.is_active ? "Pausar" : "Activar"}
-                          </Text>
-                        )}
-                      </Pressable>
-
-                      <Pressable
-                        onPress={() => handleDelete(item)}
-                        className="rounded-xl border border-z-debt-30 px-3 py-2 active:bg-z-debt-12"
-                        disabled={isBusy || saving}
-                      >
-                        {deletingId === item.id ? (
-                          <ActivityIndicator size="small" color={COLORS.expense} />
-                        ) : (
-                          <View className="flex-row items-center">
-                            <Trash2 size={12} color={COLORS.expense} />
-                            <Text className="ml-1 text-z-expense font-inter-medium text-xs">
-                              Eliminar
-                            </Text>
-                          </View>
-                        )}
+                        <Text className="text-xs font-inter-medium text-muted-foreground">
+                          Descartar
+                        </Text>
                       </Pressable>
                     </View>
                   </View>
@@ -599,8 +290,102 @@ export default function SubscriptionsScreen() {
               })}
             </View>
           )}
-        </>
+
+          {/* Rastreadas */}
+          {tracked.length === 0 ? (
+            <View className={`${PANEL_INSET_CLASS} items-center gap-2 p-6`}>
+              <Repeat size={20} color={COLORS.sageDark} />
+              <Text className="text-sm font-inter-semibold text-foreground">
+                No tienes suscripciones registradas todavía
+              </Text>
+              <Text className="text-center text-[12px] font-inter text-muted-foreground leading-5">
+                Crea una plantilla recurrente marcada como suscripción, o importa
+                movimientos para que el detector las encuentre.
+              </Text>
+              <Pressable
+                onPress={() => router.push("/recurrentes" as never)}
+                accessibilityRole="button"
+                accessibilityLabel="Ir a recurrentes"
+                className="mt-1 rounded-xl border border-z-brass-30 bg-z-brass-10 px-4 py-2 active:opacity-80"
+              >
+                <Text className="text-xs font-inter-semibold text-z-brass">
+                  Ir a Recurrentes
+                </Text>
+              </Pressable>
+            </View>
+          ) : (
+            <View className="gap-2">
+              <Text className={SECTION_EYEBROW_CLASS}>Rastreadas</Text>
+              {tracked.map((sub) => {
+                const amount = sub.template_amount ?? sub.estimated_amount;
+                const isEstimate = sub.template_amount == null;
+                const busy = busyId === sub.id;
+                const marked = sub.status === "marked_for_cancellation";
+                return (
+                  <View key={sub.id} className={`${PANEL_INSET_CLASS} p-4 gap-2.5`}>
+                    <View className="flex-row items-center justify-between gap-3">
+                      <Text
+                        className="flex-1 text-sm font-inter-semibold text-foreground"
+                        numberOfLines={1}
+                      >
+                        {sub.destinatario_name ?? "Suscripción"}
+                      </Text>
+                      {amount != null && (
+                        <Text className="text-sm font-inter-bold text-foreground tabular-nums">
+                          {formatCurrency(amount, (sub.currency_code as CurrencyCode) ?? currency)}
+                        </Text>
+                      )}
+                    </View>
+
+                    <View className="flex-row flex-wrap items-center gap-1.5">
+                      {sub.template_frequency === "ANNUAL" && (
+                        <StatusBadge label="anual" tone="muted" />
+                      )}
+                      {isEstimate && <StatusBadge label="estimado" tone="muted" />}
+                      {sub.status === "trial" && (
+                        <StatusBadge label="prueba" tone="alert" />
+                      )}
+                      {marked && <StatusBadge label="por cancelar" tone="alert" />}
+                    </View>
+
+                    <View className="flex-row gap-2">
+                      {marked ? (
+                        <Pressable
+                          onPress={() => handleCancel(sub)}
+                          disabled={busyId !== null}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Confirmar cancelación de ${sub.destinatario_name ?? "suscripción"}`}
+                          accessibilityState={{ disabled: busyId !== null }}
+                          className="rounded-xl border border-z-debt-30 px-3.5 py-2 active:bg-z-debt-12"
+                          style={busy ? { opacity: 0.5 } : undefined}
+                        >
+                          <Text className="text-xs font-inter-semibold text-z-debt">
+                            Ya la cancelé
+                          </Text>
+                        </Pressable>
+                      ) : (
+                        <Pressable
+                          onPress={() => void run(sub.id, markForCancellation)}
+                          disabled={busyId !== null}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Marcar ${sub.destinatario_name ?? "suscripción"} para cancelar`}
+                          accessibilityState={{ disabled: busyId !== null }}
+                          className="rounded-xl border border-white-6 bg-z-surface-2 px-3.5 py-2 active:opacity-80"
+                          style={busy ? { opacity: 0.5 } : undefined}
+                        >
+                          <Text className="text-xs font-inter-medium text-muted-foreground">
+                            Marcar para cancelar
+                          </Text>
+                        </Pressable>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+        </ScrollView>
       )}
-    </KeyboardScreen>
+    </View>
   );
 }
