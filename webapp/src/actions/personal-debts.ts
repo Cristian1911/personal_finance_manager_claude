@@ -43,12 +43,17 @@ async function getPersonalDebtsCached(
   cacheLife("zeta");
   const supabase = createCachedClient(accessToken);
 
+  // split_group_id MUST be selected: personas-root filters `!d.split_group_id`
+  // to keep shared-payment debts out of the standalone Debo / Me deben lists
+  // (they render as grouped SharedPaymentCards instead). Omitting it makes that
+  // filter a silent no-op, so every per-transaction shared debt leaks into the
+  // flat lists — one card per shared expense.
   const { data, error } = await supabase
     .from("personal_debts")
     .select(`
       id, user_id, destinatario_id, direction, principal_amount,
       currency_code, outstanding_amount, opened_on, due_date, status,
-      origin_transaction_id, notes, is_demo, created_at, updated_at,
+      origin_transaction_id, split_group_id, notes, is_demo, created_at, updated_at,
       destinatario:destinatarios!personal_debts_destinatario_id_fkey ( name, default_category_id ),
       repayments:transactions!transactions_enc_personal_debt_id_fkey ( amount, pd_role )
     `)
