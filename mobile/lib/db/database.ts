@@ -81,6 +81,9 @@ export async function clearDatabase(): Promise<void> {
   //   recurring_occurrences → recurring_transaction_templates → accounts
   //   tags.group_id → tag_groups
   //   planning_assignments → planning_entries → planning_periods
+  //   subscriptions → destinatarios + recurring_transaction_templates
+  //   personal_debts → destinatarios
+  //   category_rules → categories
   await database.execAsync(`
     DELETE FROM wishlist_items;
     DELETE FROM transaction_tags;
@@ -88,13 +91,19 @@ export async function clearDatabase(): Promise<void> {
     DELETE FROM planning_assignments;
     DELETE FROM planning_entries;
     DELETE FROM planning_periods;
+    DELETE FROM subscriptions;
+    DELETE FROM personal_debts;
     DELETE FROM recurring_transaction_templates;
     DELETE FROM destinatario_rules;
+    DELETE FROM destinatario_suggestion_dismissals;
     DELETE FROM destinatarios;
     DELETE FROM statement_snapshots;
     DELETE FROM budgets;
+    DELETE FROM transaction_locations;
+    DELETE FROM location_pings;
     DELETE FROM transactions;
     DELETE FROM accounts;
+    DELETE FROM category_rules;
     DELETE FROM categories;
     DELETE FROM tags;
     DELETE FROM tag_groups;
