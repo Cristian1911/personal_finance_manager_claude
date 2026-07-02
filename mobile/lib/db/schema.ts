@@ -687,6 +687,18 @@ export const DB_MIGRATIONS: DbMigration[] = [
           AND transfer_group_id IS NULL`,
     ],
   },
+  {
+    version: 24,
+    statements: [
+      // Device-local store of dismissed destinatario suggestions (mirrors the
+      // webapp's localStorage key `zeta:destinatario-suggestions-dismissed`).
+      // NEVER synced — do not add to SYNC_TABLES or SyncTableName.
+      `CREATE TABLE IF NOT EXISTS destinatario_suggestion_dismissals (
+        pattern TEXT PRIMARY KEY,
+        dismissed_at TEXT NOT NULL
+      )`,
+    ],
+  },
 ];
 
 export const LATEST_DB_VERSION =
