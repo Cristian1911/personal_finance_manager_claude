@@ -96,7 +96,7 @@ export async function dismissSubscription(id: string): Promise<void> {
   await db.withTransactionAsync(async () => {
     const res = await db.runAsync(
       `UPDATE subscriptions SET status = 'dismissed', dismissed_at = ?, updated_at = ?
-       WHERE id = ?`,
+       WHERE id = ? AND status != 'dismissed'`,
       [now, now, id]
     );
     if (res.changes === 0) return;
@@ -140,11 +140,13 @@ export async function markForCancellation(id: string): Promise<void> {
 export async function cancelSubscription(id: string): Promise<void> {
   const db = await getDatabase();
   const now = new Date().toISOString();
-  const sub = await db.getFirstAsync<{ recurring_template_id: string | null }>(
-    "SELECT recurring_template_id FROM subscriptions WHERE id = ?",
-    [id]
-  );
-  if (!sub) return;
+  const sub = await db.getFirstAsync<{
+    recurring_template_id: string | null;
+    status: string;
+  }>("SELECT recurring_template_id, status FROM subscriptions WHERE id = ?", [
+    id,
+  ]);
+  if (!sub || sub.status === "cancelled") return;
 
   await db.withTransactionAsync(async () => {
     if (sub.recurring_template_id) {

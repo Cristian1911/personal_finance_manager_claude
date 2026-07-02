@@ -260,10 +260,10 @@ export default function SubscriptionsScreen() {
                     <View className="flex-row gap-2">
                       <Pressable
                         onPress={() => void run(sub.id, confirmSubscription)}
-                        disabled={busy}
+                        disabled={busyId !== null}
                         accessibilityRole="button"
                         accessibilityLabel={`Rastrear ${sub.destinatario_name ?? "suscripción"}`}
-                        accessibilityState={{ disabled: busy }}
+                        accessibilityState={{ disabled: busyId !== null }}
                         className="rounded-xl border border-z-brass-30 bg-z-brass-10 px-3.5 py-2 active:opacity-80"
                         style={busy ? { opacity: 0.5 } : undefined}
                       >
@@ -273,10 +273,10 @@ export default function SubscriptionsScreen() {
                       </Pressable>
                       <Pressable
                         onPress={() => void run(sub.id, dismissSubscription)}
-                        disabled={busy}
+                        disabled={busyId !== null}
                         accessibilityRole="button"
                         accessibilityLabel={`Descartar ${sub.destinatario_name ?? "sugerencia"}`}
-                        accessibilityState={{ disabled: busy }}
+                        accessibilityState={{ disabled: busyId !== null }}
                         className="rounded-xl border border-white-6 bg-z-surface-2 px-3.5 py-2 active:opacity-80"
                         style={busy ? { opacity: 0.5 } : undefined}
                       >
@@ -352,10 +352,10 @@ export default function SubscriptionsScreen() {
                       {marked ? (
                         <Pressable
                           onPress={() => handleCancel(sub)}
-                          disabled={busy}
+                          disabled={busyId !== null}
                           accessibilityRole="button"
                           accessibilityLabel={`Confirmar cancelación de ${sub.destinatario_name ?? "suscripción"}`}
-                          accessibilityState={{ disabled: busy }}
+                          accessibilityState={{ disabled: busyId !== null }}
                           className="rounded-xl border border-z-debt-30 px-3.5 py-2 active:bg-z-debt-12"
                           style={busy ? { opacity: 0.5 } : undefined}
                         >
@@ -366,10 +366,10 @@ export default function SubscriptionsScreen() {
                       ) : (
                         <Pressable
                           onPress={() => void run(sub.id, markForCancellation)}
-                          disabled={busy}
+                          disabled={busyId !== null}
                           accessibilityRole="button"
                           accessibilityLabel={`Marcar ${sub.destinatario_name ?? "suscripción"} para cancelar`}
-                          accessibilityState={{ disabled: busy }}
+                          accessibilityState={{ disabled: busyId !== null }}
                           className="rounded-xl border border-white-6 bg-z-surface-2 px-3.5 py-2 active:opacity-80"
                           style={busy ? { opacity: 0.5 } : undefined}
                         >
