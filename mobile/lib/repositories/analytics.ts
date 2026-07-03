@@ -212,7 +212,7 @@ export async function getDrilldownTransactions(params: {
        AND t.transfer_group_id IS NULL
        AND (t.personal_debt_id IS NULL OR t.pd_role != 'origin')
        AND ${filterCol} = ?
-     ORDER BY t.transaction_date DESC, t.created_at DESC
+     ORDER BY t.transaction_date DESC, t.transaction_time DESC, t.created_at DESC
      LIMIT ?`,
     [currency, params.dateFrom, params.dateTo, filterVal as string, limit]
   );

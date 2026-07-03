@@ -214,10 +214,13 @@ export function MovimientosRoot({
         <div className="space-y-4">
           {groupedByDate.map(([date, txs]) => (
             <div key={date}>
-              <p className={cn("mb-2", SECTION_EYEBROW_CLASS)}>
-                {formatDate(date, "EEEE, dd MMM")}
-              </p>
-              <div className="space-y-0.5">
+              <div className="mb-2.5 flex items-center gap-3 px-0.5">
+                <p className={cn("shrink-0", SECTION_EYEBROW_CLASS)}>
+                  {formatDate(date, "EEEE, dd MMM")}
+                </p>
+                <div className="h-px flex-1 bg-white/6" />
+              </div>
+              <div className="space-y-2">
                 {txs.map((tx) => (
                   <MovimientosTransactionRow key={tx.id} transaction={tx} categories={categories} tags={tagsByTxId.get(tx.id)} linkableAccountIds={linkableAccountIds} />
                 ))}

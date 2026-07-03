@@ -29,6 +29,7 @@ export type TransactionRow = {
   merchant_name: string | null;
   raw_description: string | null;
   transaction_date: string;
+  transaction_time: string | null;
   post_date: string | null;
   status: string;
   idempotency_key: string | null;
@@ -389,7 +390,7 @@ export async function getTransactions(options?: {
      LEFT JOIN accounts a ON t.account_id = a.id
      LEFT JOIN destinatarios d ON t.destinatario_id = d.id
      WHERE ${conditions.join(" AND ")}
-     ORDER BY t.transaction_date DESC, t.created_at DESC
+     ORDER BY t.transaction_date DESC, t.transaction_time DESC, t.created_at DESC
      LIMIT ? OFFSET ?`,
     [...params, limit, offset]
   );
@@ -486,7 +487,7 @@ export async function getTopUncategorized(options: {
        AND t.is_excluded = 0
        AND t.reconciled_into_transaction_id IS NULL
        AND t.transaction_date LIKE ?${accountFilter}
-     ORDER BY t.transaction_date DESC, t.created_at DESC
+     ORDER BY t.transaction_date DESC, t.transaction_time DESC, t.created_at DESC
      LIMIT ?`,
     params
   );

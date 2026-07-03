@@ -132,13 +132,21 @@ export function EmailImportPanel({
     if (expandedId === pendingId) setExpandedId(null);
   }
 
-  async function refreshAfterMutation() {
-    try {
-      await syncAll();
-    } catch {
-      // Remote write already succeeded; local SQLite catches up next sync.
-    }
+  function refreshAfterMutation() {
+    // The approve path writes to local SQLite BEFORE returning, so the feed can
+    // refresh immediately — waiting for a full syncAll() here is what made the
+    // imported row take ~5s to appear. Sync still runs in the background, and
+    // only re-triggers the (expensive) parent reset when it actually pulled
+    // remote changes — otherwise the second refresh is a full-feed re-render
+    // for nothing.
     onAfterChange?.();
+    void syncAll()
+      .then(({ pulled }) => {
+        if (pulled && Object.values(pulled).some((n) => n > 0)) onAfterChange?.();
+      })
+      .catch(() => {
+        // Remote write already succeeded; local SQLite catches up next sync.
+      });
   }
 
   async function runApprove(pendingId: string, reconcileWithId?: string) {
@@ -163,7 +171,7 @@ export function EmailImportPanel({
         }
         const ok = await runApprove(row.id);
         setBusyId(null);
-        if (ok) await refreshAfterMutation();
+        if (ok) refreshAfterMutation();
       } catch {
         setBusyId(null);
         Alert.alert("Error", "No se pudo importar. Inténtalo de nuevo.");
@@ -179,7 +187,7 @@ export function EmailImportPanel({
     (async () => {
       const ok = await runApprove(pendingId, reconcile ? candidate.id : undefined);
       setReconBusy(false);
-      if (ok) await refreshAfterMutation();
+      if (ok) refreshAfterMutation();
     })();
   }
 
@@ -216,7 +224,7 @@ export function EmailImportPanel({
       const ids = new Set(importable.map((r) => r.id));
       setRows((prev) => prev.filter((r) => !ids.has(r.id)));
       setBulkBusy(false);
-      await refreshAfterMutation();
+      refreshAfterMutation();
       Alert.alert(
         "Importación",
         failed === 0

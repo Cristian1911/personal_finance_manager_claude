@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -10,6 +10,7 @@ import {
   EyeOff,
   Eye,
   Pencil,
+  Banknote,
   Repeat,
   UserPlus,
   UserRound,
@@ -20,7 +21,9 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
-import { chipBackground, zoneBorder, zoneTextColor } from "@/lib/utils/zone-colors";
+import { chipBackground, zoneTextColor } from "@/lib/utils/zone-colors";
+import { GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import { SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
 import { CategoryIcon } from "@/components/categories/category-icon";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { DestinatarioZonePicker } from "@/components/destinatarios/destinatario-zone-picker";
@@ -43,19 +46,33 @@ import {
 import { toggleExcludeTransaction } from "@/actions/transactions";
 import {
   getCandidateOccurrencesForTransaction,
+  getLinkedRecurringForTransaction,
   linkExistingTransactionToOccurrence,
+  revertOccurrence,
   type CandidateOccurrence,
+  type LinkedRecurringInfo,
 } from "@/actions/occurrences";
 import { getPersonalDebts, linkTransactionToPersonalDebt } from "@/actions/personal-debts";
 import type { CategoryWithChildren, CurrencyCode } from "@/types/domain";
 
-/** Base action button for the primary trio (Variante B). Categoría/Destinatario
- *  take `flex-1`; "Más" stays content-width so the two grow. */
-const TRIO_BTN_CLASS =
-  "inline-flex min-w-0 items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-medium transition-colors";
+/** Trio action button (Categoría · Destinatario · Más) — ghost, equal thirds. */
+const TRIO_BTN_CLASS = cn(
+  "inline-flex h-[34px] min-w-0 items-center justify-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors",
+  GHOST_BUTTON_CLASS,
+);
+
+/** "Más" sheet action tile — fixed 2×2 grid slot. */
+const SHEET_TILE_CLASS =
+  "flex h-[84px] flex-col items-center justify-center gap-1.5 rounded-2xl border px-3.5 py-2.5 text-center";
+
+/** Actionable (unassigned) state of a sheet tile — ghost surface + tile extras. */
+const SHEET_TILE_ACTION_CLASS = cn(
+  GHOST_BUTTON_CLASS,
+  "transition-colors disabled:opacity-40",
+);
 
 /** Resolve a category's display color (parent zone color, like the picker). */
-function resolveCategoryColor(
+export function resolveCategoryColor(
   categories: CategoryWithChildren[],
   id: string,
 ): string | null {
@@ -65,6 +82,45 @@ function resolveCategoryColor(
     if (child) return parent.color ?? child.color ?? null;
   }
   return null;
+}
+
+/** Compact account label for pills/meta: "····4398", "VISA ····7022", or a
+ *  truncated name when it carries no trailing digits. */
+export function accountTail(name: string): string {
+  const match = name.match(/(\d{4})\s*$/);
+  if (!match) return name.length > 14 ? `${name.slice(0, 13)}…` : name;
+  return `${/visa/i.test(name) ? "VISA " : ""}····${match[1]}`;
+}
+
+/** 38px category icon tile — zone-colored background + category icon.
+ *  Uncategorized falls back to a sage Banknote. Shared by the Movimientos
+ *  card row and the "Más" sheet header. */
+export function TransactionIconTile({
+  category,
+  categories,
+}: {
+  category: { id: string; icon: string | null } | null;
+  categories: CategoryWithChildren[];
+}) {
+  const color = category ? resolveCategoryColor(categories, category.id) : null;
+  return (
+    <div
+      className="flex size-[38px] shrink-0 items-center justify-center rounded-xl"
+      style={{
+        backgroundColor: color
+          ? chipBackground(color)
+          : "color-mix(in srgb, var(--z-sage) 14%, transparent)",
+      }}
+    >
+      {category?.icon ? (
+        <span className="flex" style={{ color: color ? zoneTextColor(color) : "var(--z-sage-light)" }}>
+          <CategoryIcon icon={category.icon} className="size-[17px]" />
+        </span>
+      ) : (
+        <Banknote className="size-[17px] text-z-sage-light" />
+      )}
+    </div>
+  );
 }
 
 /**
@@ -80,9 +136,11 @@ export interface QuickActionTransaction {
   amount: number;
   currency_code: string;
   transaction_date: string;
+  transaction_time?: string | null;
   raw_description: string | null;
   merchant_name: string | null;
   clean_description: string | null;
+  account?: { name: string; color: string | null } | null;
   category: {
     id: string;
     name: string;
@@ -110,17 +168,14 @@ export interface TransactionQuickActionsProps {
 
 /**
  * Canonical expanded action surface for a transaction row, shared by Inicio
- * (recent activity), Movimientos, and the Categorizar inbox. Variante B:
- * a primary trio (Categoría · Destinatario · Más) using the Chip token, with
- * a compact meta-línea above it that surfaces already-assigned secondary state
- * (recurrente · etiquetas · excluida) without re-cramming the action row.
- * Everything secondary lives in the "Más" sheet.
+ * (recent activity), Movimientos, and the Categorizar inbox. Prototipo
+ * "Movimientos" de Claude Design: un trío fijo de botones ghost (Categoría ·
+ * Destinatario · Más); todo lo secundario vive en la hoja "Más" — cabecera con
+ * la transacción, fila de etiquetas, tiles de acciones 2×2 y "Ver / editar".
  */
 export function TransactionQuickActions({
   transaction: tx,
   categories,
-  tags = [],
-  linkableAccountIds,
   onCategorized,
 }: TransactionQuickActionsProps) {
   const router = useRouter();
@@ -144,7 +199,28 @@ export function TransactionQuickActions({
   const [personaCandidates, setPersonaCandidates] = useState<LinkCandidate[]>([]);
   const [personaCreateOpen, setPersonaCreateOpen] = useState(false);
 
-  const canLinkRecurring = linkableAccountIds?.has(tx.account_id) && !tx.recurrence_group_id;
+  // Linked-recurrente state is local so the tile flips without a refresh.
+  // `undefined` = not fetched yet; `null` = fetched and none found — the
+  // distinction stops the effect from re-firing the fetch on every render
+  // when a recurrence_group_id has no occurrence row behind it.
+  const [isLinkedRecurring, setIsLinkedRecurring] = useState(!!tx.recurrence_group_id);
+  const [linkedRecurring, setLinkedRecurring] = useState<LinkedRecurringInfo | null | undefined>(undefined);
+  const [recurringActionsOpen, setRecurringActionsOpen] = useState(false);
+
+  // Lazy-resolve the linked recurrente's name when the sheet opens; reset on
+  // close so a reopen never shows stale data (the server fn is cached).
+  useEffect(() => {
+    if (!moreOpen) {
+      setLinkedRecurring(undefined);
+      return;
+    }
+    if (isLinkedRecurring && linkedRecurring === undefined) {
+      getLinkedRecurringForTransaction(tx.id).then((info) => {
+        setLinkedRecurring(info);
+      });
+    }
+  }, [moreOpen, isLinkedRecurring, linkedRecurring, tx.id]);
+
   const canLinkPersona = !tx.personal_debt_id && !tx.transfer_group_id;
   // A shared payment splits a spend the user fronted: only OUTFLOWs, not already
   // linked to a person/transfer, and not already split.
@@ -156,9 +232,6 @@ export function TransactionQuickActions({
 
   const description =
     tx.merchant_name || tx.clean_description || tx.raw_description || "Sin descripción";
-  const categoryName = localCategory?.name_es ?? localCategory?.name ?? null;
-  const catColor =
-    categoryName && localCategory ? resolveCategoryColor(categories, localCategory.id) : null;
 
   const debtCounterparty =
     localDestinatario &&
@@ -264,9 +337,27 @@ export function TransactionQuickActions({
     startLinkTransition(async () => {
       const result = await linkExistingTransactionToOccurrence(occurrenceId, tx.id);
       if (result.success) {
+        // Flip the tile to its linked state; the name resolves on next sheet open.
+        setIsLinkedRecurring(true);
         toast.success("Transacción vinculada a recurrente");
       } else {
         toast.error(result.error ?? "No se pudo vincular");
+      }
+    });
+  }
+
+  function handleUnlinkRecurring() {
+    if (!linkedRecurring?.linkedManually) return;
+    const occurrenceId = linkedRecurring.occurrenceId;
+    setRecurringActionsOpen(false);
+    startLinkTransition(async () => {
+      const result = await revertOccurrence(occurrenceId);
+      if (result.success) {
+        setIsLinkedRecurring(false);
+        setLinkedRecurring(undefined);
+        toast.success("Transacción desvinculada de la recurrente");
+      } else {
+        toast.error(result.error ?? "No se pudo desvincular");
       }
     });
   }
@@ -331,103 +422,31 @@ export function TransactionQuickActions({
     });
   }
 
-  // ── Meta-línea: compact read-only/shortcut status of assigned secondary state ──
-  const metaItems: React.ReactNode[] = [];
-  if (tx.recurrence_group_id) {
-    metaItems.push(
-      <span key="rec" className="inline-flex items-center gap-1">
-        <Repeat className="size-3" /> Recurrente
-      </span>,
-    );
-  }
-  if (tags.length > 0) {
-    metaItems.push(
-      <button
-        key="tags"
-        type="button"
-        onClick={() => setMoreOpen(true)}
-        className="inline-flex items-center gap-1 hover:text-z-brass"
-      >
-        <TagIcon className="size-3" /> {tags.length} etiqueta{tags.length === 1 ? "" : "s"}
-      </button>,
-    );
-  }
-  if (excluded) {
-    metaItems.push(
-      <span key="exc" className="inline-flex items-center gap-1 text-z-expense">
-        <EyeOff className="size-3" /> Excluida
-      </span>,
-    );
-  }
+  const sheetMeta = [
+    formatDate(tx.transaction_date, "EEEE, dd MMM"),
+    tx.transaction_time ? tx.transaction_time.slice(0, 5) : null,
+    tx.account ? accountTail(tx.account.name) : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <div className="flex flex-col gap-2">
-      {/* Meta-línea */}
-      {metaItems.length > 0 && (
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
-          {metaItems.map((item, i) => (
-            <span key={i} className="inline-flex items-center gap-2">
-              {i > 0 && <span className="opacity-40">·</span>}
-              {item}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Primary trio — Categoría · Destinatario grow; Más stays compact */}
-      <div className="flex items-stretch gap-2">
-        <button
-          type="button"
-          onClick={() => setCatOpen(true)}
-          className={cn(
-            TRIO_BTN_CLASS,
-            "flex-1",
-            !catColor && "border-z-brass/30 bg-z-brass/10 text-z-brass",
-          )}
-          style={
-            catColor
-              ? {
-                  backgroundColor: chipBackground(catColor),
-                  borderColor: zoneBorder(catColor),
-                  color: zoneTextColor(catColor),
-                }
-              : undefined
-          }
-        >
-          {categoryName ? (
-            <>
-              {localCategory?.icon && <CategoryIcon icon={localCategory.icon} className="size-3.5 shrink-0" />}
-              <span className="truncate">{categoryName}</span>
-            </>
-          ) : (
-            <>
-              <TagIcon className="size-3.5 shrink-0" />
-              Categorizar
-            </>
-          )}
+      {/* Primary trio — fixed labels; assigned state lives on the card itself */}
+      <div className="grid grid-cols-3 gap-2">
+        <button type="button" onClick={() => setCatOpen(true)} className={TRIO_BTN_CLASS}>
+          <TagIcon className="size-3.5 shrink-0" />
+          Categoría
         </button>
-        <button
-          type="button"
-          onClick={() => setDestOpen(true)}
-          className={cn(
-            TRIO_BTN_CLASS,
-            "flex-1",
-            localDestinatario
-              ? "border-z-brass/30 bg-z-brass/10 text-z-brass"
-              : "border-white/8 bg-white/[0.03] text-foreground hover:bg-white/[0.06]",
-          )}
-        >
+        <button type="button" onClick={() => setDestOpen(true)} className={TRIO_BTN_CLASS}>
           <UserRound className="size-3.5 shrink-0" />
-          <span className="truncate">{localDestinatario?.name ?? "Destinatario"}</span>
+          <span className="min-w-0 truncate">{localDestinatario?.name ?? "Destinatario"}</span>
         </button>
         <button
           type="button"
           onClick={() => setMoreOpen(true)}
           aria-label="Más acciones"
-          className={cn(
-            TRIO_BTN_CLASS,
-            "shrink-0 border-white/8 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06]",
-          )}
+          className={TRIO_BTN_CLASS}
         >
           <MoreHorizontal className="size-3.5 shrink-0" />
           Más
@@ -459,49 +478,191 @@ export function TransactionQuickActions({
         currencyCode={tx.currency_code as CurrencyCode}
       />
 
-      {/* "Más" sheet — secondary actions */}
+      {/* "Más" sheet — tx header + etiquetas + action tiles */}
       <Drawer open={moreOpen} onOpenChange={setMoreOpen}>
         <DrawerContent>
-          <DrawerHeader>
+          <DrawerHeader className="sr-only">
             <DrawerTitle>Más acciones</DrawerTitle>
           </DrawerHeader>
-          <DrawerBody className="pb-[calc(1rem+env(safe-area-inset-bottom))]">
-            <div className="px-1">
-              <div className="mb-2 px-2">
-                <TagZonePicker
-                  entityType="transaction"
-                  entityId={tx.id}
-                  variant="drawer"
-                  triggerClassName="w-full justify-start rounded-lg border border-white/6 bg-white/[0.03] px-3 py-2.5 text-sm"
-                />
+          <DrawerBody className="pb-[calc(3rem_+_env(safe-area-inset-bottom))]">
+            {/* Transaction header */}
+            <div className="flex items-center gap-3 border-b border-white/6 px-1 pb-3.5">
+              <TransactionIconTile category={localCategory} categories={categories} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[15px] font-medium">{description}</p>
+                <p className="mt-0.5 truncate text-[11.5px] text-z-sage-dark first-letter:uppercase">{sheetMeta}</p>
               </div>
-              {canLinkRecurring && (
-                <ActionRow icon={<Link2 className="size-4" />} label="Vincular a recurrente" onClick={handleOpenLinkPicker} disabled={isLinking} />
+              <span
+                className={cn(
+                  "shrink-0 text-[15px] font-medium tabular-nums",
+                  tx.direction === "INFLOW" ? "text-z-income" : "text-z-expense",
+                )}
+              >
+                {tx.direction === "INFLOW" ? "+" : "−"}
+                {formatCurrency(tx.amount, tx.currency_code as CurrencyCode)}
+              </span>
+            </div>
+
+            {/* Etiquetas */}
+            <div className="px-1 py-3">
+              <TagZonePicker
+                entityType="transaction"
+                entityId={tx.id}
+                variant="drawer"
+                triggerClassName="w-full justify-start rounded-lg border border-white/6 bg-white/[0.03] px-3 py-2.5 text-sm"
+              />
+            </div>
+
+            {/* Acciones — 4 posiciones FIJAS: Recurrente · Deuda personal ·
+                Repartir · Excluir. Un slot ya asignado cambia de estado en su
+                sitio (nunca desaparece), para que la memoria muscular no se
+                rompa entre transacciones. */}
+            <p className={cn(SECTION_EYEBROW_CLASS, "px-1 pb-2")}>Acciones</p>
+            <div className="grid grid-cols-2 gap-2 px-1">
+              {isLinkedRecurring ? (
+                <button
+                  type="button"
+                  onClick={() => setRecurringActionsOpen(true)}
+                  className={cn(SHEET_TILE_CLASS, "border-z-brass/20 bg-z-brass/8 transition-colors hover:bg-z-brass/12")}
+                >
+                  <Repeat className="size-[18px] text-z-brass" />
+                  <span className="max-w-full truncate px-1 text-[13px] leading-tight text-z-brass">
+                    {linkedRecurring?.templateMerchant ?? "Recurrente"}
+                  </span>
+                  <span className="text-[10px] text-z-sage-dark">Vinculada a recurrente</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleOpenLinkPicker}
+                  disabled={isLinking}
+                  className={cn(SHEET_TILE_CLASS, SHEET_TILE_ACTION_CLASS)}
+                >
+                  <Link2 className="size-[18px] text-z-brass-hot" />
+                  <span className="text-[13px] leading-tight text-z-sage-light">Vincular a recurrente</span>
+                </button>
               )}
-              {canLinkPersona && (
-                <ActionRow icon={<Users className="size-4" />} label="Vincular a deuda personal" onClick={handleOpenPersonaPicker} disabled={isLinking} />
+
+              {tx.personal_debt_id ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMoreOpen(false);
+                    router.push("/deudas-personales");
+                  }}
+                  className={cn(SHEET_TILE_CLASS, "border-z-brass/20 bg-z-brass/8 transition-colors hover:bg-z-brass/12")}
+                >
+                  <Users className="size-[18px] text-z-brass" />
+                  <span className="text-[13px] leading-tight text-z-brass">Deuda personal</span>
+                  <span className="text-[10px] text-z-sage-dark">Vinculada · ver</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleOpenPersonaPicker}
+                  disabled={!canLinkPersona || isLinking}
+                  className={cn(SHEET_TILE_CLASS, SHEET_TILE_ACTION_CLASS)}
+                >
+                  <Users className="size-[18px] text-z-brass-hot" />
+                  <span className="text-[13px] leading-tight text-z-sage-light">Vincular a deuda personal</span>
+                </button>
               )}
-              {canSplit && (
-                <ActionRow
-                  icon={<Receipt className="size-4" />}
-                  label="Repartir (pago compartido)"
+
+              {tx.split_group_id ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMoreOpen(false);
+                    router.push("/deudas-personales");
+                  }}
+                  className={cn(SHEET_TILE_CLASS, "border-z-brass/20 bg-z-brass/8 transition-colors hover:bg-z-brass/12")}
+                >
+                  <Receipt className="size-[18px] text-z-brass" />
+                  <span className="text-[13px] leading-tight text-z-brass">Gasto repartido</span>
+                  <span className="text-[10px] text-z-sage-dark">Pago compartido · ver</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
                   onClick={() => {
                     setMoreOpen(false);
                     router.push(`/deudas-personales/pago-compartido/nuevo?from_tx=${tx.id}`);
                   }}
-                />
+                  disabled={!canSplit}
+                  className={cn(SHEET_TILE_CLASS, SHEET_TILE_ACTION_CLASS)}
+                >
+                  <Receipt className="size-[18px] text-z-brass-hot" />
+                  <span className="text-[13px] leading-tight text-z-sage-light">Repartir gasto</span>
+                </button>
               )}
-              <ActionRow
-                icon={excluded ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
-                label={excluded ? "Incluir en métricas" : "Excluir de métricas"}
+
+              <button
+                type="button"
                 onClick={handleToggleExclude}
-              />
-              <ActionRow
-                asLink
-                href={`/transactions/${tx.id}`}
-                icon={<Pencil className="size-4" />}
-                label="Ver / editar detalle"
-              />
+                className={cn(SHEET_TILE_CLASS, SHEET_TILE_ACTION_CLASS)}
+              >
+                {excluded ? (
+                  <Eye className="size-[18px] text-z-brass-hot" />
+                ) : (
+                  <EyeOff className="size-[18px] text-z-brass-hot" />
+                )}
+                <span className="text-[13px] leading-tight text-z-sage-light">
+                  {excluded ? "Incluir en métricas" : "Excluir de métricas"}
+                </span>
+              </button>
+            </div>
+
+            <Link
+              href={`/transactions/${tx.id}`}
+              className={cn(
+                "mx-1 mt-3.5 flex h-10 items-center justify-center gap-2 rounded-lg border text-sm",
+                GHOST_BUTTON_CLASS,
+              )}
+            >
+              <Pencil className="size-[15px]" />
+              Ver / editar detalle
+            </Link>
+          </DrawerBody>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Linked-recurrente actions — opened from the assigned tile */}
+      <Drawer open={recurringActionsOpen} onOpenChange={setRecurringActionsOpen}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>{linkedRecurring?.templateMerchant ?? "Recurrente"}</DrawerTitle>
+          </DrawerHeader>
+          <DrawerBody className="pb-[calc(3rem_+_env(safe-area-inset-bottom))]">
+            <div className="px-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setRecurringActionsOpen(false);
+                  setMoreOpen(false);
+                  if (linkedRecurring) router.push(`/recurrentes/${linkedRecurring.templateId}/edit`);
+                }}
+                disabled={!linkedRecurring}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-white/5 disabled:opacity-50"
+              >
+                <Repeat className="size-4 text-muted-foreground" />
+                Ver recurrente
+              </button>
+              {linkedRecurring?.linkedManually ? (
+                <button
+                  type="button"
+                  onClick={handleUnlinkRecurring}
+                  disabled={isLinking}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-z-expense transition-colors hover:bg-white/5 disabled:opacity-50"
+                >
+                  <Link2 className="size-4" />
+                  Desvincular de la recurrente
+                </button>
+              ) : (
+                <p className="px-3 py-2.5 text-xs text-muted-foreground">
+                  Este pago se registró desde la recurrente. Para deshacerlo, revierte la
+                  ocurrencia desde Plan.
+                </p>
+              )}
             </div>
           </DrawerBody>
         </DrawerContent>
@@ -567,38 +728,5 @@ export function TransactionQuickActions({
         />
       )}
     </div>
-  );
-}
-
-function ActionRow({
-  icon,
-  label,
-  onClick,
-  disabled,
-  asLink,
-  href,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  onClick?: () => void;
-  disabled?: boolean;
-  asLink?: boolean;
-  href?: string;
-}) {
-  const className =
-    "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-white/5 disabled:opacity-50";
-  if (asLink && href) {
-    return (
-      <Link href={href} className={className}>
-        <span className="text-muted-foreground">{icon}</span>
-        {label}
-      </Link>
-    );
-  }
-  return (
-    <button type="button" onClick={onClick} disabled={disabled} className={className}>
-      <span className="text-muted-foreground">{icon}</span>
-      {label}
-    </button>
   );
 }

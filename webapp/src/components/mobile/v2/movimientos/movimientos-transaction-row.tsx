@@ -1,12 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, Repeat } from "lucide-react";
+import { Repeat } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
-import { CategoryIcon } from "@/components/categories/category-icon";
+import { PANEL_SURFACE_CLASS } from "@/lib/constants/styles";
+import { chipBackground, zoneBorder, zoneTextColor } from "@/lib/utils/zone-colors";
 import { TagChip } from "@/components/tags/tag-chip";
-import { TransactionQuickActions } from "@/components/transactions/transaction-quick-actions";
+import {
+  TransactionQuickActions,
+  TransactionIconTile,
+  accountTail,
+  resolveCategoryColor,
+} from "@/components/transactions/transaction-quick-actions";
 import type { TransactionWithAccount, CategoryWithChildren } from "@/types/domain";
 
 interface MovimientosTransactionRowProps {
@@ -34,6 +40,7 @@ export function MovimientosTransactionRow({
   const description =
     tx.merchant_name || tx.clean_description || tx.raw_description || "Sin descripción";
   const categoryName = localCategory?.name_es ?? localCategory?.name ?? null;
+  const catColor = localCategory ? resolveCategoryColor(categories, localCategory.id) : null;
 
   function handleCategorized(txId: string, categoryId: string) {
     const cat = categories
@@ -48,69 +55,82 @@ export function MovimientosTransactionRow({
   return (
     <div
       className={cn(
-        "rounded-xl transition-colors",
-        expanded && "border-l-2 border-z-brass pl-2",
+        PANEL_SURFACE_CLASS,
+        "px-3.5 py-3 transition-colors",
+        // Estado expandido ("tono", ver TOKENS.md): sube un tier de superficie
+        // y refuerza borde + highlight para delimitar la tarjeta activa.
+        expanded && "border-white/[0.14] bg-z-surface-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]",
       )}
     >
       {/* Collapsed row */}
       <button
         type="button"
         onClick={() => setExpanded((prev) => !prev)}
+        aria-expanded={expanded}
+        aria-label={expanded ? `Ocultar acciones de ${description}` : `Ver acciones de ${description}`}
         className={cn(
-          "flex w-full items-center gap-2 px-2 py-2.5 text-left transition-colors hover:bg-white/5",
+          "flex w-full items-center gap-3 text-left",
           tx.is_excluded && "opacity-40",
         )}
       >
-        <div
-          className={cn(
-            "flex size-[22px] shrink-0 items-center justify-center rounded-md",
-            tx.direction === "INFLOW" ? "bg-z-income/12 text-z-income" : "bg-z-expense/12 text-z-expense",
-          )}
-        >
-          {tx.direction === "INFLOW" ? <ArrowDownLeft className="size-3" /> : <ArrowUpRight className="size-3" />}
-        </div>
+        <TransactionIconTile category={localCategory} categories={categories} />
+
         <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-1 truncate text-sm font-medium">
+          <p className="flex items-center gap-1.5 truncate text-[15px] font-medium">
             {tx.recurrence_group_id && (
               <>
-                <Repeat className="size-3 shrink-0 text-z-brass/70" aria-hidden="true" />
+                <Repeat className="size-3 shrink-0 text-z-brass" aria-hidden="true" />
                 <span className="sr-only">Vinculado a recurrente:</span>
               </>
             )}
             <span className="truncate">{description}</span>
           </p>
-          <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+          <div className="mt-1 flex min-w-0">
             <span
-              className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+              className="inline-flex max-w-full items-center truncate rounded-full border px-2 py-px text-[11px] font-medium"
+              style={
+                catColor
+                  ? {
+                      backgroundColor: chipBackground(catColor),
+                      borderColor: zoneBorder(catColor),
+                      color: zoneTextColor(catColor),
+                    }
+                  : {
+                      backgroundColor: "color-mix(in srgb, var(--z-sage) 14%, transparent)",
+                      borderColor: "color-mix(in srgb, var(--z-sage) 20%, transparent)",
+                      color: "var(--z-sage-light)",
+                    }
+              }
+            >
+              {categoryName ?? "Sin categoría"}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex shrink-0 flex-col items-center gap-1">
+          <span
+            className={cn(
+              "text-[15px] font-medium tabular-nums",
+              tx.direction === "INFLOW" ? "text-z-income" : "text-z-expense",
+              tx.is_excluded && "line-through",
+            )}
+          >
+            {tx.direction === "INFLOW" ? "+" : "−"}
+            {formatCurrency(tx.amount, tx.currency_code)}
+          </span>
+          <span className="flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-z-sage-dark">
+            <span
+              className="inline-block h-[5px] w-[5px] shrink-0 rounded-full"
               style={{ backgroundColor: tx.account.color ?? undefined }}
             />
-            <span className="truncate">{tx.account.name}</span>
-            <span className="text-white/15">·</span>
-            {categoryName ? (
-              <span className="inline-flex items-center gap-0.5 truncate">
-                {localCategory?.icon && <CategoryIcon icon={localCategory.icon} className="size-3 shrink-0" />}
-                {categoryName}
-              </span>
-            ) : (
-              <span className="text-z-brass">Sin cat.</span>
-            )}
-          </p>
+            {accountTail(tx.account.name)}
+          </span>
         </div>
-        <span
-          className={cn(
-            "shrink-0 text-sm font-medium tabular-nums",
-            tx.direction === "INFLOW" && "text-z-income",
-            tx.is_excluded && "line-through",
-          )}
-        >
-          {tx.direction === "INFLOW" ? "+" : "-"}
-          {formatCurrency(tx.amount, tx.currency_code)}
-        </span>
       </button>
 
       {/* Tags */}
       {tags.length > 0 && (
-        <div className="flex flex-wrap gap-1 px-2 pb-1.5 pl-[38px]">
+        <div className="flex flex-wrap gap-1 pl-[50px] pt-1.5">
           {tags.map((t) => (
             <TagChip
               key={t.id}
@@ -124,7 +144,7 @@ export function MovimientosTransactionRow({
 
       {/* Expanded: shared quick-action surface */}
       {expanded && (
-        <div className="px-2 pb-2.5 pt-0.5">
+        <div className="mt-3">
           <TransactionQuickActions
             transaction={tx}
             categories={categories}
