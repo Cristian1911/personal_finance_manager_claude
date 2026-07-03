@@ -47,6 +47,7 @@ from parsers.davivienda_loan import parse_davivienda_loan
 from parsers.falabella_credit_card import parse_falabella_credit_card
 from parsers.lulo_loan import parse_lulo_loan
 from parsers.nu_credit_card import parse_nu_credit_card
+from parsers.nu_savings import parse_nu_savings
 from parsers.popular_credit_card import parse_popular_credit_card
 
 # Available parsers registry
@@ -62,6 +63,7 @@ PARSERS = {
     "falabella_credit_card": parse_falabella_credit_card,
     "lulo_loan": parse_lulo_loan,
     "nu_credit_card": parse_nu_credit_card,
+    "nu_savings": parse_nu_savings,
     "popular_credit_card": parse_popular_credit_card,
 }
 
@@ -316,6 +318,7 @@ Available parsers:
   falabella_credit_card   Falabella/CMR credit card
   lulo_loan               Lulo Bank loan
   nu_credit_card          NU Colombia credit card
+  nu_savings              NU Colombia savings account
   popular_credit_card     Banco Popular credit card
         """
     )

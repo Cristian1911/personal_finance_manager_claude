@@ -121,6 +121,17 @@ export function PendingEmailStatements({
       toast.error("Ingresa la contraseña del PDF");
       return;
     }
+    runRetry(id, password);
+  }
+
+  // Password-less retry for parse_failed rows (e.g. after a parser deploy adds
+  // support for the bank). If the PDF turns out to be encrypted, the retry
+  // flips the row to needs_password and the password prompt appears.
+  function handleRetry(id: string) {
+    runRetry(id, "");
+  }
+
+  function runRetry(id: string, password: string) {
     setActiveId(id);
     startTransition(async () => {
       try {
@@ -378,6 +389,21 @@ export function PendingEmailStatements({
                       onClick={() => onReviewStatement(stmt)}
                     >
                       Revisar e importar
+                    </Button>
+                  )}
+                  {stmt.status === "parse_failed" && (
+                    <Button
+                      size="sm"
+                      className={cn(BRASS_BUTTON_CLASS, "h-7 gap-1.5 text-xs")}
+                      onClick={() => handleRetry(stmt.id)}
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <RefreshCw className="size-3.5" />
+                      )}
+                      Reintentar
                     </Button>
                   )}
                   <Button
