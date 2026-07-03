@@ -10,6 +10,10 @@
 
 ---
 
+## Nu savings parser (PR #353, 2026-07-03) — follow-ups
+
+- **Patrón de transacciones sin validar**: `nu_savings.py` parsea la sección "Movimientos" con un patrón tentativo (fecha + descripción + monto + saldo) — el único extracto real disponible tenía cero movimientos. Cuando llegue un extracto Cuenta Nu con movimientos, validar el patrón contra el PDF real y ajustar (buscar `ponytail:` en el archivo).
+
 ## Mobile parity wave 2026-07-02 — follow-ups (PRs #346–#349)
 
 Shipped: fix auth social EAS env (#346), Settings Etiquetas+Perfil (#347), Suscripciones → tabla `subscriptions` (#348), Destinatarios D3 fusionar + D4 sugerencias + fix logout wipe (#349).
