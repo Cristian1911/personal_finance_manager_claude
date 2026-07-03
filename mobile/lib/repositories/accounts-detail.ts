@@ -39,7 +39,7 @@ export async function getBalanceHistory(
         AND is_excluded = 0
         AND reconciled_into_transaction_id IS NULL
         AND transaction_date >= ?
-      ORDER BY transaction_date DESC, created_at DESC
+      ORDER BY transaction_date DESC, transaction_time DESC, created_at DESC
       LIMIT 5000`,
     [accountId, cutoff],
   );
