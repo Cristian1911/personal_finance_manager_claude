@@ -112,10 +112,21 @@ export async function parsePdfBuffer(params: {
         typeof detail === "object" &&
         detail?.type === "password_required"
       ) {
-        return { success: false, error: "PDF protegido con contraseña", needsPassword: true };
+        return {
+          success: false,
+          error: "PDF protegido: la contraseña falta o es incorrecta",
+          needsPassword: true,
+        };
       }
 
-      const message = typeof detail === "string" ? detail : "Error procesando el PDF";
+      // The parser returns errors as {message, type} objects — surface the
+      // real message instead of a generic fallback.
+      const message =
+        typeof detail === "string"
+          ? detail
+          : typeof detail?.message === "string"
+            ? detail.message
+            : "Error procesando el PDF";
       return { success: false, error: message };
     }
 

@@ -20,6 +20,7 @@ from parsers.falabella_credit_card import parse_falabella_credit_card
 from parsers.confiar_credit_card import parse_confiar_credit_card
 from parsers.davivienda_savings import parse_davivienda_savings
 from parsers.nequi_savings import parse_nequi_savings
+from parsers.nu_savings import parse_nu_savings
 
 
 # ---------------------------------------------------------------------------
@@ -76,6 +77,20 @@ DETECTORS: list[dict] = [
             (4, lambda t: "TU CUPO DEFINIDO" in t),
         ],
         "parse": lambda path, pw: parse_nu_credit_card(path, password=pw),
+    },
+    # -- NU Colombia Savings (Cuenta Nu) --
+    {
+        "name": "nu_savings",
+        "signals": [
+            (3, lambda t: "NU FINANCIERA" in t or "NU COLOMBIA" in t),
+            (5, lambda t: "CUENTA NU" in t or "TU DINERO AL INICIO DEL MES" in t),
+            (4, lambda t: "DINERO EN TUS CAJITAS" in t),
+            (4, lambda t: "DINERO DISPONIBLE" in t and "RESUMEN DE TUS MOVIMIENTOS" in t),
+            # Negative signals: not a credit card
+            (-3, lambda t: "PERIODO FACTURADO" in t),
+            (-3, lambda t: "TU CUPO DEFINIDO" in t),
+        ],
+        "parse": lambda path, pw: [parse_nu_savings(path, password=pw)],
     },
     # -- Lulo Bank Loan --
     {
@@ -252,7 +267,7 @@ def detect_and_parse(pdf_path: str, password: str | None = None) -> list[ParsedS
             scored.append((score, detector))
 
     SUPPORTED = (
-        "Bancolombia (ahorros, crédito, préstamo), NU Colombia, Lulo Bank, "
+        "Bancolombia (ahorros, crédito, préstamo), NU Colombia (ahorros, crédito), Lulo Bank, "
         "Banco de Bogotá, Banco Popular, Davivienda (ahorros, préstamo), "
         "Falabella, Cooperativa Confiar, Nequi."
     )

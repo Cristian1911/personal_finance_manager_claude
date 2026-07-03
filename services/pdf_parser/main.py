@@ -10,6 +10,8 @@ from fastapi import Depends, FastAPI, Form, HTTPException, Security, UploadFile
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 
+from pdfminer.pdfdocument import PDFEncryptionError
+
 from models import ParsedStatement
 from parsers import detect_and_parse
 from parsers.image_detection import detect_and_parse_image
@@ -105,6 +107,23 @@ def _statements_have_content(statements: list[ParsedStatement]) -> bool:
         or s.loan_metadata is not None
         for s in statements
     )
+
+
+def _is_password_error(exc: BaseException | None) -> bool:
+    """True if the exception chain contains a pdfminer encryption/password error.
+
+    pdfplumber wraps pdfminer errors in PdfminerException(original), so the
+    original PDFPasswordIncorrect can hide in __cause__/__context__ or args."""
+    seen: set[int] = set()
+    while exc is not None and id(exc) not in seen:
+        seen.add(id(exc))
+        if isinstance(exc, PDFEncryptionError):
+            return True
+        nested = exc.__cause__ or exc.__context__
+        if nested is None and exc.args and isinstance(exc.args[0], BaseException):
+            nested = exc.args[0]
+        exc = nested
+    return False
 
 
 def _attempt_fallback_parse(
@@ -209,7 +228,22 @@ async def parse_pdf(file: UploadFile, password: str | None = Form(None)):
             status_code=422,
             detail={"message": str(e), "type": "unsupported_format"},
         )
-    except Exception:
+    except Exception as e:
+        if _is_password_error(e):
+            # Wrong or missing password — the fallback can't decrypt either, so
+            # tell the client to re-prompt instead of returning a generic 500.
+            logger.warning(
+                "Password error for filename=%s (password_provided=%s)",
+                file.filename,
+                bool(password),
+            )
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "message": "El PDF está protegido y la contraseña es incorrecta o falta",
+                    "type": "password_required",
+                },
+            )
         fallback_response = _attempt_fallback_parse(
             tmp_path=tmp_path,
             password=password,
