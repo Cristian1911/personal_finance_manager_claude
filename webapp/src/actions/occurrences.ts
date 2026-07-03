@@ -324,6 +324,9 @@ export interface LinkedRecurringInfo {
   templateMerchant: string;
   expectedAmount: number;
   currencyCode: string;
+  /** True when the link was made by hand (Vincular). Only manual links can be
+   *  safely undone via revertOccurrence — system-created ones delete the tx. */
+  linkedManually: boolean;
 }
 
 /**
@@ -344,7 +347,7 @@ async function getLinkedRecurringForTransactionCached(
   const { data } = await supabase
     .from("recurring_occurrences")
     .select(`
-      id, occurrence_date, template_id, expected_amount,
+      id, occurrence_date, template_id, expected_amount, linked_manually,
       template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(
         merchant_name, description, currency_code
       )
@@ -369,6 +372,7 @@ async function getLinkedRecurringForTransactionCached(
     templateMerchant: t.merchant_name ?? t.description ?? "Recurrente",
     expectedAmount: data.expected_amount,
     currencyCode: t.currency_code,
+    linkedManually: Boolean(data.linked_manually),
   };
 }
 
