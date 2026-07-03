@@ -31,32 +31,19 @@ SPANISH_MONTHS: dict[str, int] = {
 
 # --- Regex patterns ---
 
-# Account number: "Nu Placa Número de Cuenta Período" or similar line
-# Line 9 from sample: "Nu Placa Número de Cuenta Período" with "CGM099 44663011 01 - 30 JUN 2026"
-ACCOUNT_RE = re.compile(r"(\d{8})")
-
 # Period: "01 - 30 JUN 2026"
 PERIOD_RE = re.compile(
     r"(\d{1,2})\s*-\s*(\d{1,2})\s+([A-Z]{3})\s+(\d{4})",
     re.IGNORECASE,
 )
 
-# Summary patterns (Colombian format with $ prefix, flexible whitespace)
+# Summary patterns (Colombian format, optional whitespace after $)
 SUMMARY_PATTERNS: dict[str, re.Pattern] = {
-    "previous_balance": re.compile(r"[Tt]u\s+dinero\s+al\s+inicio\s+del\s+mes\s+\$([\d.,]+)", re.IGNORECASE),
-    "final_balance": re.compile(r"[Tt]u\s+dinero\s+a\s+final\s+del\s+mes\s+\$([\d.,]+)", re.IGNORECASE),
-    "total_credits": re.compile(r"[Ll]o\s+que\s+entr[óo]\s+a\s+tu\s+cuenta\s+\$([\d.,]+)", re.IGNORECASE),
-    "total_debits": re.compile(r"[Ll]o\s+que\s+sali[óo]\s+de\s+tu\s+cuenta\s+\$([\d.,]+)", re.IGNORECASE),
+    "previous_balance": re.compile(r"tu\s+dinero\s+al\s+inicio\s+del\s+mes\s+\$\s*([\d.,]+)", re.IGNORECASE),
+    "final_balance": re.compile(r"tu\s+dinero\s+a\s+final\s+del\s+mes\s+\$\s*([\d.,]+)", re.IGNORECASE),
+    "total_credits": re.compile(r"lo\s+que\s+entr[óo]\s+a\s+tu\s+cuenta\s+\$\s*([\d.,]+)", re.IGNORECASE),
+    "total_debits": re.compile(r"lo\s+que\s+sali[óo]\s+de\s+tu\s+cuenta\s+\$\s*([\d.,]+)", re.IGNORECASE),
 }
-
-# Transaction line (if movements exist): date description amount balance
-# ponytail: No sample transactions in provided data, pattern TBD for statements with movements
-TX_LINE_RE = re.compile(
-    r"^(\d{2}/\d{2}/\d{4})\s+"  # date
-    r"(.+?)\s+"                  # description (non-greedy)
-    r"\$(-?[\d.,]+)\s+"          # amount (may be negative)
-    r"\$([\d.,]+)\s*$"           # balance
-)
 
 
 def _parse_colombian_number(s: str) -> float:
@@ -69,7 +56,12 @@ def _parse_colombian_number(s: str) -> float:
         return 0.0
     # Remove periods (thousands), replace comma with period (decimal)
     s = s.replace(".", "").replace(",", ".")
-    return float(s)
+    try:
+        return float(s)
+    except ValueError:
+        # Malformed capture (e.g. "1,234,56") — treat as 0 rather than
+        # aborting the whole statement parse.
+        return 0.0
 
 
 def parse_nu_savings(
@@ -120,8 +112,13 @@ def parse_nu_savings(
 
             month = SPANISH_MONTHS.get(month_abbr, 0)
             if month:
-                period_from = date(year, month, day_start)
-                period_to = date(year, month, day_end)
+                try:
+                    period_from = date(year, month, day_start)
+                    period_to = date(year, month, day_end)
+                except ValueError:
+                    # Corrupt extraction (e.g. day 31 in a 30-day month) —
+                    # leave the period unset instead of crashing the parse.
+                    pass
 
         # --- Extract summary from full text ---
         for key, pattern in SUMMARY_PATTERNS.items():
@@ -154,7 +151,8 @@ def parse_nu_savings(
                         description = (row[1] or "").strip()
                         amount_str = (row[2] or "").strip()
 
-                        if not amount_str or not amount_str.startswith("$"):
+                        # "$" anywhere, not startswith — negatives come as "-$10.000,00"
+                        if not amount_str or "$" not in amount_str:
                             continue
 
                         amount_val = _parse_colombian_number(amount_str)
@@ -170,7 +168,7 @@ def parse_nu_savings(
                         balance_str = (row[3] or "").strip() if len(row) > 3 else None
                         balance = (
                             _parse_colombian_number(balance_str)
-                            if balance_str and balance_str.startswith("$")
+                            if balance_str and "$" in balance_str
                             else None
                         )
 
