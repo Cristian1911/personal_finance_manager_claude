@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Repeat } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
+import { PANEL_SURFACE_CLASS } from "@/lib/constants/styles";
 import { chipBackground, zoneBorder, zoneTextColor } from "@/lib/utils/zone-colors";
 import { TagChip } from "@/components/tags/tag-chip";
 import {
@@ -54,16 +55,19 @@ export function MovimientosTransactionRow({
   return (
     <div
       className={cn(
-        "rounded-2xl border px-3.5 py-3 transition-colors",
-        expanded
-          ? "border-white/[0.14] bg-z-surface-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]"
-          : "border-white/6 bg-z-surface-2/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
+        PANEL_SURFACE_CLASS,
+        "px-3.5 py-3 transition-colors",
+        // Estado expandido ("tono", ver TOKENS.md): sube un tier de superficie
+        // y refuerza borde + highlight para delimitar la tarjeta activa.
+        expanded && "border-white/[0.14] bg-z-surface-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]",
       )}
     >
       {/* Collapsed row */}
       <button
         type="button"
         onClick={() => setExpanded((prev) => !prev)}
+        aria-expanded={expanded}
+        aria-label={expanded ? `Ocultar acciones de ${description}` : `Ver acciones de ${description}`}
         className={cn(
           "flex w-full items-center gap-3 text-left",
           tx.is_excluded && "opacity-40",

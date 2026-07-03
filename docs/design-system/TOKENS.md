@@ -44,6 +44,14 @@ rounded-xl border border-white/6 bg-[#111] px-3 py-2
 rounded-2xl border border-white/6 bg-black/10 p-4
 ```
 
+### Expanded/active card state ("tono")
+An expandable Tier 1 card that is currently open steps up one surface tier to
+delimit itself from its siblings (Movimientos transaction card):
+```
+border-white/[0.14] bg-z-surface-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]
+```
+This is the only sanctioned use of a border opacity other than `/6`.
+
 ### Rules:
 - Border is always `border-white/6` — not `/4`, not `/8`
 - Never use `border-z-border` (deprecated, use `border-white/6`)

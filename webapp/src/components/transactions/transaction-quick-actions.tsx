@@ -65,9 +65,11 @@ const TRIO_BTN_CLASS = cn(
 const SHEET_TILE_CLASS =
   "flex h-[84px] flex-col items-center justify-center gap-1.5 rounded-2xl border px-3.5 py-2.5 text-center";
 
-/** Actionable (unassigned) state of a sheet tile. */
-const SHEET_TILE_ACTION_CLASS =
-  "border-white/6 bg-black/10 transition-colors hover:bg-white/5 disabled:opacity-40";
+/** Actionable (unassigned) state of a sheet tile — ghost surface + tile extras. */
+const SHEET_TILE_ACTION_CLASS = cn(
+  GHOST_BUTTON_CLASS,
+  "transition-colors disabled:opacity-40",
+);
 
 /** Resolve a category's display color (parent zone color, like the picker). */
 export function resolveCategoryColor(
@@ -430,7 +432,7 @@ export function TransactionQuickActions({
         </button>
         <button type="button" onClick={() => setDestOpen(true)} className={TRIO_BTN_CLASS}>
           <UserRound className="size-3.5 shrink-0" />
-          <span className="truncate">{localDestinatario?.name ?? "Destinatario"}</span>
+          <span className="min-w-0 truncate">{localDestinatario?.name ?? "Destinatario"}</span>
         </button>
         <button
           type="button"
@@ -480,7 +482,7 @@ export function TransactionQuickActions({
               <TransactionIconTile category={localCategory} categories={categories} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[15px] font-medium">{description}</p>
-                <p className="mt-0.5 text-[11.5px] text-z-sage-dark first-letter:uppercase">{sheetMeta}</p>
+                <p className="mt-0.5 truncate text-[11.5px] text-z-sage-dark first-letter:uppercase">{sheetMeta}</p>
               </div>
               <span
                 className={cn(
