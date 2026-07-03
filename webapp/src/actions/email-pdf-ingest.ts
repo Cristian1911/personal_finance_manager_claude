@@ -98,7 +98,13 @@ export async function dismissEmailPdfStatement(
  * change the stored status.
  */
 export type RetryPdfParsingResult =
-  | { success: true }
+  | {
+      success: true;
+      // Parsed statements so the client can hydrate its local row — without
+      // this, "Revisar e importar" appears but its handler bails on a row
+      // whose parsed_data is still null.
+      parsedData: Json;
+    }
   | {
       success: false;
       error: string;
@@ -200,7 +206,7 @@ export async function retryPdfParsing(
   }
 
   updateTag("email-ingest");
-  return { success: true };
+  return { success: true, parsedData: result.statements as unknown as Json };
 }
 
 /**
