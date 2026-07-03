@@ -142,7 +142,7 @@ export function EmailImportPanel({
     onAfterChange?.();
     void syncAll()
       .then(({ pulled }) => {
-        if (Object.values(pulled).some((n) => n > 0)) onAfterChange?.();
+        if (pulled && Object.values(pulled).some((n) => n > 0)) onAfterChange?.();
       })
       .catch(() => {
         // Remote write already succeeded; local SQLite catches up next sync.

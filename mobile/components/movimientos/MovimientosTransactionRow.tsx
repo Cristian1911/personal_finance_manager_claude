@@ -82,6 +82,7 @@ function MovimientosTransactionRowBase({
   }
 
   function closeSheet() {
+    if (unmountTimer.current) clearTimeout(unmountTimer.current);
     setMoreOpen(false);
     unmountTimer.current = setTimeout(() => setSheetMounted(false), 300);
   }

@@ -200,15 +200,23 @@ export function TransactionQuickActions({
   const [personaCreateOpen, setPersonaCreateOpen] = useState(false);
 
   // Linked-recurrente state is local so the tile flips without a refresh.
+  // `undefined` = not fetched yet; `null` = fetched and none found — the
+  // distinction stops the effect from re-firing the fetch on every render
+  // when a recurrence_group_id has no occurrence row behind it.
   const [isLinkedRecurring, setIsLinkedRecurring] = useState(!!tx.recurrence_group_id);
-  const [linkedRecurring, setLinkedRecurring] = useState<LinkedRecurringInfo | null>(null);
+  const [linkedRecurring, setLinkedRecurring] = useState<LinkedRecurringInfo | null | undefined>(undefined);
   const [recurringActionsOpen, setRecurringActionsOpen] = useState(false);
 
-  // Lazy-resolve the linked recurrente's name the first time the sheet opens.
+  // Lazy-resolve the linked recurrente's name when the sheet opens; reset on
+  // close so a reopen never shows stale data (the server fn is cached).
   useEffect(() => {
-    if (moreOpen && isLinkedRecurring && !linkedRecurring) {
+    if (!moreOpen) {
+      setLinkedRecurring(undefined);
+      return;
+    }
+    if (isLinkedRecurring && linkedRecurring === undefined) {
       getLinkedRecurringForTransaction(tx.id).then((info) => {
-        if (info) setLinkedRecurring(info);
+        setLinkedRecurring(info);
       });
     }
   }, [moreOpen, isLinkedRecurring, linkedRecurring, tx.id]);
@@ -346,7 +354,7 @@ export function TransactionQuickActions({
       const result = await revertOccurrence(occurrenceId);
       if (result.success) {
         setIsLinkedRecurring(false);
-        setLinkedRecurring(null);
+        setLinkedRecurring(undefined);
         toast.success("Transacción desvinculada de la recurrente");
       } else {
         toast.error(result.error ?? "No se pudo desvincular");
