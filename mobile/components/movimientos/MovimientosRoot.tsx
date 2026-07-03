@@ -1,7 +1,7 @@
 import { useMemo, useCallback, useRef, useState } from "react";
 // (useMemo already imported; used below to derive a stable Set from linkableIds)
 import { View, Text, RefreshControl, FlatList, ActivityIndicator, Platform } from "react-native";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { formatDate, type CurrencyCode } from "@zeta/shared";
 import { useSync } from "../../lib/sync/hooks";
 import {
@@ -389,6 +389,14 @@ export function MovimientosRoot() {
   );
 
 
+  const router = useRouter();
+  const handleNavigateToDetail = useCallback(
+    (txId: string) => {
+      router.push(`/transaction/${txId}` as never);
+    },
+    [router]
+  );
+
   const renderItem = useCallback(
     ({ item }: { item: FeedItem }) => {
       if (item.type === "header") {
@@ -409,6 +417,7 @@ export function MovimientosRoot() {
           onRequestDestinatarioPicker={handleRequestDestinatarioPicker}
           onRequestTagPicker={handleRequestTagPicker}
           onRequestVincular={handleRequestVincular}
+          onNavigateToDetail={handleNavigateToDetail}
         />
       );
     },
@@ -417,6 +426,7 @@ export function MovimientosRoot() {
       handleRequestDestinatarioPicker,
       handleRequestTagPicker,
       handleRequestVincular,
+      handleNavigateToDetail,
       linkableAccountIdsSet,
     ]
   );
@@ -523,7 +533,7 @@ export function MovimientosRoot() {
         }
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.5}
-        initialNumToRender={12}
+        initialNumToRender={10}
         maxToRenderPerBatch={10}
         windowSize={5}
         removeClippedSubviews={Platform.OS === "android"}

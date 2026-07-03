@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { View, Text, Pressable } from "react-native";
 import {
   Banknote,
@@ -9,7 +9,6 @@ import {
   Tag,
   UserRound,
 } from "lucide-react-native";
-import { useRouter } from "expo-router";
 import { formatCurrency, formatDate, type CurrencyCode } from "@zeta/shared";
 import { COLORS } from "../../lib/constants/colors";
 import { SECTION_EYEBROW_CLASS } from "../../lib/constants/styles";
@@ -45,6 +44,9 @@ interface MovimientosTransactionRowProps {
   onRequestDestinatarioPicker?: (txId: string) => void;
   onRequestTagPicker?: (txId: string) => void;
   onRequestVincular?: (txId: string) => void;
+  /** Navigate to the transaction detail — lifted so the memoized row doesn't
+   *  subscribe to the router context itself. */
+  onNavigateToDetail?: (txId: string) => void;
 }
 
 /**
@@ -61,10 +63,28 @@ function MovimientosTransactionRowBase({
   onRequestDestinatarioPicker,
   onRequestTagPicker,
   onRequestVincular,
+  onNavigateToDetail,
 }: MovimientosTransactionRowProps) {
   const [expanded, setExpanded] = useState(false);
+  // moreOpen drives the Modal's visible prop (so the close slide plays);
+  // sheetMounted keeps it in the tree until that exit animation finishes.
   const [moreOpen, setMoreOpen] = useState(false);
-  const router = useRouter();
+  const [sheetMounted, setSheetMounted] = useState(false);
+  const unmountTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (unmountTimer.current) clearTimeout(unmountTimer.current);
+  }, []);
+
+  function openSheet() {
+    if (unmountTimer.current) clearTimeout(unmountTimer.current);
+    setSheetMounted(true);
+    setMoreOpen(true);
+  }
+
+  function closeSheet() {
+    setMoreOpen(false);
+    unmountTimer.current = setTimeout(() => setSheetMounted(false), 300);
+  }
 
   const description = tx.merchant_name ?? tx.description ?? "Sin descripción";
   const isInflow = tx.direction === "INFLOW";
@@ -72,14 +92,6 @@ function MovimientosTransactionRowBase({
   const categoryName = tx.category_name_es ?? tx.category_name;
   const catColor = tx.category_color;
   const isLinkedRecurring = Boolean(tx.recurrence_group_id);
-
-  const sheetMeta = [
-    formatDate(tx.transaction_date, "EEEE, dd MMM"),
-    tx.transaction_time ? tx.transaction_time.slice(0, 5) : null,
-    tx.account_name ? accountTail(tx.account_name) : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
 
   const iconTile = (
     <View
@@ -166,8 +178,10 @@ function MovimientosTransactionRowBase({
         </View>
       </Pressable>
 
-      {/* Trio — Categoría · Destinatario · Más (fixed positions) */}
+      {/* Trio — Categoría · Destinatario · Más (fixed positions). Children
+          gated by `expanded` so collapsed rows don't mount 3 Pressables each. */}
       <AnimatedAccordion expanded={expanded} estimatedHeight={48}>
+        {expanded && (
         <View className="flex-row gap-2 pt-3">
           <Pressable
             onPress={() => onRequestCategoryPicker(tx.id)}
@@ -194,7 +208,7 @@ function MovimientosTransactionRowBase({
             </Text>
           </Pressable>
           <Pressable
-            onPress={() => setMoreOpen(true)}
+            onPress={openSheet}
             accessibilityRole="button"
             accessibilityLabel="Más acciones"
             className="h-[34px] flex-1 flex-row items-center justify-center gap-1.5 rounded-lg border border-white-8 bg-black-10 active:bg-white-5"
@@ -203,11 +217,13 @@ function MovimientosTransactionRowBase({
             <Text className="text-xs font-inter-medium text-z-sage-light">Más</Text>
           </Pressable>
         </View>
+        )}
       </AnimatedAccordion>
 
-      {/* "Más" sheet — mounted only while open (one Modal per open row, not per row) */}
-      {moreOpen && (
-        <MobileSheet visible onClose={() => setMoreOpen(false)} maxHeightClass="max-h-[70%]">
+      {/* "Más" sheet — mounted only while open (one Modal per open row, not
+          per row); unmount is delayed past close so the exit slide plays. */}
+      {sheetMounted && (
+        <MobileSheet visible={moreOpen} onClose={closeSheet} maxHeightClass="max-h-[70%]">
           <View className="px-5 pb-8">
             {/* Transaction header */}
             <View className="flex-row items-center gap-3 border-b border-white-6 pb-3.5">
@@ -217,7 +233,13 @@ function MovimientosTransactionRowBase({
                   {description}
                 </Text>
                 <Text className="mt-0.5 text-[11.5px] font-inter capitalize text-z-sage-dark">
-                  {sheetMeta}
+                  {[
+                    formatDate(tx.transaction_date, "EEEE, dd MMM"),
+                    tx.transaction_time ? tx.transaction_time.slice(0, 5) : null,
+                    tx.account_name ? accountTail(tx.account_name) : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </Text>
               </View>
               {amountText}
@@ -228,7 +250,7 @@ function MovimientosTransactionRowBase({
             <View className="flex-row gap-2">
               <Pressable
                 onPress={() => {
-                  setMoreOpen(false);
+                  closeSheet();
                   onRequestTagPicker?.(tx.id);
                 }}
                 accessibilityRole="button"
@@ -251,7 +273,7 @@ function MovimientosTransactionRowBase({
               ) : (
                 <Pressable
                   onPress={() => {
-                    setMoreOpen(false);
+                    closeSheet();
                     onRequestVincular?.(tx.id);
                   }}
                   disabled={!canLink || !onRequestVincular}
@@ -271,8 +293,8 @@ function MovimientosTransactionRowBase({
 
             <Pressable
               onPress={() => {
-                setMoreOpen(false);
-                router.push(`/transaction/${tx.id}` as any);
+                closeSheet();
+                onNavigateToDetail?.(tx.id);
               }}
               accessibilityRole="button"
               accessibilityLabel="Ver o editar detalle"

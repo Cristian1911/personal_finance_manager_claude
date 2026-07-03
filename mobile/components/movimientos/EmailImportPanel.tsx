@@ -135,11 +135,15 @@ export function EmailImportPanel({
   function refreshAfterMutation() {
     // The approve path writes to local SQLite BEFORE returning, so the feed can
     // refresh immediately — waiting for a full syncAll() here is what made the
-    // imported row take ~5s to appear. Sync still runs in the background and
-    // triggers a second refresh in case it pulled anything new.
+    // imported row take ~5s to appear. Sync still runs in the background, and
+    // only re-triggers the (expensive) parent reset when it actually pulled
+    // remote changes — otherwise the second refresh is a full-feed re-render
+    // for nothing.
     onAfterChange?.();
     void syncAll()
-      .then(() => onAfterChange?.())
+      .then(({ pulled }) => {
+        if (Object.values(pulled).some((n) => n > 0)) onAfterChange?.();
+      })
       .catch(() => {
         // Remote write already succeeded; local SQLite catches up next sync.
       });
