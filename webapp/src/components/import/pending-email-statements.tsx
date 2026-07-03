@@ -139,7 +139,14 @@ export function PendingEmailStatements({
         if (result.success) {
           setStatements((prev) =>
             prev.map((s) =>
-              s.id === id ? { ...s, status: "parsed", error_message: null } : s,
+              s.id === id
+                ? {
+                    ...s,
+                    status: "parsed",
+                    parsed_data: result.parsedData,
+                    error_message: null,
+                  }
+                : s,
             ),
           );
           toast.success("PDF procesado correctamente");
