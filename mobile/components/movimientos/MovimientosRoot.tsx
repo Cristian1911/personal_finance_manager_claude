@@ -393,9 +393,12 @@ export function MovimientosRoot() {
     ({ item }: { item: FeedItem }) => {
       if (item.type === "header") {
         return (
-          <Text className={`mb-2 mt-4 ${SECTION_EYEBROW_CLASS}`}>
-            {formatDate(item.date, "EEEE, dd MMM")}
-          </Text>
+          <View className="mb-2.5 mt-2.5 flex-row items-center gap-3">
+            <Text className={`shrink-0 ${SECTION_EYEBROW_CLASS}`}>
+              {formatDate(item.date, "EEEE, dd MMM")}
+            </Text>
+            <View className="h-px flex-1 bg-white-6" />
+          </View>
         );
       }
       return (
