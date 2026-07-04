@@ -469,6 +469,19 @@ export async function ensureOccurrencesForRange(
           .is("transaction_id", null);
         if (pruneError) {
           console.error("[ensureOccurrencesForRange] prune delete failed:", pruneError.message);
+        } else {
+          // Expire cached occurrence reads (getOccurrencesForMonthCached,
+          // getPendingOccurrencesCached) so the pruned duplicates don't keep
+          // rendering until cacheLife("zeta") rolls over. updateTag is only
+          // legal in a Server Action / Route Handler — this function also runs
+          // during Server Component render (plan page Promise.all), where
+          // Next.js throws; there we swallow it and the next cache refresh
+          // (≤120s stale window) picks up the deletion.
+          try {
+            updateTag("occurrences");
+          } catch {
+            // Render-context call — mutation callers already revalidate.
+          }
         }
       }
     }
