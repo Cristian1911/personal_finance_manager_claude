@@ -10,6 +10,11 @@
 
 ---
 
+## Recurrentes fix (PR #357, 2026-07-04) — follow-ups
+
+- [ ] **Chunk del `.in()` en la poda de ocurrencias** — `ensureOccurrencesForRange` embebe `prunableIds`/`staleIds` en el query string de PostgREST sin límite; con muchísimas plantillas podría exceder el largo de URL. Baja probabilidad (candidatos acotados por rango). Trocear en lotes como hardening. (server-action-reviewer, MEDIUM)
+- [ ] **Residuo al editar BIWEEKLY→MONTHLY** — una plantilla editada a MONTHLY queda excluida de la poda, así que filas pending viejas del schedule anterior en el rango no se limpian (el dedup mensual solo suprime inserts). Documentado como aceptable; revisar si aparece en soporte. (server-action-reviewer, LOW)
+
 ## Nu savings parser (PR #353, 2026-07-03) — follow-ups
 
 - **Patrón de transacciones sin validar**: `nu_savings.py` parsea la sección "Movimientos" con un patrón tentativo (fecha + descripción + monto + saldo) — el único extracto real disponible tenía cero movimientos. Cuando llegue un extracto Cuenta Nu con movimientos, validar el patrón contra el PDF real y ajustar (buscar `ponytail:` en el archivo).
