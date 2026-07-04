@@ -2,7 +2,7 @@
 
 import "server-only";
 import { updateTag, cacheTag, cacheLife } from "next/cache";
-import { addDays, startOfMonth, endOfMonth, parseISO } from "date-fns";
+import { addDays, format, startOfDay, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { toColombiaDateString } from "@/lib/utils/date";
 import { PAY_CYCLE_LOOKAHEAD_DAYS } from "@/lib/constants/occurrences";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
@@ -15,6 +15,7 @@ import { getDebtPaymentCategoryId } from "@zeta/shared";
 import { parseSubPayments } from "@/lib/utils/sub-payments";
 import { UUID_RE } from "@/lib/validators/shared";
 import {
+  computeStaleOccurrenceIds,
   generateOccurrenceRowsBatch,
 } from "@/lib/utils/occurrence-generator";
 import type { ActionResult } from "@/types/actions";
@@ -424,6 +425,68 @@ export async function ensureOccurrencesForRange(
     rangeEnd,
   );
 
+  // Self-heal stale pending rows BEFORE inserting. Schedule edits and
+  // generator-logic changes (quincenal 14-day → month-anchored) leave pending
+  // rows on dates the template no longer produces; ON CONFLICT DO NOTHING
+  // never removes them, so they show up as duplicate upcoming payments.
+  // Only pending + unlinked rows inside the generated range are candidates.
+  // MONTHLY is excluded on purpose: its one-per-month idempotency (below)
+  // intentionally keeps an occurrence whose day drifted via statement imports.
+  // Range bounds use the same startOfDay + format semantics as
+  // getOccurrencesBetween so prune and generate agree on edge dates.
+  const prunableIds = templates
+    .filter((t) => t.frequency !== "MONTHLY")
+    .map((t) => t.id);
+  if (prunableIds.length > 0) {
+    const pruneStart = format(startOfDay(rangeStart), "yyyy-MM-dd");
+    const pruneEnd = format(startOfDay(rangeEnd), "yyyy-MM-dd");
+    const { data: pruneCandidates, error: pruneReadError } = await supabase
+      .from("recurring_occurrences")
+      .select("id, template_id, occurrence_date")
+      .eq("user_id", user.id)
+      .eq("status", "pending")
+      .is("transaction_id", null)
+      .in("template_id", prunableIds)
+      .gte("occurrence_date", pruneStart)
+      .lte("occurrence_date", pruneEnd);
+
+    if (pruneReadError) {
+      // Non-fatal: worst case the stale row survives until the next ensure.
+      console.error("[ensureOccurrencesForRange] prune read failed:", pruneReadError.message);
+    } else {
+      const staleIds = computeStaleOccurrenceIds(rows, pruneCandidates ?? []);
+      if (staleIds.length > 0) {
+        // Re-assert pending + unlinked on the DELETE itself: a concurrent
+        // payment/link path (markOccurrencePaid, import auto-link) may have
+        // flipped a candidate between our read and this delete — the
+        // predicates make the prune incapable of touching such a row.
+        const { error: pruneError } = await supabase
+          .from("recurring_occurrences")
+          .delete()
+          .in("id", staleIds)
+          .eq("user_id", user.id)
+          .eq("status", "pending")
+          .is("transaction_id", null);
+        if (pruneError) {
+          console.error("[ensureOccurrencesForRange] prune delete failed:", pruneError.message);
+        } else {
+          // Expire cached occurrence reads (getOccurrencesForMonthCached,
+          // getPendingOccurrencesCached) so the pruned duplicates don't keep
+          // rendering until cacheLife("zeta") rolls over. updateTag is only
+          // legal in a Server Action / Route Handler — this function also runs
+          // during Server Component render (plan page Promise.all), where
+          // Next.js throws; there we swallow it and the next cache refresh
+          // (≤120s stale window) picks up the deletion.
+          try {
+            updateTag("occurrences");
+          } catch {
+            // Render-context call — mutation callers already revalidate.
+          }
+        }
+      }
+    }
+  }
+
   if (rows.length === 0) return { success: true, data: undefined };
 
   // Month-level idempotency for MONTHLY templates: the unique constraint is on
@@ -481,9 +544,14 @@ export async function ensureOccurrencesForRange(
  * Convenience wrapper — ensures occurrences for the current month + 14 days ahead.
  */
 export async function ensureCurrentOccurrences(): Promise<ActionResult> {
-  const now = new Date();
-  const rangeStart = startOfMonth(now);
-  const rangeEnd = addDays(endOfMonth(now), 14);
+  // Colombia-local "today" — mirrors the SQL generator's
+  // now() AT TIME ZONE 'America/Bogota'. On a UTC server, plain new Date()
+  // rolls the month over at ~7pm COT on the last day of the month, making the
+  // two generators disagree on the window (the drift class behind the
+  // duplicate-quincena bug).
+  const today = parseISO(`${toColombiaDateString(new Date())}T12:00:00`);
+  const rangeStart = startOfMonth(today);
+  const rangeEnd = addDays(endOfMonth(today), 14);
   return ensureOccurrencesForRange(rangeStart, rangeEnd);
 }
 

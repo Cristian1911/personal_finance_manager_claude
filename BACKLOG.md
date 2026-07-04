@@ -10,6 +10,11 @@
 
 ---
 
+## Recurrentes fix (PR #357, 2026-07-04) — follow-ups
+
+- [ ] **Chunk del `.in()` en la poda de ocurrencias** — `ensureOccurrencesForRange` embebe `prunableIds`/`staleIds` en el query string de PostgREST sin límite; con muchísimas plantillas podría exceder el largo de URL. Baja probabilidad (candidatos acotados por rango). Trocear en lotes como hardening. (server-action-reviewer, MEDIUM)
+- [ ] **Residuo al editar BIWEEKLY→MONTHLY** — una plantilla editada a MONTHLY queda excluida de la poda, así que filas pending viejas del schedule anterior en el rango no se limpian (el dedup mensual solo suprime inserts). Documentado como aceptable; revisar si aparece en soporte. (server-action-reviewer, LOW)
+
 ## Unification layer — Fase 1 Veredicto (PR #355, 2026-07-04) — follow-ups
 
 Shipped: `<Verdict />` + convergencia de los 4 dialectos de estado (dashboard, plan, presupuesto, deudas, recurrentes), `deriveRitmoStatus` 4-state (umbral cerca 0.85→0.75), helper `deriveDebtVerdict`, 8 archivos muertos borrados. Specs + plan completo: `claude-ai-design/unification-layer/` (ANALYSIS.md §5 = plan por fases con archivos).

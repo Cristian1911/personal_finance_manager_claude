@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Check, ExternalLink, Tag, Repeat, Plus } from "lucide-react";
+import { Check, ChevronRight, ExternalLink, Tag, Repeat, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Verdict, type VerdictState } from "@/components/ui/verdict";
@@ -240,7 +240,8 @@ export function MobileRecurrentesView({
   }
 
   // Verdict: overdue/today pending payments demand action; otherwise the
-  // month is on track and the detail reports payment progress.
+  // month is on track. The detail always carries the paid-of-total progress —
+  // it's the single source for those counts (no separate chip row).
   const totalCount = hook.pending.length + hook.completed.length;
   const dueSoonPending = hook.pending.filter(
     (item) => hook.getDateStatus(item.date) !== "future",
@@ -249,16 +250,16 @@ export function MobileRecurrentesView({
     (sum, item) => sum + item.plannedAmount,
     0,
   );
+  const progressText =
+    totalCount > 0 ? `${hook.completed.length} de ${totalCount} pagados` : null;
   const verdictState: VerdictState =
     dueSoonPending.length > 0 ? "atencion" : "vas-bien";
   const verdictDetail =
     dueSoonPending.length > 0
-      ? dueSoonPending.length === 1
-        ? `1 pago vence pronto por ${formatCurrency(dueSoonTotal, currency)}.`
-        : `${dueSoonPending.length} pagos vencen pronto por ${formatCurrency(dueSoonTotal, currency)}.`
+      ? `${dueSoonPending.length === 1 ? "1 pago vence" : `${dueSoonPending.length} pagos vencen`} pronto por ${formatCurrency(dueSoonTotal, currency)}${progressText ? ` · ${progressText}` : ""}.`
       : totalCount === 0
         ? "Sin cobros programados este mes."
-        : `${hook.completed.length} de ${totalCount} pagados.`;
+        : `${progressText}.`;
 
   return (
     <div className="space-y-3">
@@ -273,19 +274,6 @@ export function MobileRecurrentesView({
 
         <div className="mt-2">
           <Verdict state={verdictState} detail={verdictDetail} />
-        </div>
-
-        {/* Summary chips */}
-        <div className="mt-3 flex gap-3 text-center">
-          <div className="flex-1">
-            <p className="text-[10px] text-z-alert">Pendientes</p>
-            <p className="text-lg font-semibold text-z-alert">{hook.pending.length}</p>
-          </div>
-          <div className="h-8 w-px self-center bg-white/6" />
-          <div className="flex-1">
-            <p className="text-[10px] text-z-income">Completados</p>
-            <p className="text-lg font-semibold text-z-income">{hook.completed.length}</p>
-          </div>
         </div>
       </div>
 
@@ -305,6 +293,21 @@ export function MobileRecurrentesView({
           currency={currency}
           onMutate={hook.refreshOccurrences}
         />
+      )}
+
+      {/* Suscripciones — grouped with the templates strip so the management
+          rows sit together, below the "am I on track?" hero. */}
+      {hook.isHydrated && (
+        <Link
+          href="/suscripciones"
+          className={cn(
+            PANEL_INSET_CLASS,
+            "flex items-center justify-between px-3.5 py-3 active:bg-white/[0.03]",
+          )}
+        >
+          <span className="text-sm font-medium">Suscripciones</span>
+          <ChevronRight className="size-4 text-muted-foreground" />
+        </Link>
       )}
 
       {/* Pending payments grouped by date */}

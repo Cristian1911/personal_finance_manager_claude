@@ -133,7 +133,13 @@ export default async function PlanPage({
           </Suspense>
         ) : (
           <div className="space-y-4">
-            <MobileHeader variant="main" title={MOBILE_TAB_TITLES[activeTab] ?? "Plan"} />
+            {/* Single header for the whole tab — tab components must NOT render
+                their own MobileHeader, or the page shows two stacked headers. */}
+            <MobileHeader
+              variant="sub"
+              title={MOBILE_TAB_TITLES[activeTab] ?? "Plan"}
+              backHref="/plan"
+            />
             {showMonthSelector && (
               <div className="flex justify-center">
                 <Suspense fallback={<div className="h-9 w-40 rounded-md bg-z-surface-2 animate-pulse" />}>
