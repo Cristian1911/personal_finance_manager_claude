@@ -21,7 +21,6 @@ import { SummaryCard } from "@/components/ui/summary-card";
 import { AttentionCard } from "@/components/ui/attention-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Verdict } from "@/components/ui/verdict";
-import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { PlanAllocationChip } from "@/components/mobile/v2/plan/plan-allocation-chip";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -176,20 +175,18 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
     <div className="space-y-6">
       {/* Mobile view */}
       {/* Layout main already applies p-4 + tab-bar clearance — don't re-apply. */}
+      {/* Tab header comes from plan/page.tsx — no second MobileHeader here.
+          The ajustes trigger lives on the hero card instead. */}
       <div className="lg:hidden">
-        <MobileHeader
-          variant="sub"
-          title="Presupuesto"
-          backHref="/plan"
-          action={<BudgetAjustesSheet variant="icon" {...ajustesProps} />}
-        />
-
-        <div className="space-y-4 pt-4">
+        <div className="space-y-4">
           {/* Budget hero card — eyebrow → number → verdict → detail → meta */}
           <div className={cn(PANEL_INSET_CLASS, "p-4")}>
-            <p className={SECTION_EYEBROW_CLASS}>
-              Gastado este mes
-            </p>
+            <div className="flex items-start justify-between gap-2">
+              <p className={SECTION_EYEBROW_CLASS}>
+                Gastado este mes
+              </p>
+              <BudgetAjustesSheet variant="icon" {...ajustesProps} />
+            </div>
 
             <p
               className={cn(

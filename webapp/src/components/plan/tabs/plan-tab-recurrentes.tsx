@@ -12,8 +12,6 @@ import { RecurringFormDialog } from "@/components/recurring/recurring-form-dialo
 import { RecurringList } from "@/components/recurring/recurring-list";
 import { RecurringTimelineView } from "@/components/recurring/recurring-timeline-view";
 import { MobileRecurrentesView } from "@/components/mobile/v2/plan/mobile-recurrentes-view";
-import { MobileHeader } from "@/components/mobile/v2/mobile-header";
-import { MCardTight, MListRow } from "@/components/mobile/v2/mobile-card";
 import { Button } from "@/components/ui/button";
 import { GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import { DesktopOnly } from "@/components/ui/responsive-render";
@@ -56,17 +54,9 @@ export async function PlanTabRecurrentes({ month }: PlanTabRecurrentesProps = {}
 
   return (
     <div className="space-y-6">
-      {/* Mobile — unified checklist + templates */}
+      {/* Mobile — unified checklist + templates. The tab header comes from
+          plan/page.tsx — don't render a second MobileHeader here. */}
       <div className="lg:hidden">
-        <MobileHeader variant="sub" title="Recurrentes" backHref="/plan" />
-        <Link href="/suscripciones" className="mb-3 mt-3 block">
-          <MCardTight>
-            <MListRow>
-              <span className="text-sm font-medium">Suscripciones</span>
-              <ChevronRight className="size-4 text-muted-foreground" />
-            </MListRow>
-          </MCardTight>
-        </Link>
         <MobileRecurrentesView
           templates={templates}
           accounts={accounts}
