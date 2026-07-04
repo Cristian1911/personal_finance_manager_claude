@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
+import { Verdict } from "@/components/ui/verdict";
 import {
   BUCKET_LABEL,
   WEEKDAYS_MONDAY_START,
@@ -42,12 +43,6 @@ const TONE_TEXT_CLASS: Record<RitmoStatusTone, string> = {
   debt: "text-z-debt",
 };
 
-const TONE_BG_CLASS: Record<RitmoStatusTone, string> = {
-  income: "bg-z-income",
-  alert: "bg-z-alert",
-  debt: "bg-z-debt",
-};
-
 const TONE_STROKE: Record<RitmoStatusTone, string> = {
   income: "var(--color-z-sage)",
   alert: "var(--color-z-alert)",
@@ -79,7 +74,6 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
   const overspentToday = data.spentToday > data.availablePerDay;
   const status = deriveRitmoStatus(data);
   const statusTextClass = TONE_TEXT_CLASS[status.tone];
-  const statusToneClass = TONE_BG_CLASS[status.tone];
   // "income" tone falls through to a muted color when nothing was spent
   // today — there's no "you spent $0" achievement to celebrate in green.
   const todayTone =
@@ -125,25 +119,13 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
 
   return (
     <div className="rounded-2xl border border-white/6 bg-z-surface-2/80 p-5">
-      {/* Top row: eyebrow ("Gasto de hoy") + status pill. */}
+      {/* Top row: eyebrow ("Gasto de hoy"); the verdict lives under the
+          number (slot: eyebrow → number → verdict → detail), never here. */}
       <div className="flex items-center justify-between gap-3">
         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
           Gasto de hoy
         </p>
-        {data.incomeConfigured ? (
-          <span
-            role="status"
-            aria-label={`Estado del gasto: ${status.label}`}
-            className={cn(
-              "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]",
-              "bg-white/[0.04] border border-white/6",
-              statusTextClass,
-            )}
-          >
-            <span className={cn("size-1.5 rounded-full", statusToneClass)} />
-            {status.label}
-          </span>
-        ) : (
+        {!data.incomeConfigured && (
           <span
             role="status"
             aria-label="Sin datos suficientes para un veredicto"
@@ -174,13 +156,20 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
         )}
       </div>
 
+      {/* Verdict chip — the one full-volume status element on this screen. */}
+      {data.incomeConfigured && (
+        <div className="mt-2">
+          <Verdict state={status.state} />
+        </div>
+      )}
+
       {/* Daily allowance context line. Always rendered — it's the
           baseline the headline is being compared against. Tone shifts
           to amber when today is over the daily budget. */}
       {data.incomeConfigured ? (
         <p
           className={cn(
-            "mt-2 text-[12px] tabular-nums",
+            "mt-1.5 text-[12px] tabular-nums",
             overspentToday ? "text-z-alert" : "text-z-sage-light",
           )}
         >

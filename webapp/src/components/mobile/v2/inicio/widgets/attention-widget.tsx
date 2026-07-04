@@ -1,6 +1,7 @@
 "use client";
 
-import { CheckCircle2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Verdict } from "@/components/ui/verdict";
 import { ChipEyebrow } from "../widget-chip";
 import { InicioAttentionTimeline } from "../inicio-attention-timeline";
 import { InicioImportStrip } from "../inicio-import-strip";
@@ -37,7 +38,10 @@ export function renderAttentionWidget(props: AttentionWidgetProps): WidgetRender
   const emailCount = pendingEmails.length;
   const total = overdueCount + upcomingCount + emailCount;
 
-  const tone = overdueCount > 0 ? "debt" : total > 0 ? "brass" : "foreground";
+  // Brass never carries status (T1): overdue keeps the debt tone; pending
+  // states bind to the alert token on the status line below (ChipTone has no
+  // alert variant, so the ring/eyebrow fall back to neutral).
+  const tone = overdueCount > 0 ? "debt" : "foreground";
   const eyebrowTone = overdueCount > 0 ? "debt" : "foreground";
 
   return {
@@ -47,9 +51,8 @@ export function renderAttentionWidget(props: AttentionWidgetProps): WidgetRender
       <div className="flex h-full flex-col items-center gap-1.5 text-center">
         <ChipEyebrow tone={eyebrowTone}>Por resolver</ChipEyebrow>
         {total === 0 ? (
-          <div className="flex flex-1 items-center gap-1.5">
-            <CheckCircle2 className="size-4 text-z-income" aria-hidden />
-            <span className="text-[12px] font-semibold text-foreground">Al día</span>
+          <div className="flex flex-1 items-center">
+            <Verdict compact state="vas-bien" />
           </div>
         ) : (
           <div className="flex flex-1 items-baseline gap-1.5">
@@ -61,7 +64,16 @@ export function renderAttentionWidget(props: AttentionWidgetProps): WidgetRender
             </span>
           </div>
         )}
-        <p className="truncate text-[10px] text-muted-foreground">
+        <p
+          className={cn(
+            "truncate text-[10px]",
+            overdueCount > 0
+              ? "text-z-debt"
+              : total > 0
+                ? "text-z-alert"
+                : "text-muted-foreground",
+          )}
+        >
           {overdueCount > 0
             ? `${overdueCount} vencido${overdueCount === 1 ? "" : "s"}`
             : upcomingCount > 0

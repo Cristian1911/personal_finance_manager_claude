@@ -1,7 +1,9 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { Verdict } from "@/components/ui/verdict";
 import { formatCurrency } from "@/lib/utils/currency";
+import { deriveDebtVerdict } from "@/lib/utils/debt-verdict";
 import { PANEL_INSET_CLASS, MOBILE_EYEBROW_CLASS } from "@/lib/constants/styles";
 import type { CurrencyCode } from "@/types/domain";
 
@@ -16,6 +18,7 @@ interface DebtAccountBreakdown {
 }
 
 interface DeudasHeroProps {
+  totalDebt: number;
   totalMonthlyPayment: number;
   monthlyInterest: number;
   currency: CurrencyCode;
@@ -25,6 +28,7 @@ interface DeudasHeroProps {
 }
 
 export function DeudasHero({
+  totalDebt,
   totalMonthlyPayment,
   monthlyInterest,
   currency,
@@ -33,6 +37,8 @@ export function DeudasHero({
   onToggle,
 }: DeudasHeroProps) {
   const capital = totalMonthlyPayment - monthlyInterest;
+  const { state: verdictState, delta: verdictDelta, detail: verdictDetail } =
+    deriveDebtVerdict({ totalDebt, totalMonthlyPayment, monthlyInterest, currency });
   // Clamp: negative amortization (interest > cuota) would yield a negative
   // capital share and a >100% interest bar.
   const capitalPct = totalMonthlyPayment > 0
@@ -66,6 +72,14 @@ export function DeudasHero({
           </span>
           <p className="text-[10px] text-z-debt/70">en intereses</p>
         </div>
+      </div>
+
+      {/* Verdict — derived from the same capital-vs-interest trend as the
+          desktop DebtHeroCard (see deriveDebtVerdict), never hardcoded: a
+          negative-amortization month (interest > cuota) must show
+          te-pasaste, not a false vas-bien. */}
+      <div className="mt-2">
+        <Verdict state={verdictState} delta={verdictDelta} detail={verdictDetail} />
       </div>
 
       {/* Split bar */}

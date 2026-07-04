@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Check, ExternalLink, Tag, Repeat, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Verdict, type VerdictState } from "@/components/ui/verdict";
 import { MobileRecurrentesTemplatesStrip } from "./mobile-recurrentes-templates-strip";
 import { AccountRowIdentity } from "@/components/accounts/account-row-identity";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -238,16 +239,41 @@ export function MobileRecurrentesView({
     );
   }
 
+  // Verdict: overdue/today pending payments demand action; otherwise the
+  // month is on track and the detail reports payment progress.
+  const totalCount = hook.pending.length + hook.completed.length;
+  const dueSoonPending = hook.pending.filter(
+    (item) => hook.getDateStatus(item.date) !== "future",
+  );
+  const dueSoonTotal = dueSoonPending.reduce(
+    (sum, item) => sum + item.plannedAmount,
+    0,
+  );
+  const verdictState: VerdictState =
+    dueSoonPending.length > 0 ? "atencion" : "vas-bien";
+  const verdictDetail =
+    dueSoonPending.length > 0
+      ? dueSoonPending.length === 1
+        ? `1 pago vence pronto por ${formatCurrency(dueSoonTotal, currency)}.`
+        : `${dueSoonPending.length} pagos vencen pronto por ${formatCurrency(dueSoonTotal, currency)}.`
+      : totalCount === 0
+        ? "Sin cobros programados este mes."
+        : `${hook.completed.length} de ${totalCount} pagados.`;
+
   return (
     <div className="space-y-3">
       {/* Hero card */}
       <div className={cn("rounded-2xl border border-white/6 p-4", HERO_CARD_GRADIENT_CLASS)}>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-brass">
+        <p className={MOBILE_EYEBROW_CLASS}>
           Compromiso mensual
         </p>
         <p className="mt-1 text-3xl font-bold tabular-nums">
           {formatCurrency(hook.totalPlanned, currency)}
         </p>
+
+        <div className="mt-2">
+          <Verdict state={verdictState} detail={verdictDetail} />
+        </div>
 
         {/* Summary chips */}
         <div className="mt-3 flex gap-3 text-center">

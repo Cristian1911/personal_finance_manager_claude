@@ -34,20 +34,33 @@ export function weekdayMondayStart(iso: string): number {
 export type RitmoStatusTone = "income" | "alert" | "debt";
 
 /**
+ * Closed verdict vocabulary (unification layer T1). Shared by webapp
+ * `<Verdict />` and mobile so the four states never drift per platform.
+ */
+export type VerdictState = "vas-bien" | "cerca" | "te-pasaste" | "atencion";
+
+/**
  * Derives the status pill content. Both platforms read the same logic so
  * the verdict (red/amber/green) stays consistent across web + mobile.
  *
- * Why: overspent today OR negative period balance is always "debt" (red).
- * Past 85% of the period budget is "alert" (amber). Otherwise "income".
+ * Why: overspent today OR negative period balance is always "te-pasaste"
+ * (red). Past 75% of the period budget is "cerca" (amber). Otherwise
+ * "vas-bien". `tone` + `label` stay for backward compatibility (mobile
+ * consumes them); `state` feeds the webapp `<Verdict />` component.
  */
 export function deriveRitmoStatus(ritmo: Pick<RitmoResult, "availableTotal" | "spentToday" | "availablePerDay" | "spentFraction">): {
   tone: RitmoStatusTone;
   label: string;
+  state: VerdictState;
 } {
   const overspentToday = ritmo.spentToday > ritmo.availablePerDay;
-  if (ritmo.availableTotal < 0 || overspentToday) return { tone: "debt", label: "Te pasaste" };
-  if (ritmo.spentFraction >= 0.85) return { tone: "alert", label: "Vas justo" };
-  return { tone: "income", label: "Vas bien" };
+  if (ritmo.availableTotal < 0 || overspentToday) {
+    return { tone: "debt", label: "Te pasaste", state: "te-pasaste" };
+  }
+  if (ritmo.spentFraction >= 0.75) {
+    return { tone: "alert", label: "Cerca del límite", state: "cerca" };
+  }
+  return { tone: "income", label: "Vas bien", state: "vas-bien" };
 }
 
 export interface RitmoDailyOutflow {

@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="design_doc_mode" content="canvas">
+  <link rel="stylesheet" href="_ds/zeta-design-system-019dcbea-f04a-7d4c-b73b-b05e420673e5/colors_and_type.css">
+  <script src="_ds/zeta-design-system-019dcbea-f04a-7d4c-b73b-b05e420673e5/_ds_bundle.js"></script>
+</helmet>
+<section style="display:flex;flex-direction:column;align-items:flex-start;padding:48px;background:var(--z-ink);min-height:100vh;box-sizing:border-box;">
+  <div id="3a" style="display:flex;flex-direction:column;gap:28px;width:1660px;">
+
+    <!-- ── Board header ─────────────────────────────── -->
+    <div style="display:flex;flex-direction:column;gap:12px;max-width:980px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="display:inline-flex;align-items:center;justify-content:center;height:24px;padding:0 10px;border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid var(--z-border);color:var(--z-sage-light);font-size:12px;font-weight:700;">3a</span>
+        <span class="z-eyebrow">Zeta · unification layer · T3</span>
+      </div>
+      <h1 class="z-h1" style="margin:0;">Motion vocabulary</h1>
+      <p class="z-body" style="margin:0;">One idiom: <span style="color:var(--z-white);font-weight:600;">the disclosure.</span> Everything that expands in Zeta expands the same way &mdash; same wording, same caret, same curve, same 160ms. Motion exists for spatial context only; transform and opacity are the whole budget. And one hard rule ends the dimming drift: <span style="color:var(--z-white);font-weight:600;">the page dims only when input focus leaves it.</span> Expanding is reading, not a mode. The demos below are live &mdash; click them (Tweaks: &ldquo;c&aacute;mara lenta&rdquo; slows everything 6&times; for inspection).</p>
+    </div>
+
+    <!-- ── Row B: grammar spec ──────────────────────── -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:stretch;">
+
+      <div class="z-card-surface" data-ds-card="@dsCard" style="display:flex;flex-direction:column;gap:20px;padding:24px;">
+        <span class="z-eyebrow">a &middot; la revelaci&oacute;n &mdash; anatom&iacute;a</span>
+        <div style="display:grid;grid-template-columns:110px 1fr;gap:12px 16px;font-size:13px;color:var(--z-sage-light);line-height:1.55;">
+          <span class="z-mono" style="font-size:11px;color:var(--z-sage-dark);padding-top:2px;">AFFORDANCE</span>
+          <span><span style="color:var(--z-white);font-weight:600;">&ldquo;Ver + qu&eacute;&rdquo;</span> &mdash; the label always names what will appear: &ldquo;Ver flujo por d&iacute;a&rdquo;, &ldquo;Ver desglose&rdquo;, &ldquo;Ver 7 categor&iacute;as&rdquo;. Expanded, it re-labels to &ldquo;Ocultar&rdquo;. Never bare &ldquo;Ver&rdquo;. 12px / 600 sage-light, hover white, &ge;44px hit area. Never brass &mdash; brass stays on primary actions.</span>
+          <span class="z-mono" style="font-size:11px;color:var(--z-sage-dark);padding-top:2px;">CARET</span>
+          <span>Chevron-down, 12px, stroke 1.5, right of the label. Rotates 180&deg; on expand on the same curve. It is the only element in the app that rotates.</span>
+          <span class="z-mono" style="font-size:11px;color:var(--z-sage-dark);padding-top:2px;">CONTAINER</span>
+          <span>Grid rows <span class="z-mono" style="font-size:12px;">0fr &rarr; 1fr</span>, 160ms &mdash; no JS measuring, no max-height hacks. Content enters at 120ms opacity + 3px translateY: the existing page-enter grammar, reused. Siblings reflow; nothing springs, scales, or slides sideways.</span>
+          <span class="z-mono" style="font-size:11px;color:var(--z-sage-dark);padding-top:2px;">EASING</span>
+          <span>One curve for everything: <span class="z-mono" style="font-size:12px;">cubic-bezier(0.2, 0, 0, 1)</span>. Decisive start, soft landing. No bounce, no overshoot.</span>
+          <span class="z-mono" style="font-size:11px;color:var(--z-sage-dark);padding-top:2px;">DURATIONS</span>
+          <span>Three, total: <span class="z-num" style="color:var(--z-white);">120</span> content-enter &middot; <span class="z-num" style="color:var(--z-white);">160</span> disclosure &middot; <span class="z-num" style="color:var(--z-white);">200</span> sheet. Nothing longer. Charts stay at zero.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;padding:16px;border-radius:12px;background:rgba(0,0,0,0.25);border:1px solid var(--z-border);">
+          <span class="z-eyebrow" style="font-size:9px;">Tokens</span>
+          <div class="z-mono" style="font-size:11px;color:var(--z-sage-light);line-height:1.9;">
+            --motion-ease: cubic-bezier(0.2, 0, 0, 1)<br>
+            --motion-1: 120ms &middot; --motion-2: 160ms &middot; --motion-3: 200ms
+          </div>
+        </div>
+      </div>
+
+      <div class="z-card-surface" data-ds-card="@dsCard" style="display:flex;flex-direction:column;gap:20px;padding:24px;">
+        <span class="z-eyebrow">b &middot; la regla del dim</span>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="z-card-stat" data-ds-card="@dsCard" style="display:flex;gap:14px;align-items:flex-start;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--z-income)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px;"><path d="M20 6 9 17l-5-5"></path></svg>
+            <span style="font-size:13px;color:var(--z-sage-light);line-height:1.55;"><span style="color:var(--z-white);font-weight:600;">Dim = modal.</span> The backdrop (black/60 + blur) appears if and only if input focus leaves the page: bottom sheets, dialogs, the FAB quick-capture. It belongs to the overlay, not to any card.</span>
+          </div>
+          <div class="z-card-stat" data-ds-card="@dsCard" style="display:flex;gap:14px;align-items:flex-start;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--z-debt)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px;"><circle cx="12" cy="12" r="10"></circle><path d="m15 9-6 6"></path><path d="m9 9 6 6"></path></svg>
+            <span style="font-size:13px;color:var(--z-sage-light);line-height:1.55;"><span style="color:var(--z-white);font-weight:600;">Disclosure never dims.</span> The dashboard hero that darkens the whole page on expand loses its dim; the silent growers gain the caret and label. Both converge on the same idiom &mdash; that resolves finding 6 in one rule.</span>
+          </div>
+          <div class="z-card-stat" data-ds-card="@dsCard" style="display:flex;gap:14px;align-items:flex-start;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--z-sage-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            <span style="font-size:13px;color:var(--z-sage-light);line-height:1.55;"><span style="color:var(--z-white);font-weight:600;">What never moves:</span> no scale on press (hover-tint only), no scroll-triggered motion, no chart animation, no skeleton shimmer choreography. GPU transform/opacity only &mdash; grid-rows disclosure is the single sanctioned layout transition.</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;padding:16px;border-radius:12px;background:rgba(0,0,0,0.25);border:1px solid var(--z-border);">
+          <span class="z-eyebrow" style="font-size:9px;">Vocabulario del affordance &mdash; fija la deriva de copy</span>
+          <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 18px;font-size:12px;align-items:baseline;">
+            <span class="z-mono" style="font-size:11px;color:var(--z-debt);text-decoration:line-through;">Ver</span><span style="color:var(--z-sage-light);">Ver flujo por d&iacute;a</span>
+            <span class="z-mono" style="font-size:11px;color:var(--z-debt);text-decoration:line-through;">Expandir</span><span style="color:var(--z-sage-light);">Ver desglose</span>
+            <span class="z-mono" style="font-size:11px;color:var(--z-debt);text-decoration:line-through;">Mostrar m&aacute;s</span><span style="color:var(--z-sage-light);">Ver 7 categor&iacute;as</span>
+            <span class="z-mono" style="font-size:11px;color:var(--z-sage-dark);">abierto &rarr;</span><span style="color:var(--z-sage-light);">Ocultar flujo &middot; Ocultar desglose</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Row C: live applications ─────────────────── -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div class="z-divider"><div class="line"></div><span class="z-eyebrow">c &middot; aplicaci&oacute;n &mdash; tres demos vivos</span><div class="line"></div></div>
+      <div style="display:grid;grid-template-columns:repeat(3, 380px);gap:32px;justify-content:center;">
+
+        <!-- ── Inicio: hero disclosure ── -->
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div data-screen-label="Inicio — Ver flujo por día" style="width:380px;box-sizing:border-box;border-radius:28px;border:1px solid var(--z-border);background:var(--z-ink);padding:20px 16px 24px;display:flex;flex-direction:column;gap:12px;overflow:hidden;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px;">
+              <span style="font-size:22px;font-weight:600;color:var(--z-white);letter-spacing:-0.01em;">Inicio</span>
+              <span class="z-num" style="font-size:12px;color:var(--z-sage-light);padding:5px 10px;border-radius:10px;border:1px solid var(--z-border);background:#111;">Abril 2026</span>
+            </div>
+            <div class="z-card-surface" data-ds-card="@dsCard" style="background:radial-gradient(circle at top left, rgba(63,70,50,0.22), transparent 42%), linear-gradient(180deg, rgba(27,30,27,0.96), rgba(18,20,18,0.98));padding:18px;display:flex;flex-direction:column;">
+              <span class="z-eyebrow">Disponible para gastar</span>
+              <div style="margin-top:8px;display:flex;align-items:baseline;gap:8px;">
+                <span class="z-num" style="font-size:34px;font-weight:800;color:var(--z-white);letter-spacing:-0.02em;">$3.760.000</span>
+                <span style="font-size:11px;font-weight:600;color:var(--z-sage-dark);">COP</span>
+              </div>
+              <div style="margin-top:8px;">
+                <span style="display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px 0 8px;border-radius:999px;background:color-mix(in srgb, var(--z-income) 8%, transparent);border:1px solid color-mix(in srgb, var(--z-income) 20%, transparent);color:var(--z-income);font-size:12px;font-weight:600;line-height:1;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+                  <span>Vas bien</span>
+                </span>
+              </div>
+              <div style="margin-top:6px;font-size:13px;color:var(--z-sage-light);line-height:1.5;">Vas <span class="z-num" style="color:var(--z-income);">$320.000</span> bajo el ritmo ideal.</div>
+
+              <div style="{{ flowOuterStyle }}">
+                <div style="overflow:hidden;min-height:0;">
+                  <div style="{{ flowContentStyle }}">
+                    <div style="display:flex;flex-direction:column;gap:6px;padding-top:14px;">
+                      <div style="display:flex;justify-content:space-between;align-items:baseline;padding:6px 10px;border-radius:8px;background:rgba(0,0,0,0.25);border:1px solid var(--z-border);">
+                        <span style="font-size:11px;color:var(--z-sage-light);">hoy</span>
+                        <span style="display:flex;align-items:baseline;gap:8px;"><span class="z-num" style="font-size:12px;color:var(--z-white);">$86.400</span><span class="z-num" style="font-size:10px;color:var(--z-income);">&minus;$91K vs ritmo</span></span>
+                      </div>
+                      <div style="display:flex;justify-content:space-between;align-items:baseline;padding:6px 10px;border-radius:8px;background:rgba(0,0,0,0.25);border:1px solid var(--z-border);">
+                        <span style="font-size:11px;color:var(--z-sage-light);">ayer</span>
+                        <span class="z-num" style="font-size:12px;color:var(--z-white);">$203.500</span>
+                      </div>
+                      <div style="display:flex;justify-content:space-between;align-items:baseline;padding:6px 10px;border-radius:8px;background:rgba(0,0,0,0.25);border:1px solid var(--z-border);">
+                        <span style="font-size:11px;color:var(--z-sage-light);">24 abr</span>
+                        <span class="z-num" style="font-size:12px;color:var(--z-white);">$52.400</span>
+                      </div>
+                      <div style="display:flex;justify-content:space-between;align-items:baseline;padding:6px 10px;border-radius:8px;background:rgba(0,0,0,0.25);border:1px solid var(--z-border);">
+                        <span style="font-size:11px;color:var(--z-sage-light);">23 abr</span>
+                        <span class="z-num" style="font-size:12px;color:var(--z-white);">$167.800</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button onClick="{{ toggleFlow }}" style="margin-top:12px;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 4px;background:transparent;border:none;cursor:pointer;color:var(--z-sage-light);font-size:12px;font-weight:600;font-family:var(--font-sans);align-self:flex-start;" style-hover="color:var(--z-white);">
+                <span>{{ flowLabel }}</span>
+                <span style="{{ flowCaretStyle }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+              </button>
+            </div>
+          </div>
+          <p style="margin:0;font-size:12px;color:var(--z-sage-dark);line-height:1.6;max-width:380px;">The hero that used to dim the whole page. Now: grid-rows disclosure, caret rotation, content entering on the page-enter grammar &mdash; and the page behind stays fully lit.</p>
+        </div>
+
+        <!-- ── Deudas: row disclosure ── -->
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div data-screen-label="Deudas — Ver desglose" style="width:380px;box-sizing:border-box;border-radius:28px;border:1px solid var(--z-border);background:var(--z-ink);padding:20px 16px 24px;display:flex;flex-direction:column;gap:12px;overflow:hidden;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px;">
+              <span style="font-size:22px;font-weight:600;color:var(--z-white);letter-spacing:-0.01em;">Deudas</span>
+              <span class="z-num" style="font-size:12px;color:var(--z-sage-light);padding:5px 10px;border-radius:10px;border:1px solid var(--z-border);background:#111;">Abril 2026</span>
+            </div>
+            <div class="z-card-compact" data-ds-card="@dsCard" style="display:flex;flex-direction:column;padding:12px;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:13px;font-weight:500;color:var(--z-white);">Hipoteca</div>
+                  <div style="font-size:10px;color:var(--z-sage-dark);">Bancolombia &middot; cuota 5 may</div>
+                </div>
+                <span class="z-num" style="font-size:13px;color:var(--z-white);">$1.680.000</span>
+              </div>
+
+              <div style="{{ cuotaOuterStyle }}">
+                <div style="overflow:hidden;min-height:0;">
+                  <div style="{{ cuotaContentStyle }}">
+                    <div style="display:flex;flex-direction:column;gap:8px;padding-top:12px;">
+                      <div style="display:flex;height:10px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,0.06);">
+                        <div style="width:67%;background:var(--z-brass);"></div>
+                        <div style="width:33%;background:var(--z-expense);opacity:0.85;"></div>
+                      </div>
+                      <div style="display:flex;justify-content:space-between;">
+                        <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--z-sage-light);"><span style="width:8px;height:8px;border-radius:2px;background:var(--z-brass);"></span>Capital <span class="z-num" style="color:var(--z-white);">$1.132.000</span></span>
+                        <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--z-sage-light);"><span style="width:8px;height:8px;border-radius:2px;background:var(--z-expense);"></span>Inter&eacute;s <span class="z-num" style="color:var(--z-white);">$548.000</span></span>
+                      </div>
+                      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--z-sage-dark);">
+                        <span>67% construye patrimonio</span>
+                        <span>tasa 11,2% e.a.</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button onClick="{{ toggleCuota }}" style="margin-top:10px;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 4px;background:transparent;border:none;cursor:pointer;color:var(--z-sage-light);font-size:12px;font-weight:600;font-family:var(--font-sans);align-self:flex-start;" style-hover="color:var(--z-white);">
+                <span>{{ cuotaLabel }}</span>
+                <span style="{{ cuotaCaretStyle }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+              </button>
+            </div>
+            <div class="z-card-compact" data-ds-card="@dsCard" style="display:flex;align-items:center;gap:10px;padding:10px 12px;">
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:13px;font-weight:500;color:var(--z-white);">Tarjeta de cr&eacute;dito</div>
+                <div style="font-size:10px;color:var(--z-sage-dark);">Davivienda &middot; cuota 2 may</div>
+              </div>
+              <span class="z-num" style="font-size:13px;color:var(--z-white);">$412.000</span>
+            </div>
+          </div>
+          <p style="margin:0;font-size:12px;color:var(--z-sage-dark);line-height:1.6;max-width:380px;">The silent grower gains the affordance. Same 160ms, same caret; the T2 split bar arrives inside the disclosure. &ldquo;Ver desglose&rdquo; &rarr; &ldquo;Ocultar desglose&rdquo; &mdash; the label always says what it did.</p>
+        </div>
+
+        <!-- ── Movimientos: sheet + dim ── -->
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div data-screen-label="Movimientos — FAB sheet" style="position:relative;width:380px;height:560px;box-sizing:border-box;border-radius:28px;border:1px solid var(--z-border);background:var(--z-ink);padding:20px 16px 0;display:flex;flex-direction:column;gap:12px;overflow:hidden;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px;">
+              <span style="font-size:22px;font-weight:600;color:var(--z-white);letter-spacing:-0.01em;">Movimientos</span>
+              <span class="z-num" style="font-size:12px;color:var(--z-sage-light);padding:5px 10px;border-radius:10px;border:1px solid var(--z-border);background:#111;">Abril 2026</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <div class="z-card-compact" data-ds-card="@dsCard" style="display:flex;align-items:center;gap:10px;padding:10px 12px;">
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:13px;font-weight:500;color:var(--z-white);">&Eacute;xito Mercado</div>
+                  <div style="font-size:10px;color:var(--z-sage-dark);">Mercado &middot; Bancolombia</div>
+                </div>
+                <span class="z-num" style="font-size:13px;color:var(--z-white);">&minus;$245.000</span>
+              </div>
+              <div class="z-card-compact" data-ds-card="@dsCard" style="display:flex;align-items:center;gap:10px;padding:10px 12px;">
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:13px;font-weight:500;color:var(--z-white);">N&oacute;mina</div>
+                  <div style="font-size:10px;color:var(--z-sage-dark);">Salario &middot; Bancolombia</div>
+                </div>
+                <span class="z-num" style="font-size:13px;color:var(--z-income);">+$4.800.000</span>
+              </div>
+              <div class="z-card-compact" data-ds-card="@dsCard" style="display:flex;align-items:center;gap:10px;padding:10px 12px;">
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:13px;font-weight:500;color:var(--z-white);">Uber</div>
+                  <div style="font-size:10px;color:var(--z-sage-dark);">Transporte &middot; Bancolombia</div>
+                </div>
+                <span class="z-num" style="font-size:13px;color:var(--z-white);">&minus;$18.500</span>
+              </div>
+            </div>
+
+            <!-- Tab bar + FAB -->
+            <div style="position:absolute;left:0;right:0;bottom:0;height:56px;display:flex;align-items:center;justify-content:space-around;background:rgba(18,20,18,0.92);backdrop-filter:blur(20px);border-top:1px solid var(--z-border);">
+              <span style="font-size:10px;color:var(--z-sage-dark);">Inicio</span>
+              <span style="font-size:10px;color:var(--z-brass);font-weight:600;">Movim.</span>
+              <button onClick="{{ openSheet }}" style="width:48px;height:48px;border-radius:999px;background:var(--z-brass);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;margin-top:-20px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#121412" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              </button>
+              <span style="font-size:10px;color:var(--z-sage-dark);">Plan</span>
+              <span style="font-size:10px;color:var(--z-sage-dark);">Deudas</span>
+            </div>
+
+            <!-- Backdrop -->
+            <div onClick="{{ closeSheet }}" style="{{ backdropStyle }}"></div>
+            <!-- Sheet -->
+            <div style="{{ sheetWrapStyle }}">
+              <div style="border-top-left-radius:20px;border-top-right-radius:20px;background:var(--z-surface-1);border:1px solid var(--z-border);border-bottom:none;padding:14px 16px 20px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.03);display:flex;flex-direction:column;gap:12px;">
+                <div style="width:40px;height:4px;border-radius:2px;background:rgba(255,255,255,0.12);align-self:center;"></div>
+                <span class="z-eyebrow">Nuevo movimiento</span>
+                <div style="display:flex;align-items:center;height:52px;padding:0 14px;border-radius:14px;border:1px solid var(--z-border-strong);background:rgba(30,34,30,0.55);">
+                  <span style="color:var(--z-sage-dark);font-size:20px;font-weight:600;margin-right:8px;">$</span>
+                  <span class="z-num" style="flex:1;font-size:26px;font-weight:700;color:var(--z-sage-dark);">0</span>
+                  <span style="color:var(--z-sage-dark);font-size:11px;font-weight:600;">COP</span>
+                </div>
+                <div style="display:flex;gap:8px;">
+                  <button onClick="{{ closeSheet }}" class="z-btn z-btn-ghost" style="flex:1;">Cancelar</button>
+                  <button onClick="{{ closeSheet }}" class="z-btn z-btn-brass" style="flex:2;">Guardar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p style="margin:0;font-size:12px;color:var(--z-sage-dark);line-height:1.6;max-width:380px;">The one place the page dims: focus leaves it. Backdrop fades at 200ms opacity; the sheet rides a pure translateY. Tap the brass FAB; tap the backdrop to dismiss.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;camaraLenta&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Demo de movimiento&quot; }
+}">
+class Component extends DCLogic {
+  state = { flow: false, cuota: false, sheet: false };
+
+  renderVals() {
+    const slow = this.props.camaraLenta ?? false;
+    const f = slow ? 6 : 1;
+    const ease = "cubic-bezier(0.2, 0, 0, 1)";
+    const d1 = (120 * f) + "ms";
+    const d2 = (160 * f) + "ms";
+    const d3 = (200 * f) + "ms";
+
+    const disclosure = (open) => ({
+      outer: {
+        display: "grid",
+        gridTemplateRows: open ? "1fr" : "0fr",
+        transition: "grid-template-rows " + d2 + " " + ease
+      },
+      content: {
+        opacity: open ? 1 : 0,
+        transform: open ? "translateY(0)" : "translateY(-3px)",
+        transition: "opacity " + d1 + " " + ease + ", transform " + d1 + " " + ease
+      },
+      caret: {
+        display: "inline-flex",
+        transform: open ? "rotate(180deg)" : "rotate(0deg)",
+        transition: "transform " + d2 + " " + ease
+      }
+    });
+
+    const flow = disclosure(this.state.flow);
+    const cuota = disclosure(this.state.cuota);
+    const sheet = this.state.sheet;
+
+    return {
+      toggleFlow: () => this.setState(s => ({ flow: !s.flow })),
+      toggleCuota: () => this.setState(s => ({ cuota: !s.cuota })),
+      openSheet: () => this.setState({ sheet: true }),
+      closeSheet: () => this.setState({ sheet: false }),
+
+      flowOuterStyle: flow.outer,
+      flowContentStyle: flow.content,
+      flowCaretStyle: flow.caret,
+      flowLabel: this.state.flow ? "Ocultar flujo" : "Ver flujo por d\u00eda",
+
+      cuotaOuterStyle: cuota.outer,
+      cuotaContentStyle: cuota.content,
+      cuotaCaretStyle: cuota.caret,
+      cuotaLabel: this.state.cuota ? "Ocultar desglose" : "Ver desglose",
+
+      backdropStyle: {
+        position: "absolute", inset: 0, zIndex: 10,
+        background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)",
+        opacity: sheet ? 1 : 0,
+        pointerEvents: sheet ? "auto" : "none",
+        transition: "opacity " + d3 + " " + ease
+      },
+      sheetWrapStyle: {
+        position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 11,
+        transform: sheet ? "translateY(0)" : "translateY(105%)",
+        transition: "transform " + d3 + " " + ease
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,7 +1,9 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
+import { Verdict } from "@/components/ui/verdict";
 import { formatCurrency } from "@/lib/utils/currency";
+import { deriveDebtVerdict } from "@/lib/utils/debt-verdict";
 import { Landmark, Flame } from "lucide-react";
 import type { CurrencyCode } from "@/types/domain";
 import type { DebtByCurrency } from "@zeta/shared";
@@ -21,6 +23,12 @@ export function DebtHeroCard({
   secondaryCurrencies,
   currency,
 }: DebtHeroCardProps) {
+  const {
+    state: verdictState,
+    delta: verdictDelta,
+    detail: verdictDetail,
+  } = deriveDebtVerdict({ totalDebt, totalMonthlyPayment, monthlyInterest, currency });
+
   return (
     <Card className="rounded-2xl p-3">
       <div className="grid grid-cols-1 sm:grid-cols-[2fr_1fr] gap-3">
@@ -44,6 +52,12 @@ export function DebtHeroCard({
                   ))}
                 </div>
               )}
+              <Verdict
+                className="mt-2"
+                state={verdictState}
+                delta={verdictDelta}
+                detail={verdictDetail}
+              />
             </div>
             <div className="text-right shrink-0">
               <p className="text-xs text-muted-foreground">Pagas al mes</p>

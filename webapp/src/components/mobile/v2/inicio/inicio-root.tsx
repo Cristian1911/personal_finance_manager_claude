@@ -330,14 +330,6 @@ export function InicioRoot({
 
   return (
     <div className="space-y-4">
-      {/* Old PulseWidget hero ("ESTE MES · PULSO") removed 2026-05-21.
-          Replaced by the V7 HybridHero rendered above this component in
-          MobileZone (Option A predictive-runway canonical, see #264).
-          The `hero` + `metrics` props are still received but their hero-
-          related fields are no longer rendered here; `metrics.last7Spend`
-          is still consumed by downstream widgets if any. The PulseWidget
-          component file is kept as a 1-line rollback target if needed. */}
-
       <SectionDivider label="Herramientas" />
       <WidgetGrid
         widgets={SYSTEM_INSIGHTS}

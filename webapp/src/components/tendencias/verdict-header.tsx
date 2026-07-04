@@ -1,15 +1,22 @@
-import { TrendingUp } from "lucide-react";
-import type { Verdict } from "@zeta/shared";
+import type { Verdict as VerdictData } from "@zeta/shared";
+import { Verdict, type VerdictState } from "@/components/ui/verdict";
 import { PANEL_INSET_CLASS, SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
 
-export function VerdictHeader({ verdict }: { verdict: Verdict }) {
+export function VerdictHeader({ verdict }: { verdict: VerdictData }) {
+  // Solo la ficha "Tasa de ahorro" puede traer tono negativo o valor faltante:
+  // tasa a la baja o sin historial → atención; de resto, vas bien.
+  const state: VerdictState = verdict.tiles.some(
+    (t) => t.tone === "neg" || t.value === "—",
+  )
+    ? "atencion"
+    : "vas-bien";
+
   return (
     <div className="mt-3">
-      {/* Brass accent callout — intentionally not a Tier-1/2/3 card (highlighted verdict surface). */}
-      <div className="flex items-center gap-3 rounded-2xl border border-z-brass/25 bg-z-brass/8 p-3">
-        <TrendingUp className="size-4 shrink-0 text-z-brass" />
+      <div className={`${PANEL_INSET_CLASS} flex flex-col gap-1.5 p-3`}>
+        <Verdict compact state={state} />
         <div>
-          <p className="text-sm font-semibold">{verdict.headline}</p>
+          <p className="text-[13px] leading-normal text-z-sage-light">{verdict.headline}</p>
           {verdict.sub && <p className="text-xs text-z-sage-dark">{verdict.sub}</p>}
         </div>
       </div>

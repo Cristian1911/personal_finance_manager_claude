@@ -20,8 +20,8 @@ import { BudgetAjustesSheet } from "@/components/budget/budget-ajustes-sheet";
 import { SummaryCard } from "@/components/ui/summary-card";
 import { AttentionCard } from "@/components/ui/attention-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Verdict } from "@/components/ui/verdict";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
-import { StateChip } from "@/components/mobile/v2/state-chip";
 import { PlanAllocationChip } from "@/components/mobile/v2/plan/plan-allocation-chip";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -146,13 +146,16 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
   const essentialPct = totalSpent > 0 ? Math.round((essentialSpent / totalSpent) * 100) : 0;
   const wantsPct = totalSpent > 0 ? Math.round((wantsSpent / totalSpent) * 100) : 0;
 
-  const pressure = progress >= 100 ? "critical" : progress >= 80 ? "watch" : "stable";
-  const chipConfig = {
-    stable: { label: "En control", variant: "sage" as const },
-    watch: { label: "Atención", variant: "warn" as const },
-    critical: { label: "Sobre límite", variant: "danger" as const },
-  } as const;
-  const chip = chipConfig[pressure];
+  const heroState =
+    progress >= 100 ? "te-pasaste" : progress >= 75 ? "cerca" : "vas-bien";
+  const overAmount = Math.max(0, totalSpent - totalBudgeted);
+  const monthName = monthLabel.split(" ")[0];
+  const heroDetail =
+    heroState === "te-pasaste"
+      ? `Llevas ${formatCurrency(overAmount, currency)} sobre el plan de ${monthName}.`
+      : heroState === "cerca"
+        ? "A este ritmo llegas al límite antes de fin de mes."
+        : `Te quedan ${formatCurrency(remaining, currency)} del plan de ${monthName}.`;
 
   const ajustesProps = {
     mode: budgetMode as BudgetMode | null,
@@ -182,46 +185,51 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
         />
 
         <div className="space-y-4 pt-4">
-          {/* Budget hero card */}
+          {/* Budget hero card — eyebrow → number → verdict → detail → meta */}
           <div className={cn(PANEL_INSET_CLASS, "p-4")}>
-            <div className="flex items-center justify-between gap-2">
-              <p className={SECTION_EYEBROW_CLASS}>
-                Gastado este mes
-              </p>
-              <StateChip label={chip.label} variant={chip.variant} />
-            </div>
+            <p className={SECTION_EYEBROW_CLASS}>
+              Gastado este mes
+            </p>
 
-            <div className="mt-2 flex items-center justify-between">
-              <span
-                className={cn(
-                  "text-[42px] font-[680] leading-none tracking-[-0.06em]",
-                  progress >= 100 ? "text-z-debt" : "text-z-income"
-                )}
-              >
-                {progress}%
-              </span>
-              <div className="text-right">
-                <p className="text-lg font-semibold">
-                  {formatCurrency(totalSpent, currency)}
-                </p>
-                <p className="text-[11px] text-muted-foreground">
-                  de {formatCurrency(totalBudgeted, currency)}
-                </p>
-              </div>
-            </div>
+            <p
+              className={cn(
+                "mt-2 text-[42px] font-[680] leading-none tracking-[-0.06em]",
+                heroState === "te-pasaste"
+                  ? "text-z-debt"
+                  : heroState === "cerca"
+                    ? "text-z-alert"
+                    : "text-z-income"
+              )}
+            >
+              {progress}%
+            </p>
+
+            <Verdict
+              className="mt-2"
+              state={heroState}
+              delta={remaining < 0 ? formatCurrency(remaining, currency) : undefined}
+              detail={heroDetail}
+            />
 
             {/* Progress bar */}
             <div className="relative mt-3 h-2.5 rounded-full bg-z-surface-2">
               <div
                 className={cn(
                   "h-full rounded-full",
-                  progress >= 100
+                  heroState === "te-pasaste"
                     ? "bg-gradient-to-r from-z-debt/90 to-z-debt/65"
-                    : "bg-gradient-to-r from-z-income/90 to-z-income/65"
+                    : heroState === "cerca"
+                      ? "bg-gradient-to-r from-z-alert/90 to-z-alert/65"
+                      : "bg-gradient-to-r from-z-income/90 to-z-income/65"
                 )}
                 style={{ width: `${Math.min(progress, 100)}%` }}
               />
             </div>
+
+            {/* Spent demoted to meta row */}
+            <p className="mt-2 text-[11px] tabular-nums text-muted-foreground">
+              {formatCurrency(totalSpent, currency)} de {formatCurrency(totalBudgeted, currency)}
+            </p>
 
             {/* 50/30/20 allocation chip — D7 opens sheet on tap */}
             <div className="mt-3">

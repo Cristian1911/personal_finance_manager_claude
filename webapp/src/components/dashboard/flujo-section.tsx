@@ -64,10 +64,8 @@ export async function FlujoSection({
     (currentMonth.income > 0 || currentMonth.expenses > 0)
   ) {
     const { income, expenses } = currentMonth;
-    if (expenses > income && income > 0) {
-      flujoSubtitle = `Gastaste ${formatCurrency(expenses, currency)} de ${formatCurrency(income, currency)} — por encima del ingreso`;
-    } else if (income > 0) {
-      flujoSubtitle = `Gastaste ${formatCurrency(expenses, currency)} de ${formatCurrency(income, currency)} — vas bien`;
+    if (income > 0) {
+      flujoSubtitle = `Gastaste ${formatCurrency(expenses, currency)} de ${formatCurrency(income, currency)}`;
     } else {
       flujoSubtitle = `${formatCurrency(expenses, currency)} en gastos este mes`;
     }

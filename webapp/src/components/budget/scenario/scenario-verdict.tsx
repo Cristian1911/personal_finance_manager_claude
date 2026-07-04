@@ -3,6 +3,7 @@
 import { Scissors, CalendarClock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
+import { Verdict } from "@/components/ui/verdict";
 import { PANEL_SURFACE_CLASS, SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
 import type {
   BudgetScenarioSummary,
@@ -124,18 +125,20 @@ export function ScenarioVerdict({
         <p className={SECTION_EYEBROW_CLASS}>
           Escenario · 50 / 30 / 20
         </p>
-        <span
-          className={cn(
-            "inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-1 text-[10px] font-bold tabular-nums",
-            fits
-              ? "border-z-income/35 bg-z-income/8 text-z-income"
-              : "border-z-debt/35 bg-z-debt/8 text-z-debt",
-          )}
-        >
-          {fits
-            ? `sobran ${formatCurrency(-shortfall, currency)}`
-            : `faltan ${formatCurrency(shortfall, currency)}`}{" "}
-          /mes
+        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+          <Verdict compact state={fits ? "vas-bien" : "te-pasaste"} />
+          <span
+            className={cn(
+              "text-[11px] font-semibold tabular-nums",
+              fits ? "text-z-income" : "text-z-debt",
+            )}
+          >
+            ·{" "}
+            {fits
+              ? `sobran ${formatCurrency(-shortfall, currency)}`
+              : `faltan ${formatCurrency(shortfall, currency)}`}{" "}
+            /mes
+          </span>
         </span>
       </div>
 
