@@ -456,11 +456,17 @@ export async function ensureOccurrencesForRange(
     } else {
       const staleIds = computeStaleOccurrenceIds(rows, pruneCandidates ?? []);
       if (staleIds.length > 0) {
+        // Re-assert pending + unlinked on the DELETE itself: a concurrent
+        // payment/link path (markOccurrencePaid, import auto-link) may have
+        // flipped a candidate between our read and this delete — the
+        // predicates make the prune incapable of touching such a row.
         const { error: pruneError } = await supabase
           .from("recurring_occurrences")
           .delete()
           .in("id", staleIds)
-          .eq("user_id", user.id);
+          .eq("user_id", user.id)
+          .eq("status", "pending")
+          .is("transaction_id", null);
         if (pruneError) {
           console.error("[ensureOccurrencesForRange] prune delete failed:", pruneError.message);
         }
