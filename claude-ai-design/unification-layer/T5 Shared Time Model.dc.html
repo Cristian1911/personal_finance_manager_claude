@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="design_doc_mode" content="canvas">
+  <link rel="stylesheet" href="_ds/zeta-design-system-019dcbea-f04a-7d4c-b73b-b05e420673e5/colors_and_type.css">
+  <script src="_ds/zeta-design-system-019dcbea-f04a-7d4c-b73b-b05e420673e5/_ds_bundle.js"></script>
+</helmet>
+<section style="display:flex;flex-direction:column;align-items:flex-start;padding:48px;background:var(--z-ink);min-height:100vh;box-sizing:border-box;">
+  <div id="5a" style="display:flex;flex-direction:column;gap:28px;width:1660px;">
+
+    <!-- ── Board header ─────────────────────────────── -->
+    <div style="display:flex;flex-direction:column;gap:12px;max-width:980px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="display:inline-flex;align-items:center;justify-content:center;height:24px;padding:0 10px;border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.06);color:var(--z-sage-light);font-size:12px;font-weight:700;">5a</span>
+        <span class="z-eyebrow">Zeta · unification layer · T5</span>
+      </div>
+      <h1 class="z-h1" style="margin:0;">Shared time model</h1>
+      <p class="z-body" style="margin:0;">One header, one clock. Every month-scoped surface renders the identical header row: <span style="color:var(--z-white);font-weight:600;">title left, month control right</span> &mdash; and the month is one piece of shared state, not five. Change it anywhere and every tab agrees. Below, the three phones share a single live month; step it on any one of them.</p>
+    </div>
+
+    <!-- ── Row B: spec ──────────────────────────────── -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:stretch;">
+
+      <div class="z-card-surface" data-ds-card="@dsCard" style="display:flex;flex-direction:column;gap:20px;padding:24px;">
+        <span class="z-eyebrow">a &middot; el encabezado can&oacute;nico</span>
+        <!-- Enlarged header sample -->
+        <div style="display:flex;flex-direction:column;gap:10px;padding:20px;border-radius:16px;background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.06);">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:28px;font-weight:700;color:var(--z-white);letter-spacing:-0.01em;">Plan</span>
+            <span style="display:inline-flex;align-items:center;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:#111;overflow:hidden;">
+              <span style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;color:var(--z-sage-dark);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></span>
+              <span class="z-num" style="font-size:13px;color:var(--z-sage-light);padding:0 4px;min-width:96px;text-align:center;">Abril 2026</span>
+              <span style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;color:var(--z-sage-dark);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span>
+            </span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:110px 1fr;gap:12px 16px;font-size:13px;color:var(--z-sage-light);line-height:1.55;">
+          <span class="z-mono" style="font-size:11px;color:var(--z-sage-dark);padding-top:2px;">TITLE</span>
+          <span>H1 22px/600 (28px desktop), sentence case, matches the tab name exactly: Inicio, Movimientos, Plan, Deudas, Recurrentes. No subtitles &mdash; the eyebrow system inside the cards carries context. The wordmark leaves the headers entirely; it lives on splash and auth only.</span>
+          <span class="z-mono" style="font-size:11px;color:var(--z-sage-dark);padding-top:2px;">CONTROL</span>
+          <span>One month stepper, always top-right: chevron &middot; label &middot; chevron in a compact-card container (#111, border white/6, radius 10). Chevrons stroke 1.5, hit areas 32&times;44. Fixed-width label so stepping never shifts layout. Next-chevron disables at the current month.</span>
+          <span class="z-mono" style="font-size:11px;color:var(--z-sage-dark);padding-top:2px;">LABEL</span>
+          <span><span style="color:var(--z-white);font-weight:600;">&ldquo;Abril 2026&rdquo; &mdash; full month, capitalized, plus year. Always.</span> Never &ldquo;Abr&rdquo;, never &ldquo;Este mes&rdquo;, never year-less. <span class="z-mono" style="font-size:12px;">tabular-nums</span> so 2026 never wobbles.</span>
+          <span class="z-mono" style="font-size:11px;color:var(--z-sage-dark);padding-top:2px;">STATE</span>
+          <span>The month is app-level state (one store key, in the URL). Switching tabs never resets it; stepping it on Plan steps it on Movimientos. Five clocks become one.</span>
+        </div>
+      </div>
+
+      <div class="z-card-surface" data-ds-card="@dsCard" style="display:flex;flex-direction:column;gap:16px;padding:24px;">
+        <span class="z-eyebrow">b &middot; reglas de formato &mdash; d&oacute;nde vive cada forma</span>
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:10px 18px;padding:16px;border-radius:12px;background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.06);font-size:13px;align-items:baseline;">
+          <span class="z-num" style="font-size:13px;color:var(--z-white);">Abril 2026</span><span style="color:var(--z-sage-light);">Header control. The only form the selector may show.</span>
+          <span class="z-num" style="font-size:13px;color:var(--z-white);">abr</span><span style="color:var(--z-sage-light);">Chart axes only &mdash; 3 letters, lowercase, no period (T2).</span>
+          <span class="z-num" style="font-size:13px;color:var(--z-white);">15 de abril</span><span style="color:var(--z-sage-light);">Dates inside rows and detail lines; add &ldquo;de 2025&rdquo; only when the year differs from the selected month.</span>
+          <span class="z-num" style="font-size:13px;color:var(--z-white);">hace 3 d&iacute;as &middot; hoy &middot; ayer</span><span style="color:var(--z-sage-light);">Relative forms, reserved for Actividad reciente and verdict details. Never in the selector.</span>
+          <span class="z-num" style="font-size:13px;color:var(--z-white);">Nov 2025 &ndash; Abr 2026</span><span style="color:var(--z-sage-light);">Range surfaces (Tendencias): same control, range label, chevrons step the whole window.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="z-card-stat" data-ds-card="@dsCard" style="display:flex;gap:14px;align-items:flex-start;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--z-income)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px;"><path d="M20 6 9 17l-5-5"></path></svg>
+            <span style="font-size:13px;color:var(--z-sage-light);line-height:1.55;"><span style="color:var(--z-white);font-weight:600;">Past months are read-only and say so.</span> Stepping back adds one quiet line under the header &mdash; &ldquo;Mes cerrado&rdquo; &mdash; and hides capture actions. The verdict renders in past tense: &ldquo;Cerraste bajo plan&rdquo;.</span>
+          </div>
+          <div class="z-card-stat" data-ds-card="@dsCard" style="display:flex;gap:14px;align-items:flex-start;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--z-debt)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px;"><circle cx="12" cy="12" r="10"></circle><path d="m15 9-6 6"></path><path d="m9 9 6 6"></path></svg>
+            <span style="font-size:13px;color:var(--z-sage-light);line-height:1.55;"><span style="color:var(--z-white);font-weight:600;">What this deletes:</span> the &ldquo;Abr&rdquo; pill above the title, the selector rendered below the hero, the title+subtitle header, and the wordmark-as-header. Four patterns collapse into one slot.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Row C: live shared state ─────────────────── -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div class="z-divider"><div class="line"></div><span class="z-eyebrow">c &middot; aplicaci&oacute;n &mdash; un solo reloj, tres pesta&ntilde;as</span><div class="line"></div></div>
+      <div style="display:grid;grid-template-columns:repeat(3, 380px);gap:32px;justify-content:center;">
+
+        <!-- ── Plan ── -->
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div data-screen-label="Plan — header canónico" style="width:380px;box-sizing:border-box;border-radius:28px;border:1px solid rgba(255,255,255,0.06);background:var(--z-ink);padding:20px 16px 24px;display:flex;flex-direction:column;gap:12px;overflow:hidden;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px;">
+              <span style="font-size:22px;font-weight:600;color:var(--z-white);letter-spacing:-0.01em;">Plan</span>
+              <span style="display:inline-flex;align-items:center;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:#111;overflow:hidden;">
+                <button onClick="{{ prevMonth }}" style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;background:transparent;border:none;cursor:pointer;color:var(--z-sage-dark);" style-hover="color:var(--z-white);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+                <span class="z-num" style="font-size:12px;color:var(--z-sage-light);padding:0 2px;min-width:88px;text-align:center;">{{ monthLabel }}</span>
+                <button onClick="{{ nextMonth }}" disabled="{{ atCurrent }}" style="{{ nextBtnStyle }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+              </span>
+            </div>
+            <sc-if value="{{ isPast }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:6px;padding:0 4px;">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--z-sage-dark)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                <span style="font-size:11px;color:var(--z-sage-dark);">Mes cerrado &middot; solo lectura</span>
+              </div>
+            </sc-if>
+            <div class="z-card-surface" data-ds-card="@dsCard" style="background:radial-gradient(circle at top left, rgba(63,70,50,0.22), transparent 42%), linear-gradient(180deg, rgba(27,30,27,0.96), rgba(18,20,18,0.98));padding:18px;display:flex;flex-direction:column;">
+              <span class="z-eyebrow">Disponible del plan</span>
+              <div style="margin-top:8px;display:flex;align-items:baseline;gap:8px;">
+                <span class="z-num" style="font-size:34px;font-weight:800;color:var(--z-white);letter-spacing:-0.02em;">{{ planNum }}</span>
+                <span style="font-size:11px;font-weight:600;color:var(--z-sage-dark);">COP</span>
+              </div>
+              <div style="margin-top:8px;">
+                <span style="display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px 0 8px;border-radius:999px;background:color-mix(in srgb, var(--z-income) 8%, transparent);border:1px solid color-mix(in srgb, var(--z-income) 20%, transparent);color:var(--z-income);font-size:12px;font-weight:600;line-height:1;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+                  <span>Vas bien</span>
+                </span>
+              </div>
+              <div style="margin-top:6px;font-size:13px;color:var(--z-sage-light);line-height:1.5;">{{ planDetail }}</div>
+            </div>
+          </div>
+          <p style="margin:0;font-size:12px;color:var(--z-sage-dark);line-height:1.6;max-width:380px;">The canonical slot on Plan. Step back a month: the &ldquo;Mes cerrado&rdquo; line appears and the verdict shifts to past tense.</p>
+        </div>
+
+        <!-- ── Movimientos ── -->
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div data-screen-label="Movimientos — header canónico" style="width:380px;box-sizing:border-box;border-radius:28px;border:1px solid rgba(255,255,255,0.06);background:var(--z-ink);padding:20px 16px 24px;display:flex;flex-direction:column;gap:12px;overflow:hidden;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px;">
+              <span style="font-size:22px;font-weight:600;color:var(--z-white);letter-spacing:-0.01em;">Movimientos</span>
+              <span style="display:inline-flex;align-items:center;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:#111;overflow:hidden;">
+                <button onClick="{{ prevMonth }}" style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;background:transparent;border:none;cursor:pointer;color:var(--z-sage-dark);" style-hover="color:var(--z-white);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+                <span class="z-num" style="font-size:12px;color:var(--z-sage-light);padding:0 2px;min-width:88px;text-align:center;">{{ monthLabel }}</span>
+                <button onClick="{{ nextMonth }}" disabled="{{ atCurrent }}" style="{{ nextBtnStyle }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+              </span>
+            </div>
+            <div class="z-card-stat" data-ds-card="@dsCard" style="display:flex;justify-content:space-between;align-items:baseline;padding:12px 16px;">
+              <span class="z-eyebrow" style="font-size:9px;">{{ movEyebrow }}</span>
+              <span style="display:flex;gap:14px;align-items:baseline;">
+                <span class="z-num" style="font-size:14px;color:var(--z-income);">{{ movIn }}</span>
+                <span class="z-num" style="font-size:14px;color:var(--z-expense);">{{ movOut }}</span>
+              </span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <sc-for list="{{ movRows }}" as="row" hint-placeholder-count="3">
+                <div class="z-card-compact" data-ds-card="@dsCard" style="display:flex;align-items:center;gap:10px;padding:10px 12px;">
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-size:13px;font-weight:500;color:var(--z-white);">{{ row.name }}</div>
+                    <div style="font-size:10px;color:var(--z-sage-dark);">{{ row.meta }}</div>
+                  </div>
+                  <span class="z-num" style="{{ row.amtStyle }}">{{ row.amt }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <p style="margin:0;font-size:12px;color:var(--z-sage-dark);line-height:1.6;max-width:380px;">Same control, same position, same label &mdash; and the same clock: this header steps when Plan&rsquo;s does. Rows keep relative dates (&ldquo;hoy&rdquo;, &ldquo;hace 3 d&iacute;as&rdquo;); the selector never does.</p>
+        </div>
+
+        <!-- ── Tendencias (range) ── -->
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div data-screen-label="Tendencias — rango canónico" style="width:380px;box-sizing:border-box;border-radius:28px;border:1px solid rgba(255,255,255,0.06);background:var(--z-ink);padding:20px 16px 24px;display:flex;flex-direction:column;gap:12px;overflow:hidden;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px;">
+              <span style="font-size:22px;font-weight:600;color:var(--z-white);letter-spacing:-0.01em;">Tendencias</span>
+              <span style="display:inline-flex;align-items:center;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:#111;overflow:hidden;">
+                <button onClick="{{ prevMonth }}" style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;background:transparent;border:none;cursor:pointer;color:var(--z-sage-dark);" style-hover="color:var(--z-white);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+                <span class="z-num" style="font-size:12px;color:var(--z-sage-light);padding:0 2px;min-width:120px;text-align:center;">{{ rangeLabel }}</span>
+                <button onClick="{{ nextMonth }}" disabled="{{ atCurrent }}" style="{{ nextBtnStyle }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+              </span>
+            </div>
+            <div class="z-card-surface" data-ds-card="@dsCard" style="padding:16px;display:flex;flex-direction:column;gap:12px;">
+              <span class="z-eyebrow">Gasto mensual</span>
+              <div style="position:relative;height:110px;">
+                <div style="position:absolute;left:0;right:0;bottom:92px;height:1px;background:rgba(255,255,255,0.06);"></div>
+                <div style="position:absolute;left:0;right:0;bottom:46px;height:1px;background:rgba(255,255,255,0.06);"></div>
+                <div style="position:absolute;left:0;right:0;bottom:0;height:1px;background:rgba(255,255,255,0.12);"></div>
+                <div style="position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:space-between;padding:0 6px;">
+                  <sc-for list="{{ barData }}" as="bar" hint-placeholder-count="6">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="{{ bar.style }}"></div></div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:0 6px;">
+                <sc-for list="{{ barLabels }}" as="lbl" hint-placeholder-count="6">
+                  <span style="{{ lbl.style }}">{{ lbl.text }}</span>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+          <p style="margin:0;font-size:12px;color:var(--z-sage-dark);line-height:1.6;max-width:380px;">Range surfaces use the same control with a range label &mdash; chevrons slide the whole 6-month window, and the axis re-labels in the T2 3-letter form. One clock, three grammars of the same word.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { offset: 0 }; // 0 = current month (Julio 2026), negative = past
+
+  renderVals() {
+    const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+    const ABR = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+    const CUR = { y: 2026, m: 6 }; // Julio 2026 (0-indexed)
+
+    const off = this.state.offset;
+    const total = CUR.y * 12 + CUR.m + off;
+    const y = Math.floor(total / 12), m = ((total % 12) + 12) % 12;
+    const atCurrent = off >= 0;
+    const isPast = off < 0;
+
+    const monthLabel = MESES[m] + " " + y;
+
+    // Range: 6-month window ending at selected month
+    const startTotal = total - 5;
+    const sy = Math.floor(startTotal / 12), sm = ((startTotal % 12) + 12) % 12;
+    const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+    const rangeLabel = cap(ABR[sm]) + " " + sy + " \u2013 " + cap(ABR[m]) + " " + y;
+
+    // Deterministic pseudo-data per month
+    const seed = k => { const x = Math.sin(total * 7.13 + k * 3.7) * 10000; return x - Math.floor(x); };
+    const fmt = n => "$" + n.toLocaleString("es-CO");
+
+    const planAvail = Math.round((380000 + seed(1) * 400000) / 1000) * 1000;
+    const planDetail = isPast
+      ? "Cerraste " + MESES[m].toLowerCase() + " con " + fmt(planAvail) + " de margen."
+      : "Tu gasto va " + fmt(Math.round(seed(2) * 200000 / 1000) * 1000) + " bajo el ritmo ideal.";
+
+    const rowsCur = [
+      { name: "\u00c9xito Mercado", meta: "Mercado \u00b7 hoy", amt: "\u2212" + fmt(Math.round((180000 + seed(3) * 120000) / 500) * 500), neg: true },
+      { name: "N\u00f3mina", meta: "Salario \u00b7 hace 3 d\u00edas", amt: "+" + fmt(4800000), pos: true },
+      { name: "Uber", meta: "Transporte \u00b7 ayer", amt: "\u2212" + fmt(Math.round((12000 + seed(4) * 20000) / 500) * 500), neg: true }
+    ];
+    const rowsPast = [
+      { name: "\u00c9xito Mercado", meta: "Mercado \u00b7 28 de " + MESES[m].toLowerCase(), amt: "\u2212" + fmt(Math.round((180000 + seed(3) * 120000) / 500) * 500), neg: true },
+      { name: "N\u00f3mina", meta: "Salario \u00b7 25 de " + MESES[m].toLowerCase(), amt: "+" + fmt(4800000), pos: true },
+      { name: "Arriendo", meta: "Vivienda \u00b7 5 de " + MESES[m].toLowerCase(), amt: "\u2212" + fmt(1650000), neg: true }
+    ];
+    const movRows = (isPast ? rowsPast : rowsCur).map(r => ({
+      name: r.name, meta: r.meta, amt: r.amt,
+      amtStyle: { fontSize: 13, color: r.pos ? "var(--z-income)" : "var(--z-white)" }
+    }));
+
+    const barData = [], barLabels = [];
+    for (let i = 5; i >= 0; i--) {
+      const t = total - i;
+      const mm = ((t % 12) + 12) % 12;
+      const h = 30 + Math.round((Math.sin(t * 7.13) * 0.5 + 0.5) * 60);
+      const isCur = i === 0;
+      barData.push({ style: { width: 26, height: h, background: "var(--z-brass)", opacity: isCur ? 1 : 0.55, borderRadius: "3px 3px 0 0", transition: "height 160ms cubic-bezier(0.2,0,0,1)" } });
+      barLabels.push({ text: ABR[mm], style: { width: 26, textAlign: "center", fontSize: 10, color: isCur ? "var(--z-sage-light)" : "var(--z-sage-dark)", fontWeight: isCur ? 600 : 400 } });
+    }
+
+    return {
+      monthLabel, rangeLabel, atCurrent, isPast,
+      prevMonth: () => this.setState(s => ({ offset: s.offset - 1 })),
+      nextMonth: () => this.setState(s => ({ offset: Math.min(0, s.offset + 1) })),
+      nextBtnStyle: {
+        display: "flex", alignItems: "center", justifyContent: "center",
+        width: 32, height: 32, background: "transparent", border: "none",
+        cursor: atCurrent ? "default" : "pointer",
+        color: atCurrent ? "rgba(255,255,255,0.15)" : "var(--z-sage-dark)"
+      },
+      planNum: fmt(planAvail),
+      planDetail,
+      movEyebrow: MESES[m] + " \u00b7 resumen",
+      movIn: "+" + fmt(4800000),
+      movOut: "\u2212" + fmt(Math.round((2600000 + seed(5) * 900000) / 1000) * 1000),
+      movRows, barData, barLabels
+    };
+  }
+}
+</script>
+</body>
+</html>

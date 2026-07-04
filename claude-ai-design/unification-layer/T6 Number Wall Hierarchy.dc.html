@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="design_doc_mode" content="canvas">
+  <link rel="stylesheet" href="_ds/zeta-design-system-019dcbea-f04a-7d4c-b73b-b05e420673e5/colors_and_type.css">
+  <script src="_ds/zeta-design-system-019dcbea-f04a-7d4c-b73b-b05e420673e5/_ds_bundle.js"></script>
+</helmet>
+<section style="display:flex;flex-direction:column;align-items:flex-start;padding:48px;background:var(--z-ink);min-height:100vh;box-sizing:border-box;">
+  <div id="6a" style="display:flex;flex-direction:column;gap:28px;width:1660px;">
+
+    <!-- ── Board header ─────────────────────────────── -->
+    <div style="display:flex;flex-direction:column;gap:12px;max-width:980px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="display:inline-flex;align-items:center;justify-content:center;height:24px;padding:0 10px;border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.06);color:var(--z-sage-light);font-size:12px;font-weight:700;">6a</span>
+        <span class="z-eyebrow">Zeta · unification layer · T6</span>
+      </div>
+      <h1 class="z-h1" style="margin:0;">Hierarchy for number walls</h1>
+      <p class="z-body" style="margin:0;">The rule: <span style="color:var(--z-white);font-weight:600;">one number decides; everything else testifies.</span> A screen may have exactly one number at hero scale &mdash; the one that answers &iquest;voy bien? Enumerations get summarized before they get listed, sorted worst-first, and stripped of repeated alarms: seven rows shouting &ldquo;SOBRE LIMITE&rdquo; carry less information than one line saying &ldquo;7 sobre l&iacute;mite&rdquo;. State lives once per group; rows carry only their own overage.</p>
+    </div>
+
+    <!-- ── Row B: spec ──────────────────────────────── -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:stretch;">
+
+      <div class="z-card-surface" data-ds-card="@dsCard" style="display:flex;flex-direction:column;gap:20px;padding:24px;">
+        <span class="z-eyebrow">a &middot; la escalera &mdash; cuatro vol&uacute;menes, nada m&aacute;s</span>
+        <!-- Ladder sample -->
+        <div style="display:flex;flex-direction:column;gap:14px;padding:20px;border-radius:16px;background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.06);">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;">
+            <span class="z-num" style="font-size:34px;font-weight:800;color:var(--z-debt);letter-spacing:-0.02em;">112%</span>
+            <span class="z-mono" style="font-size:10px;color:var(--z-sage-dark);">V1 &middot; 34/800 &middot; el que decide &middot; uno por pantalla</span>
+          </div>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;">
+            <span style="font-size:15px;font-weight:600;color:var(--z-white);">7 categor&iacute;as sobre l&iacute;mite &middot; <span class="z-num" style="color:var(--z-debt);">&minus;$486.000</span></span>
+            <span class="z-mono" style="font-size:10px;color:var(--z-sage-dark);">V2 &middot; 15/600 &middot; resumen de grupo</span>
+          </div>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;">
+            <span style="font-size:13px;color:var(--z-white);">Transporte <span class="z-num" style="color:var(--z-debt);">+$81.000</span></span>
+            <span class="z-mono" style="font-size:10px;color:var(--z-sage-dark);">V3 &middot; 13/400-500 &middot; fila</span>
+          </div>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;">
+            <span class="z-num" style="font-size:11px;color:var(--z-sage-dark);">$381.000 de $300.000</span>
+            <span class="z-mono" style="font-size:10px;color:var(--z-sage-dark);">V4 &middot; 11/400 &middot; evidencia</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:110px 1fr;gap:12px 16px;font-size:13px;color:var(--z-sage-light);line-height:1.55;">
+          <span class="z-mono" style="font-size:11px;color:var(--z-sage-dark);padding-top:2px;">V1 RULE</span>
+          <span>The hero number is the derived judgment (112% del plan, cuota total), never the largest raw amount. It is the only number allowed semantic color at scale.</span>
+          <span class="z-mono" style="font-size:11px;color:var(--z-sage-dark);padding-top:2px;">SUMMARY FIRST</span>
+          <span>Any group of 3+ same-state rows must be introduced by a V2 summary: count + aggregate delta. The user can stop reading there &mdash; the list below is optional proof.</span>
+          <span class="z-mono" style="font-size:11px;color:var(--z-sage-dark);padding-top:2px;">STATE ONCE</span>
+          <span>The T1 verdict word appears once per group (in the summary), never per row. Rows show only their own delta in the group&rsquo;s color. Seven &ldquo;Te pasaste&rdquo; chips collapse to one.</span>
+          <span class="z-mono" style="font-size:11px;color:var(--z-sage-dark);padding-top:2px;">SORT</span>
+          <span>Worst first, by absolute delta. Healthy groups collapse behind a T3 disclosure (&ldquo;Ver 10 en orden&rdquo;) &mdash; calm rows should cost a tap, alarm rows should not.</span>
+          <span class="z-mono" style="font-size:11px;color:var(--z-sage-dark);padding-top:2px;">BARS</span>
+          <span>Row progress bars are 3px hairlines, track white/6. Only over-limit rows tint their fill debt-red; healthy fills are white/25 &mdash; not brass, which would make the wall glitter.</span>
+        </div>
+      </div>
+
+      <div class="z-card-surface" data-ds-card="@dsCard" style="display:flex;flex-direction:column;gap:16px;padding:24px;">
+        <span class="z-eyebrow">b &middot; antes / despu&eacute;s &mdash; la pared de presupuesto</span>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;flex:1;">
+          <!-- Before -->
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <span class="z-mono" style="font-size:10px;color:var(--z-debt);">HOY &middot; 7 alarmas al mismo volumen</span>
+            <div style="display:flex;flex-direction:column;gap:5px;padding:12px;border-radius:12px;background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.06);">
+              <sc-for list="{{ beforeRows }}" as="r" hint-placeholder-count="7">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px;border-radius:8px;background:#111;border:1px solid rgba(255,255,255,0.06);">
+                  <span style="font-size:11px;color:var(--z-white);">{{ r.name }}</span>
+                  <span style="display:flex;align-items:center;gap:6px;">
+                    <span class="z-num" style="font-size:10px;color:var(--z-debt);">{{ r.pct }}</span>
+                    <span style="font-size:8px;font-weight:700;letter-spacing:0.08em;color:var(--z-debt);border:1px solid color-mix(in srgb, var(--z-debt) 30%, transparent);border-radius:4px;padding:2px 5px;">SOBRE LIMITE</span>
+                  </span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <!-- After -->
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <span class="z-mono" style="font-size:10px;color:var(--z-income);">PROPUESTA &middot; resumen, luego evidencia</span>
+            <div style="display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.06);">
+              <div style="display:flex;align-items:baseline;gap:8px;">
+                <span class="z-num" style="font-size:30px;font-weight:800;color:var(--z-debt);letter-spacing:-0.02em;">112%</span>
+                <span style="font-size:10px;color:var(--z-sage-dark);">del plan</span>
+              </div>
+              <span style="display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px 0 7px;border-radius:999px;background:color-mix(in srgb, var(--z-debt) 8%, transparent);border:1px solid color-mix(in srgb, var(--z-debt) 20%, transparent);color:var(--z-debt);font-size:11px;font-weight:600;line-height:1;align-self:flex-start;">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="m15 9-6 6"></path><path d="m9 9 6 6"></path></svg>
+                <span>Te pasaste</span>
+              </span>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;padding-top:6px;border-top:1px solid rgba(255,255,255,0.06);">
+                <span style="font-size:12px;font-weight:600;color:var(--z-white);">7 sobre l&iacute;mite</span>
+                <span class="z-num" style="font-size:12px;color:var(--z-debt);">&minus;$486.000</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 8px;border-radius:8px;background:#111;border:1px solid rgba(255,255,255,0.06);">
+                <span style="font-size:11px;color:var(--z-white);">Transporte</span>
+                <span class="z-num" style="font-size:11px;color:var(--z-debt);">+$81.000</span>
+              </div>
+              <span style="font-size:10px;color:var(--z-sage-dark);">&hellip; 6 m&aacute;s, orden peor-primero</span>
+              <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--z-sage-light);">Ver 10 en orden <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+            </div>
+          </div>
+        </div>
+        <p style="margin:0;font-size:12px;color:var(--z-sage-dark);line-height:1.55;"><span style="color:var(--z-sage-light);font-weight:600;">What moved:</span> the decision number (112%) jumped from a buried stat to V1; the seven pills merged into one verdict + one V2 summary; per-row uppercase alarms became per-row deltas. Total red elements: 17 &rarr; 4 &mdash; and the screen says strictly more.</p>
+      </div>
+    </div>
+
+    <!-- ── Row C: applications ──────────────────────── -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div class="z-divider"><div class="line"></div><span class="z-eyebrow">c &middot; aplicaci&oacute;n &mdash; presupuesto completo + desglose de cuota</span><div class="line"></div></div>
+      <div style="display:grid;grid-template-columns:repeat(2, 380px);gap:32px;justify-content:center;">
+
+        <!-- ── Presupuesto ── -->
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div data-screen-label="Presupuesto — jerarquía" style="width:380px;box-sizing:border-box;border-radius:28px;border:1px solid rgba(255,255,255,0.06);background:var(--z-ink);padding:20px 16px 24px;display:flex;flex-direction:column;gap:12px;overflow:hidden;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px;">
+              <span style="font-size:22px;font-weight:600;color:var(--z-white);letter-spacing:-0.01em;">Plan</span>
+              <span class="z-num" style="font-size:12px;color:var(--z-sage-light);padding:5px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:#111;">Abril 2026</span>
+            </div>
+            <!-- Hero: V1 -->
+            <div class="z-card-surface" data-ds-card="@dsCard" style="background:radial-gradient(circle at top left, rgba(63,70,50,0.22), transparent 42%), linear-gradient(180deg, rgba(27,30,27,0.96), rgba(18,20,18,0.98));padding:18px;display:flex;flex-direction:column;">
+              <span class="z-eyebrow">Plan de abril</span>
+              <div style="margin-top:8px;display:flex;align-items:baseline;gap:8px;">
+                <span class="z-num" style="font-size:34px;font-weight:800;color:var(--z-debt);letter-spacing:-0.02em;">112%</span>
+                <span style="font-size:11px;font-weight:600;color:var(--z-sage-dark);">del plan usado</span>
+              </div>
+              <div style="margin-top:8px;">
+                <span style="display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px 0 8px;border-radius:999px;background:color-mix(in srgb, var(--z-debt) 8%, transparent);border:1px solid color-mix(in srgb, var(--z-debt) 20%, transparent);color:var(--z-debt);font-size:12px;font-weight:600;line-height:1;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="m15 9-6 6"></path><path d="m9 9 6 6"></path></svg>
+                  <span>Te pasaste</span>
+                  <span class="z-num" style="opacity:0.85;">&middot; &minus;$486.000</span>
+                </span>
+              </div>
+              <div style="margin-top:6px;font-size:13px;color:var(--z-sage-light);line-height:1.5;">Llevas <span class="z-num" style="color:var(--z-debt);">$486.000</span> sobre el plan; Transporte pesa m&aacute;s de la mitad.</div>
+              <div style="margin-top:12px;height:6px;border-radius:999px;background:rgba(255,255,255,0.06);overflow:hidden;">
+                <div style="width:100%;height:100%;border-radius:999px;background:var(--z-debt);"></div>
+              </div>
+              <div style="margin-top:8px;display:flex;justify-content:space-between;font-size:11px;color:var(--z-sage-dark);">
+                <span><span class="z-num">$4.536.000</span> gastado</span>
+                <span>de $4.050.000</span>
+              </div>
+            </div>
+            <!-- Group: sobre límite (V2 + V3 rows) -->
+            <div style="display:flex;justify-content:space-between;align-items:baseline;padding:0 4px;">
+              <span style="font-size:15px;font-weight:600;color:var(--z-white);">7 sobre l&iacute;mite</span>
+              <span class="z-num" style="font-size:13px;color:var(--z-debt);">&minus;$486.000</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <sc-for list="{{ overRows }}" as="row" hint-placeholder-count="3">
+                <div class="z-card-compact" data-ds-card="@dsCard" style="display:flex;flex-direction:column;gap:7px;padding:10px 12px;">
+                  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;">
+                    <span style="font-size:13px;font-weight:500;color:var(--z-white);">{{ row.name }}</span>
+                    <span class="z-num" style="font-size:13px;color:var(--z-debt);">{{ row.over }}</span>
+                  </div>
+                  <div style="height:3px;border-radius:999px;background:rgba(255,255,255,0.06);overflow:hidden;">
+                    <div style="{{ row.barStyle }}"></div>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;">
+                    <span class="z-num" style="font-size:11px;color:var(--z-sage-dark);">{{ row.evidence }}</span>
+                    <span class="z-num" style="font-size:11px;color:var(--z-sage-dark);">{{ row.pct }}</span>
+                  </div>
+                </div>
+              </sc-for>
+              <button onClick="{{ toggleMore }}" style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 4px;background:transparent;border:none;cursor:pointer;color:var(--z-sage-light);font-size:12px;font-weight:600;font-family:var(--font-sans);align-self:flex-start;" style-hover="color:var(--z-white);">
+                <span>{{ moreLabel }}</span>
+                <span style="{{ moreCaretStyle }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+              </button>
+              <div style="{{ moreOuterStyle }}">
+                <div style="overflow:hidden;min-height:0;">
+                  <div style="{{ moreContentStyle }}">
+                    <div style="display:flex;flex-direction:column;gap:6px;">
+                      <sc-for list="{{ moreOverRows }}" as="row" hint-placeholder-count="4">
+                        <div class="z-card-compact" data-ds-card="@dsCard" style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:9px 12px;">
+                          <span style="font-size:13px;font-weight:500;color:var(--z-white);">{{ row.name }}</span>
+                          <span style="display:flex;align-items:baseline;gap:10px;">
+                            <span class="z-num" style="font-size:11px;color:var(--z-sage-dark);">{{ row.pct }}</span>
+                            <span class="z-num" style="font-size:13px;color:var(--z-debt);">{{ row.over }}</span>
+                          </span>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Group: en orden (collapsed disclosure) -->
+            <div style="display:flex;justify-content:space-between;align-items:baseline;padding:0 4px;">
+              <span style="font-size:15px;font-weight:600;color:var(--z-white);">10 en orden</span>
+              <span style="display:inline-flex;align-items:center;gap:5px;color:var(--z-income);font-size:11px;font-weight:600;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>Vas bien</span>
+            </div>
+            <div style="{{ okOuterStyle }}">
+              <div style="overflow:hidden;min-height:0;">
+                <div style="{{ okContentStyle }}">
+                  <div style="display:flex;flex-direction:column;gap:6px;">
+                    <sc-for list="{{ okRows }}" as="row" hint-placeholder-count="3">
+                      <div class="z-card-compact" data-ds-card="@dsCard" style="display:flex;flex-direction:column;gap:7px;padding:10px 12px;">
+                        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;">
+                          <span style="font-size:13px;font-weight:500;color:var(--z-white);">{{ row.name }}</span>
+                          <span class="z-num" style="font-size:11px;color:var(--z-sage-dark);">{{ row.pct }}</span>
+                        </div>
+                        <div style="height:3px;border-radius:999px;background:rgba(255,255,255,0.06);overflow:hidden;">
+                          <div style="{{ row.barStyle }}"></div>
+                        </div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button onClick="{{ toggleOk }}" style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 4px;background:transparent;border:none;cursor:pointer;color:var(--z-sage-light);font-size:12px;font-weight:600;font-family:var(--font-sans);align-self:flex-start;margin-top:-6px;" style-hover="color:var(--z-white);">
+              <span>{{ okLabel }}</span>
+              <span style="{{ okCaretStyle }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+            </button>
+          </div>
+          <p style="margin:0;font-size:12px;color:var(--z-sage-dark);line-height:1.6;max-width:380px;">The full wall, live: 112% rules at V1, the seven offenders arrive summarized then worst-first (top 3 with evidence bars, the rest behind &ldquo;Ver 4 m&aacute;s&rdquo;), and the ten healthy categories cost a tap. Both disclosures use the T3 grammar.</p>
+        </div>
+
+        <!-- ── Deudas cuota breakdown ── -->
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div data-screen-label="Deudas — desglose de cuota" style="width:380px;box-sizing:border-box;border-radius:28px;border:1px solid rgba(255,255,255,0.06);background:var(--z-ink);padding:20px 16px 24px;display:flex;flex-direction:column;gap:12px;overflow:hidden;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px;">
+              <span style="font-size:22px;font-weight:600;color:var(--z-white);letter-spacing:-0.01em;">Deudas</span>
+              <span class="z-num" style="font-size:12px;color:var(--z-sage-light);padding:5px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:#111;">Abril 2026</span>
+            </div>
+            <!-- Hero: cuota total is V1 -->
+            <div class="z-card-surface" data-ds-card="@dsCard" style="background:radial-gradient(circle at top left, rgba(63,70,50,0.22), transparent 42%), linear-gradient(180deg, rgba(27,30,27,0.96), rgba(18,20,18,0.98));padding:18px;display:flex;flex-direction:column;">
+              <span class="z-eyebrow">Cuota de abril</span>
+              <div style="margin-top:8px;display:flex;align-items:baseline;gap:8px;">
+                <span class="z-num" style="font-size:34px;font-weight:800;color:var(--z-white);letter-spacing:-0.02em;">$2.092.000</span>
+                <span style="font-size:11px;font-weight:600;color:var(--z-sage-dark);">COP</span>
+              </div>
+              <div style="margin-top:8px;">
+                <span style="display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px 0 8px;border-radius:999px;background:color-mix(in srgb, var(--z-income) 8%, transparent);border:1px solid color-mix(in srgb, var(--z-income) 20%, transparent);color:var(--z-income);font-size:12px;font-weight:600;line-height:1;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+                  <span>Vas bien</span>
+                  <span class="z-num" style="opacity:0.85;">&middot; 24% del ingreso</span>
+                </span>
+              </div>
+              <div style="margin-top:6px;font-size:13px;color:var(--z-sage-light);line-height:1.5;">Tu cuota total usa el 24% del ingreso; el 67% construye patrimonio.</div>
+              <!-- T2 split bar as summary viz -->
+              <div style="margin-top:12px;display:flex;height:10px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,0.06);">
+                <div style="width:67%;background:var(--z-brass);"></div>
+                <div style="width:33%;background:var(--z-expense);opacity:0.85;"></div>
+              </div>
+              <div style="margin-top:8px;display:flex;justify-content:space-between;">
+                <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--z-sage-light);"><span style="width:8px;height:8px;border-radius:2px;background:var(--z-brass);"></span>Capital <span class="z-num" style="color:var(--z-white);">$1.402.000</span></span>
+                <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--z-sage-light);"><span style="width:8px;height:8px;border-radius:2px;background:var(--z-expense);"></span>Inter&eacute;s <span class="z-num" style="color:var(--z-white);">$690.000</span></span>
+              </div>
+            </div>
+            <!-- V2 summary, then rows without repeated big numbers -->
+            <div style="display:flex;justify-content:space-between;align-items:baseline;padding:0 4px;">
+              <span style="font-size:15px;font-weight:600;color:var(--z-white);">3 cuotas este mes</span>
+              <span class="z-num" style="font-size:13px;color:var(--z-sage-light);">2 pagadas</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <div class="z-card-compact" data-ds-card="@dsCard" style="display:flex;flex-direction:column;gap:7px;padding:10px 12px;">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;">
+                  <span style="font-size:13px;font-weight:500;color:var(--z-white);">Hipoteca</span>
+                  <span style="display:flex;align-items:baseline;gap:10px;">
+                    <span class="z-num" style="font-size:13px;color:var(--z-white);">$1.680.000</span>
+                    <span style="display:inline-flex;align-items:center;gap:4px;color:var(--z-alert);font-size:11px;font-weight:600;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>vence en 2 d&iacute;as</span>
+                  </span>
+                </div>
+                <div style="height:3px;border-radius:999px;background:rgba(255,255,255,0.06);overflow:hidden;">
+                  <div style="width:67%;height:100%;background:var(--z-brass);opacity:0.7;"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;">
+                  <span class="z-num" style="font-size:11px;color:var(--z-sage-dark);">capital $1.132.000 &middot; inter&eacute;s $548.000</span>
+                  <span class="z-num" style="font-size:11px;color:var(--z-sage-dark);">tasa 11,2%</span>
+                </div>
+              </div>
+              <div class="z-card-compact" data-ds-card="@dsCard" style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:9px 12px;opacity:0.6;">
+                <span style="font-size:13px;font-weight:500;color:var(--z-white);">Tarjeta de cr&eacute;dito</span>
+                <span style="display:flex;align-items:baseline;gap:10px;">
+                  <span class="z-num" style="font-size:13px;color:var(--z-white);">$412.000</span>
+                  <span style="display:inline-flex;align-items:center;gap:4px;color:var(--z-income);font-size:11px;font-weight:600;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>pagada</span>
+                </span>
+              </div>
+              <div class="z-card-compact" data-ds-card="@dsCard" style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:9px 12px;opacity:0.6;">
+                <span style="font-size:13px;font-weight:500;color:var(--z-white);">Moto Yamaha</span>
+                <span style="display:flex;align-items:baseline;gap:10px;">
+                  <span class="z-num" style="font-size:13px;color:var(--z-white);">$0</span>
+                  <span style="display:inline-flex;align-items:center;gap:4px;color:var(--z-income);font-size:11px;font-weight:600;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>saldada</span>
+                </span>
+              </div>
+              <div style="display:flex;justify-content:center;padding-top:4px;">
+                <button class="z-btn z-btn-brass" style="height:36px;font-size:13px;padding:0 20px;">Pagar hipoteca</button>
+              </div>
+            </div>
+          </div>
+          <p style="margin:0;font-size:12px;color:var(--z-sage-dark);line-height:1.6;max-width:380px;">The cuota breakdown re-ranked: the decision number is the total cuota and its income share (V1); capital/inter&eacute;s becomes the T2 split bar instead of competing numbers; each deuda&rsquo;s own split demotes to V4 evidence inside its row. Paid rows dim; the one pending row is the only one at full opacity &mdash; and it owns the brass action.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { more: false, ok: false };
+
+  renderVals() {
+    const ease = "cubic-bezier(0.2, 0, 0, 1)";
+    const disclosure = (open) => ({
+      outer: { display: "grid", gridTemplateRows: open ? "1fr" : "0fr", transition: "grid-template-rows 160ms " + ease },
+      content: { opacity: open ? 1 : 0, transform: open ? "translateY(0)" : "translateY(-3px)", transition: "opacity 120ms " + ease + ", transform 120ms " + ease }
+    });
+    const caret = (open) => ({ display: "inline-flex", transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 160ms " + ease });
+
+    const bar = (pct, over) => ({
+      width: Math.min(pct, 100) + "%", height: "100%",
+      background: over ? "var(--z-debt)" : "rgba(255,255,255,0.25)"
+    });
+
+    const more = disclosure(this.state.more);
+    const ok = disclosure(this.state.ok);
+
+    return {
+      beforeRows: [
+        { name: "Transporte", pct: "127%" }, { name: "Restaurantes", pct: "118%" },
+        { name: "Mercado", pct: "112%" }, { name: "Entretenimiento", pct: "109%" },
+        { name: "Ropa", pct: "107%" }, { name: "Hogar", pct: "104%" }, { name: "Suscripciones", pct: "102%" }
+      ],
+      overRows: [
+        { name: "Transporte", over: "+$81.000", evidence: "$381.000 de $300.000", pct: "127%", barStyle: bar(100, true) },
+        { name: "Restaurantes", over: "+$79.200", evidence: "$519.200 de $440.000", pct: "118%", barStyle: bar(100, true) },
+        { name: "Mercado", over: "+$114.000", evidence: "$1.064.000 de $950.000", pct: "112%", barStyle: bar(100, true) }
+      ],
+      moreOverRows: [
+        { name: "Entretenimiento", over: "+$27.000", pct: "109%" },
+        { name: "Ropa", over: "+$24.500", pct: "107%" },
+        { name: "Hogar", over: "+$96.000", pct: "104%" },
+        { name: "Suscripciones", over: "+$64.300", pct: "102%" }
+      ],
+      okRows: [
+        { name: "Servicios", pct: "71%", barStyle: bar(71, false) },
+        { name: "Salud", pct: "54%", barStyle: bar(54, false) },
+        { name: "Educaci\u00f3n", pct: "38%", barStyle: bar(38, false) }
+      ],
+      toggleMore: () => this.setState(s => ({ more: !s.more })),
+      toggleOk: () => this.setState(s => ({ ok: !s.ok })),
+      moreLabel: this.state.more ? "Ocultar 4" : "Ver 4 m\u00e1s",
+      okLabel: this.state.ok ? "Ocultar en orden" : "Ver 10 en orden",
+      moreOuterStyle: more.outer, moreContentStyle: more.content, moreCaretStyle: caret(this.state.more),
+      okOuterStyle: ok.outer, okContentStyle: ok.content, okCaretStyle: caret(this.state.ok)
+    };
+  }
+}
+</script>
+</body>
+</html>

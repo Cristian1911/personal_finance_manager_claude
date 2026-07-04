@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Verdict } from "@/components/ui/verdict";
 import type { AttentionSignal } from "@/types/attention";
 
 interface AttentionCardProps {
@@ -16,19 +16,12 @@ export function AttentionCard({ signals, className }: AttentionCardProps) {
       className={cn(
         "rounded-2xl border p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
         hasSignals
-          ? "border-z-brass/20 bg-z-surface-2/80"
+          ? "border-z-alert/20 bg-z-surface-2/80"
           : "border-z-olive-deep/25 bg-z-surface-2/80",
         className
       )}
     >
-      <p
-        className={cn(
-          "text-[10px] font-semibold uppercase tracking-[0.18em]",
-          hasSignals ? "text-z-brass" : "text-z-olive-deep"
-        )}
-      >
-        {hasSignals ? "Necesita atención" : "Estado"}
-      </p>
+      <Verdict compact state={hasSignals ? "atencion" : "vas-bien"} />
 
       {hasSignals ? (
         <div className="mt-3 space-y-2">
@@ -38,7 +31,7 @@ export function AttentionCard({ signals, className }: AttentionCardProps) {
               className="flex items-center justify-between gap-3 rounded-xl border border-white/6 bg-black/10 px-3 py-2"
             >
               <div className="flex min-w-0 items-center gap-2">
-                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-z-brass/15 text-[10px] font-bold text-z-brass">
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-z-alert/15 text-[10px] font-bold text-z-alert">
                   {signal.count}
                 </span>
                 <span className="truncate text-sm">{signal.label}</span>
@@ -53,11 +46,11 @@ export function AttentionCard({ signals, className }: AttentionCardProps) {
           ))}
         </div>
       ) : (
-        <Link href="/dashboard" className="mt-3 flex items-center gap-2 group">
-          <CheckCircle2 className="size-4 text-z-olive-deep" />
-          <span className="text-sm font-medium text-z-olive-deep group-hover:text-z-olive-deep/80">
-            Al día
-          </span>
+        <Link
+          href="/dashboard"
+          className="mt-3 block text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          Sin pendientes por resolver
         </Link>
       )}
     </div>

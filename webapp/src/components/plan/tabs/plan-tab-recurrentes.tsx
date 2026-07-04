@@ -19,6 +19,7 @@ import { GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import { DesktopOnly } from "@/components/ui/responsive-render";
 import { SummaryCard } from "@/components/ui/summary-card";
 import { AttentionCard } from "@/components/ui/attention-card";
+import { Verdict } from "@/components/ui/verdict";
 import { getCategories } from "@/actions/categories";
 import { formatCurrency } from "@/lib/utils/currency";
 import type { CurrencyCode } from "@/types/domain";
@@ -43,6 +44,15 @@ export async function PlanTabRecurrentes({ month }: PlanTabRecurrentesProps = {}
   const accounts = accountsResult.success ? accountsResult.data : [];
   const categories = categoriesResult.success ? categoriesResult.data : [];
   const initialOccurrences = occurrencesResult.success ? occurrencesResult.data : undefined;
+
+  const recurrentesSignals = attentionSnapshot.signals.filter(
+    (s) => s.page === "recurrentes"
+  );
+  const topSignal = recurrentesSignals[0];
+  const monthOccurrences = (initialOccurrences ?? []).filter(
+    (o) => o.status !== "skipped"
+  );
+  const paidCount = monthOccurrences.filter((o) => o.status === "paid").length;
 
   return (
     <div className="space-y-6">
@@ -73,6 +83,17 @@ export async function PlanTabRecurrentes({ month }: PlanTabRecurrentesProps = {}
             <p className="text-sm text-muted-foreground">
               {summary.activeCount} plantillas activas
             </p>
+            <Verdict
+              className="mt-2"
+              state={topSignal ? "atencion" : "vas-bien"}
+              detail={
+                topSignal
+                  ? `Por resolver: ${topSignal.label}.`
+                  : monthOccurrences.length > 0
+                    ? `${paidCount} de ${monthOccurrences.length} pagados este mes.`
+                    : "Sin cobros programados este mes."
+              }
+            />
           </div>
           <div className="flex items-center gap-2">
             <Button asChild variant="outline" className={GHOST_BUTTON_CLASS}>
@@ -93,9 +114,7 @@ export async function PlanTabRecurrentes({ month }: PlanTabRecurrentesProps = {}
               { label: "Entradas/mes", value: formatCurrency(summary.totalMonthlyIncome, currency as CurrencyCode), context: "ingreso recurrente" },
             ]}
           />
-          <AttentionCard
-            signals={attentionSnapshot.signals.filter((s: { page: string }) => s.page === "recurrentes")}
-          />
+          <AttentionCard signals={recurrentesSignals} />
         </div>
 
         <RecurringTimelineView templates={templates} accounts={accounts} />

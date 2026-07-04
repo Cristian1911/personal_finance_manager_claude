@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="design_doc_mode" content="canvas">
+  <link rel="stylesheet" href="_ds/zeta-design-system-019dcbea-f04a-7d4c-b73b-b05e420673e5/colors_and_type.css">
+  <script src="_ds/zeta-design-system-019dcbea-f04a-7d4c-b73b-b05e420673e5/_ds_bundle.js"></script>
+</helmet>
+<section style="display:flex;flex-direction:column;align-items:flex-start;padding:48px;background:var(--z-ink);min-height:100vh;box-sizing:border-box;">
+  <div id="7a" style="display:flex;flex-direction:column;gap:28px;width:1660px;">
+
+    <!-- ── Header ───────────────────────────────────── -->
+    <div style="display:flex;flex-direction:column;gap:12px;max-width:980px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="display:inline-flex;align-items:center;justify-content:center;height:24px;padding:0 10px;border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.06);color:var(--z-sage-light);font-size:12px;font-weight:700;">7a</span>
+        <span class="z-eyebrow">Zeta · unification layer · handoff</span>
+      </div>
+      <h1 class="z-h1" style="margin:0;">Migration checklist</h1>
+      <p class="z-body" style="margin:0;">The unification layer in one page. Four new primitives, one theme object, six copy rules &mdash; no rebrand, no new tokens, no new hues. Each item links its territory board; sequence is by leverage. Definition of done, globally: <span style="color:var(--z-white);font-weight:600;">every screen answers &iquest;voy bien? in the hero slot without explanation.</span></p>
+    </div>
+
+    <!-- ── Row: primitives + deletions ──────────────── -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:stretch;">
+
+      <div class="z-card-surface" data-ds-card="@dsCard" style="display:flex;flex-direction:column;gap:16px;padding:24px;">
+        <span class="z-eyebrow">a &middot; qu&eacute; se construye &mdash; 4 primitivas + 1 tema</span>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="z-card-stat" data-ds-card="@dsCard" style="display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;">
+              <span class="z-mono" style="font-size:12px;color:var(--z-white);">&lt;Verdict /&gt;</span>
+              <a href="T1 Verdict System.dc.html" style="font-size:11px;font-weight:600;color:var(--z-sage-light);text-decoration:none;">T1 &rarr;</a>
+            </div>
+            <span style="font-size:12px;color:var(--z-sage-light);line-height:1.55;">Pill chip + detail line. Props: <span class="z-mono" style="font-size:11px;">state</span> (vas-bien | cerca | te-pasaste | atencion), <span class="z-mono" style="font-size:11px;">delta?</span>, <span class="z-mono" style="font-size:11px;">detail?</span>, <span class="z-mono" style="font-size:11px;">compact?</span>. Colors: income / alert / debt tokens, 8% tint + 20% border. Fixed hero slot: eyebrow &rarr; number &rarr; verdict &rarr; detail &rarr; meta. One full-volume verdict per screen.</span>
+          </div>
+          <div class="z-card-stat" data-ds-card="@dsCard" style="display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;">
+              <span class="z-mono" style="font-size:12px;color:var(--z-white);">&lt;Disclosure /&gt;</span>
+              <a href="T3 Motion Vocabulary.dc.html" style="font-size:11px;font-weight:600;color:var(--z-sage-light);text-decoration:none;">T3 &rarr;</a>
+            </div>
+            <span style="font-size:12px;color:var(--z-sage-light);line-height:1.55;">Grid-rows <span class="z-mono" style="font-size:11px;">0fr&rarr;1fr</span> 160ms, caret 180&deg;, content enter 120ms. Label &ldquo;Ver + qu&eacute;&rdquo; / &ldquo;Ocultar &hellip;&rdquo;. Tokens: <span class="z-mono" style="font-size:11px;">--motion-ease: cubic-bezier(0.2,0,0,1)</span>, <span class="z-mono" style="font-size:11px;">--motion-1/2/3: 120/160/200ms</span>. Dim only on focus-leaving overlays.</span>
+          </div>
+          <div class="z-card-stat" data-ds-card="@dsCard" style="display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;">
+              <span class="z-mono" style="font-size:12px;color:var(--z-white);">&lt;MonthControl /&gt;</span>
+              <a href="T5 Shared Time Model.dc.html" style="font-size:11px;font-weight:600;color:var(--z-sage-light);text-decoration:none;">T5 &rarr;</a>
+            </div>
+            <span style="font-size:12px;color:var(--z-sage-light);line-height:1.55;">Chevron &middot; &ldquo;Abril 2026&rdquo; &middot; chevron, compact-card container, fixed-width tabular label, next disabled at current. Month is one app-level store key in the URL. Range variant for Tendencias. Header grammar everywhere: title left, control right, no subtitles, no wordmark.</span>
+          </div>
+          <div class="z-card-stat" data-ds-card="@dsCard" style="display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;">
+              <span class="z-mono" style="font-size:12px;color:var(--z-white);">&lt;GroupSummary /&gt;</span>
+              <a href="T6 Number Wall Hierarchy.dc.html" style="font-size:11px;font-weight:600;color:var(--z-sage-light);text-decoration:none;">T6 &rarr;</a>
+            </div>
+            <span style="font-size:12px;color:var(--z-sage-light);line-height:1.55;">V2 header: count + aggregate delta (&ldquo;7 sobre l&iacute;mite &middot; &minus;$486.000&rdquo;). Mandatory above any 3+ same-state rows; state word once per group; rows carry deltas only. Ladder: V1 34/800 &middot; V2 15/600 &middot; V3 13 &middot; V4 11. Healthy groups collapse behind a Disclosure.</span>
+          </div>
+          <div class="z-card-stat" data-ds-card="@dsCard" style="display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;">
+              <span class="z-mono" style="font-size:12px;color:var(--z-white);">chartTheme</span>
+              <a href="T2 Data-Viz Identity.dc.html" style="font-size:11px;font-weight:600;color:var(--z-sage-light);text-decoration:none;">T2 &rarr;</a>
+            </div>
+            <span style="font-size:12px;color:var(--z-sage-light);line-height:1.55;">One recharts theme object: <span class="z-mono" style="font-size:11px;">chart-1&rarr;brass, chart-2&rarr;sage-dark</span>, horizontal hairlines only, no axis lines, dashed 4-3 forecasts at 50%, tabular compact labels, <span class="z-mono" style="font-size:11px;">isAnimationActive: false</span>. Two tiers: gauges judge (max one per screen, verdict-bearing), charts explain (never verdict-bearing).</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:20px;">
+        <div class="z-card-surface" data-ds-card="@dsCard" style="display:flex;flex-direction:column;gap:14px;padding:24px;">
+          <span class="z-eyebrow">b &middot; qu&eacute; se elimina</span>
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--z-sage-light);line-height:1.5;">
+            <span><span class="z-mono" style="font-size:11px;color:var(--z-debt);">&times;</span> Dashboard status dot &middot; &ldquo;SOBRE LIMITE&rdquo; / &ldquo;ATENCION&rdquo; pills &middot; &ldquo;Te pasaste del presupuesto&rdquo; strings &rarr; <span class="z-mono" style="font-size:11px;color:var(--z-white);">&lt;Verdict /&gt;</span></span>
+            <span><span class="z-mono" style="font-size:11px;color:var(--z-debt);">&times;</span> Page-dim on hero expand &middot; silent growers &middot; bare &ldquo;Ver&rdquo; links &rarr; <span class="z-mono" style="font-size:11px;color:var(--z-white);">&lt;Disclosure /&gt;</span></span>
+            <span><span class="z-mono" style="font-size:11px;color:var(--z-debt);">&times;</span> &ldquo;Abr&rdquo; pill &middot; below-hero selectors &middot; title+subtitle headers &middot; wordmark-as-header &rarr; <span class="z-mono" style="font-size:11px;color:var(--z-white);">&lt;MonthControl /&gt;</span> + canonical header</span>
+            <span><span class="z-mono" style="font-size:11px;color:var(--z-debt);">&times;</span> Per-row uppercase alarm pills &middot; equal-volume walls &rarr; <span class="z-mono" style="font-size:11px;color:var(--z-white);">&lt;GroupSummary /&gt;</span> + ladder</span>
+            <span><span class="z-mono" style="font-size:11px;color:var(--z-debt);">&times;</span> Unthemed recharts defaults &middot; per-card chart palettes &rarr; <span class="z-mono" style="font-size:11px;color:var(--z-white);">chartTheme</span></span>
+            <span><span class="z-mono" style="font-size:11px;color:var(--z-debt);">&times;</span> Letter-badge account glyphs &rarr; colored dot everywhere (the smaller, quieter of the two systems)</span>
+          </div>
+        </div>
+        <div class="z-card-surface" data-ds-card="@dsCard" style="display:flex;flex-direction:column;gap:14px;padding:24px;flex:1;">
+          <span class="z-eyebrow">c &middot; reglas de copy &mdash; cierran la deriva</span>
+          <div style="display:grid;grid-template-columns:auto 1fr;gap:8px 16px;font-size:13px;align-items:baseline;">
+            <span class="z-mono" style="font-size:11px;color:var(--z-sage-dark);">1</span><span style="color:var(--z-sage-light);">Verdict vocabulary is closed: Vas bien &middot; Cerca del l&iacute;mite &middot; Te pasaste &middot; Atenci&oacute;n. No synonyms, no uppercase.</span>
+            <span class="z-mono" style="font-size:11px;color:var(--z-sage-dark);">2</span><span style="color:var(--z-sage-light);">Disclosure labels: &ldquo;Ver + qu&eacute;&rdquo; &harr; &ldquo;Ocultar + qu&eacute;&rdquo;. Never bare &ldquo;Ver&rdquo;.</span>
+            <span class="z-mono" style="font-size:11px;color:var(--z-sage-dark);">3</span><span style="color:var(--z-sage-light);">Selector shows &ldquo;Abril 2026&rdquo; only; &ldquo;abr&rdquo; on axes; relative dates only in rows.</span>
+            <span class="z-mono" style="font-size:11px;color:var(--z-sage-dark);">4</span><span style="color:var(--z-sage-light);">Celebration eyebrows: DEUDA SALDADA &middot; MES CERRADO BAJO PLAN &middot; TODO PAGADO. Detail in tuteo, past tense, no exclamation.</span>
+            <span class="z-mono" style="font-size:11px;color:var(--z-sage-dark);">5</span><span style="color:var(--z-sage-light);">Past months read-only: &ldquo;Mes cerrado&rdquo; line, verdicts in past tense (&ldquo;Cerraste bajo plan&rdquo;).</span>
+            <span class="z-mono" style="font-size:11px;color:var(--z-sage-dark);">6</span><span style="color:var(--z-sage-light);">Group summaries: &ldquo;N sobre l&iacute;mite&rdquo; / &ldquo;N en orden&rdquo; / &ldquo;N de M pagados&rdquo;.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Row: sequence ────────────────────────────── -->
+    <div class="z-card-surface" data-ds-card="@dsCard" style="display:flex;flex-direction:column;gap:16px;padding:24px;">
+      <span class="z-eyebrow">d &middot; secuencia &mdash; cuatro fases por apalancamiento</span>
+      <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:12px;">
+        <div class="z-card-stat" data-ds-card="@dsCard" style="display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;">
+            <span style="font-size:15px;font-weight:600;color:var(--z-white);">Fase 1 &middot; Veredicto</span>
+            <span class="z-mono" style="font-size:10px;color:var(--z-sage-dark);">T1</span>
+          </div>
+          <span style="font-size:12px;color:var(--z-sage-light);line-height:1.55;">Build <span class="z-mono" style="font-size:11px;">&lt;Verdict /&gt;</span>. Converge dashboard dot y pill de Presupuesto; add the slot to Deudas, Recurrentes, Plan. Delete the three dialects.</span>
+          <span style="font-size:11px;color:var(--z-sage-dark);">Resolves finding 1, 8 (parcial). North-star unblocked.</span>
+        </div>
+        <div class="z-card-stat" data-ds-card="@dsCard" style="display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;">
+            <span style="font-size:15px;font-weight:600;color:var(--z-white);">Fase 2 &middot; Marco</span>
+            <span class="z-mono" style="font-size:10px;color:var(--z-sage-dark);">T5 + T3</span>
+          </div>
+          <span style="font-size:12px;color:var(--z-sage-light);line-height:1.55;">Canonical header + shared month store on the five surfaces; replace every expand with <span class="z-mono" style="font-size:11px;">&lt;Disclosure /&gt;</span>; remove hero dim. Mechanical, low risk, wide surface.</span>
+          <span style="font-size:11px;color:var(--z-sage-dark);">Resolves findings 3, 4, 6.</span>
+        </div>
+        <div class="z-card-stat" data-ds-card="@dsCard" style="display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;">
+            <span style="font-size:15px;font-weight:600;color:var(--z-white);">Fase 3 &middot; Densidad</span>
+            <span class="z-mono" style="font-size:10px;color:var(--z-sage-dark);">T6 + T2</span>
+          </div>
+          <span style="font-size:12px;color:var(--z-sage-light);line-height:1.55;">Ladder + <span class="z-mono" style="font-size:11px;">&lt;GroupSummary /&gt;</span> on Presupuesto and Deudas; apply <span class="z-mono" style="font-size:11px;">chartTheme</span> to Tendencias, forecast, income-expense; unify account glyphs.</span>
+          <span style="font-size:11px;color:var(--z-sage-dark);">Resolves findings 2, 5, 7.</span>
+        </div>
+        <div class="z-card-stat" data-ds-card="@dsCard" style="display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;">
+            <span style="font-size:15px;font-weight:600;color:var(--z-white);">Fase 4 &middot; Calidez</span>
+            <span class="z-mono" style="font-size:10px;color:var(--z-sage-dark);">T4</span>
+          </div>
+          <span style="font-size:12px;color:var(--z-sage-light);line-height:1.55;">The three celebration moments (deuda saldada, mes cerrado, todo pagado) + residue rows in Actividad reciente. Ships last: depends on Verdict, ring, and motion tokens.</span>
+          <span style="font-size:11px;color:var(--z-sage-dark);">Resolves finding 9. One event, once, brass-on-number.</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:24px;flex-wrap:wrap;padding:14px 16px;border-radius:12px;background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.06);">
+        <span class="z-eyebrow" style="font-size:9px;align-self:center;">Guardrails de aceptaci&oacute;n</span>
+        <span style="font-size:12px;color:var(--z-sage-light);">brass nunca en veredictos ni filas</span>
+        <span style="font-size:12px;color:var(--z-sage-light);">un veredicto a todo volumen por pantalla</span>
+        <span style="font-size:12px;color:var(--z-sage-light);">un gauge radial por pantalla, m&aacute;ximo</span>
+        <span style="font-size:12px;color:var(--z-sage-light);">solo transform/opacity &middot; 120/160/200ms &middot; una curva</span>
+        <span style="font-size:12px;color:var(--z-sage-light);">dim = el foco sale de la p&aacute;gina</span>
+        <span style="font-size:12px;color:var(--z-sage-light);">cero hues nuevos &middot; cero librer&iacute;as nuevas</span>
+      </div>
+    </div>
+
+    <!-- ── Row: finding → resolution map ────────────── -->
+    <div class="z-card-surface" data-ds-card="@dsCard" style="display:flex;flex-direction:column;gap:14px;padding:24px;max-width:980px;">
+      <span class="z-eyebrow">e &middot; hallazgo &rarr; resoluci&oacute;n</span>
+      <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:8px 18px;font-size:13px;align-items:baseline;">
+        <span class="z-eyebrow" style="font-size:9px;">#</span><span class="z-eyebrow" style="font-size:9px;">Hallazgo</span><span class="z-eyebrow" style="font-size:9px;">Territorio</span><span class="z-eyebrow" style="font-size:9px;">Fase</span>
+        <span class="z-num" style="color:var(--z-sage-dark);">1</span><span style="color:var(--z-sage-light);">Sin veredicto unificado</span><a href="T1 Verdict System.dc.html" style="color:var(--z-sage-light);font-weight:600;text-decoration:none;">T1</a><span class="z-num" style="color:var(--z-sage-dark);">1</span>
+        <span class="z-num" style="color:var(--z-sage-dark);">2</span><span style="color:var(--z-sage-light);">Dos dialectos de data-viz</span><a href="T2 Data-Viz Identity.dc.html" style="color:var(--z-sage-light);font-weight:600;text-decoration:none;">T2</a><span class="z-num" style="color:var(--z-sage-dark);">3</span>
+        <span class="z-num" style="color:var(--z-sage-dark);">3</span><span style="color:var(--z-sage-light);">Deriva del selector de mes</span><a href="T5 Shared Time Model.dc.html" style="color:var(--z-sage-light);font-weight:600;text-decoration:none;">T5</a><span class="z-num" style="color:var(--z-sage-dark);">2</span>
+        <span class="z-num" style="color:var(--z-sage-dark);">4</span><span style="color:var(--z-sage-light);">Gram&aacute;tica de encabezados</span><a href="T5 Shared Time Model.dc.html" style="color:var(--z-sage-light);font-weight:600;text-decoration:none;">T5</a><span class="z-num" style="color:var(--z-sage-dark);">2</span>
+        <span class="z-num" style="color:var(--z-sage-dark);">5</span><span style="color:var(--z-sage-light);">Dos sistemas de glifos de cuenta</span><span style="color:var(--z-sage-light);font-weight:600;">&mdash;</span><span class="z-num" style="color:var(--z-sage-dark);">3</span>
+        <span class="z-num" style="color:var(--z-sage-dark);">6</span><span style="color:var(--z-sage-light);">Idiomas de expandir/colapsar</span><a href="T3 Motion Vocabulary.dc.html" style="color:var(--z-sage-light);font-weight:600;text-decoration:none;">T3</a><span class="z-num" style="color:var(--z-sage-dark);">2</span>
+        <span class="z-num" style="color:var(--z-sage-dark);">7</span><span style="color:var(--z-sage-light);">Paredes de densidad</span><a href="T6 Number Wall Hierarchy.dc.html" style="color:var(--z-sage-light);font-weight:600;text-decoration:none;">T6</a><span class="z-num" style="color:var(--z-sage-dark);">3</span>
+        <span class="z-num" style="color:var(--z-sage-dark);">8</span><span style="color:var(--z-sage-light);">Deriva de tono de copy</span><a href="T1 Verdict System.dc.html" style="color:var(--z-sage-light);font-weight:600;text-decoration:none;">T1</a><span class="z-num" style="color:var(--z-sage-dark);">1</span>
+        <span class="z-num" style="color:var(--z-sage-dark);">9</span><span style="color:var(--z-sage-light);">El &eacute;xito es mudo</span><a href="T4 Celebration Moments.dc.html" style="color:var(--z-sage-light);font-weight:600;text-decoration:none;">T4</a><span class="z-num" style="color:var(--z-sage-dark);">4</span>
+      </div>
+    </div>
+  </div>
+</section>
+</x-dc>
+</body>
+</html>

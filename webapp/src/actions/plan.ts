@@ -4,8 +4,8 @@ import { cache } from "react";
 import { getAccounts } from "@/actions/accounts";
 import { getCategoriesWithBudgetData } from "@/actions/categories";
 import { getDebtOverview } from "@/actions/debt";
-import { getDebtFreeCountdown, type DebtCountdownData } from "@/actions/debt-countdown";
-import { getEstimatedIncome, type IncomeEstimate } from "@/actions/income";
+import { getDebtFreeCountdown } from "@/actions/debt-countdown";
+import { getEstimatedIncome } from "@/actions/income";
 import { getRatesForCurrencies } from "@/actions/exchange-rate";
 import { getPreferredCurrency } from "@/actions/profile";
 import {
@@ -14,6 +14,7 @@ import {
 } from "@/actions/recurring-templates";
 import { get503020Allocation, type AllocationData } from "@/actions/allocation";
 import { getDashboardHeroData, type DashboardHeroData } from "@/actions/charts";
+import type { VerdictState } from "@/components/ui/verdict";
 import type { Account, AccountType, CurrencyCode } from "@/types/domain";
 import type {
   PlanHeroSummary,
@@ -85,51 +86,87 @@ function buildHeroSummary({
   heroData: DashboardHeroData;
   activeDebtCount: number;
   allocation: AllocationData | null;
-}): PlanHeroSummary {
+}): PlanHeroSummary & { state: VerdictState } {
   const spentPercent = allocation
     ? ((allocation.needs.amount + allocation.wants.amount) / allocation.income) * 100
     : null;
-  const isCritical = heroData.availableToSpend < 0 || (spentPercent != null && spentPercent > 100);
-  const isWatch =
-    !isCritical &&
-    (heroData.pendingObligations.length > 0 || heroData.freshness !== "fresh" || (spentPercent != null && spentPercent >= 90));
+  const base = {
+    availableToSpend: heroData.availableToSpend,
+    pendingTotal: heroData.totalPending,
+    activeDebtCount,
+  };
 
-  if (isCritical) {
+  // te-pasaste — ≥100% of the plan used, or the margin went negative.
+  if (heroData.availableToSpend < 0 || (spentPercent != null && spentPercent >= 100)) {
     return {
-      headline: "Tu plan necesita un ajuste inmediato",
+      ...base,
+      headline:
+        heroData.availableToSpend < 0
+          ? "Tu margen del mes quedó en negativo."
+          : "Ya gastaste todo el plan de este mes.",
       guidance:
         heroData.availableToSpend < 0
-          ? "Ya no tienes margen libre este mes. Revisa pagos, presupuesto y deuda antes de comprometer más gasto."
-          : "Ya vas por encima del presupuesto de este mes. Reordena categorías y pagos antes de seguir avanzando.",
+          ? "Revisa pagos, presupuesto y deuda antes de comprometer más gasto."
+          : "Reordena categorías y pagos antes de seguir avanzando.",
       recommendedAction: {
         href: "/categories",
         label: "Ajustar presupuesto",
       },
       pressure: "critical",
-      availableToSpend: heroData.availableToSpend,
-      pendingTotal: heroData.totalPending,
-      activeDebtCount,
+      state: "te-pasaste",
     };
   }
 
-  if (heroData.pendingObligations.length > 0) {
+  // cerca — 75–99% of the plan used.
+  if (spentPercent != null && spentPercent >= 75) {
     return {
-      headline: "Tu plan está vivo, pero hay obligaciones por resolver",
-      guidance: `Tienes ${heroData.pendingObligations.length} ${heroData.pendingObligations.length === 1 ? "pago" : "pagos"} próximos por revisar antes de cerrar el mes con confianza.`,
+      ...base,
+      headline: "A este ritmo llegas al límite antes de fin de mes.",
+      guidance: `Llevas el ${Math.round(spentPercent)}% de tu ingreso gastado. Revisa las categorías con más presión antes de comprometer más gasto.`,
+      recommendedAction: {
+        href: "/categories",
+        label: "Revisar presupuesto",
+      },
+      pressure: "watch",
+      state: "cerca",
+    };
+  }
+
+  // atencion — user action needed: pending payments.
+  if (heroData.pendingObligations.length > 0) {
+    const count = heroData.pendingObligations.length;
+    return {
+      ...base,
+      headline: `Tienes ${count} ${count === 1 ? "pago próximo" : "pagos próximos"} por resolver.`,
+      guidance: "Revísalos antes de cerrar el mes para que el plan refleje tu margen real.",
       recommendedAction: {
         href: "/recurrentes",
         label: "Revisar obligaciones",
       },
       pressure: "watch",
-      availableToSpend: heroData.availableToSpend,
-      pendingTotal: heroData.totalPending,
-      activeDebtCount,
+      state: "atencion",
+    };
+  }
+
+  // atencion — data gap: balances stopped updating.
+  if (heroData.freshness !== "fresh") {
+    return {
+      ...base,
+      headline: "Tus movimientos llevan días sin actualizarse.",
+      guidance: "Registra o importa lo más reciente para que el plan refleje tu mes real.",
+      recommendedAction: {
+        href: "/transactions",
+        label: "Actualizar movimientos",
+      },
+      pressure: "watch",
+      state: "atencion",
     };
   }
 
   if (activeDebtCount > 0) {
     return {
-      headline: "Tu plan está estable, pero la deuda sigue marcando el ritmo",
+      ...base,
+      headline: "La deuda sigue marcando el ritmo de tu plan.",
       guidance:
         "Revisa el costo de interés y tus escenarios guardados para decidir si conviene acelerar pagos este mes.",
       recommendedAction: {
@@ -137,28 +174,25 @@ function buildHeroSummary({
         label: "Abrir planificador",
       },
       pressure: "watch",
-      availableToSpend: heroData.availableToSpend,
-      pendingTotal: heroData.totalPending,
-      activeDebtCount,
+      state: "vas-bien",
     };
   }
 
   const hasUpcomingIncome = heroData.pendingIncome > 0;
   return {
+    ...base,
     headline: hasUpcomingIncome
-      ? "Tu plan está claro y hay ingresos en camino"
-      : "Tu plan está claro y bajo control",
+      ? "Tu margen se mantiene y hay ingresos en camino."
+      : "Tu margen te permite decidir con calma.",
     guidance: hasUpcomingIncome
-      ? "El margen actual es estable y esperas ingresos próximos. Buen momento para revisar presupuesto y prioridades."
-      : "El margen actual te permite decidir con calma. Usa esta vista para ajustar presupuesto y prioridades sin perder el hilo.",
+      ? "Buen momento para revisar presupuesto y prioridades."
+      : "Usa esta vista para ajustar presupuesto y prioridades sin perder el hilo.",
     recommendedAction: {
       href: "/categories",
       label: "Ver presupuesto",
     },
     pressure: "stable",
-    availableToSpend: heroData.availableToSpend,
-    pendingTotal: heroData.totalPending,
-    activeDebtCount,
+    state: "vas-bien",
   };
 }
 

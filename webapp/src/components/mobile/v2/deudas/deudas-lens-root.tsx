@@ -129,6 +129,7 @@ export function DeudasLensRoot({
       {lens === "carga" && (
         <>
           <DeudasHero
+            totalDebt={overview.totalDebt}
             totalMonthlyPayment={stats.totalMonthlyPayment}
             monthlyInterest={overview.monthlyInterestEstimate}
             currency={currency}

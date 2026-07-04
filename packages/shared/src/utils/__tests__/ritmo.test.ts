@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeRitmo, type RitmoInput } from "../ritmo";
+import { computeRitmo, deriveRitmoStatus, type RitmoInput } from "../ritmo";
 
 function days(from: string, count: number, perDay = 0): { date: string; expense: number }[] {
   const out: { date: string; expense: number }[] = [];
@@ -179,5 +179,41 @@ describe("computeRitmo", () => {
     const r = computeRitmo(input);
     expect(Number.isFinite(r.availablePerDay)).toBe(true);
     expect(Number.isFinite(r.spentFraction)).toBe(true);
+  });
+});
+
+describe("deriveRitmoStatus", () => {
+  const base = {
+    availableTotal: 1_000_000,
+    spentToday: 0,
+    availablePerDay: 100_000,
+  };
+
+  it("returns te-pasaste when the period balance is negative", () => {
+    expect(
+      deriveRitmoStatus({ ...base, availableTotal: -1, spentFraction: 0 }),
+    ).toEqual({ tone: "debt", label: "Te pasaste", state: "te-pasaste" });
+  });
+
+  it("returns te-pasaste when today's spend exceeds the daily allowance", () => {
+    expect(
+      deriveRitmoStatus({ ...base, spentToday: 150_000, spentFraction: 0 }),
+    ).toEqual({ tone: "debt", label: "Te pasaste", state: "te-pasaste" });
+  });
+
+  it("returns cerca at 75% of the period budget", () => {
+    expect(deriveRitmoStatus({ ...base, spentFraction: 0.75 })).toEqual({
+      tone: "alert",
+      label: "Cerca del límite",
+      state: "cerca",
+    });
+  });
+
+  it("returns vas-bien below the 75% threshold", () => {
+    expect(deriveRitmoStatus({ ...base, spentFraction: 0.74 })).toEqual({
+      tone: "income",
+      label: "Vas bien",
+      state: "vas-bien",
+    });
   });
 });

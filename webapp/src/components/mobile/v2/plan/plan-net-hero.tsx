@@ -4,8 +4,12 @@ import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useChartFocusMode } from "@/hooks/use-chart-focus-mode";
 import { PlanFlowChart } from "./plan-flow-chart";
+import { Verdict, type VerdictState } from "@/components/ui/verdict";
 import { formatCurrency } from "@/lib/utils/currency";
-import { HERO_CARD_GRADIENT_CLASS } from "@/lib/constants/styles";
+import {
+  HERO_CARD_GRADIENT_CLASS,
+  SECTION_EYEBROW_CLASS,
+} from "@/lib/constants/styles";
 import type { CurrencyCode } from "@/types/domain";
 import type { PlanTimelineData } from "@/actions/plan-timeline";
 
@@ -29,6 +33,26 @@ export function PlanNetHero({
   const gastosRatio = ingresos > 0 ? Math.min((gastos / ingresos) * 100, 100) : 0;
   const netoRatio = 100 - gastosRatio;
 
+  // Verdict: ingresos are the limit. Spent everything (or more) → te-pasaste;
+  // 75–99% of income used → cerca; otherwise vas-bien.
+  const spentPct = Math.round(gastosRatio);
+  const verdictState: VerdictState =
+    neto < 0 || (neto === 0 && gastos > 0)
+      ? "te-pasaste"
+      : spentPct >= 75
+        ? "cerca"
+        : "vas-bien";
+  const verdictDelta =
+    verdictState !== "te-pasaste" && ingresos > 0
+      ? `${spentPct}% del ingreso`
+      : undefined;
+  const verdictDetail =
+    verdictState === "te-pasaste"
+      ? neto < 0
+        ? `Gastaste ${formatCurrency(Math.abs(neto), currency)} más de tus ingresos este mes.`
+        : "Gastaste todos tus ingresos del mes."
+      : `Te queda ${formatCurrency(neto, currency)} de tus ingresos este mes.`;
+
   const { overlayVisible, handleOverlayClick } = useChartFocusMode(expanded);
 
   return (
@@ -48,7 +72,7 @@ export function PlanNetHero({
         className={`relative z-50 w-full rounded-2xl border border-white/6 ${HERO_CARD_GRADIENT_CLASS} p-4 text-left transition-all`}
       >
         <div className="flex items-center justify-between mb-1">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-brass">
+          <p className={SECTION_EYEBROW_CLASS}>
             Neto del mes
           </p>
           <span className="text-[10px] text-muted-foreground">
@@ -58,12 +82,16 @@ export function PlanNetHero({
 
         <p
           className={`text-3xl font-bold ${
-            neto > 0 ? "text-z-income" : neto < 0 ? "text-z-expense" : "text-z-brass"
+            neto > 0 ? "text-z-income" : neto < 0 ? "text-z-expense" : "text-z-sage-light"
           }`}
         >
           {neto >= 0 ? "+" : ""}
           {formatCurrency(neto, currency)}
         </p>
+
+        <div className="mt-2">
+          <Verdict state={verdictState} delta={verdictDelta} detail={verdictDetail} />
+        </div>
 
         {/* Stacked progress bar */}
         <div className="relative mt-3 h-2.5 overflow-hidden rounded-full bg-z-surface-2">

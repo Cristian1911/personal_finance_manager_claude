@@ -132,8 +132,8 @@ export function PlanZoneChips({
                 />
                 {budget.overLimitCount > 0 && (
                   <DetailRow
-                    label="Sobre el límite"
-                    value={`${budget.overLimitCount} categoría${budget.overLimitCount !== 1 ? "s" : ""}`}
+                    label="Categorías"
+                    value={`${budget.overLimitCount} sobre límite`}
                     valueClass="text-z-debt"
                   />
                 )}
@@ -141,7 +141,7 @@ export function PlanZoneChips({
                   <DetailRow
                     label="Sin categorizar"
                     value={`${budget.uncategorizedCount}`}
-                    valueClass="text-amber-400"
+                    valueClass="text-z-alert"
                   />
                 )}
                 <Link
@@ -175,7 +175,7 @@ export function PlanZoneChips({
                   <DetailRow
                     label="Próximos a vencer"
                     value={`${recurring.dueSoonCount} · ${formatCurrency(recurring.dueSoonTotal, currency)}`}
-                    valueClass="text-amber-400"
+                    valueClass="text-z-alert"
                   />
                 )}
                 <Link

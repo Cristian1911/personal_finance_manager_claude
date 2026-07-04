@@ -86,10 +86,10 @@ export default async function DashboardLayout({
   const attentionSummary =
     attentionSnapshot.totalAction > 0
       ? attentionSnapshot.signals.find((signal) => signal.priority === "action")?.label
-        ?? `${attentionSnapshot.totalAction} pendientes requieren atención`
+        ?? `Atención · ${attentionSnapshot.totalAction} pendientes`
       : attentionSnapshot.totalSuggestion > 0
         ? `${attentionSnapshot.totalSuggestion} sugerencia${attentionSnapshot.totalSuggestion === 1 ? "" : "s"} para revisar`
-        : "Todo en orden por ahora";
+        : "Vas bien";
 
   return (
     <div className="flex min-h-dvh">

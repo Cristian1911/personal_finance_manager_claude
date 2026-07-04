@@ -45,14 +45,7 @@ export async function PresupuestoSection({
   let presupuestoSubtitle: string | undefined;
   if (resolvedAllocation) {
     const needsPct = Math.round(resolvedAllocation.needs.percent);
-    const totalSpentPct = Math.round(resolvedAllocation.needs.percent + resolvedAllocation.wants.percent);
-    if (totalSpentPct > 100) {
-      presupuestoSubtitle = `Necesidades al ${needsPct}% — por encima del presupuesto`;
-    } else if (totalSpentPct >= 90) {
-      presupuestoSubtitle = `Necesidades al ${needsPct}% — cerca del limite`;
-    } else {
-      presupuestoSubtitle = `Necesidades al ${needsPct}% — dentro del presupuesto`;
-    }
+    presupuestoSubtitle = `Necesidades al ${needsPct}%`;
   } else {
     presupuestoSubtitle = "Configura tu presupuesto en ajustes";
   }

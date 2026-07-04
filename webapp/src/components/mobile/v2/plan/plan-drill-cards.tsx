@@ -43,7 +43,7 @@ export function PlanDrillCards({
   const overLimit = budget.overLimitCount ?? 0;
   const presupuestoCaption =
     overLimit > 0 ? (
-      <span className="font-semibold text-z-brass">{overLimit} sobre límite</span>
+      <span className="font-semibold text-z-debt">{overLimit} sobre límite</span>
     ) : (
       "dentro del límite"
     );
@@ -54,7 +54,7 @@ export function PlanDrillCards({
     percentAssigned >= 100 ? (
       "al día"
     ) : unassigned > 0 ? (
-      <span className="font-semibold text-z-brass">{unassigned} pendientes</span>
+      <span className="font-semibold text-z-alert">{unassigned} pendientes</span>
     ) : (
       `${Math.round(percentAssigned)}%`
     );
@@ -67,7 +67,7 @@ export function PlanDrillCards({
       {overdueCount > 0 && (
         <>
           {" · "}
-          <span className="font-semibold text-z-brass">{overdueCount} vencidas</span>
+          <span className="font-semibold text-z-alert">{overdueCount} vencidas</span>
         </>
       )}
     </>

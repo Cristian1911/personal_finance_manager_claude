@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="design_doc_mode" content="canvas">
+  <link rel="stylesheet" href="_ds/zeta-design-system-019dcbea-f04a-7d4c-b73b-b05e420673e5/colors_and_type.css">
+  <script src="_ds/zeta-design-system-019dcbea-f04a-7d4c-b73b-b05e420673e5/_ds_bundle.js"></script>
+  <style>
+    @keyframes z-ring-sweep { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+    @keyframes z-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</helmet>
+<section style="display:flex;flex-direction:column;align-items:flex-start;padding:48px;background:var(--z-ink);min-height:100vh;box-sizing:border-box;">
+  <div id="4a" style="display:flex;flex-direction:column;gap:28px;width:1660px;">
+
+    <!-- ── Board header ─────────────────────────────── -->
+    <div style="display:flex;flex-direction:column;gap:12px;max-width:980px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="display:inline-flex;align-items:center;justify-content:center;height:24px;padding:0 10px;border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.06);color:var(--z-sage-light);font-size:12px;font-weight:700;">4a</span>
+        <span class="z-eyebrow">Zeta · unification layer · T4</span>
+      </div>
+      <h1 class="z-h1" style="margin:0;">Celebration moments</h1>
+      <p class="z-body" style="margin:0;">The app is fluent at danger and mute at achievement. The fix is not confetti &mdash; it is <span style="color:var(--z-white);font-weight:600;">letting brass touch a number for the first time.</span> Today brass means &ldquo;you can act&rdquo;; in a celebration it briefly means &ldquo;you did.&rdquo; One earned moment per event, built from the materials the app already owns: the eyebrow, the big number, the T1 verdict, the T2 ring, the T3 curve. Quiet, typographic, over in under a second. All three demos are live &mdash; use the Tweaks buttons to replay them.</p>
+    </div>
+
+    <!-- ── Row B: grammar ───────────────────────────── -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:stretch;">
+
+      <div class="z-card-surface" data-ds-card="@dsCard" style="display:flex;flex-direction:column;gap:20px;padding:24px;">
+        <span class="z-eyebrow">a &middot; el momento &mdash; anatom&iacute;a</span>
+        <div style="display:grid;grid-template-columns:110px 1fr;gap:12px 16px;font-size:13px;color:var(--z-sage-light);line-height:1.55;">
+          <span class="z-mono" style="font-size:11px;color:var(--z-sage-dark);padding-top:2px;">TRIGGER</span>
+          <span>Earned events only: a debt reaches zero, a month closes under plan, the last pending recurrente clears. Never for opening the app, never for streaks, never twice for the same event.</span>
+          <span class="z-mono" style="font-size:11px;color:var(--z-sage-dark);padding-top:2px;">BRASS</span>
+          <span><span style="color:var(--z-white);font-weight:600;">The hero number turns brass.</span> This is the entire spectacle &mdash; the one color the user has learned to read as &ldquo;valuable&rdquo; lands on their result. It holds while the moment is on screen, then the state returns to normal ink white.</span>
+          <span class="z-mono" style="font-size:11px;color:var(--z-sage-dark);padding-top:2px;">EYEBROW</span>
+          <span>The eyebrow re-labels with warmth in the same 10px uppercase voice: &ldquo;DEUDA SALDADA&rdquo;, &ldquo;MES CERRADO BAJO PLAN&rdquo;, &ldquo;TODO PAGADO&rdquo;. The micro-label system carries the emotion; no new type style.</span>
+          <span class="z-mono" style="font-size:11px;color:var(--z-sage-dark);padding-top:2px;">VERDICT</span>
+          <span>The T1 chip stays &ldquo;Vas bien&rdquo; &mdash; celebrations do not add a fifth state. The detail line names the achievement in one sentence, tuteo, no exclamation.</span>
+          <span class="z-mono" style="font-size:11px;color:var(--z-sage-dark);padding-top:2px;">MOTION</span>
+          <span>T3 budget only: the ring sweeps closed once (600ms, the single exception to 200ms, earned), text rises on the 120ms enter. No particles, no scale, no shimmer.</span>
+          <span class="z-mono" style="font-size:11px;color:var(--z-sage-dark);padding-top:2px;">RECORD</span>
+          <span>The moment leaves a residue: a compact &ldquo;logro&rdquo; row in Actividad reciente, so the achievement is findable later without replaying it.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;padding:16px;border-radius:12px;background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.06);">
+          <span class="z-eyebrow" style="font-size:9px;">Regla de restricci&oacute;n</span>
+          <span style="font-size:13px;color:var(--z-sage-light);line-height:1.55;">One celebration per screen visit, max. If two events land together (last cuota paid + month under plan), the larger one speaks and the smaller becomes its detail line. Brass-on-number is reserved for these moments &mdash; it never appears in ordinary state, which is what keeps it worth something.</span>
+        </div>
+      </div>
+
+      <div class="z-card-surface" data-ds-card="@dsCard" style="display:flex;flex-direction:column;gap:16px;padding:24px;">
+        <span class="z-eyebrow">b &middot; los tres eventos</span>
+        <div style="display:flex;flex-direction:column;gap:12px;flex:1;">
+          <div class="z-card-stat" data-ds-card="@dsCard" style="display:flex;flex-direction:column;gap:6px;">
+            <span class="z-eyebrow" style="color:var(--z-brass);">Deuda saldada</span>
+            <span style="font-size:13px;color:var(--z-sage-light);line-height:1.55;">A balance hits zero. The T2 ring sweeps to full, the number lands as <span class="z-num" style="color:var(--z-brass);font-weight:700;">$0</span> in brass, the detail totals the journey: &ldquo;Pagaste $8.400.000 en 14 meses.&rdquo; The debt row moves to a &ldquo;Saldadas&rdquo; group instead of vanishing.</span>
+          </div>
+          <div class="z-card-stat" data-ds-card="@dsCard" style="display:flex;flex-direction:column;gap:6px;">
+            <span class="z-eyebrow" style="color:var(--z-brass);">Mes cerrado bajo plan</span>
+            <span style="font-size:13px;color:var(--z-sage-light);line-height:1.55;">On the first visit after month close, the Plan hero shows the closed month: what stayed unspent, in brass, with the margin as detail. One visit only; afterwards the month renders in normal history form.</span>
+          </div>
+          <div class="z-card-stat" data-ds-card="@dsCard" style="display:flex;flex-direction:column;gap:6px;">
+            <span class="z-eyebrow" style="color:var(--z-brass);">Todo pagado</span>
+            <span style="font-size:13px;color:var(--z-sage-light);line-height:1.55;">The last pending recurrente clears and the &ldquo;Por resolver&rdquo; inbox empties. The inbox does not disappear &mdash; it becomes the calm proof: &ldquo;11 de 11 pagados&rdquo;. The smallest of the three; a state, not a scene.</span>
+          </div>
+        </div>
+        <p style="margin:0;font-size:12px;color:var(--z-sage-dark);line-height:1.55;"><span style="color:var(--z-sage-light);font-weight:600;">Why brass and not green:</span> income green marks money that arrived; it is routine. Brass is the brand&rsquo;s own metal and appears on nothing passive &mdash; borrowing it for one beat is the strongest signal the system can make without a new hue.</p>
+      </div>
+    </div>
+
+    <!-- ── Row C: live applications ─────────────────── -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div class="z-divider"><div class="line"></div><span class="z-eyebrow">c &middot; aplicaci&oacute;n &mdash; tres momentos vivos</span><div class="line"></div></div>
+      <div style="display:grid;grid-template-columns:repeat(3, 380px);gap:32px;justify-content:center;">
+
+        <!-- ── Deuda saldada ── -->
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div data-screen-label="Deudas — deuda saldada" style="width:380px;box-sizing:border-box;border-radius:28px;border:1px solid rgba(255,255,255,0.06);background:var(--z-ink);padding:20px 16px 24px;display:flex;flex-direction:column;gap:12px;overflow:hidden;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px;">
+              <span style="font-size:22px;font-weight:600;color:var(--z-white);letter-spacing:-0.01em;">Deudas</span>
+              <span class="z-num" style="font-size:12px;color:var(--z-sage-light);padding:5px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:#111;">Julio 2026</span>
+            </div>
+            <div class="z-card-surface" data-ds-card="@dsCard" style="background:radial-gradient(circle at top left, rgba(63,70,50,0.22), transparent 42%), linear-gradient(180deg, rgba(27,30,27,0.96), rgba(18,20,18,0.98));padding:18px;display:flex;flex-direction:column;align-items:center;gap:12px;">
+              <span class="z-eyebrow" style="color:var(--z-brass);">Deuda saldada</span>
+              <div style="position:relative;width:128px;height:128px;">
+                <svg width="128" height="128" viewBox="0 0 128 128">
+                  <path d="M 27.23 100.77 A 52 52 0 1 1 100.77 100.77" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="9" stroke-linecap="round"></path>
+                  <path d="M 27.23 100.77 A 52 52 0 1 1 100.77 100.77" fill="none" stroke="var(--z-brass)" stroke-width="9" stroke-linecap="round" pathLength="100" stroke-dasharray="100 100" style="{{ ringStyle }}"></path>
+                </svg>
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;">
+                  <span class="z-num" style="{{ zeroNumStyle }}">$0</span>
+                  <span style="font-size:9px;color:var(--z-sage-dark);letter-spacing:0.14em;text-transform:uppercase;">Moto Yamaha</span>
+                </div>
+              </div>
+              <div style="{{ riseStyle }};display:flex;flex-direction:column;align-items:center;gap:8px;">
+                <span style="display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px 0 8px;border-radius:999px;background:color-mix(in srgb, var(--z-income) 8%, transparent);border:1px solid color-mix(in srgb, var(--z-income) 20%, transparent);color:var(--z-income);font-size:12px;font-weight:600;line-height:1;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+                  <span>Vas bien</span>
+                </span>
+                <span style="font-size:13px;color:var(--z-sage-light);text-align:center;line-height:1.5;">Pagaste <span class="z-num" style="color:var(--z-white);">$8.400.000</span> en 14 meses. Tu cuota mensual baja <span class="z-num" style="color:var(--z-income);">$600.000</span>.</span>
+                <button class="z-btn z-btn-brass-ghost" style="height:32px;font-size:13px;">Ver historial</button>
+              </div>
+            </div>
+            <div class="z-divider"><div class="line"></div><span class="z-eyebrow">Saldadas</span><div class="line"></div></div>
+            <div class="z-card-compact" data-ds-card="@dsCard" style="display:flex;align-items:center;gap:10px;padding:10px 12px;opacity:0.7;">
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:13px;font-weight:500;color:var(--z-white);">Moto Yamaha</div>
+                <div style="font-size:10px;color:var(--z-sage-dark);">saldada el 3 jul 2026 &middot; 14 meses</div>
+              </div>
+              <span class="z-num" style="font-size:13px;color:var(--z-sage-light);">$8.400.000</span>
+            </div>
+          </div>
+          <p style="margin:0;font-size:12px;color:var(--z-sage-dark);line-height:1.6;max-width:380px;">The signature ring gets its one earned sweep (600ms, T3 curve) and $0 lands in brass. The paid debt leaves a residue row under &ldquo;Saldadas&rdquo;. Replay from Tweaks.</p>
+        </div>
+
+        <!-- ── Mes cerrado ── -->
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div data-screen-label="Plan — mes cerrado bajo plan" style="width:380px;box-sizing:border-box;border-radius:28px;border:1px solid rgba(255,255,255,0.06);background:var(--z-ink);padding:20px 16px 24px;display:flex;flex-direction:column;gap:12px;overflow:hidden;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px;">
+              <span style="font-size:22px;font-weight:600;color:var(--z-white);letter-spacing:-0.01em;">Plan</span>
+              <span class="z-num" style="font-size:12px;color:var(--z-sage-light);padding:5px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:#111;">Junio 2026</span>
+            </div>
+            <div class="z-card-surface" data-ds-card="@dsCard" style="background:radial-gradient(circle at top left, rgba(63,70,50,0.22), transparent 42%), linear-gradient(180deg, rgba(27,30,27,0.96), rgba(18,20,18,0.98));padding:18px;display:flex;flex-direction:column;">
+              <span class="z-eyebrow" style="color:var(--z-brass);">Mes cerrado bajo plan</span>
+              <div style="margin-top:8px;display:flex;align-items:baseline;gap:8px;">
+                <span class="z-num" style="{{ mesNumStyle }}">$412.000</span>
+                <span style="font-size:11px;font-weight:600;color:var(--z-sage-dark);">sin gastar</span>
+              </div>
+              <div style="{{ mesRiseStyle }}">
+                <div style="margin-top:8px;">
+                  <span style="display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px 0 8px;border-radius:999px;background:color-mix(in srgb, var(--z-income) 8%, transparent);border:1px solid color-mix(in srgb, var(--z-income) 20%, transparent);color:var(--z-income);font-size:12px;font-weight:600;line-height:1;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+                    <span>Vas bien</span>
+                    <span class="z-num" style="opacity:0.85;">&middot; 79% del plan</span>
+                  </span>
+                </div>
+                <div style="margin-top:6px;font-size:13px;color:var(--z-sage-light);line-height:1.5;">Cerraste junio con <span class="z-num" style="color:var(--z-income);">$412.000</span> de margen. Tercer mes seguido bajo plan.</div>
+                <div style="margin-top:12px;height:6px;border-radius:999px;background:rgba(255,255,255,0.06);overflow:hidden;">
+                  <div style="width:79%;height:100%;border-radius:999px;background:var(--z-brass);"></div>
+                </div>
+                <div style="margin-top:8px;display:flex;justify-content:space-between;font-size:11px;color:var(--z-sage-dark);">
+                  <span><span class="z-num">$1.508.000</span> gastado</span>
+                  <span>de $1.920.000</span>
+                </div>
+                <div style="margin-top:12px;display:flex;gap:8px;">
+                  <button class="z-btn z-btn-brass" style="flex:1;height:36px;font-size:13px;">Mover al ahorro</button>
+                  <button class="z-btn z-btn-ghost" style="flex:1;height:36px;font-size:13px;">Ver julio</button>
+                </div>
+              </div>
+            </div>
+            <div class="z-card-compact" data-ds-card="@dsCard" style="display:flex;align-items:center;gap:10px;padding:10px 12px;opacity:0.7;">
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:13px;font-weight:500;color:var(--z-white);">Logro</div>
+                <div style="font-size:10px;color:var(--z-sage-dark);">junio cerr&oacute; bajo plan &middot; margen $412.000</div>
+              </div>
+              <span style="display:inline-flex;align-items:center;gap:5px;color:var(--z-income);font-size:11px;font-weight:600;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>Vas bien</span>
+            </div>
+          </div>
+          <p style="margin:0;font-size:12px;color:var(--z-sage-dark);line-height:1.6;max-width:380px;">First visit after month close: the unspent margin is the hero, in brass. The celebration proposes the next action &mdash; &ldquo;Mover al ahorro&rdquo; &mdash; so the moment converts into behavior. Below, the residue row for Actividad reciente.</p>
+        </div>
+
+        <!-- ── Todo pagado ── -->
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div data-screen-label="Recurrentes — todo pagado" style="width:380px;box-sizing:border-box;border-radius:28px;border:1px solid rgba(255,255,255,0.06);background:var(--z-ink);padding:20px 16px 24px;display:flex;flex-direction:column;gap:12px;overflow:hidden;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px;">
+              <span style="font-size:22px;font-weight:600;color:var(--z-white);letter-spacing:-0.01em;">Recurrentes</span>
+              <span class="z-num" style="font-size:12px;color:var(--z-sage-light);padding:5px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:#111;">Julio 2026</span>
+            </div>
+            <div class="z-card-surface" data-ds-card="@dsCard" style="background:radial-gradient(circle at top left, rgba(63,70,50,0.22), transparent 42%), linear-gradient(180deg, rgba(27,30,27,0.96), rgba(18,20,18,0.98));padding:18px;display:flex;flex-direction:column;">
+              <span class="z-eyebrow" style="{{ todoEyebrowStyle }}">{{ todoEyebrow }}</span>
+              <div style="margin-top:8px;display:flex;align-items:baseline;gap:8px;">
+                <span class="z-num" style="{{ todoNumStyle }}">{{ todoNum }}</span>
+                <span style="font-size:11px;font-weight:600;color:var(--z-sage-dark);">de 11 pagados</span>
+              </div>
+              <div style="margin-top:8px;">
+                <span style="{{ todoChipStyle }}">{{ todoChipIcon }}<span>{{ todoChipWord }}</span></span>
+              </div>
+              <div style="margin-top:6px;font-size:13px;color:var(--z-sage-light);line-height:1.5;">{{ todoDetail }}</div>
+              <div style="margin-top:12px;display:flex;gap:3px;">
+                <sc-for list="{{ todoDots }}" as="dot" hint-placeholder-count="11">
+                  <div style="{{ dot.style }}"></div>
+                </sc-for>
+              </div>
+            </div>
+            <div class="z-divider"><div class="line"></div><span class="z-eyebrow">Por resolver</span><div class="line"></div></div>
+            <sc-if value="{{ todoPending }}" hint-placeholder-val="{{ false }}">
+              <div class="z-card-compact" data-ds-card="@dsCard" style="display:flex;align-items:center;gap:10px;padding:10px 12px;">
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:13px;font-weight:500;color:var(--z-white);">Plan celular</div>
+                  <div style="font-size:10px;color:var(--z-sage-dark);">vence hoy &middot; Claro</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <span class="z-num" style="font-size:13px;color:var(--z-white);">$150.000</span>
+                  <button onClick="{{ payLast }}" class="z-btn z-btn-brass" style="height:30px;font-size:12px;padding:0 12px;">Marcar pagado</button>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ todoEmpty }}" hint-placeholder-val="{{ true }}">
+              <div class="z-card-stat" data-ds-card="@dsCard" style="display:flex;align-items:center;gap:12px;animation:z-rise 120ms cubic-bezier(0.2,0,0,1);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--z-income)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M20 6 9 17l-5-5"></path></svg>
+                <span style="font-size:13px;color:var(--z-sage-light);line-height:1.5;">Nada por resolver. El pr&oacute;ximo cobro es Netflix, el 2 de agosto.</span>
+              </div>
+            </sc-if>
+          </div>
+          <p style="margin:0;font-size:12px;color:var(--z-sage-dark);line-height:1.6;max-width:380px;">Fully interactive: press &ldquo;Marcar pagado&rdquo; on the last pending row. The count turns brass at 11, the eyebrow re-labels to &ldquo;TODO PAGADO&rdquo;, the dot strip completes, and the empty inbox states the next date instead of vanishing. The smallest celebration &mdash; a state, not a scene.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;replayDeuda&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Replays&quot; },
+  &quot;replayMes&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Replays&quot; },
+  &quot;reiniciarRecurrentes&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Replays&quot; }
+}">
+class Component extends DCLogic {
+  state = { ringKey: 1, mesKey: 1, paid: 10 };
+
+  componentDidMount() {
+    this._lastRing = this.props.replayDeuda;
+    this._lastMes = this.props.replayMes;
+    this._lastReset = this.props.reiniciarRecurrentes;
+  }
+
+  componentDidUpdate() {
+    if (this.props.replayDeuda !== this._lastRing) {
+      this._lastRing = this.props.replayDeuda;
+      this.setState(s => ({ ringKey: s.ringKey + 1 }));
+    }
+    if (this.props.replayMes !== this._lastMes) {
+      this._lastMes = this.props.replayMes;
+      this.setState(s => ({ mesKey: s.mesKey + 1 }));
+    }
+    if (this.props.reiniciarRecurrentes !== this._lastReset) {
+      this._lastReset = this.props.reiniciarRecurrentes;
+      this.setState({ paid: 10 });
+    }
+  }
+
+  renderVals() {
+    const ease = "cubic-bezier(0.2, 0, 0, 1)";
+    const done = this.state.paid >= 11;
+
+    // Deuda saldada: ring sweep + brass number, re-triggered via key
+    const ringStyle = {
+      animation: "z-ring-sweep 600ms " + ease + " both",
+      animationName: "z-ring-sweep",
+      // retrigger: unique animation-delay trick via key in name not possible; use key'd style
+      animationDelay: "0ms"
+    };
+    // Force retrigger by varying an irrelevant property with the key
+    ringStyle.animationIterationCount = 1;
+    ringStyle["--ring-key"] = this.state.ringKey;
+
+    const chipC = "var(--z-income)";
+
+    return {
+      ringStyle: Object.assign({}, ringStyle, { animation: "z-ring-sweep 600ms " + ease + " both", animationDelay: (this.state.ringKey % 2) + "ms" }),
+      zeroNumStyle: { fontSize: 30, fontWeight: 800, color: "var(--z-brass)", letterSpacing: "-0.02em" },
+      riseStyle: { animation: "z-rise 120ms " + ease + " 450ms both", animationDelay: (450 + this.state.ringKey % 2) + "ms" },
+
+      mesNumStyle: { fontSize: 34, fontWeight: 800, color: "var(--z-brass)", letterSpacing: "-0.02em", animation: "z-rise 120ms " + ease + " both", animationDelay: (this.state.mesKey % 2) + "ms" },
+      mesRiseStyle: { animation: "z-rise 120ms " + ease + " 100ms both", animationDelay: (100 + this.state.mesKey % 2) + "ms" },
+
+      // Recurrentes
+      payLast: () => this.setState({ paid: 11 }),
+      todoPending: !done,
+      todoEmpty: done,
+      todoEyebrow: done ? "Todo pagado" : "Cuota mensual",
+      todoEyebrowStyle: done ? { color: "var(--z-brass)" } : {},
+      todoNum: done ? "11" : "10",
+      todoNumStyle: {
+        fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em",
+        color: done ? "var(--z-brass)" : "var(--z-white)",
+        transition: "color 200ms " + ease
+      },
+      todoChipWord: done ? "Vas bien" : "Atenci\u00f3n",
+      todoChipIcon: React.createElement(
+        "svg",
+        { width: 12, height: 12, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor",
+          strokeWidth: 2.5, strokeLinecap: "round", strokeLinejoin: "round", style: { flexShrink: 0 } },
+        ...(done
+          ? [React.createElement("path", { key: 0, d: "M20 6 9 17l-5-5" })]
+          : [
+              React.createElement("path", { key: 0, d: "m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z" }),
+              React.createElement("line", { key: 1, x1: 12, y1: 9, x2: 12, y2: 13 }),
+              React.createElement("line", { key: 2, x1: 12, y1: 17, x2: 12.01, y2: 17 })
+            ])
+      ),
+      todoChipStyle: {
+        display: "inline-flex", alignItems: "center", gap: 6, height: 24,
+        padding: "0 10px 0 8px", borderRadius: 999,
+        background: "color-mix(in srgb, var(" + (done ? "--z-income" : "--z-alert") + ") 8%, transparent)",
+        border: "1px solid color-mix(in srgb, var(" + (done ? "--z-income" : "--z-alert") + ") 20%, transparent)",
+        color: "var(" + (done ? "--z-income" : "--z-alert") + ")",
+        fontSize: 12, fontWeight: 600, lineHeight: 1
+      },
+      todoDetail: done
+        ? "Julio qued\u00f3 al d\u00eda. Pagaste $1.243.900 en 11 cobros."
+        : "1 pago vence hoy por $150.000.",
+      todoDots: Array.from({ length: 11 }, (_, i) => ({
+        style: {
+          flex: 1, height: 4, borderRadius: 2,
+          background: i < this.state.paid ? "var(--z-brass)" : "rgba(255,255,255,0.10)",
+          opacity: i < this.state.paid ? (done ? 1 : 0.55) : 1,
+          transition: "background 200ms " + ease + ", opacity 200ms " + ease
+        }
+      }))
+    };
+  }
+}
+</script>
+</body>
+</html>

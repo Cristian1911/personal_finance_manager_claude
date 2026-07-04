@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Landmark, Receipt, TriangleAlert, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Verdict, type VerdictState } from "@/components/ui/verdict";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import type { IncomeEstimate } from "@/actions/income";
@@ -10,26 +11,18 @@ import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import { PlanStatCard } from "./plan-stat-card";
 
 interface PlanHeroProps {
-  summary: PlanHeroSummary;
+  summary: PlanHeroSummary & { state?: VerdictState };
   currency: CurrencyCode;
   monthLabel: string;
   incomeEstimate: IncomeEstimate | null;
 }
 
-const pressureStyles = {
-  stable: {
-    badge: "border-z-income/30 bg-z-income/10 text-z-income",
-    label: "Estable",
-  },
-  watch: {
-    badge: "border-z-alert/30 bg-z-alert/10 text-z-alert",
-    label: "Atención",
-  },
-  critical: {
-    badge: "border-z-debt/30 bg-z-debt/10 text-z-debt",
-    label: "Crítico",
-  },
-} as const;
+/** Fallback for summaries built before `state` existed (compatibility only). */
+const PRESSURE_FALLBACK_STATE: Record<PlanHeroSummary["pressure"], VerdictState> = {
+  stable: "vas-bien",
+  watch: "atencion",
+  critical: "te-pasaste",
+};
 
 export function PlanHero({
   summary,
@@ -37,7 +30,7 @@ export function PlanHero({
   monthLabel,
   incomeEstimate,
 }: PlanHeroProps) {
-  const pressure = pressureStyles[summary.pressure];
+  const state = summary.state ?? PRESSURE_FALLBACK_STATE[summary.pressure];
 
   return (
     <div className="overflow-hidden rounded-[28px] border border-white/6 bg-[radial-gradient(circle_at_top_left,rgba(63,70,50,0.3),transparent_52%),linear-gradient(180deg,rgba(30,34,30,0.96),rgba(18,20,18,0.98))] px-5 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
@@ -46,14 +39,12 @@ export function PlanHero({
           <span className="rounded-full border border-white/6 bg-black/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-z-sage-light">
             Plan del mes
           </span>
-          <span className={cn("rounded-full border px-3 py-1 text-[11px] font-medium", pressure.badge)}>
-            {pressure.label}
-          </span>
           <span className="rounded-full border border-white/6 px-3 py-1 text-[11px] font-medium capitalize text-muted-foreground">
             {monthLabel}
           </span>
         </div>
 
+        {/* Hero slot — eyebrow → number → verdict → detail → meta */}
         <div className="space-y-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
@@ -62,15 +53,11 @@ export function PlanHero({
             <p className={cn("mt-2 text-4xl font-bold tracking-tight md:text-5xl", summary.availableToSpend < 0 ? "text-z-debt" : "text-z-sage-light")}>
               {formatCurrency(summary.availableToSpend, currency)}
             </p>
+            <Verdict className="mt-2" state={state} detail={summary.headline} />
           </div>
-          <div className="space-y-2">
-            <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-              {summary.headline}
-            </h1>
-            <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-              {summary.guidance}
-            </p>
-          </div>
+          <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+            {summary.guidance}
+          </p>
         </div>
 
         <div className="flex flex-wrap gap-3">
