@@ -531,9 +531,14 @@ export async function ensureOccurrencesForRange(
  * Convenience wrapper — ensures occurrences for the current month + 14 days ahead.
  */
 export async function ensureCurrentOccurrences(): Promise<ActionResult> {
-  const now = new Date();
-  const rangeStart = startOfMonth(now);
-  const rangeEnd = addDays(endOfMonth(now), 14);
+  // Colombia-local "today" — mirrors the SQL generator's
+  // now() AT TIME ZONE 'America/Bogota'. On a UTC server, plain new Date()
+  // rolls the month over at ~7pm COT on the last day of the month, making the
+  // two generators disagree on the window (the drift class behind the
+  // duplicate-quincena bug).
+  const today = parseISO(`${toColombiaDateString(new Date())}T12:00:00`);
+  const rangeStart = startOfMonth(today);
+  const rangeEnd = addDays(endOfMonth(today), 14);
   return ensureOccurrencesForRange(rangeStart, rangeEnd);
 }
 
