@@ -87,7 +87,7 @@ function buildHeroSummary({
   activeDebtCount: number;
   allocation: AllocationData | null;
 }): PlanHeroSummary & { state: VerdictState } {
-  const spentPercent = allocation
+  const spentPercent = allocation && allocation.income > 0
     ? ((allocation.needs.amount + allocation.wants.amount) / allocation.income) * 100
     : null;
   const base = {
