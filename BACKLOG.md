@@ -15,6 +15,18 @@
 - [ ] **Chunk del `.in()` en la poda de ocurrencias** — `ensureOccurrencesForRange` embebe `prunableIds`/`staleIds` en el query string de PostgREST sin límite; con muchísimas plantillas podría exceder el largo de URL. Baja probabilidad (candidatos acotados por rango). Trocear en lotes como hardening. (server-action-reviewer, MEDIUM)
 - [ ] **Residuo al editar BIWEEKLY→MONTHLY** — una plantilla editada a MONTHLY queda excluida de la poda, así que filas pending viejas del schedule anterior en el rango no se limpian (el dedup mensual solo suprime inserts). Documentado como aceptable; revisar si aparece en soporte. (server-action-reviewer, LOW)
 
+## Unification layer — Fase 1 Veredicto (PR #355, 2026-07-04) — follow-ups
+
+Shipped: `<Verdict />` + convergencia de los 4 dialectos de estado (dashboard, plan, presupuesto, deudas, recurrentes), `deriveRitmoStatus` 4-state (umbral cerca 0.85→0.75), helper `deriveDebtVerdict`, 8 archivos muertos borrados. Specs + plan completo: `claude-ai-design/unification-layer/` (ANALYSIS.md §5 = plan por fases con archivos).
+
+- **(P1) Fases 2–4 del handoff**: F2 Marco (`<MonthControl />` + header canónico + `<Disclosure />` + motion tokens + borrar dim, ~45 call-sites), F3 Densidad (`chartTheme` + rebind `--chart-*` + `<GroupSummary />` + ladder V1–V4 + AccountDot), F4 Calidez (3 celebraciones + residue rows). Plan archivo-por-archivo en ANALYSIS.md §5.
+- **(P2) Tipado end-to-end del verdict en Plan**: agregar `state: VerdictState` a `PlanHeroSummary` (`webapp/src/types/plan.ts`); hoy viaja como intersección sin tipar en `PlanPageData`. Y cambiar `actions/plan.ts:17` a `import type { VerdictState } from "@zeta/shared"` (hoy importa de `@/components/ui/verdict`).
+- **(P2) Confirmar efecto mobile del cambio en `ritmo.ts`**: la app RN (`mobile/components/inicio/HybridHero.tsx`) recibe silenciosamente el nuevo umbral 0.75 y el copy "Cerca del límite" (antes "Vas justo") sin cambio de código mobile. Probablemente deseable; smoke test en simulador antes de release.
+- **(P2) Smoke test `/deudas` con amortización negativa** (interés > cuota): debe mostrar "Te pasaste" — era el blocker del review (verdict hardcodeado).
+- **(P3) Copy**: "Llevas el X% de tu ingreso gastado." → "Llevas gastado el X% de tu ingreso." (`actions/plan.ts:122`).
+- **(P3) `perf-auditor` gate** no corrió sobre el diff de Fase 1 (cambios de paint mayormente; correrlo con la Fase 2 que toca más superficie).
+- **(P3) Pre-existente**: eslint `react-hooks/preserve-manual-memoization` en `mobile-recurrentes-view.tsx:158` (ya estaba en HEAD).
+
 ## Nu savings parser (PR #353, 2026-07-03) — follow-ups
 
 - **Patrón de transacciones sin validar**: `nu_savings.py` parsea la sección "Movimientos" con un patrón tentativo (fecha + descripción + monto + saldo) — el único extracto real disponible tenía cero movimientos. Cuando llegue un extracto Cuenta Nu con movimientos, validar el patrón contra el PDF real y ajustar (buscar `ponytail:` en el archivo).
