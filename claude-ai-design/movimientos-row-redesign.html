@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Movimientos — rediseño de fila</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#121412; --fg:#F6F0E3; --muted:#938C7E; --sage-light:#D9CCB9;
+    --brass:#937844; --income:#5CB88A; --expense:#E8875A;
+    --line:rgba(255,255,255,0.06); --line2:rgba(255,255,255,0.10);
+    --brass-8:rgba(147,120,68,0.08); --brass-20:rgba(147,120,68,0.20);
+    --income-10:rgba(92,184,138,0.10); --expense-12:rgba(232,135,90,0.12);
+    --black-10:rgba(0,0,0,0.10);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#0a0b0a;color:var(--fg);padding:32px 20px 80px;line-height:1.45;
+       font-family:Inter,-apple-system,system-ui,sans-serif;}
+  h1{font-size:20px;font-weight:700;margin-bottom:4px;}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:28px;max-width:760px;}
+  .frames{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start;}
+  .frame{width:390px;flex-shrink:0;}
+  .frame-label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#B29256;
+               font-weight:600;margin-bottom:4px;}
+  .frame-note{font-size:12px;color:var(--muted);margin-bottom:10px;min-height:66px;}
+
+  /* ── phone shell ── */
+  .phone{background:var(--bg);border:1px solid var(--line2);border-radius:30px;overflow:hidden;
+         display:flex;flex-direction:column;}
+  .apphdr{display:flex;align-items:center;justify-content:space-between;padding:22px 20px 12px;}
+  .apphdr .t{font-size:24px;font-weight:700;}
+  .avatar{width:38px;height:38px;border-radius:99px;border:1px solid var(--brass-20);
+          background:var(--brass-8);display:flex;align-items:center;justify-content:center;
+          font-size:12px;font-weight:600;color:var(--sage-light);}
+  .list{flex:1;padding-bottom:8px;}
+
+  .dayhdr{font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);
+          font-weight:500;padding:0 16px;}
+
+  /* icon square */
+  .ico{width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .ico.out{background:var(--expense-12);}
+  .ico.in{background:var(--income-10);}
+  .ico svg{width:12px;height:12px;}
+
+  .dot{width:6px;height:6px;border-radius:99px;display:inline-block;flex-shrink:0;}
+  .main{min-width:0;flex:1;}
+  .desc{font-size:14px;font-weight:500;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .meta{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;min-width:0;margin-top:2px;overflow:hidden;}
+  .meta > span{white-space:nowrap;flex-shrink:0;}
+  .meta .trunc{overflow:hidden;text-overflow:ellipsis;flex-shrink:1;min-width:24px;}
+  .sep{color:rgba(255,255,255,.15);}
+  .nocat{color:#B29256;}
+  .amt{font-size:14px;font-weight:500;color:var(--fg);font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .amt.in{color:var(--income);}
+
+  /* chips — real app style: rounded-full border px-2.5 py-1, 10px semibold */
+  .chips{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+  .chip{display:inline-flex;align-items:center;gap:4px;border-radius:99px;padding:4px 10px;
+        font-size:10px;font-weight:600;border:1px solid var(--line2);color:var(--muted);
+        background:var(--black-10);}
+  .chip.set{border-color:var(--brass-20);background:var(--brass-8);color:#B29256;}
+  .chip svg{width:10px;height:10px;flex-shrink:0;}
+  .spacer{flex:1;}
+
+  /* expanded detail line (hora + cuenta completa) */
+  .expdetail{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);
+             font-variant-numeric:tabular-nums;}
+  .expdetail svg{width:11px;height:11px;}
+
+  /* tab bar */
+  .tabbar{display:flex;align-items:flex-end;justify-content:space-around;padding:10px 8px 16px;
+          border-top:1px solid var(--line);position:relative;}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--muted);width:56px;}
+  .tab.on{color:#B29256;}
+  .tab svg{width:20px;height:20px;}
+  .fab{width:54px;height:54px;border-radius:99px;background:#A98B4F;display:flex;align-items:center;
+       justify-content:center;margin-top:-26px;color:#121412;}
+  .fab svg{width:22px;height:22px;}
+
+  /* ═══ baseline (actual) ═══ */
+  .v0 .row{display:flex;align-items:center;gap:8px;padding:8px 16px 8px 12px;}
+  .v0 .dayhdr{padding-top:16px;padding-bottom:8px;}
+  .v0 .expwrap{border-left:2px solid var(--brass);margin-left:4px;padding-left:8px;}
+  .v0 .expwrap .row{padding-left:0;}
+  .v0 .chips{padding:2px 16px 10px 8px;}
+
+  /* ═══ A & B: aire + divisor ═══ */
+  .vX .row{display:flex;align-items:center;gap:10px;padding:13px 16px;}
+  .vX .list .row + .row, .vX .expwrap + .row, .vX .row + .expwrap{border-top:1px solid var(--line);}
+  .vX .dayhdr{padding-top:22px;padding-bottom:10px;}
+  .vX .expwrap{background:rgba(255,255,255,.02);border-left:2px solid var(--brass);}
+  .vX .expwrap .row{border-top:none;padding-bottom:8px;}
+  .vX .expbody{padding:0 16px 14px 48px;display:flex;flex-direction:column;gap:10px;}
+</style>
+</head>
+<body>
+  <h1>Movimientos — rediseño de fila</h1>
+  <p class="sub">Dirección: más aire + divisor sutil + trío de acciones del webapp (Categoría · Destinatario · Más).
+  La hora no vive en la fila colapsada — aparece en el detalle expandido, junto a la cuenta completa. Aplica a app nativo y webapp móvil.</p>
+
+  <div class="frames">
+
+    <!-- ═══════════ BASELINE ═══════════ -->
+    <div class="frame v0">
+      <div class="frame-label">Actual (referencia)</div>
+      <div class="frame-note">Filas densas sin separación clara, cuenta completa repetida en cada fila, 5 chips que rompen a dos líneas al expandir.</div>
+      <div class="phone">
+        <div class="apphdr"><span class="t">Movimientos</span><span class="avatar">GI</span></div>
+        <div class="list">
+          <div class="dayhdr">Jueves, 02 jul</div>
+
+          <div class="row">
+            <div class="ico out"><svg viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></div>
+            <div class="main">
+              <div class="desc">Rizos felices</div>
+              <div class="meta"><span class="dot" style="background:#E8875A"></span><span class="trunc">Bancolombia Ahorros ****4398</span><span class="sep">·</span><span>Cuidado personal</span></div>
+            </div>
+            <div class="amt">-$ 58.000</div>
+          </div>
+
+          <div class="expwrap">
+            <div class="row">
+              <div class="ico out"><svg viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></div>
+              <div class="main">
+                <div class="desc">CVZ - Tomografía</div>
+                <div class="meta"><span class="dot" style="background:#E8875A"></span><span class="trunc">Bancolombia Ahorros ****4398</span><span class="sep">·</span><span>Mascotas</span></div>
+              </div>
+              <div class="amt">-$ 1.600.000</div>
+            </div>
+            <div class="chips">
+              <span class="chip set"><span class="dot" style="background:#c084fc"></span>Mascotas</span>
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>Destinatario</span>
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2H2v10l9.3 9.3a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4Z"/><circle cx="7.5" cy="7.5" r=".5"/></svg>Etiquetas</span>
+              <span class="chip set"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><line x1="8" x2="16" y1="12" y2="12"/></svg>Vincular</span>
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>Editar</span>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="ico in"><svg viewBox="0 0 24 24" fill="none" stroke="#5CB88A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="M17 17H7V7"/></svg></div>
+            <div class="main">
+              <div class="desc">CRISTIAN GIRALDO</div>
+              <div class="meta"><span class="dot" style="background:#E8875A"></span><span class="trunc">Bancolombia Ahorros ****4398</span><span class="sep">·</span><span>Crédito / Avance</span></div>
+            </div>
+            <div class="amt in">+$ 1.360.000</div>
+          </div>
+
+          <div class="row">
+            <div class="ico out"><svg viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></div>
+            <div class="main">
+              <div class="desc">SUC VIRTUAL</div>
+              <div class="meta"><span class="dot" style="background:#E8C15A"></span><span class="trunc">Bancolombia VISA ****7022</span><span class="sep">·</span><span>Mascotas</span></div>
+            </div>
+            <div class="amt">-$ 1.360.000</div>
+          </div>
+
+          <div class="row">
+            <div class="ico out"><svg viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></div>
+            <div class="main">
+              <div class="desc">JUAN PABLO CANO CUADROS</div>
+              <div class="meta"><span class="dot" style="background:#E8875A"></span><span class="trunc">Bancolombia Ahorros ****4398</span><span class="sep">·</span><span>Restaurantes</span></div>
+            </div>
+            <div class="amt">-$ 57.557</div>
+          </div>
+
+          <div class="row">
+            <div class="ico in"><svg viewBox="0 0 24 24" fill="none" stroke="#5CB88A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="M17 17H7V7"/></svg></div>
+            <div class="main">
+              <div class="desc">Sin descripción</div>
+              <div class="meta"><span class="dot" style="background:#E8875A"></span><span class="trunc">Bancolombia Ahorros ****4398</span><span class="sep">·</span><span class="nocat">Sin categoría</span></div>
+            </div>
+            <div class="amt in">+$ 794.067</div>
+          </div>
+
+          <div class="dayhdr">Miércoles, 01 jul</div>
+          <div class="row">
+            <div class="ico out"><svg viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></div>
+            <div class="main">
+              <div class="desc">Pago a Estefa</div>
+              <div class="meta"><span class="dot" style="background:#E8875A"></span><span class="trunc">Bancolombia Ahorros ****4398</span><span class="sep">·</span><span>Deuda personal</span></div>
+            </div>
+            <div class="amt">-$ 2.000.000</div>
+          </div>
+        </div>
+
+        <div class="tabbar">
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Inicio</div>
+          <div class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>Movim.</div>
+          <div class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg></div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2V5z"/></svg>Plan</div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Más</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ VARIANTE A ═══════════ -->
+    <div class="frame vX">
+      <div class="frame-label">A — Aire + divisor</div>
+      <div class="frame-note">Misma metadata de hoy, pero con padding vertical mayor y hairline entre filas. Expandido: línea de detalle (hora + cuenta completa) + trío Categoría · Destinatario · Más en una sola línea, con fondo tenue que delimita el bloque.</div>
+      <div class="phone">
+        <div class="apphdr"><span class="t">Movimientos</span><span class="avatar">GI</span></div>
+        <div class="list">
+          <div class="dayhdr">Jueves, 02 jul</div>
+
+          <div class="row">
+            <div class="ico out"><svg viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></div>
+            <div class="main">
+              <div class="desc">Rizos felices</div>
+              <div class="meta"><span class="dot" style="background:#E8875A"></span><span class="trunc">Bancolombia Ahorros ****4398</span><span class="sep">·</span><span>Cuidado personal</span></div>
+            </div>
+            <div class="amt">-$ 58.000</div>
+          </div>
+
+          <div class="expwrap">
+            <div class="row">
+              <div class="ico out"><svg viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></div>
+              <div class="main">
+                <div class="desc">CVZ - Tomografía</div>
+                <div class="meta"><span class="dot" style="background:#E8875A"></span><span class="trunc">Bancolombia Ahorros ****4398</span><span class="sep">·</span><span>Mascotas</span></div>
+              </div>
+              <div class="amt">-$ 1.600.000</div>
+            </div>
+            <div class="expbody">
+              <div class="expdetail">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                <span>4:15 pm</span><span class="sep">·</span><span>Jueves, 02 jul</span>
+              </div>
+              <div class="chips">
+                <span class="chip set"><span class="dot" style="background:#c084fc"></span>Mascotas</span>
+                <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>Destinatario</span>
+                <span class="spacer"></span>
+                <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>Más</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="ico in"><svg viewBox="0 0 24 24" fill="none" stroke="#5CB88A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="M17 17H7V7"/></svg></div>
+            <div class="main">
+              <div class="desc">CRISTIAN GIRALDO</div>
+              <div class="meta"><span class="dot" style="background:#E8875A"></span><span class="trunc">Bancolombia Ahorros ****4398</span><span class="sep">·</span><span>Crédito / Avance</span></div>
+            </div>
+            <div class="amt in">+$ 1.360.000</div>
+          </div>
+
+          <div class="row">
+            <div class="ico out"><svg viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></div>
+            <div class="main">
+              <div class="desc">SUC VIRTUAL</div>
+              <div class="meta"><span class="dot" style="background:#E8C15A"></span><span class="trunc">Bancolombia VISA ****7022</span><span class="sep">·</span><span>Mascotas</span></div>
+            </div>
+            <div class="amt">-$ 1.360.000</div>
+          </div>
+
+          <div class="row">
+            <div class="ico out"><svg viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></div>
+            <div class="main">
+              <div class="desc">JUAN PABLO CANO CUADROS</div>
+              <div class="meta"><span class="dot" style="background:#E8875A"></span><span class="trunc">Bancolombia Ahorros ****4398</span><span class="sep">·</span><span>Restaurantes</span></div>
+            </div>
+            <div class="amt">-$ 57.557</div>
+          </div>
+
+          <div class="row">
+            <div class="ico in"><svg viewBox="0 0 24 24" fill="none" stroke="#5CB88A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="M17 17H7V7"/></svg></div>
+            <div class="main">
+              <div class="desc">Sin descripción</div>
+              <div class="meta"><span class="dot" style="background:#E8875A"></span><span class="trunc">Bancolombia Ahorros ****4398</span><span class="sep">·</span><span class="nocat">Sin categoría</span></div>
+            </div>
+            <div class="amt in">+$ 794.067</div>
+          </div>
+
+          <div class="dayhdr">Miércoles, 01 jul</div>
+          <div class="row">
+            <div class="ico out"><svg viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></div>
+            <div class="main">
+              <div class="desc">Pago a Estefa</div>
+              <div class="meta"><span class="dot" style="background:#E8875A"></span><span class="trunc">Bancolombia Ahorros ****4398</span><span class="sep">·</span><span>Deuda personal</span></div>
+            </div>
+            <div class="amt">-$ 2.000.000</div>
+          </div>
+        </div>
+
+        <div class="tabbar">
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Inicio</div>
+          <div class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>Movim.</div>
+          <div class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg></div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2V5z"/></svg>Plan</div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Más</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ VARIANTE B ═══════════ -->
+    <div class="frame vX">
+      <div class="frame-label">B — Metadata quieta</div>
+      <div class="frame-note">Igual que A, pero la fila colapsada comprime la cuenta a punto de color + últimos 4 dígitos, y la categoría gana su punto de color. El nombre completo de la cuenta vive en el detalle expandido junto a la hora.</div>
+      <div class="phone">
+        <div class="apphdr"><span class="t">Movimientos</span><span class="avatar">GI</span></div>
+        <div class="list">
+          <div class="dayhdr">Jueves, 02 jul</div>
+
+          <div class="row">
+            <div class="ico out"><svg viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></div>
+            <div class="main">
+              <div class="desc">Rizos felices</div>
+              <div class="meta"><span class="dot" style="background:#ec4899"></span><span>Cuidado personal</span><span class="sep">·</span><span class="dot" style="background:#E8875A"></span><span>4398</span></div>
+            </div>
+            <div class="amt">-$ 58.000</div>
+          </div>
+
+          <div class="expwrap">
+            <div class="row">
+              <div class="ico out"><svg viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></div>
+              <div class="main">
+                <div class="desc">CVZ - Tomografía</div>
+                <div class="meta"><span class="dot" style="background:#c084fc"></span><span>Mascotas</span><span class="sep">·</span><span class="dot" style="background:#E8875A"></span><span>4398</span></div>
+              </div>
+              <div class="amt">-$ 1.600.000</div>
+            </div>
+            <div class="expbody">
+              <div class="expdetail">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                <span>4:15 pm</span><span class="sep">·</span><span>Bancolombia Ahorros ****4398</span>
+              </div>
+              <div class="chips">
+                <span class="chip set"><span class="dot" style="background:#c084fc"></span>Mascotas</span>
+                <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>Destinatario</span>
+                <span class="spacer"></span>
+                <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>Más</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="ico in"><svg viewBox="0 0 24 24" fill="none" stroke="#5CB88A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="M17 17H7V7"/></svg></div>
+            <div class="main">
+              <div class="desc">CRISTIAN GIRALDO</div>
+              <div class="meta"><span class="dot" style="background:#5eead4"></span><span>Crédito / Avance</span><span class="sep">·</span><span class="dot" style="background:#E8875A"></span><span>4398</span></div>
+            </div>
+            <div class="amt in">+$ 1.360.000</div>
+          </div>
+
+          <div class="row">
+            <div class="ico out"><svg viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></div>
+            <div class="main">
+              <div class="desc">SUC VIRTUAL</div>
+              <div class="meta"><span class="dot" style="background:#c084fc"></span><span>Mascotas</span><span class="sep">·</span><span class="dot" style="background:#E8C15A"></span><span>7022</span></div>
+            </div>
+            <div class="amt">-$ 1.360.000</div>
+          </div>
+
+          <div class="row">
+            <div class="ico out"><svg viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></div>
+            <div class="main">
+              <div class="desc">JUAN PABLO CANO CUADROS</div>
+              <div class="meta"><span class="dot" style="background:#f97316"></span><span>Restaurantes</span><span class="sep">·</span><span class="dot" style="background:#E8875A"></span><span>4398</span></div>
+            </div>
+            <div class="amt">-$ 57.557</div>
+          </div>
+
+          <div class="row">
+            <div class="ico in"><svg viewBox="0 0 24 24" fill="none" stroke="#5CB88A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="M17 17H7V7"/></svg></div>
+            <div class="main">
+              <div class="desc">Sin descripción</div>
+              <div class="meta"><span class="nocat">Sin categoría</span><span class="sep">·</span><span class="dot" style="background:#E8875A"></span><span>4398</span></div>
+            </div>
+            <div class="amt in">+$ 794.067</div>
+          </div>
+
+          <div class="dayhdr">Miércoles, 01 jul</div>
+          <div class="row">
+            <div class="ico out"><svg viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></div>
+            <div class="main">
+              <div class="desc">Pago a Estefa</div>
+              <div class="meta"><span class="dot" style="background:#60a5fa"></span><span>Deuda personal</span><span class="sep">·</span><span class="dot" style="background:#E8875A"></span><span>4398</span></div>
+            </div>
+            <div class="amt">-$ 2.000.000</div>
+          </div>
+        </div>
+
+        <div class="tabbar">
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Inicio</div>
+          <div class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>Movim.</div>
+          <div class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg></div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2V5z"/></svg>Plan</div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Más</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>
