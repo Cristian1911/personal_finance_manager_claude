@@ -25,10 +25,28 @@ export function isResetInProgress(): boolean {
   return resetInProgress;
 }
 
-export async function syncAll(): Promise<{
-  pushed: number;
-  pulled: Record<string, number>;
-}> {
+type SyncResult = { pushed: number; pulled: Record<string, number> };
+
+// Single-flight lock. syncAll is triggered from many places (auth listener,
+// pull-to-refresh on every root screen, background sync after an email
+// import) with no coordination — overlapping runs used to duplicate every
+// push/pull round-trip AND risk interleaving withTransactionAsync
+// transactions on the shared SQLite connection (expo-sqlite's plain
+// withTransactionAsync does not exclude other async statements, so a
+// concurrent pull could half-apply inside another run's open transaction).
+// Concurrent callers now share the in-flight run. Changes enqueued while a
+// run is mid-flight are durable in sync_queue and go out on the next sync.
+let inFlightSync: Promise<SyncResult> | null = null;
+
+export function syncAll(): Promise<SyncResult> {
+  if (inFlightSync) return inFlightSync;
+  inFlightSync = doSyncAll().finally(() => {
+    inFlightSync = null;
+  });
+  return inFlightSync;
+}
+
+async function doSyncAll(): Promise<SyncResult> {
   if (resetInProgress) {
     return { pushed: 0, pulled: {} };
   }

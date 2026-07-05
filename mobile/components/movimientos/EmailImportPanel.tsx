@@ -79,7 +79,7 @@ export function EmailImportPanel({
   const [bulkBusy, setBulkBusy] = useState(false);
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const [recon, setRecon] = useState<{
-    pendingId: string;
+    row: PendingEmailRow;
     candidate: ReconciliationCandidatePreview;
   } | null>(null);
   const [reconBusy, setReconBusy] = useState(false);
@@ -149,10 +149,10 @@ export function EmailImportPanel({
       });
   }
 
-  async function runApprove(pendingId: string, reconcileWithId?: string) {
-    const result = await approveEmailTransaction(pendingId, overrides[pendingId], reconcileWithId);
+  async function runApprove(row: PendingEmailRow, reconcileWithId?: string) {
+    const result = await approveEmailTransaction(row, overrides[row.id], reconcileWithId);
     if (result.success) {
-      clearRow(pendingId);
+      clearRow(row.id);
       return true;
     }
     Alert.alert("No se pudo importar", result.error ?? "Inténtalo de nuevo.");
@@ -163,13 +163,13 @@ export function EmailImportPanel({
     setBusyId(row.id);
     (async () => {
       try {
-        const match = await checkEmailReconciliation(row.id, overrides[row.id]);
+        const match = await checkEmailReconciliation(row, overrides[row.id]);
         if (match) {
           setBusyId(null);
-          setRecon({ pendingId: row.id, candidate: match.candidate });
+          setRecon({ row, candidate: match.candidate });
           return;
         }
-        const ok = await runApprove(row.id);
+        const ok = await runApprove(row);
         setBusyId(null);
         if (ok) refreshAfterMutation();
       } catch {
@@ -181,11 +181,11 @@ export function EmailImportPanel({
 
   function handleReconcileChoice(reconcile: boolean) {
     if (!recon) return;
-    const { pendingId, candidate } = recon;
+    const { row, candidate } = recon;
     setRecon(null);
     setReconBusy(true);
     (async () => {
-      const ok = await runApprove(pendingId, reconcile ? candidate.id : undefined);
+      const ok = await runApprove(row, reconcile ? candidate.id : undefined);
       setReconBusy(false);
       if (ok) refreshAfterMutation();
     })();
@@ -214,7 +214,7 @@ export function EmailImportPanel({
       let failed = 0;
       for (const r of importable) {
         try {
-          const result = await approveEmailTransaction(r.id, overrides[r.id]);
+          const result = await approveEmailTransaction(r, overrides[r.id]);
           if (result.success) imported++;
           else failed++;
         } catch {

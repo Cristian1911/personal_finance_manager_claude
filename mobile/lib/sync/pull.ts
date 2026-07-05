@@ -105,18 +105,48 @@ async function fetchAllPages(buildQuery: () => any): Promise<any[]> {
  * Pull all tables from Supabase into local SQLite.
  * Reference tables sync fully; transactional tables use a date window
  * (current month + previous month), matching the webapp's query pattern.
+ *
+ * Two-phase for latency: the network fetches for all tables run CONCURRENTLY
+ * (the old per-table sequential loop paid one full round-trip per table even
+ * when a table had zero changes — ~21 sequential RTTs per sync, which is what
+ * made background syncs take tens of seconds on mobile data). The SQLite
+ * writes then apply strictly SERIALLY in FK-dependency order — expo-sqlite's
+ * withTransactionAsync does not exclude other async statements on the same
+ * connection, so concurrent apply transactions could interleave and
+ * half-apply on rollback.
+ *
+ * Promise.all keeps the old fail-fast semantics: any table's fetch error
+ * aborts the pull before a single local write, and apply errors stop the
+ * loop exactly like the old sequential version (already-applied tables keep
+ * their advanced cursors; the failed table's cursor is untouched).
  */
 export async function pullAll(): Promise<Record<string, number>> {
   const db = await getDatabase();
   const counts: Record<string, number> = {};
 
+  // All cursors in one local read — avoids a per-table metadata query.
+  const metaRows = await db.getAllAsync<{
+    table_name: string;
+    last_synced_at: string | null;
+  }>("SELECT table_name, last_synced_at FROM sync_metadata");
+  const cursors = new Map(metaRows.map((r) => [r.table_name, r.last_synced_at]));
+
+  // Phase 1 — network, concurrent.
+  const fetched = await Promise.all(
+    SYNC_TABLES.map(async (table) => ({
+      table,
+      fetch: await fetchTable(table, cursors.get(table) ?? null),
+    }))
+  );
+
+  // Phase 2 — local writes, serial.
   // Disable FK checks during sync — windowed tables (transactions) may not
   // include rows referenced by junction tables (transaction_tags). Data
   // integrity is enforced server-side by Supabase.
   await db.execAsync("PRAGMA foreign_keys = OFF");
   try {
-    for (const table of SYNC_TABLES) {
-      counts[table] = await pullTable(db, table);
+    for (const { table, fetch } of fetched) {
+      counts[table] = await applyTable(db, table, fetch);
     }
   } finally {
     await db.execAsync("PRAGMA foreign_keys = ON");
@@ -146,10 +176,18 @@ async function getTableColumns(
   return columns;
 }
 
-async function pullTable(
-  db: Awaited<ReturnType<typeof getDatabase>>,
-  table: SyncTable
-): Promise<number> {
+type FetchedTable = {
+  data: any[];
+  isFullReplace: boolean;
+  winStart: string | null;
+  winEnd: string | null;
+};
+
+/** Network phase for one table — no SQLite writes, safe to run concurrently. */
+async function fetchTable(
+  table: SyncTable,
+  lastSyncedAt: string | null
+): Promise<FetchedTable> {
   const isFullReplace = FULL_REPLACE_TABLES.has(table);
   const dateWindow = WINDOWED_TABLES[table];
 
@@ -157,13 +195,6 @@ async function pullTable(
   const now = new Date();
   const winStart = dateWindow ? monthStartStr(subMonths(now, 1)) : null;
   const winEnd = dateWindow ? monthEndStr(now) : null;
-
-  // Read last sync timestamp
-  const meta = await db.getFirstAsync<{ last_synced_at: string | null }>(
-    "SELECT last_synced_at FROM sync_metadata WHERE table_name = ?",
-    [table]
-  );
-  const lastSyncedAt = meta?.last_synced_at;
 
   // Query factory: builds a fresh query per pagination page
   const buildQuery = () => {
@@ -187,6 +218,16 @@ async function pullTable(
   };
 
   const data = await fetchAllPages(buildQuery);
+  return { data, isFullReplace, winStart, winEnd };
+}
+
+/** Local write phase for one table — must run serially with other applies. */
+async function applyTable(
+  db: Awaited<ReturnType<typeof getDatabase>>,
+  table: SyncTable,
+  { data, isFullReplace, winStart, winEnd }: FetchedTable
+): Promise<number> {
+  const dateWindow = WINDOWED_TABLES[table];
   if (data.length === 0) return 0;
 
   // Upsert rows into SQLite
@@ -248,8 +289,19 @@ async function pullTable(
     );
   }
 
-  // Update sync metadata
-  const syncedAt = new Date().toISOString();
+  // Update sync metadata. Advance the cursor to the newest SERVER-side
+  // updated_at actually pulled — never the client clock. The old
+  // `new Date().toISOString()` cursor silently skipped rows forever when the
+  // device clock ran ahead of the server (next pull filtered
+  // `updated_at > client-now`, which server-stamped rows written in the gap
+  // could never satisfy). Full-replace tables have no updated_at and ignore
+  // the cursor when querying, so the client-clock fallback there is only
+  // informational.
+  const maxUpdatedAt = data.reduce<string | null>((max, row) => {
+    const v = (row as Record<string, unknown>).updated_at;
+    return typeof v === "string" && (max === null || v > max) ? v : max;
+  }, null);
+  const syncedAt = maxUpdatedAt ?? new Date().toISOString();
   await db.runAsync(
     `INSERT INTO sync_metadata (table_name, last_synced_at)
      VALUES (?, ?)
