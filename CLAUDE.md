@@ -71,7 +71,7 @@ Spawn these specialized agents for domain-specific review and diagnosis. Each ha
 | `import-flow-doctor` | PDF/email import flow, reconciliation, idempotency, installments. |
 | `pdf-parser-creator` | Adding support for a new bank's PDF statements. |
 | `ux-analyst` | "Review the app experience", UX cohesion, interaction inconsistencies, navigation logic, flow gaps. Spawn when asked to audit UX or review the overall experience. |
-| `mobile-sync-doctor` | Mobile SQLite ↔ Supabase sync. Encryption alignment, column drift, boolean/JSON mapping, push payload safety. Spawn when adding synced tables or debugging mobile data issues. |
+| `mobile-sync-doctor` | Mobile SQLite ↔ Supabase sync. Encryption alignment, column drift, boolean/JSON mapping, push payload safety, sync-engine invariants (single-flight `syncAll`, two-phase pull, atomic push guards), interactive round-trip budget (taps block on zero remote reads). Spawn when adding synced tables, touching `mobile/lib/sync/`, debugging mobile data issues, or when a mobile action feels slow. |
 | `mobile-webapp-parity` | **Cross-platform gate.** Before any mobile change that writes to Supabase or needs schema changes. Prevents mobile-only tables, enum drift, missing side effects. |
 | `mobile-perf-doctor` | **Mobile perf gate.** After any mobile list/feed/animated screen, or when scroll/expand/transition feels janky. Audits memo prop-stability, FlatList config, Reanimated cost, lazy-mount, NativeWind v3 tokens. |
 
@@ -79,7 +79,7 @@ Spawn these specialized agents for domain-specific review and diagnosis. Each ha
 1. `perf-auditor` — every webapp feature
 2. `zetas-front-guy` — every TSX/CSS change
 3. `server-action-reviewer` — every new/modified server action
-4. `mobile-sync-doctor` — every new synced table or mobile push mutation
+4. `mobile-sync-doctor` — every new synced table, mobile push mutation, or change under `mobile/lib/sync/`; also any interactive mobile mutation that touches remote data (round-trip budget)
 5. `mobile-webapp-parity` — every mobile feature that touches Supabase
 6. `mobile-perf-doctor` — every mobile list screen or animated surface
 
