@@ -188,13 +188,16 @@ export function computeDebtStats(accounts: DebtAccount[]): DebtStats {
     })
     .sort((a, b) => b.percentage - a.percentage);
 
-  const loanRemainingHeadline = loanProgressList.length > 0
-    ? (() => {
-        const topProgress = loanProgressList[0]; // highest % paid
-        const matching = loanRemainingList.find((r) => r.accountName === topProgress.accountName);
-        return { months: matching?.months ?? 0, accountName: topProgress.accountName };
-      })()
-    : null;
+  const loanRemainingHeadline = (() => {
+    if (loanProgressList.length === 0) return null;
+    const topProgress = loanProgressList[0]; // highest % paid
+    const matching = loanRemainingList.find((r) => r.accountName === topProgress.accountName);
+    // No payment-based entry (monthlyPayment missing) → no months estimate.
+    // Defaulting to 0 rendered "Plazo restante: 0m" — reads as paid off —
+    // for a loan that still has an outstanding balance.
+    if (!matching) return null;
+    return { months: matching.months, accountName: topProgress.accountName };
+  })();
   const loanProgressHeadline = loanProgressList.length > 0
     ? { percentage: loanProgressList[0].percentage, accountName: loanProgressList[0].accountName }
     : null;
