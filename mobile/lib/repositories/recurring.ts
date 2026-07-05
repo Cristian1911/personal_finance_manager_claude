@@ -429,6 +429,8 @@ export type CandidateOccurrence = {
   occurrenceDate: string;
   expectedAmount: number;
   currencyCode: string;
+  /** Template's anchored destinatario — auto-link uses it to pick the amount tolerance tier. */
+  destinatarioId: string | null;
   matchScore: number;
 };
 
@@ -498,10 +500,11 @@ export async function getCandidateOccurrencesForTransaction(
     merchant_name: string | null;
     description: string | null;
     currency_code: string;
+    destinatario_id: string | null;
   }>(
     `SELECT
        o.id, o.template_id, o.occurrence_date, o.expected_amount,
-       t.merchant_name, t.description, t.currency_code
+       t.merchant_name, t.description, t.currency_code, t.destinatario_id
      FROM recurring_occurrences o
      JOIN recurring_transaction_templates t ON o.template_id = t.id
      LEFT JOIN accounts a ON t.account_id = a.id
@@ -534,6 +537,7 @@ export async function getCandidateOccurrencesForTransaction(
     occurrenceDate: r.occurrence_date,
     expectedAmount: r.expected_amount,
     currencyCode: r.currency_code,
+    destinatarioId: r.destinatario_id,
     // Argument order matches webapp `getCandidateOccurrencesForTransaction`:
     // tx is the "candidate" (numerator), occurrence is the "reference"
     // (denominator). Swapping these makes amount-tie-breaking diverge.
@@ -727,16 +731,27 @@ export async function linkExistingTransactionToOccurrence(
  * (never throws) when there's no confident match.
  *
  * Reuses the ±30-day candidate finder but auto-links only a CONFIDENT match
- * (±3 days AND amount within 50%), tighter than the manual "Vincular" window, so
- * a create never silently grabs a distant occurrence. Marks the occurrence paid
- * with linked_manually=false (auto), via the shared link routine.
+ * (±3 days), tighter than the manual "Vincular" window, so a create never
+ * silently grabs a distant occurrence. Amount tolerance mirrors webapp
+ * `findMatchingOccurrence`'s two tiers:
+ * - Anchored (tx destinatario === template destinatario): within 50% of the
+ *   expected amount — the merchant link is the strong signal, the wide band
+ *   absorbs fees/partial payments.
+ * - Unanchored: within 1% — amount proximity alone must be near-exact, so an
+ *   unrelated import never silently pays a template's occurrence.
+ * Marks the occurrence paid with linked_manually=false (auto), via the shared
+ * link routine.
  */
 export async function findAndLinkLocalOccurrence(
   transactionId: string
 ): Promise<boolean> {
   const db = await getDatabase();
-  const tx = await db.getFirstAsync<{ transaction_date: string; amount: number }>(
-    "SELECT transaction_date, amount FROM transactions WHERE id = ?",
+  const tx = await db.getFirstAsync<{
+    transaction_date: string;
+    amount: number;
+    destinatario_id: string | null;
+  }>(
+    "SELECT transaction_date, amount, destinatario_id FROM transactions WHERE id = ?",
     [transactionId]
   );
   if (!tx) return false;
@@ -751,7 +766,13 @@ export async function findAndLinkLocalOccurrence(
     const dayDiff = Math.abs(occTime - txTime) / 86_400_000;
     if (dayDiff > 3) return false;
     if (c.expectedAmount <= 0) return false;
-    return Math.abs(c.expectedAmount - tx.amount) / c.expectedAmount <= 0.5;
+    const anchored =
+      !!tx.destinatario_id && c.destinatarioId === tx.destinatario_id;
+    // Same formulas as webapp: anchored divides by expected_amount, the
+    // unanchored 1% band divides by the tx amount.
+    return anchored
+      ? Math.abs(c.expectedAmount - tx.amount) / c.expectedAmount <= 0.5
+      : Math.abs(c.expectedAmount - tx.amount) <= tx.amount * 0.01;
   });
   if (!best) return false;
 
