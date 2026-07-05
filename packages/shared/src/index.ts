@@ -9,6 +9,7 @@ export * from "./utils/pattern-extract";
 export * from "./utils/quick-capture";
 export * from "./utils/recurrence";
 export * from "./utils/capture-hierarchy";
+export * from "./utils/occurrence-matching";
 export * from "./utils/reconciliation";
 export * from "./utils/debt";
 export * from "./utils/debt-simulator";

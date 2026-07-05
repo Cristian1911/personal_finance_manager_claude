@@ -3,8 +3,10 @@ import {
   autoCategorize,
   findReconciliationCandidates,
   mergeTransactionMetadata,
+  monthStartStr,
   prepareDestinatarioRules,
   matchDestinatario,
+  subMonths,
   type ReconciliationCandidate,
   type TransactionCaptureMethod,
   type TransactionDirection,
@@ -15,6 +17,7 @@ import { getAccountById } from "./accounts";
 import {
   createTransaction,
   createTransactionAndApplyBalance,
+  getReconciliationCandidateRowsInRange,
   updateTransaction,
   type CreateTransactionParams,
 } from "./transactions";
@@ -258,11 +261,22 @@ async function resolveTargetAccountId(
 /**
  * Look for an existing transaction that could be a duplicate of this pending
  * email row (±3 days, any capture method). Mirrors webapp
- * `checkEmailReconciliation`. Returns null on any failure so the UI falls back
- * to importing directly.
+ * `checkEmailReconciliation`, with two mobile-specific twists:
+ *
+ * - Takes the already-loaded `PendingEmailRow` (the panel fetched the full row
+ *   when the queue rendered) instead of re-fetching it from Supabase — one
+ *   less blocking round-trip on the Importar tap.
+ * - Searches candidates in LOCAL SQLite when the ±3-day span sits inside the
+ *   transactions sync window (current + previous month). The approve path can
+ *   only reconcile into a locally-present transaction anyway, so local search
+ *   is both faster and consistent. For stale queue rows whose span reaches
+ *   past the window, it falls back to the remote query — otherwise those
+ *   duplicates would be invisible and the import would silently duplicate.
+ *
+ * Returns null on any failure so the UI falls back to importing directly.
  */
 export async function checkEmailReconciliation(
-  pendingId: string,
+  pending: PendingEmailRow,
   overrideAccountId?: string
 ): Promise<{
   candidate: ReconciliationCandidatePreview;
@@ -272,33 +286,28 @@ export async function checkEmailReconciliation(
     const userId = await getUserId();
     if (!userId) return null;
 
-    const { data: pending } = await (supabase as any)
-      .from("pending_email_transactions")
-      .select("id, suggested_account_id, email_ingest_id, parsed_data")
-      .eq("id", pendingId)
-      .eq("user_id", userId)
-      .single();
-    if (!pending) return null;
-
-    const parsed = pending.parsed_data as ParsedEmailTransaction;
+    const parsed = pending.parsed_data;
     const accountId = await resolveTargetAccountId(userId, pending, overrideAccountId);
     if (!accountId) return null;
 
     const from = addDaysISO(parsed.transaction_date, -3);
     const to = addDaysISO(parsed.transaction_date, 3);
 
-    const { data: candidates, error } = await (supabase as any)
-      .from("transactions")
-      .select(
-        "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method"
-      )
-      .eq("account_id", accountId)
-      .eq("user_id", userId)
-      .gte("transaction_date", from)
-      .lte("transaction_date", to)
-      .is("reconciled_into_transaction_id", null);
+    // Same window bound the sync pull uses for transactions (pull.ts
+    // WINDOWED_TABLES): previous month start. Spans reaching before it can't
+    // be answered from local SQLite.
+    const localWindowStart = monthStartStr(subMonths(new Date(), 1));
+    const candidates =
+      from < localWindowStart
+        ? await fetchRemoteReconciliationCandidates(userId, accountId, from, to)
+        : await getReconciliationCandidateRowsInRange({
+            userId,
+            accountId,
+            fromDate: from,
+            toDate: to,
+          });
 
-    if (error || !candidates || candidates.length === 0) return null;
+    if (!candidates || candidates.length === 0) return null;
 
     const importTx = {
       account_id: accountId,
@@ -324,11 +333,11 @@ export async function checkEmailReconciliation(
       candidate: {
         id: matched.id,
         raw_description: matched.raw_description,
-        merchant_name: matched.merchant_name,
+        merchant_name: matched.merchant_name ?? null,
         transaction_date: matched.transaction_date,
         amount: matched.amount,
         direction: matched.direction,
-        category_id: matched.category_id,
+        category_id: matched.category_id ?? null,
         score: result.bestMatch.score,
       },
       decision: result.bestMatch.decision as "AUTO_MERGE" | "REVIEW",
@@ -336,6 +345,29 @@ export async function checkEmailReconciliation(
   } catch {
     return null;
   }
+}
+
+/** Remote candidate query — only for spans outside the local sync window.
+ * A candidate found here that isn't in local SQLite still aborts at approve
+ * ("sincroniza e inténtalo de nuevo"), loudly instead of silently duplicating. */
+async function fetchRemoteReconciliationCandidates(
+  userId: string,
+  accountId: string,
+  from: string,
+  to: string
+): Promise<ReconciliationCandidate[]> {
+  const { data, error } = await (supabase as any)
+    .from("transactions")
+    .select(
+      "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method"
+    )
+    .eq("account_id", accountId)
+    .eq("user_id", userId)
+    .gte("transaction_date", from)
+    .lte("transaction_date", to)
+    .is("reconciled_into_transaction_id", null);
+  if (error) return [];
+  return (data ?? []) as ReconciliationCandidate[];
 }
 
 // ── Approve / dismiss ─────────────────────────────────────────────────────────
@@ -346,11 +378,17 @@ export async function checkEmailReconciliation(
  * instead of inserting straight to remote, so the row appears in the feed
  * immediately, works offline, and applies the balance side-effect locally.
  *
- * Only the two genuinely remote steps survive (the `pending_email_transactions`
- * queue is REMOTE-only): reading the pending row up-front, and marking it
- * imported at the end. The mark-imported call is fire-and-forget so the action
- * returns the instant the local writes finish — if it fails offline, the
- * idempotency key blocks a duplicate transaction on the next retry.
+ * Takes the already-loaded `PendingEmailRow` — the panel fetched the full row
+ * (parsed_data, suggested account, idempotency key) when the queue rendered,
+ * so re-reading it from Supabase on the tap was a pure extra round-trip. Note
+ * the old remote re-read carried no status guard either; cross-device races
+ * are (and were) handled by the idempotency key — a row imported elsewhere
+ * dedups locally on next pull and remotely via the 23505 skip on push.
+ *
+ * The only remote step left is marking the queue row imported, and it is
+ * fire-and-forget so the action returns the instant the local writes finish —
+ * if it fails offline, the idempotency key blocks a duplicate transaction on
+ * the next retry.
  *
  * Flow: resolve the account locally → learn the debit-card mask locally →
  * enrich (destinatario + autoCategorize) → insert the transaction via
@@ -359,25 +397,14 @@ export async function checkEmailReconciliation(
  * delta (skipped when reconciling) → mark the pending row imported.
  */
 export async function approveEmailTransaction(
-  pendingId: string,
+  pending: PendingEmailRow,
   overrideAccountId?: string,
   reconcileWithTransactionId?: string
 ): Promise<ApproveResult> {
   const userId = await getUserId();
   if (!userId) return { success: false, error: "No autenticado" };
 
-  // REMOTE read — the pending queue is not in local SQLite.
-  const { data: pending, error: fetchError } = await (supabase as any)
-    .from("pending_email_transactions")
-    .select("id, suggested_account_id, email_ingest_id, idempotency_key, parsed_data")
-    .eq("id", pendingId)
-    .eq("user_id", userId)
-    .single();
-
-  if (fetchError) return { success: false, error: fetchError.message };
-  if (!pending) return { success: false, error: "Transacción pendiente no encontrada" };
-
-  const parsed = pending.parsed_data as ParsedEmailTransaction;
+  const parsed = pending.parsed_data;
 
   const accountId = await resolveTargetAccountId(userId, pending, overrideAccountId);
   if (!accountId) {
@@ -529,7 +556,9 @@ export async function approveEmailTransaction(
     // pending row imported (non-blocking) so it leaves the queue, and report
     // success — the existing row already represents this transaction.
     if (isUniqueConstraintError(err)) {
-      void markImported(userId, pendingId);
+      void markImported(userId, pending.id).catch((e) => {
+        console.warn("Failed to mark email transaction imported remotely:", e);
+      });
       return { success: true };
     }
     return {
@@ -553,7 +582,11 @@ export async function approveEmailTransaction(
   }
 
   // REMOTE write, non-blocking — return the instant the local writes finish.
-  void markImported(userId, pendingId);
+  // Offline failure is safe: the row stays pending and the idempotency key
+  // blocks a duplicate transaction on the next attempt.
+  void markImported(userId, pending.id).catch((e) => {
+    console.warn("Failed to mark email transaction imported remotely:", e);
+  });
 
   return { success: true };
 }

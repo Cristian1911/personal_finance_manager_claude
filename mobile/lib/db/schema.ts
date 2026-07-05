@@ -431,9 +431,9 @@ export const DB_MIGRATIONS: DbMigration[] = [
       // parity PR. PaymentSheet now stamps `recurrence_group_id` on linked
       // and system-created transactions (mirroring webapp); without the
       // mirror, getTableColumns() in pull.ts silently drops it every cycle.
-      // (Note: `clean_description` is a separate pre-existing drift — the
-      //  local column is named `description`, pulls drop the Supabase
-      //  `clean_description` field. Out of scope for this PR.)
+      // (Note: `clean_description` drift is now handled by RENAMED_FIELDS in
+      //  pull.ts — the remote field is renamed onto the local `description`
+      //  column during upsert instead of being dropped.)
       `ALTER TABLE transactions ADD COLUMN recurrence_group_id TEXT`,
     ],
   },

@@ -11,7 +11,11 @@ import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { isDebtAccountType, reverseAccountBalanceDelta } from "@/lib/utils/account-balance";
 import { applyDebtPaymentToBalances } from "@/lib/debt/payoff";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
-import { getDebtPaymentCategoryId } from "@zeta/shared";
+import {
+  getDebtPaymentCategoryId,
+  occurrenceAmountMatches,
+  OCCURRENCE_AUTO_LINK_DAY_WINDOW,
+} from "@zeta/shared";
 import { parseSubPayments } from "@/lib/utils/sub-payments";
 import { UUID_RE } from "@/lib/validators/shared";
 import {
@@ -927,8 +931,12 @@ export async function findMatchingOccurrence(
   if (!user) return null;
 
   const baseDateObj = parseISO(transactionDate + "T12:00:00");
-  const rangeStart = toColombiaDateString(addDays(baseDateObj, -3));
-  const rangeEnd = toColombiaDateString(addDays(baseDateObj, 3));
+  const rangeStart = toColombiaDateString(
+    addDays(baseDateObj, -OCCURRENCE_AUTO_LINK_DAY_WINDOW),
+  );
+  const rangeEnd = toColombiaDateString(
+    addDays(baseDateObj, OCCURRENCE_AUTO_LINK_DAY_WINDOW),
+  );
 
   // Primary pass: if the transaction has a destinatario, try to match an
   // occurrence whose template is anchored to the same destinatario + account
@@ -938,7 +946,9 @@ export async function findMatchingOccurrence(
   // A 500k partial payment to a landlord should not silently auto-link to
   // a 2M rent occurrence. The wide band (vs 1% on the amount-only pass)
   // still absorbs realistic variance like fees, exchange rates, or partial
-  // extra-principal prepayments.
+  // extra-principal prepayments. Tolerances live in @zeta/shared
+  // (occurrence-matching.ts) so mobile's findAndLinkLocalOccurrence can't
+  // drift from this implementation.
   if (destinatarioId) {
     const { data: anchored, error: anchoredError } = await supabase
       .from("recurring_occurrences")
@@ -964,11 +974,8 @@ export async function findMatchingOccurrence(
       console.error("[findMatchingOccurrence] anchored query failed", anchoredError);
     }
 
-    const ANCHORED_TOLERANCE = 0.5;
-    const anchoredWithinTolerance = (anchored ?? []).filter(
-      (row) =>
-        row.expected_amount > 0 &&
-        Math.abs(row.expected_amount - amount) / row.expected_amount <= ANCHORED_TOLERANCE,
+    const anchoredWithinTolerance = (anchored ?? []).filter((row) =>
+      occurrenceAmountMatches(row.expected_amount, amount, true),
     );
 
     if (anchoredWithinTolerance.length > 0) {
@@ -1006,9 +1013,8 @@ export async function findMatchingOccurrence(
 
   if (error || !data) return null;
 
-  const tolerance = amount * 0.01;
-  const match = data.find(
-    (row) => Math.abs(row.expected_amount - amount) <= tolerance,
+  const match = data.find((row) =>
+    occurrenceAmountMatches(row.expected_amount, amount, false),
   );
   if (match) return match.id;
 
@@ -1037,7 +1043,7 @@ export async function findMatchingOccurrence(
       const crossMatch = crossData.find((row) => {
         const t = row.template as TemplateWithAccount | null;
         return (
-          Math.abs(row.expected_amount - amount) <= tolerance &&
+          occurrenceAmountMatches(row.expected_amount, amount, false) &&
           t != null && isCrossAccountDebtPayment(t, direction, accountId)
         );
       });
@@ -1245,8 +1251,12 @@ async function swapPhantomOccurrenceIfMatched(
   if (!user) return;
 
   const baseDateObj = parseISO(transactionDate + "T12:00:00");
-  const rangeStart = toColombiaDateString(addDays(baseDateObj, -3));
-  const rangeEnd = toColombiaDateString(addDays(baseDateObj, 3));
+  const rangeStart = toColombiaDateString(
+    addDays(baseDateObj, -OCCURRENCE_AUTO_LINK_DAY_WINDOW),
+  );
+  const rangeEnd = toColombiaDateString(
+    addDays(baseDateObj, OCCURRENCE_AUTO_LINK_DAY_WINDOW),
+  );
 
   const { data: candidates, error } = await supabase
     .from("recurring_occurrences")
@@ -1267,11 +1277,10 @@ async function swapPhantomOccurrenceIfMatched(
 
   if (error || !candidates) return;
 
-  const tolerance = amount * 0.01;
   const match = candidates.find(
     (row) =>
       row.transaction_id != null &&
-      Math.abs(row.expected_amount - amount) <= tolerance,
+      occurrenceAmountMatches(row.expected_amount, amount, false),
   );
   if (!match || !match.transaction_id) return;
 

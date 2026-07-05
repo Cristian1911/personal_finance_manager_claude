@@ -1,7 +1,7 @@
 ---
 name: mobile-sync-doctor
 description: >
-  Use this agent when working on the mobile app's data layer — SQLite schema, sync engine, repositories, or any code that reads/writes to Supabase from the mobile app. Guards against encryption mismatches, column drift, and sync strategy errors.
+  Use this agent when working on the mobile app's data layer — SQLite schema, sync engine, repositories, or any code that reads/writes to Supabase from the mobile app. Guards against encryption mismatches, column drift, sync strategy errors, and blocking remote round-trips in interactive mutations (taps must resolve from local SQLite; sync runs in the background).
 
   Examples:
   <example>
@@ -20,6 +20,12 @@ description: >
   Context: Developer adding a push mutation from mobile.
   user: "Added a create-recurring-template form on mobile"
   assistant: "I'll use mobile-sync-doctor to verify the push payload doesn't include trigger-computed fields and goes through the view."
+  </example>
+
+  <example>
+  Context: User reports a mobile action feels slow on mobile data.
+  user: "Confirming a payment on mobile takes several seconds before the list updates"
+  assistant: "I'll use mobile-sync-doctor to audit the action's round-trip budget — it should write local SQLite first and never block the tap on remote reads or a full syncAll()."
   </example>
 model: sonnet
 tools:
@@ -128,6 +134,60 @@ When reviewing mobile sync code, verify ALL of the following:
 - [ ] No logging of sensitive decrypted fields
 - [ ] SecureStore used for auth tokens, not for bulk data
 - [ ] Demo mode doesn't sync (no encryption context)
+
+### 7. Sync-Engine Invariants (established 2026-07-05 — do not regress)
+
+The sync engine was reworked for round-trip latency. These invariants MUST
+survive any future change to `engine.ts` / `pull.ts` / `push.ts`:
+
+- [ ] **Single-flight `syncAll()`**: concurrent callers share the in-flight
+  promise (module-level lock in `engine.ts`). Never remove it — overlapping
+  runs duplicate every round-trip AND risk interleaved
+  `withTransactionAsync` transactions (expo-sqlite's plain
+  `withTransactionAsync` does NOT exclude other async statements on the
+  shared connection).
+- [ ] **Pull is two-phase**: network fetches for all tables run
+  CONCURRENTLY (`Promise.all` over `fetchTable`), SQLite writes apply
+  strictly SERIALLY in `SYNC_TABLES` order. Never move a SQLite write into
+  the concurrent fetch phase; never parallelize the apply phase.
+- [ ] **Cursor uses server time**: `last_synced_at` advances to the max
+  `updated_at` actually pulled — NEVER the client clock (`new Date()`), which
+  permanently skips rows when the device clock runs ahead of the server.
+  Empty pulls must not advance the cursor.
+- [ ] **Push UPDATE freshness is atomic**: one conditional call —
+  `.update(payload).eq("id", id).lte("updated_at", payload.updated_at).select("id")`.
+  Never reintroduce SELECT-then-UPDATE (2× round-trips + check-then-write
+  race). Empty result (remote newer/deleted) → drop the item (mark synced);
+  thrown error (network) → leave queued for retry. Don't confuse the two.
+- [ ] **Push INSERTs batch**: consecutive same-table, same-key-set INSERTs
+  go out as ONE bulk insert with per-row fallback on batch error
+  (PostgREST bulk inserts are atomic, so fallback can't double-insert).
+  Batching must stay CONSECUTIVE-only — reordering across tables breaks FK
+  ordering in the queue.
+- [ ] **Queue hygiene**: synced rows are purged after a retention window;
+  never purge `synced_at IS NULL` rows.
+
+### 8. Interactive-Action Round-Trip Budget (NEW — blocking-latency rule)
+
+Any user-facing mutation (button tap, form submit, import approve) must
+block on **zero remote round-trips** in the common case:
+
+- [ ] Local SQLite write + `sync_queue` enqueue first; UI feedback comes
+  from the local write. Remote bookkeeping (e.g. marking a remote-only queue
+  row processed) is fire-and-forget with an idempotent retry story.
+- [ ] Never re-fetch a row the UI already holds. If a list screen loaded
+  the full row, pass the ROW into the action — not the id for the action to
+  re-fetch remotely. (The email-import approve used to re-read its pending
+  row from Supabase twice per tap.)
+- [ ] Lookups whose data is already synced locally (transactions,
+  accounts, rules) run against SQLite, not `supabase.from()`. A remote
+  query for locally-available data is both slower and can return rows the
+  local-first write path then can't use (see `checkEmailReconciliation`).
+- [ ] Post-mutation refresh reads local SQLite immediately; `syncAll()`
+  runs in the background (`void`), never awaited before showing the result.
+- [ ] Remote-only tables (`pending_email_transactions`,
+  `email_ingest_addresses`) are the ONLY acceptable blocking reads, and only
+  when the data isn't already in component state.
 
 ## Common Failure Patterns
 

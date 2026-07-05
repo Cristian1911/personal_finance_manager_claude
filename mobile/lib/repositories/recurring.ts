@@ -3,6 +3,8 @@ import {
   getDebtPaymentCategoryId,
   getOccurrencesBetween,
   isDebtAccountType,
+  occurrenceAmountMatches,
+  OCCURRENCE_AUTO_LINK_DAY_WINDOW,
   TRANSFER_CATEGORY_ID,
   type RecurrenceFrequency,
   type TransactionDirection,
@@ -429,6 +431,8 @@ export type CandidateOccurrence = {
   occurrenceDate: string;
   expectedAmount: number;
   currencyCode: string;
+  /** Template's anchored destinatario — auto-link uses it to pick the amount tolerance tier. */
+  destinatarioId: string | null;
   matchScore: number;
 };
 
@@ -498,10 +502,11 @@ export async function getCandidateOccurrencesForTransaction(
     merchant_name: string | null;
     description: string | null;
     currency_code: string;
+    destinatario_id: string | null;
   }>(
     `SELECT
        o.id, o.template_id, o.occurrence_date, o.expected_amount,
-       t.merchant_name, t.description, t.currency_code
+       t.merchant_name, t.description, t.currency_code, t.destinatario_id
      FROM recurring_occurrences o
      JOIN recurring_transaction_templates t ON o.template_id = t.id
      LEFT JOIN accounts a ON t.account_id = a.id
@@ -534,6 +539,7 @@ export async function getCandidateOccurrencesForTransaction(
     occurrenceDate: r.occurrence_date,
     expectedAmount: r.expected_amount,
     currencyCode: r.currency_code,
+    destinatarioId: r.destinatario_id,
     // Argument order matches webapp `getCandidateOccurrencesForTransaction`:
     // tx is the "candidate" (numerator), occurrence is the "reference"
     // (denominator). Swapping these makes amount-tie-breaking diverge.
@@ -726,17 +732,25 @@ export async function linkExistingTransactionToOccurrence(
  * (called after every persistTransaction / import). Best-effort: returns false
  * (never throws) when there's no confident match.
  *
- * Reuses the ±30-day candidate finder but auto-links only a CONFIDENT match
- * (±3 days AND amount within 50%), tighter than the manual "Vincular" window, so
- * a create never silently grabs a distant occurrence. Marks the occurrence paid
- * with linked_manually=false (auto), via the shared link routine.
+ * Reuses the ±30-day candidate finder but auto-links only a CONFIDENT match,
+ * tighter than the manual "Vincular" window, so a create never silently grabs
+ * a distant occurrence. The day window and the tiered amount tolerance
+ * (anchored = tx destinatario matches template destinatario → wide band;
+ * unanchored → near-exact) come from @zeta/shared `occurrence-matching.ts`,
+ * the same constants webapp `findMatchingOccurrence` uses — the two
+ * implementations must not drift. Marks the occurrence paid with
+ * linked_manually=false (auto), via the shared link routine.
  */
 export async function findAndLinkLocalOccurrence(
   transactionId: string
 ): Promise<boolean> {
   const db = await getDatabase();
-  const tx = await db.getFirstAsync<{ transaction_date: string; amount: number }>(
-    "SELECT transaction_date, amount FROM transactions WHERE id = ?",
+  const tx = await db.getFirstAsync<{
+    transaction_date: string;
+    amount: number;
+    destinatario_id: string | null;
+  }>(
+    "SELECT transaction_date, amount, destinatario_id FROM transactions WHERE id = ?",
     [transactionId]
   );
   if (!tx) return false;
@@ -749,9 +763,10 @@ export async function findAndLinkLocalOccurrence(
   const best = candidates.find((c) => {
     const occTime = new Date(c.occurrenceDate + "T12:00:00").getTime();
     const dayDiff = Math.abs(occTime - txTime) / 86_400_000;
-    if (dayDiff > 3) return false;
-    if (c.expectedAmount <= 0) return false;
-    return Math.abs(c.expectedAmount - tx.amount) / c.expectedAmount <= 0.5;
+    if (dayDiff > OCCURRENCE_AUTO_LINK_DAY_WINDOW) return false;
+    const anchored =
+      !!tx.destinatario_id && c.destinatarioId === tx.destinatario_id;
+    return occurrenceAmountMatches(c.expectedAmount, tx.amount, anchored);
   });
   if (!best) return false;
 

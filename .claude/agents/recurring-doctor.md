@@ -40,9 +40,10 @@ You are a domain specialist for Zeta's recurring obligations system. Your job is
 
 ## Key Files
 
-- `webapp/src/actions/occurrences.ts` — occurrence CRUD, linking, generation
+- `webapp/src/actions/occurrences.ts` — occurrence CRUD, linking, generation, `findMatchingOccurrence()`
 - `webapp/src/actions/recurring-templates.ts` — template management
 - `webapp/src/lib/cache/revalidation.ts` — `revalidateFinancialViews()` includes `"occurrences"` tag
+- `mobile/lib/repositories/recurring.ts` — mobile mirror: `findAndLinkLocalOccurrence()`, `linkExistingTransactionToOccurrence()`, candidate finder
 
 ## Source of Truth
 
@@ -114,6 +115,35 @@ See `capture-hierarchy.ts` in `@zeta/shared` for the full authority hierarchy.
 
 Use `linkTransactionToOccurrence()` from `@/actions/occurrences.ts` or `findMatchingOccurrence()` to find and link the correct pending occurrence.
 
+### 2b. Auto-Link Match Confidence — TIERED TOLERANCE (cross-platform invariant)
+
+Auto-linking (no user in the loop) must never silently mark an occurrence
+paid off a weak signal. Both platforms use the SAME two-tier amount
+tolerance, and any new auto-link path MUST replicate it:
+
+- **Anchored** (transaction's `destinatario_id` === template's `destinatario_id`):
+  amount within **50%** of `expected_amount`. The merchant link is the strong
+  signal; the wide band absorbs fees, exchange variance, partial payments.
+- **Unanchored** (no destinatario, or different destinatario): amount within
+  **1%** (`|expected − amount| <= amount * 0.01`). Amount proximity alone must
+  be near-exact.
+- Date window for auto-link: **±3 days** (the manual "Vincular" picker may use
+  the wider ±30-day candidate window — that's fine, a human is choosing).
+
+The constants and the amount check live in `@zeta/shared` →
+`occurrence-matching.ts` (`OCCURRENCE_AUTO_LINK_DAY_WINDOW`,
+`occurrenceAmountMatches()`). Both platforms import them — never re-inline
+the numbers:
+- Webapp: `findMatchingOccurrence()` in `webapp/src/actions/occurrences.ts`
+  (anchored pass first, then 1% amount-only pass, then cross-account debt pass)
+- Mobile: `findAndLinkLocalOccurrence()` in `mobile/lib/repositories/recurring.ts`
+
+**History**: the mobile port once applied the anchored 50% band WITHOUT the
+destinatario anchor — an email-imported $31.000 tx with a random reference
+description silently paid a $53.900 Tigo Móvil occurrence (42.5% off, inside
+50%). Any auto-link tolerance change on one platform must be mirrored on the
+other, and the anchor condition is NOT optional.
+
 ### 3. Querying Occurrences
 
 ```ts
@@ -154,6 +184,11 @@ When reviewing code that touches recurring obligations:
 - [ ] New transaction creation paths call `linkTransactionToOccurrence()` or equivalent
 - [ ] Status transitions are correct: `pending` → `paid` or `pending` → `skipped`
 - [ ] Paid occurrences set `transaction_id` to the linked transaction
+
+### Auto-Link Confidence (webapp ↔ mobile parity)
+- [ ] Auto-link paths use the tiered tolerance: 50% ONLY with matching destinatario anchor, 1% otherwise, ±3-day window
+- [ ] Any tolerance/window change is mirrored in BOTH `findMatchingOccurrence()` (webapp) and `findAndLinkLocalOccurrence()` (mobile)
+- [ ] Manual "Vincular" flows may be looser (human confirms), but must never auto-commit a link
 
 ### Cache
 - [ ] Cached functions use `cacheTag("occurrences")` + `cacheLife("zeta")`

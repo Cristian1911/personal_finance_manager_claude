@@ -25,10 +25,45 @@ export function isResetInProgress(): boolean {
   return resetInProgress;
 }
 
-export async function syncAll(): Promise<{
-  pushed: number;
-  pulled: Record<string, number>;
-}> {
+type SyncResult = { pushed: number; pulled: Record<string, number> };
+
+// Single-flight lock with one coalesced follow-up run. syncAll is triggered
+// from many places (auth listener, pull-to-refresh on every root screen,
+// background sync after an email import) with no coordination — overlapping
+// runs used to duplicate every push/pull round-trip AND risk interleaving
+// withTransactionAsync transactions on the shared SQLite connection
+// (expo-sqlite's plain withTransactionAsync does not exclude other async
+// statements, so a concurrent pull could half-apply inside another run's
+// open transaction).
+//
+// A caller that arrives mid-run may have just enqueued changes the in-flight
+// run's push already missed (it snapshotted sync_queue at start). Handing
+// back the in-flight promise alone would resolve "success" without ever
+// pushing those rows, so mid-run callers instead share ONE chained rerun
+// that starts after the current run finishes. Bounded: at most one running
+// + one queued, no matter how many callers pile up.
+let inFlightSync: Promise<SyncResult> | null = null;
+let queuedSync: Promise<SyncResult> | null = null;
+
+export function syncAll(): Promise<SyncResult> {
+  if (inFlightSync) {
+    if (!queuedSync) {
+      queuedSync = inFlightSync
+        .catch(() => {}) // rerun even if the current run failed
+        .then(() => {
+          queuedSync = null;
+          return syncAll();
+        });
+    }
+    return queuedSync;
+  }
+  inFlightSync = doSyncAll().finally(() => {
+    inFlightSync = null;
+  });
+  return inFlightSync;
+}
+
+async function doSyncAll(): Promise<SyncResult> {
   if (resetInProgress) {
     return { pushed: 0, pulled: {} };
   }
@@ -58,8 +93,14 @@ export async function syncAll(): Promise<{
     return { pushed: 0, pulled: {} };
   }
 
+  // A reset can begin while a run is mid-flight; the start-of-run check above
+  // can't see it. Both phases take an abort probe so a straddling run stops
+  // before replaying queued mutations against the wiped server or re-seeding
+  // the just-cleared SQLite from a pre-wipe fetch snapshot.
+  const shouldAbort = () => resetInProgress;
+
   // Push first so local changes don't get overwritten by stale remote data
-  const pushed = await pushPendingChanges();
-  const pulled = await pullAll();
+  const pushed = await pushPendingChanges({ shouldAbort });
+  const pulled = await pullAll({ shouldAbort });
   return { pushed, pulled };
 }
