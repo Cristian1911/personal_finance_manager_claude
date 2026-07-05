@@ -526,6 +526,34 @@ export async function getReconciliationCandidateById(
   );
 }
 
+/**
+ * Unranked reconciliation-candidate rows for an account within a date range —
+ * the repository owns the column projection the shared matcher expects
+ * (`description AS clean_description`; real `categorization_source` and
+ * `capture_method` columns, unlike the legacy CASE projection above).
+ * Used by the email-import duplicate check (±3-day span around the email
+ * date); ranking happens at the caller via `findReconciliationCandidates`.
+ */
+export async function getReconciliationCandidateRowsInRange(params: {
+  userId: string;
+  accountId: string;
+  fromDate: string;
+  toDate: string;
+}): Promise<ReconciliationCandidate[]> {
+  const db = await getDatabase();
+  return db.getAllAsync<ReconciliationCandidate>(
+    `SELECT id, user_id, account_id, amount, direction, transaction_date,
+            raw_description, merchant_name, description AS clean_description,
+            category_id, categorization_source, notes,
+            reconciled_into_transaction_id, capture_method
+     FROM transactions
+     WHERE user_id = ? AND account_id = ?
+       AND transaction_date >= ? AND transaction_date <= ?
+       AND reconciled_into_transaction_id IS NULL`,
+    [params.userId, params.accountId, params.fromDate, params.toDate]
+  );
+}
+
 export async function getReconciliationCandidates(params: {
   userId: string;
   accountId: string;

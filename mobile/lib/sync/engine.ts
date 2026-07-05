@@ -27,19 +27,36 @@ export function isResetInProgress(): boolean {
 
 type SyncResult = { pushed: number; pulled: Record<string, number> };
 
-// Single-flight lock. syncAll is triggered from many places (auth listener,
-// pull-to-refresh on every root screen, background sync after an email
-// import) with no coordination — overlapping runs used to duplicate every
-// push/pull round-trip AND risk interleaving withTransactionAsync
-// transactions on the shared SQLite connection (expo-sqlite's plain
-// withTransactionAsync does not exclude other async statements, so a
-// concurrent pull could half-apply inside another run's open transaction).
-// Concurrent callers now share the in-flight run. Changes enqueued while a
-// run is mid-flight are durable in sync_queue and go out on the next sync.
+// Single-flight lock with one coalesced follow-up run. syncAll is triggered
+// from many places (auth listener, pull-to-refresh on every root screen,
+// background sync after an email import) with no coordination — overlapping
+// runs used to duplicate every push/pull round-trip AND risk interleaving
+// withTransactionAsync transactions on the shared SQLite connection
+// (expo-sqlite's plain withTransactionAsync does not exclude other async
+// statements, so a concurrent pull could half-apply inside another run's
+// open transaction).
+//
+// A caller that arrives mid-run may have just enqueued changes the in-flight
+// run's push already missed (it snapshotted sync_queue at start). Handing
+// back the in-flight promise alone would resolve "success" without ever
+// pushing those rows, so mid-run callers instead share ONE chained rerun
+// that starts after the current run finishes. Bounded: at most one running
+// + one queued, no matter how many callers pile up.
 let inFlightSync: Promise<SyncResult> | null = null;
+let queuedSync: Promise<SyncResult> | null = null;
 
 export function syncAll(): Promise<SyncResult> {
-  if (inFlightSync) return inFlightSync;
+  if (inFlightSync) {
+    if (!queuedSync) {
+      queuedSync = inFlightSync
+        .catch(() => {}) // rerun even if the current run failed
+        .then(() => {
+          queuedSync = null;
+          return syncAll();
+        });
+    }
+    return queuedSync;
+  }
   inFlightSync = doSyncAll().finally(() => {
     inFlightSync = null;
   });
@@ -76,8 +93,14 @@ async function doSyncAll(): Promise<SyncResult> {
     return { pushed: 0, pulled: {} };
   }
 
+  // A reset can begin while a run is mid-flight; the start-of-run check above
+  // can't see it. Both phases take an abort probe so a straddling run stops
+  // before replaying queued mutations against the wiped server or re-seeding
+  // the just-cleared SQLite from a pre-wipe fetch snapshot.
+  const shouldAbort = () => resetInProgress;
+
   // Push first so local changes don't get overwritten by stale remote data
-  const pushed = await pushPendingChanges();
-  const pulled = await pullAll();
+  const pushed = await pushPendingChanges({ shouldAbort });
+  const pulled = await pullAll({ shouldAbort });
   return { pushed, pulled };
 }

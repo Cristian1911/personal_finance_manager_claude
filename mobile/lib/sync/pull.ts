@@ -57,6 +57,18 @@ const JSON_FIELDS: Record<string, string[]> = {
   accounts: ["currency_balances"],
 };
 
+/** Remote → local column renames, applied before the column filter in
+ * upsertRow. Without the rename, getTableColumns() silently DROPS the remote
+ * field (no local column with that name), so the data never lands. */
+const RENAMED_FIELDS: Record<string, Record<string, string>> = {
+  // Supabase calls the curated description `clean_description`; local SQLite
+  // predates that name and calls it `description`. Every pulled transaction
+  // used to lose it — which also starved the local reconciliation matcher
+  // (findReconciliationCandidates reads clean_description, aliased from the
+  // local `description` column).
+  transactions: { clean_description: "description" },
+};
+
 /** Tables with no updated_at — always full-replace on every sync */
 const FULL_REPLACE_TABLES = new Set<SyncTable>([
   "tag_groups",
@@ -78,6 +90,36 @@ const WINDOWED_TABLES: Partial<Record<SyncTable, { column: string }>> = {
 
 /** Rows per page when paginating Supabase queries */
 const PAGE_SIZE = 1000;
+
+/** Concurrent table fetches during pull — parallel enough to collapse the
+ * per-table round-trips, bounded so a first sync doesn't open 21 competing
+ * connections on a constrained cellular link. */
+const PULL_FETCH_CONCURRENCY = 6;
+
+/** Map with bounded concurrency; never rejects — each slot settles. */
+async function mapSettledWithConcurrency<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T) => Promise<R>
+): Promise<PromiseSettledResult<R>[]> {
+  const results: PromiseSettledResult<R>[] = new Array(items.length);
+  let next = 0;
+  const workers = Array.from(
+    { length: Math.min(limit, items.length) },
+    async () => {
+      while (next < items.length) {
+        const i = next++;
+        try {
+          results[i] = { status: "fulfilled", value: await fn(items[i]) };
+        } catch (reason) {
+          results[i] = { status: "rejected", reason };
+        }
+      }
+    }
+  );
+  await Promise.all(workers);
+  return results;
+}
 
 /**
  * Fetch all rows using .range() pagination.
@@ -107,20 +149,24 @@ async function fetchAllPages(buildQuery: () => any): Promise<any[]> {
  * (current month + previous month), matching the webapp's query pattern.
  *
  * Two-phase for latency: the network fetches for all tables run CONCURRENTLY
- * (the old per-table sequential loop paid one full round-trip per table even
- * when a table had zero changes — ~21 sequential RTTs per sync, which is what
- * made background syncs take tens of seconds on mobile data). The SQLite
- * writes then apply strictly SERIALLY in FK-dependency order — expo-sqlite's
- * withTransactionAsync does not exclude other async statements on the same
- * connection, so concurrent apply transactions could interleave and
- * half-apply on rollback.
+ * (bounded pool — the old per-table sequential loop paid one full round-trip
+ * per table even when a table had zero changes — ~21 sequential RTTs per
+ * sync, which is what made background syncs take tens of seconds on mobile
+ * data). The SQLite writes then apply strictly SERIALLY in FK-dependency
+ * order — expo-sqlite's withTransactionAsync does not exclude other async
+ * statements on the same connection, so concurrent apply transactions could
+ * interleave and half-apply on rollback.
  *
- * Promise.all keeps the old fail-fast semantics: any table's fetch error
- * aborts the pull before a single local write, and apply errors stop the
- * loop exactly like the old sequential version (already-applied tables keep
- * their advanced cursors; the failed table's cursor is untouched).
+ * Per-table failure isolation: a table whose fetch or apply fails is skipped
+ * (cursor untouched → retried next sync) while every healthy table still
+ * applies — one flaky endpoint must not block the other 20 tables. The first
+ * error is rethrown at the end so callers still see the sync as failed.
  */
-export async function pullAll(): Promise<Record<string, number>> {
+export async function pullAll(options?: {
+  /** Probed between apply steps — a reset mid-run must not re-seed SQLite. */
+  shouldAbort?: () => boolean;
+}): Promise<Record<string, number>> {
+  const shouldAbort = options?.shouldAbort;
   const db = await getDatabase();
   const counts: Record<string, number> = {};
 
@@ -131,27 +177,41 @@ export async function pullAll(): Promise<Record<string, number>> {
   }>("SELECT table_name, last_synced_at FROM sync_metadata");
   const cursors = new Map(metaRows.map((r) => [r.table_name, r.last_synced_at]));
 
-  // Phase 1 — network, concurrent.
-  const fetched = await Promise.all(
-    SYNC_TABLES.map(async (table) => ({
-      table,
-      fetch: await fetchTable(table, cursors.get(table) ?? null),
-    }))
+  // Phase 1 — network, concurrent (bounded). Indexes align with SYNC_TABLES.
+  const fetched = await mapSettledWithConcurrency(
+    SYNC_TABLES,
+    PULL_FETCH_CONCURRENCY,
+    (table) => fetchTable(table, cursors.get(table) ?? null)
   );
 
   // Phase 2 — local writes, serial.
   // Disable FK checks during sync — windowed tables (transactions) may not
   // include rows referenced by junction tables (transaction_tags). Data
   // integrity is enforced server-side by Supabase.
+  let firstError: unknown = null;
   await db.execAsync("PRAGMA foreign_keys = OFF");
   try {
-    for (const { table, fetch } of fetched) {
-      counts[table] = await applyTable(db, table, fetch);
+    for (let i = 0; i < SYNC_TABLES.length; i++) {
+      if (shouldAbort?.()) {
+        throw new Error("Sync aborted: local data reset in progress");
+      }
+      const table = SYNC_TABLES[i];
+      const result = fetched[i];
+      if (result.status === "rejected") {
+        if (firstError === null) firstError = result.reason;
+        continue;
+      }
+      try {
+        counts[table] = await applyTable(db, table, result.value);
+      } catch (err) {
+        if (firstError === null) firstError = err;
+      }
     }
   } finally {
     await db.execAsync("PRAGMA foreign_keys = ON");
   }
 
+  if (firstError !== null) throw firstError;
   return counts;
 }
 
@@ -289,18 +349,30 @@ async function applyTable(
     );
   }
 
+  // Drop in-memory caches keyed off profile columns so the next read sees
+  // fresh values (e.g. if the user changed preferred_currency elsewhere).
+  if (table === "profiles" && upserted > 0) {
+    invalidatePreferredCurrency();
+  }
+
   // Update sync metadata. Advance the cursor to the newest SERVER-side
   // updated_at actually pulled — never the client clock. The old
   // `new Date().toISOString()` cursor silently skipped rows forever when the
   // device clock ran ahead of the server (next pull filtered
   // `updated_at > client-now`, which server-stamped rows written in the gap
-  // could never satisfy). Full-replace tables have no updated_at and ignore
-  // the cursor when querying, so the client-clock fallback there is only
-  // informational.
+  // could never satisfy).
   const maxUpdatedAt = data.reduce<string | null>((max, row) => {
     const v = (row as Record<string, unknown>).updated_at;
     return typeof v === "string" && (max === null || v > max) ? v : max;
   }, null);
+  if (maxUpdatedAt === null && !isFullReplace) {
+    // Incremental batch with no server timestamps (shouldn't happen — these
+    // tables filter on updated_at). Leave the cursor untouched rather than
+    // stamping the client clock, which is exactly the skew bug above.
+    return upserted;
+  }
+  // Full-replace tables ignore the cursor when querying; the client-clock
+  // fallback there is only informational.
   const syncedAt = maxUpdatedAt ?? new Date().toISOString();
   await db.runAsync(
     `INSERT INTO sync_metadata (table_name, last_synced_at)
@@ -308,12 +380,6 @@ async function applyTable(
      ON CONFLICT(table_name) DO UPDATE SET last_synced_at = excluded.last_synced_at`,
     [table, syncedAt]
   );
-
-  // Drop in-memory caches keyed off profile columns so the next read sees
-  // fresh values (e.g. if the user changed preferred_currency elsewhere).
-  if (table === "profiles" && upserted > 0) {
-    invalidatePreferredCurrency();
-  }
 
   return upserted;
 }
@@ -324,6 +390,16 @@ async function upsertRow(
   row: Record<string, unknown>
 ): Promise<void> {
   const processed = { ...row };
+
+  const renames = RENAMED_FIELDS[table];
+  if (renames) {
+    for (const [remoteCol, localCol] of Object.entries(renames)) {
+      if (remoteCol in processed && !(localCol in processed)) {
+        processed[localCol] = processed[remoteCol];
+        delete processed[remoteCol];
+      }
+    }
+  }
 
   if (table === "statement_snapshots") {
     const inferredPeriod =

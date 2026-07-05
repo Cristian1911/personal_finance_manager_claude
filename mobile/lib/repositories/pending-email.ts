@@ -3,8 +3,10 @@ import {
   autoCategorize,
   findReconciliationCandidates,
   mergeTransactionMetadata,
+  monthStartStr,
   prepareDestinatarioRules,
   matchDestinatario,
+  subMonths,
   type ReconciliationCandidate,
   type TransactionCaptureMethod,
   type TransactionDirection,
@@ -15,6 +17,7 @@ import { getAccountById } from "./accounts";
 import {
   createTransaction,
   createTransactionAndApplyBalance,
+  getReconciliationCandidateRowsInRange,
   updateTransaction,
   type CreateTransactionParams,
 } from "./transactions";
@@ -263,11 +266,12 @@ async function resolveTargetAccountId(
  * - Takes the already-loaded `PendingEmailRow` (the panel fetched the full row
  *   when the queue rendered) instead of re-fetching it from Supabase — one
  *   less blocking round-trip on the Importar tap.
- * - Searches candidates in LOCAL SQLite, not remote. The approve path can only
- *   reconcile into a transaction that exists locally anyway (it aborts
- *   otherwise), and the sync window (current + previous month) covers the
- *   ±3-day search span — so the remote query was both slower and able to
- *   surface candidates the import would then refuse to use.
+ * - Searches candidates in LOCAL SQLite when the ±3-day span sits inside the
+ *   transactions sync window (current + previous month). The approve path can
+ *   only reconcile into a locally-present transaction anyway, so local search
+ *   is both faster and consistent. For stale queue rows whose span reaches
+ *   past the window, it falls back to the remote query — otherwise those
+ *   duplicates would be invisible and the import would silently duplicate.
  *
  * Returns null on any failure so the UI falls back to importing directly.
  */
@@ -289,22 +293,19 @@ export async function checkEmailReconciliation(
     const from = addDaysISO(parsed.transaction_date, -3);
     const to = addDaysISO(parsed.transaction_date, 3);
 
-    const db = await getDatabase();
-    // Local column is `description`; the shared matcher expects the webapp's
-    // `clean_description` name, so alias it.
-    const candidates = await db.getAllAsync<
-      ReconciliationCandidate & { id: string }
-    >(
-      `SELECT id, user_id, account_id, amount, direction, transaction_date,
-              raw_description, merchant_name, description AS clean_description,
-              category_id, categorization_source, notes,
-              reconciled_into_transaction_id, capture_method
-       FROM transactions
-       WHERE account_id = ? AND user_id = ?
-         AND transaction_date >= ? AND transaction_date <= ?
-         AND reconciled_into_transaction_id IS NULL`,
-      [accountId, userId, from, to]
-    );
+    // Same window bound the sync pull uses for transactions (pull.ts
+    // WINDOWED_TABLES): previous month start. Spans reaching before it can't
+    // be answered from local SQLite.
+    const localWindowStart = monthStartStr(subMonths(new Date(), 1));
+    const candidates =
+      from < localWindowStart
+        ? await fetchRemoteReconciliationCandidates(userId, accountId, from, to)
+        : await getReconciliationCandidateRowsInRange({
+            userId,
+            accountId,
+            fromDate: from,
+            toDate: to,
+          });
 
     if (!candidates || candidates.length === 0) return null;
 
@@ -344,6 +345,29 @@ export async function checkEmailReconciliation(
   } catch {
     return null;
   }
+}
+
+/** Remote candidate query — only for spans outside the local sync window.
+ * A candidate found here that isn't in local SQLite still aborts at approve
+ * ("sincroniza e inténtalo de nuevo"), loudly instead of silently duplicating. */
+async function fetchRemoteReconciliationCandidates(
+  userId: string,
+  accountId: string,
+  from: string,
+  to: string
+): Promise<ReconciliationCandidate[]> {
+  const { data, error } = await (supabase as any)
+    .from("transactions")
+    .select(
+      "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method"
+    )
+    .eq("account_id", accountId)
+    .eq("user_id", userId)
+    .gte("transaction_date", from)
+    .lte("transaction_date", to)
+    .is("reconciled_into_transaction_id", null);
+  if (error) return [];
+  return (data ?? []) as ReconciliationCandidate[];
 }
 
 // ── Approve / dismiss ─────────────────────────────────────────────────────────

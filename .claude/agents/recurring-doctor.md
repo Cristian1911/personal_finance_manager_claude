@@ -130,7 +130,10 @@ tolerance, and any new auto-link path MUST replicate it:
 - Date window for auto-link: **±3 days** (the manual "Vincular" picker may use
   the wider ±30-day candidate window — that's fine, a human is choosing).
 
-Reference implementations (keep in lockstep):
+The constants and the amount check live in `@zeta/shared` →
+`occurrence-matching.ts` (`OCCURRENCE_AUTO_LINK_DAY_WINDOW`,
+`occurrenceAmountMatches()`). Both platforms import them — never re-inline
+the numbers:
 - Webapp: `findMatchingOccurrence()` in `webapp/src/actions/occurrences.ts`
   (anchored pass first, then 1% amount-only pass, then cross-account debt pass)
 - Mobile: `findAndLinkLocalOccurrence()` in `mobile/lib/repositories/recurring.ts`

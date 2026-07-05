@@ -3,6 +3,8 @@ import {
   getDebtPaymentCategoryId,
   getOccurrencesBetween,
   isDebtAccountType,
+  occurrenceAmountMatches,
+  OCCURRENCE_AUTO_LINK_DAY_WINDOW,
   TRANSFER_CATEGORY_ID,
   type RecurrenceFrequency,
   type TransactionDirection,
@@ -730,17 +732,14 @@ export async function linkExistingTransactionToOccurrence(
  * (called after every persistTransaction / import). Best-effort: returns false
  * (never throws) when there's no confident match.
  *
- * Reuses the ±30-day candidate finder but auto-links only a CONFIDENT match
- * (±3 days), tighter than the manual "Vincular" window, so a create never
- * silently grabs a distant occurrence. Amount tolerance mirrors webapp
- * `findMatchingOccurrence`'s two tiers:
- * - Anchored (tx destinatario === template destinatario): within 50% of the
- *   expected amount — the merchant link is the strong signal, the wide band
- *   absorbs fees/partial payments.
- * - Unanchored: within 1% — amount proximity alone must be near-exact, so an
- *   unrelated import never silently pays a template's occurrence.
- * Marks the occurrence paid with linked_manually=false (auto), via the shared
- * link routine.
+ * Reuses the ±30-day candidate finder but auto-links only a CONFIDENT match,
+ * tighter than the manual "Vincular" window, so a create never silently grabs
+ * a distant occurrence. The day window and the tiered amount tolerance
+ * (anchored = tx destinatario matches template destinatario → wide band;
+ * unanchored → near-exact) come from @zeta/shared `occurrence-matching.ts`,
+ * the same constants webapp `findMatchingOccurrence` uses — the two
+ * implementations must not drift. Marks the occurrence paid with
+ * linked_manually=false (auto), via the shared link routine.
  */
 export async function findAndLinkLocalOccurrence(
   transactionId: string
@@ -764,15 +763,10 @@ export async function findAndLinkLocalOccurrence(
   const best = candidates.find((c) => {
     const occTime = new Date(c.occurrenceDate + "T12:00:00").getTime();
     const dayDiff = Math.abs(occTime - txTime) / 86_400_000;
-    if (dayDiff > 3) return false;
-    if (c.expectedAmount <= 0) return false;
+    if (dayDiff > OCCURRENCE_AUTO_LINK_DAY_WINDOW) return false;
     const anchored =
       !!tx.destinatario_id && c.destinatarioId === tx.destinatario_id;
-    // Same formulas as webapp: anchored divides by expected_amount, the
-    // unanchored 1% band divides by the tx amount.
-    return anchored
-      ? Math.abs(c.expectedAmount - tx.amount) / c.expectedAmount <= 0.5
-      : Math.abs(c.expectedAmount - tx.amount) <= tx.amount * 0.01;
+    return occurrenceAmountMatches(c.expectedAmount, tx.amount, anchored);
   });
   if (!best) return false;
 

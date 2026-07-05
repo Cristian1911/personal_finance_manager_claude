@@ -74,7 +74,13 @@ async function pushInsertRun(
   if (run.length > 1) {
     const { error } = await sb.from(tableName).insert(run.map((r) => r.payload));
     if (!error) {
-      for (const { item } of run) await markSynced(db, item.id);
+      const ids = run.map((r) => r.item.id);
+      await db.runAsync(
+        `UPDATE sync_queue SET synced_at = datetime('now') WHERE id IN (${ids
+          .map(() => "?")
+          .join(", ")})`,
+        ids
+      );
       return run.length;
     }
   }
@@ -109,14 +115,12 @@ async function pushInsertRun(
  * batched into one call — consecutive-only, so cross-table FK ordering in
  * the queue is preserved.
  */
-export async function pushPendingChanges(): Promise<number> {
+export async function pushPendingChanges(options?: {
+  /** Probed between items — a reset mid-run must not replay the queue. */
+  shouldAbort?: () => boolean;
+}): Promise<number> {
+  const shouldAbort = options?.shouldAbort;
   const db = await getDatabase();
-
-  // Hygiene: synced rows are dead weight (nothing reads them back). Purge
-  // after a retention window so the queue doesn't grow unboundedly.
-  await db.runAsync(
-    "DELETE FROM sync_queue WHERE synced_at IS NOT NULL AND synced_at < datetime('now', '-7 days')"
-  );
 
   const pending = await db.getAllAsync<SyncQueueItem>(
     "SELECT * FROM sync_queue WHERE synced_at IS NULL ORDER BY id ASC"
@@ -124,43 +128,54 @@ export async function pushPendingChanges(): Promise<number> {
 
   if (pending.length === 0) return 0;
 
+  // Hygiene: synced rows are dead weight (nothing reads them back). Purge
+  // after a retention window so the queue doesn't grow unboundedly. Gated
+  // behind the pending check — an idle sync (empty queue, the common case)
+  // shouldn't pay a table scan the partial unsynced-only index can't serve.
+  await db.runAsync(
+    "DELETE FROM sync_queue WHERE synced_at IS NOT NULL AND synced_at < datetime('now', '-7 days')"
+  );
+
   let synced = 0;
   const sb = supabase as any;
 
   let idx = 0;
   while (idx < pending.length) {
+    if (shouldAbort?.()) break;
     const head = pending[idx];
     const tableName = head.table_name as SyncTableName;
 
     // Collect a batchable run of consecutive INSERTs (same table, same shape).
     if (head.operation === "INSERT") {
-      const run: ParsedInsert[] = [];
-      let sig: string | null = null;
+      let headPayload: Record<string, unknown>;
+      try {
+        headPayload = JSON.parse(head.payload);
+      } catch (err) {
+        // Malformed payload can never push — warn and skip, like the old
+        // per-item catch did.
+        console.warn(`Sync push failed for ${head.table_name}/${head.record_id}:`, err);
+        idx++;
+        continue;
+      }
+      const sig = keySignature(headPayload);
+      const run: ParsedInsert[] = [{ item: head, payload: headPayload }];
+      idx++;
       while (idx < pending.length) {
         const it = pending[idx];
         if (it.operation !== "INSERT" || it.table_name !== head.table_name) break;
         let payload: Record<string, unknown>;
         try {
           payload = JSON.parse(it.payload);
-        } catch (err) {
-          // Malformed payload — unbatchable. Let it end the run; if it's the
-          // head, skip it here (it can never push) exactly like the old
-          // per-item catch did.
-          if (run.length === 0) {
-            console.warn(`Sync push failed for ${it.table_name}/${it.record_id}:`, err);
-            idx++;
-          }
+        } catch {
+          // Ends the run; the malformed item becomes the next head, where
+          // the parse failure is warned and skipped.
           break;
         }
-        const s = keySignature(payload);
-        if (sig === null) sig = s;
-        else if (s !== sig) break;
+        if (keySignature(payload) !== sig) break;
         run.push({ item: it, payload });
         idx++;
       }
-      if (run.length > 0) {
-        synced += await pushInsertRun(db, tableName, run);
-      }
+      synced += await pushInsertRun(db, tableName, run);
       continue;
     }
 
@@ -182,9 +197,12 @@ export async function pushPendingChanges(): Promise<number> {
           if (!data || data.length === 0) {
             // Remote row is newer (this edit already lost the conflict) or
             // was deleted — the UPDATE can never apply, so drop it instead
-            // of retrying it on every future sync forever. The next pull
-            // reconciles the local row. Network errors take the throw path
-            // above and stay queued for retry.
+            // of retrying it on every future sync forever. Network errors
+            // take the throw path above and stay queued for retry. For
+            // non-windowed tables the next pull reconciles the local row;
+            // for windowed ones (transactions) a row that has aged out of
+            // the pull window keeps the losing local edit — same end state
+            // as the old retry-forever behavior, minus the round-trips.
             console.warn(
               `Dropping unappliable UPDATE for ${tableName}/${head.record_id}: remote is newer or missing`
             );
