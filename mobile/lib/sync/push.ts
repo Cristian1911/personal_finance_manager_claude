@@ -120,6 +120,7 @@ export async function pushPendingChanges(options?: {
   shouldAbort?: () => boolean;
 }): Promise<number> {
   const shouldAbort = options?.shouldAbort;
+  if (shouldAbort?.()) return 0;
   const db = await getDatabase();
 
   const pending = await db.getAllAsync<SyncQueueItem>(
@@ -151,9 +152,14 @@ export async function pushPendingChanges(options?: {
       try {
         headPayload = JSON.parse(head.payload);
       } catch (err) {
-        // Malformed payload can never push — warn and skip, like the old
-        // per-item catch did.
-        console.warn(`Sync push failed for ${head.table_name}/${head.record_id}:`, err);
+        // Malformed payload can never parse on any future run either —
+        // mark it synced (dropped) so it doesn't retry forever as a
+        // poison pill, unlike transient network errors which stay queued.
+        console.warn(
+          `Dropping malformed sync payload for ${head.table_name}/${head.record_id}:`,
+          err
+        );
+        await markSynced(db, head.id).catch(() => {});
         idx++;
         continue;
       }
@@ -179,10 +185,24 @@ export async function pushPendingChanges(options?: {
       continue;
     }
 
-    // UPDATE / DELETE / REPLACE — one item at a time.
+    // UPDATE / DELETE / REPLACE — one item at a time. Parse outside the push
+    // try/catch: a malformed payload can never parse on a future run either,
+    // so it gets dropped (marked synced) instead of retrying forever, while
+    // transient push errors below stay queued.
+    let payload: any;
     try {
-      const payload = JSON.parse(head.payload);
+      payload = JSON.parse(head.payload);
+    } catch (err) {
+      console.warn(
+        `Dropping malformed sync payload for ${head.table_name}/${head.record_id}:`,
+        err
+      );
+      await markSynced(db, head.id).catch(() => {});
+      idx++;
+      continue;
+    }
 
+    try {
       switch (head.operation) {
         case "UPDATE": {
           let q = sb.from(tableName).update(payload).eq("id", head.record_id);

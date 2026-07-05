@@ -556,7 +556,9 @@ export async function approveEmailTransaction(
     // pending row imported (non-blocking) so it leaves the queue, and report
     // success — the existing row already represents this transaction.
     if (isUniqueConstraintError(err)) {
-      void markImported(userId, pending.id);
+      void markImported(userId, pending.id).catch((e) => {
+        console.warn("Failed to mark email transaction imported remotely:", e);
+      });
       return { success: true };
     }
     return {
@@ -580,7 +582,11 @@ export async function approveEmailTransaction(
   }
 
   // REMOTE write, non-blocking — return the instant the local writes finish.
-  void markImported(userId, pending.id);
+  // Offline failure is safe: the row stays pending and the idempotency key
+  // blocks a duplicate transaction on the next attempt.
+  void markImported(userId, pending.id).catch((e) => {
+    console.warn("Failed to mark email transaction imported remotely:", e);
+  });
 
   return { success: true };
 }

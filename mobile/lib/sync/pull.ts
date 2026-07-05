@@ -167,6 +167,9 @@ export async function pullAll(options?: {
   shouldAbort?: () => boolean;
 }): Promise<Record<string, number>> {
   const shouldAbort = options?.shouldAbort;
+  if (shouldAbort?.()) {
+    throw new Error("Sync aborted: local data reset in progress");
+  }
   const db = await getDatabase();
   const counts: Record<string, number> = {};
 
