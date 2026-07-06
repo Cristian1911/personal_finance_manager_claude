@@ -366,19 +366,21 @@ export function TransactionQuickActions({
     if (!linkedRecurring) return;
     const occurrenceId = linkedRecurring.occurrenceId;
     // A payment registered from Plan created its transaction — reverting it
-    // deletes that transaction, so confirm first. Manual links only detach the
-    // pre-existing transaction, so they run immediately.
+    // deletes that transaction, so confirm first via the AlertDialog. Manual
+    // links only detach the pre-existing transaction, so they run immediately.
     const willDeleteTransaction = !linkedRecurring.linkedManually;
     if (willDeleteTransaction && !confirmRevertOpen) {
       setConfirmRevertOpen(true);
       return;
     }
-    setConfirmRevertOpen(false);
-    setRecurringActionsOpen(false);
-    setMoreOpen(false);
     startLinkTransition(async () => {
       const result = await revertOccurrence(occurrenceId);
       if (result.success) {
+        // Close the overlays only on success: the loading state stays visible
+        // during the request, and a failure keeps the user in context to retry.
+        setConfirmRevertOpen(false);
+        setRecurringActionsOpen(false);
+        setMoreOpen(false);
         setIsLinkedRecurring(false);
         setLinkedRecurring(undefined);
         toast.success(
@@ -386,6 +388,8 @@ export function TransactionQuickActions({
             ? "Pago deshecho y transacción eliminada"
             : "Transacción desvinculada de la recurrente",
         );
+        // Refresh so a deleted transaction drops out of the current list.
+        router.refresh();
       } else {
         toast.error(result.error ?? "No se pudo desasociar");
       }
@@ -733,12 +737,13 @@ export function TransactionQuickActions({
               disabled={isLinking}
               onClick={(e) => {
                 // Keep the dialog logic in our handler; prevent the default
-                // auto-close so the pending state stays visible until done.
+                // auto-close so the pending state stays visible and the dialog
+                // only closes once the revert succeeds.
                 e.preventDefault();
                 handleDissociateRecurring();
               }}
             >
-              Eliminar transacción
+              {isLinking ? "Eliminando…" : "Eliminar transacción"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
