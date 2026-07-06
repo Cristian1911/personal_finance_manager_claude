@@ -25,19 +25,29 @@ const IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
 let googleConfigured = false;
 function configureGoogle() {
   if (googleConfigured) return;
-  // Guard: these EXPO_PUBLIC vars must be injected into the build (eas.json env
-  // or EAS dashboard). If they're only in local .env they inline to undefined in
+  // Guard: the WEB client id is the token audience Supabase validates and is
+  // required on BOTH platforms. It must be injected into the build (eas.json env
+  // or EAS dashboard). If it's only in a local .env it inlines to undefined in
   // built binaries → GoogleSignin.configure({ undefined }) → DEVELOPER_ERROR.
-  if (!WEB_CLIENT_ID || !IOS_CLIENT_ID) {
+  // The iOS client id is only needed on iOS, so don't let a missing one disable
+  // Google sign-in on Android.
+  if (!WEB_CLIENT_ID) {
     console.warn(
-      "[google-signin] Missing EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID / _IOS_CLIENT_ID — " +
-        "Google sign-in will fail in this build. Add them to eas.json build profile env."
+      "[google-signin] Missing EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID — " +
+        "Google sign-in will fail in this build. Add it to the eas.json build profile env."
+    );
+    return;
+  }
+  if (Platform.OS === "ios" && !IOS_CLIENT_ID) {
+    console.warn(
+      "[google-signin] Missing EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID — " +
+        "Google sign-in will fail on iOS. Add it to the eas.json build profile env."
     );
     return;
   }
   GoogleSignin.configure({
     webClientId: WEB_CLIENT_ID, // token audience Supabase validates
-    iosClientId: IOS_CLIENT_ID,
+    ...(IOS_CLIENT_ID ? { iosClientId: IOS_CLIENT_ID } : {}),
   });
   googleConfigured = true;
 }
