@@ -35,6 +35,10 @@ export type StatementOccurrenceInput = {
  * Counting is scoped per statement (via importKey's statementIndex prefix) so
  * the same movement appearing in TWO uploaded statements — overlapping periods
  * or a re-selected file — still deduplicates occurrence-for-occurrence.
+ *
+ * Cross-statement pairing of 2+ identical rows assumes each parser emits rows
+ * in a stable order (bank statements are chronological), so occurrence #n in
+ * one upload is the same movement as occurrence #n in another.
  */
 export function assignStatementOccurrenceIndexes(
   transactions: StatementOccurrenceInput[]

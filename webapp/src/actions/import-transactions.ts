@@ -523,6 +523,34 @@ function chunkArray<T>(items: T[], size: number): T[][] {
 }
 
 /**
+ * Page through a PostgREST query that may exceed Supabase's `max_rows` (1000).
+ * Without this, an unbounded scan silently caps at 1000 rows — for balance
+ * anchoring that means replaying only PART of the post-cutoff movements and
+ * persisting a wrong balance. `fetchPage` must apply a stable ORDER BY so
+ * `.range()` windows don't overlap.
+ */
+const POSTGREST_PAGE_SIZE = 1000;
+async function fetchAllPages<T>(
+  fetchPage: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+  maxPages = 20,
+): Promise<{ rows: T[]; errorMessage: string | null; truncated: boolean }> {
+  const rows: T[] = [];
+  for (let page = 0; page < maxPages; page++) {
+    const from = page * POSTGREST_PAGE_SIZE;
+    const { data, error } = await fetchPage(from, from + POSTGREST_PAGE_SIZE - 1);
+    if (error) return { rows, errorMessage: error.message, truncated: false };
+    rows.push(...(data ?? []));
+    if (!data || data.length < POSTGREST_PAGE_SIZE) {
+      return { rows, errorMessage: null, truncated: false };
+    }
+  }
+  return { rows, errorMessage: null, truncated: true };
+}
+
+/**
  * Minimal occurrence candidate used to gate the expensive per-transaction
  * occurrence-linking path during import. We fetch these ONCE for the whole
  * batch instead of issuing 1–3 queries per transaction inside the loop.
@@ -933,17 +961,30 @@ async function processStatementMeta(params: {
       const finalBalance = meta.summary!.final_balance!;
       const accountLabel = account?.name ?? meta.accountId;
       if (meta.periodTo) {
-        const { data: postCutoffTxs, error: postCutoffError } = await supabase
-          .from("transactions")
-          .select("amount, direction, raw_description")
-          .eq("user_id", userId)
-          .eq("account_id", meta.accountId)
-          .eq("currency_code", meta.currency as CurrencyCode)
-          .eq("is_excluded", false)
-          .is("reconciled_into_transaction_id", null)
-          .gt("transaction_date", meta.periodTo);
+        const {
+          rows: postCutoffTxs,
+          errorMessage: postCutoffError,
+          truncated: postCutoffTruncated,
+        } = await fetchAllPages<{
+          amount: number;
+          direction: "INFLOW" | "OUTFLOW";
+          raw_description: string | null;
+        }>((from, to) =>
+          supabase
+            .from("transactions")
+            .select("amount, direction, raw_description")
+            .eq("user_id", userId)
+            .eq("account_id", meta.accountId)
+            .eq("currency_code", meta.currency as CurrencyCode)
+            .eq("is_excluded", false)
+            .is("reconciled_into_transaction_id", null)
+            .gt("transaction_date", meta.periodTo!)
+            .order("transaction_date", { ascending: true })
+            .order("id", { ascending: true })
+            .range(from, to),
+        );
 
-        if (postCutoffError) {
+        if (postCutoffError || postCutoffTruncated) {
           // Can't know what happened after the cutoff — never stomp the live
           // balance with a stale statement figure.
           savingsAnchor = { keepExisting: true, balance: null, postCutoffCount: 0 };
@@ -954,7 +995,7 @@ async function processStatementMeta(params: {
           savingsAnchor = anchorStatementBalance({
             finalBalance,
             accountType: account?.account_type ?? "SAVINGS",
-            postCutoffTransactions: (postCutoffTxs ?? []).map((tx) => ({
+            postCutoffTransactions: postCutoffTxs.map((tx) => ({
               amount: Number(tx.amount),
               direction: tx.direction,
               rawDescription: tx.raw_description,
@@ -978,22 +1019,33 @@ async function processStatementMeta(params: {
       // previous_balance → final_balance. A mismatch means duplicated or
       // missing movements — surfaced instead of silently drifting.
       if (meta.periodFrom && meta.periodTo && meta.summary?.previous_balance != null) {
-        const { data: periodTxs, error: periodError } = await supabase
-          .from("transactions")
-          .select("amount, direction")
-          .eq("user_id", userId)
-          .eq("account_id", meta.accountId)
-          .eq("currency_code", meta.currency as CurrencyCode)
-          .eq("is_excluded", false)
-          .is("reconciled_into_transaction_id", null)
-          .gte("transaction_date", meta.periodFrom)
-          .lte("transaction_date", meta.periodTo);
-        if (!periodError) {
+        const {
+          rows: periodTxs,
+          errorMessage: periodError,
+          truncated: periodTruncated,
+        } = await fetchAllPages<{ amount: number; direction: "INFLOW" | "OUTFLOW" }>(
+          (from, to) =>
+            supabase
+              .from("transactions")
+              .select("amount, direction")
+              .eq("user_id", userId)
+              .eq("account_id", meta.accountId)
+              .eq("currency_code", meta.currency as CurrencyCode)
+              .eq("is_excluded", false)
+              .is("reconciled_into_transaction_id", null)
+              .gte("transaction_date", meta.periodFrom!)
+              .lte("transaction_date", meta.periodTo!)
+              .order("transaction_date", { ascending: true })
+              .order("id", { ascending: true })
+              .range(from, to),
+        );
+        // A partial read would produce a false ⚠️/✓ — skip validation instead.
+        if (!periodError && !periodTruncated) {
           const validation = validateStatementPeriodBalance({
             previousBalance: meta.summary.previous_balance,
             finalBalance,
             accountType: account?.account_type ?? "SAVINGS",
-            periodTransactions: (periodTxs ?? []).map((tx) => ({
+            periodTransactions: periodTxs.map((tx) => ({
               amount: Number(tx.amount),
               direction: tx.direction,
             })),
@@ -1420,11 +1472,14 @@ export async function importTransactions(
   //    per-merge `.maybeSingle()` was a sequential round-trip per duplicate —
   //    with dozens of merges it dominated the import's wall-clock. ──
   const decisionCandidateMap = new Map<string, ReconciliationCandidate>();
-  let decisionCandidateLookupFailed = false;
+  // Failure is tracked per candidate id (not one global flag): a single
+  // failed chunk must not misclassify legitimately-absent candidates from
+  // the chunks that succeeded.
+  const failedCandidateIds = new Set<string>();
   if (candidateIds.length > 0) {
-    const uniqueCandidateIds = [...new Set(candidateIds)];
+    const candidateChunks = chunkArray([...new Set(candidateIds)], 100);
     const candidateResults = await Promise.all(
-      chunkArray(uniqueCandidateIds, 100).map((chunk) =>
+      candidateChunks.map((chunk) =>
         supabase
           .from("transactions")
           .select(
@@ -1435,19 +1490,19 @@ export async function importTransactions(
           .in("id", chunk),
       ),
     );
-    for (const { data: candidateRows, error: candidateErr } of candidateResults) {
+    candidateResults.forEach(({ data: candidateRows, error: candidateErr }, chunkIndex) => {
       if (candidateErr) {
-        decisionCandidateLookupFailed = true;
+        for (const id of candidateChunks[chunkIndex]) failedCandidateIds.add(id);
         console.error(
           "[importTransactions] decision-candidate lookup failed:",
           candidateErr.message,
         );
-        continue;
+        return;
       }
       for (const row of candidateRows ?? []) {
         decisionCandidateMap.set(row.id, row as ReconciliationCandidate);
       }
-    }
+    });
   }
 
   // ── 7. Post-insert pass: auto-tags, occurrence linking, reconciliation.
@@ -1509,17 +1564,19 @@ export async function importTransactions(
       continue;
     }
 
+    if (failedCandidateIds.has(decision.candidateTransactionId)) {
+      // This candidate's lookup chunk errored — we can't tell "already
+      // reconciled" from "lookup failed", so surface it instead of silently
+      // keeping both.
+      errors++;
+      details.push(
+        `Reconciliación: ${tx.raw_description}: no se pudo verificar la transacción duplicada.`,
+      );
+      continue;
+    }
+
     const existingTx = decisionCandidateMap.get(decision.candidateTransactionId);
     if (!existingTx) {
-      if (decisionCandidateLookupFailed) {
-        // The batch lookup errored — we can't tell "already reconciled" from
-        // "lookup failed", so surface it instead of silently keeping both.
-        errors++;
-        details.push(
-          `Reconciliación: ${tx.raw_description}: no se pudo verificar la transacción duplicada.`,
-        );
-        continue;
-      }
       balanceDeltaTxs.push(tx);
       leftAsSeparate++;
       continue;
