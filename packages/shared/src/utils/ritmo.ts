@@ -66,7 +66,10 @@ export function deriveRitmoStatus(ritmo: Pick<RitmoResult, "availableTotal" | "s
 export interface RitmoDailyOutflow {
   /** YYYY-MM-DD. */
   date: string;
-  /** Sum of OUTFLOW amounts on this day (excluded + reconciled + transfer rows already removed). */
+  /** Sum of OUTFLOW amounts on this day from LIQUID accounts only —
+   *  excluded + reconciled + transfer + debt-account (credit card / loan)
+   *  rows already removed by the caller. Must match `liquidBalance`'s
+   *  account set: the budget and the spend track the same money. */
   expense: number;
 }
 

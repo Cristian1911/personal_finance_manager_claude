@@ -31,7 +31,7 @@ export interface QuickViewData {
 export async function getQuickViewData(): Promise<QuickViewData> {
   const [hero, dailySpending, budgetSummary, pendingReminders] = await Promise.all([
     getDashboardHeroData(),
-    getDailySpending(),
+    getDailySpending(undefined, undefined, { liquidOnly: true }),
     getBudgetSummary(),
     getReminders("pending"),
   ]);

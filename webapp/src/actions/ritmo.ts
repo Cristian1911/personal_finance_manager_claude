@@ -51,11 +51,15 @@ export async function getRitmo(
     const usedCurrency = (currency ?? "COP") as CurrencyCode;
 
     // Reuse getDailySpending so the hero shares the canonical
-    // filtering with the charts page (currency_code, transfer_group_id,
+    // filtering with the rest of the app (currency_code, transfer_group_id,
     // demo scope) — avoids parallel "almost the same" SQL diverging.
+    // liquidOnly: computeRitmo budgets against the LIQUID balance
+    // (CHECKING/SAVINGS/CASH), so its outflow series must count only money
+    // that left those accounts — a credit-card purchase doesn't reduce the
+    // liquid balance and must not eat the daily allowance.
     const [heroData, dailySpending] = await Promise.all([
       getDashboardHeroData(month, usedCurrency),
-      getDailySpending(month, usedCurrency),
+      getDailySpending(month, usedCurrency, { liquidOnly: true }),
     ]);
     const dailyOutflows = dailySpending.map((d) => ({
       date: d.date,
