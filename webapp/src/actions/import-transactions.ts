@@ -1462,6 +1462,11 @@ export async function importTransactions(
     merged: ReturnType<typeof mergeTransactionMetadata>;
   };
   const mergeOps: MergeOp[] = [];
+  // The old per-merge re-query filtered `reconciled_into_transaction_id IS
+  // NULL`, so a candidate claimed by an earlier merge in the same run came
+  // back null for the next one. The batched snapshot is taken once, so that
+  // guard must be replayed locally: a candidate can be claimed exactly once.
+  const claimedCandidateIds = new Set<string>();
 
   for (const { tx, key, index } of toInsert) {
     const insertedTx = insertedByKey.get(key);
@@ -1496,6 +1501,14 @@ export async function importTransactions(
       continue;
     }
 
+    if (claimedCandidateIds.has(decision.candidateTransactionId)) {
+      // Another imported row already merged into this candidate — keep this
+      // one as a separate transaction (matches the old sequential behavior).
+      balanceDeltaTxs.push(tx);
+      leftAsSeparate++;
+      continue;
+    }
+
     const existingTx = decisionCandidateMap.get(decision.candidateTransactionId);
     if (!existingTx) {
       if (decisionCandidateLookupFailed) {
@@ -1521,6 +1534,7 @@ export async function importTransactions(
       capture_method: captureMethod,
     });
 
+    claimedCandidateIds.add(existingTx.id);
     mergeOps.push({
       insertedId: insertedTx.id,
       existingId: existingTx.id,
