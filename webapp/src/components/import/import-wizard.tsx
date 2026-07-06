@@ -381,6 +381,7 @@ export function ImportWizard({
         {step === "review" && parseResult && !isLoanOnly && (
           <StepReview
             parseResult={parseResult}
+            captureMethod={effectiveCaptureMethod}
             accounts={accountsList}
             mappings={mappings}
             destinatarioRules={destinatarioRules}

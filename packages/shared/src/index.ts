@@ -17,6 +17,7 @@ export * from "./utils/debt-stats";
 export * from "./utils/debt-trend";
 export * from "./utils/purchase-decision";
 export * from "./utils/snapshot-diff";
+export * from "./utils/statement-import";
 export * from "./utils/destinatario-matcher";
 export * from "./utils/scenario-types";
 export * from "./utils/scenario-engine";

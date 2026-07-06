@@ -42,6 +42,15 @@ server {
     location / {
         proxy_pass http://webapp;
         proxy_http_version 1.1;
+
+        # PDF parse + import requests legitimately run past nginx's 60s default
+        # proxy_read_timeout (parser can take up to 120s; the webapp's internal
+        # fetch already allows 120s). Keep nginx above that ceiling so it never
+        # kills the request before the app's own timeouts fire.
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 180s;
+        proxy_read_timeout 180s;
+
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;

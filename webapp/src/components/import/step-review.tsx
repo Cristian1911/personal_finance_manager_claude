@@ -8,6 +8,7 @@ import {
   type DestinatarioRule,
 } from "@zeta/shared";
 import { previewImportReconciliation } from "@/actions/import-transactions";
+import type { TransactionCaptureMethod } from "@/types/domain";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -46,6 +47,7 @@ type ContinuePayload = {
 
 type Props = {
   parseResult: ParseResponse;
+  captureMethod: TransactionCaptureMethod;
   accounts: Account[];
   mappings: StatementAccountMapping[];
   destinatarioRules: DestinatarioRule[];
@@ -57,6 +59,7 @@ type Props = {
 
 export function StepReview({
   parseResult,
+  captureMethod,
   accounts,
   mappings,
   destinatarioRules,
@@ -341,6 +344,7 @@ export function StepReview({
     try {
       const transactions = await buildTransactions();
       const preview = await previewImportReconciliation(
+        captureMethod,
         transactions.map((item) => {
           const [statementIndex, transactionIndex] = (item.import_key ?? "0:0")
             .split(":")

@@ -1,6 +1,6 @@
 import { differenceInCalendarDays } from "date-fns";
 import type { CategorizationSource, TransactionCaptureMethod, TransactionDirection } from "../types/domain";
-import { resolveAuthorityWinner } from "./capture-hierarchy";
+import { getCaptureTier, isBankVerifiedCapture, resolveAuthorityWinner } from "./capture-hierarchy";
 
 export type ReconciliationCandidate = {
   id: string;
@@ -163,6 +163,26 @@ export function scoreReconciliationCandidate(
   if (score >= 0.9) decision = "AUTO_MERGE";
   else if (score >= 0.75) decision = "REVIEW";
 
+  // User-entered candidates near a bank-verified import's amount on the same
+  // or adjacent day are the "manual estimate" class: the user typed an
+  // approximate figure (e.g. a loan prepayment entered as 1,651,641 that the
+  // bank settled as 1,607,046) and the bank row's text is generic ("PAGO
+  // CREDITO SUC VIRTUAL"), so text similarity can never rescue the score.
+  // Without this floor the pair lands below 0.75 and the duplicate is
+  // silently kept — the June-2026 savings import kept 10.1M of doubles this
+  // way. Floor at REVIEW only (never AUTO_MERGE): the user decides.
+  if (
+    decision === "NO_MATCH" &&
+    importTx.capture_method != null &&
+    candidate.capture_method != null &&
+    isBankVerifiedCapture(importTx.capture_method) &&
+    getCaptureTier(candidate.capture_method) === 3 &&
+    amountPctDiff <= 0.03 &&
+    daysDiff <= 1
+  ) {
+    decision = "REVIEW";
+  }
+
   return {
     candidateId: candidate.id,
     score: Number(score.toFixed(4)),
@@ -176,13 +196,24 @@ export function findReconciliationCandidates(
   importTx: ImportTransactionForReconciliation,
   candidates: ReconciliationCandidate[]
 ): RankedReconciliationResult {
-  const ranked = candidates
+  let ranked = candidates
     .map((candidate) => scoreReconciliationCandidate(importTx, candidate))
     .filter((value): value is ReconciliationMatch => value !== null)
     .sort((a, b) => b.score - a.score);
 
   if (ranked.length === 0) {
     return { bestMatch: null, ranked: [] };
+  }
+
+  // An actionable candidate (REVIEW/AUTO_MERGE) must never be shadowed by a
+  // higher-raw-score NO_MATCH: the REVIEW floor changes decision without
+  // touching score, so a floored duplicate at 0.60 would otherwise lose
+  // bestMatch to an unrelated 0.65 NO_MATCH and be silently discarded —
+  // consumers only look at bestMatch. NO_MATCH candidates always score
+  // < 0.75, so this can never displace a threshold-earned REVIEW/AUTO_MERGE.
+  const actionable = ranked.find((match) => match.decision !== "NO_MATCH");
+  if (actionable && actionable !== ranked[0]) {
+    ranked = [actionable, ...ranked.filter((match) => match !== actionable)];
   }
 
   const best = ranked[0];

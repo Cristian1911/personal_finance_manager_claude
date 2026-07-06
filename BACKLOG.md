@@ -10,6 +10,13 @@
 
 ---
 
+## Savings import overhaul (PR #362, 2026-07-06) — follow-ups
+
+- [ ] Refactor: colapsar los dos call sites de `fetchAllPages` en `processStatementMeta` (mismos filtros, solo cambian select y bounds de fecha) en un helper `fetchAccountTxs`; idealmente extraer el bloque de anclaje+validación (~140 líneas) a `resolveSavingsBalance()`.
+- [ ] Refactor: calcular un único `anchoredBalance: number | null` tras el bloque de anclaje y usarlo en los dos sitios de escritura (currency_balances + current_balance) — elimina los fallbacks `?? meta.summary.final_balance` inalcanzables y los `!` dobles.
+- [ ] Refactor: helper privado `replayBalanceDeltas()` en `statement-import.ts` — `anchorStatementBalance` y `validateStatementPeriodBalance` duplican el mismo fold + redondeo.
+- [ ] Hueco conocido de dedup: correo tier-2 con fecha corrida ≥2 días y texto distinto a la fila del PDF sigue bajo el umbral REVIEW; la garantía de saldo lo delata pero no lo empareja. Evaluar piso para tier-2 con monto exacto.
+
 ## Recurrentes fix (PR #357, 2026-07-04) — follow-ups
 
 - [ ] **Chunk del `.in()` en la poda de ocurrencias** — `ensureOccurrencesForRange` embebe `prunableIds`/`staleIds` en el query string de PostgREST sin límite; con muchísimas plantillas podría exceder el largo de URL. Baja probabilidad (candidatos acotados por rango). Trocear en lotes como hardening. (server-action-reviewer, MEDIUM)

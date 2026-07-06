@@ -5,10 +5,17 @@ import { addDays, parseISO } from "date-fns";
 import { toColombiaDateString } from "@/lib/utils/date";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import {
+  anchorStatementBalance,
+  assignStatementOccurrenceIndexes,
   computeSnapshotDiffs,
   findReconciliationCandidates,
   isBankVerifiedCapture,
   mergeTransactionMetadata,
+  occurrenceAmountMatches,
+  validateStatementPeriodBalance,
+  MANUAL_BALANCE_ADJUSTMENT_PREFIX,
+  OCCURRENCE_AUTO_LINK_DAY_WINDOW,
+  type AnchoredBalanceResult,
   type ReconciliationCandidate,
 } from "@zeta/shared";
 import type { TransactionCaptureMethod } from "@/types/domain";
@@ -38,7 +45,7 @@ type DebtKind = "credit_card" | "loan";
 type CurrencyCode = Database["public"]["Enums"]["currency_code"];
 type ImportedAccountRow = Pick<
   Database["public"]["Tables"]["accounts"]["Row"],
-  "id" | "name" | "currency_code" | "currency_balances" | "account_type" | "is_payroll_deducted"
+  "id" | "name" | "currency_code" | "currency_balances" | "account_type" | "is_payroll_deducted" | "current_balance"
 >;
 type StatementSnapshotSyncRow = Pick<
   Database["public"]["Tables"]["statement_snapshots"]["Row"],
@@ -474,9 +481,14 @@ async function fetchReconciliationCandidates(
   const accountIds = [...new Set(transactions.map((tx) => tx.account_id))];
   if (accountIds.length === 0) return new Map();
 
+  // Widen the window by the scorer's ±3-day tolerance: a manual transaction
+  // dated just outside the statement's edges (e.g. May 31 vs statement's
+  // June 1 posting) must still surface as a duplicate candidate.
   const dateValues = transactions.map((tx) => tx.transaction_date).sort();
-  const from = dateValues[0];
-  const to = dateValues[dateValues.length - 1];
+  const from = toColombiaDateString(addDays(parseISO(dateValues[0] + "T12:00:00"), -3));
+  const to = toColombiaDateString(
+    addDays(parseISO(dateValues[dateValues.length - 1] + "T12:00:00"), 3),
+  );
 
   const { data, error } = await supabase
     .from("transactions")
@@ -511,6 +523,34 @@ function chunkArray<T>(items: T[], size: number): T[][] {
 }
 
 /**
+ * Page through a PostgREST query that may exceed Supabase's `max_rows` (1000).
+ * Without this, an unbounded scan silently caps at 1000 rows — for balance
+ * anchoring that means replaying only PART of the post-cutoff movements and
+ * persisting a wrong balance. `fetchPage` must apply a stable ORDER BY so
+ * `.range()` windows don't overlap.
+ */
+const POSTGREST_PAGE_SIZE = 1000;
+async function fetchAllPages<T>(
+  fetchPage: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+  maxPages = 20,
+): Promise<{ rows: T[]; errorMessage: string | null; truncated: boolean }> {
+  const rows: T[] = [];
+  for (let page = 0; page < maxPages; page++) {
+    const from = page * POSTGREST_PAGE_SIZE;
+    const { data, error } = await fetchPage(from, from + POSTGREST_PAGE_SIZE - 1);
+    if (error) return { rows, errorMessage: error.message, truncated: false };
+    rows.push(...(data ?? []));
+    if (!data || data.length < POSTGREST_PAGE_SIZE) {
+      return { rows, errorMessage: null, truncated: false };
+    }
+  }
+  return { rows, errorMessage: null, truncated: true };
+}
+
+/**
  * Minimal occurrence candidate used to gate the expensive per-transaction
  * occurrence-linking path during import. We fetch these ONCE for the whole
  * batch instead of issuing 1–3 queries per transaction inside the loop.
@@ -519,6 +559,7 @@ type OccurrenceGateCandidate = {
   accountId: string;
   transferSourceAccountId: string | null;
   direction: "INFLOW" | "OUTFLOW";
+  destinatarioId: string | null;
   occurrenceDate: string;
   expectedAmount: number;
 };
@@ -547,7 +588,7 @@ async function fetchOccurrenceGateCandidates(
     .select(
       `occurrence_date, expected_amount, status,
        template:recurring_transaction_templates!recurring_occurrences_template_id_fkey!inner(
-         account_id, transfer_source_account_id, direction, is_active
+         account_id, transfer_source_account_id, direction, is_active, destinatario_id
        )`,
     )
     .eq("user_id", userId)
@@ -567,12 +608,14 @@ async function fetchOccurrenceGateCandidates(
       transfer_source_account_id: string | null;
       direction: "INFLOW" | "OUTFLOW";
       is_active: boolean;
+      destinatario_id: string | null;
     } | null }).template;
     if (!template || template.is_active === false) continue;
     candidates.push({
       accountId: template.account_id,
       transferSourceAccountId: template.transfer_source_account_id,
       direction: template.direction,
+      destinatarioId: template.destinatario_id,
       occurrenceDate: row.occurrence_date,
       expectedAmount: row.expected_amount,
     });
@@ -581,12 +624,18 @@ async function fetchOccurrenceGateCandidates(
 }
 
 /**
- * Cheap, deliberately-loose pre-check: is there any occurrence this transaction
- * could plausibly link to? The thresholds are a SUPERSET of the authoritative
- * matcher in `findMatchingOccurrence`/`swapPhantomOccurrenceIfMatched`
- * (date ±4d ⊇ ±3d, amount ±50% ⊇ the 1% direct / 50% anchored bands) so we
- * never skip a transaction that would have matched — we only skip ones that
- * provably cannot, saving the per-transaction round-trips.
+ * Cheap pre-check: is there any occurrence this transaction could link to?
+ * Uses the SAME shared tolerances as the authoritative matcher in
+ * `findMatchingOccurrence`/`swapPhantomOccurrenceIfMatched` — ±3 days
+ * (OCCURRENCE_AUTO_LINK_DAY_WINDOW) and `occurrenceAmountMatches` (1% direct,
+ * 50% only when the destinatario anchor holds) — so it never skips a
+ * transaction that would have matched.
+ *
+ * The bands MUST stay tight: an earlier ±4d/±51%-for-everything version let
+ * dozens of small statement rows through on accounts with small recurring
+ * templates (subscriptions), and each false-plausible burned 3-4 sequential
+ * round-trips inside linkTransactionToOccurrence — the main reason a 240-row
+ * savings import crawled past the proxy timeout.
  */
 function hasPlausibleOccurrence(
   tx: TransactionToImport,
@@ -598,26 +647,43 @@ function hasPlausibleOccurrence(
   const txTime = parseISO(tx.transaction_date + "T12:00:00").getTime();
   for (const occ of candidates) {
     const occTime = parseISO(occ.occurrenceDate + "T12:00:00").getTime();
+    // Colombia has no DST, so noon-to-noon diffs are exact calendar days —
+    // equivalent to the matcher's addDays(±window) date-range filter.
     const dayDiff = Math.abs(occTime - txTime) / 86_400_000;
-    if (dayDiff > 4) continue;
-
-    const within =
-      occ.expectedAmount > 0 &&
-      Math.abs(occ.expectedAmount - tx.amount) / occ.expectedAmount <= 0.51;
-    if (!within) continue;
+    if (dayDiff > OCCURRENCE_AUTO_LINK_DAY_WINDOW) continue;
 
     const directMatch =
       occ.accountId === tx.account_id && occ.direction === tx.direction;
+    if (directMatch) {
+      if (occurrenceAmountMatches(occ.expectedAmount, tx.amount, false)) return true;
+      const anchored =
+        !!tx.destinatario_id && tx.destinatario_id === occ.destinatarioId;
+      if (anchored && occurrenceAmountMatches(occ.expectedAmount, tx.amount, true)) {
+        return true;
+      }
+      continue;
+    }
+
     const crossMatch =
       tx.direction === "OUTFLOW" &&
       occ.direction === "INFLOW" &&
       occ.transferSourceAccountId === tx.account_id;
-    if (directMatch || crossMatch) return true;
+    if (crossMatch && occurrenceAmountMatches(occ.expectedAmount, tx.amount, false)) {
+      return true;
+    }
   }
   return false;
 }
 
+const PREVIEW_CAPTURE_METHODS = new Set<TransactionCaptureMethod>([
+  "PDF_IMPORT",
+  "EMAIL_PDF_IMPORT",
+  "OCR_BATCH",
+  "OCR_SINGLE",
+]);
+
 export async function previewImportReconciliation(
+  captureMethod: TransactionCaptureMethod,
   items: Array<{
     statementIndex: number;
     transactionIndex: number;
@@ -626,6 +692,13 @@ export async function previewImportReconciliation(
 ): Promise<ReconciliationPreviewResult> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { autoMerge: [], review: [], unmatched: [] };
+
+  // Client-provided — clamp to the import-wizard surface. OCR screenshots
+  // are tier 2 and must NOT inherit the tier-1-only REVIEW floor; anything
+  // unrecognized falls back to OCR_BATCH (the non-floor default) so a stale
+  // caller can never widen the floor's scope.
+  const effectiveCaptureMethod: TransactionCaptureMethod =
+    PREVIEW_CAPTURE_METHODS.has(captureMethod) ? captureMethod : "OCR_BATCH";
 
   let groupedCandidates: Map<string, ReconciliationCandidate[]>;
   try {
@@ -644,7 +717,13 @@ export async function previewImportReconciliation(
 
   for (const { statementIndex, transactionIndex, importedTransaction } of items) {
     const candidates = groupedCandidates.get(importedTransaction.account_id) ?? [];
-    const result = findReconciliationCandidates(importedTransaction, candidates);
+    // The client payload doesn't carry capture_method — stamp the wizard's
+    // actual source so the scorer's user-entered-near-match REVIEW floor
+    // fires only for genuinely bank-verified (tier-1) imports.
+    const result = findReconciliationCandidates(
+      { ...importedTransaction, capture_method: effectiveCaptureMethod },
+      candidates,
+    );
     const best = result.bestMatch;
 
     if (!best) {
@@ -706,6 +785,8 @@ async function processStatementMeta(params: {
   statementMeta?: StatementMetaForImport[];
   details: string[];
   captureMethod: TransactionCaptureMethod;
+  /** Earliest transaction date per statementIndex — used to detect boundary-day overlap. */
+  statementMinTxDate?: Map<number, string>;
 }): Promise<{ accountUpdates: AccountUpdateResult[]; errors: number }> {
   const { supabase, userId, imported, skipped, statementMeta, details } = params;
   const accountUpdates: AccountUpdateResult[] = [];
@@ -722,7 +803,7 @@ async function processStatementMeta(params: {
   const uniqueAccountIds = [...new Set(statementMeta.map((m) => m.accountId))];
   const { data: accountRows } = await supabase
     .from("accounts")
-    .select("id, name, currency_code, currency_balances, account_type, is_payroll_deducted")
+    .select("id, name, currency_code, currency_balances, account_type, is_payroll_deducted, current_balance")
     .eq("user_id", userId)
     .in("id", uniqueAccountIds);
   const accountMap = new Map(
@@ -889,6 +970,136 @@ async function processStatementMeta(params: {
       continue;
     }
 
+    const account = accountMap.get(meta.accountId);
+
+    // ── Savings balance anchoring ─────────────────────────────────────────
+    // The statement's final balance is the truth AT the cutoff date, not
+    // today. Anchor there and replay the post-cutoff movements the app
+    // already tracks; if the user re-anchored the balance with a manual
+    // adjustment after the cutoff, their balance wins and stays untouched.
+    let savingsAnchor: AnchoredBalanceResult | null = null;
+    const isSavingsStatement =
+      !meta.creditCardMetadata && !meta.loanMetadata && meta.summary?.final_balance != null;
+    if (isSavingsStatement) {
+      const finalBalance = meta.summary!.final_balance!;
+      const accountLabel = account?.name ?? meta.accountId;
+      if (meta.periodTo) {
+        const {
+          rows: postCutoffTxs,
+          errorMessage: postCutoffError,
+          truncated: postCutoffTruncated,
+        } = await fetchAllPages<{
+          amount: number;
+          direction: "INFLOW" | "OUTFLOW";
+          raw_description: string | null;
+        }>((from, to) =>
+          supabase
+            .from("transactions")
+            .select("amount, direction, raw_description")
+            .eq("user_id", userId)
+            .eq("account_id", meta.accountId)
+            .eq("currency_code", meta.currency as CurrencyCode)
+            .eq("is_excluded", false)
+            .is("reconciled_into_transaction_id", null)
+            .gt("transaction_date", meta.periodTo!)
+            .order("transaction_date", { ascending: true })
+            .order("id", { ascending: true })
+            .range(from, to),
+        );
+
+        if (postCutoffError || postCutoffTruncated) {
+          // Can't know what happened after the cutoff — never stomp the live
+          // balance with a stale statement figure.
+          savingsAnchor = { keepExisting: true, balance: null, postCutoffCount: 0 };
+          details.push(
+            `⚠️ ${accountLabel}: no se pudieron verificar los movimientos posteriores al corte — el saldo actual no fue modificado.`,
+          );
+        } else {
+          savingsAnchor = anchorStatementBalance({
+            finalBalance,
+            accountType: account?.account_type ?? "SAVINGS",
+            postCutoffTransactions: postCutoffTxs.map((tx) => ({
+              amount: Number(tx.amount),
+              direction: tx.direction,
+              rawDescription: tx.raw_description,
+            })),
+          });
+          if (savingsAnchor.keepExisting) {
+            details.push(
+              `${accountLabel}: el saldo fue ajustado manualmente después del corte (${meta.periodTo}) — se mantiene el saldo actual de la cuenta.`,
+            );
+          } else if (savingsAnchor.postCutoffCount > 0) {
+            details.push(
+              `${accountLabel}: saldo = corte del extracto (${finalBalance.toLocaleString("es-CO")}) + ${savingsAnchor.postCutoffCount} movimiento(s) posteriores = ${savingsAnchor.balance.toLocaleString("es-CO")}.`,
+            );
+          }
+        }
+      } else {
+        savingsAnchor = { keepExisting: false, balance: finalBalance, postCutoffCount: 0 };
+      }
+
+      // Balance guarantee: the app's movements inside the period must walk
+      // previous_balance → final_balance. A mismatch means duplicated or
+      // missing movements — surfaced instead of silently drifting.
+      if (meta.periodFrom && meta.periodTo && meta.summary?.previous_balance != null) {
+        // Bancolombia's period_from equals the PREVIOUS statement's closing
+        // day: previous_balance already includes that day's movements and
+        // this statement's own rows start the day after. Walking >=
+        // period_from would double-count boundary-day rows imported from the
+        // previous statement (June-2026 case: five May-31 rows → −146,434 of
+        // false mismatch). When the statement itself has no rows on
+        // period_from, start the walk the day after it.
+        const ownMinDate = params.statementMinTxDate?.get(meta.statementIndex);
+        const startExclusive = !!ownMinDate && ownMinDate > meta.periodFrom;
+        const {
+          rows: periodTxs,
+          errorMessage: periodError,
+          truncated: periodTruncated,
+        } = await fetchAllPages<{ amount: number; direction: "INFLOW" | "OUTFLOW" }>(
+          (from, to) => {
+            let query = supabase
+              .from("transactions")
+              .select("amount, direction")
+              .eq("user_id", userId)
+              .eq("account_id", meta.accountId)
+              .eq("currency_code", meta.currency as CurrencyCode)
+              .eq("is_excluded", false)
+              .is("reconciled_into_transaction_id", null);
+            query = startExclusive
+              ? query.gt("transaction_date", meta.periodFrom!)
+              : query.gte("transaction_date", meta.periodFrom!);
+            return query
+              .lte("transaction_date", meta.periodTo!)
+              .order("transaction_date", { ascending: true })
+              .order("id", { ascending: true })
+              .range(from, to);
+          },
+        );
+        // A partial read would produce a false ⚠️/✓ — skip validation instead.
+        if (!periodError && !periodTruncated) {
+          const validation = validateStatementPeriodBalance({
+            previousBalance: meta.summary.previous_balance,
+            finalBalance,
+            accountType: account?.account_type ?? "SAVINGS",
+            periodTransactions: periodTxs.map((tx) => ({
+              amount: Number(tx.amount),
+              direction: tx.direction,
+            })),
+          });
+          if (validation.matches) {
+            details.push(
+              `✓ ${accountLabel}: los movimientos del periodo cuadran con el saldo final del extracto (${finalBalance.toLocaleString("es-CO")}).`,
+            );
+          } else {
+            const sign = validation.difference > 0 ? "sobran" : "faltan";
+            details.push(
+              `⚠️ ${accountLabel}: los movimientos del periodo no cuadran con el extracto — ${sign} ${Math.abs(validation.difference).toLocaleString("es-CO")} ${meta.currency}. Revisa duplicados o movimientos no importados.`,
+            );
+          }
+        }
+      }
+    }
+
     const currencyEntry: Record<string, number | null> = {};
     if (meta.creditCardMetadata) {
       const cc = meta.creditCardMetadata;
@@ -910,13 +1121,24 @@ async function processStatementMeta(params: {
       currencyEntry.interest_rate = normalizedLoanInterestRate;
       currencyEntry.total_payment_due = ln.total_payment_due ?? null;
     } else if (meta.summary?.final_balance != null) {
-      currencyEntry.current_balance = meta.summary.final_balance;
+      if (savingsAnchor?.keepExisting) {
+        // Preserve whatever balance the account already shows for this
+        // currency — the user re-anchored it after the statement cutoff.
+        const existingEntryBalance =
+          pendingBalances.get(meta.accountId)?.[meta.currency]?.current_balance ?? null;
+        currencyEntry.current_balance =
+          existingEntryBalance ??
+          (account?.currency_code === meta.currency && account?.current_balance != null
+            ? Number(account.current_balance)
+            : null);
+      } else {
+        currencyEntry.current_balance = savingsAnchor?.balance ?? meta.summary.final_balance;
+      }
     }
 
     const balances = pendingBalances.get(meta.accountId)!;
     balances[meta.currency] = currencyEntry;
 
-    const account = accountMap.get(meta.accountId);
     const accountUpdate: Record<string, unknown> = {
       last_synced_at: new Date().toISOString(),
     };
@@ -963,9 +1185,10 @@ async function processStatementMeta(params: {
       !meta.creditCardMetadata &&
       !meta.loanMetadata &&
       meta.summary?.final_balance != null &&
-      isPrimaryCurrency
+      isPrimaryCurrency &&
+      !savingsAnchor?.keepExisting
     ) {
-      accountUpdate.current_balance = meta.summary.final_balance;
+      accountUpdate.current_balance = savingsAnchor?.balance ?? meta.summary.final_balance;
     }
 
     accountUpdate.currency_balances = balances;
@@ -1157,10 +1380,28 @@ export async function importTransactions(
   // Use original_amount (full purchase price) for idempotency when available,
   // so re-imports of the same statement produce the same key regardless of
   // whether the parser previously used the full price or now uses the cuota.
+  //
+  // Identical rows WITHIN one statement are distinct real movements (a bank
+  // statement never lists the same movement twice) — the occurrence index
+  // keeps the 2nd/3rd copy from collapsing into the 1st's key and being
+  // silently skipped. Counting is scoped per statement, so the same movement
+  // in two uploaded statements (overlapping periods) still dedups.
+  const occurrenceIndexes = assignStatementOccurrenceIndexes(
+    transactions.map((tx) => ({
+      importKey: tx.import_key,
+      transactionDate: tx.transaction_date,
+      amount: tx.amount,
+      originalAmount: tx.original_amount,
+      rawDescription: tx.raw_description,
+      installmentCurrent: tx.installment_current,
+    })),
+  );
   const idempotencyKeys = await Promise.all(
-    transactions.map((tx) =>
+    transactions.map((tx, index) =>
       computeIdempotencyKey({
         provider: "OCR",
+        providerTransactionId:
+          occurrenceIndexes[index] > 1 ? `occ${occurrenceIndexes[index]}` : undefined,
         transactionDate: tx.transaction_date,
         amount: tx.original_amount ?? tx.amount,
         rawDescription: tx.raw_description,
@@ -1263,7 +1504,61 @@ export async function importTransactions(
     transactions,
   );
 
-  // ── 6. Post-insert pass: auto-tags, occurrence linking, reconciliation. ──
+  // ── 6. Batch-fetch reconciliation decision candidates in ONE pass. The old
+  //    per-merge `.maybeSingle()` was a sequential round-trip per duplicate —
+  //    with dozens of merges it dominated the import's wall-clock. ──
+  const decisionCandidateMap = new Map<string, ReconciliationCandidate>();
+  // Failure is tracked per candidate id (not one global flag): a single
+  // failed chunk must not misclassify legitimately-absent candidates from
+  // the chunks that succeeded.
+  const failedCandidateIds = new Set<string>();
+  if (candidateIds.length > 0) {
+    const candidateChunks = chunkArray([...new Set(candidateIds)], 100);
+    const candidateResults = await Promise.all(
+      candidateChunks.map((chunk) =>
+        supabase
+          .from("transactions")
+          .select(
+            "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method"
+          )
+          .eq("user_id", user.id)
+          .is("reconciled_into_transaction_id", null)
+          .in("id", chunk),
+      ),
+    );
+    candidateResults.forEach(({ data: candidateRows, error: candidateErr }, chunkIndex) => {
+      if (candidateErr) {
+        for (const id of candidateChunks[chunkIndex]) failedCandidateIds.add(id);
+        console.error(
+          "[importTransactions] decision-candidate lookup failed:",
+          candidateErr.message,
+        );
+        return;
+      }
+      for (const row of candidateRows ?? []) {
+        decisionCandidateMap.set(row.id, row as ReconciliationCandidate);
+      }
+    });
+  }
+
+  // ── 7. Post-insert pass: auto-tags, occurrence linking, reconciliation.
+  //    Occurrence links stay sequential (two same-amount rows may compete for
+  //    the same pending occurrence — sequential linking lets the second see the
+  //    first's status change). Merge updates are independent per pair, so they
+  //    are collected here and executed concurrently below. ──
+  type MergeOp = {
+    insertedId: string;
+    existingId: string;
+    score: number;
+    merged: ReturnType<typeof mergeTransactionMetadata>;
+  };
+  const mergeOps: MergeOp[] = [];
+  // The old per-merge re-query filtered `reconciled_into_transaction_id IS
+  // NULL`, so a candidate claimed by an earlier merge in the same run came
+  // back null for the next one. The batched snapshot is taken once, so that
+  // guard must be replayed locally: a candidate can be claimed exactly once.
+  const claimedCandidateIds = new Set<string>();
+
   for (const { tx, key, index } of toInsert) {
     const insertedTx = insertedByKey.get(key);
     if (!insertedTx) continue; // skipped (duplicate) or failed insert
@@ -1297,21 +1592,26 @@ export async function importTransactions(
       continue;
     }
 
-    const { data: existingTx, error: existingTxError } = await supabase
-      .from("transactions")
-      .select(
-        "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method"
-      )
-      .eq("id", decision.candidateTransactionId)
-      .eq("user_id", user.id)
-      .is("reconciled_into_transaction_id", null)
-      .maybeSingle();
-    if (existingTxError) {
-      errors++;
-      details.push(`Reconciliación: ${tx.raw_description}: ${existingTxError.message}`);
+    if (claimedCandidateIds.has(decision.candidateTransactionId)) {
+      // Another imported row already merged into this candidate — keep this
+      // one as a separate transaction (matches the old sequential behavior).
+      balanceDeltaTxs.push(tx);
+      leftAsSeparate++;
       continue;
     }
 
+    if (failedCandidateIds.has(decision.candidateTransactionId)) {
+      // This candidate's lookup chunk errored — we can't tell "already
+      // reconciled" from "lookup failed", so surface it instead of silently
+      // keeping both.
+      errors++;
+      details.push(
+        `Reconciliación: ${tx.raw_description}: no se pudo verificar la transacción duplicada.`,
+      );
+      continue;
+    }
+
+    const existingTx = decisionCandidateMap.get(decision.candidateTransactionId);
     if (!existingTx) {
       balanceDeltaTxs.push(tx);
       leftAsSeparate++;
@@ -1320,31 +1620,20 @@ export async function importTransactions(
 
     // Reconciled: existing tx already applied its balance delta, so do NOT
     // add to balanceDeltaTxs to avoid double-counting.
-    const merged = mergeTransactionMetadata(existingTx as ReconciliationCandidate, {
+    const merged = mergeTransactionMetadata(existingTx, {
       category_id: insertedTx.category_id,
       categorization_source: insertedTx.categorization_source ?? undefined,
       notes: insertedTx.notes,
       capture_method: captureMethod,
     });
 
-    await supabase
-      .from("transactions")
-      .update({
-        category_id: merged.category_id ?? null,
-        notes: merged.notes ?? null,
-        capture_method: merged.capture_method,
-      })
-      .eq("user_id", user.id)
-      .eq("id", insertedTx.id);
-
-    await supabase
-      .from("transactions")
-      .update({
-        reconciled_into_transaction_id: insertedTx.id,
-        reconciliation_score: decision.score,
-      })
-      .eq("user_id", user.id)
-      .eq("id", existingTx.id);
+    claimedCandidateIds.add(existingTx.id);
+    mergeOps.push({
+      insertedId: insertedTx.id,
+      existingId: existingTx.id,
+      score: decision.score,
+      merged,
+    });
 
     // Copy existing transaction's tags to surviving (imported) transaction (pre-fetched)
     const existingTags = existingTagMap.get(existingTx.id);
@@ -1358,7 +1647,47 @@ export async function importTransactions(
     else manualMerged++;
   }
 
-  // Auto-exclude manual balance adjustments covered by this import
+  // ── 8. Apply the merge updates concurrently (chunked). Each pair touches
+  //    two distinct rows and no pair overlaps another, so parallelism is safe. ──
+  for (const chunk of chunkArray(mergeOps, 20)) {
+    const mergeResults = await Promise.all(
+      chunk.flatMap((op) => [
+        supabase
+          .from("transactions")
+          .update({
+            category_id: op.merged.category_id ?? null,
+            notes: op.merged.notes ?? null,
+            capture_method: op.merged.capture_method,
+          })
+          .eq("user_id", user.id)
+          .eq("id", op.insertedId),
+        supabase
+          .from("transactions")
+          .update({
+            reconciled_into_transaction_id: op.insertedId,
+            reconciliation_score: op.score,
+          })
+          .eq("user_id", user.id)
+          .eq("id", op.existingId),
+      ]),
+    );
+    // PostgREST builders resolve with { error } instead of rejecting — a
+    // failed merge update would otherwise pass silently and leave the pair
+    // half-linked. Surface it in the result.
+    for (const result of mergeResults) {
+      if (result.error) {
+        errors++;
+        console.error("[importTransactions] merge update failed:", result.error.message);
+        details.push(`Error al fusionar transacción duplicada: ${result.error.message}`);
+      }
+    }
+  }
+
+  // Auto-exclude manual balance adjustments covered by this import.
+  // A statement covers its FULL period, so adjustments anywhere inside
+  // [period_from, period_to] are superseded by the real movements — not just
+  // those between the first and last imported transaction dates (a statement
+  // whose movements start on the 5th still proves the balance from the 1st).
   let adjustmentsExcluded = 0;
   const accountDateRanges = new Map<string, { min: string; max: string }>();
 
@@ -1372,31 +1701,76 @@ export async function importTransactions(
     }
   }
 
-  for (const [accountId, range] of accountDateRanges) {
-    const { data: adjustments } = await supabase
-      .from("transactions")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("account_id", accountId)
-      .eq("is_excluded", false)
-      .like("raw_description", "Ajuste manual de saldo%")
-      .gte("transaction_date", range.min)
-      .lte("transaction_date", range.max);
+  if (isBankVerifiedCapture(captureMethod)) {
+    for (const meta of normalizedStatementMeta ?? []) {
+      if (!meta.periodFrom && !meta.periodTo) continue;
+      const existing = accountDateRanges.get(meta.accountId);
+      if (!existing) {
+        if (meta.periodFrom && meta.periodTo) {
+          accountDateRanges.set(meta.accountId, { min: meta.periodFrom, max: meta.periodTo });
+        }
+        continue;
+      }
+      if (meta.periodFrom && meta.periodFrom < existing.min) existing.min = meta.periodFrom;
+      if (meta.periodTo && meta.periodTo > existing.max) existing.max = meta.periodTo;
+    }
+  }
 
-    if (adjustments && adjustments.length > 0) {
+  const exclusionCounts = await Promise.all(
+    [...accountDateRanges].map(async ([accountId, range]) => {
+      const { data: adjustments, error: fetchError } = await supabase
+        .from("transactions")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("account_id", accountId)
+        .eq("is_excluded", false)
+        .like("raw_description", `${MANUAL_BALANCE_ADJUSTMENT_PREFIX}%`)
+        .gte("transaction_date", range.min)
+        .lte("transaction_date", range.max);
+
+      if (fetchError) {
+        console.error("[importTransactions] adjustment lookup failed:", fetchError.message);
+        return 0;
+      }
+      if (!adjustments || adjustments.length === 0) return 0;
+
       const ids = adjustments.map((a) => a.id);
-      await supabase
+      const { error: excludeError } = await supabase
         .from("transactions")
         .update({ is_excluded: true })
         .eq("user_id", user.id)
         .in("id", ids);
 
-      adjustmentsExcluded += ids.length;
-    }
-  }
+      // Only count adjustments that were actually excluded — otherwise the
+      // "N ajuste(s) reemplazado(s)" detail lies on a failed update.
+      if (excludeError) {
+        console.error("[importTransactions] adjustment exclusion failed:", excludeError.message);
+        return 0;
+      }
+
+      return ids.length;
+    }),
+  );
+  adjustmentsExcluded += exclusionCounts.reduce((sum, count) => sum + count, 0);
 
   if (adjustmentsExcluded > 0) {
     details.push(`${adjustmentsExcluded} ajuste(s) manual(es) reemplazado(s) por transacciones del extracto`);
+  }
+
+  // Earliest tx date per statement (import_key = "statementIndex:txIndex") —
+  // lets the period-balance walk detect boundary-day overlap with the
+  // previous statement.
+  const statementMinTxDate = new Map<number, string>();
+  for (const tx of transactions) {
+    if (!tx.import_key) continue;
+    const idx = Number(tx.import_key.split(":")[0]);
+    // Guard against empty/garbled keys: Number("") is 0 and would silently
+    // attribute the row to statement 0's min date.
+    if (!Number.isInteger(idx) || idx < 0) continue;
+    const current = statementMinTxDate.get(idx);
+    if (!current || tx.transaction_date < current) {
+      statementMinTxDate.set(idx, tx.transaction_date);
+    }
   }
 
   const { accountUpdates, errors: metaErrors } = await processStatementMeta({
@@ -1407,6 +1781,7 @@ export async function importTransactions(
     statementMeta: normalizedStatementMeta,
     details,
     captureMethod,
+    statementMinTxDate,
   });
   // Snapshot/account write failures must surface in the result so the email
   // queue isn't cleared on a failed import and the results screen reports it.
@@ -1544,62 +1919,73 @@ export async function importTransactions(
   updateTag("impact");
   updateTag("tags");
 
-  await trackProductEvent({
-    event_name: "import_completed",
-    flow: "import",
-    step: "persist",
-    entry_point: "cta",
-    success: true,
-    metadata: {
-      imported,
-      skipped,
-      errors,
-      autoMerged,
-      manualMerged,
-      leftAsSeparate,
-      account_updates: accountUpdates.length,
-      statement_meta_count: normalizedStatementMeta?.length ?? 0,
-    },
-  });
-
-  if (autoMerged > 0) {
-    await trackProductEvent({
-      event_name: "reconciliation_auto_merge_applied",
+  // Analytics events are independent — fire them concurrently.
+  const productEvents: Promise<unknown>[] = [
+    trackProductEvent({
+      event_name: "import_completed",
       flow: "import",
       step: "persist",
       entry_point: "cta",
       success: true,
       metadata: {
-        matches_auto: autoMerged,
+        imported,
+        skipped,
+        errors,
+        autoMerged,
+        manualMerged,
+        leftAsSeparate,
+        account_updates: accountUpdates.length,
+        statement_meta_count: normalizedStatementMeta?.length ?? 0,
       },
-    });
+    }),
+  ];
+
+  if (autoMerged > 0) {
+    productEvents.push(
+      trackProductEvent({
+        event_name: "reconciliation_auto_merge_applied",
+        flow: "import",
+        step: "persist",
+        entry_point: "cta",
+        success: true,
+        metadata: {
+          matches_auto: autoMerged,
+        },
+      }),
+    );
   }
 
   if (manualMerged > 0) {
-    await trackProductEvent({
-      event_name: "reconciliation_manual_merge_confirmed",
-      flow: "import",
-      step: "persist",
-      entry_point: "cta",
-      success: true,
-      metadata: {
-        matches_review: manualMerged,
-      },
-    });
+    productEvents.push(
+      trackProductEvent({
+        event_name: "reconciliation_manual_merge_confirmed",
+        flow: "import",
+        step: "persist",
+        entry_point: "cta",
+        success: true,
+        metadata: {
+          matches_review: manualMerged,
+        },
+      }),
+    );
   }
 
   if (leftAsSeparate > 0) {
-    await trackProductEvent({
-      event_name: "reconciliation_match_rejected",
-      flow: "import",
-      step: "persist",
-      entry_point: "cta",
-      success: true,
-      metadata: {
-        matches_rejected: leftAsSeparate,
-      },
-    });
+    productEvents.push(
+      trackProductEvent({
+        event_name: "reconciliation_match_rejected",
+        flow: "import",
+        step: "persist",
+        entry_point: "cta",
+        success: true,
+        metadata: {
+          matches_rejected: leftAsSeparate,
+        },
+      }),
+    );
   }
+
+  await Promise.all(productEvents);
 
   return {
     success: true,

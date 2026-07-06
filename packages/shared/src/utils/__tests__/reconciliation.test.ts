@@ -142,3 +142,131 @@ describe("scoreReconciliationCandidate — hard filters", () => {
     ).toBeNull();
   });
 });
+
+describe("scoreReconciliationCandidate — user-entered near-match REVIEW floor", () => {
+  // Real pair from the June-2026 savings statement: the user pre-typed a loan
+  // prepayment with an estimated amount; the bank settled a slightly lower
+  // figure with a generic description. Zero token overlap → score 0.60.
+  const PDF_LOAN_PAYMENT = {
+    account_id: "acc-1",
+    amount: 1_607_046,
+    direction: "OUTFLOW" as const,
+    transaction_date: "2026-06-16",
+    raw_description: "PAGO CREDITO SUC VIRTUAL",
+    capture_method: "PDF_IMPORT" as const,
+  };
+
+  const manualCandidate = (overrides: Record<string, unknown> = {}) => ({
+    id: "cand-1",
+    user_id: "u1",
+    account_id: "acc-1",
+    amount: 1_651_641,
+    direction: "OUTFLOW" as const,
+    transaction_date: "2026-06-17",
+    raw_description: "Transferencia a Bancolombia Préstamo ****8386 - Pago extra",
+    merchant_name: "Transferencia a Bancolombia Préstamo ****8386",
+    clean_description: null,
+    reconciled_into_transaction_id: null,
+    capture_method: "MANUAL_FORM" as const,
+    ...overrides,
+  });
+
+  it("floors a tier-3 candidate near a bank-verified import to REVIEW", () => {
+    const match = scoreReconciliationCandidate(PDF_LOAN_PAYMENT, manualCandidate());
+    expect(match).not.toBeNull();
+    expect(match!.score).toBeLessThan(0.75); // the floor is decision-only
+    expect(match!.decision).toBe("REVIEW");
+  });
+
+  it("does not floor tier-2 (email) candidates", () => {
+    const match = scoreReconciliationCandidate(
+      PDF_LOAN_PAYMENT,
+      manualCandidate({ capture_method: "EMAIL_IMPORT" })
+    );
+    expect(match!.decision).toBe("NO_MATCH");
+  });
+
+  it("does not floor when the import side is not bank-verified", () => {
+    const match = scoreReconciliationCandidate(
+      { ...PDF_LOAN_PAYMENT, capture_method: "EMAIL_IMPORT" },
+      manualCandidate()
+    );
+    expect(match!.decision).toBe("NO_MATCH");
+  });
+
+  it("does not floor when capture methods are missing", () => {
+    const match = scoreReconciliationCandidate(
+      { ...PDF_LOAN_PAYMENT, capture_method: undefined },
+      manualCandidate({ capture_method: null })
+    );
+    expect(match!.decision).toBe("NO_MATCH");
+  });
+
+  it("requires amount within 3% and date within 1 day", () => {
+    // 4.6% off → outside the floor band (still within the 5% hard filter)
+    const farAmount = scoreReconciliationCandidate(
+      PDF_LOAN_PAYMENT,
+      manualCandidate({ amount: 1_682_000 })
+    );
+    expect(farAmount!.decision).toBe("NO_MATCH");
+
+    const farDate = scoreReconciliationCandidate(
+      PDF_LOAN_PAYMENT,
+      manualCandidate({ transaction_date: "2026-06-18" })
+    );
+    expect(farDate!.decision).toBe("NO_MATCH");
+  });
+
+  it("never upgrades to AUTO_MERGE via the floor", () => {
+    // Exact amount + same day + zero text still lands at REVIEW (0.75), and
+    // the floor never pushes anything to AUTO_MERGE on its own.
+    const match = scoreReconciliationCandidate(
+      PDF_LOAN_PAYMENT,
+      manualCandidate({ amount: 1_607_046, transaction_date: "2026-06-16" })
+    );
+    expect(match!.decision).toBe("REVIEW");
+  });
+});
+
+describe("findReconciliationCandidates — floored REVIEW must not be shadowed", () => {
+  it("prefers an actionable floored candidate over a higher-scoring NO_MATCH", () => {
+    const importTx = {
+      account_id: "acc-1",
+      amount: 1_607_046,
+      direction: "OUTFLOW" as const,
+      transaction_date: "2026-06-16",
+      raw_description: "PAGO CREDITO SUC VIRTUAL",
+      capture_method: "PDF_IMPORT" as const,
+    };
+    const flooredDuplicate = {
+      id: "manual-dup",
+      user_id: "u1",
+      account_id: "acc-1",
+      amount: 1_651_641, // 2.8% off → floor band, score 0.60
+      direction: "OUTFLOW" as const,
+      transaction_date: "2026-06-17",
+      raw_description: "Transferencia a Bancolombia Préstamo ****8386 - Pago extra",
+      reconciled_into_transaction_id: null,
+      capture_method: "MANUAL_FORM" as const,
+    };
+    const unrelatedHigherScore = {
+      id: "email-other",
+      user_id: "u1",
+      account_id: "acc-1",
+      amount: 1_635_000, // ~1.7% off → +0.05 amount points, score 0.65, NO_MATCH
+      direction: "OUTFLOW" as const,
+      transaction_date: "2026-06-17",
+      raw_description: "Pago servicios varios",
+      reconciled_into_transaction_id: null,
+      capture_method: "EMAIL_IMPORT" as const,
+    };
+
+    const result = findReconciliationCandidates(importTx, [
+      unrelatedHigherScore,
+      flooredDuplicate,
+    ]);
+    expect(result.bestMatch).not.toBeNull();
+    expect(result.bestMatch!.candidateId).toBe("manual-dup");
+    expect(result.bestMatch!.decision).toBe("REVIEW");
+  });
+});
