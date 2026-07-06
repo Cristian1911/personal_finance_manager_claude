@@ -227,3 +227,46 @@ describe("scoreReconciliationCandidate — user-entered near-match REVIEW floor"
     expect(match!.decision).toBe("REVIEW");
   });
 });
+
+describe("findReconciliationCandidates — floored REVIEW must not be shadowed", () => {
+  it("prefers an actionable floored candidate over a higher-scoring NO_MATCH", () => {
+    const importTx = {
+      account_id: "acc-1",
+      amount: 1_607_046,
+      direction: "OUTFLOW" as const,
+      transaction_date: "2026-06-16",
+      raw_description: "PAGO CREDITO SUC VIRTUAL",
+      capture_method: "PDF_IMPORT" as const,
+    };
+    const flooredDuplicate = {
+      id: "manual-dup",
+      user_id: "u1",
+      account_id: "acc-1",
+      amount: 1_651_641, // 2.8% off → floor band, score 0.60
+      direction: "OUTFLOW" as const,
+      transaction_date: "2026-06-17",
+      raw_description: "Transferencia a Bancolombia Préstamo ****8386 - Pago extra",
+      reconciled_into_transaction_id: null,
+      capture_method: "MANUAL_FORM" as const,
+    };
+    const unrelatedHigherScore = {
+      id: "email-other",
+      user_id: "u1",
+      account_id: "acc-1",
+      amount: 1_635_000, // ~1.7% off → +0.05 amount points, score 0.65, NO_MATCH
+      direction: "OUTFLOW" as const,
+      transaction_date: "2026-06-17",
+      raw_description: "Pago servicios varios",
+      reconciled_into_transaction_id: null,
+      capture_method: "EMAIL_IMPORT" as const,
+    };
+
+    const result = findReconciliationCandidates(importTx, [
+      unrelatedHigherScore,
+      flooredDuplicate,
+    ]);
+    expect(result.bestMatch).not.toBeNull();
+    expect(result.bestMatch!.candidateId).toBe("manual-dup");
+    expect(result.bestMatch!.decision).toBe("REVIEW");
+  });
+});

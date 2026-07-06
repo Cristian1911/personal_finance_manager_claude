@@ -675,7 +675,15 @@ function hasPlausibleOccurrence(
   return false;
 }
 
+const PREVIEW_CAPTURE_METHODS = new Set<TransactionCaptureMethod>([
+  "PDF_IMPORT",
+  "EMAIL_PDF_IMPORT",
+  "OCR_BATCH",
+  "OCR_SINGLE",
+]);
+
 export async function previewImportReconciliation(
+  captureMethod: TransactionCaptureMethod,
   items: Array<{
     statementIndex: number;
     transactionIndex: number;
@@ -684,6 +692,13 @@ export async function previewImportReconciliation(
 ): Promise<ReconciliationPreviewResult> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { autoMerge: [], review: [], unmatched: [] };
+
+  // Client-provided — clamp to the import-wizard surface. OCR screenshots
+  // are tier 2 and must NOT inherit the tier-1-only REVIEW floor; anything
+  // unrecognized falls back to OCR_BATCH (the non-floor default) so a stale
+  // caller can never widen the floor's scope.
+  const effectiveCaptureMethod: TransactionCaptureMethod =
+    PREVIEW_CAPTURE_METHODS.has(captureMethod) ? captureMethod : "OCR_BATCH";
 
   let groupedCandidates: Map<string, ReconciliationCandidate[]>;
   try {
@@ -702,11 +717,11 @@ export async function previewImportReconciliation(
 
   for (const { statementIndex, transactionIndex, importedTransaction } of items) {
     const candidates = groupedCandidates.get(importedTransaction.account_id) ?? [];
-    // The wizard only previews bank-verified statement imports, but the client
-    // payload doesn't carry capture_method — stamp it so the scorer's
-    // user-entered-near-match REVIEW floor can fire.
+    // The client payload doesn't carry capture_method — stamp the wizard's
+    // actual source so the scorer's user-entered-near-match REVIEW floor
+    // fires only for genuinely bank-verified (tier-1) imports.
     const result = findReconciliationCandidates(
-      { ...importedTransaction, capture_method: "PDF_IMPORT" },
+      { ...importedTransaction, capture_method: effectiveCaptureMethod },
       candidates,
     );
     const best = result.bestMatch;
@@ -1635,7 +1650,7 @@ export async function importTransactions(
   // ── 8. Apply the merge updates concurrently (chunked). Each pair touches
   //    two distinct rows and no pair overlaps another, so parallelism is safe. ──
   for (const chunk of chunkArray(mergeOps, 20)) {
-    await Promise.all(
+    const mergeResults = await Promise.all(
       chunk.flatMap((op) => [
         supabase
           .from("transactions")
@@ -1656,6 +1671,16 @@ export async function importTransactions(
           .eq("id", op.existingId),
       ]),
     );
+    // PostgREST builders resolve with { error } instead of rejecting — a
+    // failed merge update would otherwise pass silently and leave the pair
+    // half-linked. Surface it in the result.
+    for (const result of mergeResults) {
+      if (result.error) {
+        errors++;
+        console.error("[importTransactions] merge update failed:", result.error.message);
+        details.push(`Error al fusionar transacción duplicada: ${result.error.message}`);
+      }
+    }
   }
 
   // Auto-exclude manual balance adjustments covered by this import.
@@ -1693,7 +1718,7 @@ export async function importTransactions(
 
   const exclusionCounts = await Promise.all(
     [...accountDateRanges].map(async ([accountId, range]) => {
-      const { data: adjustments } = await supabase
+      const { data: adjustments, error: fetchError } = await supabase
         .from("transactions")
         .select("id")
         .eq("user_id", user.id)
@@ -1703,14 +1728,25 @@ export async function importTransactions(
         .gte("transaction_date", range.min)
         .lte("transaction_date", range.max);
 
+      if (fetchError) {
+        console.error("[importTransactions] adjustment lookup failed:", fetchError.message);
+        return 0;
+      }
       if (!adjustments || adjustments.length === 0) return 0;
 
       const ids = adjustments.map((a) => a.id);
-      await supabase
+      const { error: excludeError } = await supabase
         .from("transactions")
         .update({ is_excluded: true })
         .eq("user_id", user.id)
         .in("id", ids);
+
+      // Only count adjustments that were actually excluded — otherwise the
+      // "N ajuste(s) reemplazado(s)" detail lies on a failed update.
+      if (excludeError) {
+        console.error("[importTransactions] adjustment exclusion failed:", excludeError.message);
+        return 0;
+      }
 
       return ids.length;
     }),
@@ -1726,8 +1762,11 @@ export async function importTransactions(
   // previous statement.
   const statementMinTxDate = new Map<number, string>();
   for (const tx of transactions) {
-    const idx = Number(tx.import_key?.split(":")[0] ?? "-1");
-    if (!Number.isInteger(idx)) continue;
+    if (!tx.import_key) continue;
+    const idx = Number(tx.import_key.split(":")[0]);
+    // Guard against empty/garbled keys: Number("") is 0 and would silently
+    // attribute the row to statement 0's min date.
+    if (!Number.isInteger(idx) || idx < 0) continue;
     const current = statementMinTxDate.get(idx);
     if (!current || tx.transaction_date < current) {
       statementMinTxDate.set(idx, tx.transaction_date);

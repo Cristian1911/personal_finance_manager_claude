@@ -1,6 +1,6 @@
 import { getDatabase } from "../db/database";
 import * as Crypto from "expo-crypto";
-import { getDirectionForBalanceDelta } from "@zeta/shared";
+import { getDirectionForBalanceDelta, MANUAL_BALANCE_ADJUSTMENT_PREFIX } from "@zeta/shared";
 import { setPdfPasswordForAccount } from "../pdf-passwords";
 import {
   applyLocalBalanceDelta,
@@ -475,7 +475,7 @@ export async function reconcileBalance(
       return { success: false, error: "No se pudo determinar el ajuste de saldo." };
     }
 
-    const rawDescription = `Ajuste manual de saldo ${currency} (${now})`;
+    const rawDescription = `${MANUAL_BALANCE_ADJUSTMENT_PREFIX} ${currency} (${now})`;
     const idempotencyKey = await computeIdempotencyKey({
       provider: "MANUAL",
       transactionDate,
@@ -509,7 +509,7 @@ export async function reconcileBalance(
           // Webapp sets merchant_name = null + a distinct clean_description.
           // rawDescription stays byte-matched to the webapp idempotency string.
           merchantName: null,
-          cleanDescription: "Ajuste manual de saldo",
+          cleanDescription: MANUAL_BALANCE_ADJUSTMENT_PREFIX,
           categoryId: null,
           categorizationSource: "SYSTEM_DEFAULT",
           notes: input.notes ?? null,

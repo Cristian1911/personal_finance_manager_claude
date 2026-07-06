@@ -196,13 +196,24 @@ export function findReconciliationCandidates(
   importTx: ImportTransactionForReconciliation,
   candidates: ReconciliationCandidate[]
 ): RankedReconciliationResult {
-  const ranked = candidates
+  let ranked = candidates
     .map((candidate) => scoreReconciliationCandidate(importTx, candidate))
     .filter((value): value is ReconciliationMatch => value !== null)
     .sort((a, b) => b.score - a.score);
 
   if (ranked.length === 0) {
     return { bestMatch: null, ranked: [] };
+  }
+
+  // An actionable candidate (REVIEW/AUTO_MERGE) must never be shadowed by a
+  // higher-raw-score NO_MATCH: the REVIEW floor changes decision without
+  // touching score, so a floored duplicate at 0.60 would otherwise lose
+  // bestMatch to an unrelated 0.65 NO_MATCH and be silently discarded —
+  // consumers only look at bestMatch. NO_MATCH candidates always score
+  // < 0.75, so this can never displace a threshold-earned REVIEW/AUTO_MERGE.
+  const actionable = ranked.find((match) => match.decision !== "NO_MATCH");
+  if (actionable && actionable !== ranked[0]) {
+    ranked = [actionable, ...ranked.filter((match) => match !== actionable)];
   }
 
   const best = ranked[0];
