@@ -1,6 +1,6 @@
 import { differenceInCalendarDays } from "date-fns";
 import type { CategorizationSource, TransactionCaptureMethod, TransactionDirection } from "../types/domain";
-import { resolveAuthorityWinner } from "./capture-hierarchy";
+import { getCaptureTier, isBankVerifiedCapture, resolveAuthorityWinner } from "./capture-hierarchy";
 
 export type ReconciliationCandidate = {
   id: string;
@@ -162,6 +162,26 @@ export function scoreReconciliationCandidate(
   let decision: ReconciliationDecision = "NO_MATCH";
   if (score >= 0.9) decision = "AUTO_MERGE";
   else if (score >= 0.75) decision = "REVIEW";
+
+  // User-entered candidates near a bank-verified import's amount on the same
+  // or adjacent day are the "manual estimate" class: the user typed an
+  // approximate figure (e.g. a loan prepayment entered as 1,651,641 that the
+  // bank settled as 1,607,046) and the bank row's text is generic ("PAGO
+  // CREDITO SUC VIRTUAL"), so text similarity can never rescue the score.
+  // Without this floor the pair lands below 0.75 and the duplicate is
+  // silently kept — the June-2026 savings import kept 10.1M of doubles this
+  // way. Floor at REVIEW only (never AUTO_MERGE): the user decides.
+  if (
+    decision === "NO_MATCH" &&
+    importTx.capture_method != null &&
+    candidate.capture_method != null &&
+    isBankVerifiedCapture(importTx.capture_method) &&
+    getCaptureTier(candidate.capture_method) === 3 &&
+    amountPctDiff <= 0.03 &&
+    daysDiff <= 1
+  ) {
+    decision = "REVIEW";
+  }
 
   return {
     candidateId: candidate.id,

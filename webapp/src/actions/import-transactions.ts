@@ -702,7 +702,13 @@ export async function previewImportReconciliation(
 
   for (const { statementIndex, transactionIndex, importedTransaction } of items) {
     const candidates = groupedCandidates.get(importedTransaction.account_id) ?? [];
-    const result = findReconciliationCandidates(importedTransaction, candidates);
+    // The wizard only previews bank-verified statement imports, but the client
+    // payload doesn't carry capture_method — stamp it so the scorer's
+    // user-entered-near-match REVIEW floor can fire.
+    const result = findReconciliationCandidates(
+      { ...importedTransaction, capture_method: "PDF_IMPORT" },
+      candidates,
+    );
     const best = result.bestMatch;
 
     if (!best) {
@@ -764,6 +770,8 @@ async function processStatementMeta(params: {
   statementMeta?: StatementMetaForImport[];
   details: string[];
   captureMethod: TransactionCaptureMethod;
+  /** Earliest transaction date per statementIndex — used to detect boundary-day overlap. */
+  statementMinTxDate?: Map<number, string>;
 }): Promise<{ accountUpdates: AccountUpdateResult[]; errors: number }> {
   const { supabase, userId, imported, skipped, statementMeta, details } = params;
   const accountUpdates: AccountUpdateResult[] = [];
@@ -1019,25 +1027,38 @@ async function processStatementMeta(params: {
       // previous_balance → final_balance. A mismatch means duplicated or
       // missing movements — surfaced instead of silently drifting.
       if (meta.periodFrom && meta.periodTo && meta.summary?.previous_balance != null) {
+        // Bancolombia's period_from equals the PREVIOUS statement's closing
+        // day: previous_balance already includes that day's movements and
+        // this statement's own rows start the day after. Walking >=
+        // period_from would double-count boundary-day rows imported from the
+        // previous statement (June-2026 case: five May-31 rows → −146,434 of
+        // false mismatch). When the statement itself has no rows on
+        // period_from, start the walk the day after it.
+        const ownMinDate = params.statementMinTxDate?.get(meta.statementIndex);
+        const startExclusive = !!ownMinDate && ownMinDate > meta.periodFrom;
         const {
           rows: periodTxs,
           errorMessage: periodError,
           truncated: periodTruncated,
         } = await fetchAllPages<{ amount: number; direction: "INFLOW" | "OUTFLOW" }>(
-          (from, to) =>
-            supabase
+          (from, to) => {
+            let query = supabase
               .from("transactions")
               .select("amount, direction")
               .eq("user_id", userId)
               .eq("account_id", meta.accountId)
               .eq("currency_code", meta.currency as CurrencyCode)
               .eq("is_excluded", false)
-              .is("reconciled_into_transaction_id", null)
-              .gte("transaction_date", meta.periodFrom!)
+              .is("reconciled_into_transaction_id", null);
+            query = startExclusive
+              ? query.gt("transaction_date", meta.periodFrom!)
+              : query.gte("transaction_date", meta.periodFrom!);
+            return query
               .lte("transaction_date", meta.periodTo!)
               .order("transaction_date", { ascending: true })
               .order("id", { ascending: true })
-              .range(from, to),
+              .range(from, to);
+          },
         );
         // A partial read would produce a false ⚠️/✓ — skip validation instead.
         if (!periodError && !periodTruncated) {
@@ -1700,6 +1721,19 @@ export async function importTransactions(
     details.push(`${adjustmentsExcluded} ajuste(s) manual(es) reemplazado(s) por transacciones del extracto`);
   }
 
+  // Earliest tx date per statement (import_key = "statementIndex:txIndex") —
+  // lets the period-balance walk detect boundary-day overlap with the
+  // previous statement.
+  const statementMinTxDate = new Map<number, string>();
+  for (const tx of transactions) {
+    const idx = Number(tx.import_key?.split(":")[0] ?? "-1");
+    if (!Number.isInteger(idx)) continue;
+    const current = statementMinTxDate.get(idx);
+    if (!current || tx.transaction_date < current) {
+      statementMinTxDate.set(idx, tx.transaction_date);
+    }
+  }
+
   const { accountUpdates, errors: metaErrors } = await processStatementMeta({
     supabase,
     userId: user.id,
@@ -1708,6 +1742,7 @@ export async function importTransactions(
     statementMeta: normalizedStatementMeta,
     details,
     captureMethod,
+    statementMinTxDate,
   });
   // Snapshot/account write failures must surface in the result so the email
   // queue isn't cleared on a failed import and the results screen reports it.
