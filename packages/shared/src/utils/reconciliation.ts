@@ -65,11 +65,7 @@ export function normalizeTransactionDescription(...values: Array<string | null |
  * so they never qualify.
  */
 function extractRefTokens(normalized: string): Set<string> {
-  const refs = new Set<string>();
-  for (const token of normalized.split(" ")) {
-    if (/^\d{6,}$/.test(token)) refs.add(token);
-  }
-  return refs;
+  return new Set(normalized.match(/\b\d{6,}\b/g) ?? []);
 }
 
 function tokenSimilarity(a: string, b: string): number {
