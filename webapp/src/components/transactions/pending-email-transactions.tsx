@@ -265,31 +265,47 @@ export function PendingEmailTransactions({
     startTransition(async () => {
       let imported = 0;
       let failed = 0;
+      let needsReview = 0;
+      const done: string[] = [];
 
       for (const id of ids) {
         const tx = transactions.find((t) => t.id === id);
         if (!tx) continue;
         const override = accountOverrides[id] ?? clientMatches[id];
         try {
+          // Same duplicate check as the single-row Importar. Rows with a
+          // candidate stay pending — bulk never decides a merge silently;
+          // the user resolves those one by one with the full prompt.
+          const reconResult = await checkEmailReconciliation(id, override);
+          if (reconResult.success && reconResult.data) {
+            needsReview++;
+            continue;
+          }
           const result = await approveEmailTransaction(id, override);
           if (result.success) {
             imported++;
+            done.push(id);
           } else {
             failed++;
           }
         } catch {
           // Action likely completed server-side
           imported++;
+          done.push(id);
         }
       }
 
-      setTransactions((prev) => prev.filter((t) => !ids.includes(t.id) || !importableIds.has(t.id)));
+      setTransactions((prev) => prev.filter((t) => !done.includes(t.id)));
       setSelected(new Set());
       setBulkLoading(false);
       router.refresh();
 
-      if (failed === 0) {
+      if (failed === 0 && needsReview === 0) {
         toast.success(`${imported} transacciones importadas`);
+      } else if (needsReview > 0) {
+        toast.warning(
+          `${imported} importadas · ${needsReview} con posible duplicado — impórtalas una por una${failed > 0 ? ` · ${failed} con error` : ""}`,
+        );
       } else {
         toast.warning(`${imported} importadas, ${failed} con error`);
       }

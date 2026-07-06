@@ -212,25 +212,40 @@ export function EmailImportPanel({
     (async () => {
       let imported = 0;
       let failed = 0;
+      let needsReview = 0;
+      const done = new Set<string>();
       for (const r of importable) {
         try {
+          // Same duplicate check as the single-row Importar. Rows with a
+          // candidate stay pending — bulk never decides a merge silently;
+          // the user resolves those one by one with the full sheet.
+          const match = await checkEmailReconciliation(r, overrides[r.id]);
+          if (match) {
+            needsReview++;
+            continue;
+          }
           const result = await approveEmailTransaction(r, overrides[r.id]);
-          if (result.success) imported++;
-          else failed++;
+          if (result.success) {
+            imported++;
+            done.add(r.id);
+          } else failed++;
         } catch {
           failed++;
         }
       }
-      const ids = new Set(importable.map((r) => r.id));
-      setRows((prev) => prev.filter((r) => !ids.has(r.id)));
+      setRows((prev) => prev.filter((r) => !done.has(r.id)));
       setBulkBusy(false);
       refreshAfterMutation();
-      Alert.alert(
-        "Importación",
-        failed === 0
-          ? `${imported} ${imported === 1 ? "transacción importada" : "transacciones importadas"}`
-          : `${imported} importadas, ${failed} con error`
-      );
+      const parts = [
+        `${imported} ${imported === 1 ? "transacción importada" : "transacciones importadas"}`,
+      ];
+      if (needsReview > 0) {
+        parts.push(
+          `${needsReview} con posible duplicado — impórtalas una por una`
+        );
+      }
+      if (failed > 0) parts.push(`${failed} con error`);
+      Alert.alert("Importación", parts.join("\n"));
     })();
   }
 

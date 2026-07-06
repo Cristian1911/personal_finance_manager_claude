@@ -58,6 +58,16 @@ export function normalizeTransactionDescription(...values: Array<string | null |
     .trim();
 }
 
+/**
+ * Long digit runs (≥6) surviving normalization are reference entities —
+ * destination account numbers, reference ids. Card masks (4 digits), times
+ * ("18 51") and thousand-separated amounts ("30 000") all tokenize shorter,
+ * so they never qualify.
+ */
+function extractRefTokens(normalized: string): Set<string> {
+  return new Set(normalized.match(/\b\d{6,}\b/g) ?? []);
+}
+
 function tokenSimilarity(a: string, b: string): number {
   if (!a || !b) return 0;
   if (a === b) return 1;
@@ -122,6 +132,32 @@ export function scoreReconciliationCandidate(
   else if (daysDiff <= 3) score += 0.10;
 
   score += 0.25 * textSimilarity;
+
+  // Conflicting reference entities: when BOTH texts carry reference numbers
+  // (destination accounts, refs) and share NONE, they describe different
+  // counterparties. Without this, two same-day transfers from the same
+  // account to different destinations score as duplicates — the bank
+  // template ("Transferiste … desde tu cuenta … a la cuenta …") supplies
+  // nearly all the tokens. The penalty drops template-only pairs below the
+  // REVIEW threshold, while exact-amount high-similarity pairs still surface
+  // as REVIEW (a prompt, not a silent auto-merge).
+  //
+  // Scoped to HIGH text similarity on purpose: that's the template-driven
+  // failure mode. Cross-source pairs for the SAME transaction (terse PDF row
+  // with an authorization/batch number vs verbose email with the destination
+  // account) have low similarity and carry different KINDS of numbers that
+  // never overlap — penalizing those would silently hide true duplicates.
+  // Latent trap to keep in mind: if a future parser ever prints the shared
+  // SOURCE account unmasked (≥6 digits) on both sides, the sets would
+  // overlap and defeat the guard — today every template masks it to 4.
+  const sourceRefs = extractRefTokens(sourceText);
+  const candidateRefs = extractRefTokens(candidateText);
+  const refConflict =
+    textSimilarity >= 0.5 &&
+    sourceRefs.size > 0 &&
+    candidateRefs.size > 0 &&
+    ![...sourceRefs].some((ref) => candidateRefs.has(ref));
+  if (refConflict) score -= 0.15;
 
   let decision: ReconciliationDecision = "NO_MATCH";
   if (score >= 0.9) decision = "AUTO_MERGE";
