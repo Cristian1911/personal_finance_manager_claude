@@ -6,6 +6,9 @@ import { useRouter } from "next/navigation";
 import {
   Tag as TagIcon,
   Link2,
+  Link2Off,
+  Trash2,
+  AlertTriangle,
   Users,
   EyeOff,
   Eye,
@@ -35,6 +38,16 @@ import {
   DrawerTitle,
   DrawerBody,
 } from "@/components/ui/drawer";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { LinkPickerSheet, type LinkCandidate } from "@/components/recurring/link-picker-sheet";
 import { CreatePersonalDebtSheet } from "@/components/personas/create-personal-debt-sheet";
 import { useDestinatarios } from "@/components/providers/app-data-provider";
@@ -206,6 +219,9 @@ export function TransactionQuickActions({
   const [isLinkedRecurring, setIsLinkedRecurring] = useState(!!tx.recurrence_group_id);
   const [linkedRecurring, setLinkedRecurring] = useState<LinkedRecurringInfo | null | undefined>(undefined);
   const [recurringActionsOpen, setRecurringActionsOpen] = useState(false);
+  // Confirmation for the destructive "desasociar" of a payment registered from
+  // Plan — reverting it deletes the auto-created transaction.
+  const [confirmRevertOpen, setConfirmRevertOpen] = useState(false);
 
   // Lazy-resolve the linked recurrente's name when the sheet opens; reset on
   // close so a reopen never shows stale data (the server fn is cached).
@@ -346,18 +362,36 @@ export function TransactionQuickActions({
     });
   }
 
-  function handleUnlinkRecurring() {
-    if (!linkedRecurring?.linkedManually) return;
+  function handleDissociateRecurring() {
+    if (!linkedRecurring) return;
     const occurrenceId = linkedRecurring.occurrenceId;
-    setRecurringActionsOpen(false);
+    // A payment registered from Plan created its transaction — reverting it
+    // deletes that transaction, so confirm first via the AlertDialog. Manual
+    // links only detach the pre-existing transaction, so they run immediately.
+    const willDeleteTransaction = !linkedRecurring.linkedManually;
+    if (willDeleteTransaction && !confirmRevertOpen) {
+      setConfirmRevertOpen(true);
+      return;
+    }
     startLinkTransition(async () => {
       const result = await revertOccurrence(occurrenceId);
       if (result.success) {
+        // Close the overlays only on success: the loading state stays visible
+        // during the request, and a failure keeps the user in context to retry.
+        setConfirmRevertOpen(false);
+        setRecurringActionsOpen(false);
+        setMoreOpen(false);
         setIsLinkedRecurring(false);
         setLinkedRecurring(undefined);
-        toast.success("Transacción desvinculada de la recurrente");
+        toast.success(
+          willDeleteTransaction
+            ? "Pago deshecho y transacción eliminada"
+            : "Transacción desvinculada de la recurrente",
+        );
+        // Refresh so a deleted transaction drops out of the current list.
+        router.refresh();
       } else {
-        toast.error(result.error ?? "No se pudo desvincular");
+        toast.error(result.error ?? "No se pudo desasociar");
       }
     });
   }
@@ -650,23 +684,70 @@ export function TransactionQuickActions({
               {linkedRecurring?.linkedManually ? (
                 <button
                   type="button"
-                  onClick={handleUnlinkRecurring}
+                  onClick={handleDissociateRecurring}
                   disabled={isLinking}
                   className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-z-expense transition-colors hover:bg-white/5 disabled:opacity-50"
                 >
-                  <Link2 className="size-4" />
+                  <Link2Off className="size-4" />
                   Desvincular de la recurrente
                 </button>
               ) : (
-                <p className="px-3 py-2.5 text-xs text-muted-foreground">
-                  Este pago se registró desde la recurrente. Para deshacerlo, revierte la
-                  ocurrencia desde Plan.
-                </p>
+                <>
+                  <button
+                    type="button"
+                    onClick={handleDissociateRecurring}
+                    disabled={isLinking || !linkedRecurring}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-z-expense transition-colors hover:bg-white/5 disabled:opacity-50"
+                  >
+                    <Trash2 className="size-4" />
+                    Deshacer pago y eliminar transacción
+                  </button>
+                  <div className="mt-1 flex items-start gap-2 rounded-lg border border-white/6 bg-white/[0.02] px-3 py-2.5">
+                    <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-z-brass" />
+                    <p className="text-xs text-muted-foreground">
+                      Esta transacción se creó al registrar el pago de la recurrente. Al
+                      desasociarla se{" "}
+                      <span className="font-medium text-foreground">eliminará la transacción</span>{" "}
+                      y el pago volverá a quedar pendiente en Plan.
+                    </p>
+                  </div>
+                </>
               )}
             </div>
           </DrawerBody>
         </DrawerContent>
       </Drawer>
+
+      {/* Confirm destructive revert — payment registered from Plan */}
+      <AlertDialog open={confirmRevertOpen} onOpenChange={setConfirmRevertOpen}>
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Deshacer este pago?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta transacción se creó al registrar el pago de{" "}
+              {linkedRecurring?.templateMerchant ?? "la recurrente"}. Al desasociarla se
+              eliminará la transacción, se revertirá su efecto en el saldo y el pago
+              volverá a quedar pendiente en Plan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLinking}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={isLinking}
+              onClick={(e) => {
+                // Keep the dialog logic in our handler; prevent the default
+                // auto-close so the pending state stays visible and the dialog
+                // only closes once the revert succeeds.
+                e.preventDefault();
+                handleDissociateRecurring();
+              }}
+            >
+              {isLinking ? "Eliminando…" : "Eliminar transacción"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Link-to-recurring picker */}
       {linkPickerOpen && (
