@@ -4,7 +4,7 @@ import { cacheTag, cacheLife, updateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { accountSchema } from "@/lib/validators/account";
-import { computeIdempotencyKey } from "@zeta/shared";
+import { computeIdempotencyKey, MANUAL_BALANCE_ADJUSTMENT_PREFIX } from "@zeta/shared";
 import { getDirectionForBalanceDelta, isDebtAccountType } from "@/lib/utils/account-balance";
 import { toColombiaDateString } from "@/lib/utils/date";
 import { deactivateTemplatesForPaidOffAccount } from "@/lib/debt/payoff";
@@ -451,7 +451,7 @@ export async function reconcileBalance(
       return { success: false, error: "No se pudo determinar el ajuste de saldo." };
     }
 
-    const rawDescription = `Ajuste manual de saldo ${currency} (${now})`;
+    const rawDescription = `${MANUAL_BALANCE_ADJUSTMENT_PREFIX} ${currency} (${now})`;
     const idempotencyKey = await computeIdempotencyKey({
       provider: "MANUAL",
       transactionDate: now.slice(0, 10),
@@ -467,7 +467,7 @@ export async function reconcileBalance(
       direction: adjustmentDirection,
       transaction_date: now.slice(0, 10),
       raw_description: rawDescription,
-      clean_description: "Ajuste manual de saldo",
+      clean_description: MANUAL_BALANCE_ADJUSTMENT_PREFIX,
       merchant_name: null,
       category_id: null,
       notes: input.notes || null,
