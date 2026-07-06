@@ -20,8 +20,19 @@ import { formatDate, formatTime } from "@/lib/utils/date";
 import { categorizeTransaction, uncategorizeTransaction } from "@/actions/categorize";
 import {
   approveEmailTransaction,
+  checkEmailReconciliation,
   dismissEmailTransaction,
+  type ReconciliationCandidatePreview,
 } from "@/actions/email-ingest";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import type {
   Transaction,
@@ -483,6 +494,10 @@ function ImportarDetail({
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [accountOverrides, setAccountOverrides] = useState<Record<string, string>>({});
   const [isPending, startTransition] = useTransition();
+  const [reconMatch, setReconMatch] = useState<{
+    pendingId: string;
+    candidate: ReconciliationCandidatePreview;
+  } | null>(null);
 
   const visibleEmails = pendingEmails.filter((e) => !processedIds.has(e.id));
   const items = visibleEmails.slice(0, MAX_ITEMS);
@@ -495,13 +510,46 @@ function ImportarDetail({
 
   function handleApprove(id: string) {
     const overrideAccountId = accountOverrides[id];
-    onProcess([id]);
     startTransition(async () => {
+      // Same duplicate check as the desktop Importar — this surface used to
+      // skip it and import blind. On a match the row stays visible and the
+      // user decides via the dialog; a failed check falls through to import.
+      try {
+        const recon = await checkEmailReconciliation(id, overrideAccountId);
+        if (recon.success && recon.data) {
+          setReconMatch({ pendingId: id, candidate: recon.data.candidate });
+          return;
+        }
+      } catch {
+        // Check unavailable — import directly, same as the desktop surface.
+      }
+      onProcess([id]);
       const result = await approveEmailTransaction(id, overrideAccountId);
       if (result.success) {
         toast.success("Importada");
       } else {
         onRollback([id]);
+        toast.error(result.error ?? "Error al importar");
+      }
+    });
+  }
+
+  function handleReconChoice(reconcile: boolean) {
+    if (!reconMatch) return;
+    const { pendingId, candidate } = reconMatch;
+    const overrideAccountId = accountOverrides[pendingId];
+    setReconMatch(null);
+    onProcess([pendingId]);
+    startTransition(async () => {
+      const result = await approveEmailTransaction(
+        pendingId,
+        overrideAccountId,
+        reconcile ? candidate.id : undefined,
+      );
+      if (result.success) {
+        toast.success(reconcile ? "Transacción reconciliada" : "Importada");
+      } else {
+        onRollback([pendingId]);
         toast.error(result.error ?? "Error al importar");
       }
     });
@@ -526,31 +574,44 @@ function ImportarDetail({
     startTransition(async () => {
       let approved = 0;
       let failed = 0;
-      const failedIds: string[] = [];
+      let needsReview = 0;
+      const rollbackIds: string[] = [];
 
       for (const id of ids) {
         const overrideAccountId = accountOverrides[id];
 
         try {
+          // Same duplicate check as the single-row Importar. Rows with a
+          // candidate stay pending — bulk never decides a merge silently.
+          const recon = await checkEmailReconciliation(id, overrideAccountId);
+          if (recon.success && recon.data) {
+            needsReview++;
+            rollbackIds.push(id);
+            continue;
+          }
           const result = await approveEmailTransaction(id, overrideAccountId);
           if (result.success) {
             approved++;
           } else {
             failed++;
-            failedIds.push(id);
+            rollbackIds.push(id);
           }
         } catch {
           failed++;
-          failedIds.push(id);
+          rollbackIds.push(id);
         }
       }
 
-      if (failedIds.length > 0) {
-        onRollback(failedIds);
+      if (rollbackIds.length > 0) {
+        onRollback(rollbackIds);
       }
 
-      if (failed === 0) {
+      if (failed === 0 && needsReview === 0) {
         toast.success(`${approved} importadas`);
+      } else if (needsReview > 0) {
+        toast.warning(
+          `${approved} importadas · ${needsReview} con posible duplicado — impórtalas una por una${failed > 0 ? ` · ${failed} con error` : ""}`,
+        );
       } else {
         toast.warning(`${approved} importadas, ${failed} con error`);
       }
@@ -736,6 +797,68 @@ function ImportarDetail({
           <ArrowRight className="size-3" />
         </button>
       </div>
+
+      <Dialog open={!!reconMatch} onOpenChange={(open) => !open && setReconMatch(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Posible duplicado encontrado</DialogTitle>
+            <DialogDescription>
+              Ya existe una transacción similar en esta cuenta:
+            </DialogDescription>
+          </DialogHeader>
+          {reconMatch && (
+            <div className="rounded-lg border border-white/6 bg-white/3 p-4">
+              <div className="flex items-center gap-3">
+                <div
+                  className={cn(
+                    "flex size-8 shrink-0 items-center justify-center rounded-full",
+                    reconMatch.candidate.direction === "INFLOW"
+                      ? "bg-z-income/10 text-z-income"
+                      : "bg-white/5 text-muted-foreground",
+                  )}
+                >
+                  {reconMatch.candidate.direction === "INFLOW" ? (
+                    <ArrowDownLeft className="size-3.5" />
+                  ) : (
+                    <ArrowUpRight className="size-3.5" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">
+                    {reconMatch.candidate.merchant_name ??
+                      reconMatch.candidate.raw_description ??
+                      "Transacción"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDate(reconMatch.candidate.transaction_date)}
+                  </p>
+                </div>
+                <p
+                  className={cn(
+                    "shrink-0 text-sm font-semibold tabular-nums",
+                    reconMatch.candidate.direction === "INFLOW" && "text-z-income",
+                  )}
+                >
+                  {reconMatch.candidate.direction === "INFLOW" ? "+" : "-"}
+                  {formatCurrency(reconMatch.candidate.amount, currency)}
+                </p>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => handleReconChoice(false)}
+              disabled={isPending}
+            >
+              Importar como nueva
+            </Button>
+            <Button onClick={() => handleReconChoice(true)} disabled={isPending}>
+              Reconciliar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
