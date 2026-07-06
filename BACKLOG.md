@@ -11,6 +11,7 @@
 ---
 
 ## Savings import overhaul (PR #362, 2026-07-06) — follow-ups
+- [ ] Infra: `infra/nginx/` (imagen custom + default.conf) NO es el proxy de producción — prod usa Nginx Proxy Manager (`jc21/nginx-proxy-manager`) en el VPS con hosts `pfm.sanson1911.cloud` y `n8n.venti5.shop`. Decidir: retirar `infra/nginx/` del repo o documentarlo como legado; los timeouts reales se configuran en NPM (`/data/nginx/custom/server_proxy.conf`).
 
 - [ ] Refactor: colapsar los dos call sites de `fetchAllPages` en `processStatementMeta` (mismos filtros, solo cambian select y bounds de fecha) en un helper `fetchAccountTxs`; idealmente extraer el bloque de anclaje+validación (~140 líneas) a `resolveSavingsBalance()`.
 - [ ] Refactor: calcular un único `anchoredBalance: number | null` tras el bloque de anclaje y usarlo en los dos sitios de escritura (currency_balances + current_balance) — elimina los fallbacks `?? meta.summary.final_balance` inalcanzables y los `!` dobles.
