@@ -109,11 +109,19 @@ export const HybridHero = memo(function HybridHero({
     [today, endOfMonth, liquidBalance, nextIncomeDate, nextIncomeAmount, pendingObligations, dailyOutflows],
   );
 
-  const overspentToday = ritmo.spentToday > ritmo.availablePerDay;
+  // Headline = what's still spendable TODAY: the daily allowance minus what
+  // you've already spent today. Signed on purpose — each new expense subtracts
+  // from it, and it drops below zero once you blow past the daily budget.
+  // Rounded to minor units so float noise in the spentToday sum can't flip
+  // an exactly-spent day (remaining 0) into a false "overspent" negative.
+  const remainingToday =
+    Math.round((ritmo.availablePerDay - ritmo.spentToday) * 100) / 100;
+  const overspentToday = remainingToday < 0;
   const status = deriveRitmoStatus(ritmo);
   const statusColor = TONE_COLOR[status.tone];
-  const amountColor =
-    status.tone === "income" && ritmo.spentToday === 0 ? COLORS.sageLight : statusColor;
+  // Bright when you still have room, red once you're in the negative. The
+  // status pill carries the nuanced green/amber/red verdict.
+  const amountColor = overspentToday ? COLORS.debt : COLORS.foreground;
 
   const spark = useMemo(() => {
     const values = ritmo.calendar.slice(-7).map((d) => d.expense);
@@ -152,7 +160,7 @@ export const HybridHero = memo(function HybridHero({
       {/* Top row: eyebrow + status pill */}
       <View className="flex-row items-center justify-between">
         <Text className="text-[10px] font-inter-semibold uppercase tracking-[2px] text-z-sage-dark">
-          Gasto de hoy
+          Disponible hoy
         </Text>
         <View
           className="flex-row items-center gap-1.5 rounded-full border border-white-6 bg-white-4 px-2.5 py-1"
@@ -167,30 +175,30 @@ export const HybridHero = memo(function HybridHero({
         </View>
       </View>
 
-      {/* Bottom row: today's spend (headline fact) + sparkline. */}
+      {/* Bottom row: what's still spendable today (headline) + sparkline. */}
       <View className="mt-2 flex-row items-end justify-between">
         <Text
           className="text-[34px] font-inter-bold tracking-[-1.2px]"
           style={{ color: amountColor, fontVariant: ["tabular-nums"] }}
         >
-          {formatCurrency(ritmo.spentToday, currency)}
+          {overspentToday
+            ? `−${formatCurrency(Math.abs(remainingToday), currency)}`
+            : formatCurrency(remainingToday, currency)}
         </Text>
         {spark.values.length > 0 && (
           <Sparkline values={spark.values} max={spark.max} color={statusColor} />
         )}
       </View>
 
-      {/* Daily allowance context — always rendered. */}
+      {/* Context: how much of today's allowance is already spent. */}
       <Text
         className="mt-2 text-[12px]"
         style={{
-          color: overspentToday ? COLORS.alert : COLORS.sageLight,
+          color: overspentToday ? COLORS.debt : COLORS.sageLight,
           fontVariant: ["tabular-nums"],
         }}
       >
-        {overspentToday
-          ? `Por encima de ${formatCurrency(ritmo.availablePerDay, currency)} al día`
-          : `de ${formatCurrency(ritmo.availablePerDay, currency)} al día`}
+        {`Gastaste ${formatCurrency(ritmo.spentToday, currency)} de ${formatCurrency(ritmo.availablePerDay, currency)} hoy`}
       </Text>
 
       {/* % del período above bar */}

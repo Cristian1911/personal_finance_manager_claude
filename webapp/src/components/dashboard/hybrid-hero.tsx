@@ -37,12 +37,6 @@ const BUCKET_CLASS: Record<DailyBucket, string> = {
   high: "bg-z-debt/45 text-z-white",
 };
 
-const TONE_TEXT_CLASS: Record<RitmoStatusTone, string> = {
-  income: "text-z-income",
-  alert: "text-z-alert",
-  debt: "text-z-debt",
-};
-
 const TONE_STROKE: Record<RitmoStatusTone, string> = {
   income: "var(--color-z-sage)",
   alert: "var(--color-z-alert)",
@@ -71,15 +65,24 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
   const [view, setView] = useState<ExpandedView>("calc");
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
-  const overspentToday = data.spentToday > data.availablePerDay;
+  // Headline = what's still spendable TODAY: the daily allowance minus what
+  // you've already spent today. Signed on purpose — each expense subtracts
+  // from it, and it goes negative once the daily allowance is exceeded.
+  // Rounded to minor units so float noise in the spentToday sum can't flip
+  // an exactly-spent day (remaining 0) into a false "overspent" negative.
+  // Without a configured income the allowance is synthetic, so the headline
+  // falls back to the plain "what did I spend today" fact.
+  const remainingToday =
+    Math.round((data.availablePerDay - data.spentToday) * 100) / 100;
+  const overspentToday = remainingToday < 0;
   const status = deriveRitmoStatus(data);
-  const statusTextClass = TONE_TEXT_CLASS[status.tone];
-  // "income" tone falls through to a muted color when nothing was spent
-  // today — there's no "you spent $0" achievement to celebrate in green.
-  const todayTone =
-    !data.incomeConfigured || (status.tone === "income" && data.spentToday === 0)
-      ? "text-z-sage-light"
-      : statusTextClass;
+  // Bright while there's room left, red once negative. The Verdict chip
+  // carries the nuanced green/amber/red reading; muted when no income data.
+  const todayTone = !data.incomeConfigured
+    ? "text-z-sage-light"
+    : overspentToday
+      ? "text-z-debt"
+      : "text-foreground";
 
   // Last-7-days OUTFLOW series for the mini sparkline — read from
   // data.calendar so it scales with the user's actual month-to-date data.
@@ -119,11 +122,11 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
 
   return (
     <div className="rounded-2xl border border-white/6 bg-z-surface-2/80 p-5">
-      {/* Top row: eyebrow ("Gasto de hoy"); the verdict lives under the
-          number (slot: eyebrow → number → verdict → detail), never here. */}
+      {/* Top row: eyebrow; the verdict lives under the number
+          (slot: eyebrow → number → verdict → detail), never here. */}
       <div className="flex items-center justify-between gap-3">
         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-          Gasto de hoy
+          {data.incomeConfigured ? "Disponible hoy" : "Gasto de hoy"}
         </p>
         {!data.incomeConfigured && (
           <span
@@ -137,7 +140,8 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
         )}
       </div>
 
-      {/* Bottom row: today's spend (the headline fact) + sparkline. */}
+      {/* Bottom row: what's still spendable today (headline) + sparkline.
+          Falls back to today's spend when no income is configured. */}
       <div className="mt-2 flex items-end justify-between gap-3">
         <p
           className={cn(
@@ -145,7 +149,11 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
             todayTone,
           )}
         >
-          {formatCurrency(data.spentToday, data.currency)}
+          {!data.incomeConfigured
+            ? formatCurrency(data.spentToday, data.currency)
+            : overspentToday
+              ? `−${formatCurrency(Math.abs(remainingToday), data.currency)}`
+              : formatCurrency(remainingToday, data.currency)}
         </p>
         {sparkData.values.length > 0 && (
           <HeroSparkline
@@ -163,25 +171,17 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
         </div>
       )}
 
-      {/* Daily allowance context line. Always rendered — it's the
-          baseline the headline is being compared against. Tone shifts
-          to amber when today is over the daily budget. */}
+      {/* Context line: how much of today's allowance is already spent —
+          the baseline the headline remainder is computed from. */}
       {data.incomeConfigured ? (
         <p
           className={cn(
             "mt-1.5 text-[12px] tabular-nums",
-            overspentToday ? "text-z-alert" : "text-z-sage-light",
+            overspentToday ? "text-z-debt" : "text-z-sage-light",
           )}
         >
-          {overspentToday ? (
-            <>
-              Por encima de {formatCurrency(data.availablePerDay, data.currency)} al día
-            </>
-          ) : (
-            <>
-              de {formatCurrency(data.availablePerDay, data.currency)} al día
-            </>
-          )}
+          Gastaste {formatCurrency(data.spentToday, data.currency)} de{" "}
+          {formatCurrency(data.availablePerDay, data.currency)} hoy
         </p>
       ) : (
         <Link
