@@ -48,7 +48,7 @@ export async function getLiveDashboardData(
 ): Promise<LiveDashboardData> {
   const [heroData, dailySpending, attentionItems] = await Promise.all([
     getDashboardHeroData(undefined, currency),
-    getDailySpending(undefined, currency),
+    getDailySpending(undefined, currency, { liquidOnly: true }),
     getAttentionItems(),
   ]);
 

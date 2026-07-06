@@ -79,8 +79,9 @@ export type DashboardSummary = {
   totalSpentThisMonth: number;
   /** Per-day OUTFLOW totals for the current calendar month — drives the
    *  V7 HybridHero calendar heatmap and the period progress bar. Ordered
-   *  by date ascending. Excluded + reconciled + transfer rows already
-   *  removed by the same filter the totals use. */
+   *  by date ascending. Excluded + reconciled + transfer + debt-account
+   *  (credit card / loan) rows already removed by the same filter the
+   *  totals use — cash pace tracks liquid accounts only. */
   dailyOutflowsThisMonth: { date: string; expense: number }[];
 
   /** "Por resolver" tile — counts for the HERRAMIENTAS system widget. */
@@ -208,6 +209,10 @@ export function useDashboardData() {
       for (const tx of txRows) {
         if (tx.is_excluded || tx.direction !== "OUTFLOW") continue;
         if (tx.transfer_group_id || tx.reconciled_into_transaction_id) continue;
+        // Cash-pace metrics budget against the LIQUID balance — a credit-card
+        // purchase doesn't move it, so debt-account outflows don't count here
+        // (mirrors webapp getDailySpending liquidOnly).
+        if (isDebtAccountType(accountMap.get(tx.account_id)?.account_type ?? "")) continue;
         const amount = Math.abs(tx.amount ?? 0);
         totalOutflow += amount;
         if (tx.transaction_date === today) spentToday += amount;

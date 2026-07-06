@@ -221,7 +221,8 @@ async function getDailySpendingCached(
   userId: string,
   month: string | undefined,
   currency: CurrencyCode | undefined,
-  isDemo: boolean
+  isDemo: boolean,
+  liquidOnly: boolean
 ): Promise<DailySpending[]> {
   "use cache";
   cacheTag("dashboard:charts");
@@ -230,7 +231,7 @@ async function getDailySpendingCached(
   const supabase = createCachedClient(accessToken);
   const target = parseMonth(month);
 
-  const accountIds = await getDemoAccountIds(supabase, userId, isDemo);
+  const accountIds = await getDemoAccountIds(supabase, userId, isDemo, { liquidOnly });
   if (!accountIds) return [];
 
   const { data: transactions, error } = await supabase
@@ -566,12 +567,23 @@ export async function getMonthlyCashflow(month?: string, currency?: CurrencyCode
 
 /**
  * Daily spending (OUTFLOW) for the given month (defaults to current).
+ *
+ * `liquidOnly` excludes CREDIT_CARD/LOAN accounts — cash-pace consumers
+ * (hero/ritmo, "gasto de hoy", quick view) must count only money that
+ * left the liquid accounts, matching how "Disponible" is computed.
+ * Consumption-vs-budget consumers (budget pace, activity heatmap) keep
+ * the default (all accounts) — a credit-card purchase still consumes
+ * its category budget.
  */
-export async function getDailySpending(month?: string, currency?: CurrencyCode): Promise<DailySpending[]> {
+export async function getDailySpending(
+  month?: string,
+  currency?: CurrencyCode,
+  opts?: { liquidOnly?: boolean }
+): Promise<DailySpending[]> {
   const { user, accessToken } = await getAuthenticatedClient();
   if (!user || !accessToken) return [];
   const isDemo = await getIsDemoFilter(user.id);
-  return getDailySpendingCached(accessToken, user.id, month, currency, isDemo);
+  return getDailySpendingCached(accessToken, user.id, month, currency, isDemo, opts?.liquidOnly ?? false);
 }
 
 /**
