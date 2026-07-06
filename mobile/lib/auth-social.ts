@@ -31,19 +31,20 @@ function configureGoogle() {
   // built binaries → GoogleSignin.configure({ undefined }) → DEVELOPER_ERROR.
   // The iOS client id is only needed on iOS, so don't let a missing one disable
   // Google sign-in on Android.
+  // Throwing (instead of returning) keeps signInWithGoogle from calling native
+  // SDK methods unconfigured — the caller's catch logs this message and shows
+  // the friendly error, rather than a generic native init failure.
   if (!WEB_CLIENT_ID) {
-    console.warn(
+    throw new Error(
       "[google-signin] Missing EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID — " +
         "Google sign-in will fail in this build. Add it to the eas.json build profile env."
     );
-    return;
   }
   if (Platform.OS === "ios" && !IOS_CLIENT_ID) {
-    console.warn(
+    throw new Error(
       "[google-signin] Missing EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID — " +
         "Google sign-in will fail on iOS. Add it to the eas.json build profile env."
     );
-    return;
   }
   GoogleSignin.configure({
     webClientId: WEB_CLIENT_ID, // token audience Supabase validates

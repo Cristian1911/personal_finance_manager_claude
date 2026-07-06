@@ -112,7 +112,10 @@ export const HybridHero = memo(function HybridHero({
   // Headline = what's still spendable TODAY: the daily allowance minus what
   // you've already spent today. Signed on purpose — each new expense subtracts
   // from it, and it drops below zero once you blow past the daily budget.
-  const remainingToday = ritmo.availablePerDay - ritmo.spentToday;
+  // Rounded to minor units so float noise in the spentToday sum can't flip
+  // an exactly-spent day (remaining 0) into a false "overspent" negative.
+  const remainingToday =
+    Math.round((ritmo.availablePerDay - ritmo.spentToday) * 100) / 100;
   const overspentToday = remainingToday < 0;
   const status = deriveRitmoStatus(ritmo);
   const statusColor = TONE_COLOR[status.tone];
