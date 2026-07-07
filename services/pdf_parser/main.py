@@ -342,13 +342,14 @@ async def parse_image(
 
 def _looks_like_valid_upload(ext: str, content: bytes) -> bool:
     """Cheap magic-byte check so we don't store arbitrary content."""
-    if ext == ".pdf":
+    ext_lower = ext.lower()
+    if ext_lower == ".pdf":
         return content.startswith(b"%PDF")
-    if ext == ".png":
+    if ext_lower == ".png":
         return content.startswith(b"\x89PNG")
-    if ext in (".jpg", ".jpeg"):
+    if ext_lower in (".jpg", ".jpeg"):
         return content.startswith(b"\xff\xd8\xff")
-    if ext == ".webp":
+    if ext_lower == ".webp":
         return content[:4] == b"RIFF" and content[8:12] == b"WEBP"
     return False
 
