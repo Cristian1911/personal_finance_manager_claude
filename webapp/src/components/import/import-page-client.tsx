@@ -34,26 +34,35 @@ export function ImportPageClient({
   const [wizardStep, setWizardStep] = useState<
     "upload" | "review" | "reconcile" | "results"
   >("upload");
-  const [screenshotEntry, setScreenshotEntry] = useState<{ file: File; seq: number } | null>(null);
-  // Never resets, even when screenshotEntry is cleared — the wizard `key`
-  // derived from it must always move forward so a new pick remounts fresh.
-  const screenshotSeq = useRef(0);
+  const [screenshotEntry, setScreenshotEntry] = useState<{ file: File; runSeq: number } | null>(null);
+  // Bumped only when a screenshot pick needs a hard wizard remount. Never
+  // reset — the wizard `key` derived from it must always move forward.
+  const runSeq = useRef(0);
   const searchParams = useSearchParams();
 
   // FAB "Importar pantallazo" stashes the picked file and navigates here with
   // ?mode=screenshot&pick=N. This runs on mount AND on same-segment
   // navigations (the pick counter guarantees searchParams change), so a new
-  // screenshot always starts a fresh wizard run — even when /import is
-  // already mounted showing a previous run's state.
+  // screenshot always reaches the wizard — even when /import is already
+  // mounted showing a previous run's state.
   useEffect(() => {
     if (searchParams.get("mode") !== "screenshot") return;
     const file = getPendingScreenshotFile();
     if (!file) return;
+    // Mid-flow or email-review pick → bump the key for a fresh wizard run.
+    // At the upload step, keep the mounted wizard instead: StepUpload's
+    // addFiles() then resolves the new image against anything already staged
+    // (removing a staged PDF WITH its toast, batching extra captures) rather
+    // than a silent remount wipe.
+    if (wizardStep !== "upload" || selectedId !== null) {
+      runSeq.current += 1;
+    }
     setSelectedId(null);
     setSelectedParseResult(null);
-    screenshotSeq.current += 1;
-    setScreenshotEntry({ file, seq: screenshotSeq.current });
-  }, [searchParams]);
+    setScreenshotEntry({ file, runSeq: runSeq.current });
+    // Re-runs from the extra deps are no-ops: the pending file is consumed
+    // (nulled) on first pickup.
+  }, [searchParams, wizardStep, selectedId]);
 
   const handleReviewStatement = useCallback((statement: PendingEmailStatement) => {
     if (!Array.isArray(statement.parsed_data) || statement.parsed_data.length === 0) return;
@@ -109,10 +118,7 @@ export function ImportPageClient({
 
       <div id="import-wizard" className="scroll-mt-16">
         <ImportWizard
-          key={
-            selectedId ??
-            (screenshotEntry ? `screenshot-${screenshotEntry.seq}` : "fresh")
-          }
+          key={selectedId ?? `fresh-${screenshotEntry?.runSeq ?? 0}`}
           accounts={accounts}
           categories={categories}
           destinatarioRules={destinatarioRules}

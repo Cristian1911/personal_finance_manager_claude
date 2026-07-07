@@ -151,7 +151,7 @@ export function StepUpload({
   const [savedForSupport, setSavedForSupport] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const passwordInputRef = useRef<HTMLInputElement>(null);
-  const initialFileProcessed = useRef(false);
+  const lastInitialFile = useRef<File | null>(null);
 
   useEffect(() => {
     if (initialVaultSuggestions) return;
@@ -259,10 +259,13 @@ export function StepUpload({
     setFiles((prev) => prev.filter((_, i) => i !== index));
   }
 
-  // Handle initialFile from FAB screenshot flow
+  // Handle initialFile from the FAB screenshot flow. Identity-based (not
+  // one-shot): a second pick while this step stays mounted arrives as a new
+  // File instance and must go through addFiles() so its PDF/image conflict
+  // messaging and batching apply, instead of being silently dropped.
   useEffect(() => {
-    if (initialFile && !initialFileProcessed.current) {
-      initialFileProcessed.current = true;
+    if (initialFile && lastInitialFile.current !== initialFile) {
+      lastInitialFile.current = initialFile;
       addFiles([initialFile]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
