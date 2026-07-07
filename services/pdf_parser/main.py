@@ -340,22 +340,50 @@ async def parse_image(
             logger.warning("Failed to delete temp image %s: %s", tmp_path, exc)
 
 
+def _looks_like_valid_upload(ext: str, content: bytes) -> bool:
+    """Cheap magic-byte check so we don't store arbitrary content."""
+    if ext == ".pdf":
+        return content.startswith(b"%PDF")
+    if ext == ".png":
+        return content.startswith(b"\x89PNG")
+    if ext in (".jpg", ".jpeg"):
+        return content.startswith(b"\xff\xd8\xff")
+    if ext == ".webp":
+        return content[:4] == b"RIFF" and content[8:12] == b"WEBP"
+    return False
+
+
 @app.post("/save-unrecognized", dependencies=[Depends(_verify_key)])
 async def save_for_support(file: UploadFile):
-    """Save an unsupported PDF (user-confirmed) to help build a new parser."""
-    if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="El archivo debe ser un PDF")
+    """Save an unsupported statement file (user-confirmed) to help build a new parser.
+
+    Accepts the same formats the parse endpoints accept: PDF statements and
+    app-screenshot images (PNG/JPG/WEBP).
+    """
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No se proporcionó un archivo")
+
+    ext = os.path.splitext(file.filename.lower())[1]
+    if ext != ".pdf" and ext not in ALLOWED_IMAGE_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail="Formato no soportado. Se aceptan PDF, PNG, JPG o WEBP.",
+        )
 
     content = await file.read()
 
-    if len(content) > MAX_PDF_BYTES:
-        raise HTTPException(status_code=413, detail="El archivo excede el tamaño máximo de 50MB")
+    max_bytes = MAX_PDF_BYTES if ext == ".pdf" else MAX_IMAGE_BYTES
+    if len(content) > max_bytes:
+        raise HTTPException(
+            status_code=413,
+            detail=f"El archivo excede el tamaño máximo de {max_bytes // (1024 * 1024)}MB",
+        )
 
-    if not content.startswith(b"%PDF"):
-        raise HTTPException(status_code=400, detail="El archivo no es un PDF válido")
+    if not _looks_like_valid_upload(ext, content):
+        raise HTTPException(status_code=400, detail="El archivo no es válido")
 
     location = save_unrecognized(content, file.filename)
-    logger.info("Unrecognized PDF saved: filename=%s path=%s", file.filename, location)
+    logger.info("Unrecognized file saved: filename=%s path=%s", file.filename, location)
     return {"saved": True}
 
 

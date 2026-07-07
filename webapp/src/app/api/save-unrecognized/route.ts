@@ -3,8 +3,10 @@ import { getRequestUser } from "@/app/api/_shared/auth";
 
 const PARSER_URL = process.env.PDF_PARSER_URL || "http://localhost:8000";
 const PARSER_API_KEY = process.env.PDF_PARSER_API_KEY ?? "";
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+const MAX_PDF_SIZE = 10 * 1024 * 1024; // 10 MB — same limit as /api/parse-statement
+const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20 MB — same limit as /api/parse-image
 const FETCH_TIMEOUT_MS = 30_000; // 30 seconds
+const IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".webp"];
 
 export async function POST(request: NextRequest) {
   if (!(await getRequestUser(request))) {
@@ -13,17 +15,21 @@ export async function POST(request: NextRequest) {
 
   const formData = await request.formData();
   const file = formData.get("file") as File | null;
+  const name = file?.name.toLowerCase() ?? "";
+  const isPdf = name.endsWith(".pdf");
+  const isImage = IMAGE_EXTENSIONS.some((ext) => name.endsWith(ext));
 
-  if (!file || !file.name.toLowerCase().endsWith(".pdf")) {
+  if (!file || (!isPdf && !isImage)) {
     return NextResponse.json(
-      { error: "El archivo debe ser un PDF" },
+      { error: "Formato no soportado. Se aceptan PDF, PNG, JPG o WEBP." },
       { status: 400 }
     );
   }
 
-  if (file.size > MAX_FILE_SIZE) {
+  const maxSize = isPdf ? MAX_PDF_SIZE : MAX_IMAGE_SIZE;
+  if (file.size > maxSize) {
     return NextResponse.json(
-      { error: "El archivo excede el tamaño máximo de 10MB" },
+      { error: `El archivo excede el tamaño máximo de ${maxSize / (1024 * 1024)}MB` },
       { status: 400 }
     );
   }
