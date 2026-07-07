@@ -68,6 +68,11 @@ function getSheetTitle(action: FabAction): string {
 /** Module-level ref to hold the screenshot file picked from the FAB */
 let pendingScreenshotFile: File | null = null;
 
+/** Monotonic counter so each screenshot pick navigates to a unique URL.
+ * A push to an identical URL on an already-mounted /import would not re-fire
+ * the searchParams effect that stages the file, silently dropping it. */
+let screenshotNavSeq = 0;
+
 export function getPendingScreenshotFile(): File | null {
   const file = pendingScreenshotFile;
   pendingScreenshotFile = null;
@@ -110,7 +115,8 @@ export function MobileSheetProvider({ children }: MobileSheetProviderProps) {
       const file = e.target.files?.[0];
       if (file) {
         pendingScreenshotFile = file;
-        router.push("/import?mode=screenshot");
+        screenshotNavSeq += 1;
+        router.push(`/import?mode=screenshot&pick=${screenshotNavSeq}`);
       }
       // Reset input so the same file can be re-selected
       e.target.value = "";

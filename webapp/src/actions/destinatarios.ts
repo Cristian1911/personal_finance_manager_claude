@@ -8,7 +8,7 @@ import {
   destinatarioSchema,
   destinatarioRuleSchema,
 } from "@/lib/validators/destinatario";
-import { uuidStr } from "@/lib/validators/shared";
+import { uuidStr, UUID_RE } from "@/lib/validators/shared";
 import type { ActionResult } from "@/types/actions";
 import type { Database } from "@/types/database";
 import {
@@ -373,6 +373,31 @@ function parsePatternsList(raw: FormDataEntryValue | null): string[] {
     });
 }
 
+/**
+ * Default categories must be leaves: autoCategorize copies them onto
+ * transactions, and a zone/parent category there breaks budget and metric
+ * groupings. The pickers can't select parents, but older UIs could — keep the
+ * gate server-side so no path (patch, API, stale client) reintroduces them.
+ */
+async function isParentCategory(
+  supabase: Awaited<ReturnType<typeof getAuthenticatedClient>>["supabase"],
+  categoryId: string,
+): Promise<boolean> {
+  // A malformed id would make PostgREST return a 22P02 error (not throw) and
+  // the gate would silently pass. Treat non-UUIDs as "not a parent" — the
+  // callers' own validation rejects them before any write.
+  if (!UUID_RE.test(categoryId)) return false;
+  const { data } = await supabase
+    .from("categories")
+    .select("id")
+    .eq("parent_id", categoryId)
+    .limit(1);
+  return (data?.length ?? 0) > 0;
+}
+
+const PARENT_CATEGORY_ERROR =
+  "Elige una subcategoría específica — las zonas generales no pueden ser categoría por defecto.";
+
 // ─── createDestinatario ───────────────────────────────────────────────────────
 
 export type CreateDestinatarioResult = Destinatario & { linked_count?: number };
@@ -394,6 +419,13 @@ export async function createDestinatario(
 
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0].message };
+  }
+
+  if (
+    parsed.data.default_category_id &&
+    (await isParentCategory(supabase, parsed.data.default_category_id))
+  ) {
+    return { success: false, error: PARENT_CATEGORY_ERROR };
   }
 
   const { data, error } = await supabase
@@ -534,6 +566,13 @@ export async function updateDestinatario(
     return { success: false, error: parsed.error.issues[0].message };
   }
 
+  if (
+    parsed.data.default_category_id &&
+    (await isParentCategory(supabase, parsed.data.default_category_id))
+  ) {
+    return { success: false, error: PARENT_CATEGORY_ERROR };
+  }
+
   const { data, error } = await supabase
     .from("destinatarios")
     .update(parsed.data)
@@ -560,6 +599,22 @@ export async function patchDestinatario(
 ): Promise<ActionResult<null>> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
+
+  // patch has no Zod pass (unlike create/update) — normalize "" → null and
+  // validate the id here so a bad value never reaches the DB as a 22P02.
+  if (patch.default_category_id !== undefined) {
+    patch = { ...patch, default_category_id: patch.default_category_id || null };
+    if (patch.default_category_id && !UUID_RE.test(patch.default_category_id)) {
+      return { success: false, error: "Categoría inválida" };
+    }
+  }
+
+  if (
+    patch.default_category_id &&
+    (await isParentCategory(supabase, patch.default_category_id))
+  ) {
+    return { success: false, error: PARENT_CATEGORY_ERROR };
+  }
 
   const { error } = await supabase
     .from("destinatarios")
