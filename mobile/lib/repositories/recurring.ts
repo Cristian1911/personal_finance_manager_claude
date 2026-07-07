@@ -614,14 +614,16 @@ async function computeRecurringGroupUuid(
  */
 export async function linkExistingTransactionToOccurrence(
   occurrenceId: string,
-  transactionId: string,
-  options?: { linkedManually?: boolean }
+  transactionId: string
 ): Promise<void> {
   const db = await getDatabase();
   const now = new Date().toISOString();
-  // Manual "Vincular" sets linked_manually=true; auto-linking on create/import
-  // (findAndLinkLocalOccurrence) passes false to mirror webapp's auto path.
-  const linkedManually = options?.linkedManually ?? true;
+  // linked_manually=true for BOTH manual "Vincular" and auto-link
+  // (findAndLinkLocalOccurrence): the transaction pre-exists the link, so
+  // revertOccurrence must unlink it, never delete it. Mirrors webapp
+  // markOccurrencePaid. Only payment-creation flows (webapp Plan
+  // recordRecurringOccurrencePayment) leave the flag false — there the
+  // payment created the transaction and revert deletes it.
 
   const occ = await db.getFirstAsync<{
     id: string;
@@ -699,13 +701,13 @@ export async function linkExistingTransactionToOccurrence(
       status: "paid",
       transaction_id: transactionId,
       paid_at: now,
-      linked_manually: linkedManually,
+      linked_manually: true,
     };
     await db.runAsync(
       `UPDATE recurring_occurrences
-         SET status = 'paid', transaction_id = ?, paid_at = ?, linked_manually = ?
+         SET status = 'paid', transaction_id = ?, paid_at = ?, linked_manually = 1
          WHERE id = ?`,
-      [transactionId, now, linkedManually ? 1 : 0, occurrenceId]
+      [transactionId, now, occurrenceId]
     );
     await enqueueUpdate(db, "recurring_occurrences", occurrenceId, occPayload, now);
 
@@ -739,7 +741,9 @@ export async function linkExistingTransactionToOccurrence(
  * unanchored → near-exact) come from @zeta/shared `occurrence-matching.ts`,
  * the same constants webapp `findMatchingOccurrence` uses — the two
  * implementations must not drift. Marks the occurrence paid with
- * linked_manually=false (auto), via the shared link routine.
+ * linked_manually=true (the tx pre-exists the link), via the shared link
+ * routine — same flag webapp's markOccurrencePaid sets on auto-link, so
+ * revertOccurrence unlinks instead of deleting.
  */
 export async function findAndLinkLocalOccurrence(
   transactionId: string
@@ -771,9 +775,7 @@ export async function findAndLinkLocalOccurrence(
   if (!best) return false;
 
   try {
-    await linkExistingTransactionToOccurrence(best.id, transactionId, {
-      linkedManually: false,
-    });
+    await linkExistingTransactionToOccurrence(best.id, transactionId);
     return true;
   } catch {
     // Best-effort — a race (occurrence already paid) must never fail the create.

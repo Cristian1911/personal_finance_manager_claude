@@ -237,6 +237,18 @@ export function TransactionQuickActions({
     }
   }, [moreOpen, isLinkedRecurring, linkedRecurring, tx.id]);
 
+  // The linked transaction was created by registering the payment from Plan
+  // (MANUAL_FORM, not linked by hand) — reverting deletes it. Anything else
+  // (EMAIL_IMPORT, PDF_IMPORT, OCR…, TEXT_QUICK_CAPTURE) existed on its own
+  // and auto-matched the occurrence, so the drawer also offers unlink-and-keep.
+  // `null` capture (still loading / legacy row) falls back to the
+  // destructive-confirm path.
+  const paymentCreatedTx =
+    linkedRecurring != null &&
+    !linkedRecurring.linkedManually &&
+    (linkedRecurring.transactionCaptureMethod === "MANUAL_FORM" ||
+      linkedRecurring.transactionCaptureMethod === null);
+
   const canLinkPersona = !tx.personal_debt_id && !tx.transfer_group_id;
   // A shared payment splits a spend the user fronted: only OUTFLOWs, not already
   // linked to a person/transfer, and not already split.
@@ -362,19 +374,20 @@ export function TransactionQuickActions({
     });
   }
 
-  function handleDissociateRecurring() {
+  function handleDissociateRecurring(keepTransaction = false) {
     if (!linkedRecurring) return;
     const occurrenceId = linkedRecurring.occurrenceId;
     // A payment registered from Plan created its transaction — reverting it
     // deletes that transaction, so confirm first via the AlertDialog. Manual
-    // links only detach the pre-existing transaction, so they run immediately.
-    const willDeleteTransaction = !linkedRecurring.linkedManually;
+    // links and explicit keep-transaction unlinks only detach the pre-existing
+    // transaction, so they run immediately.
+    const willDeleteTransaction = !linkedRecurring.linkedManually && !keepTransaction;
     if (willDeleteTransaction && !confirmRevertOpen) {
       setConfirmRevertOpen(true);
       return;
     }
     startLinkTransition(async () => {
-      const result = await revertOccurrence(occurrenceId);
+      const result = await revertOccurrence(occurrenceId, { keepTransaction });
       if (result.success) {
         // Close the overlays only on success: the loading state stays visible
         // during the request, and a failure keeps the user in context to retry.
@@ -684,18 +697,53 @@ export function TransactionQuickActions({
               {linkedRecurring?.linkedManually ? (
                 <button
                   type="button"
-                  onClick={handleDissociateRecurring}
+                  onClick={() => handleDissociateRecurring()}
                   disabled={isLinking}
                   className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-z-expense transition-colors hover:bg-white/5 disabled:opacity-50"
                 >
                   <Link2Off className="size-4" />
                   Desvincular de la recurrente
                 </button>
+              ) : linkedRecurring && !paymentCreatedTx ? (
+                <>
+                  {/* Imported/captured tx that auto-matched the occurrence: the
+                      safe unlink keeps the bank record; delete stays available
+                      behind its confirm dialog. */}
+                  <button
+                    type="button"
+                    onClick={() => handleDissociateRecurring(true)}
+                    disabled={isLinking}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-white/5 disabled:opacity-50"
+                  >
+                    <Link2Off className="size-4 text-muted-foreground" />
+                    Desvincular de la recurrente
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDissociateRecurring()}
+                    disabled={isLinking}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-z-expense transition-colors hover:bg-white/5 disabled:opacity-50"
+                  >
+                    <Trash2 className="size-4" />
+                    Deshacer pago y eliminar transacción
+                  </button>
+                  <div className="mt-1 flex items-start gap-2 rounded-lg border border-white/6 bg-white/[0.02] px-3 py-2.5">
+                    <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-z-brass" />
+                    <p className="text-xs text-muted-foreground">
+                      Esta transacción no se creó desde el pago de la recurrente, sino
+                      que se vinculó automáticamente. Al desvincularla{" "}
+                      <span className="font-medium text-foreground">
+                        la transacción se conserva
+                      </span>{" "}
+                      y el pago volverá a quedar pendiente en Plan.
+                    </p>
+                  </div>
+                </>
               ) : (
                 <>
                   <button
                     type="button"
-                    onClick={handleDissociateRecurring}
+                    onClick={() => handleDissociateRecurring()}
                     disabled={isLinking || !linkedRecurring}
                     className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-z-expense transition-colors hover:bg-white/5 disabled:opacity-50"
                   >
@@ -724,10 +772,11 @@ export function TransactionQuickActions({
           <AlertDialogHeader>
             <AlertDialogTitle>¿Deshacer este pago?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta transacción se creó al registrar el pago de{" "}
-              {linkedRecurring?.templateMerchant ?? "la recurrente"}. Al desasociarla se
-              eliminará la transacción, se revertirá su efecto en el saldo y el pago
-              volverá a quedar pendiente en Plan.
+              {paymentCreatedTx
+                ? `Esta transacción se creó al registrar el pago de ${linkedRecurring?.templateMerchant ?? "la recurrente"}.`
+                : `Esta transacción está vinculada al pago de ${linkedRecurring?.templateMerchant ?? "la recurrente"}.`}{" "}
+              Al deshacer el pago se eliminará la transacción, se revertirá su efecto en
+              el saldo y el pago volverá a quedar pendiente en Plan.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
