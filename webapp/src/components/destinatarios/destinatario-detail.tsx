@@ -246,6 +246,7 @@ function EditForm({
               categories={categories}
               value={categoryId}
               onValueChange={setCategoryId}
+              variant="popover"
               placeholder="Sin categoría"
               triggerClassName="w-full"
             />
