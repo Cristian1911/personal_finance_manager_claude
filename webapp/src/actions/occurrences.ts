@@ -332,6 +332,12 @@ export interface LinkedRecurringInfo {
   /** True when the link was made by hand (Vincular). Only manual links can be
    *  safely undone via revertOccurrence — system-created ones delete the tx. */
   linkedManually: boolean;
+  /** Capture method of the linked transaction. Distinguishes a tx the payment
+   *  flow created (MANUAL_FORM registered from Plan — reverting deletes it)
+   *  from an imported/captured tx that merely auto-linked (EMAIL_IMPORT,
+   *  PDF_IMPORT, …) — deleting those on revert would destroy a bank record,
+   *  so the UI offers unlink-and-keep instead. */
+  transactionCaptureMethod: string | null;
 }
 
 /**
@@ -355,7 +361,8 @@ async function getLinkedRecurringForTransactionCached(
       id, occurrence_date, template_id, expected_amount, linked_manually,
       template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(
         merchant_name, description, currency_code
-      )
+      ),
+      transaction:transactions!recurring_occurrences_transaction_id_fkey(capture_method)
     `)
     .eq("transaction_id", transactionId)
     .eq("user_id", userId)
@@ -369,6 +376,7 @@ async function getLinkedRecurringForTransactionCached(
     currency_code: string;
   } | null;
   if (!t) return null;
+  const linkedTx = data.transaction as { capture_method: string | null } | null;
 
   return {
     occurrenceId: data.id,
@@ -378,6 +386,7 @@ async function getLinkedRecurringForTransactionCached(
     expectedAmount: data.expected_amount,
     currencyCode: t.currency_code,
     linkedManually: Boolean(data.linked_manually),
+    transactionCaptureMethod: linkedTx?.capture_method ?? null,
   };
 }
 
@@ -757,8 +766,17 @@ export async function skipOccurrence(occurrenceId: string): Promise<ActionResult
  * Revert a completed occurrence (paid or skipped) back to pending.
  * For paid occurrences: deletes the created transaction(s) and reverses balance deltas.
  * For skipped occurrences: simply resets status.
+ *
+ * `keepTransaction` forces the unlink-only path even when `linked_manually`
+ * is false: the occurrence returns to pending and the transaction survives
+ * with its `recurrence_group_id` cleared. Used when the linked transaction
+ * was NOT created by the payment flow (e.g. an email/PDF import that
+ * auto-matched an occurrence) — deleting it would destroy a bank record.
  */
-export async function revertOccurrence(occurrenceId: string): Promise<ActionResult> {
+export async function revertOccurrence(
+  occurrenceId: string,
+  options: { keepTransaction?: boolean } = {},
+): Promise<ActionResult> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
@@ -784,8 +802,9 @@ export async function revertOccurrence(occurrenceId: string): Promise<ActionResu
 
   // For paid occurrences with a linked transaction
   if (occurrence.status === "paid" && occurrence.transaction_id) {
-    if (occurrence.linked_manually) {
-      // Manual link: just clear recurrence_group_id — don't delete the transaction
+    if (occurrence.linked_manually || options.keepTransaction) {
+      // Manual link or explicit keep: just clear recurrence_group_id — don't
+      // delete the transaction
       const { data: primaryTx } = await supabase
         .from("transactions")
         .select("recurrence_group_id")
