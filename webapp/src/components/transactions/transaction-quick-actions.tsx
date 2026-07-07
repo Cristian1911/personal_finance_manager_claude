@@ -239,9 +239,10 @@ export function TransactionQuickActions({
 
   // The linked transaction was created by registering the payment from Plan
   // (MANUAL_FORM, not linked by hand) — reverting deletes it. Anything else
-  // (EMAIL_IMPORT, PDF_IMPORT, OCR…) existed on its own and auto-matched the
-  // occurrence, so the drawer also offers unlink-and-keep. `null` capture
-  // (still loading / legacy row) falls back to the destructive-confirm path.
+  // (EMAIL_IMPORT, PDF_IMPORT, OCR…, TEXT_QUICK_CAPTURE) existed on its own
+  // and auto-matched the occurrence, so the drawer also offers unlink-and-keep.
+  // `null` capture (still loading / legacy row) falls back to the
+  // destructive-confirm path.
   const paymentCreatedTx =
     linkedRecurring != null &&
     !linkedRecurring.linkedManually &&
@@ -729,8 +730,8 @@ export function TransactionQuickActions({
                   <div className="mt-1 flex items-start gap-2 rounded-lg border border-white/6 bg-white/[0.02] px-3 py-2.5">
                     <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-z-brass" />
                     <p className="text-xs text-muted-foreground">
-                      Esta transacción se importó y se vinculó automáticamente a la
-                      recurrente. Al desvincularla{" "}
+                      Esta transacción no se creó desde el pago de la recurrente, sino
+                      que se vinculó automáticamente. Al desvincularla{" "}
                       <span className="font-medium text-foreground">
                         la transacción se conserva
                       </span>{" "}
@@ -773,7 +774,7 @@ export function TransactionQuickActions({
             <AlertDialogDescription>
               {paymentCreatedTx
                 ? `Esta transacción se creó al registrar el pago de ${linkedRecurring?.templateMerchant ?? "la recurrente"}.`
-                : `Esta transacción se importó y está vinculada al pago de ${linkedRecurring?.templateMerchant ?? "la recurrente"}.`}{" "}
+                : `Esta transacción está vinculada al pago de ${linkedRecurring?.templateMerchant ?? "la recurrente"}.`}{" "}
               Al deshacer el pago se eliminará la transacción, se revertirá su efecto en
               el saldo y el pago volverá a quedar pendiente en Plan.
             </AlertDialogDescription>
