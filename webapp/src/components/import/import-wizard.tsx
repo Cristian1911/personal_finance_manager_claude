@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Check } from "lucide-react";
-import { getPendingScreenshotFile } from "@/components/mobile/mobile-sheet-provider";
 import { markEmailPdfStatementImported } from "@/actions/email-pdf-ingest";
 import type { Account, CategoryWithChildren, CurrencyCode } from "@/types/domain";
 import type { DestinatarioRule } from "@zeta/shared";
@@ -121,20 +120,6 @@ export function ImportWizard({
   useHideTabBar(step !== "upload");
 
   const searchParams = useSearchParams();
-  const screenshotFileRef = useRef<File | null>(null);
-  const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
-
-  useEffect(() => {
-    if (searchParams.get("mode") === "screenshot" && !screenshotFileRef.current) {
-      const file = getPendingScreenshotFile();
-      if (file) {
-        screenshotFileRef.current = file;
-        setScreenshotFile(file);
-      }
-    }
-  }, [searchParams]);
-
-  const resolvedInitialFile = initialFile ?? screenshotFile;
 
   useEffect(() => {
     void trackClientEvent({
@@ -282,6 +267,32 @@ export function ImportWizard({
     return () => window.removeEventListener("pageshow", handlePageShow);
   }, [step, handleReset]);
 
+  // ── Stale-visit guard ──────────────────────────────────────────────────
+  // The router can serve this segment again WITHOUT a fresh mount: a push to
+  // /import?mode=screenshot while /import is the current route (only
+  // searchParams change), or a router.back() that lands on /import itself
+  // (e.g. "Salir" after a same-segment screenshot entry). A wizard sitting at
+  // the terminal step then replays the previous run's "Listo" screen. Any
+  // URL change that reaches this still-mounted tree at "results" means that
+  // run is over — reset to a clean upload. Mid-flow steps are exempt: data
+  // isn't committed yet and resetting would destroy parsed work.
+  const stepRef = useRef(step);
+  useEffect(() => {
+    stepRef.current = step;
+  }, [step]);
+  const handleResetRef = useRef(handleReset);
+  useEffect(() => {
+    handleResetRef.current = handleReset;
+  }, [handleReset]);
+  const enteredRef = useRef(false);
+  const searchKey = searchParams.toString();
+  useEffect(() => {
+    if (enteredRef.current && stepRef.current === "results") {
+      handleResetRef.current();
+    }
+    enteredRef.current = true;
+  }, [searchKey]);
+
   return (
     <div
       className={cn(
@@ -362,7 +373,7 @@ export function ImportWizard({
         {step === "upload" && (
           <StepUpload
             onParsed={handleParsed}
-            initialFile={resolvedInitialFile}
+            initialFile={initialFile}
             initialVaultSuggestions={initialVaultSuggestions}
           />
         )}

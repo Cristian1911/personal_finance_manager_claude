@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ImportWizard } from "@/components/import/import-wizard";
+import { getPendingScreenshotFile } from "@/components/mobile/mobile-sheet-provider";
 import { PendingEmailStatements } from "@/components/import/pending-email-statements";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import type { Account, CategoryWithChildren, PendingEmailStatement } from "@/types/domain";
@@ -32,12 +34,33 @@ export function ImportPageClient({
   const [wizardStep, setWizardStep] = useState<
     "upload" | "review" | "reconcile" | "results"
   >("upload");
+  const [screenshotEntry, setScreenshotEntry] = useState<{ file: File; seq: number } | null>(null);
+  // Never resets, even when screenshotEntry is cleared — the wizard `key`
+  // derived from it must always move forward so a new pick remounts fresh.
+  const screenshotSeq = useRef(0);
+  const searchParams = useSearchParams();
+
+  // FAB "Importar pantallazo" stashes the picked file and navigates here with
+  // ?mode=screenshot&pick=N. This runs on mount AND on same-segment
+  // navigations (the pick counter guarantees searchParams change), so a new
+  // screenshot always starts a fresh wizard run — even when /import is
+  // already mounted showing a previous run's state.
+  useEffect(() => {
+    if (searchParams.get("mode") !== "screenshot") return;
+    const file = getPendingScreenshotFile();
+    if (!file) return;
+    setSelectedId(null);
+    setSelectedParseResult(null);
+    screenshotSeq.current += 1;
+    setScreenshotEntry({ file, seq: screenshotSeq.current });
+  }, [searchParams]);
 
   const handleReviewStatement = useCallback((statement: PendingEmailStatement) => {
     if (!Array.isArray(statement.parsed_data) || statement.parsed_data.length === 0) return;
     const statements = statement.parsed_data as unknown as ParsedStatement[];
     setSelectedId(statement.id);
     setSelectedParseResult({ statements });
+    setScreenshotEntry(null);
     // Scroll the wizard into view so the user sees the jump to "Revisar".
     requestAnimationFrame(() => {
       const el = document.getElementById("import-wizard");
@@ -57,6 +80,9 @@ export function ImportPageClient({
   const handleWizardReset = useCallback(() => {
     setSelectedId(null);
     setSelectedParseResult(null);
+    // Also forget the screenshot handoff: keeping it would re-stage the old
+    // file when the wizard remounts on the "fresh" key.
+    setScreenshotEntry(null);
   }, []);
 
   // Hide any statement that has been selected for review from the pending list
@@ -83,10 +109,14 @@ export function ImportPageClient({
 
       <div id="import-wizard" className="scroll-mt-16">
         <ImportWizard
-          key={selectedId ?? "fresh"}
+          key={
+            selectedId ??
+            (screenshotEntry ? `screenshot-${screenshotEntry.seq}` : "fresh")
+          }
           accounts={accounts}
           categories={categories}
           destinatarioRules={destinatarioRules}
+          initialFile={screenshotEntry?.file ?? null}
           initialParseResult={selectedParseResult}
           pendingEmailStatementId={selectedId}
           onImportedFromEmail={handleImportedFromEmail}
