@@ -71,6 +71,7 @@ import type {
   UnlinkedMatch,
 } from "@/actions/destinatarios";
 import { Checkbox } from "@/components/ui/checkbox";
+import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { TagPicker } from "@/components/tags/tag-picker";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
@@ -164,6 +165,15 @@ function EditForm({
 }) {
   const [isActive, setIsActive] = useState(destinatario.is_active);
   const [kind, setKind] = useState<"merchant" | "person">(destinatario.kind ?? "merchant");
+  const [categoryId, setCategoryId] = useState<string | null>(
+    destinatario.default_category_id,
+  );
+  // Legacy data: some destinatarios still carry a zone (parent category) as
+  // default. The zone picker can't select parents, so surface it explicitly
+  // and let the user pick a real subcategory to fix it.
+  const assignedParent = categories.find(
+    (c) => c.id === categoryId && c.children.length > 0,
+  );
   const [ruleImpact, setRuleImpact] = useState<{ matchCount: number } | null>(null);
   const [applyingRules, startApplyTransition] = useTransition();
 
@@ -189,10 +199,6 @@ function EditForm({
     FormData
   >(
     async (prevState, formData) => {
-      // Radix Select sends "none" — normalize to empty so server treats as null
-      if (formData.get("default_category_id") === "none") {
-        formData.set("default_category_id", "");
-      }
       const result = await boundUpdate(prevState, formData);
       if (result.success) {
         toast.success("Destinatario actualizado");
@@ -235,39 +241,34 @@ function EditForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="default_category_id">Categoría por defecto</Label>
-            <Select
+            <Label>Categoría por defecto</Label>
+            <CategoryZonePicker
+              categories={categories}
+              value={categoryId}
+              onValueChange={setCategoryId}
+              placeholder="Sin categoría"
+              triggerClassName="w-full"
+            />
+            {/* A legacy zone value would be rejected by the server — submit
+                empty instead so saving other fields keeps working; the user
+                either picks a subcategory or the zone gets cleared. */}
+            <input
+              type="hidden"
               name="default_category_id"
-              defaultValue={destinatario.default_category_id ?? "none"}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Sin categoría" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Sin categoría</SelectItem>
-                {categories.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.id} disabled={cat.children.length > 0}>
-                    {cat.name_es ?? cat.name}
-                  </SelectItem>
-                ))}
-                {categories.flatMap((cat) =>
-                  cat.children.map((child) => (
-                    <SelectItem key={child.id} value={child.id}>
-                      &nbsp;&nbsp;{child.name_es ?? child.name}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-            {destinatario.default_category_id &&
-              categoryMap[destinatario.default_category_id] && (
-                <p className="text-xs text-muted-foreground">
-                  Actual:{" "}
-                  <Badge variant="secondary" className="text-xs">
-                    {categoryMap[destinatario.default_category_id]}
-                  </Badge>
-                </p>
-              )}
+              value={assignedParent ? "" : categoryId ?? ""}
+            />
+            {assignedParent && (
+              <p className="text-xs text-z-alert">
+                La categoría actual (
+                <Badge variant="secondary" className="text-xs">
+                  {categoryMap[assignedParent.id] ??
+                    assignedParent.name_es ??
+                    assignedParent.name}
+                </Badge>
+                ) es una zona general y ya no es válida. Elige una subcategoría
+                específica — si guardas sin elegir una, quedará sin categoría.
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -337,7 +338,7 @@ function EditForm({
             value={isActive ? "true" : "false"}
           />
 
-          <Button type="submit" disabled={pending}>
+          <Button type="submit" className={BRASS_BUTTON_CLASS} disabled={pending}>
             {pending ? "Guardando..." : "Guardar cambios"}
           </Button>
         </form>
@@ -495,7 +496,7 @@ function RulesSection({
             <Button
               variant="outline"
               size="sm"
-              className="gap-1.5"
+              className={cn(GHOST_BUTTON_CLASS, "gap-1.5")}
               onClick={handleSearchUnlinked}
               disabled={searching}
             >
@@ -565,7 +566,7 @@ function RulesSection({
                   </label>
                   <Button
                     size="sm"
-                    className="h-7 gap-1.5 text-xs bg-z-brass text-z-ink hover:bg-z-brass/90"
+                    className={cn(BRASS_BUTTON_CLASS, "h-7 gap-1.5 text-xs")}
                     onClick={handleLinkSelected}
                     disabled={linking || selectedTxIds.size === 0}
                   >
@@ -650,10 +651,17 @@ function RulesSection({
               </Select>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" type="button" onClick={handleTestPattern} disabled={testing}>
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                className={GHOST_BUTTON_CLASS}
+                onClick={handleTestPattern}
+                disabled={testing}
+              >
                 {testing ? "Probando..." : "Probar"}
               </Button>
-              <Button type="submit" size="sm" disabled={addPending}>
+              <Button type="submit" size="sm" className={BRASS_BUTTON_CLASS} disabled={addPending}>
                 <Plus className="size-4 mr-1" />
                 {addPending ? "Agregando..." : "Agregar"}
               </Button>

@@ -373,6 +373,27 @@ function parsePatternsList(raw: FormDataEntryValue | null): string[] {
     });
 }
 
+/**
+ * Default categories must be leaves: autoCategorize copies them onto
+ * transactions, and a zone/parent category there breaks budget and metric
+ * groupings. The pickers can't select parents, but older UIs could — keep the
+ * gate server-side so no path (patch, API, stale client) reintroduces them.
+ */
+async function isParentCategory(
+  supabase: Awaited<ReturnType<typeof getAuthenticatedClient>>["supabase"],
+  categoryId: string,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("categories")
+    .select("id")
+    .eq("parent_id", categoryId)
+    .limit(1);
+  return (data?.length ?? 0) > 0;
+}
+
+const PARENT_CATEGORY_ERROR =
+  "Elige una subcategoría específica — las zonas generales no pueden ser categoría por defecto.";
+
 // ─── createDestinatario ───────────────────────────────────────────────────────
 
 export type CreateDestinatarioResult = Destinatario & { linked_count?: number };
@@ -394,6 +415,13 @@ export async function createDestinatario(
 
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0].message };
+  }
+
+  if (
+    parsed.data.default_category_id &&
+    (await isParentCategory(supabase, parsed.data.default_category_id))
+  ) {
+    return { success: false, error: PARENT_CATEGORY_ERROR };
   }
 
   const { data, error } = await supabase
@@ -534,6 +562,13 @@ export async function updateDestinatario(
     return { success: false, error: parsed.error.issues[0].message };
   }
 
+  if (
+    parsed.data.default_category_id &&
+    (await isParentCategory(supabase, parsed.data.default_category_id))
+  ) {
+    return { success: false, error: PARENT_CATEGORY_ERROR };
+  }
+
   const { data, error } = await supabase
     .from("destinatarios")
     .update(parsed.data)
@@ -560,6 +595,13 @@ export async function patchDestinatario(
 ): Promise<ActionResult<null>> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
+
+  if (
+    patch.default_category_id &&
+    (await isParentCategory(supabase, patch.default_category_id))
+  ) {
+    return { success: false, error: PARENT_CATEGORY_ERROR };
+  }
 
   const { error } = await supabase
     .from("destinatarios")
