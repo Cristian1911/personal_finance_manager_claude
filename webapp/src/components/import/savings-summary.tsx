@@ -45,6 +45,9 @@ export function SavingsSummary({
       : credits != null && debits != null
         ? credits - debits
         : null;
+  // Compare in minor units — netChange is a float subtraction and raw
+  // comparisons against 0 would tint a "no change" period as income/debt.
+  const netChangeCents = netChange != null ? Math.round(netChange * 100) : null;
 
   const periodLabel =
     periodFrom && periodTo
@@ -94,15 +97,15 @@ export function SavingsSummary({
               </p>
               <p
                 className={`mt-1 text-lg font-bold tabular-nums tracking-tight ${
-                  netChange == null
+                  netChangeCents == null || netChangeCents === 0
                     ? "text-z-white"
-                    : netChange >= 0
+                    : netChangeCents > 0
                       ? "text-z-income"
                       : "text-z-debt"
                 }`}
               >
-                {netChange != null
-                  ? `${netChange >= 0 ? "+" : ""}${compactAmount(netChange, currency)}`
+                {netChange != null && netChangeCents != null
+                  ? `${netChangeCents > 0 ? "+" : ""}${compactAmount(netChange, currency)}`
                   : "—"}
               </p>
             </div>
