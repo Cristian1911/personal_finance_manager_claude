@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { SectionDivider } from "./section-divider";
 import { CreditCardSummary } from "./credit-card-summary";
+import { SavingsSummary } from "./savings-summary";
 import { CreditCardStackCard } from "./credit-card-stack-card";
 import { StatementSummaryCard } from "./statement-summary-card";
 import { CreateAccountDialog } from "./create-account-dialog";
@@ -631,6 +632,17 @@ function StatementBlock({
         </>
       ) : isLoan ? (
         <StatementSummaryCard statement={stmt} />
+      ) : stmt.summary != null || stmt.transactions.length > 0 ? (
+        <>
+          <SectionDivider label="Resumen del periodo" />
+          <SavingsSummary
+            summary={stmt.summary ?? null}
+            transactions={stmt.transactions}
+            currency={stmt.currency as CurrencyCode}
+            periodFrom={stmt.period_from}
+            periodTo={stmt.period_to}
+          />
+        </>
       ) : null}
 
       <SectionDivider label="Movimientos" />
