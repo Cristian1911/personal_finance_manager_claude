@@ -9,8 +9,13 @@ import {
   planningAssignmentSchema,
 } from "@/lib/validators/cashflow-planner";
 import { getExchangeRate } from "@/actions/exchange-rate";
-import { getOccurrencesBetween } from "@zeta/shared";
-import { parseISO, endOfMonth } from "date-fns";
+import { getOccurrencesBetween, OCCURRENCE_AUTO_LINK_DAY_WINDOW } from "@zeta/shared";
+import { addDays, format, parseISO, endOfMonth } from "date-fns";
+import {
+  matchSettledOccurrencesToEntries,
+  computePlanEntryRedates,
+  type RedatableEntry,
+} from "@/lib/utils/plan-occurrence-reconciliation";
 import { isDebtAccountType } from "@/lib/utils/account-balance";
 import { toColombiaDateString } from "@/lib/utils/date";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
@@ -109,12 +114,28 @@ async function hydratePeriodData(
     // We reconcile each planning_entry's status with its matching occurrence
     // so payments recorded outside the planning UI (PDF import, email,
     // recurrentes tab, manual transactions) immediately reflect here.
+    // The fetch widens the period bounds by the auto-link window: entries
+    // snapshot the schedule at sync time, so after a schedule change the
+    // occurrence that settles an entry can sit a few days outside the period
+    // (e.g. entry on Jul 14, period ends Jul 15, occurrence paid on Jul 16).
     supabase
       .from("recurring_occurrences")
       .select("template_id, occurrence_date, status")
       .eq("user_id", userId)
-      .gte("occurrence_date", period.start_date)
-      .lte("occurrence_date", period.end_date),
+      .gte(
+        "occurrence_date",
+        format(
+          addDays(parseISO(period.start_date), -OCCURRENCE_AUTO_LINK_DAY_WINDOW),
+          "yyyy-MM-dd"
+        )
+      )
+      .lte(
+        "occurrence_date",
+        format(
+          addDays(parseISO(period.end_date), OCCURRENCE_AUTO_LINK_DAY_WINDOW),
+          "yyyy-MM-dd"
+        )
+      ),
     // Live spendable balances for "Saldo actual" — read directly from accounts,
     // independent of the frozen opening-balance envelope. Filters match
     // `upsertBalanceEnvelopes` (incl. show_in_dashboard) so saldo_actual
@@ -131,13 +152,14 @@ async function hydratePeriodData(
   const rawEntriesTyped = (rawEntries ?? []) as unknown as (Omit<PlanningEntryWithRelations, "converted_amount">)[];
   const assignments = (rawAssignments ?? []) as unknown as PlanningAssignment[];
 
-  const occurrenceStatusByKey = new Map<
-    string,
-    Database["public"]["Enums"]["occurrence_status"]
-  >();
-  for (const occ of rawOccurrences ?? []) {
-    occurrenceStatusByKey.set(`${occ.template_id}|${occ.occurrence_date}`, occ.status);
-  }
+  // Tolerant matching (exact date first, then nearest within ±3 days): the
+  // entry's snapshotted date can drift from the occurrence's self-healed date
+  // after a template/schedule change — an exact-date join would leave a paid
+  // entry showing as Pendiente forever.
+  const settledStatusByEntryId = matchSettledOccurrencesToEntries(
+    rawEntriesTyped,
+    rawOccurrences ?? []
+  );
 
   const foreignCurrencies = new Set<CurrencyCode>();
   for (const e of rawEntriesTyped) {
@@ -198,9 +220,7 @@ async function hydratePeriodData(
     // status — paid/skipped occurrences must not show as Pendiente.
     let status = e.status;
     if (e.recurring_template_id) {
-      const occStatus = occurrenceStatusByKey.get(
-        `${e.recurring_template_id}|${e.expected_date}`
-      );
+      const occStatus = settledStatusByEntryId.get(e.id);
       if (occStatus === "paid") status = "COMPLETED";
       else if (occStatus === "skipped") status = "SKIPPED";
     }
@@ -503,7 +523,7 @@ export async function seedPeriodFromRecurring(
         .eq("is_active", true),
       supabase
         .from("planning_entries")
-        .select("recurring_template_id, expected_date, label, amount")
+        .select("id, status, recurring_template_id, expected_date, label, amount")
         .eq("period_id", periodId)
         .eq("user_id", user.id),
       supabase
@@ -515,31 +535,103 @@ export async function seedPeriodFromRecurring(
         .lte("due_date", period.end_date),
     ]);
 
+  const rangeStart = parseISO(period.start_date);
+  const rangeEnd = parseISO(period.end_date);
+
+  // Current in-period schedule per template — used both for the self-heal
+  // below and for the insert loop.
+  const scheduleByTemplate = new Map<string, string[]>();
+  for (const template of templates ?? []) {
+    scheduleByTemplate.set(
+      template.id,
+      getOccurrencesBetween(
+        template.start_date,
+        template.frequency,
+        template.end_date,
+        rangeStart,
+        rangeEnd
+      )
+    );
+  }
+
+  // Self-heal: PLANNED entries stranded on a date the current schedule no
+  // longer produces (template edit, generator fix) are re-dated to the nearest
+  // free schedule date within ±3 days — instead of leaving a stale pending
+  // entry AND inserting a duplicate on the new date.
+  //
+  // MONTHLY templates are excluded, mirroring ensureOccurrencesForRange's
+  // prune exclusion: a MONTHLY occurrence keeps its day once materialized
+  // (statement imports legitimately drift it), so re-dating the entry to the
+  // template's new day would move it AWAY from its occurrence.
+  //
+  // Materialize the period's occurrences first so a re-dated entry always has
+  // an occurrence row on its new date — payPlanningEntry marks the occurrence
+  // paid by exact date, and a missing row there would silently no-op. If the
+  // ensure fails, skip the heal (it retries on the next sync) rather than
+  // re-dating against un-materialized occurrences.
+  let redates: ReturnType<typeof computePlanEntryRedates> = [];
+  const { ensureOccurrencesForRange } = await import("@/actions/occurrences");
+  const ensureResult = await ensureOccurrencesForRange(rangeStart, rangeEnd);
+  if (ensureResult.success) {
+    const redatableSchedule = new Map<string, string[]>();
+    for (const template of templates ?? []) {
+      if (template.frequency === "MONTHLY") continue;
+      redatableSchedule.set(template.id, scheduleByTemplate.get(template.id) ?? []);
+    }
+    redates = computePlanEntryRedates(
+      redatableSchedule,
+      (existingEntries ?? []) as RedatableEntry[]
+    );
+  } else {
+    console.error(
+      "[seedPeriodFromRecurring] ensureOccurrencesForRange failed, skipping redates:",
+      ensureResult.error,
+    );
+  }
+  const redatedDateByEntryId = new Map(redates.map((r) => [r.entryId, r.toDate]));
+  let firstRedateError: string | null = null;
+  for (const redate of redates) {
+    const { error: redateErr } = await supabase
+      .from("planning_entries")
+      .update({ expected_date: redate.toDate })
+      .eq("id", redate.entryId)
+      .eq("user_id", user.id)
+      .eq("status", "PLANNED");
+    if (redateErr) {
+      // Keep healing the remaining rows (each redate is independent and the
+      // pass is idempotent on retry); surface the first error at the end.
+      console.error(
+        `[seedPeriodFromRecurring] redate failed for entry=${redate.entryId}:`,
+        redateErr.message,
+      );
+      firstRedateError ??= redateErr.message;
+    }
+  }
+  if (firstRedateError) {
+    // Some rows may already have moved — expire the cache so the UI never
+    // shows the pre-heal dates alongside the error toast.
+    updateTag(TAG);
+    return { success: false, error: firstRedateError };
+  }
+
   // Templates dedup by (template_id, date); reminders have no FK so we
   // signature them by (label, date, amount) against template-less rows.
+  // Re-dated entries claim their NEW date so the insert loop skips it.
   const existingKeys = new Set<string>();
   const existingReminderKeys = new Set<string>();
   for (const e of existingEntries ?? []) {
     if (e.recurring_template_id) {
-      existingKeys.add(`${e.recurring_template_id}|${e.expected_date}`);
+      const date = redatedDateByEntryId.get(e.id) ?? e.expected_date;
+      existingKeys.add(`${e.recurring_template_id}|${date}`);
     } else {
       existingReminderKeys.add(`${e.label}|${e.expected_date}|${e.amount}`);
     }
   }
 
-  const rangeStart = parseISO(period.start_date);
-  const rangeEnd = parseISO(period.end_date);
-
   const entriesToInsert: TablesInsert<"planning_entries">[] = [];
 
   for (const template of templates ?? []) {
-    const occurrences = getOccurrencesBetween(
-      template.start_date,
-      template.frequency,
-      template.end_date,
-      rangeStart,
-      rangeEnd
-    );
+    const occurrences = scheduleByTemplate.get(template.id) ?? [];
 
     const acctType = (template.account as { account_type?: string } | null)?.account_type;
     const isDebtPayment =

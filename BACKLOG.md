@@ -10,6 +10,12 @@
 
 ---
 
+## Plan ↔ ocurrencias: conciliación tolerante (rama fix/plan-entry-occurrence-drift) — follow-ups
+
+- [ ] **"Préstamo" de ocurrencia entre períodos adyacentes** — la ventana ±3 días de `matchSettledOccurrencesToEntries` cruza el borde del período: una ocurrencia pagada cerca del límite puede marcar COMPLETED una entrada varada en el período A (nearest-match) Y su propia entrada en el período B (exact-match) — un solo pago aparece completado en dos períodos (solo con datos transicionales pre-fix del generador quincenal). El consumo único es por-hidratación, no cross-período. Mitigación posible: no "prestar" una ocurrencia cuya fecha cae dentro de los límites de otro período, o depurar la entrada sobrante. (server-action-reviewer, MEDIUM)
+- [ ] **Toast del sync no cuenta re-fechados** — `sync-recurring-button.tsx` dice "Nada nuevo que sincronizar" cuando `created === 0` aunque el self-heal haya re-fechado entradas; devolver `redated` en el ActionResult y ajustar el copy. (server-action-reviewer, nit)
+- [ ] **`recordRecurringOccurrencePayment` marca pagado por fecha exacta sin verificar filas afectadas** — `recurring-templates.ts:~1052`: si el UPDATE no matchea ninguna ocurrencia, crea la transacción y marca la entrada COMPLETED pero la ocurrencia queda pending, sin error visible. Mitigado en el sync (ensure antes de re-fechar), pero el write debería asertar `rows > 0` o usar match tolerante. (recurring-doctor, follow-up)
+
 ## Savings import overhaul (PR #362, 2026-07-06) — follow-ups
 - [ ] Infra: `infra/nginx/` (imagen custom + default.conf) NO es el proxy de producción — prod usa Nginx Proxy Manager (`jc21/nginx-proxy-manager`) en el VPS con hosts `pfm.sanson1911.cloud` y `n8n.venti5.shop`. Decidir: retirar `infra/nginx/` del repo o documentarlo como legado; los timeouts reales se configuran en NPM (`/data/nginx/custom/server_proxy.conf`).
 
