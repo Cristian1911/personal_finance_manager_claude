@@ -21,6 +21,9 @@ export interface PlanningEntryWithRelations extends PlanningEntry {
   account: Pick<Account, "id" | "name" | "icon" | "color" | "account_type"> | null;
   category: Pick<Category, "id" | "name" | "name_es" | "icon" | "color"> | null;
   recurring_template: Pick<RecurringTemplate, "id" | "merchant_name" | "frequency" | "direction"> | null;
+  /** Occurrence joined through planning_entries_occurrence_id_fkey — the
+   *  authoritative settled/pending state for FK-linked entries. */
+  occurrence: { id: string; status: "pending" | "paid" | "skipped" } | null;
   /** Amount converted to the period's currency (equals amount when same currency) */
   converted_amount: number;
 }

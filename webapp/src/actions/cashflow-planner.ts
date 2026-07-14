@@ -9,13 +9,9 @@ import {
   planningAssignmentSchema,
 } from "@/lib/validators/cashflow-planner";
 import { getExchangeRate } from "@/actions/exchange-rate";
-import { getOccurrencesBetween, OCCURRENCE_AUTO_LINK_DAY_WINDOW } from "@zeta/shared";
+import { OCCURRENCE_AUTO_LINK_DAY_WINDOW } from "@zeta/shared";
 import { addDays, format, parseISO, endOfMonth } from "date-fns";
-import {
-  matchSettledOccurrencesToEntries,
-  computePlanEntryRedates,
-  type RedatableEntry,
-} from "@/lib/utils/plan-occurrence-reconciliation";
+import { pairOccurrencesToEntries } from "@/lib/utils/plan-occurrence-reconciliation";
 import { isDebtAccountType } from "@/lib/utils/account-balance";
 import { toColombiaDateString } from "@/lib/utils/date";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
@@ -99,7 +95,8 @@ async function hydratePeriodData(
         `*,
          account:accounts!planning_entries_account_id_fkey(id, name, icon, color, account_type),
          category:categories!planning_entries_category_id_fkey(id, name, name_es, icon, color),
-         recurring_template:recurring_transaction_templates!planning_entries_recurring_template_id_fkey(id, merchant_name, frequency, direction)`
+         recurring_template:recurring_transaction_templates!planning_entries_recurring_template_id_fkey(id, merchant_name, frequency, direction),
+         occurrence:recurring_occurrences!planning_entries_occurrence_id_fkey(id, status)`
       )
       .eq("period_id", period.id)
       .eq("user_id", userId)
@@ -111,16 +108,16 @@ async function hydratePeriodData(
       .eq("period_id", period.id)
       .eq("user_id", userId),
     // recurring_occurrences is the source of truth for recurring obligations.
-    // We reconcile each planning_entry's status with its matching occurrence
-    // so payments recorded outside the planning UI (PDF import, email,
-    // recurrentes tab, manual transactions) immediately reflect here.
-    // The fetch widens the period bounds by the auto-link window: entries
-    // snapshot the schedule at sync time, so after a schedule change the
-    // occurrence that settles an entry can sit a few days outside the period
-    // (e.g. entry on Jul 14, period ends Jul 15, occurrence paid on Jul 16).
+    // FK-linked entries read their occurrence's status through the join above;
+    // this pool only feeds the date-window FALLBACK for rows without the FK
+    // (legacy/mobile rows, pruned occurrence). The fetch widens the period
+    // bounds by the auto-link window: entries snapshot the schedule at sync
+    // time, so after a schedule change the occurrence that settles an entry
+    // can sit a few days outside the period (e.g. entry on Jul 14, period
+    // ends Jul 15, occurrence paid on Jul 16).
     supabase
       .from("recurring_occurrences")
-      .select("template_id, occurrence_date, status")
+      .select("id, template_id, occurrence_date, status")
       .eq("user_id", userId)
       .gte(
         "occurrence_date",
@@ -152,13 +149,15 @@ async function hydratePeriodData(
   const rawEntriesTyped = (rawEntries ?? []) as unknown as (Omit<PlanningEntryWithRelations, "converted_amount">)[];
   const assignments = (rawAssignments ?? []) as unknown as PlanningAssignment[];
 
-  // Tolerant matching (exact date first, then nearest within ±3 days): the
-  // entry's snapshotted date can drift from the occurrence's self-healed date
-  // after a template/schedule change — an exact-date join would leave a paid
-  // entry showing as Pendiente forever.
-  const settledStatusByEntryId = matchSettledOccurrencesToEntries(
-    rawEntriesTyped,
-    rawOccurrences ?? []
+  // Fallback pairing for entries without the occurrence FK (exact date first,
+  // then nearest within ±3 days). Occurrences already claimed via FK are
+  // excluded from the pool so one payment can never surface on two entries.
+  const fkClaimedOccurrenceIds = new Set(
+    rawEntriesTyped.map((e) => e.occurrence_id).filter(Boolean) as string[]
+  );
+  const pairedByEntryId = pairOccurrencesToEntries(
+    rawEntriesTyped.filter((e) => !e.occurrence_id),
+    (rawOccurrences ?? []).filter((o) => !fkClaimedOccurrenceIds.has(o.id))
   );
 
   const foreignCurrencies = new Set<CurrencyCode>();
@@ -217,10 +216,11 @@ async function hydratePeriodData(
       convertedAmount = rate != null ? amount * rate : amount;
     }
     // For recurring entries, occurrence status overrides the entry's stored
-    // status — paid/skipped occurrences must not show as Pendiente.
+    // status — paid/skipped occurrences must not show as Pendiente. The FK
+    // join is authoritative; date-window pairing covers FK-less rows.
     let status = e.status;
     if (e.recurring_template_id) {
-      const occStatus = settledStatusByEntryId.get(e.id);
+      const occStatus = (e.occurrence ?? pairedByEntryId.get(e.id))?.status;
       if (occStatus === "paid") status = "COMPLETED";
       else if (occStatus === "skipped") status = "SKIPPED";
     }
@@ -523,7 +523,7 @@ export async function seedPeriodFromRecurring(
         .eq("is_active", true),
       supabase
         .from("planning_entries")
-        .select("id, status, recurring_template_id, expected_date, label, amount")
+        .select("id, status, occurrence_id, recurring_template_id, expected_date, label, amount")
         .eq("period_id", periodId)
         .eq("user_id", user.id),
       supabase
@@ -538,90 +538,112 @@ export async function seedPeriodFromRecurring(
   const rangeStart = parseISO(period.start_date);
   const rangeEnd = parseISO(period.end_date);
 
-  // Current in-period schedule per template — used both for the self-heal
-  // below and for the insert loop.
-  const scheduleByTemplate = new Map<string, string[]>();
-  for (const template of templates ?? []) {
-    scheduleByTemplate.set(
-      template.id,
-      getOccurrencesBetween(
-        template.start_date,
-        template.frequency,
-        template.end_date,
-        rangeStart,
-        rangeEnd
-      )
-    );
-  }
-
-  // Self-heal: PLANNED entries stranded on a date the current schedule no
-  // longer produces (template edit, generator fix) are re-dated to the nearest
-  // free schedule date within ±3 days — instead of leaving a stale pending
-  // entry AND inserting a duplicate on the new date.
-  //
-  // MONTHLY templates are excluded, mirroring ensureOccurrencesForRange's
-  // prune exclusion: a MONTHLY occurrence keeps its day once materialized
-  // (statement imports legitimately drift it), so re-dating the entry to the
-  // template's new day would move it AWAY from its occurrence.
-  //
-  // Materialize the period's occurrences first so a re-dated entry always has
-  // an occurrence row on its new date — payPlanningEntry marks the occurrence
-  // paid by exact date, and a missing row there would silently no-op. If the
-  // ensure fails, skip the heal (it retries on the next sync) rather than
-  // re-dating against un-materialized occurrences.
-  let redates: ReturnType<typeof computePlanEntryRedates> = [];
+  // Entries are seeded FROM the materialized recurring_occurrences rows — the
+  // source of truth — not from schedule math: each entry is born pointing at
+  // the occurrence it tracks (occurrence_id), so payment/skip state flows to
+  // Plan through the FK with no date inference. Materialize the period's
+  // occurrences first; on failure, seed best-effort from whatever rows exist
+  // (the next sync retries).
   const { ensureOccurrencesForRange } = await import("@/actions/occurrences");
   const ensureResult = await ensureOccurrencesForRange(rangeStart, rangeEnd);
-  if (ensureResult.success) {
-    const redatableSchedule = new Map<string, string[]>();
-    for (const template of templates ?? []) {
-      if (template.frequency === "MONTHLY") continue;
-      redatableSchedule.set(template.id, scheduleByTemplate.get(template.id) ?? []);
-    }
-    redates = computePlanEntryRedates(
-      redatableSchedule,
-      (existingEntries ?? []) as RedatableEntry[]
-    );
-  } else {
+  if (!ensureResult.success) {
     console.error(
-      "[seedPeriodFromRecurring] ensureOccurrencesForRange failed, skipping redates:",
+      "[seedPeriodFromRecurring] ensureOccurrencesForRange failed, seeding from existing rows:",
       ensureResult.error,
     );
   }
-  const redatedDateByEntryId = new Map(redates.map((r) => [r.entryId, r.toDate]));
-  let firstRedateError: string | null = null;
-  for (const redate of redates) {
-    const { error: redateErr } = await supabase
-      .from("planning_entries")
-      .update({ expected_date: redate.toDate })
-      .eq("id", redate.entryId)
+
+  const templateById = new Map((templates ?? []).map((t) => [t.id, t]));
+
+  let periodOccurrences: Array<{
+    id: string;
+    template_id: string;
+    occurrence_date: string;
+    status: Database["public"]["Enums"]["occurrence_status"];
+  }> = [];
+  if (templateById.size > 0) {
+    const { data: occRows, error: occErr } = await supabase
+      .from("recurring_occurrences")
+      .select("id, template_id, occurrence_date, status")
       .eq("user_id", user.id)
-      .eq("status", "PLANNED");
-    if (redateErr) {
-      // Keep healing the remaining rows (each redate is independent and the
-      // pass is idempotent on retry); surface the first error at the end.
-      console.error(
-        `[seedPeriodFromRecurring] redate failed for entry=${redate.entryId}:`,
-        redateErr.message,
-      );
-      firstRedateError ??= redateErr.message;
-    }
-  }
-  if (firstRedateError) {
-    // Some rows may already have moved — expire the cache so the UI never
-    // shows the pre-heal dates alongside the error toast.
-    updateTag(TAG);
-    return { success: false, error: firstRedateError };
+      .in("template_id", [...templateById.keys()])
+      .gte("occurrence_date", period.start_date)
+      .lte("occurrence_date", period.end_date)
+      .order("occurrence_date");
+    if (occErr) return { success: false, error: occErr.message };
+    periodOccurrences = occRows ?? [];
   }
 
-  // Templates dedup by (template_id, date); reminders have no FK so we
-  // signature them by (label, date, amount) against template-less rows.
-  // Re-dated entries claim their NEW date so the insert loop skips it.
+  // Occurrences already claimed by an entry — in this period or any other
+  // (a boundary occurrence may be FK-linked from the adjacent period; seeding
+  // a second entry for it would duplicate the obligation).
+  const claimedOccurrenceIds = new Set<string>();
+  for (const e of existingEntries ?? []) {
+    if (e.occurrence_id) claimedOccurrenceIds.add(e.occurrence_id);
+  }
+  if (periodOccurrences.length > 0) {
+    const { data: externalClaims, error: claimsErr } = await supabase
+      .from("planning_entries")
+      .select("occurrence_id")
+      .eq("user_id", user.id)
+      .neq("period_id", periodId)
+      .in("occurrence_id", periodOccurrences.map((o) => o.id));
+    if (claimsErr) return { success: false, error: claimsErr.message };
+    for (const c of externalClaims ?? []) {
+      if (c.occurrence_id) claimedOccurrenceIds.add(c.occurrence_id);
+    }
+  }
+
+  // Self-heal: PLANNED recurring entries without the FK (legacy rows, older
+  // mobile app, or occurrence pruned → ON DELETE SET NULL) adopt their
+  // occurrence — the FK is persisted and the entry takes the occurrence's
+  // date, so the stale-snapshot-date class of bugs can't recur.
+  const linkCandidates = (existingEntries ?? []).filter(
+    (e) => e.recurring_template_id != null && !e.occurrence_id && e.status === "PLANNED"
+  );
+  const pairs = pairOccurrencesToEntries(
+    linkCandidates,
+    periodOccurrences.filter((o) => !claimedOccurrenceIds.has(o.id))
+  );
+  const linkedDateByEntryId = new Map<string, string>();
+  let firstLinkError: string | null = null;
+  for (const [entryId, occ] of pairs) {
+    const { error: linkErr } = await supabase
+      .from("planning_entries")
+      .update({ occurrence_id: occ.id, expected_date: occ.occurrence_date })
+      .eq("id", entryId)
+      .eq("user_id", user.id)
+      .eq("status", "PLANNED");
+    if (linkErr) {
+      // Keep healing the remaining rows (each link is independent and the
+      // pass is idempotent on retry); surface the first error at the end.
+      console.error(
+        `[seedPeriodFromRecurring] occurrence link failed for entry=${entryId}:`,
+        linkErr.message,
+      );
+      firstLinkError ??= linkErr.message;
+      continue;
+    }
+    claimedOccurrenceIds.add(occ.id);
+    linkedDateByEntryId.set(entryId, occ.occurrence_date);
+  }
+  if (firstLinkError) {
+    // Some rows may already have moved — expire the cache so the UI never
+    // shows the pre-heal state alongside the error toast.
+    updateTag(TAG);
+    return { success: false, error: firstLinkError };
+  }
+
+  // Legacy dedup by (template_id, date) for rows still without FK (e.g. an
+  // unlinked entry beyond the pairing window must still block a same-date
+  // duplicate); reminders have no FK so we signature them by
+  // (label, date, amount) against template-less rows. Healed entries claim
+  // their NEW date.
   const existingKeys = new Set<string>();
   const existingReminderKeys = new Set<string>();
   for (const e of existingEntries ?? []) {
     if (e.recurring_template_id) {
-      const date = redatedDateByEntryId.get(e.id) ?? e.expected_date;
+      const date = linkedDateByEntryId.get(e.id) ?? e.expected_date;
       existingKeys.add(`${e.recurring_template_id}|${date}`);
     } else {
       existingReminderKeys.add(`${e.label}|${e.expected_date}|${e.amount}`);
@@ -630,36 +652,35 @@ export async function seedPeriodFromRecurring(
 
   const entriesToInsert: TablesInsert<"planning_entries">[] = [];
 
-  for (const template of templates ?? []) {
-    const occurrences = scheduleByTemplate.get(template.id) ?? [];
+  for (const occ of periodOccurrences) {
+    if (claimedOccurrenceIds.has(occ.id)) continue;
+    if (existingKeys.has(`${occ.template_id}|${occ.occurrence_date}`)) continue;
+    const template = templateById.get(occ.template_id);
+    if (!template) continue;
 
     const acctType = (template.account as { account_type?: string } | null)?.account_type;
     const isDebtPayment =
       template.direction === "INFLOW" && acctType != null && isDebtAccountType(acctType);
 
-    for (const date of occurrences) {
-      const dedupKey = `${template.id}|${date}`;
-      if (existingKeys.has(dedupKey)) continue;
-
-      entriesToInsert.push({
-        user_id: user.id,
-        period_id: periodId,
-        // Debt payments flow INTO the debt account but are outflows from the user's budget
-        entry_type: isDebtPayment
-          ? "EXPENSE"
-          : template.direction === "INFLOW" ? "INCOME" : "EXPENSE",
-        label: template.merchant_name || template.description || "Sin nombre",
-        amount: template.amount,
-        currency_code: template.currency_code,
-        expected_date: date,
-        recurring_template_id: template.id,
-        // For debt payments, use the source account (where money leaves from)
-        account_id: isDebtPayment
-          ? (template.transfer_source_account_id ?? template.account_id)
-          : template.account_id,
-        category_id: template.category_id,
-      });
-    }
+    entriesToInsert.push({
+      user_id: user.id,
+      period_id: periodId,
+      // Debt payments flow INTO the debt account but are outflows from the user's budget
+      entry_type: isDebtPayment
+        ? "EXPENSE"
+        : template.direction === "INFLOW" ? "INCOME" : "EXPENSE",
+      label: template.merchant_name || template.description || "Sin nombre",
+      amount: template.amount,
+      currency_code: template.currency_code,
+      expected_date: occ.occurrence_date,
+      recurring_template_id: template.id,
+      occurrence_id: occ.id,
+      // For debt payments, use the source account (where money leaves from)
+      account_id: isDebtPayment
+        ? (template.transfer_source_account_id ?? template.account_id)
+        : template.account_id,
+      category_id: template.category_id,
+    });
   }
 
   for (const reminder of reminders ?? []) {
@@ -1414,23 +1435,29 @@ export async function payPlanningEntry(params: {
 
   // ── LINK MODE: connect existing transaction ──
   if (params.existingTransactionId) {
-    // If the entry has a recurring template, delegate to occurrence linking
+    // If the entry has a recurring template, delegate to occurrence linking.
+    // The entry's own occurrence (FK) is authoritative; the period-scoped
+    // pending lookup only covers legacy rows without the FK — it can pick the
+    // wrong occurrence when a period holds two pending quincenas.
     if (entry.recurring_template_id) {
-      // Find the pending occurrence for this template in the period
-      const { data: occurrences } = await supabase
-        .from("recurring_occurrences")
-        .select("id")
-        .eq("template_id", entry.recurring_template_id)
-        .eq("user_id", user.id)
-        .eq("status", "pending")
-        .gte("occurrence_date", period.start_date)
-        .lte("occurrence_date", period.end_date)
-        .limit(1);
+      let occurrenceId: string | null = entry.occurrence_id ?? null;
+      if (!occurrenceId) {
+        const { data: occurrences } = await supabase
+          .from("recurring_occurrences")
+          .select("id")
+          .eq("template_id", entry.recurring_template_id)
+          .eq("user_id", user.id)
+          .eq("status", "pending")
+          .gte("occurrence_date", period.start_date)
+          .lte("occurrence_date", period.end_date)
+          .limit(1);
+        occurrenceId = occurrences?.[0]?.id ?? null;
+      }
 
-      if (occurrences && occurrences.length > 0) {
+      if (occurrenceId) {
         const { linkExistingTransactionToOccurrence } = await import("@/actions/occurrences");
         const linkResult = await linkExistingTransactionToOccurrence(
-          occurrences[0].id,
+          occurrenceId,
           params.existingTransactionId,
         );
         if (!linkResult.success) return { success: false, error: linkResult.error };
@@ -1462,10 +1489,23 @@ export async function payPlanningEntry(params: {
   // INFLOW "abono a deuda" templates; an OUTFLOW "Gasto con la tarjeta" charge
   // bills the card directly and takes no source account.
   if (entry.recurring_template_id) {
+    // The payment infra locates the occurrence by exact date. Prefer the FK'd
+    // occurrence's own date over the entry's — a user-edited entry date must
+    // not make the paid-mark miss the row the entry actually tracks.
+    let occurrenceDate = entry.expected_date;
+    if (entry.occurrence_id) {
+      const { data: occRow } = await supabase
+        .from("recurring_occurrences")
+        .select("occurrence_date")
+        .eq("id", entry.occurrence_id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (occRow) occurrenceDate = occRow.occurrence_date;
+    }
     const { recordRecurringOccurrencePayment } = await import("@/actions/recurring-templates");
     const payResult = await recordRecurringOccurrencePayment({
       templateId: entry.recurring_template_id,
-      occurrenceDate: entry.expected_date,
+      occurrenceDate,
       paymentDate: toColombiaDateString(new Date()),
       actualAmount: params.amount,
       sourceAccountId: params.sourceAccountId ?? null,

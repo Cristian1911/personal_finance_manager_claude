@@ -127,6 +127,10 @@ export interface PlanningEntry {
   status: PlanningEntryStatus;
   completed_at: string | null;
   recurring_template_id: string | null;
+  /** Direct link to the recurring_occurrences row this entry tracks. NULL for
+   *  non-recurring entries (reminders, manual) and legacy/mobile rows not yet
+   *  linked — those fall back to date-window reconciliation. */
+  occurrence_id: string | null;
   account_id: string | null;
   category_id: string | null;
   sort_order: number;

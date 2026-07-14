@@ -1,20 +1,30 @@
 import { OCCURRENCE_AUTO_LINK_DAY_WINDOW } from "@zeta/shared";
 
 /**
- * Reconciliation between planner entries and recurring occurrences.
+ * Pairing between planner entries and recurring occurrences.
  *
- * Planner entries snapshot the template schedule at sync time and are never
- * re-dated afterwards, while `recurring_occurrences` self-heals to the
+ * The durable link is `planning_entries.occurrence_id` — a direct FK to the
+ * `recurring_occurrences` row the entry tracks, written at seed time and
+ * backfilled by migration. Display then reads the occurrence's status through
+ * the join: no inference, and every mutation of the occurrence (paid via
+ * email auto-link, PDF import, manual payment, skip) is visible to Plan
+ * automatically.
+ *
+ * This module is the FALLBACK for rows that don't carry the FK yet: legacy
+ * entries beyond the backfill, rows created by an older mobile app, or
+ * entries whose occurrence was pruned (FK is ON DELETE SET NULL). It pairs
+ * them by date proximity — exact date first, then nearest within the shared
+ * auto-link window (±3 days) — so planner pairing can never be more
+ * aggressive than transaction↔occurrence auto-linking. Quincenal dates are
+ * ≥14 days apart and weekly dates 7 apart, so the window can never
+ * cross-match two occurrences of one template.
+ *
+ * Why entries drift from occurrence dates at all: entries snapshot the
+ * schedule at sync time, while `recurring_occurrences` self-heals to the
  * template's current schedule (prune + regenerate). A schedule change between
  * the two materializations (template edit, generator fix — e.g. quincenal
- * 14-day → month-anchored) leaves the entry a few days away from the
- * occurrence that actually settled its payment, so an exact-date join misses
- * and the entry shows as Pendiente forever.
- *
- * Both helpers use the shared auto-link window (±3 days) so planner matching
- * can never be more aggressive than transaction↔occurrence auto-linking.
- * Quincenal dates are ≥14 days apart, so the window can never cross-match two
- * different quincenas of one template.
+ * 14-day → month-anchored) strands the entry a few days away from its
+ * occurrence.
  */
 
 const MS_PER_DAY = 86_400_000;
@@ -35,49 +45,48 @@ export interface PlanReconcilableEntry {
   expected_date: string; // YYYY-MM-DD
 }
 
-export type SettledOccurrenceStatus = "paid" | "skipped";
-
-export interface PlanReconcilableOccurrence {
+export interface PairableOccurrence {
+  id: string;
   template_id: string;
   occurrence_date: string; // YYYY-MM-DD
-  /** Full occurrence_status enum — only paid/skipped participate in matching. */
+  /** occurrence_status enum: pending | paid | skipped. */
   status: string;
 }
 
 interface ClaimableOccurrence {
-  occurrence_date: string;
-  status: SettledOccurrenceStatus;
+  occurrence: PairableOccurrence;
   used: boolean;
 }
 
 /**
- * Match each recurring planner entry to a settled (paid/skipped) occurrence of
- * its template. Exact-date matches claim their occurrence first; remaining
- * entries then take the nearest unclaimed occurrence within the ±3-day window.
- * Each occurrence settles at most one entry, so a re-sync duplicate can never
- * show two entries as paid off a single payment.
+ * Pair each recurring planner entry with an occurrence of its template.
+ * Exact-date matches claim their occurrence first; remaining entries then
+ * take the nearest unclaimed occurrence within the ±3-day window. Each
+ * occurrence pairs with at most one entry, so one payment can never settle
+ * two entries.
  *
- * Returns entry id → settled status for the entries that found a match.
+ * Callers decide what the pairing means: display reads the paired
+ * occurrence's status; the sync self-heal persists it as `occurrence_id` and
+ * adopts the occurrence's date.
+ *
+ * Returns entry id → paired occurrence.
  */
-export function matchSettledOccurrencesToEntries(
+export function pairOccurrencesToEntries(
   entries: PlanReconcilableEntry[],
-  occurrences: PlanReconcilableOccurrence[]
-): Map<string, SettledOccurrenceStatus> {
-  const result = new Map<string, SettledOccurrenceStatus>();
+  occurrences: PairableOccurrence[]
+): Map<string, PairableOccurrence> {
+  const result = new Map<string, PairableOccurrence>();
 
-  const settledByTemplate = new Map<string, ClaimableOccurrence[]>();
+  const byTemplate = new Map<string, ClaimableOccurrence[]>();
   for (const occ of occurrences) {
-    if (occ.status !== "paid" && occ.status !== "skipped") continue;
-    const list = settledByTemplate.get(occ.template_id) ?? [];
-    list.push({
-      occurrence_date: occ.occurrence_date,
-      status: occ.status,
-      used: false,
-    });
-    settledByTemplate.set(occ.template_id, list);
+    const list = byTemplate.get(occ.template_id) ?? [];
+    list.push({ occurrence: occ, used: false });
+    byTemplate.set(occ.template_id, list);
   }
-  for (const list of settledByTemplate.values()) {
-    list.sort((a, b) => a.occurrence_date.localeCompare(b.occurrence_date));
+  for (const list of byTemplate.values()) {
+    list.sort((a, b) =>
+      a.occurrence.occurrence_date.localeCompare(b.occurrence.occurrence_date)
+    );
   }
 
   // Date order keeps the greedy nearest-match pass deterministic regardless of
@@ -88,116 +97,39 @@ export function matchSettledOccurrencesToEntries(
 
   const unmatched: PlanReconcilableEntry[] = [];
   for (const entry of recurringEntries) {
-    const list = settledByTemplate.get(entry.recurring_template_id!);
+    const list = byTemplate.get(entry.recurring_template_id!);
     const exact = list?.find(
-      (o) => !o.used && o.occurrence_date === entry.expected_date
+      (o) => !o.used && o.occurrence.occurrence_date === entry.expected_date
     );
     if (exact) {
       exact.used = true;
-      result.set(entry.id, exact.status);
+      result.set(entry.id, exact.occurrence);
     } else {
       unmatched.push(entry);
     }
   }
 
   for (const entry of unmatched) {
-    const list = settledByTemplate.get(entry.recurring_template_id!);
+    const list = byTemplate.get(entry.recurring_template_id!);
     if (!list) continue;
     let best: ClaimableOccurrence | null = null;
     let bestDiff = Infinity;
-    for (const occ of list) {
-      if (occ.used) continue;
-      const diff = daysBetween(occ.occurrence_date, entry.expected_date);
+    for (const claimable of list) {
+      if (claimable.used) continue;
+      const diff = daysBetween(
+        claimable.occurrence.occurrence_date,
+        entry.expected_date
+      );
       if (diff <= OCCURRENCE_AUTO_LINK_DAY_WINDOW && diff < bestDiff) {
-        best = occ;
+        best = claimable;
         bestDiff = diff;
       }
     }
     if (best) {
       best.used = true;
-      result.set(entry.id, best.status);
+      result.set(entry.id, best.occurrence);
     }
   }
 
   return result;
-}
-
-export interface RedatableEntry {
-  id: string;
-  recurring_template_id: string | null;
-  expected_date: string; // YYYY-MM-DD
-  /** planning_entry_status — only PLANNED entries may be re-dated. */
-  status: string;
-}
-
-export interface PlanEntryRedate {
-  entryId: string;
-  templateId: string;
-  fromDate: string;
-  toDate: string;
-}
-
-/**
- * Self-heal for "Sincronizar recurrentes": PLANNED entries sitting on a date
- * the template's current in-period schedule no longer produces are re-dated to
- * the nearest unclaimed schedule date within the ±3-day window, instead of
- * leaving the stale entry pending forever AND inserting a duplicate on the new
- * date. Settled (COMPLETED/SKIPPED) entries are history and never move; stale
- * entries with no nearby unclaimed date are left alone (the display-side
- * matcher still reconciles them if a settled occurrence sits within window).
- *
- * Call-site contract: `scheduleByTemplate` must exclude MONTHLY templates —
- * their occurrences keep the day they materialized on (statement imports
- * drift it on purpose, see ensureOccurrencesForRange's prune exclusion), so
- * re-dating a MONTHLY entry to the template's recomputed day would move it
- * away from the occurrence it already matches.
- */
-export function computePlanEntryRedates(
-  scheduleByTemplate: Map<string, string[]>,
-  existingEntries: RedatableEntry[],
-): PlanEntryRedate[] {
-  const redates: PlanEntryRedate[] = [];
-
-  for (const [templateId, scheduleDates] of scheduleByTemplate) {
-    const templateEntries = existingEntries.filter(
-      (e) => e.recurring_template_id === templateId
-    );
-    if (templateEntries.length === 0) continue;
-
-    const scheduleSet = new Set(scheduleDates);
-    const claimedDates = new Set(templateEntries.map((e) => e.expected_date));
-    const unclaimed = scheduleDates
-      .filter((d) => !claimedDates.has(d))
-      .sort((a, b) => a.localeCompare(b));
-    if (unclaimed.length === 0) continue;
-
-    const staleEntries = templateEntries
-      .filter((e) => e.status === "PLANNED" && !scheduleSet.has(e.expected_date))
-      .sort((a, b) => a.expected_date.localeCompare(b.expected_date));
-
-    const usedTargets = new Set<string>();
-    for (const entry of staleEntries) {
-      let best: string | null = null;
-      let bestDiff = Infinity;
-      for (const date of unclaimed) {
-        if (usedTargets.has(date)) continue;
-        const diff = daysBetween(date, entry.expected_date);
-        if (diff <= OCCURRENCE_AUTO_LINK_DAY_WINDOW && diff < bestDiff) {
-          best = date;
-          bestDiff = diff;
-        }
-      }
-      if (best) {
-        usedTargets.add(best);
-        redates.push({
-          entryId: entry.id,
-          templateId,
-          fromDate: entry.expected_date,
-          toDate: best,
-        });
-      }
-    }
-  }
-
-  return redates;
 }
