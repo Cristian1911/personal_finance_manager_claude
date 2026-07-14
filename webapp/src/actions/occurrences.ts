@@ -904,6 +904,24 @@ export async function revertOccurrence(
 
   if (updateError) return { success: false, error: updateError.message };
 
+  // Plan entries track occurrences by FK (planning_entries.occurrence_id) —
+  // a reverted payment must also return its planner entry to Pendiente, or
+  // Plan keeps showing COMPLETED from the entry's stored status (the display
+  // override only upgrades, never downgrades). Non-fatal: the entry stays
+  // consistent on the next payment either way.
+  const { error: entryResetError } = await supabase
+    .from("planning_entries")
+    .update({ status: "PLANNED", completed_at: null })
+    .eq("user_id", user.id)
+    .eq("occurrence_id", occurrenceId)
+    .eq("status", "COMPLETED");
+  if (entryResetError) {
+    console.error(
+      "[revertOccurrence] planning entry reset failed:",
+      entryResetError.message,
+    );
+  }
+
   // Re-activate ONCE templates so the reverted occurrence becomes visible
   if (occurrence.template_id) {
     const { data: tmpl } = await supabase

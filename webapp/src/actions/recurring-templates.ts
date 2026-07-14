@@ -973,10 +973,27 @@ export async function recordRecurringOccurrencePayment(input: {
     return { success: false, error: "No se encontró la plantilla recurrente." };
   }
 
-  const occurrenceValidationError = validateOccurrenceMatchesTemplate(
+  let occurrenceValidationError = validateOccurrenceMatchesTemplate(
     template,
     payload.occurrenceDate
   );
+  if (occurrenceValidationError) {
+    // Schedule math is not the source of truth for dates: a materialized
+    // occurrence can sit off-schedule on purpose (MONTHLY days drift via
+    // statement imports and the generator's prune exclusion keeps them).
+    // Accept any date that exists as a real occurrence row for the template —
+    // callers resolving the date from planning_entries.occurrence_id land
+    // here when the linked occurrence drifted.
+    const { data: materialized } = await supabase
+      .from("recurring_occurrences")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("template_id", payload.templateId)
+      .eq("occurrence_date", payload.occurrenceDate)
+      .limit(1)
+      .maybeSingle();
+    if (materialized) occurrenceValidationError = null;
+  }
   if (occurrenceValidationError) {
     return { success: false, error: occurrenceValidationError };
   }

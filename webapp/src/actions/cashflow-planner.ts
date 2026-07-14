@@ -514,6 +514,30 @@ export async function seedPeriodFromRecurring(
   if (periodErr || !period)
     return { success: false, error: "Periodo no encontrado" };
 
+  const rangeStart = parseISO(period.start_date);
+  const rangeEnd = parseISO(period.end_date);
+
+  // Entries are seeded FROM the materialized recurring_occurrences rows — the
+  // source of truth — not from schedule math: each entry is born pointing at
+  // the occurrence it tracks (occurrence_id), so payment/skip state flows to
+  // Plan through the FK with no date inference. Materialize the period's
+  // occurrences first; on failure, seed best-effort from whatever rows exist
+  // (the next sync retries).
+  //
+  // ORDER MATTERS: this runs BEFORE reading planning_entries. The ensure's
+  // prune deletes stale pending occurrences, and the FK is ON DELETE SET NULL
+  // — reading entries first would snapshot occurrence_ids the prune is about
+  // to null, hiding those entries from the self-heal (stale claim + stale
+  // dedup date → permanent duplicate).
+  const { ensureOccurrencesForRange } = await import("@/actions/occurrences");
+  const ensureResult = await ensureOccurrencesForRange(rangeStart, rangeEnd);
+  if (!ensureResult.success) {
+    console.error(
+      "[seedPeriodFromRecurring] ensureOccurrencesForRange failed, seeding from existing rows:",
+      ensureResult.error,
+    );
+  }
+
   const [{ data: templates }, { data: existingEntries }, { data: reminders }] =
     await Promise.all([
       supabase
@@ -534,24 +558,6 @@ export async function seedPeriodFromRecurring(
         .gte("due_date", period.start_date)
         .lte("due_date", period.end_date),
     ]);
-
-  const rangeStart = parseISO(period.start_date);
-  const rangeEnd = parseISO(period.end_date);
-
-  // Entries are seeded FROM the materialized recurring_occurrences rows — the
-  // source of truth — not from schedule math: each entry is born pointing at
-  // the occurrence it tracks (occurrence_id), so payment/skip state flows to
-  // Plan through the FK with no date inference. Materialize the period's
-  // occurrences first; on failure, seed best-effort from whatever rows exist
-  // (the next sync retries).
-  const { ensureOccurrencesForRange } = await import("@/actions/occurrences");
-  const ensureResult = await ensureOccurrencesForRange(rangeStart, rangeEnd);
-  if (!ensureResult.success) {
-    console.error(
-      "[seedPeriodFromRecurring] ensureOccurrencesForRange failed, seeding from existing rows:",
-      ensureResult.error,
-    );
-  }
 
   const templateById = new Map((templates ?? []).map((t) => [t.id, t]));
 
