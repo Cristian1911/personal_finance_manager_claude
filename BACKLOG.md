@@ -10,6 +10,15 @@
 
 ---
 
+## Plan ↔ ocurrencias: conciliación tolerante (rama fix/plan-entry-occurrence-drift) — follow-ups
+
+- [ ] **"Préstamo" de ocurrencia entre períodos adyacentes** — RESUELTO para filas con FK (`occurrence_id` es único por diseño: hidratación excluye ocurrencias ya reclamadas por FK, el seed chequea claims globales cross-período). Residual: solo entradas legacy SIN FK en dos períodos podrían mostrar el mismo pago dos veces vía fallback por ventana; se cura solo al sincronizar (el link pass persiste la FK). Cerrar cuando no queden filas recurrentes sin FK. (server-action-reviewer, MEDIUM → mitigado)
+- [ ] **Mobile: columna `occurrence_id` en SQLite** — el pull de mobile filtra columnas desconocidas (PRAGMA table_info) y el push manda payloads explícitos, así que nada se rompe ni se pisa; pero las entradas creadas desde mobile nacen sin FK (el seed del webapp las enlaza al sincronizar). Para paridad plena: agregar la columna al schema SQLite + migración local + incluirla en pull, y idealmente replicar el link en el repo mobile de planning. Spawn `mobile-sync-doctor` + `mobile-webapp-parity`. (esta sesión, follow-up)
+- [ ] **Toast del sync no cuenta re-fechados** — `sync-recurring-button.tsx` dice "Nada nuevo que sincronizar" cuando `created === 0` aunque el self-heal haya re-fechado entradas; devolver `redated` en el ActionResult y ajustar el copy. (server-action-reviewer, nit)
+- [ ] **`recordRecurringOccurrencePayment` marca pagado por fecha exacta sin verificar filas afectadas** — `recurring-templates.ts:~1070`: si el UPDATE no matchea ninguna ocurrencia, crea la transacción y marca la entrada COMPLETED pero la ocurrencia queda pending, sin error visible. Mitigado dos veces (payPlanningEntry pasa la fecha real de la ocurrencia FK; la validación ahora acepta fechas materializadas fuera de cronograma), pero el write debería asertar `rows > 0`. (recurring-doctor, follow-up)
+- [ ] **"Volver a pendiente" en Plan es no-op visible si la ocurrencia sigue pagada** — `toggleEntryStatus(id, "PLANNED")` solo cambia el status guardado de la entrada; el override de display (solo-upgrade) la regresa a COMPLETED en el siguiente render. Pre-existente. Con la FK el botón podría ofrecer revertir la ocurrencia (flujo revertOccurrence, con su confirm destructivo) o desaparecer para entradas FK. (server-action-reviewer r2 + recurring-doctor r2)
+- [ ] **Seed silencioso incompleto si `ensureOccurrencesForRange` falla** — el seed ahora siembra desde filas de ocurrencia; si el ensure falla transitoriamente y una plantilla no tiene filas previas, ese sync no crea su entrada (se cura en el siguiente sync). Documentado en código; considerar toast de advertencia. (server-action-reviewer r2, MEDIUM informativo)
+
 ## Savings import overhaul (PR #362, 2026-07-06) — follow-ups
 - [ ] Infra: `infra/nginx/` (imagen custom + default.conf) NO es el proxy de producción — prod usa Nginx Proxy Manager (`jc21/nginx-proxy-manager`) en el VPS con hosts `pfm.sanson1911.cloud` y `n8n.venti5.shop`. Decidir: retirar `infra/nginx/` del repo o documentarlo como legado; los timeouts reales se configuran en NPM (`/data/nginx/custom/server_proxy.conf`).
 

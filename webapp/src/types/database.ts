@@ -1802,6 +1802,7 @@ export type Database = {
           id: string
           label: string
           notes: string | null
+          occurrence_id: string | null
           period_id: string
           recurring_template_id: string | null
           sort_order: number
@@ -1821,6 +1822,7 @@ export type Database = {
           id?: string
           label: string
           notes?: string | null
+          occurrence_id?: string | null
           period_id: string
           recurring_template_id?: string | null
           sort_order?: number
@@ -1840,6 +1842,7 @@ export type Database = {
           id?: string
           label?: string
           notes?: string | null
+          occurrence_id?: string | null
           period_id?: string
           recurring_template_id?: string | null
           sort_order?: number
@@ -1867,6 +1870,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_entries_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_occurrences"
             referencedColumns: ["id"]
           },
           {
