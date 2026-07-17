@@ -223,6 +223,29 @@ export async function updateAccount(
 
   if (error) return { success: false, error: error.message };
 
+  // Payroll-deducted (libranza) loans: the installment leaves the paycheck
+  // before it lands, so an active recurring template would double-count the
+  // obligation in Plan / próximos pagos. Deactivate any template tracking
+  // this account when the flag is on (idempotent — 0 rows if none).
+  if (parsed.data.is_payroll_deducted) {
+    const { error: templateError } = await supabase
+      .from("recurring_transaction_templates")
+      .update({ is_active: false })
+      .eq("user_id", user.id)
+      .eq("account_id", id)
+      .eq("is_active", true);
+    if (templateError) {
+      console.error(
+        "[updateAccount] failed to deactivate payroll-deducted templates:",
+        templateError.message
+      );
+    } else {
+      updateTag("recurring");
+      updateTag("occurrences");
+      updateTag("cashflow-planner");
+    }
+  }
+
   updateTag("accounts");
   updateTag("dashboard:accounts");
   updateTag("dashboard:hero");

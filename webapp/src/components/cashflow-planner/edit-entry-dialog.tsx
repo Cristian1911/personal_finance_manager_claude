@@ -19,9 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { updatePlanningEntry } from "@/actions/cashflow-planner";
 import { toast } from "sonner";
-import type { Account, Category, CurrencyCode } from "@/types/domain";
+import type { Account, CategoryWithChildren, CurrencyCode } from "@/types/domain";
 import type { PlanningEntryWithRelations } from "@/types/cashflow-planner";
 
 interface EditEntryDialogProps {
@@ -30,7 +31,7 @@ interface EditEntryDialogProps {
   onOpenChange: (open: boolean) => void;
   currency: CurrencyCode;
   accounts?: Pick<Account, "id" | "name" | "icon" | "color">[];
-  categories?: Pick<Category, "id" | "name" | "name_es" | "icon" | "color">[];
+  categories?: CategoryWithChildren[];
 }
 
 export function EditEntryDialog({
@@ -46,10 +47,16 @@ export function EditEntryDialog({
   const [expectedDate, setExpectedDate] = useState<string | null>(
     entry?.expected_date ?? null
   );
+  const [categoryId, setCategoryId] = useState<string | null>(
+    entry?.category?.id ?? null
+  );
 
-  // Sync date when entry changes
+  // Sync date/category when entry changes
   if (entry && expectedDate !== entry.expected_date && !open) {
     setExpectedDate(entry.expected_date);
+  }
+  if (entry && categoryId !== (entry.category?.id ?? null) && !open) {
+    setCategoryId(entry.category?.id ?? null);
   }
 
   if (!entry) return null;
@@ -143,18 +150,16 @@ export function EditEntryDialog({
           {isExpense && categories.length > 0 && (
             <div className="space-y-2">
               <Label>Categoría (opcional)</Label>
-              <Select name="category_id" defaultValue={entry.category?.id ?? ""}>
-                <SelectTrigger className="bg-card border-white/6">
-                  <SelectValue placeholder="Seleccionar categoría" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name_es || c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <CategoryZonePicker
+                categories={categories}
+                value={categoryId}
+                onValueChange={setCategoryId}
+                direction="OUTFLOW"
+                variant="popover"
+                name="category_id"
+                placeholder="Seleccionar categoría"
+                triggerClassName="w-full bg-card border-white/6"
+              />
             </div>
           )}
 

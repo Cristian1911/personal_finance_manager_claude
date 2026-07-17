@@ -20,17 +20,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { Plus } from "lucide-react";
 import { createPlanningEntry } from "@/actions/cashflow-planner";
 import { toast } from "sonner";
-import type { PlanningEntryType, CurrencyCode, Account, Category } from "@/types/domain";
+import type {
+  PlanningEntryType,
+  CurrencyCode,
+  Account,
+  CategoryWithChildren,
+} from "@/types/domain";
 
 interface EntryFormDialogProps {
   periodId: string;
   currency?: CurrencyCode;
   defaultType?: PlanningEntryType;
   accounts?: Pick<Account, "id" | "name" | "icon" | "color">[];
-  categories?: Pick<Category, "id" | "name" | "name_es" | "icon" | "color">[];
+  categories?: CategoryWithChildren[];
   trigger?: React.ReactNode;
 }
 
@@ -47,6 +53,7 @@ export function EntryFormDialog({
   const formRef = useRef<HTMLFormElement>(null);
   const [entryType, setEntryType] = useState<PlanningEntryType>(defaultType);
   const [expectedDate, setExpectedDate] = useState<string | null>(null);
+  const [categoryId, setCategoryId] = useState<string | null>(null);
 
   function handleSubmit(formData: FormData) {
     startTransition(async () => {
@@ -64,6 +71,7 @@ export function EntryFormDialog({
         setOpen(false);
         formRef.current?.reset();
         setExpectedDate(null);
+        setCategoryId(null);
       } else {
         toast.error(result.error);
       }
@@ -166,18 +174,16 @@ export function EntryFormDialog({
           {entryType === "EXPENSE" && categories.length > 0 && (
             <div className="space-y-2">
               <Label>Categoría (opcional)</Label>
-              <Select name="category_id">
-                <SelectTrigger className="bg-card border-white/6">
-                  <SelectValue placeholder="Seleccionar categoría" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name_es || c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <CategoryZonePicker
+                categories={categories}
+                value={categoryId}
+                onValueChange={setCategoryId}
+                direction="OUTFLOW"
+                variant="popover"
+                name="category_id"
+                placeholder="Seleccionar categoría"
+                triggerClassName="w-full bg-card border-white/6"
+              />
             </div>
           )}
 
