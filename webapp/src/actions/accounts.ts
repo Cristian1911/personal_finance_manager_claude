@@ -228,18 +228,38 @@ export async function updateAccount(
   // obligation in Plan / próximos pagos. Deactivate any template tracking
   // this account when the flag is on (idempotent — 0 rows if none).
   if (parsed.data.is_payroll_deducted) {
-    const { error: templateError } = await supabase
+    const { data: deactivated, error: templateError } = await supabase
       .from("recurring_transaction_templates")
       .update({ is_active: false })
       .eq("user_id", user.id)
       .eq("account_id", id)
-      .eq("is_active", true);
+      .eq("is_active", true)
+      .select("id");
     if (templateError) {
       console.error(
         "[updateAccount] failed to deactivate payroll-deducted templates:",
         templateError.message
       );
     } else {
+      // Same housekeeping as deactivateTemplatesForPaidOffAccount: pending
+      // unlinked occurrences of a deactivated template never surface again
+      // (reads filter inactive templates) — delete them instead of leaving
+      // dead rows behind.
+      if (deactivated && deactivated.length > 0) {
+        const { error: occError } = await supabase
+          .from("recurring_occurrences")
+          .delete()
+          .eq("user_id", user.id)
+          .in("template_id", deactivated.map((t) => t.id))
+          .eq("status", "pending")
+          .is("transaction_id", null);
+        if (occError) {
+          console.error(
+            "[updateAccount] failed to prune pending occurrences:",
+            occError.message
+          );
+        }
+      }
       updateTag("recurring");
       updateTag("occurrences");
       updateTag("cashflow-planner");
