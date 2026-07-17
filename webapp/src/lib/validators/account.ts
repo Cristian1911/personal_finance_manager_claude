@@ -30,6 +30,9 @@ export const accountSchema = z.object({
   icon: z.string().optional(),
   mask: z.string().max(4).optional(),
   show_in_dashboard: z.boolean().optional(),
+  // Libranza / descuento de nómina — without this key Zod strips the flag
+  // from buildAccountInsertData and the checkbox silently never persists.
+  is_payroll_deducted: z.boolean().optional(),
 });
 
 export type AccountFormData = z.infer<typeof accountSchema>;

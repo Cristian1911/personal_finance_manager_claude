@@ -8,7 +8,7 @@ import { EnvelopeBoard } from "@/components/cashflow-planner/envelope-board";
 import { PlanFlowChart } from "./plan-flow-chart";
 import type { PlanTimelineData } from "@/actions/plan-timeline";
 import type { PeriodPlanData } from "@/types/cashflow-planner";
-import type { Account, Category } from "@/types/domain";
+import type { Account, CategoryWithChildren } from "@/types/domain";
 
 /** Accounts need account_type + current_balance for the pay/confirm dialogs. */
 export type PlanAccount = Pick<
@@ -28,7 +28,7 @@ interface MobilePeriodoViewProps {
   planData: PeriodPlanData;
   timelineData: PlanTimelineData;
   accounts: PlanAccount[];
-  categories: Pick<Category, "id" | "name" | "name_es" | "icon" | "color">[];
+  categories: CategoryWithChildren[];
 }
 
 /**

@@ -18,7 +18,7 @@ import { formatDate, toColombiaDateString } from "@/lib/utils/date";
 import { cn } from "@/lib/utils";
 import { Wallet, Receipt, AlertTriangle, Info, ChevronDown } from "lucide-react";
 import { differenceInCalendarDays, parseISO } from "date-fns";
-import type { Category } from "@/types/domain";
+import type { CategoryWithChildren } from "@/types/domain";
 import type { PlanAccount } from "@/components/mobile/v2/plan/mobile-periodo-view";
 import {
   BALANCE_SEED_NOTES,
@@ -29,7 +29,7 @@ import {
 interface EnvelopeBoardProps {
   data: PeriodPlanData;
   accounts?: PlanAccount[];
-  categories?: Pick<Category, "id" | "name" | "name_es" | "icon" | "color">[];
+  categories?: CategoryWithChildren[];
 }
 
 export function EnvelopeBoard({ data, accounts = [], categories = [] }: EnvelopeBoardProps) {
@@ -342,6 +342,9 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
       />
 
       <EditEntryDialog
+        // Remount per entry so uncontrolled defaults (label/amount) and local
+        // state can never leak from a previously edited entry.
+        key={editTarget?.id ?? "edit-entry"}
         entry={editTarget}
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}

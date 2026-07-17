@@ -540,14 +540,21 @@ export async function seedPeriodFromRecurring(
 
   const [{ data: templates }, { data: existingEntries }, { data: reminders }] =
     await Promise.all([
+      // ALL templates (not just active): payroll-deducted detection must also
+      // cover templates deactivated after their entries were seeded.
       supabase
         .from("recurring_transaction_templates")
-        .select(`*, account:accounts!recurring_transaction_templates_account_id_fkey(id, account_type)`)
-        .eq("user_id", user.id)
-        .eq("is_active", true),
+        .select(`*, account:accounts!recurring_transaction_templates_account_id_fkey(id, account_type, is_payroll_deducted)`)
+        .eq("user_id", user.id),
+      // occurrence join: the stored status stays PLANNED when a payment was
+      // auto-linked outside Plan (markOccurrencePaid never writes back to the
+      // entry) — the payroll prune below needs the occurrence-derived status.
       supabase
         .from("planning_entries")
-        .select("id, status, occurrence_id, recurring_template_id, expected_date, label, amount")
+        .select(
+          `id, status, occurrence_id, recurring_template_id, expected_date, label, amount,
+           occurrence:recurring_occurrences!planning_entries_occurrence_id_fkey(id, status)`
+        )
         .eq("period_id", periodId)
         .eq("user_id", user.id),
       supabase
@@ -559,7 +566,98 @@ export async function seedPeriodFromRecurring(
         .lte("due_date", period.end_date),
     ]);
 
-  const templateById = new Map((templates ?? []).map((t) => [t.id, t]));
+  // Payroll-deducted (libranza) loans: the installment leaves the paycheck
+  // before it lands, so seeding it as a plan expense double-counts the
+  // obligation (the income entry is already net of it). Exclude those
+  // templates from seeding and prune entries seeded before the account was
+  // flagged — but only ones still EFFECTIVELY pending. The stored status
+  // alone is not enough: auto-linked payments (import, email) mark the
+  // occurrence paid without writing COMPLETED back to the entry, and that
+  // settled history must survive the prune.
+  const payrollTemplateIds = new Set(
+    (templates ?? [])
+      .filter(
+        (t) =>
+          (t.account as { is_payroll_deducted?: boolean } | null)
+            ?.is_payroll_deducted
+      )
+      .map((t) => t.id)
+  );
+
+  type SeedEntryRow = NonNullable<typeof existingEntries>[number] & {
+    occurrence: { id: string; status: string } | null;
+  };
+  const entryRows = (existingEntries ?? []) as unknown as SeedEntryRow[];
+
+  const isSettledOccurrence = (status: string | undefined) =>
+    status === "paid" || status === "skipped";
+
+  const payrollCandidates = entryRows.filter(
+    (e) =>
+      e.recurring_template_id != null &&
+      payrollTemplateIds.has(e.recurring_template_id) &&
+      e.status === "PLANNED" &&
+      !isSettledOccurrence(e.occurrence?.status)
+  );
+
+  // FK-less candidates may still track a settled occurrence through the same
+  // date-window pairing hydratePeriodData renders from — resolve it before
+  // deleting (deletion has no re-surface safety net).
+  const settledFklessIds = new Set<string>();
+  const fklessCandidates = payrollCandidates.filter((e) => !e.occurrence_id);
+  if (fklessCandidates.length > 0) {
+    const { data: payrollOccs, error: payrollOccErr } = await supabase
+      .from("recurring_occurrences")
+      .select("id, template_id, occurrence_date, status")
+      .eq("user_id", user.id)
+      .in("template_id", [...payrollTemplateIds])
+      .gte(
+        "occurrence_date",
+        format(
+          addDays(parseISO(period.start_date), -OCCURRENCE_AUTO_LINK_DAY_WINDOW),
+          "yyyy-MM-dd"
+        )
+      )
+      .lte(
+        "occurrence_date",
+        format(
+          addDays(parseISO(period.end_date), OCCURRENCE_AUTO_LINK_DAY_WINDOW),
+          "yyyy-MM-dd"
+        )
+      );
+    if (payrollOccErr)
+      return { success: false, error: payrollOccErr.message };
+    const pairedFkless = pairOccurrencesToEntries(
+      fklessCandidates,
+      payrollOccs ?? []
+    );
+    for (const [entryId, occ] of pairedFkless) {
+      if (isSettledOccurrence(occ.status)) settledFklessIds.add(entryId);
+    }
+  }
+
+  const payrollEntryIds = new Set(
+    payrollCandidates
+      .filter((e) => !settledFklessIds.has(e.id))
+      .map((e) => e.id)
+  );
+  if (payrollEntryIds.size > 0) {
+    const { error: payrollPruneErr } = await supabase
+      .from("planning_entries")
+      .delete()
+      .in("id", [...payrollEntryIds])
+      .eq("user_id", user.id)
+      .eq("status", "PLANNED");
+    if (payrollPruneErr)
+      return { success: false, error: payrollPruneErr.message };
+  }
+  const liveEntries = entryRows.filter((e) => !payrollEntryIds.has(e.id));
+
+  const templateById = new Map(
+    (templates ?? [])
+      .filter((t) => t.is_active && !payrollTemplateIds.has(t.id))
+      .map((t) => [t.id, t])
+  );
 
   let periodOccurrences: Array<{
     id: string;
@@ -584,7 +682,7 @@ export async function seedPeriodFromRecurring(
   // (a boundary occurrence may be FK-linked from the adjacent period; seeding
   // a second entry for it would duplicate the obligation).
   const claimedOccurrenceIds = new Set<string>();
-  for (const e of existingEntries ?? []) {
+  for (const e of liveEntries) {
     if (e.occurrence_id) claimedOccurrenceIds.add(e.occurrence_id);
   }
   if (periodOccurrences.length > 0) {
@@ -604,7 +702,7 @@ export async function seedPeriodFromRecurring(
   // mobile app, or occurrence pruned → ON DELETE SET NULL) adopt their
   // occurrence — the FK is persisted and the entry takes the occurrence's
   // date, so the stale-snapshot-date class of bugs can't recur.
-  const linkCandidates = (existingEntries ?? []).filter(
+  const linkCandidates = liveEntries.filter(
     (e) => e.recurring_template_id != null && !e.occurrence_id && e.status === "PLANNED"
   );
   const pairs = pairOccurrencesToEntries(
@@ -647,7 +745,7 @@ export async function seedPeriodFromRecurring(
   // their NEW date.
   const existingKeys = new Set<string>();
   const existingReminderKeys = new Set<string>();
-  for (const e of existingEntries ?? []) {
+  for (const e of liveEntries) {
     if (e.recurring_template_id) {
       const date = linkedDateByEntryId.get(e.id) ?? e.expected_date;
       existingKeys.add(`${e.recurring_template_id}|${date}`);
