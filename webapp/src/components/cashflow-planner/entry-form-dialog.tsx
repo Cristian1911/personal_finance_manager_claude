@@ -55,6 +55,15 @@ export function EntryFormDialog({
   const [expectedDate, setExpectedDate] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState<string | null>(null);
 
+  // The dialog stays mounted while closed — reset local state so an abandoned
+  // draft doesn't leak into the next open (inputs are inside DialogContent and
+  // unmount on close; only this component-level state persists).
+  if (!open && (expectedDate !== null || categoryId !== null || entryType !== defaultType)) {
+    setExpectedDate(null);
+    setCategoryId(null);
+    setEntryType(defaultType);
+  }
+
   function handleSubmit(formData: FormData) {
     startTransition(async () => {
       formData.set("period_id", periodId);

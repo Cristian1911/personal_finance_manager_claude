@@ -342,6 +342,9 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
       />
 
       <EditEntryDialog
+        // Remount per entry so uncontrolled defaults (label/amount) and local
+        // state can never leak from a previously edited entry.
+        key={editTarget?.id ?? "edit-entry"}
         entry={editTarget}
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
