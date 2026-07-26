@@ -250,7 +250,9 @@ export function TransactionQuickActions({
     (linkedRecurring.transactionCaptureMethod === "MANUAL_FORM" ||
       linkedRecurring.transactionCaptureMethod === null);
 
-  const canLinkPersona = !tx.personal_debt_id && !tx.transfer_group_id;
+  // A split origin's amount already lives in its shared-payment debts — the
+  // link action rejects it, so don't offer it.
+  const canLinkPersona = !tx.personal_debt_id && !tx.transfer_group_id && !tx.split_group_id;
   // A shared payment splits a spend the user fronted: only OUTFLOWs, not already
   // linked to a person/transfer, and not already split.
   const canSplit =
@@ -421,7 +423,9 @@ export function TransactionQuickActions({
           return;
         }
         const candidates: LinkCandidate[] = result.data
-          .filter((d) => d.status === "active")
+          // Cross-currency links corrupt the debt's principal/outstanding math
+          // and are rejected server-side — don't offer them.
+          .filter((d) => d.status === "active" && d.currency_code === tx.currency_code)
           .map((d) => ({
             debt: d,
             // origin = same direction as the loan itself (new money moving the

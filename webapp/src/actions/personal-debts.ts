@@ -362,15 +362,22 @@ export async function linkTransactionToPersonalDebt(
 
   const { data: debt, error: debtErr } = await supabase
     .from("personal_debts")
-    .select("id, direction, principal_amount, origin_transaction_id, split_group_id")
+    .select(
+      "id, direction, status, principal_amount, currency_code, origin_transaction_id, split_group_id",
+    )
     .eq("id", personalDebtId)
     .eq("user_id", user.id)
     .single();
   if (debtErr || !debt) return { success: false, error: "Deuda no encontrada" };
+  if (debt.status === "cancelled") {
+    return { success: false, error: "No puedes vincular movimientos a una deuda cancelada." };
+  }
 
   const { data: tx, error: txErr } = await supabase
     .from("transactions")
-    .select("id, direction, amount, personal_debt_id")
+    .select(
+      "id, direction, amount, currency_code, personal_debt_id, split_group_id, reconciled_into_transaction_id",
+    )
     .eq("id", transactionId)
     .eq("user_id", user.id)
     .single();
@@ -378,12 +385,44 @@ export async function linkTransactionToPersonalDebt(
   if (tx.personal_debt_id) {
     return { success: false, error: "Esta transacción ya está vinculada a una persona." };
   }
+  // A shared-payment origin or a reconciled duplicate must not feed a debt's
+  // math — their amounts already live elsewhere.
+  if (tx.split_group_id) {
+    return { success: false, error: "Esta transacción pertenece a un pago compartido." };
+  }
+  if (tx.reconciled_into_transaction_id) {
+    return { success: false, error: "Esta transacción fue conciliada con otro movimiento." };
+  }
+  if ((tx.currency_code ?? "COP") !== debt.currency_code) {
+    return {
+      success: false,
+      error: `La moneda del movimiento (${tx.currency_code ?? "COP"}) no coincide con la de la deuda (${debt.currency_code}).`,
+    };
+  }
 
   const role = inferPersonalDebtRole(
     debt.direction as PersonalDebtDirection,
     tx.direction as "INFLOW" | "OUTFLOW",
   );
-  const isAdditionalOrigin = role === "origin" && debt.origin_transaction_id != null;
+  // "Additional" = the debt already has at least one origin-role transaction.
+  // Checked by pointer AND by pd_role rows: after a canonical-origin unlink the
+  // pointer is null but linked origins remain, and treating the next origin
+  // link as canonical would silently drop its amount from the principal.
+  let isAdditionalOrigin = false;
+  if (role === "origin") {
+    if (debt.origin_transaction_id != null) {
+      isAdditionalOrigin = true;
+    } else {
+      const { count, error: cntErr } = await supabase
+        .from("transactions")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("personal_debt_id", personalDebtId)
+        .eq("pd_role", "origin");
+      if (cntErr) return { success: false, error: "Error al vincular la transacción" };
+      isAdditionalOrigin = (count ?? 0) > 0;
+    }
+  }
   // A shared payment's origin IS the split transaction — adding disbursements
   // would corrupt the participants' shares, so keep the single-origin rule there.
   if (isAdditionalOrigin && debt.split_group_id) {
@@ -401,33 +440,46 @@ export async function linkTransactionToPersonalDebt(
     .eq("user_id", user.id);
   if (updErr) return { success: false, error: "Error al vincular la transacción" };
 
-  if (isAdditionalOrigin) {
-    // Additional loan from the same person: grow the debt instead of failing.
-    // Recompute (not a blind write) so outstanding/status follow the new
-    // principal — this also reactivates a settled debt that gets a new loan.
-    const newPrincipal = Number(debt.principal_amount) + Number(tx.amount ?? 0);
-    const { error: princErr } = await supabase
-      .from("personal_debts")
-      .update({ principal_amount: newPrincipal })
-      .eq("id", personalDebtId)
-      .eq("user_id", user.id);
-    if (princErr) return { success: false, error: "Error al aumentar la deuda" };
-    await recomputeOutstanding(supabase, user.id, personalDebtId, newPrincipal);
-  } else if (role === "origin") {
-    const { error: originErr } = await supabase
-      .from("personal_debts")
-      .update({ origin_transaction_id: transactionId })
-      .eq("id", personalDebtId)
-      .eq("user_id", user.id);
-    if (originErr) return { success: false, error: "Error al vincular el origen" };
-  } else {
-    await recomputeOutstanding(supabase, user.id, personalDebtId, debt.principal_amount);
-    // Linking an incoming transfer as a repayment of a shared-payment debt must
-    // also lower the origin transaction's effective spend — otherwise the debt
-    // settles but the "Pago compartido" stays at "Recuperado $0".
-    if (debt.split_group_id) {
-      await recomputeSplitRepaid(supabase, user.id, debt.split_group_id);
+  // Past this point the link is already committed — every failure path must
+  // still invalidate caches, or the UI keeps serving the pre-link state and a
+  // retry dies on "ya está vinculada".
+  try {
+    if (isAdditionalOrigin) {
+      // Additional loan from the same person: grow the debt instead of failing.
+      // Recompute (not a blind write) so outstanding/status follow the new
+      // principal — this also reactivates a settled debt that gets a new loan.
+      const newPrincipal = Number(debt.principal_amount) + Number(tx.amount ?? 0);
+      const { error: princErr } = await supabase
+        .from("personal_debts")
+        .update({ principal_amount: newPrincipal })
+        .eq("id", personalDebtId)
+        .eq("user_id", user.id)
+        .neq("status", "cancelled");
+      if (princErr) throw new Error("Error al aumentar la deuda");
+      await recomputeOutstanding(supabase, user.id, personalDebtId, newPrincipal);
+    } else if (role === "origin") {
+      const { error: originErr } = await supabase
+        .from("personal_debts")
+        .update({ origin_transaction_id: transactionId })
+        .eq("id", personalDebtId)
+        .eq("user_id", user.id);
+      if (originErr) throw new Error("Error al vincular el origen");
+    } else {
+      await recomputeOutstanding(supabase, user.id, personalDebtId, debt.principal_amount);
+      // Linking an incoming transfer as a repayment of a shared-payment debt must
+      // also lower the origin transaction's effective spend — otherwise the debt
+      // settles but the "Pago compartido" stays at "Recuperado $0".
+      if (debt.split_group_id) {
+        await recomputeSplitRepaid(supabase, user.id, debt.split_group_id);
+      }
     }
+  } catch (e) {
+    revalidateFinancialViews();
+    updateTag("personal-debts");
+    return {
+      success: false,
+      error: e instanceof Error ? e.message : "Error al actualizar la deuda",
+    };
   }
 
   revalidateFinancialViews();
@@ -460,7 +512,7 @@ export async function getLinkableRepaymentTransactions(
 
   const { data: debt, error: debtErr } = await supabase
     .from("personal_debts")
-    .select("direction")
+    .select("direction, currency_code")
     .eq("id", personalDebtId)
     .eq("user_id", user.id)
     .single();
@@ -474,6 +526,9 @@ export async function getLinkableRepaymentTransactions(
     .from("transactions")
     .select("id, amount, transaction_date, merchant_name, clean_description, raw_description, currency_code")
     .eq("user_id", user.id)
+    // Cross-currency repayments corrupt the outstanding math (and the link
+    // action rejects them) — only offer same-currency movements.
+    .eq("currency_code", debt.currency_code as Database["public"]["Enums"]["currency_code"])
     .eq("direction", direction)
     .is("personal_debt_id", null)
     .is("split_group_id", null)
@@ -513,6 +568,17 @@ export async function unlinkTransactionFromPersonalDebt(
   const debtId = tx.personal_debt_id as string;
   const wasOrigin = tx.pd_role === "origin";
 
+  // Fetch the debt BEFORE mutating: a failed fetch must abort, not silently
+  // fall into the wrong branch (e.g. clearing the canonical pointer while
+  // unlinking an additional origin).
+  const { data: debt, error: debtErr } = await supabase
+    .from("personal_debts")
+    .select("principal_amount, origin_transaction_id, split_group_id")
+    .eq("id", debtId)
+    .eq("user_id", user.id)
+    .single();
+  if (debtErr || !debt) return { success: false, error: "Deuda no encontrada" };
+
   const { error: updErr } = await supabase
     .from("transactions")
     .update({ personal_debt_id: null, pd_role: null })
@@ -520,40 +586,45 @@ export async function unlinkTransactionFromPersonalDebt(
     .eq("user_id", user.id);
   if (updErr) return { success: false, error: "Error al desvincular la transacción" };
 
-  const { data: debt } = await supabase
-    .from("personal_debts")
-    .select("principal_amount, origin_transaction_id, split_group_id")
-    .eq("id", debtId)
-    .eq("user_id", user.id)
-    .single();
-
-  if (wasOrigin && debt && debt.origin_transaction_id !== transactionId) {
-    // Additional-loan origin (not the canonical first one): its amount was
-    // added to the principal when linked, so shrink it back symmetrically.
-    const newPrincipal = Math.max(
-      0,
-      Number(debt.principal_amount) - Number(tx.amount ?? 0),
-    );
-    const { error: princErr } = await supabase
-      .from("personal_debts")
-      .update({ principal_amount: newPrincipal })
-      .eq("id", debtId)
-      .eq("user_id", user.id);
-    if (princErr) return { success: false, error: "Error al ajustar la deuda" };
-    await recomputeOutstanding(supabase, user.id, debtId, newPrincipal);
-  } else if (wasOrigin) {
-    const { error: originErr } = await supabase
-      .from("personal_debts")
-      .update({ origin_transaction_id: null })
-      .eq("id", debtId)
-      .eq("user_id", user.id);
-    if (originErr) return { success: false, error: "Error al desvincular el origen" };
-  } else if (debt) {
-    await recomputeOutstanding(supabase, user.id, debtId, debt.principal_amount);
-    // Unlinking a shared-payment repayment raises the origin tx's effective spend.
-    if (debt.split_group_id) {
-      await recomputeSplitRepaid(supabase, user.id, debt.split_group_id);
+  // Past this point the unlink is already committed — failure paths must still
+  // invalidate caches so the UI reflects the detached transaction.
+  try {
+    if (wasOrigin && debt.origin_transaction_id !== transactionId) {
+      // Additional-loan origin (not the canonical first one): its amount was
+      // added to the principal when linked, so shrink it back symmetrically.
+      const newPrincipal = Math.max(
+        0,
+        Number(debt.principal_amount) - Number(tx.amount ?? 0),
+      );
+      const { error: princErr } = await supabase
+        .from("personal_debts")
+        .update({ principal_amount: newPrincipal })
+        .eq("id", debtId)
+        .eq("user_id", user.id)
+        .neq("status", "cancelled");
+      if (princErr) throw new Error("Error al ajustar la deuda");
+      await recomputeOutstanding(supabase, user.id, debtId, newPrincipal);
+    } else if (wasOrigin) {
+      const { error: originErr } = await supabase
+        .from("personal_debts")
+        .update({ origin_transaction_id: null })
+        .eq("id", debtId)
+        .eq("user_id", user.id);
+      if (originErr) throw new Error("Error al desvincular el origen");
+    } else {
+      await recomputeOutstanding(supabase, user.id, debtId, debt.principal_amount);
+      // Unlinking a shared-payment repayment raises the origin tx's effective spend.
+      if (debt.split_group_id) {
+        await recomputeSplitRepaid(supabase, user.id, debt.split_group_id);
+      }
     }
+  } catch (e) {
+    revalidateFinancialViews();
+    updateTag("personal-debts");
+    return {
+      success: false,
+      error: e instanceof Error ? e.message : "Error al actualizar la deuda",
+    };
   }
 
   revalidateFinancialViews();
