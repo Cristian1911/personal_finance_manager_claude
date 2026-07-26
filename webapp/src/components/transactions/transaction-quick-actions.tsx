@@ -66,6 +66,7 @@ import {
   type LinkedRecurringInfo,
 } from "@/actions/occurrences";
 import { getPersonalDebts, linkTransactionToPersonalDebt } from "@/actions/personal-debts";
+import { inferPersonalDebtRole } from "@zeta/shared";
 import type { CategoryWithChildren, CurrencyCode } from "@/types/domain";
 
 /** Trio action button (Categoría · Destinatario · Más) — ghost, equal thirds. */
@@ -422,19 +423,35 @@ export function TransactionQuickActions({
         const candidates: LinkCandidate[] = result.data
           .filter((d) => d.status === "active")
           .map((d) => ({
+            debt: d,
+            // origin = same direction as the loan itself (new money moving the
+            // debt's way). With no origin yet it documents the existing
+            // principal; with one already, it SUMS as an additional loan.
+            // Anything else is an abono.
+            isOrigin: inferPersonalDebtRole(d.direction, tx.direction) === "origin",
+          }))
+          // A shared-payment debt's origin is the split transaction itself —
+          // an origin-role link would be rejected by the action, so don't
+          // offer those debts when this tx would land as origin.
+          .filter(({ debt, isOrigin }) => !(debt.split_group_id && isOrigin))
+          .map(({ debt: d, isOrigin }) => ({
             id: d.id,
             label: d.destinatario_name,
             // Distinguish debts that belong to a shared payment from standalone
             // ones: linking here also updates the shared payment's recovered/spend.
             sublabel: d.split_group_id
               ? d.notes || "Parte de un pago compartido"
-              : d.direction === "borrowed"
-                ? "Le debes"
-                : "Te debe",
+              : `${d.direction === "borrowed" ? "Le debes" : "Te debe"} · ${
+                  isOrigin
+                    ? d.origin_transaction_id
+                      ? "suma a la deuda"
+                      : "será el origen"
+                    : "abono"
+                }`,
             badge: d.split_group_id ? "Pago compartido" : undefined,
             amount: d.outstanding_amount,
             currencyCode: d.currency_code,
-            direction: d.direction === "borrowed" ? "OUTFLOW" : "INFLOW",
+            direction: d.direction === "borrowed" ? ("OUTFLOW" as const) : ("INFLOW" as const),
             matchScore: 0,
           }));
         setPersonaCandidates(candidates);
@@ -454,7 +471,11 @@ export function TransactionQuickActions({
       try {
         const result = await linkTransactionToPersonalDebt(debtId, tx.id);
         if (result.success) {
-          toast.success("Transacción vinculada a deuda personal");
+          toast.success(
+            result.data.principalIncreased
+              ? "Préstamo sumado a la deuda existente"
+              : "Transacción vinculada a deuda personal",
+          );
           router.refresh();
         } else if (fromCreate) {
           toast.error(danglingMsg);

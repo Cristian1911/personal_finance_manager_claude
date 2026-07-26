@@ -337,12 +337,23 @@ export async function reopenPersonalDebt(id: string): Promise<ActionResult<undef
 
 // ============================================================
 // Link / Unlink existing transaction (the "Vincular a persona" path)
-// Role is auto-inferred from debt.direction + tx.direction. <=1 origin per debt.
+// Role is auto-inferred from debt.direction + tx.direction.
+// origin_transaction_id stays the FIRST origin (canonical); further
+// origin-role links are additional disbursements from the same person and
+// INCREASE principal_amount by the tx amount (so one debt per person can
+// absorb several loans instead of forcing a new debt per loan). Shared-payment
+// debts keep the <=1-origin rule — their origin is the split transaction.
 // ============================================================
+export interface LinkToPersonalDebtResult {
+  role: "origin" | "repayment";
+  /** True when the link was an additional loan that increased the debt's principal. */
+  principalIncreased: boolean;
+}
+
 export async function linkTransactionToPersonalDebt(
   personalDebtId: string,
   transactionId: string,
-): Promise<ActionResult<undefined>> {
+): Promise<ActionResult<LinkToPersonalDebtResult>> {
   if (!UUID_RE.test(personalDebtId) || !UUID_RE.test(transactionId)) {
     return { success: false, error: "ID inválido" };
   }
@@ -372,8 +383,15 @@ export async function linkTransactionToPersonalDebt(
     debt.direction as PersonalDebtDirection,
     tx.direction as "INFLOW" | "OUTFLOW",
   );
-  if (role === "origin" && debt.origin_transaction_id) {
-    return { success: false, error: "Esta deuda ya tiene una transacción de origen." };
+  const isAdditionalOrigin = role === "origin" && debt.origin_transaction_id != null;
+  // A shared payment's origin IS the split transaction — adding disbursements
+  // would corrupt the participants' shares, so keep the single-origin rule there.
+  if (isAdditionalOrigin && debt.split_group_id) {
+    return {
+      success: false,
+      error:
+        "Esta deuda es parte de un pago compartido y ya tiene su transacción de origen. Crea una deuda aparte para este monto.",
+    };
   }
 
   const { error: updErr } = await supabase
@@ -383,7 +401,19 @@ export async function linkTransactionToPersonalDebt(
     .eq("user_id", user.id);
   if (updErr) return { success: false, error: "Error al vincular la transacción" };
 
-  if (role === "origin") {
+  if (isAdditionalOrigin) {
+    // Additional loan from the same person: grow the debt instead of failing.
+    // Recompute (not a blind write) so outstanding/status follow the new
+    // principal — this also reactivates a settled debt that gets a new loan.
+    const newPrincipal = Number(debt.principal_amount) + Number(tx.amount ?? 0);
+    const { error: princErr } = await supabase
+      .from("personal_debts")
+      .update({ principal_amount: newPrincipal })
+      .eq("id", personalDebtId)
+      .eq("user_id", user.id);
+    if (princErr) return { success: false, error: "Error al aumentar la deuda" };
+    await recomputeOutstanding(supabase, user.id, personalDebtId, newPrincipal);
+  } else if (role === "origin") {
     const { error: originErr } = await supabase
       .from("personal_debts")
       .update({ origin_transaction_id: transactionId })
@@ -402,7 +432,7 @@ export async function linkTransactionToPersonalDebt(
 
   revalidateFinancialViews();
   updateTag("personal-debts");
-  return { success: true, data: undefined };
+  return { success: true, data: { role, principalIncreased: isAdditionalOrigin } };
 }
 
 // ============================================================
@@ -473,7 +503,7 @@ export async function unlinkTransactionFromPersonalDebt(
 
   const { data: tx, error: txErr } = await supabase
     .from("transactions")
-    .select("id, personal_debt_id, pd_role")
+    .select("id, amount, personal_debt_id, pd_role")
     .eq("id", transactionId)
     .eq("user_id", user.id)
     .single();
@@ -492,12 +522,26 @@ export async function unlinkTransactionFromPersonalDebt(
 
   const { data: debt } = await supabase
     .from("personal_debts")
-    .select("principal_amount, split_group_id")
+    .select("principal_amount, origin_transaction_id, split_group_id")
     .eq("id", debtId)
     .eq("user_id", user.id)
     .single();
 
-  if (wasOrigin) {
+  if (wasOrigin && debt && debt.origin_transaction_id !== transactionId) {
+    // Additional-loan origin (not the canonical first one): its amount was
+    // added to the principal when linked, so shrink it back symmetrically.
+    const newPrincipal = Math.max(
+      0,
+      Number(debt.principal_amount) - Number(tx.amount ?? 0),
+    );
+    const { error: princErr } = await supabase
+      .from("personal_debts")
+      .update({ principal_amount: newPrincipal })
+      .eq("id", debtId)
+      .eq("user_id", user.id);
+    if (princErr) return { success: false, error: "Error al ajustar la deuda" };
+    await recomputeOutstanding(supabase, user.id, debtId, newPrincipal);
+  } else if (wasOrigin) {
     const { error: originErr } = await supabase
       .from("personal_debts")
       .update({ origin_transaction_id: null })
