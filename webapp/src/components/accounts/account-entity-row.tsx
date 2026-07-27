@@ -31,6 +31,7 @@ import type { Account } from "@/types/domain";
 export function AccountEntityRow({
   account,
   today,
+  defaultOpen = false,
   open,
   onOpenChange,
 }: {
@@ -38,11 +39,15 @@ export function AccountEntityRow({
   /** Día actual en YYYY-MM-DD, calculado en el servidor. Leer el reloj en un
    *  componente cliente durante el render rompe la hidratación. */
   today: string;
+  /** Nace expandida. Lo usa ?saldadas=1 para dejar el archivado a la vista. */
+  defaultOpen?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
   const model = deriveAccountRow(account, { today });
   const router = useRouter();
+  const [selfOpen, setSelfOpen] = useState(defaultOpen);
+  const isControlled = open !== undefined;
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -78,8 +83,8 @@ export function AccountEntityRow({
       gauge={model.gauge}
       meta={model.meta}
       trailing={model.trailing}
-      open={open}
-      onOpenChange={onOpenChange}
+      open={isControlled ? open : selfOpen}
+      onOpenChange={isControlled ? onOpenChange : setSelfOpen}
     >
       <div className="space-y-2">
         <div className="grid grid-cols-2 gap-2">

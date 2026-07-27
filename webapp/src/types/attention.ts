@@ -6,7 +6,8 @@ export type AttentionPage =
   | "destinatarios"
   | "recurrentes"
   | "pendientes"
-  | "deudas-personales";
+  | "deudas-personales"
+  | "cuentas";
 
 export type AttentionSignal = {
   page: AttentionPage;

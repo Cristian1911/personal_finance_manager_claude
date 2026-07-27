@@ -20,8 +20,16 @@ import { formatCurrency, formatCurrencyCompact } from "@/lib/utils/currency";
 import { toColombiaDateString } from "@/lib/utils/date";
 import type { Account, CurrencyCode } from "@/types/domain";
 
-export default async function AccountsPage() {
+export default async function AccountsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ saldadas?: string }>;
+}) {
   await connection();
+  // ?saldadas=1 llega desde la señal de atención: abre las obligaciones en
+  // cero para que el botón de archivar quede a la vista sin buscarlo.
+  const { saldadas } = await searchParams;
+  const expandSettled = saldadas === "1";
   const [result, currency] = await Promise.all([
     getAccounts(),
     getPreferredCurrency(),
@@ -224,7 +232,16 @@ export default async function AccountsPage() {
               </div>
               <div className="space-y-2">
                 {section.accounts.map((account) => (
-                  <AccountEntityRow key={account.id} account={account} today={today} />
+                  <AccountEntityRow
+                    key={account.id}
+                    account={account}
+                    today={today}
+                    defaultOpen={
+                      expandSettled &&
+                      isDebtAccountType(account.account_type) &&
+                      account.current_balance === 0
+                    }
+                  />
                 ))}
               </div>
             </section>
