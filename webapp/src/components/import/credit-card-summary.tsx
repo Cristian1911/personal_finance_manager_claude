@@ -3,6 +3,7 @@ import { projectMinimumPayoff12mo } from "@zeta/shared";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { compactAmount } from "./format-utils";
+import { PeriodTile } from "./period-tile";
 import type { CurrencyCode } from "@/types/domain";
 
 type CreditCardMetadata = {
@@ -184,43 +185,16 @@ export function CreditCardSummary({
           <PeriodTile
             label="Gastos"
             value={spent != null ? compactAmount(spent, currency) : "—"}
-            tone="spent"
+            tone="negative"
           />
           <PeriodTile
             label="Abonos"
             value={paid != null ? compactAmount(paid, currency) : "—"}
-            tone="paid"
+            tone="positive"
           />
-          <PeriodTile label="Movs" value={String(transactionCount)} tone="txns" />
+          <PeriodTile label="Movs" value={String(transactionCount)} tone="neutral" />
         </div>
       )}
-    </div>
-  );
-}
-
-function PeriodTile({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone: "spent" | "paid" | "txns";
-}) {
-  const valueClass =
-    tone === "spent"
-      ? "text-z-debt"
-      : tone === "paid"
-        ? "text-z-income"
-        : "text-z-white";
-  return (
-    <div className="flex-1 rounded-xl border border-white/6 bg-z-surface-2/80 p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-        {label}
-      </p>
-      <p className={`mt-1.5 text-xl font-bold tabular-nums tracking-tight ${valueClass}`}>
-        {value}
-      </p>
     </div>
   );
 }
