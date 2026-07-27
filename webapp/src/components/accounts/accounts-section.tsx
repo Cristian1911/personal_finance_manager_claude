@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useAccounts } from "@/components/providers/app-data-provider";
-import { AccountCard } from "@/components/accounts/account-card";
+import { AccountEntityRow } from "@/components/accounts/account-entity-row";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import { ArrowRight } from "lucide-react";
 import type { AccountType } from "@/types/domain";
@@ -15,17 +15,18 @@ const ACCOUNT_GROUPS: { label: string; types: AccountType[]; isDebt: boolean }[]
   { label: "Préstamos", types: ["LOAN"], isDebt: true },
 ];
 
-export function AccountsSection({ hideDebt = false }: { hideDebt?: boolean }) {
+export function AccountsSection({
+  hideDebt = false,
+  today,
+}: {
+  hideDebt?: boolean;
+  /** YYYY-MM-DD calculado en el servidor. Este componente es cliente y no
+   *  puede leer el reloj durante el render sin romper la hidratación. */
+  today: string;
+}) {
   const accounts = useAccounts();
 
   if (accounts.length === 0) return null;
-
-  const allMinimal = accounts.map((a) => ({
-    id: a.id,
-    name: a.name,
-    account_type: a.account_type,
-    currency_code: a.currency_code,
-  }));
 
   const groups = ACCOUNT_GROUPS
     .filter((g) => !(hideDebt && g.isDebt))
@@ -53,9 +54,9 @@ export function AccountsSection({ hideDebt = false }: { hideDebt?: boolean }) {
       {groups.map((group) => (
         <div key={group.label}>
           <p className="mb-2 text-xs font-medium text-z-sage-dark">{group.label}</p>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="space-y-2">
             {group.accounts.map((account) => (
-              <AccountCard key={account.id} account={account} allAccounts={allMinimal} />
+              <AccountEntityRow key={account.id} account={account} today={today} />
             ))}
           </div>
         </div>
