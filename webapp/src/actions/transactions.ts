@@ -569,6 +569,7 @@ async function getMonthlyAggregatesCached(
   dateFrom: string,
   dateTo: string,
   accountId: string | undefined,
+  currencyCode: string | undefined,
 ): Promise<MonthlyAggregatesResult> {
   "use cache";
   cacheTag("transactions");
@@ -603,6 +604,14 @@ async function getMonthlyAggregatesCached(
     .is("personal_debt_id", null);
 
   if (accountId) query = query.eq("account_id", accountId);
+  // The card prints these totals under a single currency label, so summing
+  // across currencies would produce a number that isn't any currency's total.
+  if (currencyCode) {
+    query = query.eq(
+      "currency_code",
+      currencyCode as Database["public"]["Enums"]["currency_code"],
+    );
+  }
 
   const { data, error } = await query;
   if (error) throw error;
@@ -630,6 +639,7 @@ async function getMonthlyAggregatesCached(
 export async function getMonthlyAggregates(
   month?: string,
   accountId?: string,
+  currencyCode?: string,
 ): Promise<ActionResult<MonthlyAggregatesResult>> {
   const { user, accessToken } = await getAuthenticatedClient();
   if (!user || !accessToken) return { success: false, error: "No autenticado" };
@@ -643,6 +653,7 @@ export async function getMonthlyAggregates(
       dateFrom,
       dateTo,
       accountId,
+      currencyCode,
     );
     return { success: true, data };
   } catch (error) {

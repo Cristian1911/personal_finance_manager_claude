@@ -26,7 +26,7 @@ export async function recomputeSplitRepaid(
 ): Promise<void> {
   const { data: groupDebts, error: groupErr } = await supabase
     .from("personal_debts")
-    .select("id, principal_amount")
+    .select("id, principal_amount, status")
     .eq("user_id", userId)
     .eq("split_group_id", splitGroupId);
   // Don't swallow a failed fetch — treating it as "no debts" would write
@@ -47,17 +47,36 @@ export async function recomputeSplitRepaid(
   if (ids.length > 0) {
     const { data: reps, error: repsErr } = await supabase
       .from("transactions")
-      .select("amount")
+      .select("personal_debt_id, amount")
       .eq("user_id", userId)
       .eq("pd_role", "repayment")
       .in("personal_debt_id", ids);
     // A failed fetch must abort: treating it as "no repayments" would write
     // split_repaid_amount = 0 and erase what participants already paid back.
     if (repsErr) throw repsErr;
-    repaid = (reps ?? []).reduce(
-      (s: number, t: { amount: number | null }) => s + Number(t.amount ?? 0),
-      0,
-    );
+
+    const paidByDebt = new Map<string, number>();
+    for (const t of (reps ?? []) as { personal_debt_id: string; amount: number | null }[]) {
+      paidByDebt.set(
+        t.personal_debt_id,
+        (paidByDebt.get(t.personal_debt_id) ?? 0) + Number(t.amount ?? 0),
+      );
+    }
+
+    // A participant's share counts as recovered when it was settled — "Saldar"
+    // resolves the share (they paid you in cash, or you forgave it) without
+    // creating a transaction, so summing transactions alone left the card
+    // stuck at "Recuperado $0" after settling everyone. Auto-settled debts
+    // reach the same number either way, and cancelled ones count only what
+    // was actually paid.
+    for (const d of (groupDebts ?? []) as {
+      id: string;
+      principal_amount: number;
+      status: string;
+    }[]) {
+      const paid = paidByDebt.get(d.id) ?? 0;
+      repaid += d.status === "settled" ? Math.max(Number(d.principal_amount ?? 0), paid) : paid;
+    }
   }
   repaid = Math.min(repaid, owed);
   // The origin transaction is the only group-tagged tx without a personal_debt_id.

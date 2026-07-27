@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ChevronDown, Trash2 } from "lucide-react";
+import { ChevronDown, Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -31,6 +31,7 @@ import {
   reopenPersonalDebt,
 } from "@/actions/personal-debts";
 import { RecordRepaymentDialog } from "./record-repayment-dialog";
+import { EditPersonalDebtSheet } from "./edit-personal-debt-sheet";
 import type { PersonalDebtWithDetails, CurrencyCode } from "@/types/domain";
 
 interface PersonaCardProps {
@@ -42,6 +43,7 @@ export function PersonaCard({ persona, currency }: PersonaCardProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [repayOpen, setRepayOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -138,7 +140,17 @@ export function PersonaCard({ persona, currency }: PersonaCardProps) {
                   variant="ghost"
                   className={cn(GHOST_BUTTON_CLASS)}
                   disabled={pending}
-                  onClick={() => runAction(() => cancelPersonalDebt(persona.id), "Cuenta cancelada")}
+                  onClick={() => setEditOpen(true)}
+                >
+                  <Pencil className="mr-1 size-3.5" />
+                  Editar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className={cn(GHOST_BUTTON_CLASS)}
+                  disabled={pending}
+                  onClick={() => runAction(() => cancelPersonalDebt(persona.id), "Deuda cancelada")}
                 >
                   Cancelar
                 </Button>
@@ -167,6 +179,13 @@ export function PersonaCard({ persona, currency }: PersonaCardProps) {
           </div>
         </div>
       )}
+
+      <EditPersonalDebtSheet
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        debt={persona}
+        currency={currency}
+      />
 
       <RecordRepaymentDialog
         open={repayOpen}

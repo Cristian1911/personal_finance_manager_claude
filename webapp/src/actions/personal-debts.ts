@@ -251,9 +251,21 @@ export async function updatePersonalDebt(
   // and can settle/reopen the debt — recompute instead of waiting for the
   // next repayment event.
   if (patch.principal_amount != null) {
-    await recomputeOutstanding(supabase, user.id, id, patch.principal_amount as number);
+    try {
+      await recomputeOutstanding(supabase, user.id, id, patch.principal_amount as number);
+    } catch (e) {
+      revalidateFinancialViews();
+      const detail = e instanceof Error ? e.message : String(e);
+      return {
+        success: false,
+        error: `Deuda actualizada, pero no se pudo recalcular el saldo: ${detail}`,
+      };
+    }
   }
 
+  // A changed principal moves outstanding, which feeds the dashboard, the
+  // attention card and /deudas — not just the personas list.
+  revalidateFinancialViews();
   updateTag("personal-debts");
   return { success: true, data: undefined };
 }
@@ -274,9 +286,25 @@ export async function cancelPersonalDebt(id: string): Promise<ActionResult<undef
     .eq("id", id)
     .eq("user_id", user.id)
     .in("status", ["active", "settled"])
-    .select("id");
+    .select("id, split_group_id");
   if (error) return { success: false, error: "Error al cancelar la deuda" };
   if (!data || data.length === 0) return { success: false, error: "Deuda no encontrada" };
+
+  // Cancelling a settled share un-credits it (only what was actually paid
+  // still counts), so the group's recovered total has to follow.
+  const splitGroupId = data[0].split_group_id;
+  if (splitGroupId) {
+    try {
+      await recomputeSplitRepaid(supabase, user.id, splitGroupId);
+    } catch (e) {
+      revalidateFinancialViews();
+      const detail = e instanceof Error ? e.message : String(e);
+      return {
+        success: false,
+        error: `Deuda cancelada, pero no se pudo actualizar el pago compartido: ${detail}`,
+      };
+    }
+  }
 
   revalidateFinancialViews();
   updateTag("personal-debts");
@@ -300,9 +328,25 @@ export async function deletePersonalDebt(id: string): Promise<ActionResult<undef
     .delete()
     .eq("id", id)
     .eq("user_id", user.id)
-    .select("id");
+    .select("id, split_group_id");
   if (error) return { success: false, error: "Error al eliminar la deuda" };
   if (!data || data.length === 0) return { success: false, error: "Deuda no encontrada" };
+
+  // Removing one participant changes both what the group owes and what it has
+  // recovered; without this the origin tx keeps crediting a debt that is gone.
+  const splitGroupId = data[0].split_group_id;
+  if (splitGroupId) {
+    try {
+      await recomputeSplitRepaid(supabase, user.id, splitGroupId);
+    } catch (e) {
+      revalidateFinancialViews();
+      const detail = e instanceof Error ? e.message : String(e);
+      return {
+        success: false,
+        error: `Deuda eliminada, pero no se pudo actualizar el pago compartido: ${detail}`,
+      };
+    }
+  }
 
   revalidateFinancialViews();
   updateTag("personal-debts");
@@ -322,10 +366,28 @@ export async function settlePersonalDebt(id: string): Promise<ActionResult<undef
     .eq("id", id)
     .eq("user_id", user.id)
     .eq("status", "active")
-    .select("id");
+    .select("id, split_group_id");
   if (error) return { success: false, error: "Error al saldar la deuda" };
   if (!data || data.length === 0) return { success: false, error: "Deuda no encontrada" };
 
+  // Settling a participant's share resolves it, so the shared payment's
+  // recovered total (and the origin tx's effective spend) must move with it —
+  // otherwise the card stays at "Recuperado $0" after settling everyone.
+  const splitGroupId = data[0].split_group_id;
+  if (splitGroupId) {
+    try {
+      await recomputeSplitRepaid(supabase, user.id, splitGroupId);
+    } catch (e) {
+      revalidateFinancialViews();
+      const detail = e instanceof Error ? e.message : String(e);
+      return {
+        success: false,
+        error: `Deuda saldada, pero no se pudo actualizar el pago compartido: ${detail}`,
+      };
+    }
+  }
+
+  revalidateFinancialViews();
   updateTag("personal-debts");
   return { success: true, data: undefined };
 }
@@ -333,8 +395,9 @@ export async function settlePersonalDebt(id: string): Promise<ActionResult<undef
 // ============================================================
 // Reopen / undo settle: settled|cancelled -> active, restoring the outstanding
 // from principal − repayments. principal_amount is preserved on settle, so the
-// original balance is recoverable. (Does not touch the origin tx's
-// split_repaid_amount — reopening moves no money.)
+// original balance is recoverable. For a shared-payment participant this also
+// un-credits its share (a settled share counts as recovered), so the group's
+// repaid total has to come back down.
 // ============================================================
 export async function reopenPersonalDebt(id: string): Promise<ActionResult<undefined>> {
   if (!personalDebtIdSchema.safeParse(id).success) {
@@ -345,7 +408,7 @@ export async function reopenPersonalDebt(id: string): Promise<ActionResult<undef
 
   const { data: debt, error: debtErr } = await supabase
     .from("personal_debts")
-    .select("id, principal_amount")
+    .select("id, principal_amount, split_group_id")
     .eq("id", id)
     .eq("user_id", user.id)
     .in("status", ["settled", "cancelled"])
@@ -360,7 +423,19 @@ export async function reopenPersonalDebt(id: string): Promise<ActionResult<undef
     .eq("user_id", user.id);
   if (updErr) return { success: false, error: "Error al reabrir la deuda" };
 
-  await recomputeOutstanding(supabase, user.id, id, debt.principal_amount);
+  try {
+    await recomputeOutstanding(supabase, user.id, id, debt.principal_amount);
+    if (debt.split_group_id) {
+      await recomputeSplitRepaid(supabase, user.id, debt.split_group_id);
+    }
+  } catch (e) {
+    revalidateFinancialViews();
+    const detail = e instanceof Error ? e.message : String(e);
+    return {
+      success: false,
+      error: `Deuda reabierta, pero no se pudo recalcular el saldo: ${detail}`,
+    };
+  }
 
   revalidateFinancialViews();
   updateTag("personal-debts");

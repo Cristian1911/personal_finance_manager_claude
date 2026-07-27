@@ -5,6 +5,7 @@ import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { categorySchema } from "@/lib/validators/category";
+import { getIsDemoFilter, getDemoAccountIds } from "@/lib/demo-filter";
 import type { ActionResult } from "@/types/actions";
 import { parseMonth, monthStartStr, monthEndStr, monthsBeforeStart } from "@/lib/utils/date";
 import { rollupGroup } from "@/lib/utils/budget-rollup";
@@ -230,7 +231,10 @@ async function getCategoriesWithBudgetDataCached(
   userId: string,
   accessToken: string,
   month?: string,
-  currency?: CurrencyCode
+  currency?: CurrencyCode,
+  // Explicit param (not resolved inside) so demo mode produces its own cache
+  // key — otherwise toggling it would serve the other mode's numbers.
+  isDemo = false,
 ): Promise<CategoryBudgetData[]> {
   "use cache";
   cacheTag("categories");
@@ -244,6 +248,10 @@ async function getCategoriesWithBudgetDataCached(
   const supabase = createCachedClient(accessToken);
   const baseCurrency = currency ?? "COP";
   const target = parseMonth(month);
+  // Scope spend to the same accounts getBudgetSummary uses (active + matching
+  // demo mode); without it this grid counted spend from deactivated accounts
+  // and from the other demo mode, so it never matched the budget bar.
+  const spendAccountIds = await getDemoAccountIds(supabase, userId, isDemo);
 
   const [catRes, budgetRes, spentRes, avgRes, recurringRes, childrenRes] = await Promise.all([
     // 1. Parent categories only
@@ -279,7 +287,8 @@ async function getCategoriesWithBudgetDataCached(
       .lte("transaction_date", monthEndStr(target))
       .is("reconciled_into_transaction_id", null)
       .is("transfer_group_id", null)
-      .is("personal_debt_id", null),
+      .is("personal_debt_id", null)
+      .in("account_id", spendAccountIds ?? []),
 
     // 4. Last 3 months spending for averages (same exclusions as query 3, or
     // the averages drift away from the current month's number)
@@ -294,7 +303,8 @@ async function getCategoriesWithBudgetDataCached(
       .lt("transaction_date", monthStartStr(target))
       .is("reconciled_into_transaction_id", null)
       .is("transfer_group_id", null)
-      .is("personal_debt_id", null),
+      .is("personal_debt_id", null)
+      .in("account_id", spendAccountIds ?? []),
 
     // 5. Active recurring templates (monthly committed amounts per category)
     supabase
@@ -497,7 +507,14 @@ export async function getCategoriesWithBudgetData(
   const { user, accessToken } = await getAuthenticatedClient();
   if (!user || !accessToken) return { success: false, error: "No autenticado" };
   try {
-    const data = await getCategoriesWithBudgetDataCached(user.id, accessToken, month, currency);
+    const isDemo = await getIsDemoFilter(user.id);
+    const data = await getCategoriesWithBudgetDataCached(
+      user.id,
+      accessToken,
+      month,
+      currency,
+      isDemo,
+    );
     return { success: true, data };
   } catch (error) {
     console.error("Error loading budget data:", error);

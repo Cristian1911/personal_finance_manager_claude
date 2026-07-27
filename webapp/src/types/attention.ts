@@ -1,6 +1,12 @@
 export type AttentionPriority = "action" | "suggestion";
 
-export type AttentionPage = "transactions" | "categories" | "destinatarios" | "recurrentes" | "pendientes";
+export type AttentionPage =
+  | "transactions"
+  | "categories"
+  | "destinatarios"
+  | "recurrentes"
+  | "pendientes"
+  | "deudas-personales";
 
 export type AttentionSignal = {
   page: AttentionPage;
