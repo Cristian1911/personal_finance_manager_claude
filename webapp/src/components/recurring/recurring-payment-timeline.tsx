@@ -175,9 +175,13 @@ export function PaymentTimeline({
                         <span className="truncate text-sm font-medium">
                           {item.merchant}
                         </span>
+                        {/* accountName already ends in the mask for most
+                            accounts — only append when it doesn't, or the row
+                            reads "Bancolombia Ahorros ****4398 ****4398". */}
                         <span className="ml-1.5 text-xs text-muted-foreground">
                           {item.accountName}
                           {item.accountLastFour &&
+                            !item.accountName.includes(item.accountLastFour) &&
                             ` ****${item.accountLastFour}`}
                         </span>
                       </div>

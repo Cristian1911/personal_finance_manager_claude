@@ -242,22 +242,33 @@ export function MobileRecurrentesView({
   // Verdict: overdue/today pending payments demand action; otherwise the
   // month is on track. The detail always carries the paid-of-total progress —
   // it's the single source for those counts (no separate chip row).
-  const totalCount = hook.pending.length + hook.completed.length;
+  // Counts come from the hook's paid/due split, not completed.length —
+  // skipped occurrences are neither paid nor due, and folding them in made
+  // this header disagree with the desktop one on the same screen.
   const dueSoonPending = hook.pending.filter(
     (item) => hook.getDateStatus(item.date) !== "future",
+  );
+  const overduePending = dueSoonPending.filter(
+    (item) => hook.getDateStatus(item.date) === "past",
   );
   const dueSoonTotal = dueSoonPending.reduce(
     (sum, item) => sum + item.plannedAmount,
     0,
   );
   const progressText =
-    totalCount > 0 ? `${hook.completed.length} de ${totalCount} pagados` : null;
+    hook.dueCount > 0 ? `${hook.paidCount} de ${hook.dueCount} pagados` : null;
   const verdictState: VerdictState =
     dueSoonPending.length > 0 ? "atencion" : "vas-bien";
+  // An occurrence dated before today is already overdue — saying it "vence
+  // pronto" contradicts the red rows right below.
+  const dueSoonLabel =
+    overduePending.length > 0
+      ? `${overduePending.length === 1 ? "1 pago vencido" : `${overduePending.length} pagos vencidos`}`
+      : `${dueSoonPending.length === 1 ? "1 pago vence hoy" : `${dueSoonPending.length} pagos vencen hoy`}`;
   const verdictDetail =
     dueSoonPending.length > 0
-      ? `${dueSoonPending.length === 1 ? "1 pago vence" : `${dueSoonPending.length} pagos vencen`} pronto por ${formatCurrency(dueSoonTotal, currency)}${progressText ? ` · ${progressText}` : ""}.`
-      : totalCount === 0
+      ? `${dueSoonLabel} por ${formatCurrency(dueSoonTotal, currency)}${progressText ? ` · ${progressText}` : ""}.`
+      : hook.dueCount === 0
         ? "Sin cobros programados este mes."
         : `${progressText}.`;
 

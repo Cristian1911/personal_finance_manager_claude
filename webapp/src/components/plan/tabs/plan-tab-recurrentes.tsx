@@ -20,6 +20,7 @@ import { AttentionCard } from "@/components/ui/attention-card";
 import { Verdict } from "@/components/ui/verdict";
 import { getCategories } from "@/actions/categories";
 import { formatCurrency } from "@/lib/utils/currency";
+import { countOccurrences } from "@/lib/utils/occurrence-counts";
 import type { CurrencyCode } from "@/types/domain";
 
 interface PlanTabRecurrentesProps {
@@ -43,14 +44,32 @@ export async function PlanTabRecurrentes({ month }: PlanTabRecurrentesProps = {}
   const categories = categoriesResult.success ? categoriesResult.data : [];
   const initialOccurrences = occurrencesResult.success ? occurrencesResult.data : undefined;
 
-  const recurrentesSignals = attentionSnapshot.signals.filter(
+  // Same helper the mobile view uses, so the two headers can't drift apart.
+  const todayStr = new Date().toISOString().split("T")[0];
+  const counts = countOccurrences(initialOccurrences ?? [], todayStr);
+  const { paid: paidCount, due: dueCount, overdue: overdueCount } = counts;
+
+  // Overdue occurrences are a real attention item, but nothing was emitting
+  // them into the snapshot — so the card rendered "Vas bien · Sin pendientes
+  // por resolver" right beside the red overdue rows. Synthesize the signal.
+  const snapshotSignals = attentionSnapshot.signals.filter(
     (s) => s.page === "recurrentes"
   );
+  const recurrentesSignals =
+    overdueCount > 0
+      ? [
+          {
+            page: "recurrentes" as const,
+            key: "recurrentes-overdue",
+            count: overdueCount,
+            label: overdueCount === 1 ? "pago vencido" : "pagos vencidos",
+            priority: "action" as const,
+            actionHref: "/plan?tab=recurrentes",
+          },
+          ...snapshotSignals,
+        ]
+      : snapshotSignals;
   const topSignal = recurrentesSignals[0];
-  const monthOccurrences = (initialOccurrences ?? []).filter(
-    (o) => o.status !== "skipped"
-  );
-  const paidCount = monthOccurrences.filter((o) => o.status === "paid").length;
 
   return (
     <div className="space-y-6">
@@ -77,11 +96,13 @@ export async function PlanTabRecurrentes({ month }: PlanTabRecurrentesProps = {}
               className="mt-2"
               state={topSignal ? "atencion" : "vas-bien"}
               detail={
-                topSignal
-                  ? `Por resolver: ${topSignal.label}.`
-                  : monthOccurrences.length > 0
-                    ? `${paidCount} de ${monthOccurrences.length} pagados este mes.`
-                    : "Sin cobros programados este mes."
+                // Progress stays in the detail either way — it's the one place
+                // the "X de Y pagados" figure is shown on desktop.
+                dueCount === 0
+                  ? "Sin cobros programados este mes."
+                  : topSignal
+                    ? `${topSignal.count} ${topSignal.label} · ${paidCount} de ${dueCount} pagados este mes.`
+                    : `${paidCount} de ${dueCount} pagados este mes.`
               }
             />
           </div>

@@ -261,7 +261,14 @@ export function MovimientosLectura({
         )}
         aria-expanded={expanded}
       >
-        <p className="mb-2 text-[13px] font-semibold">Resumen del mes</p>
+        {/* Scope note: these are raw movements — transfers and card payments
+            included — so they read higher than Inicio's "Flujo del mes" and
+            Plan's recurring totals. Without saying so, the three screens look
+            like they contradict each other. */}
+        <p className="text-[13px] font-semibold">Resumen del mes</p>
+        <p className="mb-2 text-[10px] text-muted-foreground">
+          Todos los movimientos, incluidas transferencias y pagos de tarjeta.
+        </p>
         <div className="grid grid-cols-3 gap-1">
           <div className="text-center">
             <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">

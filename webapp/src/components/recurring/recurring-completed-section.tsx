@@ -32,9 +32,10 @@ export function RecurringCompletedSection({
     <Collapsible>
       <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg border border-z-income/20 bg-z-income/8 px-3 py-2.5 text-sm font-medium text-z-income transition-colors hover:bg-z-income/12">
         <CheckCircle2 className="size-4" />
+        {/* "Resueltos", not "pagados" — this list mixes paid and skipped. */}
         <span>
           {completed.length}{" "}
-          {completed.length === 1 ? "pago completado" : "pagos completados"}{" "}
+          {completed.length === 1 ? "pago resuelto" : "pagos resueltos"}{" "}
           este mes
         </span>
         <ChevronDown className="size-4 ml-auto transition-transform [[data-state=open]>&]:rotate-180" />

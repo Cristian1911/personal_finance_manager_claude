@@ -103,9 +103,13 @@ export function LinkPickerSheet({
         </div>
 
         <DrawerBody safeArea={false}>
+          {/* "No se encontraron coincidencias" on an empty search box read as
+              a failed search the user never ran. Separate the two states. */}
           {filtered.length === 0 && (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              No se encontraron coincidencias
+              {search
+                ? `Nada coincide con «${search}»`
+                : "Ninguna recurrente pendiente encaja con este movimiento. Puedes crear una abajo."}
             </p>
           )}
 
@@ -172,7 +176,8 @@ export function LinkPickerSheet({
                 <p className="truncate text-sm font-medium text-z-brass">
                   {createNewLabel}
                 </p>
-                <p className="truncate text-xs text-muted-foreground">
+                {/* Wraps — `truncate` cut this to "…a una plantilla me…". */}
+                <p className="text-xs text-muted-foreground">
                   {createNewSublabel}
                 </p>
               </div>
