@@ -45,12 +45,15 @@ export async function recomputeSplitRepaid(
   );
   let repaid = 0;
   if (ids.length > 0) {
-    const { data: reps } = await supabase
+    const { data: reps, error: repsErr } = await supabase
       .from("transactions")
       .select("amount")
       .eq("user_id", userId)
       .eq("pd_role", "repayment")
       .in("personal_debt_id", ids);
+    // A failed fetch must abort: treating it as "no repayments" would write
+    // split_repaid_amount = 0 and erase what participants already paid back.
+    if (repsErr) throw repsErr;
     repaid = (reps ?? []).reduce(
       (s: number, t: { amount: number | null }) => s + Number(t.amount ?? 0),
       0,
@@ -77,12 +80,15 @@ export async function recomputeOutstanding(
   personalDebtId: string,
   principal: number,
 ): Promise<void> {
-  const { data: repayments } = await supabase
+  const { data: repayments, error: repaymentsErr } = await supabase
     .from("transactions")
     .select("amount")
     .eq("user_id", userId)
     .eq("personal_debt_id", personalDebtId)
     .eq("pd_role", "repayment");
+  // Never fall back to "no repayments" on a failed fetch — that would write
+  // outstanding = principal and un-settle a debt the user already paid off.
+  if (repaymentsErr) throw repaymentsErr;
   const amounts: number[] = (repayments ?? []).map((t: { amount: number }) => t.amount);
   const { outstanding, status } = computeOutstanding(principal, amounts);
   const { error: updateErr } = await supabase
@@ -161,25 +167,45 @@ export async function detachTransactionFromDebt(
 }
 
 // ============================================================
-// Recompute after a linked transaction's AMOUNT changed (edit paths). Origins
-// are untouched by design: an origin's amount documents (or was summed into)
-// the principal at link time; retro-adjusting principal on edit is handled by
-// the user via the debt's edit sheet, not inferred here.
+// Recompute after a linked transaction's AMOUNT changed (edit paths).
+//
+// An ADDITIONAL origin (a second loan from the same person) had its amount
+// summed into principal_amount at link time, so an edit must move the principal
+// by the same delta — otherwise detachTransactionFromDebt would later subtract
+// an amount that was never added and corrupt the debt permanently.
+// The CANONICAL origin is different: principal_amount was entered by the user
+// when the debt was created and merely documented by that transaction, so its
+// amount is not part of the debt's math and is left alone.
 // ============================================================
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function recomputeDebtAfterTxChange(
+export async function recomputeDebtAfterTxAmountChange(
   supabase: any,
   userId: string,
-  personalDebtId: string,
+  tx: { id: string; personal_debt_id: string; pd_role: "origin" | "repayment" | null },
+  previousAmount: number,
+  nextAmount: number,
 ): Promise<void> {
   const { data: debt, error } = await supabase
     .from("personal_debts")
-    .select("principal_amount, split_group_id")
-    .eq("id", personalDebtId)
+    .select("principal_amount, origin_transaction_id, split_group_id")
+    .eq("id", tx.personal_debt_id)
     .eq("user_id", userId)
     .single();
   if (error || !debt) throw new Error("Deuda vinculada no encontrada");
-  await recomputeOutstanding(supabase, userId, personalDebtId, debt.principal_amount);
+
+  let principal = Number(debt.principal_amount);
+  if (tx.pd_role === "origin" && debt.origin_transaction_id !== tx.id) {
+    principal = Math.max(0, principal + (Number(nextAmount) - Number(previousAmount)));
+    const { error: princErr } = await supabase
+      .from("personal_debts")
+      .update({ principal_amount: principal })
+      .eq("id", tx.personal_debt_id)
+      .eq("user_id", userId)
+      .neq("status", "cancelled");
+    if (princErr) throw new Error("Error al ajustar la deuda");
+  }
+
+  await recomputeOutstanding(supabase, userId, tx.personal_debt_id, principal);
   if (debt.split_group_id) {
     await recomputeSplitRepaid(supabase, userId, debt.split_group_id);
   }

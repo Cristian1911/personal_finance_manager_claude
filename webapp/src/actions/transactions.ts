@@ -28,7 +28,7 @@ import {
 } from "@/lib/utils/account-balance";
 import {
   detachTransactionFromDebt,
-  recomputeDebtAfterTxChange,
+  recomputeDebtAfterTxAmountChange,
 } from "@/lib/personal-debts/recompute";
 import type { ActionResult, PaginatedResult } from "@/types/actions";
 import type { Transaction, TransactionLocation, TransactionWithAccount } from "@/types/domain";
@@ -988,7 +988,9 @@ export async function updateTransaction(
 
   const { data: existing, error: existingError } = await supabase
     .from("transactions")
-    .select("account_id, amount, direction, is_excluded, category_id, personal_debt_id, pd_role")
+    .select(
+      "account_id, amount, direction, currency_code, is_excluded, category_id, personal_debt_id, pd_role",
+    )
     .eq("user_id", user.id)
     .eq("id", id)
     .single();
@@ -1006,6 +1008,16 @@ export async function updateTransaction(
       success: false,
       error:
         "Este movimiento está vinculado a una deuda personal. Desvincúlalo antes de cambiar si es ingreso o gasto.",
+    };
+  }
+  // Linking rejects cross-currency precisely because the debt's math sums raw
+  // amounts with no FX; editing the currency afterwards would sneak the row
+  // into exactly that state.
+  if (existing.personal_debt_id && existing.currency_code !== parsed.data.currency_code) {
+    return {
+      success: false,
+      error:
+        "Este movimiento está vinculado a una deuda personal. Desvincúlalo antes de cambiar la moneda.",
     };
   }
 
@@ -1064,7 +1076,13 @@ export async function updateTransaction(
     const debtError = await syncLinkedDebtAfterAmountChange(
       supabase,
       user.id,
-      existing.personal_debt_id,
+      {
+        id,
+        personal_debt_id: existing.personal_debt_id,
+        pd_role: existing.pd_role as "origin" | "repayment" | null,
+      },
+      existing.amount,
+      data.amount,
     );
     if (debtError) {
       revalidateFinancialViews();
@@ -1079,23 +1097,24 @@ export async function updateTransaction(
 /**
  * Repair a linked personal debt after an edit changed the transaction's amount:
  * a repayment's amount feeds `outstanding_amount` (and a shared payment's
- * recovered total), so an edit that skips this silently leaves the debt wrong.
+ * recovered total), and an additional loan's amount feeds `principal_amount`.
  * Returns a Spanish error message when the bookkeeping failed — the edit itself
- * is already committed, so callers invalidate caches and surface it rather than
- * reporting a false success.
+ * is already committed, so the message says so explicitly instead of reading
+ * like the whole edit failed and inviting a retry.
  */
 async function syncLinkedDebtAfterAmountChange(
   supabase: SupabaseClient<Database>,
   userId: string,
-  personalDebtId: string,
+  tx: { id: string; personal_debt_id: string; pd_role: "origin" | "repayment" | null },
+  previousAmount: number,
+  nextAmount: number,
 ): Promise<string | null> {
   try {
-    await recomputeDebtAfterTxChange(supabase, userId, personalDebtId);
+    await recomputeDebtAfterTxAmountChange(supabase, userId, tx, previousAmount, nextAmount);
     return null;
   } catch (e) {
-    return e instanceof Error
-      ? e.message
-      : "Movimiento actualizado, pero no se pudo actualizar la deuda vinculada";
+    const detail = e instanceof Error ? e.message : String(e);
+    return `Movimiento actualizado, pero no se pudo actualizar la deuda vinculada: ${detail}`;
   }
 }
 
@@ -1201,7 +1220,7 @@ export async function updateTransactionAmountAndDate(
 
   const { data: existing, error: existingError } = await supabase
     .from("transactions")
-    .select("account_id, amount, direction, is_excluded, personal_debt_id")
+    .select("account_id, amount, direction, is_excluded, personal_debt_id, pd_role")
     .eq("user_id", user.id)
     .eq("id", transactionId)
     .single();
@@ -1250,7 +1269,13 @@ export async function updateTransactionAmountAndDate(
     const debtError = await syncLinkedDebtAfterAmountChange(
       supabase,
       user.id,
-      existing.personal_debt_id,
+      {
+        id: transactionId,
+        personal_debt_id: existing.personal_debt_id,
+        pd_role: existing.pd_role as "origin" | "repayment" | null,
+      },
+      existing.amount,
+      fields.amount,
     );
     if (debtError) {
       revalidateFinancialViews();
@@ -1353,19 +1378,12 @@ export async function deleteTransaction(id: string): Promise<ActionResult> {
 
   if (error) return { success: false, error: error.message };
 
-  const balanceResult = await adjustBalancesForTransactionChanges({
-    supabase,
-    userId: user.id,
-    changes: [{ existingTx: existing }],
-  });
-
-  if (!balanceResult.success) {
-    return { success: false, error: balanceResult.error };
-  }
-
-  // Repair the linked personal debt AFTER the delete: the recompute sums rows
-  // still matching pd_role='repayment', so it must not see the deleted one.
-  // Without this the debt keeps counting a repayment that no longer exists.
+  // Repair the linked personal debt right after the delete and BEFORE the
+  // balance step: the recompute sums rows still matching pd_role='repayment'
+  // (so it must not see the deleted one), and a balance failure must not skip
+  // it — that would leave the debt counting a repayment that no longer exists,
+  // the exact drift this guard exists to prevent. The two steps are
+  // independent: this one reads transactions, the balance one writes accounts.
   if (existing.personal_debt_id) {
     try {
       await detachTransactionFromDebt(supabase, user.id, {
@@ -1376,16 +1394,26 @@ export async function deleteTransaction(id: string): Promise<ActionResult> {
       });
     } catch (e) {
       // The delete is already committed — invalidate so the UI reflects it,
-      // then surface the bookkeeping failure instead of a false success.
+      // then say exactly that instead of a bare debt-side error that reads
+      // like the delete failed and invites a doomed retry.
       revalidateFinancialViews();
+      const detail = e instanceof Error ? e.message : String(e);
       return {
         success: false,
-        error:
-          e instanceof Error
-            ? e.message
-            : "Movimiento eliminado, pero no se pudo actualizar la deuda vinculada",
+        error: `Movimiento eliminado, pero no se pudo actualizar la deuda vinculada: ${detail}`,
       };
     }
+  }
+
+  const balanceResult = await adjustBalancesForTransactionChanges({
+    supabase,
+    userId: user.id,
+    changes: [{ existingTx: existing }],
+  });
+
+  if (!balanceResult.success) {
+    revalidateFinancialViews();
+    return { success: false, error: balanceResult.error };
   }
 
   revalidateFinancialViews();

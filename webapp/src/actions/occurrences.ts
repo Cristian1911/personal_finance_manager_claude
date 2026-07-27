@@ -9,6 +9,7 @@ import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { isDebtAccountType, reverseAccountBalanceDelta } from "@/lib/utils/account-balance";
+import { detachTransactionFromDebt } from "@/lib/personal-debts/recompute";
 import { applyDebtPaymentToBalances } from "@/lib/debt/payoff";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import {
@@ -834,7 +835,9 @@ export async function revertOccurrence(
       if (primaryTx?.recurrence_group_id) {
         const { data: groupTxs } = await supabase
           .from("transactions")
-          .select("id, amount, direction, account_id, accounts!transactions_account_id_fkey(account_type, current_balance)")
+          .select(
+            "id, amount, direction, account_id, personal_debt_id, pd_role, accounts!transactions_account_id_fkey(account_type, current_balance)",
+          )
           .eq("recurrence_group_id", primaryTx.recurrence_group_id)
           .eq("user_id", user.id);
 
@@ -884,6 +887,29 @@ export async function revertOccurrence(
 
         if (deleteError) {
           return { success: false, error: `Error al eliminar transacciones: ${deleteError.message}` };
+        }
+
+        // A recurring payment the user also linked to a personal debt (an abono)
+        // was just deleted — repair the debt, or it keeps counting a repayment
+        // that no longer exists. Runs after the delete so the recompute doesn't
+        // see the deleted rows.
+        for (const tx of groupTxs ?? []) {
+          if (!tx.personal_debt_id) continue;
+          try {
+            await detachTransactionFromDebt(supabase, user.id, {
+              id: tx.id,
+              amount: tx.amount,
+              personal_debt_id: tx.personal_debt_id,
+              pd_role: tx.pd_role as "origin" | "repayment" | null,
+            });
+          } catch (e) {
+            revalidateFinancialViews();
+            const detail = e instanceof Error ? e.message : String(e);
+            return {
+              success: false,
+              error: `Pago revertido, pero no se pudo actualizar la deuda vinculada: ${detail}`,
+            };
+          }
         }
       }
     }
