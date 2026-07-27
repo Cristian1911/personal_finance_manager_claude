@@ -9,6 +9,7 @@ import { getDirectionForBalanceDelta, isDebtAccountType } from "@/lib/utils/acco
 import { toColombiaDateString } from "@/lib/utils/date";
 import { deactivateTemplatesForPaidOffAccount } from "@/lib/debt/payoff";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
+import { createTransfer } from "@/actions/transfers";
 import {
   parseCurrencyBalanceMap,
   resolveCurrencyBalanceCurrentValue,
@@ -321,11 +322,10 @@ export async function deleteAccount(id: string): Promise<ActionResult> {
 
   if (error) return { success: false, error: error.message };
 
-  updateTag("accounts");
-  updateTag("dashboard:accounts");
-  updateTag("dashboard:hero");
-  updateTag("debt");
-  updateTag("attention");
+  // Deleting an account cascades away all of its transactions, so every
+  // transaction-derived read (Movimientos, Categorizar, charts, budgets) is
+  // stale — the narrow account-only tag list kept serving the deleted rows.
+  revalidateFinancialViews();
   return { success: true, data: undefined };
 }
 
@@ -552,10 +552,9 @@ export async function reconcileBalance(
 
   if (updateError) return { success: false, error: updateError.message };
 
-  updateTag("accounts");
-  updateTag("dashboard:accounts");
-  updateTag("dashboard:hero");
-  updateTag("debt");
+  // Reconciling inserts balance-adjustment transactions, so the transaction
+  // reads must expire with the account ones.
+  revalidateFinancialViews();
   return {
     success: true,
     data: {
@@ -588,25 +587,34 @@ export async function registerPayment(
   const now = new Date().toISOString();
   const transactionDate = now.slice(0, 10);
 
-  // Get source account name for description
-  let sourceAccountName = "";
+  // Paying from one of your own accounts moves money between two accounts —
+  // that is a transfer. Delegating to createTransfer gives it both legs (this
+  // path used to insert only the INFLOW and mutate the source balance directly,
+  // so the source account's movements never explained its own balance), a
+  // shared transfer_group_id so no spend metric counts it, a currency check,
+  // and full cache invalidation.
   if (input.sourceAccountId) {
-    const { data: sourceAccount } = await supabase
-      .from("accounts")
-      .select("id, name, current_balance")
-      .eq("id", input.sourceAccountId)
-      .eq("user_id", user.id)
-      .single();
-    if (sourceAccount) sourceAccountName = sourceAccount.name;
+    const transferForm = new FormData();
+    transferForm.set("fromAccountId", input.sourceAccountId);
+    transferForm.set("toAccountId", accountId);
+    transferForm.set("amount", String(input.amount));
+    transferForm.set("currencyCode", account.currency_code);
+    transferForm.set("date", transactionDate);
+    if (input.notes) transferForm.set("notes", input.notes);
+
+    const transfer = await createTransfer(
+      { success: false, error: "" },
+      transferForm,
+    );
+    if (!transfer.success) return { success: false, error: transfer.error };
+    return { success: true, data: null };
   }
 
   const merchantName = isDebt
     ? `Pago - ${account.name}`
     : `Ingreso - ${account.name}`;
   const rawDescription = isDebt
-    ? (sourceAccountName
-        ? `Pago manual registrado desde ${sourceAccountName} (${now})`
-        : `Pago manual registrado (${now})`)
+    ? `Pago manual registrado (${now})`
     : `Ingreso manual registrado (${now})`;
 
   const idempotencyKey = await computeIdempotencyKey({
@@ -674,37 +682,10 @@ export async function registerPayment(
     }
   }
 
-  // If source account specified, reduce its balance
-  if (input.sourceAccountId) {
-    const { data: sourceAccount } = await supabase
-      .from("accounts")
-      .select("id, current_balance, account_type")
-      .eq("id", input.sourceAccountId)
-      .eq("user_id", user.id)
-      .single();
-
-    if (sourceAccount) {
-      const isDebtSource = sourceAccount.account_type === "CREDIT_CARD" || sourceAccount.account_type === "LOAN";
-      const { error: sourceError } = await supabase
-        .from("accounts")
-        .update({
-          current_balance: isDebtSource
-            ? sourceAccount.current_balance + input.amount
-            : sourceAccount.current_balance - input.amount,
-          updated_at: now,
-        })
-        .eq("id", input.sourceAccountId)
-        .eq("user_id", user.id);
-      if (sourceError) {
-        return { success: false, error: "Pago registrado pero el saldo de la cuenta origen no se actualizó. Revisa manualmente." };
-      }
-    }
-  }
-
-  updateTag("accounts");
-  updateTag("dashboard:accounts");
-  updateTag("dashboard:hero");
-  updateTag("debt");
+  // A transaction was inserted, so the transactions/budgets/charts reads are
+  // stale too — the narrow account-only tag list used to hide this payment from
+  // Movimientos and Categorizar until the cache TTL expired.
+  revalidateFinancialViews();
   return { success: true, data: null };
 }
 
