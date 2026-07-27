@@ -6,14 +6,17 @@ import type { CurrencyCode } from "@/types/domain";
 interface RecurringSummaryBarProps {
   totalPlanned: number;
   pendingCount: number;
-  completedCount: number;
+  paidCount: number;
+  /** Rendered as its own segment — an omitted payment is not a paid one. */
+  skippedCount: number;
   currencyCode?: CurrencyCode;
 }
 
 export function RecurringSummaryBar({
   totalPlanned,
   pendingCount,
-  completedCount,
+  paidCount,
+  skippedCount,
   currencyCode = "COP",
 }: RecurringSummaryBarProps) {
   return (
@@ -28,8 +31,16 @@ export function RecurringSummaryBar({
       </span>
       <span className="text-muted-foreground/50">&middot;</span>
       <span>
-        {completedCount} {completedCount === 1 ? "completado" : "completados"}
+        {paidCount} {paidCount === 1 ? "pagado" : "pagados"}
       </span>
+      {skippedCount > 0 && (
+        <>
+          <span className="text-muted-foreground/50">&middot;</span>
+          <span>
+            {skippedCount} {skippedCount === 1 ? "omitido" : "omitidos"}
+          </span>
+        </>
+      )}
     </div>
   );
 }

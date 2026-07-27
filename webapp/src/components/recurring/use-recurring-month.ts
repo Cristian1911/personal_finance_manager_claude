@@ -11,6 +11,7 @@ import {
 } from "date-fns";
 import { es } from "date-fns/locale";
 import { formatMonthParam, isCurrentMonth, parseMonth } from "@/lib/utils/date";
+import { countOccurrences } from "@/lib/utils/occurrence-counts";
 import {
   recordRecurringOccurrencePayment,
 } from "@/actions/recurring-templates";
@@ -212,6 +213,10 @@ export function useRecurringMonth(
     [occurrences, accounts]
   );
 
+  // `completed` is the RENDER list for the resolved section — paid and skipped
+  // both belong there. It is NOT a paid count: skipped occurrences were never
+  // paid, and counting them as such is what made the mobile header read
+  // "14 de 20 pagados" against the desktop's correct "11 de 17".
   const completed = useMemo(
     () =>
       occurrences
@@ -219,6 +224,13 @@ export function useRecurringMonth(
         .map((o) => mapToOccurrenceItem(o, accounts)),
     [occurrences, accounts]
   );
+
+  /* ---- counts for copy — shared with the desktop header via one helper ---- */
+  const counts = useMemo(
+    () => countOccurrences(occurrences, todayStr),
+    [occurrences, todayStr]
+  );
+  const { paid: paidCount, skipped: skippedCount, due: dueCount } = counts;
 
   /* ---- pending grouped by date ---- */
   const pendingByDate = useMemo(() => {
@@ -478,6 +490,9 @@ export function useRecurringMonth(
     occurrences,
     pending,
     completed,
+    paidCount,
+    skippedCount,
+    dueCount,
     pendingByDate,
     dateOccurrenceCounts,
 

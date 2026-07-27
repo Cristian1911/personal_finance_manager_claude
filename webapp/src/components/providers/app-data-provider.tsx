@@ -14,6 +14,8 @@ type DestinatarioOption = {
   name: string;
   is_active: boolean;
   kind: DestinatarioKind;
+  /** Pre-fills Categoría in the transaction forms when this one is picked. */
+  default_category_id: string | null;
 };
 
 interface AppData {

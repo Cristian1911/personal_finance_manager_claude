@@ -24,6 +24,13 @@ const Toaster = ({ ...props }: ToasterProps) => {
         error: <OctagonXIcon className="size-4" />,
         loading: <Loader2Icon className="size-4 animate-spin" />,
       }}
+      // Lift toasts above the mobile tab bar. Default bottom placement put
+      // them directly on top of the 5 nav tabs, blocking navigation for the
+      // whole toast duration. Desktop has no tab bar, so the offset there is
+      // just normal breathing room.
+      mobileOffset={{
+        bottom: "calc(var(--z-mobile-tab-bar-h) + 1rem + env(safe-area-inset-bottom))",
+      }}
       style={
         {
           "--normal-bg": "var(--popover)",

@@ -376,7 +376,17 @@ export function TagZonePicker({
     return (
       <Popover open={open} onOpenChange={setOpen}>
         {!hideTrigger && <PopoverTrigger asChild>{triggerButton}</PopoverTrigger>}
-        <PopoverContent className="w-[300px] p-0" align="start" sideOffset={8}>
+        {/* Mobile hardening — see CategoryZonePicker: a popover opened inside a
+            vaul Drawer loses touch scroll without these. */}
+        <PopoverContent
+          className="w-[300px] max-w-[min(22rem,calc(100vw-2rem))] p-0 overscroll-contain touch-pan-y"
+          align="start"
+          side="bottom"
+          sideOffset={8}
+          collisionPadding={16}
+          onWheel={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+        >
           {body}
         </PopoverContent>
       </Popover>

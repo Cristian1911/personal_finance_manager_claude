@@ -44,15 +44,20 @@ export function ZoneTile({
         ...(isExpanded ? { ringColor: color } : {}),
       }}
     >
-      <div className="flex items-center gap-2 mb-2">
-        <CategoryIcon icon={category.icon} className="text-lg" />
+      {/* Two 160px columns inside a 320px popover truncated 7 of 12 zone names
+          to "Transpo…", "Obligaci…", "Entreteni…". Wrap to two lines instead. */}
+      <div className="flex items-start gap-2 mb-2">
+        <CategoryIcon icon={category.icon} className="shrink-0 text-lg" />
         <span
-          className="text-sm font-semibold truncate"
+          // 13px + break-words: fits "Transporte"/"Educación" on one line and
+          // only splits a word when it genuinely cannot fit, instead of the
+          // mid-word "Transport/e" that `anywhere` produced.
+          className="min-w-0 flex-1 text-[13px] font-semibold leading-tight break-words line-clamp-2"
           style={{ color: zoneTextColor(color) }}
         >
           {name}
         </span>
-        <span className="ml-auto text-[11px] text-muted-foreground">
+        <span className="shrink-0 text-[11px] text-muted-foreground">
           {category.children.length}
         </span>
         {headerActions}

@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Plus, X } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { BRASS_BUTTON_CLASS, BRASS_GHOST_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import { parseSubPayments } from "@/lib/utils/sub-payments";
@@ -75,11 +76,16 @@ export function RecurringForm({
     FormData
   >(
     async (prevState, formData) => {
+      // The inline banner renders at the top of a long form — off-screen on
+      // mobile. Toast so the failure is visible wherever the user is scrolled.
       if (formData.get("is_subscription") === "true" && !destinatarioId) {
-        return { success: false, error: "Una suscripción necesita un destinatario." };
+        const error = "Una suscripción necesita un destinatario.";
+        toast.error(error);
+        return { success: false, error };
       }
       const result = await action(prevState, formData);
       if (result.success) onSuccess?.(result.data);
+      else if (result.error) toast.error(result.error);
       return result;
     },
     { success: false, error: "" }
@@ -539,7 +545,9 @@ export function RecurringForm({
         />
         <input type="hidden" name="destinatario_id" value={destinatarioId ?? ""} />
         <p className="text-xs text-muted-foreground">
-          Al pagar, la matcher anclará al destinatario antes de comparar por monto — evita que una transferencia del mismo valor se vincule por error.
+          Sirve para reconocer el pago automáticamente: si otro movimiento del
+          mismo valor cae en la misma fecha, el destinatario evita que se
+          vincule al recurrente equivocado.
         </p>
       </div>
 

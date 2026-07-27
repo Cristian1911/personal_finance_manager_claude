@@ -9,12 +9,14 @@ import {
   ArrowLeftRight,
   ChevronDown,
   Repeat,
+  CalendarClock,
 } from "lucide-react";
 import { createTransaction } from "@/actions/transactions";
 import { createTransfer } from "@/actions/transfers";
 import { Button } from "@/components/ui/button";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { DestinatarioZonePicker } from "@/components/destinatarios/destinatario-zone-picker";
+import { useDestinatarios } from "@/components/providers/app-data-provider";
 import {
   Collapsible,
   CollapsibleContent,
@@ -165,6 +167,7 @@ export function MobileTransactionForm({
   );
 
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  const destinatarios = useDestinatarios();
 
   // Reset category when direction changes (categories are direction-filtered)
   useEffect(() => {
@@ -466,6 +469,13 @@ export function MobileTransactionForm({
               onValueChange={(id, name) => {
                 setDestinatarioId(id);
                 setDestinatarioSelectedName(name);
+                // Pre-fill the category the destinatario already implies, but
+                // never overwrite a choice the user already made.
+                if (id && !categoryId) {
+                  const preset = destinatarios.find((d) => d.id === id)
+                    ?.default_category_id;
+                  if (preset) setCategoryId(preset);
+                }
               }}
               selectedName={destinatarioSelectedName}
               placeholder="Elegir o crear destinatario"
@@ -526,12 +536,19 @@ export function MobileTransactionForm({
                 />
               </div>
 
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="space-y-0.5 pr-4">
-                  <Label htmlFor="mobile-create_recurring_template" className="cursor-pointer">
+              {/* Same row shape as "Es una suscripción" above — the old
+                  flex-col dropped the switch below-left on mobile, so the two
+                  toggles in one panel used two different layouts. */}
+              <div className="flex items-center gap-3">
+                <CalendarClock className="size-[18px] shrink-0 text-muted-foreground" />
+                <div className="min-w-0 flex-1">
+                  <Label
+                    htmlFor="mobile-create_recurring_template"
+                    className="cursor-pointer text-sm font-medium"
+                  >
                     Crear pago recurrente
                   </Label>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
                     Útil si este movimiento se repite cada semana, mes o trimestre.
                   </p>
                 </div>
