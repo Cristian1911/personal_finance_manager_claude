@@ -672,7 +672,7 @@ export async function markOccurrencePaid(
     .eq("id", occurrenceId)
     .eq("user_id", user.id)
     .eq("status", "pending")
-    .select("template_id, occurrence_date, template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(frequency, category_id)")
+    .select("template_id, occurrence_date, template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(frequency, category_id, destinatario_id)")
     .single();
 
   if (error) return { success: false, error: error.message };
@@ -687,12 +687,16 @@ export async function markOccurrencePaid(
       occurrence.template_id,
       occurrence.occurrence_date,
     );
-    const template = occurrence.template as { frequency: string; category_id: string | null } | null;
+    const template = occurrence.template as {
+      frequency: string;
+      category_id: string | null;
+      destinatario_id: string | null;
+    } | null;
 
-    // Read existing tx to decide if we should backfill the category
+    // Read existing tx to decide if we should backfill category / destinatario
     const { data: tx } = await supabase
       .from("transactions")
-      .select("category_id")
+      .select("category_id, destinatario_id")
       .eq("id", transactionId)
       .eq("user_id", user.id)
       .single();
@@ -701,6 +705,10 @@ export async function markOccurrencePaid(
     if (tx && !tx.category_id && template?.category_id) {
       update.category_id = template.category_id;
       update.categorization_source = "RECURRING_TEMPLATE";
+    }
+    // Same backfill rule as the category: only when the tx has none of its own.
+    if (tx && !tx.destinatario_id && template?.destinatario_id) {
+      update.destinatario_id = template.destinatario_id;
     }
 
     const { error: txUpdateErr } = await supabase

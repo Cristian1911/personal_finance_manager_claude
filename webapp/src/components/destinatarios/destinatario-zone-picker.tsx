@@ -289,21 +289,12 @@ export function DestinatarioZonePicker({
         </div>
       )}
       <div className="max-h-[50dvh] overflow-y-auto px-1 pb-2">
-        {filtered.length === 0 && search ? (
-          <div className="px-3 py-4">
-            <button
-              type="button"
-              onClick={() => openCreate(search)}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-z-brass transition-colors hover:bg-white/5"
-            >
-              <Plus className="size-3.5" />
-              <span>Crear &laquo;{search}&raquo;</span>
-            </button>
-          </div>
-        ) : filtered.length === 0 ? (
+        {filtered.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-8 text-center">
             <UserRound className="size-8 text-muted-foreground/40" />
-            <p className="text-sm text-muted-foreground">No hay destinatarios</p>
+            <p className="text-sm text-muted-foreground">
+              {search ? `Ningún destinatario coincide con «${search}»` : "No hay destinatarios"}
+            </p>
             <p className="text-xs text-muted-foreground/70">Crea uno con el botón de abajo</p>
           </div>
         ) : null}
@@ -324,7 +315,12 @@ export function DestinatarioZonePicker({
             {d.id === value && <Check className="size-4 text-z-brass" />}
           </button>
         ))}
-        {/* Inline create form */}
+      </div>
+
+      {/* Create lives OUTSIDE the scroll area: with 40+ destinatarios it used
+          to sit past the end of an alphabetical list, so creating one meant
+          scrolling the whole roster first. */}
+      <div className="border-t border-white/6 px-1 py-1">
         {creating && !search ? (
           <form
             className="space-y-2.5 px-3 py-2"
@@ -372,7 +368,7 @@ export function DestinatarioZonePicker({
             className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-z-brass transition-colors hover:bg-white/5"
           >
             <Plus className="size-3.5" />
-            <span>Crear nuevo</span>
+            <span>{search ? `Crear «${search}»` : "Crear nuevo"}</span>
           </button>
         )}
       </div>
@@ -474,10 +470,17 @@ export function DestinatarioZonePicker({
       <>
         <Popover open={open} onOpenChange={setOpen}>
           {!hideTrigger && <PopoverTrigger asChild>{triggerButton}</PopoverTrigger>}
+          {/* Same mobile hardening as CategoryZonePicker: without it the inner
+              list can't be scrolled by touch when the popover is opened from
+              inside a vaul Drawer (the drag handler eats the touchmove). */}
           <PopoverContent
-            className="w-[280px] p-0"
+            className="w-[280px] max-w-[min(22rem,calc(100vw-2rem))] p-0 overscroll-contain touch-pan-y"
             align="start"
+            side="bottom"
             sideOffset={8}
+            collisionPadding={16}
+            onWheel={(e) => e.stopPropagation()}
+            onTouchMove={(e) => e.stopPropagation()}
           >
             {inManageView ? manageBody : body}
           </PopoverContent>

@@ -46,12 +46,17 @@ export function PlanNetHero({
     verdictState !== "te-pasaste" && ingresos > 0
       ? `${spentPct}% del ingreso`
       : undefined;
+  // `ingresos`/`gastos` are RECURRING TEMPLATE totals (planned commitments),
+  // not money that already moved — the caller passes
+  // planData.recurring.totalMonthly*. The old copy said "Gastaste …", which
+  // reported a plan as a fact and disagreed with the actual-spend totals on
+  // Movimientos and Inicio. Keep the tense committed, not past.
   const verdictDetail =
     verdictState === "te-pasaste"
       ? neto < 0
-        ? `Gastaste ${formatCurrency(Math.abs(neto), currency)} más de tus ingresos este mes.`
-        : "Gastaste todos tus ingresos del mes."
-      : `Te queda ${formatCurrency(neto, currency)} de tus ingresos este mes.`;
+        ? `Tus fijos superan tus ingresos recurrentes por ${formatCurrency(Math.abs(neto), currency)}.`
+        : "Tus fijos consumen todo tu ingreso recurrente."
+      : `Te quedan ${formatCurrency(neto, currency)} de tu ingreso recurrente tras los fijos.`;
 
   const { overlayVisible, handleOverlayClick } = useChartFocusMode(expanded);
 
@@ -73,7 +78,7 @@ export function PlanNetHero({
       >
         <div className="flex items-center justify-between mb-1">
           <p className={SECTION_EYEBROW_CLASS}>
-            Neto del mes
+            Neto recurrente del mes
           </p>
           <span className="text-[10px] text-muted-foreground">
             {daysRemaining} días restantes
@@ -107,18 +112,19 @@ export function PlanNetHero({
         </div>
 
         {/* Legend */}
-        <div className="mt-2 flex justify-between text-[10px] text-muted-foreground">
+        {/* flex-wrap: three amounts don't fit on one 375px line. */}
+        <div className="mt-2 flex flex-wrap justify-between gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
           <span className="flex items-center gap-1">
             <span className="inline-block size-1.5 rounded-full bg-z-income" />
-            Ingresos {formatCurrency(ingresos, currency)}
+            Ingresos fijos {formatCurrency(ingresos, currency)}
           </span>
           <span className="flex items-center gap-1">
             <span className="inline-block size-1.5 rounded-full bg-z-expense" />
-            Gastos {formatCurrency(gastos, currency)}
+            Gastos fijos {formatCurrency(gastos, currency)}
           </span>
           <span className="flex items-center gap-1">
             <span className="inline-block size-1.5 rounded-full bg-z-brass" />
-            Neto
+            Neto {formatCurrency(neto, currency)}
           </span>
         </div>
 

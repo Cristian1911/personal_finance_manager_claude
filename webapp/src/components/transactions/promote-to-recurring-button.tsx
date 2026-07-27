@@ -113,6 +113,9 @@ export function PromoteToRecurringButton({
 
   const handleSuccess = useCallback(
     (saved: RecurringTemplate | undefined) => {
+      // The action links the occurrence and backfills category/destinatario on
+      // THIS tx — the page we're standing on stays stale without a re-render.
+      router.refresh();
       toast.success("Recurrente creada", {
         description: "Se programó el próximo pago en Recurrentes.",
         action: saved
