@@ -325,7 +325,13 @@ export async function deleteAccount(id: string): Promise<ActionResult> {
   // Deleting an account cascades away all of its transactions, so every
   // transaction-derived read (Movimientos, Categorizar, charts, budgets) is
   // stale — the narrow account-only tag list kept serving the deleted rows.
+  // Statement snapshots, stored PDF passwords, subscriptions and planner
+  // entries cascade too, and none of those tags are financial.
   revalidateFinancialViews();
+  updateTag("snapshots");
+  updateTag("pdf-passwords");
+  updateTag("cashflow-planner");
+  updateTag("subscriptions");
   return { success: true, data: undefined };
 }
 
@@ -585,7 +591,9 @@ export async function registerPayment(
 
   const isDebt = account.account_type === "CREDIT_CARD" || account.account_type === "LOAN";
   const now = new Date().toISOString();
-  const transactionDate = now.slice(0, 10);
+  // Colombia is UTC-5: slicing the ISO string books anything after ~19:00 COT
+  // on tomorrow's date.
+  const transactionDate = toColombiaDateString(new Date());
 
   // Paying from one of your own accounts moves money between two accounts —
   // that is a transfer. Delegating to createTransfer gives it both legs (this

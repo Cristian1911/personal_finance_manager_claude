@@ -83,15 +83,19 @@ export default async function TransactionsPage({
       .filter((a) => a.account_type === "CREDIT_CARD" || a.account_type === "LOAN")
       .map((a) => a.id)
   );
-  // Desktop "Vista" cards show what's currently filtered+visible (the original
-  // semantic). Mobile LECTURA card needs full-month scope — see below.
-  const inflowVisible = visibleTransactions
+  // Filtered view sums, scoped to the currency the cards are labelled with:
+  // a page can mix currencies, and adding a USD row into a COP total then
+  // printing it as COP is simply a wrong number.
+  const viewTransactions = visibleTransactions.filter(
+    (tx) => tx.currency_code === summaryCurrency
+  );
+  const inflowVisible = viewTransactions
     .filter((tx) => tx.direction === "INFLOW" && !debtAccountIds.has(tx.account_id))
     .reduce((sum, tx) => sum + tx.amount, 0);
-  const outflowVisible = visibleTransactions
+  const outflowVisible = viewTransactions
     .filter((tx) => tx.direction === "OUTFLOW")
     .reduce((sum, tx) => sum + tx.amount, 0);
-  const uncategorizedVisible = visibleTransactions.filter(
+  const uncategorizedVisible = viewTransactions.filter(
     (tx) => tx.direction === "OUTFLOW" && !tx.category_id
   ).length;
 
