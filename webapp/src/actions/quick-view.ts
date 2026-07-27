@@ -2,6 +2,7 @@
 
 import { getDashboardHeroData, getDailySpending } from "@/actions/charts";
 import { getBudgetSummary } from "@/actions/budgets";
+import { getPreferredCurrency } from "@/actions/profile";
 import { getReminders } from "@/actions/reminders";
 import { toColombiaDateString, getColombiaDayOfMonth } from "@/lib/utils/date";
 import type { PendingObligation } from "@/actions/charts";
@@ -29,10 +30,14 @@ export interface QuickViewData {
 }
 
 export async function getQuickViewData(): Promise<QuickViewData> {
+  // Resolve the currency first so spend and budget are measured in the same
+  // one: getDailySpending falls back to COP, getBudgetSummary to the preferred
+  // currency, so leaving both implicit compared different scopes under one label.
+  const currency = await getPreferredCurrency();
   const [hero, dailySpending, budgetSummary, pendingReminders] = await Promise.all([
     getDashboardHeroData(),
-    getDailySpending(undefined, undefined, { liquidOnly: true }),
-    getBudgetSummary(),
+    getDailySpending(undefined, currency, { liquidOnly: true }),
+    getBudgetSummary(undefined, currency),
     getReminders("pending"),
   ]);
 

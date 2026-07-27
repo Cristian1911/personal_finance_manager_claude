@@ -93,7 +93,7 @@ async function getTendenciasDatasetCached(
     supabase
       .from("transactions")
       .select(
-        "transaction_date, amount, direction, category_id, destinatario_id, account_id, categories!category_id(name_es, name, color, expense_type)",
+        "transaction_date, amount, split_repaid_amount, direction, category_id, destinatario_id, account_id, categories!category_id(name_es, name, color, expense_type)",
       )
       .eq("user_id", userId)
       .in("account_id", accountIds)
@@ -137,7 +137,13 @@ async function getTendenciasDatasetCached(
     const cat = t.categories as { name_es: string | null; name: string; color: string | null; expense_type: string | null } | null;
     const expenseType = cat?.expense_type === "fixed" || cat?.expense_type === "variable" ? cat.expense_type : null;
     rows.push({
-      amount: t.amount,
+      // Effective spend nets what participants of a shared payment already paid
+      // back, matching charts.ts and budgets.ts. Without it a $400k split
+      // dinner showed as $400k here and ~$100k in Presupuesto.
+      amount:
+        t.direction === "OUTFLOW"
+          ? Number(t.amount) - Number(t.split_repaid_amount ?? 0)
+          : Number(t.amount),
       direction: t.direction as "INFLOW" | "OUTFLOW",
       date: t.transaction_date,
       categoryId: t.category_id,
@@ -396,7 +402,7 @@ async function getDrilldownTransactionsCached(
   let query = supabase
     .from("transactions")
     .select(
-      "id, transaction_date, amount, direction, currency_code, merchant_name, clean_description, account:accounts!transactions_account_id_fkey!inner(name)",
+      "id, transaction_date, amount, split_repaid_amount, direction, currency_code, merchant_name, clean_description, account:accounts!transactions_account_id_fkey!inner(name)",
     )
     .eq("user_id", userId)
     .eq("account.is_active", true)
@@ -425,7 +431,9 @@ async function getDrilldownTransactionsCached(
       id: t.id,
       date: t.transaction_date,
       description: t.merchant_name || t.clean_description || "Sin descripción",
-      amount: Number(t.amount),
+      // Same effective-spend rule as the aggregates above, so a drill-down row
+      // never contradicts the total it was opened from.
+      amount: Number(t.amount) - Number(t.split_repaid_amount ?? 0),
       currencyCode: (t.currency_code ?? currency) as CurrencyCode,
       direction: t.direction as "INFLOW" | "OUTFLOW",
       accountLabel: account?.name ?? "Cuenta",

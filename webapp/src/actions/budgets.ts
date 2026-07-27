@@ -6,6 +6,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getIsDemoFilter, getDemoAccountIds } from "@/lib/demo-filter";
 import { budgetSchema } from "@/lib/validators/budget";
 import { UUID_RE } from "@/lib/validators/shared";
+import { getPreferredCurrency } from "@/actions/profile";
+import type { Database } from "@/types/database";
 import type { ActionResult } from "@/types/actions";
 import type { Budget } from "@/types/domain";
 
@@ -16,7 +18,12 @@ type BudgetSummaryTransactionRow = {
 
 // ─── Cached inner functions ───────────────────────────────────────────────────
 
-async function getBudgetSummaryCached(userId: string, month: string | undefined, isDemo: boolean): Promise<BudgetSummary> {
+async function getBudgetSummaryCached(
+    userId: string,
+    month: string | undefined,
+    isDemo: boolean,
+    currency: string,
+): Promise<BudgetSummary> {
     "use cache";
     cacheTag("budgets");
     cacheLife("zeta");
@@ -56,6 +63,10 @@ async function getBudgetSummaryCached(userId: string, month: string | undefined,
         .in("account_id", accountIds)
         .eq("direction", "OUTFLOW")
         .eq("is_excluded", false)
+        // Budget targets are set in one currency; mixing a USD row into a COP
+        // total made this disagree with the Presupuesto grid, which has always
+        // been currency-scoped.
+        .eq("currency_code", currency as Database["public"]["Enums"]["currency_code"])
         .in("category_id", budgetedCategoryIds)
         .gte("transaction_date", monthStartStr(target))
         .lte("transaction_date", monthEndStr(target))
@@ -63,7 +74,9 @@ async function getBudgetSummaryCached(userId: string, month: string | undefined,
         // Exclude all personal-debt movements (origins + repayments). The
         // shared-payment tx stays (personal_debt_id null); its budget spend is
         // amount − repaid (converges to the user's share).
-        .is("personal_debt_id", null);
+        .is("personal_debt_id", null)
+        // Moving your own money between your own accounts is not spending.
+        .is("transfer_group_id", null);
 
     const totalSpent =
         (transactions as BudgetSummaryTransactionRow[] | null)?.reduce(
@@ -84,11 +97,15 @@ export interface BudgetSummary {
     progress: number;
 }
 
-export async function getBudgetSummary(month?: string): Promise<BudgetSummary> {
+export async function getBudgetSummary(
+    month?: string,
+    currency?: string,
+): Promise<BudgetSummary> {
     const { user } = await getAuthenticatedClient();
     if (!user) return { totalTarget: 0, totalSpent: 0, progress: 0 };
     const isDemo = await getIsDemoFilter(user.id);
-    return getBudgetSummaryCached(user.id, month, isDemo);
+    const resolvedCurrency = currency ?? (await getPreferredCurrency());
+    return getBudgetSummaryCached(user.id, month, isDemo, resolvedCurrency);
 }
 
 // ─── Mutations ────────────────────────────────────────────────────────────────

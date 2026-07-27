@@ -47,7 +47,7 @@ export function RecentTransactions({
       <div className="flex items-center justify-between px-4 pb-2">
         <h2 className="text-sm font-semibold text-z-white">Transacciones</h2>
         <Link
-          href={`/transactions?account=${accountId}`}
+          href={`/transactions?accountId=${accountId}`}
           className="text-xs text-z-brass hover:underline"
         >
           Ver todas

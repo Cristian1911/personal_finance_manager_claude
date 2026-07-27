@@ -21,6 +21,8 @@ export function NewTransactionPageContent() {
 
   const typeParam = searchParams.get("type");
   const preset = typeParam ? TYPE_MAP[typeParam] : undefined;
+  // Deep link from a specific account ("Agregar movimiento" on /accounts/[id]).
+  const accountParam = searchParams.get("account") ?? undefined;
 
   const handleSuccess = useCallback(() => {
     toast.success("Guardado");
@@ -37,6 +39,7 @@ export function NewTransactionPageContent() {
       categories={categories}
       defaultDirection={preset?.direction}
       isTransfer={preset?.isTransfer}
+      defaultAccountId={accountParam}
       onSuccess={handleSuccess}
     />
   );

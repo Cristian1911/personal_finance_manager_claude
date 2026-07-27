@@ -3,7 +3,15 @@
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { transferSchema } from "@/lib/validators/transfer";
-import { computeIdempotencyKey } from "@zeta/shared";
+import {
+  TRANSFER_CATEGORY_ID,
+  computeIdempotencyKey,
+  getDebtPaymentCategoryId,
+} from "@zeta/shared";
+import {
+  buildDebtBalanceUpdatePayload,
+  deactivateTemplatesForPaidOffAccount,
+} from "@/lib/debt/payoff";
 import type { ActionResult } from "@/types/actions";
 
 /**
@@ -39,13 +47,13 @@ export async function createTransfer(
   const [fromRes, toRes] = await Promise.all([
     supabase
       .from("accounts")
-      .select("id, name, account_type, current_balance, credit_limit, currency_code")
+      .select("id, name, account_type, current_balance, credit_limit, currency_code, currency_balances")
       .eq("id", fromAccountId)
       .eq("user_id", user.id)
       .single(),
     supabase
       .from("accounts")
-      .select("id, name, account_type, current_balance, credit_limit, currency_code")
+      .select("id, name, account_type, current_balance, credit_limit, currency_code, currency_balances")
       .eq("id", toAccountId)
       .eq("user_id", user.id)
       .single(),
@@ -71,6 +79,8 @@ export async function createTransfer(
 
   const now = new Date().toISOString();
   const transferGroupId = crypto.randomUUID();
+  const isFromDebt = fromAccount.account_type === "CREDIT_CARD" || fromAccount.account_type === "LOAN";
+  const isToDebt = toAccount.account_type === "CREDIT_CARD" || toAccount.account_type === "LOAN";
 
   // 3. Build idempotency keys
   const outflowDescription = `Transferencia a ${toAccount.name}`;
@@ -107,6 +117,10 @@ export async function createTransfer(
       merchant_name: toAccount.name,
       capture_method: "MANUAL_FORM",
       provider: "MANUAL",
+      // Categorize both legs like extra-payment does: a transfer is never
+      // triage work, and leaving category_id null queued two extra rows in
+      // Categorizar for every transfer.
+      category_id: TRANSFER_CATEGORY_ID,
       categorization_source: "SYSTEM_DEFAULT",
       idempotency_key: outflowKey,
       transfer_group_id: transferGroupId,
@@ -138,6 +152,9 @@ export async function createTransfer(
       merchant_name: fromAccount.name,
       capture_method: "MANUAL_FORM",
       provider: "MANUAL",
+      category_id: isToDebt
+        ? getDebtPaymentCategoryId(toAccount.account_type)
+        : TRANSFER_CATEGORY_ID,
       categorization_source: "SYSTEM_DEFAULT",
       idempotency_key: inflowKey,
       transfer_group_id: transferGroupId,
@@ -169,21 +186,18 @@ export async function createTransfer(
   }
 
   // 6. Update account balances (following registerPayment pattern)
-  const isFromDebt = fromAccount.account_type === "CREDIT_CARD" || fromAccount.account_type === "LOAN";
-  const isToDebt = toAccount.account_type === "CREDIT_CARD" || toAccount.account_type === "LOAN";
-
   // FROM account: OUTFLOW → debt increases balance, non-debt decreases balance
   const newFromBalance = isFromDebt
     ? fromAccount.current_balance + amount
     : fromAccount.current_balance - amount;
 
-  const fromUpdate: Record<string, unknown> = {
-    current_balance: newFromBalance,
-    updated_at: now,
-  };
-  if (isFromDebt && fromAccount.credit_limit != null) {
-    fromUpdate.available_balance = fromAccount.credit_limit - newFromBalance;
-  }
+  // Debt accounts must go through the shared payload builder: it writes
+  // current_balance, available_balance AND currency_balances together. The
+  // /deudas page reads a multi-currency card's balance ONLY from
+  // currency_balances, so a hand-rolled update leaves it visibly stale.
+  const fromUpdate: Record<string, unknown> = isFromDebt
+    ? { ...buildDebtBalanceUpdatePayload(fromAccount, newFromBalance, fromAccount.currency_code), updated_at: now }
+    : { current_balance: newFromBalance, updated_at: now };
 
   // TO account: INFLOW → debt decreases balance, non-debt increases balance.
   // Clamp debt payments at 0 (matches registerPayment) so overpaying a credit
@@ -192,18 +206,24 @@ export async function createTransfer(
     ? Math.max(0, toAccount.current_balance - amount)
     : toAccount.current_balance + amount;
 
-  const toUpdate: Record<string, unknown> = {
-    current_balance: newToBalance,
-    updated_at: now,
-  };
-  if (isToDebt && toAccount.credit_limit != null) {
-    toUpdate.available_balance = toAccount.credit_limit - newToBalance;
-  }
+  const toUpdate: Record<string, unknown> = isToDebt
+    ? { ...buildDebtBalanceUpdatePayload(toAccount, newToBalance, toAccount.currency_code), updated_at: now }
+    : { current_balance: newToBalance, updated_at: now };
 
   const [fromBalRes, toBalRes] = await Promise.all([
     supabase.from("accounts").update(fromUpdate).eq("id", fromAccountId).eq("user_id", user.id),
     supabase.from("accounts").update(toUpdate).eq("id", toAccountId).eq("user_id", user.id),
   ]);
+
+  // A debt paid down to zero stops generating cuotas — every other
+  // debt-payment path does this, and quick payments now land here.
+  if (isToDebt && !toBalRes.error && newToBalance <= 0) {
+    await deactivateTemplatesForPaidOffAccount({
+      supabase,
+      userId: user.id,
+      accountId: toAccountId,
+    });
+  }
 
   // 7. Revalidate caches (do this even on balance failure so the new
   // transactions are reflected immediately).

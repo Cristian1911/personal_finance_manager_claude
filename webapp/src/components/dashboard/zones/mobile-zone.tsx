@@ -38,7 +38,7 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
     getRitmo(month, currency),
     getAttentionItems(),
     getBurnRate(currency),
-    getBudgetSummary(month),
+    getBudgetSummary(month, currency),
     getAccounts(),
     getDailySpending(month, currency, { liquidOnly: true }),
     getLatestSnapshotDates(),

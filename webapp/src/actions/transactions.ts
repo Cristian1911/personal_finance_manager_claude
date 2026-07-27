@@ -26,6 +26,10 @@ import {
   applyAccountBalanceDelta,
   reverseAccountBalanceDelta,
 } from "@/lib/utils/account-balance";
+import {
+  detachTransactionFromDebt,
+  recomputeDebtAfterTxAmountChange,
+} from "@/lib/personal-debts/recompute";
 import type { ActionResult, PaginatedResult } from "@/types/actions";
 import type { Transaction, TransactionLocation, TransactionWithAccount } from "@/types/domain";
 
@@ -565,6 +569,7 @@ async function getMonthlyAggregatesCached(
   dateFrom: string,
   dateTo: string,
   accountId: string | undefined,
+  currencyCode: string | undefined,
 ): Promise<MonthlyAggregatesResult> {
   "use cache";
   cacheTag("transactions");
@@ -599,6 +604,14 @@ async function getMonthlyAggregatesCached(
     .is("personal_debt_id", null);
 
   if (accountId) query = query.eq("account_id", accountId);
+  // The card prints these totals under a single currency label, so summing
+  // across currencies would produce a number that isn't any currency's total.
+  if (currencyCode) {
+    query = query.eq(
+      "currency_code",
+      currencyCode as Database["public"]["Enums"]["currency_code"],
+    );
+  }
 
   const { data, error } = await query;
   if (error) throw error;
@@ -626,6 +639,7 @@ async function getMonthlyAggregatesCached(
 export async function getMonthlyAggregates(
   month?: string,
   accountId?: string,
+  currencyCode?: string,
 ): Promise<ActionResult<MonthlyAggregatesResult>> {
   const { user, accessToken } = await getAuthenticatedClient();
   if (!user || !accessToken) return { success: false, error: "No autenticado" };
@@ -639,6 +653,7 @@ export async function getMonthlyAggregates(
       dateFrom,
       dateTo,
       accountId,
+      currencyCode,
     );
     return { success: true, data };
   } catch (error) {
@@ -984,13 +999,37 @@ export async function updateTransaction(
 
   const { data: existing, error: existingError } = await supabase
     .from("transactions")
-    .select("account_id, amount, direction, is_excluded, category_id")
+    .select(
+      "account_id, amount, direction, currency_code, is_excluded, category_id, personal_debt_id, pd_role",
+    )
     .eq("user_id", user.id)
     .eq("id", id)
     .single();
 
   if (existingError || !existing) {
     return { success: false, error: existingError?.message ?? "Transacción no encontrada" };
+  }
+
+  // pd_role was inferred from the debt's direction against this transaction's
+  // direction. Flipping it would silently turn an abono into a nuevo préstamo
+  // (or vice versa) without touching the debt's math — make the user unlink
+  // first so the change is explicit.
+  if (existing.personal_debt_id && existing.direction !== parsed.data.direction) {
+    return {
+      success: false,
+      error:
+        "Este movimiento está vinculado a una deuda personal. Desvincúlalo antes de cambiar si es ingreso o gasto.",
+    };
+  }
+  // Linking rejects cross-currency precisely because the debt's math sums raw
+  // amounts with no FX; editing the currency afterwards would sneak the row
+  // into exactly that state.
+  if (existing.personal_debt_id && existing.currency_code !== parsed.data.currency_code) {
+    return {
+      success: false,
+      error:
+        "Este movimiento está vinculado a una deuda personal. Desvincúlalo antes de cambiar la moneda.",
+    };
   }
 
   const categoryChanged = existing?.category_id !== parsed.data.category_id;
@@ -1044,8 +1083,50 @@ export async function updateTransaction(
     return { success: false, error: balanceResult.error };
   }
 
+  if (existing.personal_debt_id && existing.amount !== data.amount) {
+    const debtError = await syncLinkedDebtAfterAmountChange(
+      supabase,
+      user.id,
+      {
+        id,
+        personal_debt_id: existing.personal_debt_id,
+        pd_role: existing.pd_role as "origin" | "repayment" | null,
+      },
+      existing.amount,
+      data.amount,
+    );
+    if (debtError) {
+      revalidateFinancialViews();
+      return { success: false, error: debtError };
+    }
+  }
+
   revalidateFinancialViews();
   return { success: true, data };
+}
+
+/**
+ * Repair a linked personal debt after an edit changed the transaction's amount:
+ * a repayment's amount feeds `outstanding_amount` (and a shared payment's
+ * recovered total), and an additional loan's amount feeds `principal_amount`.
+ * Returns a Spanish error message when the bookkeeping failed — the edit itself
+ * is already committed, so the message says so explicitly instead of reading
+ * like the whole edit failed and inviting a retry.
+ */
+async function syncLinkedDebtAfterAmountChange(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  tx: { id: string; personal_debt_id: string; pd_role: "origin" | "repayment" | null },
+  previousAmount: number,
+  nextAmount: number,
+): Promise<string | null> {
+  try {
+    await recomputeDebtAfterTxAmountChange(supabase, userId, tx, previousAmount, nextAmount);
+    return null;
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e);
+    return `Movimiento actualizado, pero no se pudo actualizar la deuda vinculada: ${detail}`;
+  }
 }
 
 /**
@@ -1150,7 +1231,7 @@ export async function updateTransactionAmountAndDate(
 
   const { data: existing, error: existingError } = await supabase
     .from("transactions")
-    .select("account_id, amount, direction, is_excluded")
+    .select("account_id, amount, direction, is_excluded, personal_debt_id, pd_role")
     .eq("user_id", user.id)
     .eq("id", transactionId)
     .single();
@@ -1193,6 +1274,24 @@ export async function updateTransactionAmountAndDate(
       ],
     });
     if (!balanceResult.success) return { success: false, error: balanceResult.error };
+  }
+
+  if (existing.personal_debt_id && existing.amount !== fields.amount) {
+    const debtError = await syncLinkedDebtAfterAmountChange(
+      supabase,
+      user.id,
+      {
+        id: transactionId,
+        personal_debt_id: existing.personal_debt_id,
+        pd_role: existing.pd_role as "origin" | "repayment" | null,
+      },
+      existing.amount,
+      fields.amount,
+    );
+    if (debtError) {
+      revalidateFinancialViews();
+      return { success: false, error: debtError };
+    }
   }
 
   revalidateFinancialViews();
@@ -1266,7 +1365,7 @@ export async function deleteTransaction(id: string): Promise<ActionResult> {
 
   const { data: existing, error: existingError } = await supabase
     .from("transactions")
-    .select("account_id, amount, direction, is_excluded")
+    .select("account_id, amount, direction, is_excluded, personal_debt_id, pd_role, split_group_id")
     .eq("user_id", user.id)
     .eq("id", id)
     .single();
@@ -1275,9 +1374,47 @@ export async function deleteTransaction(id: string): Promise<ActionResult> {
     return { success: false, error: existingError?.message ?? "Transacción no encontrada" };
   }
 
+  // The origin of a shared payment (group-tagged, no personal_debt_id) is what
+  // every participant's share was derived from — deleting it would orphan the
+  // group's debts. Send the user to the flow that removes them together.
+  if (existing.split_group_id && !existing.personal_debt_id) {
+    return {
+      success: false,
+      error:
+        "Este movimiento es el origen de un pago compartido. Elimina el pago compartido desde Deudas personales.",
+    };
+  }
+
   const { error } = await supabase.from("transactions").delete().eq("user_id", user.id).eq("id", id);
 
   if (error) return { success: false, error: error.message };
+
+  // Repair the linked personal debt right after the delete and BEFORE the
+  // balance step: the recompute sums rows still matching pd_role='repayment'
+  // (so it must not see the deleted one), and a balance failure must not skip
+  // it — that would leave the debt counting a repayment that no longer exists,
+  // the exact drift this guard exists to prevent. The two steps are
+  // independent: this one reads transactions, the balance one writes accounts.
+  if (existing.personal_debt_id) {
+    try {
+      await detachTransactionFromDebt(supabase, user.id, {
+        id,
+        amount: existing.amount,
+        personal_debt_id: existing.personal_debt_id,
+        pd_role: existing.pd_role as "origin" | "repayment" | null,
+      });
+    } catch (e) {
+      // The delete is already committed — invalidate so the UI reflects it,
+      // then say exactly that instead of a bare debt-side error that reads
+      // like the delete failed and invites a doomed retry.
+      revalidateFinancialViews();
+      const detail = e instanceof Error ? e.message : String(e);
+      return {
+        success: false,
+        error: `Movimiento eliminado, pero no se pudo actualizar la deuda vinculada: ${detail}`,
+      };
+    }
+  }
 
   const balanceResult = await adjustBalancesForTransactionChanges({
     supabase,
@@ -1286,6 +1423,7 @@ export async function deleteTransaction(id: string): Promise<ActionResult> {
   });
 
   if (!balanceResult.success) {
+    revalidateFinancialViews();
     return { success: false, error: balanceResult.error };
   }
 
@@ -1293,6 +1431,13 @@ export async function deleteTransaction(id: string): Promise<ActionResult> {
   return { success: true, data: undefined };
 }
 
+/**
+ * Excluding a transaction from metrics deliberately does NOT touch a linked
+ * personal debt: `recomputeOutstanding` sums repayments regardless of
+ * `is_excluded` (and `recordRepayment` only skips the account-balance delta for
+ * excluded rows), so an abono you hide from metrics still counts against what
+ * you owe. Only the cache tags need to expire.
+ */
 export async function toggleExcludeTransaction(
   id: string,
   excluded: boolean

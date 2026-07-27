@@ -41,6 +41,7 @@ import { DestinatarioZonePicker } from "@/components/destinatarios/destinatario-
 import { TagZonePicker } from "@/components/tags/tag-zone-picker";
 import { LinkPickerSheet } from "@/components/recurring/link-picker-sheet";
 import { PromoteToRecurringButton } from "@/components/transactions/promote-to-recurring-button";
+import { TransactionFormDialog } from "@/components/transactions/transaction-form-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -186,6 +187,7 @@ export function TransactionDetailClient({
   const [draftDate, setDraftDate] = useState(tx.transaction_date);
   const [draftTime, setDraftTime] = useState(tx.transaction_time?.slice(0, 5) ?? "");
   const [savingData, startDataTransition] = useTransition();
+  const [fullEditOpen, setFullEditOpen] = useState(false);
 
   function openEditData() {
     setDraftAmount(String(optAmount));
@@ -597,7 +599,7 @@ export function TransactionDetailClient({
           </>
         )}
       </div>
-      <div className="flex justify-center pt-2.5">
+      <div className="flex flex-wrap justify-center gap-2 pt-2.5">
         <button
           type="button"
           onClick={openEditData}
@@ -606,7 +608,36 @@ export function TransactionDetailClient({
           <Pencil className="size-3" />
           Editar datos
         </button>
+        {/* Full edit — the only way to fix direction, currency or account after
+            the fact. The quick drawer above covers monto/fecha/hora only, so a
+            transaction saved as Gasto instead of Ingreso used to be
+            unfixable without deleting and re-creating it. */}
+        <button
+          type="button"
+          onClick={() => setFullEditOpen(true)}
+          className="inline-flex items-center gap-1.5 rounded-full border border-white/6 bg-white/[0.03] px-3 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-white/[0.06]"
+        >
+          <Pencil className="size-3" />
+          Editar todo
+        </button>
       </div>
+
+      {fullEditOpen && (
+        <TransactionFormDialog
+          transaction={tx}
+          accounts={accounts}
+          categories={categories}
+          open={fullEditOpen}
+          onOpenChange={setFullEditOpen}
+          onSuccess={() => {
+            setFullEditOpen(false);
+            toast.success("Transacción actualizada");
+            // The page keeps optimistic copies of amount/date/category; a full
+            // edit can change any of them, so re-render from the server.
+            router.refresh();
+          }}
+        />
+      )}
 
       {/* ── Clasificación (actionable controls) ──────────────────────── */}
       <section className="px-4 pt-5">

@@ -23,7 +23,8 @@ async function getAttentionSnapshotCached(
   const supabase = createCachedClient(accessToken);
 
   // Run queries in parallel
-  const [uncategorizedRes, destinatarioRes, overdueRemindersRes] = await Promise.all([
+  const [uncategorizedRes, destinatarioRes, overdueRemindersRes, overduePersonalDebtsRes] =
+    await Promise.all([
     // Signal 1: Uncategorized OUTFLOW transactions in the current month.
     // Matches `computeMonthlyAggregates.uncategorizedCount` (the Resumen del
     // mes / Movimientos definition) so /accounts and /transactions agree.
@@ -62,6 +63,17 @@ async function getAttentionSnapshotCached(
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
       .eq("is_completed", false)
+      .lt("due_date", todayStr),
+
+    // Signal: Personal debts past their due date. Setting a due date on a loan
+    // produced no reminder anywhere before — the user had to open the page and
+    // notice a badge.
+    supabase
+      .from("personal_debts")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .not("due_date", "is", null)
       .lt("due_date", todayStr),
   ]);
 
@@ -113,6 +125,22 @@ async function getAttentionSnapshotCached(
         : `${overdueRemindersCount} pendientes vencidos`,
       priority: "action",
       actionHref: "/pendientes",
+    });
+  }
+
+  // Signal: Overdue personal debts
+  const overduePersonalDebtsCount = overduePersonalDebtsRes.count ?? 0;
+  if (overduePersonalDebtsCount > 0) {
+    signals.push({
+      page: "deudas-personales",
+      key: "overdue_personal_debts",
+      count: overduePersonalDebtsCount,
+      label:
+        overduePersonalDebtsCount === 1
+          ? "1 deuda personal vencida"
+          : `${overduePersonalDebtsCount} deudas personales vencidas`,
+      priority: "action",
+      actionHref: "/deudas-personales",
     });
   }
 

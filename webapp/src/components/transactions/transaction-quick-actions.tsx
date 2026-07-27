@@ -65,7 +65,12 @@ import {
   type CandidateOccurrence,
   type LinkedRecurringInfo,
 } from "@/actions/occurrences";
-import { getPersonalDebts, linkTransactionToPersonalDebt } from "@/actions/personal-debts";
+import {
+  getPersonalDebts,
+  linkTransactionToPersonalDebt,
+  unlinkTransactionFromPersonalDebt,
+} from "@/actions/personal-debts";
+import { inferPersonalDebtRole } from "@zeta/shared";
 import type { CategoryWithChildren, CurrencyCode } from "@/types/domain";
 
 /** Trio action button (Categoría · Destinatario · Más) — ghost, equal thirds. */
@@ -211,6 +216,11 @@ export function TransactionQuickActions({
   const [personaPickerOpen, setPersonaPickerOpen] = useState(false);
   const [personaCandidates, setPersonaCandidates] = useState<LinkCandidate[]>([]);
   const [personaCreateOpen, setPersonaCreateOpen] = useState(false);
+  // Actions for an already-linked transaction. Until this existed a mis-tap on
+  // "Vincular a deuda personal" was permanent — no surface called
+  // unlinkTransactionFromPersonalDebt.
+  const [personaActionsOpen, setPersonaActionsOpen] = useState(false);
+  const [confirmUnlinkPersonaOpen, setConfirmUnlinkPersonaOpen] = useState(false);
 
   // Linked-recurrente state is local so the tile flips without a refresh.
   // `undefined` = not fetched yet; `null` = fetched and none found — the
@@ -249,7 +259,9 @@ export function TransactionQuickActions({
     (linkedRecurring.transactionCaptureMethod === "MANUAL_FORM" ||
       linkedRecurring.transactionCaptureMethod === null);
 
-  const canLinkPersona = !tx.personal_debt_id && !tx.transfer_group_id;
+  // A split origin's amount already lives in its shared-payment debts — the
+  // link action rejects it, so don't offer it.
+  const canLinkPersona = !tx.personal_debt_id && !tx.transfer_group_id && !tx.split_group_id;
   // A shared payment splits a spend the user fronted: only OUTFLOWs, not already
   // linked to a person/transfer, and not already split.
   const canSplit =
@@ -420,21 +432,39 @@ export function TransactionQuickActions({
           return;
         }
         const candidates: LinkCandidate[] = result.data
-          .filter((d) => d.status === "active")
+          // Cross-currency links corrupt the debt's principal/outstanding math
+          // and are rejected server-side — don't offer them.
+          .filter((d) => d.status === "active" && d.currency_code === tx.currency_code)
           .map((d) => ({
+            debt: d,
+            // origin = same direction as the loan itself (new money moving the
+            // debt's way). With no origin yet it documents the existing
+            // principal; with one already, it SUMS as an additional loan.
+            // Anything else is an abono.
+            isOrigin: inferPersonalDebtRole(d.direction, tx.direction) === "origin",
+          }))
+          // A shared-payment debt's origin is the split transaction itself —
+          // an origin-role link would be rejected by the action, so don't
+          // offer those debts when this tx would land as origin.
+          .filter(({ debt, isOrigin }) => !(debt.split_group_id && isOrigin))
+          .map(({ debt: d, isOrigin }) => ({
             id: d.id,
             label: d.destinatario_name,
             // Distinguish debts that belong to a shared payment from standalone
             // ones: linking here also updates the shared payment's recovered/spend.
             sublabel: d.split_group_id
               ? d.notes || "Parte de un pago compartido"
-              : d.direction === "borrowed"
-                ? "Le debes"
-                : "Te debe",
+              : `${d.direction === "borrowed" ? "Le debes" : "Te debe"} · ${
+                  isOrigin
+                    ? d.origin_transaction_id
+                      ? "suma a la deuda"
+                      : "será el origen"
+                    : "abono"
+                }`,
             badge: d.split_group_id ? "Pago compartido" : undefined,
             amount: d.outstanding_amount,
             currencyCode: d.currency_code,
-            direction: d.direction === "borrowed" ? "OUTFLOW" : "INFLOW",
+            direction: d.direction === "borrowed" ? ("OUTFLOW" as const) : ("INFLOW" as const),
             matchScore: 0,
           }));
         setPersonaCandidates(candidates);
@@ -454,7 +484,11 @@ export function TransactionQuickActions({
       try {
         const result = await linkTransactionToPersonalDebt(debtId, tx.id);
         if (result.success) {
-          toast.success("Transacción vinculada a deuda personal");
+          toast.success(
+            result.data.principalIncreased
+              ? "Préstamo sumado a la deuda existente"
+              : "Transacción vinculada a deuda personal",
+          );
           router.refresh();
         } else if (fromCreate) {
           toast.error(danglingMsg);
@@ -465,6 +499,21 @@ export function TransactionQuickActions({
       } catch {
         toast.error(fromCreate ? danglingMsg : "No se pudo vincular");
         if (fromCreate) router.refresh();
+      }
+    });
+  }
+
+  function handleUnlinkPersona() {
+    startLinkTransition(async () => {
+      const result = await unlinkTransactionFromPersonalDebt(tx.id);
+      if (result.success) {
+        setConfirmUnlinkPersonaOpen(false);
+        setPersonaActionsOpen(false);
+        setMoreOpen(false);
+        toast.success("Movimiento desvinculado de la deuda");
+        router.refresh();
+      } else {
+        toast.error(result.error ?? "No se pudo desvincular");
       }
     });
   }
@@ -593,15 +642,12 @@ export function TransactionQuickActions({
               {tx.personal_debt_id ? (
                 <button
                   type="button"
-                  onClick={() => {
-                    setMoreOpen(false);
-                    router.push("/deudas-personales");
-                  }}
+                  onClick={() => setPersonaActionsOpen(true)}
                   className={cn(SHEET_TILE_CLASS, "border-z-brass/20 bg-z-brass/8 transition-colors hover:bg-z-brass/12")}
                 >
                   <Users className="size-[18px] text-z-brass" />
                   <span className="text-[13px] leading-tight text-z-brass">Deuda personal</span>
-                  <span className="text-[10px] text-z-sage-dark">Vinculada · ver</span>
+                  <span className="text-[10px] text-z-sage-dark">Vinculada · opciones</span>
                 </button>
               ) : (
                 <button
@@ -765,6 +811,75 @@ export function TransactionQuickActions({
           </DrawerBody>
         </DrawerContent>
       </Drawer>
+
+      {/* Linked personal-debt actions — opened from the assigned tile */}
+      <Drawer open={personaActionsOpen} onOpenChange={setPersonaActionsOpen}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>Deuda personal</DrawerTitle>
+          </DrawerHeader>
+          <DrawerBody className="pb-[calc(3rem_+_env(safe-area-inset-bottom))]">
+            <div className="px-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setPersonaActionsOpen(false);
+                  setMoreOpen(false);
+                  router.push("/deudas-personales");
+                }}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-white/5"
+              >
+                <Users className="size-4 text-muted-foreground" />
+                Ver deuda personal
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmUnlinkPersonaOpen(true)}
+                disabled={isLinking}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-z-expense transition-colors hover:bg-white/5 disabled:opacity-50"
+              >
+                <Link2Off className="size-4" />
+                Desvincular de la deuda
+              </button>
+              <div className="mt-1 flex items-start gap-2 rounded-lg border border-white/6 bg-white/[0.02] px-3 py-2.5">
+                <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-z-brass" />
+                <p className="text-xs text-muted-foreground">
+                  Al desvincularlo{" "}
+                  <span className="font-medium text-foreground">el movimiento se conserva</span> y la
+                  deuda vuelve a contar sin él: si era un abono, sube lo pendiente; si era un
+                  préstamo extra, baja el total de la deuda.
+                </p>
+              </div>
+            </div>
+          </DrawerBody>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Confirm unlink from personal debt */}
+      <AlertDialog open={confirmUnlinkPersonaOpen} onOpenChange={setConfirmUnlinkPersonaOpen}>
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Desvincular de la deuda?</AlertDialogTitle>
+            <AlertDialogDescription>
+              El movimiento se conserva, pero deja de contar en la deuda personal y su saldo
+              pendiente se recalcula.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLinking}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={isLinking}
+              onClick={(e) => {
+                e.preventDefault();
+                handleUnlinkPersona();
+              }}
+            >
+              {isLinking ? "Desvinculando…" : "Desvincular"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Confirm destructive revert — payment registered from Plan */}
       <AlertDialog open={confirmRevertOpen} onOpenChange={setConfirmRevertOpen}>

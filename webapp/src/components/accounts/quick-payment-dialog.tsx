@@ -60,10 +60,18 @@ export function QuickPaymentDialog({
 
   const isDebt = isDebtAccountType(accountType);
 
-  // Only liquid accounts (not the target account itself) as source options
+  // Only liquid accounts (not the target account itself) as source options.
+  // Same currency only: the payment is booked as a transfer and there is no FX
+  // here, so a different-currency source would be rejected server-side.
   const sourceAccounts = useMemo(
-    () => accounts.filter((a) => a.id !== accountId && !EXCLUDED_SOURCE_TYPES.has(a.account_type)),
-    [accounts, accountId]
+    () =>
+      accounts.filter(
+        (a) =>
+          a.id !== accountId &&
+          !EXCLUDED_SOURCE_TYPES.has(a.account_type) &&
+          a.currency_code === currencyCode,
+      ),
+    [accounts, accountId, currencyCode]
   );
 
   const parsedAmount = amountRaw === "" ? NaN : parseFloat(amountRaw);

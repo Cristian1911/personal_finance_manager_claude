@@ -16,9 +16,19 @@ import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { DeudasLensRoot } from "@/components/mobile/v2/deudas/deudas-lens-root";
 import { getDebtFreeCountdown } from "@/actions/debt-countdown";
 import { getPersonalDebtsOverview } from "@/actions/personal-debts";
+import type { PersonalDebtsOverview } from "@/actions/personal-debts";
+import { summaryCurrencies, totalForCurrency } from "@/lib/personal-debts/totals";
+import { formatCurrency } from "@/lib/utils/currency";
 import { PageHeaderRow } from "@/components/ui/page-header-row";
 import { Button } from "@/components/ui/button";
-import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS, MOBILE_TAB_BAR_CLEARANCE_CLASS } from "@/lib/constants/styles";
+import {
+  BRASS_BUTTON_CLASS,
+  GHOST_BUTTON_CLASS,
+  MOBILE_TAB_BAR_CLEARANCE_CLASS,
+  PANEL_INSET_CLASS,
+  SECTION_EYEBROW_CLASS,
+} from "@/lib/constants/styles";
+import { cn } from "@/lib/utils";
 import type { CurrencyCode } from "@/types/domain";
 import { getPreferredCurrency } from "@/actions/profile";
 import { getRecentImpactEvents } from "@/actions/impact-events";
@@ -105,8 +115,10 @@ async function MobileDebtSection({
         activeCount:
           personasResult.data.iOwe.byPerson.length +
           personasResult.data.owedToMe.byPerson.length,
-        iOweTotal: personasResult.data.iOwe.total,
-        owedToMeTotal: personasResult.data.owedToMe.total,
+        // This card renders a single currency, so show that currency's totals
+        // rather than a cross-currency sum.
+        iOweTotal: totalForCurrency(personasResult.data.iOwe.totals, currency),
+        owedToMeTotal: totalForCurrency(personasResult.data.owedToMe.totals, currency),
         owedToMe: personasResult.data.owedToMe.byPerson.map((p) => ({
           name: p.destinatario_name,
           amount: p.amount,
@@ -159,22 +171,35 @@ async function DesktopDebtSection({
   currency: CurrencyCode;
   month: string | undefined;
 }) {
-  const [overview, incomeEstimate, exchangeRateResult, sourceAccountsResult] = await Promise.all([
-    getDebtOverview(currency, month),
-    getEstimatedIncome(currency, month),
-    getExchangeRate("USD" as CurrencyCode, currency).catch(() => null),
-    getNonDebtAccounts(),
-  ]);
+  const [overview, incomeEstimate, exchangeRateResult, sourceAccountsResult, personasResult] =
+    await Promise.all([
+      getDebtOverview(currency, month),
+      getEstimatedIncome(currency, month),
+      getExchangeRate("USD" as CurrencyCode, currency).catch(() => null),
+      getNonDebtAccounts(),
+      getPersonalDebtsOverview(),
+    ]);
   const sourceAccounts = sourceAccountsResult.success ? sourceAccountsResult.data : [];
+
+  // Person-to-person debts are money too — desktop had no entry point to them
+  // at all (mobile has had the "Deudas con personas" card since day one).
+  // Rendered before the bank-debt empty state so a user whose only debts are
+  // personal still sees them here.
+  const personasPanel = personasResult.success ? (
+    <PersonalDebtsPanel overview={personasResult.data} currency={currency} />
+  ) : null;
 
   if (overview.accounts.length === 0) {
     return (
-      <EmptyState
-        icon={<TrendingDown className="size-6" strokeWidth={1.5} />}
-        title="Marca una cuenta como deuda"
-        description="Convierte una tarjeta o préstamo en deuda y arma un plan de pago."
-        primary={{ label: "Marcar deuda", href: "/accounts" }}
-      />
+      <div className="space-y-6">
+        {personasPanel}
+        <EmptyState
+          icon={<TrendingDown className="size-6" strokeWidth={1.5} />}
+          title="Marca una cuenta como deuda"
+          description="Convierte una tarjeta o préstamo en deuda y arma un plan de pago."
+          primary={{ label: "Marcar deuda", href: "/accounts" }}
+        />
+      </div>
     );
   }
 
@@ -263,7 +288,70 @@ async function DesktopDebtSection({
           </div>
         </div>
       )}
+
+      {personasPanel}
     </>
+  );
+}
+
+/**
+ * Compact "Deudas con personas" panel for desktop /deudas. Totals are per
+ * currency — personal debts are never converted between currencies.
+ */
+function PersonalDebtsPanel({
+  overview,
+  currency,
+}: {
+  overview: PersonalDebtsOverview;
+  currency: CurrencyCode;
+}) {
+  const rows = summaryCurrencies(overview.iOwe.totals, overview.owedToMe.totals, currency)
+    .map((code) => ({
+      code,
+      owe: totalForCurrency(overview.iOwe.totals, code),
+      owed: totalForCurrency(overview.owedToMe.totals, code),
+    }))
+    .filter((r) => r.owe > 0 || r.owed > 0);
+
+  if (rows.length === 0) return null;
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold">Deudas con personas</h2>
+        <Link href="/deudas-personales" className="text-sm text-z-brass hover:underline">
+          Ver todas
+        </Link>
+      </div>
+      <div className={cn(PANEL_INSET_CLASS, "space-y-3 p-4")}>
+        {overview.overdue.length > 0 && (
+          <p className="text-xs text-z-alert">
+            {overview.overdue.length === 1
+              ? "1 deuda personal vencida"
+              : `${overview.overdue.length} deudas personales vencidas`}
+          </p>
+        )}
+        {rows.map((row) => (
+          <div key={row.code} className="flex flex-wrap items-baseline justify-between gap-3">
+            <span className={SECTION_EYEBROW_CLASS}>{row.code}</span>
+            <div className="flex gap-6">
+              <div className="text-right">
+                <p className="text-[11px] text-muted-foreground">Debo</p>
+                <p className="text-sm font-medium tabular-nums text-z-expense">
+                  {formatCurrency(row.owe, row.code as CurrencyCode)}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[11px] text-muted-foreground">Me deben</p>
+                <p className="text-sm font-medium tabular-nums text-z-income">
+                  {formatCurrency(row.owed, row.code as CurrencyCode)}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

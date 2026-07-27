@@ -16,7 +16,7 @@ export default async function PersonasPage() {
   const debts = debtsRes.success ? debtsRes.data : [];
   const overview = overviewRes.success
     ? overviewRes.data
-    : { iOwe: { total: 0, byPerson: [] }, owedToMe: { total: 0, byPerson: [] }, overdue: [] };
+    : { iOwe: { totals: [], byPerson: [] }, owedToMe: { totals: [], byPerson: [] }, overdue: [] };
   const sharedGroups = sharedRes.success ? sharedRes.data : [];
   return (
     <div className={`space-y-6 ${MOBILE_TAB_BAR_CLEARANCE_CLASS}`}>

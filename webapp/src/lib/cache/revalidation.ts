@@ -15,6 +15,10 @@ const FINANCIAL_TAGS = [
   "occurrences",
   "recurring",
   "analytics",
+  // Transaction mutations can change a personal debt's math (an edited or
+  // deleted repayment shifts outstanding_amount; a deleted origin shrinks the
+  // principal), so the personas/shared-payment reads must expire with them.
+  "personal-debts",
 ] as const;
 
 /**
@@ -60,7 +64,6 @@ export function revalidateAllUserData() {
   updateTag("cashflow-planner");
   updateTag("categories");
   updateTag("impact");
-  updateTag("personal-debts");
 }
 
 /**

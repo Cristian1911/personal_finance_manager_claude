@@ -19,23 +19,36 @@ export function TransactionFormDialog({
   accounts,
   categories,
   tags,
+  open: controlledOpen,
+  onOpenChange,
+  onSuccess,
 }: {
   transaction?: Transaction;
   accounts: Account[];
   categories: CategoryWithChildren[];
   tags?: Tag[];
+  /** Controlled mode — the caller owns the open state and renders its own
+   *  trigger (used by the transaction detail page's "Editar todo"). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  onSuccess?: () => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : uncontrolledOpen;
+  const setOpen = isControlled ? (onOpenChange ?? (() => {})) : setUncontrolledOpen;
   const isEdit = !!transaction;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className={isEdit ? GHOST_BUTTON_CLASS : undefined}>
-          {isEdit ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-          {isEdit ? "Editar" : "Nueva transacción"}
-        </Button>
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button className={isEdit ? GHOST_BUTTON_CLASS : undefined}>
+            {isEdit ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+            {isEdit ? "Editar" : "Nueva transacción"}
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="flex max-h-[85svh] flex-col overflow-hidden p-0 sm:max-w-xl">
         <DialogHeader className="shrink-0 px-4 pt-4 sm:px-6 sm:pt-6">
           <DialogTitle>
@@ -48,7 +61,10 @@ export function TransactionFormDialog({
             accounts={accounts}
             categories={categories}
             tags={tags}
-            onSuccess={() => setOpen(false)}
+            onSuccess={() => {
+              setOpen(false);
+              onSuccess?.();
+            }}
           />
         </div>
       </DialogContent>

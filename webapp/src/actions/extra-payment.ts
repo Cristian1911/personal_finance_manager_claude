@@ -146,6 +146,12 @@ export async function applyExtraDebtPayment(
 
     const debtAccountName = allocation.accountName || debtAccount.name;
 
+    // Both legs share a transfer_group_id, exactly like createTransfer: moving
+    // your own money to your own debt is not spending. Every spend metric
+    // filters `.is("transfer_group_id", null)`, so without this the dashboard
+    // reports the payoff as an expense of the same size.
+    const transferGroupId = crypto.randomUUID();
+
     // ── 1. OUTFLOW on source account ────────────────────────────────────────
     const outflowDescription = `Transferencia a ${debtAccountName} - ${label}`;
     const outflowKey = await computeIdempotencyKey({
@@ -174,6 +180,7 @@ export async function applyExtraDebtPayment(
         capture_method: "MANUAL_FORM",
         status: "POSTED",
         idempotency_key: outflowKey,
+        transfer_group_id: transferGroupId,
       });
 
     if (outflowError) {
@@ -214,6 +221,7 @@ export async function applyExtraDebtPayment(
         capture_method: "MANUAL_FORM",
         status: "POSTED",
         idempotency_key: inflowKey,
+        transfer_group_id: transferGroupId,
       });
 
     if (inflowError) {
