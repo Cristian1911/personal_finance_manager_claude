@@ -235,6 +235,24 @@ export async function updatePersonalDebt(
     return { success: false, error: parsed.error.issues[0].message };
   }
 
+  const { data: existing, error: existingErr } = await supabase
+    .from("personal_debts")
+    .select("id, split_group_id")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .single();
+  if (existingErr || !existing) return { success: false, error: "Deuda no encontrada" };
+
+  // A shared payment's shares are derived from the split — letting one
+  // participant's principal drift would break the group's arithmetic. The edit
+  // sheet hides the field; enforce it here too since the action is callable.
+  if (parsed.data.principal_amount != null && existing.split_group_id) {
+    return {
+      success: false,
+      error: "El monto de una deuda de pago compartido se edita desde el gasto repartido.",
+    };
+  }
+
   const patch: Record<string, unknown> = {};
   if (parsed.data.principal_amount != null) patch.principal_amount = parsed.data.principal_amount;
   if (parsed.data.due_date != null) patch.due_date = parsed.data.due_date;
@@ -252,7 +270,10 @@ export async function updatePersonalDebt(
   // next repayment event.
   if (patch.principal_amount != null) {
     try {
-      await recomputeOutstanding(supabase, user.id, id, patch.principal_amount as number);
+      // Explicitly raising the amount is a decision to reopen a settled debt.
+      await recomputeOutstanding(supabase, user.id, id, patch.principal_amount as number, {
+        allowReopen: true,
+      });
     } catch (e) {
       revalidateFinancialViews();
       const detail = e instanceof Error ? e.message : String(e);
@@ -563,7 +584,11 @@ export async function linkTransactionToPersonalDebt(
         .eq("user_id", user.id)
         .neq("status", "cancelled");
       if (princErr) throw new Error("Error al aumentar la deuda");
-      await recomputeOutstanding(supabase, user.id, personalDebtId, newPrincipal);
+      // A new loan genuinely reopens a settled debt — the one case where
+      // recomputing over a settled row is intended.
+      await recomputeOutstanding(supabase, user.id, personalDebtId, newPrincipal, {
+        allowReopen: true,
+      });
     } else if (role === "origin") {
       const { error: originErr } = await supabase
         .from("personal_debts")
@@ -835,13 +860,27 @@ export async function recordRepayment(
     if (balErr) return { success: false, error: "Error al actualizar el saldo de la cuenta" };
   }
 
-  await recomputeOutstanding(supabase, user.id, personalDebtId, debt.principal_amount);
+  // The transaction and the account balance are already committed, so a failed
+  // recompute must not escape as a thrown error with no invalidation — the UI
+  // would keep the pre-insert state while the balance had already moved, and
+  // the retry would die on the idempotency key.
+  try {
+    await recomputeOutstanding(supabase, user.id, personalDebtId, debt.principal_amount);
 
-  // Shared payment ("Pago compartido"): a repayment lowers the origin
-  // transaction's effective spend (amount − split_repaid_amount). Recompute the
-  // group's repaid total so dashboards reflect it.
-  if (debt.split_group_id) {
-    await recomputeSplitRepaid(supabase, user.id, debt.split_group_id);
+    // Shared payment ("Pago compartido"): a repayment lowers the origin
+    // transaction's effective spend (amount − split_repaid_amount). Recompute the
+    // group's repaid total so dashboards reflect it.
+    if (debt.split_group_id) {
+      await recomputeSplitRepaid(supabase, user.id, debt.split_group_id);
+    }
+  } catch (e) {
+    revalidateFinancialViews();
+    updateTag("personal-debts");
+    const detail = e instanceof Error ? e.message : String(e);
+    return {
+      success: false,
+      error: `Abono registrado, pero no se pudo recalcular la deuda: ${detail}`,
+    };
   }
 
   revalidateFinancialViews();

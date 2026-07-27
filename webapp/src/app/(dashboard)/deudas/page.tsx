@@ -21,7 +21,14 @@ import { summaryCurrencies, totalForCurrency } from "@/lib/personal-debts/totals
 import { formatCurrency } from "@/lib/utils/currency";
 import { PageHeaderRow } from "@/components/ui/page-header-row";
 import { Button } from "@/components/ui/button";
-import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS, MOBILE_TAB_BAR_CLEARANCE_CLASS, PANEL_INSET_CLASS } from "@/lib/constants/styles";
+import {
+  BRASS_BUTTON_CLASS,
+  GHOST_BUTTON_CLASS,
+  MOBILE_TAB_BAR_CLEARANCE_CLASS,
+  PANEL_INSET_CLASS,
+  SECTION_EYEBROW_CLASS,
+} from "@/lib/constants/styles";
+import { cn } from "@/lib/utils";
 import type { CurrencyCode } from "@/types/domain";
 import { getPreferredCurrency } from "@/actions/profile";
 import { getRecentImpactEvents } from "@/actions/impact-events";
@@ -316,7 +323,7 @@ function PersonalDebtsPanel({
           Ver todas
         </Link>
       </div>
-      <div className={`${PANEL_INSET_CLASS} space-y-3 p-4`}>
+      <div className={cn(PANEL_INSET_CLASS, "space-y-3 p-4")}>
         {overview.overdue.length > 0 && (
           <p className="text-xs text-z-alert">
             {overview.overdue.length === 1
@@ -326,9 +333,7 @@ function PersonalDebtsPanel({
         )}
         {rows.map((row) => (
           <div key={row.code} className="flex flex-wrap items-baseline justify-between gap-3">
-            <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              {row.code}
-            </span>
+            <span className={SECTION_EYEBROW_CLASS}>{row.code}</span>
             <div className="flex gap-6">
               <div className="text-right">
                 <p className="text-[11px] text-muted-foreground">Debo</p>

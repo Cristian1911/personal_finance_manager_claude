@@ -631,7 +631,9 @@ function CompletedSection({
         open={confirmItem !== null}
         onOpenChange={(open) => !open && setConfirmItem(null)}
       >
-        <AlertDialogContent size="sm">
+        {/* No size="sm": that footer variant is a fixed 2-column grid, which
+            strands the third button on its own row. */}
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Deshacer este pago?</AlertDialogTitle>
             <AlertDialogDescription>

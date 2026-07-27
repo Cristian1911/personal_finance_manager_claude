@@ -120,7 +120,9 @@ export function RecurringTimelineView({
         open={revertTarget !== null}
         onOpenChange={(open) => !open && setRevertTarget(null)}
       >
-        <AlertDialogContent size="sm">
+        {/* No size="sm": that footer variant is a fixed 2-column grid, which
+            strands the third button on its own row. */}
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Deshacer este pago?</AlertDialogTitle>
             <AlertDialogDescription>

@@ -74,8 +74,11 @@ export async function recomputeSplitRepaid(
       principal_amount: number;
       status: string;
     }[]) {
+      const principal = Number(d.principal_amount ?? 0);
       const paid = paidByDebt.get(d.id) ?? 0;
-      repaid += d.status === "settled" ? Math.max(Number(d.principal_amount ?? 0), paid) : paid;
+      // Clamp per participant, not just for the group: one person overpaying
+      // their share must not silently cover someone else's unpaid one.
+      repaid += d.status === "settled" ? principal : Math.min(paid, principal);
     }
   }
   repaid = Math.min(repaid, owed);
@@ -98,6 +101,7 @@ export async function recomputeOutstanding(
   userId: string,
   personalDebtId: string,
   principal: number,
+  options?: { allowReopen?: boolean },
 ): Promise<void> {
   const { data: repayments, error: repaymentsErr } = await supabase
     .from("transactions")
@@ -110,12 +114,21 @@ export async function recomputeOutstanding(
   if (repaymentsErr) throw repaymentsErr;
   const amounts: number[] = (repayments ?? []).map((t: { amount: number }) => t.amount);
   const { outstanding, status } = computeOutstanding(principal, amounts);
-  const { error: updateErr } = await supabase
+  let update = supabase
     .from("personal_debts")
     .update({ outstanding_amount: outstanding, status })
     .eq("id", personalDebtId)
     .eq("user_id", userId)
     .neq("status", "cancelled");
+  // "Saldar" is a user decision, not a derived state: it zeroes the balance
+  // without creating repayment transactions. Recomputing it from transactions
+  // would flip it back to `active` on the next repayment/edit — and since a
+  // settled share counts as recovered, that would make LOGGING money come in
+  // lower the shared payment's recovered total. So leave settled rows alone
+  // unless the caller is genuinely reopening the debt (a new loan raising the
+  // principal, or an explicit reopen).
+  if (!options?.allowReopen) update = update.neq("status", "settled");
+  const { error: updateErr } = await update;
   // Surface a failed recompute instead of silently returning success with a
   // stale outstanding — better a thrown mutation error the user can retry
   // (inserts are idempotent) than a false success with drifted state.

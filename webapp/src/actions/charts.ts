@@ -966,7 +966,9 @@ export async function getDailyBudgetPace(
 ): Promise<{ data: DailyBudgetPace[]; totalBudget: number; totalSpent: number }> {
   const dailyData = await getDailySpending(month, currency);
   const { getBudgetSummary } = await import("@/actions/budgets");
-  const budgetSummary = await getBudgetSummary(month);
+  // Same currency as getDailySpending above — comparing spend in one currency
+  // against a budget total in another makes the pace meaningless.
+  const budgetSummary = await getBudgetSummary(month, currency);
 
   const totalBudget = budgetSummary.totalTarget;
   const todayStr = toColombiaDateString(new Date());

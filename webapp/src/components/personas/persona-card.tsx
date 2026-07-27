@@ -180,12 +180,16 @@ export function PersonaCard({ persona, currency }: PersonaCardProps) {
         </div>
       )}
 
-      <EditPersonalDebtSheet
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        debt={persona}
-        currency={currency}
-      />
+      {/* Conditionally mounted so the form re-initializes from the debt on every
+          open — otherwise abandoned edits reappear the next time it opens. */}
+      {editOpen && (
+        <EditPersonalDebtSheet
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          debt={persona}
+          currency={currency}
+        />
+      )}
 
       <RecordRepaymentDialog
         open={repayOpen}

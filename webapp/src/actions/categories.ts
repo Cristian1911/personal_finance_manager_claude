@@ -268,6 +268,8 @@ async function getCategoriesWithBudgetDataCached(
       .from("budgets")
       .select("category_id, amount")
       .eq("user_id", userId)
+      // Demo and real budget rows must not mix, same as getBudgetSummary.
+      .eq("is_demo", isDemo)
       .eq("period", "monthly"),
 
     // 3. This month's spending.
