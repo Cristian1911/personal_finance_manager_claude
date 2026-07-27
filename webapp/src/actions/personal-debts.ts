@@ -12,10 +12,11 @@ import {
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
 import {
-  inferPersonalDebtRole,
-  computeOutstanding,
-  isPersonalDebtOverdue,
-} from "@zeta/shared";
+  recomputeOutstanding,
+  recomputeSplitRepaid,
+  detachTransactionFromDebt,
+} from "@/lib/personal-debts/recompute";
+import { inferPersonalDebtRole, isPersonalDebtOverdue } from "@zeta/shared";
 import { toColombiaDateString } from "@/lib/utils/date";
 import type { ActionResult } from "@/types/actions";
 import type { Database } from "@/types/database";
@@ -566,14 +567,12 @@ export async function unlinkTransactionFromPersonalDebt(
     return { success: false, error: "Transacción no vinculada" };
   }
   const debtId = tx.personal_debt_id as string;
-  const wasOrigin = tx.pd_role === "origin";
 
-  // Fetch the debt BEFORE mutating: a failed fetch must abort, not silently
-  // fall into the wrong branch (e.g. clearing the canonical pointer while
-  // unlinking an additional origin).
+  // Existence check BEFORE mutating: if the debt row can't be read the unlink
+  // must abort up-front instead of committing and failing bookkeeping later.
   const { data: debt, error: debtErr } = await supabase
     .from("personal_debts")
-    .select("principal_amount, origin_transaction_id, split_group_id")
+    .select("id")
     .eq("id", debtId)
     .eq("user_id", user.id)
     .single();
@@ -589,35 +588,12 @@ export async function unlinkTransactionFromPersonalDebt(
   // Past this point the unlink is already committed — failure paths must still
   // invalidate caches so the UI reflects the detached transaction.
   try {
-    if (wasOrigin && debt.origin_transaction_id !== transactionId) {
-      // Additional-loan origin (not the canonical first one): its amount was
-      // added to the principal when linked, so shrink it back symmetrically.
-      const newPrincipal = Math.max(
-        0,
-        Number(debt.principal_amount) - Number(tx.amount ?? 0),
-      );
-      const { error: princErr } = await supabase
-        .from("personal_debts")
-        .update({ principal_amount: newPrincipal })
-        .eq("id", debtId)
-        .eq("user_id", user.id)
-        .neq("status", "cancelled");
-      if (princErr) throw new Error("Error al ajustar la deuda");
-      await recomputeOutstanding(supabase, user.id, debtId, newPrincipal);
-    } else if (wasOrigin) {
-      const { error: originErr } = await supabase
-        .from("personal_debts")
-        .update({ origin_transaction_id: null })
-        .eq("id", debtId)
-        .eq("user_id", user.id);
-      if (originErr) throw new Error("Error al desvincular el origen");
-    } else {
-      await recomputeOutstanding(supabase, user.id, debtId, debt.principal_amount);
-      // Unlinking a shared-payment repayment raises the origin tx's effective spend.
-      if (debt.split_group_id) {
-        await recomputeSplitRepaid(supabase, user.id, debt.split_group_id);
-      }
-    }
+    await detachTransactionFromDebt(supabase, user.id, {
+      id: transactionId,
+      amount: tx.amount,
+      personal_debt_id: debtId,
+      pd_role: tx.pd_role as "origin" | "repayment" | null,
+    });
   } catch (e) {
     revalidateFinancialViews();
     updateTag("personal-debts");
@@ -765,87 +741,4 @@ export async function recordRepayment(
   revalidateFinancialViews();
   updateTag("personal-debts");
   return { success: true, data: undefined };
-}
-
-// ============================================================
-// Internal: recompute a shared payment's repaid total → the origin transaction's
-// split_repaid_amount = Σ(repayments across all debts in the split group).
-// ============================================================
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function recomputeSplitRepaid(
-  supabase: any,
-  userId: string,
-  splitGroupId: string,
-): Promise<void> {
-  const { data: groupDebts, error: groupErr } = await supabase
-    .from("personal_debts")
-    .select("id, principal_amount")
-    .eq("user_id", userId)
-    .eq("split_group_id", splitGroupId);
-  // Don't swallow a failed fetch — treating it as "no debts" would write
-  // split_repaid_amount = 0 and silently corrupt the tx's effective spend.
-  if (groupErr) {
-    console.error("recomputeSplitRepaid: failed to fetch group debts:", groupErr);
-    throw new Error("No se pudieron recomputar las deudas del pago compartido");
-  }
-  const ids: string[] = (groupDebts ?? []).map((d: { id: string }) => d.id);
-  // The most that can be repaid is the total owed (Σ participant principals).
-  // Clamp to it so an over-payment can't push split_repaid_amount above the
-  // transaction's amount and make the effective spend go negative.
-  const owed: number = (groupDebts ?? []).reduce(
-    (s: number, d: { principal_amount: number }) => s + Number(d.principal_amount ?? 0),
-    0,
-  );
-  let repaid = 0;
-  if (ids.length > 0) {
-    const { data: reps } = await supabase
-      .from("transactions")
-      .select("amount")
-      .eq("user_id", userId)
-      .eq("pd_role", "repayment")
-      .in("personal_debt_id", ids);
-    repaid = (reps ?? []).reduce(
-      (s: number, t: { amount: number | null }) => s + Number(t.amount ?? 0),
-      0,
-    );
-  }
-  repaid = Math.min(repaid, owed);
-  // The origin transaction is the only group-tagged tx without a personal_debt_id.
-  const { error } = await supabase
-    .from("transactions")
-    .update({ split_repaid_amount: repaid })
-    .eq("user_id", userId)
-    .eq("split_group_id", splitGroupId)
-    .is("personal_debt_id", null);
-  if (error) throw error;
-}
-
-// ============================================================
-// Internal: recompute outstanding_amount + auto-settle.
-// ============================================================
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function recomputeOutstanding(
-  supabase: any,
-  userId: string,
-  personalDebtId: string,
-  principal: number,
-): Promise<void> {
-  const { data: repayments } = await supabase
-    .from("transactions")
-    .select("amount")
-    .eq("user_id", userId)
-    .eq("personal_debt_id", personalDebtId)
-    .eq("pd_role", "repayment");
-  const amounts: number[] = (repayments ?? []).map((t: { amount: number }) => t.amount);
-  const { outstanding, status } = computeOutstanding(principal, amounts);
-  const { error: updateErr } = await supabase
-    .from("personal_debts")
-    .update({ outstanding_amount: outstanding, status })
-    .eq("id", personalDebtId)
-    .eq("user_id", userId)
-    .neq("status", "cancelled");
-  // Surface a failed recompute instead of silently returning success with a
-  // stale outstanding — better a thrown mutation error the user can retry
-  // (inserts are idempotent) than a false success with drifted state.
-  if (updateErr) throw updateErr;
 }
