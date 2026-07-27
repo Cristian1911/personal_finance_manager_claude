@@ -119,8 +119,13 @@ export function AccountCard({ account, allAccounts }: AccountCardProps) {
                     currencyCode={account.currency_code}
                     accounts={allAccounts}
                     trigger={
-                      <Button variant="ghost" size="icon" className="size-8 rounded-full">
-                        <HandCoins className="size-4" />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 rounded-full"
+                        aria-label={`Registrar pago en ${account.name}`}
+                      >
+                        <HandCoins className="size-4" aria-hidden="true" />
                       </Button>
                     }
                   />
@@ -180,12 +185,25 @@ export function AccountCard({ account, allAccounts }: AccountCardProps) {
                 </span>
               </div>
               {availableCredit != null ? (
-                <div className="mt-1.5 flex items-center justify-between gap-3 text-muted-foreground">
-                  <span>Disponible</span>
-                  <span className="font-medium text-z-sage-light">
-                    {formatCurrency(Math.max(availableCredit, 0), account.currency_code)}
-                  </span>
-                </div>
+                // A negative availableCredit means the balance is over the
+                // limit. Clamping it to $0 hid the overage entirely — the card
+                // read "Disponible $0" whether you were exactly at the limit or
+                // $265.822 past it.
+                availableCredit < 0 ? (
+                  <div className="mt-1.5 flex items-center justify-between gap-3 text-z-debt">
+                    <span>Excedido</span>
+                    <span className="font-medium">
+                      {formatCurrency(Math.abs(availableCredit), account.currency_code)}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="mt-1.5 flex items-center justify-between gap-3 text-muted-foreground">
+                    <span>Disponible</span>
+                    <span className="font-medium text-z-sage-light">
+                      {formatCurrency(availableCredit, account.currency_code)}
+                    </span>
+                  </div>
+                )
               ) : null}
             </div>
           ) : null}

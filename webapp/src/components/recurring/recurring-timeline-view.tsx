@@ -66,7 +66,8 @@ export function RecurringTimelineView({
       <RecurringSummaryBar
         totalPlanned={hook.totalPlanned}
         pendingCount={hook.pending.length}
-        completedCount={hook.completed.length}
+        paidCount={hook.paidCount}
+        skippedCount={hook.skippedCount}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">

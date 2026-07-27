@@ -38,8 +38,13 @@ export function DeleteAccountButton({ accountId }: { accountId: string }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="icon" className="text-destructive">
-          <Trash2 className="h-4 w-4" />
+        <Button
+          variant="outline"
+          size="icon"
+          className="text-destructive"
+          aria-label="Eliminar cuenta"
+        >
+          <Trash2 className="h-4 w-4" aria-hidden="true" />
         </Button>
       </DialogTrigger>
       <DialogContent>

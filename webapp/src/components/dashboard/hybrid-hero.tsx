@@ -145,15 +145,18 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
       <div className="mt-2 flex items-end justify-between gap-3">
         <p
           className={cn(
-            "text-[44px] font-bold leading-none tracking-[-0.04em] tabular-nums",
+            // nowrap + viewport-scaled size: the headline must never split
+            // across lines, and long values have to shrink instead.
+            "whitespace-nowrap text-[clamp(30px,9vw,44px)] font-bold leading-none tracking-[-0.04em] tabular-nums",
             todayTone,
           )}
         >
+          {/* Let Intl render the sign. A hand-prefixed U+2212 is its own
+              line-break opportunity before "$", so on a 375px screen the minus
+              wrapped onto its own line and −$19.800 read as +$19.800. */}
           {!data.incomeConfigured
             ? formatCurrency(data.spentToday, data.currency)
-            : overspentToday
-              ? `−${formatCurrency(Math.abs(remainingToday), data.currency)}`
-              : formatCurrency(remainingToday, data.currency)}
+            : formatCurrency(remainingToday, data.currency)}
         </p>
         {sparkData.values.length > 0 && (
           <HeroSparkline
@@ -180,8 +183,19 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
             overspentToday ? "text-z-debt" : "text-z-sage-light",
           )}
         >
-          Gastaste {formatCurrency(data.spentToday, data.currency)} de{" "}
-          {formatCurrency(data.availablePerDay, data.currency)} hoy
+          {/* A $0 daily allowance means the period budget is already spent,
+              not that today's limit is zero. "de $ 0 hoy" reads like a bug. */}
+          {data.availablePerDay > 0 ? (
+            <>
+              Gastaste {formatCurrency(data.spentToday, data.currency)} de{" "}
+              {formatCurrency(data.availablePerDay, data.currency)} hoy
+            </>
+          ) : (
+            <>
+              Gastaste {formatCurrency(data.spentToday, data.currency)} hoy · sin
+              presupuesto restante para los {data.daysRemaining} días que quedan
+            </>
+          )}
         </p>
       ) : (
         <Link
