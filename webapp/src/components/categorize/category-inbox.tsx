@@ -296,6 +296,37 @@ export function CategoryInbox({
     [restoreTransactionsByIds]
   );
 
+  /**
+   * Feedback for a bulk categorization. Without it these actions were silent
+   * in both directions: rows just vanished on success, and on failure they
+   * silently reappeared with no explanation. Mirrors the single-row path,
+   * which has always toasted with an undo.
+   */
+  const notifyBulkResult = useCallback(
+    (ok: boolean, ids: Iterable<string>) => {
+      if (!ok) {
+        toast.error("No se pudieron categorizar. Intenta de nuevo.");
+        return;
+      }
+      const idList = Array.from(ids);
+      toast(
+        idList.length === 1
+          ? "1 movimiento categorizado"
+          : `${idList.length} movimientos categorizados`,
+        {
+          action: {
+            label: "Deshacer",
+            onClick: () => {
+              restoreTransactionsByIds(idList);
+              void Promise.all(idList.map((id) => uncategorizeTransaction(id)));
+            },
+          },
+        },
+      );
+    },
+    [restoreTransactionsByIds],
+  );
+
   const handleAcceptAllSuggestions = useCallback(() => {
     const items = Array.from(suggestions.entries()).map(
       ([txId, result]) => ({
@@ -314,6 +345,7 @@ export function CategoryInbox({
 
     startTransition(async () => {
       const result = await bulkCategorize(items);
+      notifyBulkResult(result.success, suggestedIds);
       if (!result.success) {
         restoreTransactionsByIds(suggestedIds);
         void trackClientEvent({
@@ -346,6 +378,7 @@ export function CategoryInbox({
 
     startTransition(async () => {
       const result = await bulkCategorize(groupedSuggestionItems);
+      notifyBulkResult(result.success, ids);
       if (!result.success) {
         restoreTransactionsByIds(ids);
         void trackClientEvent({
@@ -386,6 +419,7 @@ export function CategoryInbox({
 
       startTransition(async () => {
         const result = await bulkCategorize(items);
+        notifyBulkResult(result.success, selectedIds);
         if (!result.success) {
           restoreTransactionsByIds(selectedIds);
           setSelected(new Set(selectedIds));
@@ -431,6 +465,7 @@ export function CategoryInbox({
                 )
               : prev;
           });
+          toast.error("No se pudo confirmar. Intenta de nuevo.");
         }
       });
     },
@@ -453,6 +488,7 @@ export function CategoryInbox({
                 )
               : prev;
           });
+          toast.error("No se pudo cambiar la categoría. Intenta de nuevo.");
         }
       });
     },
@@ -470,6 +506,11 @@ export function CategoryInbox({
       const result = await bulkConfirmAutoCategory(ids);
       if (!result.success) {
         setAutoTransactions(autoCategorizedTransactions);
+        toast.error("No se pudieron confirmar. Intenta de nuevo.");
+      } else {
+        toast.success(
+          ids.length === 1 ? "1 categoría confirmada" : `${ids.length} categorías confirmadas`,
+        );
       }
     });
   }, [autoTransactions, autoCategorizedTransactions]);
@@ -647,6 +688,8 @@ export function CategoryInbox({
                           toast.success(`${result.data.applied} transacciones vinculadas`);
                           const matchedIds = new Set(matches.map((m) => m.transactionId));
                           setTransactions((prev) => prev.filter((tx) => !matchedIds.has(tx.id)));
+                        } else {
+                          toast.error(result.error ?? "No se pudieron vincular. Intenta de nuevo.");
                         }
                       });
                     }}
@@ -689,6 +732,10 @@ export function CategoryInbox({
                               if (result.success) {
                                 toast.success("Destinatario aplicado");
                                 setTransactions((prev) => prev.filter((t) => t.id !== tx.id));
+                              } else {
+                                toast.error(
+                                  result.error ?? "No se pudo aplicar. Intenta de nuevo.",
+                                );
                               }
                             });
                           }}

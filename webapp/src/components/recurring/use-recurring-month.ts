@@ -343,7 +343,9 @@ export function useRecurringMonth(
           o.id === item.occurrenceId ? { ...o, status: "skipped" as const } : o
         )
       );
-      toast.success("Marcado como completado");
+      // "Omitir" and "Confirmar pago" are opposite acts — this used to report
+      // the wrong one.
+      toast.success("Marcado como omitido");
 
       startTransition(async () => {
         const result = await skipOccurrence(item.occurrenceId);
@@ -407,9 +409,14 @@ export function useRecurringMonth(
     );
   }, []);
 
-  /* ---- revert payment (full: optimistic + server action) ---- */
+  /* ---- revert payment (full: optimistic + server action) ----
+     `keepTransaction` detaches the occurrence but keeps the movimiento. It
+     matters because reverting without it DELETES the transaction whenever the
+     occurrence wasn't linked by hand — which is the state of every
+     auto-matched bank import. The success toast fires after the server
+     responds; announcing it up front reported a deletion that could fail. */
   const revertPayment = useCallback(
-    (item: OccurrenceItem) => {
+    (item: OccurrenceItem, options?: { keepTransaction?: boolean }) => {
       // Optimistic
       setOccurrences((prev) =>
         prev.map((o) =>
@@ -418,10 +425,9 @@ export function useRecurringMonth(
             : o
         )
       );
-      toast.success("Pago revertido a pendiente");
 
       startTransition(async () => {
-        const result = await revertOccurrence(item.occurrenceId);
+        const result = await revertOccurrence(item.occurrenceId, options);
         if (!result.success) {
           // Revert optimistic update
           setOccurrences((prev) =>
@@ -432,7 +438,13 @@ export function useRecurringMonth(
             )
           );
           toast.error(result.error ?? "No se pudo revertir el pago.");
+          return;
         }
+        toast.success(
+          options?.keepTransaction
+            ? "Pago pendiente de nuevo; el movimiento se conserva"
+            : "Pago revertido a pendiente",
+        );
       });
     },
     [startTransition]

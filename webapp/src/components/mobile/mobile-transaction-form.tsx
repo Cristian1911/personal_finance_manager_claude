@@ -48,6 +48,8 @@ interface MobileTransactionFormProps {
   categories: CategoryWithChildren[];
   defaultDirection?: TransactionDirection;
   isTransfer?: boolean;
+  /** Preselects an account — used when arriving from a specific account's page. */
+  defaultAccountId?: string;
   onSuccess?: () => void;
 }
 
@@ -80,6 +82,7 @@ export function MobileTransactionForm({
   categories,
   defaultDirection,
   isTransfer,
+  defaultAccountId,
   onSuccess,
 }: MobileTransactionFormProps) {
   // Determine initial transaction type from props (backward compat)
@@ -132,6 +135,11 @@ export function MobileTransactionForm({
 
   const STORAGE_KEY = "zeta:quick-capture-account";
   const [selectedAccountId, setSelectedAccountId] = useState<string>(() => {
+    // An explicit account from the deep link wins over the remembered one:
+    // the user came here from that account's page.
+    if (defaultAccountId && accounts.some((a) => a.id === defaultAccountId)) {
+      return defaultAccountId;
+    }
     if (typeof window === "undefined") return accounts[0]?.id ?? "";
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved && accounts.some((a) => a.id === saved)) return saved;

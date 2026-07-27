@@ -2,7 +2,17 @@
 
 import { useState } from "react";
 import { CalendarClock } from "lucide-react";
-import { useRecurringMonth } from "./use-recurring-month";
+import { useRecurringMonth, type OccurrenceItem } from "./use-recurring-month";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { RecurringSummaryBar } from "./recurring-summary-bar";
 import { RecurringMiniCalendar } from "./recurring-mini-calendar";
 import { PaymentTimeline } from "./recurring-payment-timeline";
@@ -27,6 +37,10 @@ export function RecurringTimelineView({
   accounts,
 }: RecurringTimelineViewProps) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  // Undo used to fire straight from the icon button. When the occurrence was
+  // auto-matched to an imported transaction, that DELETED the bank record on a
+  // single click — ask first, and offer keeping the movimiento.
+  const [revertTarget, setRevertTarget] = useState<OccurrenceItem | null>(null);
   const hook = useRecurringMonth(templates, accounts);
 
   // Adapt goNextMonth/goPrevMonth to the calendar's (delta: number) => void
@@ -95,12 +109,50 @@ export function RecurringTimelineView({
               />
               <RecurringCompletedSection
                 completed={hook.completed}
-                onRevert={hook.revertPayment}
+                onRevert={setRevertTarget}
               />
             </>
           )}
         </div>
       </div>
+
+      <AlertDialog
+        open={revertTarget !== null}
+        onOpenChange={(open) => !open && setRevertTarget(null)}
+      >
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Deshacer este pago?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {revertTarget?.merchant ?? "Este pago"} volverá a quedar pendiente en Plan. Si el
+              movimiento se creó al registrar el pago, eliminarlo también revierte su efecto en
+              el saldo; si venía de tu banco, conviene conservarlo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                if (revertTarget) hook.revertPayment(revertTarget, { keepTransaction: true });
+                setRevertTarget(null);
+              }}
+            >
+              Mantener movimiento
+            </AlertDialogAction>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={(e) => {
+                e.preventDefault();
+                if (revertTarget) hook.revertPayment(revertTarget);
+                setRevertTarget(null);
+              }}
+            >
+              Eliminar movimiento
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -5,6 +5,16 @@ import Link from "next/link";
 import { Check, ChevronRight, ExternalLink, Tag, Repeat, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Verdict, type VerdictState } from "@/components/ui/verdict";
 import { MobileRecurrentesTemplatesStrip } from "./mobile-recurrentes-templates-strip";
 import { AccountRowIdentity } from "@/components/accounts/account-row-identity";
@@ -427,8 +437,8 @@ export function MobileRecurrentesView({
       {hook.isHydrated && hook.completed.length > 0 && (
         <CompletedSection
           completed={hook.completed}
-          onRevert={async (occurrenceId) => {
-            const result = await revertOccurrence(occurrenceId);
+          onRevert={async (occurrenceId, keepTransaction) => {
+            const result = await revertOccurrence(occurrenceId, { keepTransaction });
             if (result.success) {
               hook.optimisticRevert(occurrenceId);
             }
@@ -532,19 +542,25 @@ function CompletedSection({
   onRevert,
 }: {
   completed: OccurrenceItem[];
-  onRevert: (occurrenceId: string) => Promise<ActionResult>;
+  onRevert: (occurrenceId: string, keepTransaction: boolean) => Promise<ActionResult>;
 }) {
   const [show, setShow] = useState(true);
   const [revertingId, setRevertingId] = useState<string | null>(null);
+  // Undoing an auto-matched import DELETES the bank record, so confirm and
+  // offer to keep the movimiento (same rule as the transaction sheet).
+  const [confirmItem, setConfirmItem] = useState<OccurrenceItem | null>(null);
 
-  async function handleRevert(item: OccurrenceItem) {
+  async function handleRevert(item: OccurrenceItem, keepTransaction: boolean) {
+    setConfirmItem(null);
     setRevertingId(item.occurrenceId);
     try {
-      const result = await onRevert(item.occurrenceId);
+      const result = await onRevert(item.occurrenceId, keepTransaction);
       if (!result.success) {
         toast.error(result.error ?? "Error al deshacer");
       } else {
-        toast.success("Movido a pendientes");
+        toast.success(
+          keepTransaction ? "Pendiente de nuevo; el movimiento se conserva" : "Movido a pendientes",
+        );
       }
     } finally {
       setRevertingId(null);
@@ -598,7 +614,7 @@ function CompletedSection({
                 )}
                 <button
                   type="button"
-                  onClick={() => handleRevert(item)}
+                  onClick={() => setConfirmItem(item)}
                   disabled={isReverting}
                   aria-label={`Deshacer ${item.merchant}`}
                   className="shrink-0 rounded-md px-2 py-0.5 text-[10px] text-z-sage-dark active:bg-white/5"
@@ -610,6 +626,41 @@ function CompletedSection({
           })}
         </div>
       )}
+
+      <AlertDialog
+        open={confirmItem !== null}
+        onOpenChange={(open) => !open && setConfirmItem(null)}
+      >
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Deshacer este pago?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmItem?.merchant ?? "Este pago"} volverá a quedar pendiente. Si el movimiento
+              vino de tu banco, consérvalo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                if (confirmItem) handleRevert(confirmItem, true);
+              }}
+            >
+              Mantener movimiento
+            </AlertDialogAction>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={(e) => {
+                e.preventDefault();
+                if (confirmItem) handleRevert(confirmItem, false);
+              }}
+            >
+              Eliminar movimiento
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
