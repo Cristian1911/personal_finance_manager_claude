@@ -107,6 +107,17 @@ export default async function TransactionsPage({
     ? monthlyAggregatesResult.data
     : { count: 0, totalInflow: 0, totalOutflow: 0, uncategorizedCount: 0, daysByDate: [] };
   const scopeLabel = hasActiveFilters ? "en esta vista" : monthLabel.toLowerCase();
+
+  // Unfiltered, the hero describes the whole month — the same scope as the
+  // "Vista" count next to it and as the mobile LECTURA card. It used to sum
+  // only the 20 rows of the current page while showing the full-month count
+  // beside them, so a busy month showed a count of 340 next to totals covering
+  // 20 movimientos. With filters on, the view sums are what the user asked for.
+  const heroInflow = hasActiveFilters ? inflowVisible : monthlyAggregates.totalInflow;
+  const heroOutflow = hasActiveFilters ? outflowVisible : monthlyAggregates.totalOutflow;
+  const heroUncategorized = hasActiveFilters
+    ? uncategorizedVisible
+    : monthlyAggregates.uncategorizedCount;
   const description = hasActiveFilters
     ? `Estás viendo ${transactionsResult.count} movimientos filtrados ${scopeLabel}. Úsalos para limpiar ruido y corregir criterio antes de que afecten presupuesto y plan.`
     : `${monthLabel} en una sola vista: ingresos, gastos y excepciones para leer rápido qué pasó antes de bajar al detalle.`;
@@ -164,24 +175,24 @@ export default async function TransactionsPage({
             <div className={`${PANEL_INSET_CLASS} p-4`}>
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Ingresos</p>
               <p className="mt-2 text-2xl font-semibold tracking-tight text-z-income">
-                {formatCurrency(inflowVisible, summaryCurrency)}
+                {formatCurrency(heroInflow, summaryCurrency)}
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">en la vista</p>
+              <p className="mt-1 text-xs text-muted-foreground">{scopeLabel}</p>
             </div>
             <div className={`${PANEL_INSET_CLASS} p-4`}>
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Gastos</p>
               <p className="mt-2 text-2xl font-semibold tracking-tight text-z-alert">
-                {formatCurrency(outflowVisible, summaryCurrency)}
+                {formatCurrency(heroOutflow, summaryCurrency)}
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">en la vista</p>
+              <p className="mt-1 text-xs text-muted-foreground">{scopeLabel}</p>
             </div>
             <div className={`${PANEL_INSET_CLASS} p-4`}>
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Sin categoría</p>
               <p className="mt-2 text-3xl font-semibold tracking-tight">
-                {uncategorizedVisible}
+                {heroUncategorized}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                {uncategorizedVisible > 0 ? "requieren criterio" : "todo limpio"}
+                {heroUncategorized > 0 ? "requieren criterio" : "todo limpio"}
               </p>
             </div>
           </div>
@@ -189,12 +200,12 @@ export default async function TransactionsPage({
 
         <AttentionCard
           signals={
-            uncategorizedVisible > 0
+            heroUncategorized > 0
               ? [{
                   page: "transactions",
                   key: "uncategorized_visible",
-                  count: uncategorizedVisible,
-                  label: "sin categoría en pantalla",
+                  count: heroUncategorized,
+                  label: hasActiveFilters ? "sin categoría en pantalla" : "sin categoría este mes",
                   priority: "action" as const,
                   actionHref: "/categorizar",
                 }]

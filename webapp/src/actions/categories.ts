@@ -262,29 +262,39 @@ async function getCategoriesWithBudgetDataCached(
       .eq("user_id", userId)
       .eq("period", "monthly"),
 
-    // 3. This month's spending
+    // 3. This month's spending.
+    // Same exclusions as getBudgetSummary (budgets.ts): transfers are not
+    // spending, personal-debt movements are not spending, and a shared
+    // payment's spend is amount − split_repaid_amount. Without them this grid
+    // and the budget bar on the dashboard reported different "gastado" for the
+    // same month.
     supabase
       .from("transactions")
-      .select("amount, category_id")
+      .select("amount, category_id, split_repaid_amount")
       .eq("user_id", userId)
       .eq("direction", "OUTFLOW")
       .eq("is_excluded", false)
       .eq("currency_code", baseCurrency)
       .gte("transaction_date", monthStartStr(target))
       .lte("transaction_date", monthEndStr(target))
-      .is("reconciled_into_transaction_id", null),
+      .is("reconciled_into_transaction_id", null)
+      .is("transfer_group_id", null)
+      .is("personal_debt_id", null),
 
-    // 4. Last 3 months spending for averages
+    // 4. Last 3 months spending for averages (same exclusions as query 3, or
+    // the averages drift away from the current month's number)
     supabase
       .from("transactions")
-      .select("amount, category_id, transaction_date")
+      .select("amount, category_id, transaction_date, split_repaid_amount")
       .eq("user_id", userId)
       .eq("direction", "OUTFLOW")
       .eq("is_excluded", false)
       .eq("currency_code", baseCurrency)
       .gte("transaction_date", monthsBeforeStart(target, 3))
       .lt("transaction_date", monthStartStr(target))
-      .is("reconciled_into_transaction_id", null),
+      .is("reconciled_into_transaction_id", null)
+      .is("transfer_group_id", null)
+      .is("personal_debt_id", null),
 
     // 5. Active recurring templates (monthly committed amounts per category)
     supabase
@@ -313,11 +323,15 @@ async function getCategoriesWithBudgetDataCached(
     budgetMap.set(b.category_id, Number(b.amount));
   }
 
-  // Build spent map (this month)
+  // Build spent map (this month). Effective spend nets what participants of a
+  // shared payment already paid back — same rule as budgets.ts and charts.ts.
+  const effectiveSpend = (tx: { amount: number; split_repaid_amount?: number | null }) =>
+    Number(tx.amount) - Number(tx.split_repaid_amount ?? 0);
+
   const spentMap = new Map<string, number>();
   for (const tx of spentRes.data ?? []) {
     if (tx.category_id) {
-      spentMap.set(tx.category_id, (spentMap.get(tx.category_id) ?? 0) + tx.amount);
+      spentMap.set(tx.category_id, (spentMap.get(tx.category_id) ?? 0) + effectiveSpend(tx));
     }
   }
 
@@ -325,7 +339,7 @@ async function getCategoriesWithBudgetDataCached(
   const avgTotalMap = new Map<string, number>();
   for (const tx of avgRes.data ?? []) {
     if (tx.category_id) {
-      avgTotalMap.set(tx.category_id, (avgTotalMap.get(tx.category_id) ?? 0) + tx.amount);
+      avgTotalMap.set(tx.category_id, (avgTotalMap.get(tx.category_id) ?? 0) + effectiveSpend(tx));
     }
   }
 

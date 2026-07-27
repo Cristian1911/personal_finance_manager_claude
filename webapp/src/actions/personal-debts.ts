@@ -95,10 +95,27 @@ export async function getPersonalDebts(): Promise<ActionResult<PersonalDebtWithD
 // ============================================================
 // Overview (Resumen)
 // ============================================================
+/** One row per currency present in the debts — never a cross-currency sum. */
+export interface PersonalDebtCurrencyTotal {
+  currency_code: string;
+  total: number;
+}
+
 export interface PersonalDebtsOverview {
-  iOwe: { total: number; byPerson: { destinatario_name: string; amount: number; currency_code: string }[] };
-  owedToMe: { total: number; byPerson: { destinatario_name: string; amount: number; currency_code: string }[] };
-  overdue: { destinatario_name: string; amount: number; due_date: string }[];
+  iOwe: {
+    totals: PersonalDebtCurrencyTotal[];
+    byPerson: { destinatario_name: string; amount: number; currency_code: string }[];
+  };
+  owedToMe: {
+    totals: PersonalDebtCurrencyTotal[];
+    byPerson: { destinatario_name: string; amount: number; currency_code: string }[];
+  };
+  overdue: {
+    destinatario_name: string;
+    amount: number;
+    currency_code: string;
+    due_date: string;
+  }[];
 }
 
 export async function getPersonalDebtsOverview(): Promise<ActionResult<PersonalDebtsOverview>> {
@@ -107,22 +124,36 @@ export async function getPersonalDebtsOverview(): Promise<ActionResult<PersonalD
   const active = res.data.filter((d) => d.status === "active");
   const iOwe = active.filter((d) => d.direction === "borrowed");
   const owedToMe = active.filter((d) => d.direction === "lent");
-  const sum = (xs: PersonalDebtWithDetails[]) =>
-    xs.reduce((s, d) => s + d.outstanding_amount, 0);
+  // Group by currency instead of one flat sum: adding a USD loan to a COP one
+  // and printing the result as COP is a made-up number.
+  const totalsByCurrency = (xs: PersonalDebtWithDetails[]) => {
+    const byCode = new Map<string, number>();
+    for (const d of xs) {
+      byCode.set(d.currency_code, (byCode.get(d.currency_code) ?? 0) + d.outstanding_amount);
+    }
+    return [...byCode.entries()]
+      .map(([currency_code, total]) => ({ currency_code, total }))
+      .sort((a, b) => a.currency_code.localeCompare(b.currency_code));
+  };
   return {
     success: true,
     data: {
       iOwe: {
-        total: sum(iOwe),
+        totals: totalsByCurrency(iOwe),
         byPerson: iOwe.map((d) => ({ destinatario_name: d.destinatario_name, amount: d.outstanding_amount, currency_code: d.currency_code })),
       },
       owedToMe: {
-        total: sum(owedToMe),
+        totals: totalsByCurrency(owedToMe),
         byPerson: owedToMe.map((d) => ({ destinatario_name: d.destinatario_name, amount: d.outstanding_amount, currency_code: d.currency_code })),
       },
       overdue: active
         .filter((d) => d.is_overdue)
-        .map((d) => ({ destinatario_name: d.destinatario_name, amount: d.outstanding_amount, due_date: d.due_date! })),
+        .map((d) => ({
+          destinatario_name: d.destinatario_name,
+          amount: d.outstanding_amount,
+          currency_code: d.currency_code,
+          due_date: d.due_date!,
+        })),
     },
   };
 }

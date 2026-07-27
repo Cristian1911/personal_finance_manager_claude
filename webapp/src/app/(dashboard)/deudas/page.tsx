@@ -16,6 +16,7 @@ import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { DeudasLensRoot } from "@/components/mobile/v2/deudas/deudas-lens-root";
 import { getDebtFreeCountdown } from "@/actions/debt-countdown";
 import { getPersonalDebtsOverview } from "@/actions/personal-debts";
+import { totalForCurrency } from "@/lib/personal-debts/totals";
 import { PageHeaderRow } from "@/components/ui/page-header-row";
 import { Button } from "@/components/ui/button";
 import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS, MOBILE_TAB_BAR_CLEARANCE_CLASS } from "@/lib/constants/styles";
@@ -105,8 +106,10 @@ async function MobileDebtSection({
         activeCount:
           personasResult.data.iOwe.byPerson.length +
           personasResult.data.owedToMe.byPerson.length,
-        iOweTotal: personasResult.data.iOwe.total,
-        owedToMeTotal: personasResult.data.owedToMe.total,
+        // This card renders a single currency, so show that currency's totals
+        // rather than a cross-currency sum.
+        iOweTotal: totalForCurrency(personasResult.data.iOwe.totals, currency),
+        owedToMeTotal: totalForCurrency(personasResult.data.owedToMe.totals, currency),
         owedToMe: personasResult.data.owedToMe.byPerson.map((p) => ({
           name: p.destinatario_name,
           amount: p.amount,

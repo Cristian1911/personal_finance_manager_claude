@@ -63,7 +63,9 @@ async function getBudgetSummaryCached(userId: string, month: string | undefined,
         // Exclude all personal-debt movements (origins + repayments). The
         // shared-payment tx stays (personal_debt_id null); its budget spend is
         // amount − repaid (converges to the user's share).
-        .is("personal_debt_id", null);
+        .is("personal_debt_id", null)
+        // Moving your own money between your own accounts is not spending.
+        .is("transfer_group_id", null);
 
     const totalSpent =
         (transactions as BudgetSummaryTransactionRow[] | null)?.reduce(
