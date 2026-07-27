@@ -99,7 +99,14 @@ export function EntityRow({
     <>
       <span className="shrink-0">{leading}</span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[13px] font-semibold text-z-sage-light">
+        {/* Compacta trunca para respetar el presupuesto de 86px; abierta deja
+            envolver, que es cuando el usuario pidió el nombre completo. */}
+        <span
+          className={cn(
+            "block text-[13px] font-semibold text-z-sage-light",
+            isOpen ? "break-words" : "truncate",
+          )}
+        >
           {title}
         </span>
         {gauge && (
@@ -119,7 +126,12 @@ export function EntityRow({
           </span>
         )}
         {meta && meta.length > 0 && (
-          <span className="mt-1 block truncate text-[10px] tabular-nums text-muted-foreground">
+          <span
+            className={cn(
+              "mt-1 block text-[10px] tabular-nums text-muted-foreground",
+              isOpen ? "break-words" : "truncate",
+            )}
+          >
             {meta.join(" · ")}
           </span>
         )}

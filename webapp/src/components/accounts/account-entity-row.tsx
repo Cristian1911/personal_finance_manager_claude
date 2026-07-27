@@ -1,13 +1,26 @@
 "use client";
 
+import { useState, useTransition } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Archive, ArrowRight } from "lucide-react";
+import { toast } from "sonner";
 import { EntityRow } from "@/components/ui/entity-row";
 import { AccountIcon } from "@/components/accounts/account-icon";
 import { DetailCell } from "@/components/mobile/v2/deudas/detail-cell";
+import { archiveDebtObligation } from "@/actions/accounts";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { deriveAccountRow } from "@/lib/utils/entity-row-model";
 import { formatCurrency } from "@/lib/utils/currency";
-import { GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
 import type { Account } from "@/types/domain";
 
@@ -29,8 +42,27 @@ export function AccountEntityRow({
   onOpenChange?: (open: boolean) => void;
 }) {
   const model = deriveAccountRow(account, { today });
+  const router = useRouter();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  function handleArchive() {
+    startTransition(async () => {
+      const result = await archiveDebtObligation(account.id);
+      if (result.success) {
+        setConfirmOpen(false);
+        // La acción revalida las etiquetas del servidor, pero esta página ya
+        // está montada: sin refresh la fila archivada sigue en pantalla.
+        router.refresh();
+        toast.success(`${account.name} archivada`);
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
 
   return (
+    <>
     <EntityRow
       leading={
         <span className="flex size-9 items-center justify-center rounded-lg border border-white/6 bg-white/[0.04]">
@@ -63,6 +95,20 @@ export function AccountEntityRow({
               : "—"}
           </DetailCell>
         </div>
+
+        {/* Una obligación en cero no necesita abono, necesita cerrarse. Antes
+            esto vivía en el menú "···" de /accounts/[id]: cinco pasos. */}
+        {model.primaryAction === "archive" && (
+          <Button
+            type="button"
+            onClick={() => setConfirmOpen(true)}
+            className={cn(BRASS_BUTTON_CLASS, "w-full")}
+          >
+            <Archive className="size-4" aria-hidden />
+            Archivar (pagada)
+          </Button>
+        )}
+
         <Link
           href={`/accounts/${account.id}`}
           className={cn(
@@ -75,5 +121,35 @@ export function AccountEntityRow({
         </Link>
       </div>
     </EntityRow>
+
+    <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Archivar obligación</DialogTitle>
+          <DialogDescription>
+            {account.name} queda archivada y sus pagos recurrentes se
+            desactivan. Podrás verla en las obligaciones cerradas de Deudas.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => setConfirmOpen(false)}
+            disabled={pending}
+            className={GHOST_BUTTON_CLASS}
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleArchive}
+            disabled={pending}
+            className={BRASS_BUTTON_CLASS}
+          >
+            {pending ? "Archivando..." : "Archivar"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
