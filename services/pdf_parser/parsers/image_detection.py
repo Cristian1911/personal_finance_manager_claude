@@ -42,6 +42,9 @@ IMAGE_DETECTORS: list[dict] = [
             (3, lambda t: "CUENTA DE AHORRO" in t),
             (3, lambda t: "BANCOLOMBIA" in t),
             (4, lambda t: "TRANSFERIR PLATA" in t),
+            # Account-detail tab row ("Detalles | Movimientos | Plan") — only the
+            # app renders this; the web transaction table never does.
+            (4, lambda t: "DETALLES" in t and "MOVIMIENTOS" in t and "PLAN" in t),
             (4, lambda t: bool(re.search(r"\d{1,2}\s+(ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC)\s+\d{4}", t))),
         ],
         "parse": lambda text, sd, path: parse_bancolombia_app(text, sd),
@@ -128,11 +131,29 @@ def detect_and_parse_image(
             f"Bancos soportados: Bancolombia, Nequi, Nu (cuenta y tarjeta de crédito)."
         )
 
-    logger.info(
-        "Selected image detector: %s (score=%s)",
-        best_detector["name"],
-        best_score,
-    )
+    # Detector signals overlap between banks/layouts (e.g. a Bancolombia APP
+    # screenshot also fires the Bancolombia WEB keyword signals). A wrong
+    # winner parses zero transactions and raises ValueError — so instead of
+    # failing the whole request, fall through to the next confident candidate.
+    last_error: ValueError | None = None
+    for score, detector in scored:
+        if score < MIN_CONFIDENCE:
+            break
+        logger.info(
+            "Trying image detector: %s (score=%s)", detector["name"], score
+        )
+        try:
+            statement = detector["parse"](ocr_text, screenshot_date, image_path)
+            logger.info("Selected image detector: %s (score=%s)", detector["name"], score)
+            return [statement]
+        except ValueError as exc:
+            logger.warning(
+                "Detector %s matched but failed to parse (%s) — trying next candidate",
+                detector["name"],
+                exc,
+            )
+            last_error = exc
 
-    statement = best_detector["parse"](ocr_text, screenshot_date, image_path)
-    return [statement]
+    raise last_error if last_error is not None else ValueError(
+        "No se pudo procesar la captura de pantalla."
+    )

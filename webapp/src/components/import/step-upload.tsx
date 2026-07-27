@@ -171,8 +171,17 @@ export function StepUpload({
     const formData = new FormData();
     formData.append("file", unsupportedFile);
     try {
-      await fetch("/api/save-unrecognized", { method: "POST", body: formData });
-      setSavedForSupport(true);
+      const res = await fetch("/api/save-unrecognized", { method: "POST", body: formData });
+      if (res.ok) {
+        setSavedForSupport(true);
+      } else {
+        // Never show the "¡Gracias!" confirmation for a file that was never
+        // stored — surface the failure so the user can retry.
+        const data = await res.json().catch(() => null);
+        toast.error(data?.error ?? "No se pudo enviar el archivo. Intenta de nuevo.");
+      }
+    } catch {
+      toast.error("Error de conexión. Intenta de nuevo.");
     } finally {
       setSavingForSupport(false);
     }
