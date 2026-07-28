@@ -25,6 +25,7 @@ import {
 } from "lucide-react-native";
 import {
   formatCurrency,
+  formatDate,
   type CurrencyCode,
   type ReconciliationCandidate,
 } from "@zeta/shared";
@@ -646,7 +647,7 @@ export default function ImportScreen() {
       const message =
         error instanceof Error
           ? error.message
-          : "No se pudo procesar el extracto. Verifica que sea un PDF valido.";
+          : "No se pudo procesar el extracto. Verifica que sea un PDF válido.";
       Alert.alert("Error", message);
     } finally {
       setParsing(false);
@@ -1147,7 +1148,11 @@ export default function ImportScreen() {
               {item.description}
             </Text>
             <Text className="mt-0.5 font-inter text-xs text-z-sage-dark">
-              {item.date}
+              {/* El resto de la app formatea en español; aquí salía el ISO
+                  crudo del parser. formatDate usa parseISO, así que se le pasa
+                  el string tal cual (new Date("YYYY-MM-DD") daría el día
+                  anterior en Colombia). */}
+              {formatDate(item.date, "dd MMM yyyy")}
               {isDebtPayment ? " • Abono a deuda" : ""}
             </Text>
           </View>
