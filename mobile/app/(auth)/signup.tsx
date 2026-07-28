@@ -67,7 +67,7 @@ export default function SignupScreen() {
         <Text className="text-base font-inter-bold text-center text-z-brass mb-3">
           Zeta
         </Text>
-        <Text className="text-3xl font-bold text-center text-foreground mb-2">
+        <Text className="text-3xl font-inter-bold text-center text-foreground mb-2">
           Crear cuenta
         </Text>
         <Text className="text-base text-center text-muted-foreground mb-10">
@@ -80,7 +80,7 @@ export default function SignupScreen() {
           </View>
         )}
 
-        <Text className="text-sm font-medium text-muted-foreground mb-1">
+        <Text className="text-sm font-inter-medium text-muted-foreground mb-1">
           Correo electrónico
         </Text>
         <TextInput
@@ -95,7 +95,7 @@ export default function SignupScreen() {
           textContentType="emailAddress"
         />
 
-        <Text className="text-sm font-medium text-muted-foreground mb-1">
+        <Text className="text-sm font-inter-medium text-muted-foreground mb-1">
           Contraseña
         </Text>
         <TextInput
@@ -109,7 +109,7 @@ export default function SignupScreen() {
           textContentType="newPassword"
         />
 
-        <Text className="text-sm font-medium text-muted-foreground mb-1">
+        <Text className="text-sm font-inter-medium text-muted-foreground mb-1">
           Confirmar contraseña
         </Text>
         <TextInput
@@ -134,7 +134,7 @@ export default function SignupScreen() {
           {loading ? (
             <ActivityIndicator color={COLORS.ink} />
           ) : (
-            <Text className="text-z-ink font-semibold text-base">
+            <Text className="text-z-ink font-inter-semibold text-base">
               Crear cuenta
             </Text>
           )}
@@ -150,7 +150,7 @@ export default function SignupScreen() {
         >
           <Text className="text-sm text-muted-foreground">
             ¿Ya tienes cuenta?{" "}
-            <Text className="text-z-brass font-medium">Inicia sesión</Text>
+            <Text className="text-z-brass font-inter-medium">Inicia sesión</Text>
           </Text>
         </TouchableOpacity>
     </AppKeyboardAwareScrollView>

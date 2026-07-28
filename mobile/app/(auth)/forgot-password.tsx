@@ -52,7 +52,7 @@ export default function ForgotPasswordScreen() {
       }}
       bottomOffset={20}
     >
-        <Text className="text-3xl font-bold text-center text-foreground mb-2">
+        <Text className="text-3xl font-inter-bold text-center text-foreground mb-2">
           Recuperar contraseña
         </Text>
         <Text className="text-base text-center text-muted-foreground mb-10">
@@ -61,7 +61,7 @@ export default function ForgotPasswordScreen() {
 
         {success ? (
           <View className="bg-z-income-12 border border-z-income-25 rounded-lg p-4 mb-6">
-            <Text className="text-z-income text-sm text-center font-medium">
+            <Text className="text-z-income text-sm text-center font-inter-medium">
               Correo enviado
             </Text>
             <Text className="text-z-income text-sm text-center mt-1">
@@ -79,7 +79,7 @@ export default function ForgotPasswordScreen() {
               </View>
             )}
 
-            <Text className="text-sm font-medium text-muted-foreground mb-1">
+            <Text className="text-sm font-inter-medium text-muted-foreground mb-1">
               Correo electrónico
             </Text>
             <TextInput
@@ -105,7 +105,7 @@ export default function ForgotPasswordScreen() {
               {loading ? (
                 <ActivityIndicator color={COLORS.ink} />
               ) : (
-                <Text className="text-z-ink font-semibold text-base">
+                <Text className="text-z-ink font-inter-semibold text-base">
                   Enviar enlace
                 </Text>
               )}
@@ -117,7 +117,7 @@ export default function ForgotPasswordScreen() {
           className="mt-6 items-center"
           onPress={() => router.replace("/(auth)/login")}
         >
-          <Text className="text-sm text-z-brass font-medium">
+          <Text className="text-sm text-z-brass font-inter-medium">
             Volver al inicio de sesión
           </Text>
         </TouchableOpacity>

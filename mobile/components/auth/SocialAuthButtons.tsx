@@ -43,17 +43,19 @@ export function SocialAuthButtons({
         {busy === "google" ? (
           <ActivityIndicator color={COLORS.sageDark} />
         ) : (
-          <Text className="text-foreground font-semibold text-base">
+          <Text className="text-foreground font-inter-semibold text-base">
             Continuar con Google
           </Text>
         )}
       </TouchableOpacity>
 
       {Platform.OS === "ios" ? (
+        // WHITE is the HIG style for a dark background — keep it. cornerRadius
+        // matches `rounded-lg` (16px), the radius every sibling button uses.
         <AppleAuthentication.AppleAuthenticationButton
           buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
           buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
-          cornerRadius={8}
+          cornerRadius={16}
           style={{ width: "100%", height: 50 }}
           onPress={() => run("apple")}
         />
@@ -69,7 +71,7 @@ export function SocialAuthButtons({
           {busy === "apple" ? (
             <ActivityIndicator color={COLORS.ink} />
           ) : (
-            <Text className="text-z-ink font-semibold text-base"> Continuar con Apple</Text>
+            <Text className="text-z-ink font-inter-semibold text-base"> Continuar con Apple</Text>
           )}
         </TouchableOpacity>
       )}

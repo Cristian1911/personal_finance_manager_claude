@@ -159,7 +159,7 @@ export default function LoginScreen() {
         <Text className="text-base font-inter-bold text-center text-z-brass mb-3">
           Zeta
         </Text>
-        <Text className="text-3xl font-bold text-center text-foreground mb-2">
+        <Text className="text-3xl font-inter-bold text-center text-foreground mb-2">
           Bienvenido
         </Text>
         <Text className="text-base text-center text-muted-foreground mb-10">
@@ -191,7 +191,7 @@ export default function LoginScreen() {
           </View>
         )}
 
-        <Text className="text-sm font-medium text-muted-foreground mb-1">
+        <Text className="text-sm font-inter-medium text-muted-foreground mb-1">
           Correo electrónico
         </Text>
         <TextInput
@@ -206,7 +206,7 @@ export default function LoginScreen() {
           textContentType="emailAddress"
         />
 
-        <Text className="text-sm font-medium text-muted-foreground mb-1">
+        <Text className="text-sm font-inter-medium text-muted-foreground mb-1">
           Contraseña
         </Text>
         <TextInput
@@ -231,7 +231,7 @@ export default function LoginScreen() {
           {loading ? (
             <ActivityIndicator color={COLORS.ink} />
           ) : (
-            <Text className="text-z-ink font-semibold text-base">
+            <Text className="text-z-ink font-inter-semibold text-base">
               Iniciar sesión
             </Text>
           )}
@@ -248,7 +248,7 @@ export default function LoginScreen() {
           {demoLoading ? (
             <ActivityIndicator color={COLORS.sageDark} />
           ) : (
-            <Text className="text-foreground font-semibold text-base">
+            <Text className="text-foreground font-inter-semibold text-base">
               Probar demo sin cuenta
             </Text>
           )}
@@ -262,7 +262,7 @@ export default function LoginScreen() {
           className="mt-4 items-center"
           onPress={() => router.push("/(auth)/forgot-password")}
         >
-          <Text className="text-sm text-z-brass font-medium">
+          <Text className="text-sm text-z-brass font-inter-medium">
             ¿Olvidaste tu contraseña?
           </Text>
         </TouchableOpacity>
@@ -273,7 +273,7 @@ export default function LoginScreen() {
         >
           <Text className="text-sm text-muted-foreground">
             ¿No tienes cuenta?{" "}
-            <Text className="text-z-brass font-medium">Regístrate</Text>
+            <Text className="text-z-brass font-inter-medium">Regístrate</Text>
           </Text>
         </TouchableOpacity>
     </AppKeyboardAwareScrollView>

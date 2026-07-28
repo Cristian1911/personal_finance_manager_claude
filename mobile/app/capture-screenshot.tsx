@@ -256,7 +256,7 @@ export default function CaptureScreenshotScreen() {
         >
           <ArrowLeft size={18} color={COLORS.foreground} />
         </Pressable>
-        <Text className="text-lg font-semibold text-foreground">
+        <Text className="text-lg font-inter-semibold text-foreground">
           Capturar extracto
         </Text>
       </View>
@@ -280,7 +280,7 @@ export default function CaptureScreenshotScreen() {
               className={`${BRASS_BUTTON_CLASS} mt-4 flex-row items-center justify-center gap-2 rounded-2xl px-4 py-4`}
             >
               <Camera size={18} color={COLORS.ink} />
-              <Text className="text-base font-semibold text-z-ink">
+              <Text className="text-base font-inter-semibold text-z-ink">
                 Tomar foto
               </Text>
             </Pressable>
@@ -290,7 +290,7 @@ export default function CaptureScreenshotScreen() {
               className={`${GHOST_BUTTON_CLASS} flex-row items-center justify-center gap-2 rounded-2xl px-4 py-4`}
             >
               <ImageIcon size={18} color={COLORS.foreground} />
-              <Text className="text-base font-medium text-foreground">
+              <Text className="text-base font-inter-medium text-foreground">
                 Elegir de galería
               </Text>
             </Pressable>
@@ -322,7 +322,7 @@ export default function CaptureScreenshotScreen() {
                   accessibilityRole="button"
                   className={`${BRASS_BUTTON_CLASS} flex-row items-center justify-center gap-2 rounded-2xl px-4 py-4`}
                 >
-                  <Text className="text-base font-semibold text-z-ink">
+                  <Text className="text-base font-inter-semibold text-z-ink">
                     Analizar
                   </Text>
                 </Pressable>
@@ -332,7 +332,7 @@ export default function CaptureScreenshotScreen() {
                   className={`${GHOST_BUTTON_CLASS} flex-row items-center justify-center gap-2 rounded-2xl px-4 py-3`}
                 >
                   <RefreshCw size={16} color={COLORS.foreground} />
-                  <Text className="text-sm font-medium text-foreground">
+                  <Text className="text-sm font-inter-medium text-foreground">
                     Cambiar imagen
                   </Text>
                 </Pressable>
@@ -347,7 +347,7 @@ export default function CaptureScreenshotScreen() {
               <Text className="text-xs uppercase tracking-[0.14em] text-z-sage-dark">
                 {parsed.bank ?? "Extracto"}
               </Text>
-              <Text className="mt-1 text-base font-semibold text-foreground">
+              <Text className="mt-1 text-base font-inter-semibold text-foreground">
                 {parsed.transactions.length} transacciones detectadas
               </Text>
             </View>
@@ -377,7 +377,7 @@ export default function CaptureScreenshotScreen() {
                         >
                           <Text
                             className={`text-xs ${
-                              isSelected ? "font-semibold text-z-brass" : "text-foreground"
+                              isSelected ? "font-inter-semibold text-z-brass" : "text-foreground"
                             }`}
                           >
                             {a.name}
@@ -403,7 +403,7 @@ export default function CaptureScreenshotScreen() {
                     <Text className="text-xs text-z-sage-dark">{t.date}</Text>
                   </View>
                   <Text
-                    className={`text-sm font-semibold ${
+                    className={`text-sm font-inter-semibold ${
                       t.direction === "OUTFLOW" ? "text-z-expense" : "text-z-income"
                     }`}
                   >
@@ -431,7 +431,7 @@ export default function CaptureScreenshotScreen() {
                 !selectedAccountId ? "opacity-50" : ""
               }`}
             >
-              <Text className="text-base font-semibold text-z-ink">
+              <Text className="text-base font-inter-semibold text-z-ink">
                 Importar {parsed.transactions.length}
               </Text>
             </Pressable>
@@ -448,7 +448,7 @@ export default function CaptureScreenshotScreen() {
         {step === "done" && (
           <View className="mt-6 items-center gap-4">
             <CheckCircle size={48} color={COLORS.income} />
-            <Text className="text-lg font-semibold text-foreground">
+            <Text className="text-lg font-inter-semibold text-foreground">
               {importedCount} transacciones importadas
             </Text>
             <View className="w-full gap-3">
@@ -457,7 +457,7 @@ export default function CaptureScreenshotScreen() {
                 accessibilityRole="button"
                 className={`${GHOST_BUTTON_CLASS} flex-row items-center justify-center gap-2 rounded-2xl px-4 py-4`}
               >
-                <Text className="text-base font-medium text-foreground">
+                <Text className="text-base font-inter-medium text-foreground">
                   Capturar otra
                 </Text>
               </Pressable>
@@ -466,7 +466,7 @@ export default function CaptureScreenshotScreen() {
                 accessibilityRole="button"
                 className={`${BRASS_BUTTON_CLASS} flex-row items-center justify-center gap-2 rounded-2xl px-4 py-4`}
               >
-                <Text className="text-base font-semibold text-z-ink">
+                <Text className="text-base font-inter-semibold text-z-ink">
                   Volver a Inicio
                 </Text>
               </Pressable>

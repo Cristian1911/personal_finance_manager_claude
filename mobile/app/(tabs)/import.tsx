@@ -1792,7 +1792,7 @@ export default function ImportScreen() {
             className="mt-4 py-2"
             onPress={() => {
               resetFlow();
-              router.navigate("/(tabs)/destinatarios" as never);
+              router.navigate("/destinatarios" as never);
             }}
           >
             <Text className="font-inter-medium text-sm text-z-brass">

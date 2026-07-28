@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import type { CurrencyCode } from "@zeta/shared";
 import { getDatabase } from "./db/database";
+import type { NavFocus } from "./constants/mobile-nav";
 
 export type LocalProfile = {
   id: string;
@@ -15,6 +17,8 @@ export type LocalProfile = {
   location_tracking_enabled: number;
   dashboard_config?: string | null;
   mobile_dashboard_config?: string | null;
+  /** "PLAN" | "DEBT" — drives which screen owns the third tab slot. */
+  nav_focus?: string | null;
 };
 
 export async function getLocalProfile(): Promise<LocalProfile | null> {
@@ -23,7 +27,7 @@ export async function getLocalProfile(): Promise<LocalProfile | null> {
     `SELECT id, full_name, app_purpose, estimated_monthly_income,
             estimated_monthly_expenses, preferred_currency, timezone, locale,
             onboarding_completed, location_tracking_enabled,
-            dashboard_config, mobile_dashboard_config
+            dashboard_config, mobile_dashboard_config, nav_focus
      FROM profiles
      ORDER BY updated_at DESC
      LIMIT 1`
@@ -115,4 +119,42 @@ export async function getPreferredCurrency(): Promise<CurrencyCode> {
   cachedPreferredCurrency =
     (profile?.preferred_currency as CurrencyCode | null) ?? "COP";
   return cachedPreferredCurrency;
+}
+
+/**
+ * Which screen owns the third tab slot — mirrors the webapp's
+ * `NavFocusProvider`. Same session-cache reasoning as the preferred currency:
+ * `nav_focus` only changes via onboarding or a Supabase write.
+ */
+let cachedNavFocus: NavFocus | null = null;
+
+export async function getNavFocus(): Promise<NavFocus> {
+  if (cachedNavFocus) return cachedNavFocus;
+  const profile = await getLocalProfile();
+  cachedNavFocus = profile?.nav_focus === "DEBT" ? "DEBT" : "PLAN";
+  return cachedNavFocus;
+}
+
+/**
+ * Reads `nav_focus` from local SQLite. Starts at "PLAN" (the DB default) and
+ * corrects on the first read — never blocks a tap on a remote round-trip.
+ */
+export function useNavFocus(): NavFocus {
+  const [focus, setFocus] = useState<NavFocus>(cachedNavFocus ?? "PLAN");
+
+  useEffect(() => {
+    let active = true;
+    getNavFocus()
+      .then((value) => {
+        if (active) setFocus(value);
+      })
+      .catch(() => {
+        // Profile not pulled yet — "PLAN" (the DB default) stays correct.
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return focus;
 }

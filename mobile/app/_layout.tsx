@@ -303,10 +303,10 @@ function RootLayoutNav() {
       <ThemeProvider value={DarkTheme}>
         <OnboardingStatusContext.Provider value={onboardingStatusValue}>
         <BugReportViewShot>
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+          {/* Every screen renders its own <MobileHeader>; a native header on
+              top of it would be a duplicate. Default it off for the whole
+              stack so routes that aren't declared below don't opt back in. */}
+          <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen
               name="transaction/[id]"
               options={buildSheetOptions([0.72, 1.0])}
@@ -318,13 +318,6 @@ function RootLayoutNav() {
             <Stack.Screen
               name="account/create"
               options={buildSheetOptions([0.72, 1.0])}
-            />
-            <Stack.Screen
-              name="account/edit/[id]"
-              options={{
-                presentation: "card",
-                headerShown: false,
-              }}
             />
             <Stack.Screen
               name="bug-report"
@@ -350,55 +343,10 @@ function RootLayoutNav() {
               name="purchase-decision"
               options={buildSheetOptions([0.85, 1.0])}
             />
-            {/* Stack screens displaced from tabs */}
-            <Stack.Screen
-              name="settings"
-              options={{ presentation: "card", headerShown: false }}
-            />
-            <Stack.Screen
-              name="accounts-list"
-              options={{ presentation: "card", headerShown: false }}
-            />
-            <Stack.Screen
-              name="categorizar"
-              options={{ presentation: "card", headerShown: false }}
-            />
-            <Stack.Screen
-              name="recurrentes"
-              options={{ presentation: "card", headerShown: false }}
-            />
-            <Stack.Screen
-              name="presupuesto"
-              options={{ presentation: "card", headerShown: false }}
-            />
-            <Stack.Screen
-              name="periodo"
-              options={{ presentation: "card", headerShown: false }}
-            />
-            <Stack.Screen
-              name="deudas/planificador"
-              options={{ presentation: "card", headerShown: false }}
-            />
-            <Stack.Screen
-              name="deseos"
-              options={{ presentation: "card", headerShown: false }}
-            />
-            <Stack.Screen
-              name="categories"
-              options={{ presentation: "card", headerShown: false }}
-            />
-            <Stack.Screen
-              name="destinatarios"
-              options={{ presentation: "card", headerShown: false }}
-            />
-            <Stack.Screen
-              name="destinatarios/[id]"
-              options={{ presentation: "card", headerShown: false }}
-            />
-            <Stack.Screen
-              name="personas"
-              options={{ presentation: "card", headerShown: false }}
-            />
+            {/* Card-presented screens (settings, accounts-list, categorizar,
+                recurrentes, presupuesto, periodo, deudas/planificador, deseos,
+                categories, destinatarios, personas…) need no entry here: card
+                is the default presentation and the header is off stack-wide. */}
           </Stack>
         </BugReportViewShot>
         <BugFAB />
