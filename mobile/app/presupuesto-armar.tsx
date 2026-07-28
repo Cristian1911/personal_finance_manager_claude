@@ -23,7 +23,7 @@ import {
 } from "../lib/repositories/budgets";
 import { createCategory } from "../lib/repositories/categories";
 import { toLocalMonthString } from "../lib/utils/date";
-import { parseLocalizedAmount } from "../lib/amount";
+import { formatAmountInput, parseFormattedAmount } from "../lib/amount";
 import { COLORS } from "../lib/constants/colors";
 import {
   BRASS_BUTTON_CLASS,
@@ -57,7 +57,7 @@ const BudgetLineRow = memo(function BudgetLineRow({
 }) {
   const color = row.category_color;
   const handleChange = useCallback(
-    (v: string) => onSetAmount(id, v),
+    (v: string) => onSetAmount(id, formatAmountInput(v)),
     [id, onSetAmount]
   );
   return (
@@ -127,7 +127,8 @@ export default function ArmarPresupuestoScreen() {
       const o: Record<string, number> = {};
       for (const r of data) {
         o[r.category_id] = r.amount;
-        if (r.amount > 0) d[r.category_id] = String(Math.round(r.amount));
+        if (r.amount > 0)
+          d[r.category_id] = formatAmountInput(String(Math.round(r.amount)));
       }
       setRows(data);
       setIncome(inc);
@@ -165,7 +166,7 @@ export default function ArmarPresupuestoScreen() {
 
   const total = useMemo(
     () =>
-      Object.values(draft).reduce((s, v) => s + (parseLocalizedAmount(v) || 0), 0),
+      Object.values(draft).reduce((s, v) => s + (parseFormattedAmount(v) || 0), 0),
     [draft]
   );
   const remaining = income - total;
@@ -221,7 +222,10 @@ export default function ArmarPresupuestoScreen() {
         rows.map((r) => ({
           budgetId: r.budget_id,
           categoryId: r.category_id,
-          amount: parseLocalizedAmount(draft[r.category_id] ?? "") || 0,
+          // parseFormattedAmount, not parseLocalizedAmount: the input is now
+          // grouped ("3.130"), and parseLocalizedAmount only treats "." as a
+          // thousands separator from 3 groups up — it would read 3.130 as 3,13.
+          amount: parseFormattedAmount(draft[r.category_id] ?? "") || 0,
           prev: original[r.category_id] ?? 0,
         }))
       );

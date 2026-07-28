@@ -125,7 +125,9 @@ function BudgetRowBase({
         </View>
 
         <Text className="mt-2 text-sm font-inter text-muted-foreground">
-          {formatCurrency(item.spent, currency)} · {formatCurrency(item.amount, currency)}
+          {/* "/" like the webapp row (mobile-presupuesto.tsx): the "·" it used
+              didn't say which number was spent and which was the budget. */}
+          {formatCurrency(item.spent, currency)} / {formatCurrency(item.amount, currency)}
         </Text>
 
         <View className="mt-3 h-2 rounded-full bg-black-10">
