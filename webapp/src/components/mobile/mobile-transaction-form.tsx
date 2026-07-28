@@ -188,15 +188,27 @@ export function MobileTransactionForm({
 
   // Colombian calendar day / time-of-day — never the device tz or UTC, which
   // drift the default a day off (toISOString is UTC; toTimeString is device-local).
-  // Lazy state (not a plain const): controlled inputs re-render the whole form
-  // per keystroke, and the Intl-backed formatter shouldn't re-run on each one.
-  const [today] = useState(() => toColombiaDateString(new Date()));
+  //
+  // The clock is read on the CLIENT ONLY. A lazy useState initializer runs both
+  // during SSR and again while hydrating, so the two sample different instants:
+  // the minute ticks over between them and React throws a hydration mismatch,
+  // discarding and re-rendering the tree. Empty on the server, filled on mount.
+  const [today, setToday] = useState("");
   const [merchantName, setMerchantName] = useState("");
-  const [transactionDate, setTransactionDate] = useState<string>(today);
+  const [transactionDate, setTransactionDate] = useState<string>("");
   // Default to the current time-of-day so FAB-created transactions carry an hour.
-  const [transactionTime, setTransactionTime] = useState<string>(() =>
-    toColombiaTimeString(new Date()),
-  );
+  const [transactionTime, setTransactionTime] = useState<string>("");
+
+  useEffect(() => {
+    const now = new Date();
+    // The wall clock is exactly the "external system" this rule exists to
+    // synchronize with, and it cannot be read during render without breaking
+    // hydration. Mount-only, so there is no cascading-render risk.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setToday(toColombiaDateString(now));
+    setTransactionDate(toColombiaDateString(now));
+    setTransactionTime(toColombiaTimeString(now));
+  }, []);
   const [isSubscription, setIsSubscription] = useState(false);
   const [notes, setNotes] = useState("");
   const [destinatarioId, setDestinatarioId] = useState<string | null>(null);

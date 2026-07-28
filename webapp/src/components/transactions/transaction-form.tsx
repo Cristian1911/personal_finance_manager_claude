@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useActionState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
@@ -87,8 +87,11 @@ export function TransactionForm({
 
   const defaultAccount = accounts[0];
   // Colombian calendar day, never UTC (toISOString rolls the date past ~7pm COT).
-  const defaultDate =
-    transaction?.transaction_date ?? toColombiaDateString(new Date());
+  // When editing, the date comes from the row. When creating, it must be read on
+  // the CLIENT ONLY — a clock read during render runs once on the server and
+  // again while hydrating, and across midnight the two disagree and React
+  // throws a hydration mismatch. Filled on mount below.
+  const defaultDate = transaction?.transaction_date ?? "";
   const [direction, setDirection] = useState<TransactionDirection>(
     transaction?.direction ?? "OUTFLOW"
   );
@@ -99,6 +102,14 @@ export function TransactionForm({
   const [transactionTime, setTransactionTime] = useState<string | null>(
     transaction?.transaction_time ?? null
   );
+
+  // Seed today's date on the client for the create case. No-op when editing.
+  useEffect(() => {
+    // See the note on defaultDate: the clock is an external system and reading
+    // it during render breaks hydration.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!transaction) setTransactionDate(toColombiaDateString(new Date()));
+  }, [transaction]);
   const [merchantName, setMerchantName] = useState(transaction?.merchant_name ?? "");
   const [categoryId, setCategoryId] = useState<string | null>(
     transaction?.category_id ?? null
