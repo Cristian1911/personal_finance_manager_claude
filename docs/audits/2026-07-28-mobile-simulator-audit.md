@@ -31,6 +31,16 @@ Criterio: la webapp es la fuente de verdad. P0 = crash, ruta inalcanzable, núme
 | 10 | **Dos ortografías del español en la misma fila** | La lista de cuentas mostraba "Lulo **Préstamo**" junto al chip "Prestamo"; también "T. Credito". Alineado con `webapp/src/lib/constants/account-types.ts`, incluido el short label de CREDIT_CARD ("Tarjeta", no "T. Credito"). Más "Presión mensual", "Día" y "límite". | `a2a3a8f6`, `5ed377eb` |
 | 11 | **Radio del botón de Apple** | `cornerRadius={8}` contra los 16px de `rounded-lg` de todos sus hermanos. | `b9d84898` |
 
+### P0/P1 — segunda tanda (lotes 4–7)
+
+| # | Defecto | Detalle | Commit |
+|---|---|---|---|
+| 12 | **~900pt de vacío en el planificador de deudas** | Su `ScrollView` horizontal de pasos no restringía el crecimiento, así que se estiraba para llenar la altura restante de la columna. El contenido quedaba empujado al fondo de la pantalla y el subrayado `absolute bottom-0` del paso activo se iba con él. `flexGrow: 0`. Mismo hardening aplicado a las otras 5 filas de pills. | `c0372672`, `04760109` |
+| 13 | **50 clases con sintaxis `/opacity` de la webapp en 17 archivos** | NativeWind v3 no la soporta: `bg-z-income/10` no pinta nada. El planificador concentraba 22, así que sus tarjetas y chips de estado salían sin fondo ni borde. Mapeadas a los tokens precalculados existentes. | `c0372672` |
+| 14 | **7 tokens usados y nunca definidos** | `z-surface-2-{3,4,5,6,8,10}` y `white-12` se referenciaban en ~20 call sites (`MobileSheet`, `SectionDivider`, `ExpandableChip`, `ToneActionRow`, la barra de `PlanNetHero`, el estado activo de `QuickActionsBar`) sin existir en `tailwind.config.js`. Todas esas superficies renderizaban transparentes. | `897cb9ca` |
+| 15 | **Dos ortografías del español en la misma fila** | La lista de cuentas mostraba "Lulo **Préstamo**" junto al chip "Prestamo". Alineado con `account-types.ts` de la webapp, incluido el short label ("Tarjeta", no "T. Credito"). | `5ed377eb` |
+| 16 | **Separador colgante en el hero de Plan** | "· $ 0/día restante" — el `·` estaba hardcodeado como prefijo, sin nada antes. | `897cb9ca` |
+
 ### Limpieza
 
 - `app/modal.tsx` (`<Text>Modal</Text>` del template de Expo, cero referencias) borrado.
