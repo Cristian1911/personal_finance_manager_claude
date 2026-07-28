@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { View, ScrollView, RefreshControl } from "react-native";
-import { useFocusEffect } from "expo-router";
+import { useReloadOnFocusAndSync } from "../../lib/sync/notify";
 import type { CurrencyCode } from "@zeta/shared";
 import { useSync } from "../../lib/sync/hooks";
 import { getTransactions, type TransactionRow } from "../../lib/repositories/transactions";
@@ -183,7 +183,7 @@ export function PlanRoot() {
     }
   }, [currentMonth]);
 
-  useFocusEffect(
+  useReloadOnFocusAndSync(
     useCallback(() => {
       loadData();
     }, [loadData])

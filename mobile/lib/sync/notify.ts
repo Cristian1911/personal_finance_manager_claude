@@ -1,4 +1,5 @@
-import { useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
+import { useFocusEffect } from "expo-router";
 
 /**
  * "Local SQLite changed" broadcast.
@@ -38,4 +39,31 @@ function getSnapshot(): number {
  */
 export function useSyncVersion(): number {
   return useSyncExternalStore(subscribe, getSnapshot);
+}
+
+/**
+ * Load on focus, and again whenever a background sync writes something.
+ *
+ * Replaces the bare `useFocusEffect(useCallback(load, [load]))` every screen
+ * used: that fires once on mount, which after login happens *before* the
+ * initial sync lands, leaving the screen on an empty snapshot.
+ *
+ * Pass a `useCallback`-stable loader, same as before.
+ */
+export function useReloadOnFocusAndSync(load: () => void): void {
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
+
+  // Compare against a ref rather than `> 0` so remounting after an earlier
+  // sync doesn't double-load on top of the focus call above.
+  const syncVersion = useSyncVersion();
+  const seenSyncVersion = useRef(syncVersion);
+  useEffect(() => {
+    if (syncVersion === seenSyncVersion.current) return;
+    seenSyncVersion.current = syncVersion;
+    load();
+  }, [syncVersion, load]);
 }

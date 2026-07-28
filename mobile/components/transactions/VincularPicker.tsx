@@ -1,4 +1,5 @@
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CalendarClock, X } from "lucide-react-native";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import { COLORS } from "../../lib/constants/colors";
@@ -41,6 +42,8 @@ export function VincularPicker({
   txSubtitle,
   error,
 }: Props) {
+  const insets = useSafeAreaInsets();
+
   return (
     <Modal
       visible={visible}
@@ -90,7 +93,12 @@ export function VincularPicker({
           ) : (
             <ScrollView
               style={{ flexShrink: 1 }}
-              contentContainerStyle={{ paddingBottom: 24 }}
+              // ponytail: the 11 sibling sheets get this from <MobileSheet>,
+              // which applies `insets.bottom + 16`. This one is hand-rolled and
+              // bottom-anchored, so without the inset the last occurrence row
+              // sits under the home indicator. Reusing MobileSheet is the real
+              // fix — tracked in BACKLOG.md.
+              contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
             >
               {candidates.map((c) => (
                 <Pressable
