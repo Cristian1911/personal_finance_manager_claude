@@ -13,7 +13,7 @@ import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import type { AccountRow } from "../../lib/repositories/accounts";
 import { reconcileBalance } from "../../lib/repositories/accounts";
 import { isDebtAccountType } from "../../lib/constants/accounts";
-import { parseLocalizedAmount } from "../../lib/amount";
+import { parseFormattedAmount } from "../../lib/amount";
 import { COLORS } from "../../lib/constants/colors";
 import { BRASS_BUTTON_CLASS, PANEL_INSET_CLASS } from "../../lib/constants/styles";
 import { MobileSheet } from "../ui/MobileSheet";
@@ -47,14 +47,14 @@ export function ReconcileSheet({ visible, account, onClose, onSuccess }: Reconci
   useEffect(() => {
     if (visible) {
       // Pre-fill with the current balance (no thousands grouping — the numeric
-      // keypad + parseLocalizedAmount accept a plain integer).
+      // keypad + parseFormattedAmount accept a plain integer).
       setAmountInput(currentBalance ? String(Math.round(currentBalance)) : "");
       setSubmitting(false);
       setError(null);
     }
   }, [visible, currentBalance]);
 
-  const parsedAmount = parseLocalizedAmount(amountInput);
+  const parsedAmount = parseFormattedAmount(amountInput);
   const hasValidAmount = Number.isFinite(parsedAmount) && parsedAmount >= 0;
   const canSubmit = hasValidAmount && !submitting;
 

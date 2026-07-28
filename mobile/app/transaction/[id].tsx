@@ -54,7 +54,7 @@ import {
   getTransactionTypeLabel,
   isDebtInflow,
 } from "../../lib/transaction-semantics";
-import { parseLocalizedAmount } from "../../lib/amount";
+import { formatAmountInput, parseFormattedAmount } from "../../lib/amount";
 import { COLORS } from "../../lib/constants/colors";
 import {
   MOBILE_CARD_TIGHT_CLASS,
@@ -248,7 +248,7 @@ export default function TransactionDetailScreen() {
     });
     setEditMerchantName(transaction.merchant_name ?? "");
     setEditDescription(transaction.description ?? "");
-    setEditAmount(String(Math.abs(transaction.amount)));
+    setEditAmount(formatAmountInput(String(Math.abs(transaction.amount))));
     setEditDate(parseLocalDate(transaction.transaction_date));
     setEditCategoryId(
       txIsDebtPayment
@@ -282,7 +282,7 @@ export default function TransactionDetailScreen() {
 
   const handleSave = async () => {
     if (!id) return;
-    const amountNum = parseLocalizedAmount(editAmount);
+    const amountNum = parseFormattedAmount(editAmount);
     if (isNaN(amountNum) || amountNum <= 0) {
       Alert.alert("Error", "El monto debe ser un número positivo.");
       return;
@@ -647,7 +647,7 @@ export default function TransactionDetailScreen() {
               <TextInput
                 className="bg-black-10 border border-white-6 rounded-xl px-4 py-3 text-foreground font-inter text-sm"
                 value={editAmount}
-                onChangeText={setEditAmount}
+                onChangeText={(next) => setEditAmount(formatAmountInput(next))}
                 placeholder="0"
                 placeholderTextColor={COLORS.sageDark}
                 keyboardType="decimal-pad"

@@ -1,4 +1,5 @@
 import { ScrollView, Pressable, Text, TextInput, View } from "react-native";
+import { formatSignedAmountInput } from "../../lib/amount";
 import type { ReactNode } from "react";
 import { COLORS } from "../../lib/constants/colors";
 import { FORM_INPUT_CLASS } from "../../lib/constants/styles";
@@ -27,16 +28,25 @@ export function NumericInput({
   value,
   onChangeText,
   placeholder,
+  money = false,
 }: {
   value: string;
   onChangeText: (v: string) => void;
   placeholder?: string;
+  /**
+   * Group thousands as the user types. Opt-in, NOT the default: this same
+   * input also takes interest rates ("Tasa de interés mensual (%)"), where
+   * grouping would turn 2.5 into 25.
+   */
+  money?: boolean;
 }) {
   return (
     <TextInput
       className={FORM_INPUT_CLASS}
       value={value}
-      onChangeText={onChangeText}
+      onChangeText={
+        money ? (next) => onChangeText(formatSignedAmountInput(next)) : onChangeText
+      }
       placeholder={placeholder ?? "0"}
       placeholderTextColor={COLORS.sageDark}
       keyboardType="decimal-pad"

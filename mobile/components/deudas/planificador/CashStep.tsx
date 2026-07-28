@@ -8,6 +8,7 @@ import {
 } from "@zeta/shared";
 import { CalendarPlus, DollarSign, Plus, Repeat, Trash2 } from "lucide-react-native";
 import { COLORS } from "../../../lib/constants/colors";
+import { formatAmountInput, parseFormattedAmount } from "../../../lib/amount";
 import {
   BRASS_BUTTON_CLASS,
   FORM_INPUT_CLASS,
@@ -62,12 +63,12 @@ export const CashStep = memo(function CashStep({
 
   const canSubmit =
     Boolean(form.amount) &&
-    !Number.isNaN(parseFloat(form.amount)) &&
-    parseFloat(form.amount) > 0 &&
+    !Number.isNaN(parseFormattedAmount(form.amount)) &&
+    parseFormattedAmount(form.amount) > 0 &&
     /^\d{4}-(0[1-9]|1[0-2])$/.test(form.month);
 
   const handleAdd = useCallback(() => {
-    const amount = parseFloat(form.amount);
+    const amount = parseFormattedAmount(form.amount);
     if (!canSubmit || amount <= 0) return;
     const months = parseInt(form.recurringMonths, 10);
     const entry: CashEntry = {
@@ -248,7 +249,7 @@ function CashEntryForm({
           placeholder="500.000"
           placeholderTextColor={COLORS.sageDark}
           value={form.amount}
-          onChangeText={(v) => setForm((f) => ({ ...f, amount: v }))}
+          onChangeText={(v) => setForm((f) => ({ ...f, amount: formatAmountInput(v) }))}
           keyboardType="numeric"
           returnKeyType="done"
         />

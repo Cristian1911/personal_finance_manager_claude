@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { formatSignedAmountInput, parseFormattedAmount } from "../../../lib/amount";
 import { useEffect, useState } from "react";
 import { AccountTypeGrid } from "../../../components/accounts/AccountTypeGrid";
 import { ColorPicker } from "../../../components/accounts/ColorPicker";
@@ -67,7 +68,7 @@ export default function EditAccountScreen() {
           setName(account.name);
           setInstitution(account.institution_name ?? "");
           setCurrency(account.currency_code);
-          setBalance(String(account.current_balance));
+          setBalance(formatSignedAmountInput(String(account.current_balance)));
           setColor(account.color ?? "#6366f1");
           setCreditLimit(account.credit_limit != null ? String(account.credit_limit) : "");
           setInterestRate(account.interest_rate != null ? String(account.interest_rate) : "");
@@ -115,7 +116,7 @@ export default function EditAccountScreen() {
         current_balance: parseFloat(balance) || 0,
         color,
         credit_limit:
-          isCreditCard && creditLimit ? parseFloat(creditLimit) : null,
+          isCreditCard && creditLimit ? parseFormattedAmount(creditLimit) : null,
         interest_rate:
           (isCreditCard || isLoan) && interestRate
             ? parseFloat(interestRate)
@@ -202,7 +203,7 @@ export default function EditAccountScreen() {
 
         {/* Balance */}
         <FormField label="Balance actual" required>
-          <NumericInput value={balance} onChangeText={setBalance} />
+          <NumericInput value={balance} onChangeText={setBalance} money />
         </FormField>
 
         {/* Credit card specific */}
@@ -212,6 +213,7 @@ export default function EditAccountScreen() {
               <NumericInput
                 value={creditLimit}
                 onChangeText={setCreditLimit}
+                money
                 placeholder="Ej: 5000000"
               />
             </FormField>
