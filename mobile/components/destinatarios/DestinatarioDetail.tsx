@@ -327,7 +327,10 @@ export function DestinatarioDetail({ id }: DestinatarioDetailProps) {
                   </View>
                   <View className="flex-row items-center gap-2">
                     <Text className="text-[10px] font-inter text-muted-foreground uppercase">
-                      {rule.match_type}
+                      {/* El selector de arriba ya dice "Contiene"/"Exacto";
+                          aquí se imprimía el enum crudo ("CONTAINS"). Misma
+                          traducción que la webapp (destinatario-detail.tsx). */}
+                      {rule.match_type === "exact" ? "Exacto" : "Contiene"}
                     </Text>
                     {rule.match_count > 0 && (
                       <View className="rounded-full bg-z-surface-2-8 px-2 py-0.5">
