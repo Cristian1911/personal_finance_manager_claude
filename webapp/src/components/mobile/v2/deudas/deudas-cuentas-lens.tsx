@@ -19,6 +19,8 @@ import { HeaderChevron } from "@/components/mobile/v2/header-chevron";
 import { ProgressRing } from "@/components/mobile/v2/progress-ring";
 import { DetailCell } from "./detail-cell";
 import { BankBadge } from "@/components/debt/bank-badge";
+import { EntityRow } from "@/components/ui/entity-row";
+import type { RowGauge } from "@/lib/utils/entity-row-model";
 import { ExchangeRateNudge } from "@/components/debt/exchange-rate-nudge";
 import type { CurrencyCode } from "@/types/domain";
 import type { DebtAccount, DebtOverview, DebtStats } from "@zeta/shared";
@@ -473,31 +475,6 @@ function GroupDivider({ label }: { label: string }) {
   );
 }
 
-const TICK_COUNT = 14;
-
-function TickGauge({ pct, hot, paid }: { pct: number; hot: boolean; paid: boolean }) {
-  const filled = Math.round((Math.min(100, pct) / 100) * TICK_COUNT);
-  return (
-    <div className="flex flex-1 items-center gap-0.5" aria-hidden>
-      {Array.from({ length: TICK_COUNT }).map((_, i) => (
-        <span
-          key={i}
-          className={cn(
-            "h-2 flex-1 rounded-[1.5px]",
-            i < filled
-              ? paid
-                ? "bg-z-income"
-                : hot
-                  ? "bg-z-alert"
-                  : "bg-z-brass"
-              : "bg-white/8"
-          )}
-        />
-      ))}
-    </div>
-  );
-}
-
 function AccountRow({
   account,
   paidPct,
@@ -516,8 +493,15 @@ function AccountRow({
       ? Math.min(100, (account.balance / account.creditLimit) * 100)
       : null;
   const gaugePct = isCC ? usagePct : paidPct;
-  const gaugeLabel = isCC ? "uso" : "pagado";
   const hot = isCC && (usagePct ?? 0) >= 75;
+  const gauge: RowGauge | null =
+    gaugePct == null
+      ? null
+      : {
+          pct: gaugePct,
+          label: isCC ? "uso" : "pagado",
+          tone: !isCC ? "income" : hot ? "alert" : "brass",
+        };
 
   const metaParts: string[] = [];
   if (account.monthlyPayment && account.monthlyPayment > 0) {
@@ -533,55 +517,22 @@ function AccountRow({
   );
 
   return (
-    <div className={cn(PANEL_INSET_CLASS, open && "border-z-brass/30")}>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        aria-expanded={open}
-        className="flex w-full items-center gap-3 p-3 text-left"
-      >
+    <EntityRow
+      leading={
         <BankBadge name={account.name} institutionName={account.institutionName} />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold text-z-sage-light">
-            {account.name}
-          </p>
-          {gaugePct != null && (
-            <div className="mt-1.5 flex items-center gap-2">
-              <TickGauge pct={gaugePct} hot={hot} paid={!isCC} />
-              <span
-                className={cn(
-                  "shrink-0 text-[10px] font-bold tabular-nums",
-                  !isCC ? "text-z-income" : hot ? "text-z-alert" : "text-z-brass"
-                )}
-              >
-                {gaugePct.toFixed(0)}%
-              </span>
-              <span className="shrink-0 text-[9px] text-muted-foreground">{gaugeLabel}</span>
-            </div>
-          )}
-          {metaParts.length > 0 && (
-            <p className="mt-1 truncate text-[10px] tabular-nums text-muted-foreground">
-              {metaParts.join(" · ")}
-            </p>
-          )}
-        </div>
-        <div className="shrink-0 text-right">
-          <p
-            className={cn(
-              "text-sm font-bold tabular-nums",
-              account.balance > 0 ? "text-z-debt" : "text-z-income"
-            )}
-          >
-            {formatCurrency(account.balance, account.currency)}
-          </p>
-          <p className="mt-0.5 text-[9px] text-muted-foreground">
-            {isCC ? "usado" : "saldo"}
-          </p>
-        </div>
-        <HeaderChevron open={open} />
-      </button>
-      <Expand open={open}>
-        <div className="space-y-2 px-3 pb-3">
+      }
+      title={account.name}
+      gauge={gauge}
+      meta={metaParts}
+      trailing={{
+        value: formatCurrency(account.balance, account.currency),
+        caption: isCC ? "usado" : "saldo",
+        tone: account.balance > 0 ? "debt" : "income",
+      }}
+      open={open}
+      onOpenChange={setOpen}
+    >
+        <div className="space-y-2">
           <div className="grid grid-cols-2 gap-2">
             {isCC ? (
               <>
@@ -668,8 +619,7 @@ function AccountRow({
             </Link>
           </div>
         </div>
-      </Expand>
-    </div>
+    </EntityRow>
   );
 }
 
