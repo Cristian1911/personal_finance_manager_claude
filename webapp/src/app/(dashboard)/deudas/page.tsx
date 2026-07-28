@@ -436,7 +436,7 @@ export default async function DeudasPage({
 
         <AccountImpactTimeline events={impactEvents} />
 
-        <AccountsSection />
+        <AccountsSection today={toColombiaDateString(new Date())} />
       </div>
     </div>
   );

@@ -23,8 +23,13 @@ async function getAttentionSnapshotCached(
   const supabase = createCachedClient(accessToken);
 
   // Run queries in parallel
-  const [uncategorizedRes, destinatarioRes, overdueRemindersRes, overduePersonalDebtsRes] =
-    await Promise.all([
+  const [
+    uncategorizedRes,
+    destinatarioRes,
+    overdueRemindersRes,
+    overduePersonalDebtsRes,
+    settledObligationsRes,
+  ] = await Promise.all([
     // Signal 1: Uncategorized OUTFLOW transactions in the current month.
     // Matches `computeMonthlyAggregates.uncategorizedCount` (the Resumen del
     // mes / Movimientos definition) so /accounts and /transactions agree.
@@ -75,6 +80,17 @@ async function getAttentionSnapshotCached(
       .eq("status", "active")
       .not("due_date", "is", null)
       .lt("due_date", todayStr),
+
+    // Signal: obligaciones activas con saldo cero. Archivarlas apaga sus
+    // plantillas recurrentes, así que el usuario debe confirmarlo — pero el
+    // único camino estaba en el menú "···" de /accounts/[id], a cinco pasos.
+    supabase
+      .from("accounts")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("is_active", true)
+      .eq("current_balance", 0)
+      .in("account_type", ["CREDIT_CARD", "LOAN"]),
   ]);
 
   const signals: AttentionSignal[] = [];
@@ -141,6 +157,23 @@ async function getAttentionSnapshotCached(
           : `${overduePersonalDebtsCount} deudas personales vencidas`,
       priority: "action",
       actionHref: "/deudas-personales",
+    });
+  }
+
+  // Signal: obligaciones saldadas que siguen activas. El parámetro las abre
+  // expandidas en /accounts, con el botón de archivar ya a la vista.
+  const settledObligationsCount = settledObligationsRes.count ?? 0;
+  if (settledObligationsCount > 0) {
+    signals.push({
+      page: "cuentas",
+      key: "obligaciones-saldadas",
+      count: settledObligationsCount,
+      label:
+        settledObligationsCount === 1
+          ? "1 obligación saldada sin archivar"
+          : `${settledObligationsCount} obligaciones saldadas sin archivar`,
+      priority: "action",
+      actionHref: "/accounts?saldadas=1",
     });
   }
 

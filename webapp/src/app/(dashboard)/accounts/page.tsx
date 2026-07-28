@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowRight, Plus, Sparkles } from "lucide-react";
 import { getAccounts } from "@/actions/accounts";
 import { getPreferredCurrency } from "@/actions/profile";
-import { AccountCard } from "@/components/accounts/account-card";
+import { AccountEntityRow } from "@/components/accounts/account-entity-row";
 import { AccountFormDialog } from "@/components/accounts/account-form-dialog";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { Button } from "@/components/ui/button";
@@ -17,15 +17,27 @@ import {
 import { cn } from "@/lib/utils";
 import { isDebtAccountType } from "@/lib/utils/account-balance";
 import { formatCurrency, formatCurrencyCompact } from "@/lib/utils/currency";
+import { toColombiaDateString } from "@/lib/utils/date";
 import type { Account, CurrencyCode } from "@/types/domain";
 
-export default async function AccountsPage() {
+export default async function AccountsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ saldadas?: string }>;
+}) {
   await connection();
+  // ?saldadas=1 llega desde la señal de atención: abre las obligaciones en
+  // cero para que el botón de archivar quede a la vista sin buscarlo.
+  const { saldadas } = await searchParams;
+  const expandSettled = saldadas === "1";
   const [result, currency] = await Promise.all([
     getAccounts(),
     getPreferredCurrency(),
   ]);
   const accounts = result.success ? result.data : [];
+  // El día se calcula en el servidor. Un componente cliente que lea el reloj
+  // durante el render muestrea instantes distintos en SSR e hidratación.
+  const today = toColombiaDateString(new Date());
   const debtAccounts = accounts.filter((account) => isDebtAccountType(account.account_type));
   const liquidAccounts = accounts.filter((account) =>
     ["CHECKING", "SAVINGS", "CASH", "INVESTMENT"].includes(account.account_type)
@@ -218,9 +230,18 @@ export default async function AccountsPage() {
                   </p>
                 )}
               </div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:gap-4 xl:grid-cols-3">
+              <div className="space-y-2">
                 {section.accounts.map((account) => (
-                  <AccountCard key={account.id} account={account} allAccounts={accounts} />
+                  <AccountEntityRow
+                    key={account.id}
+                    account={account}
+                    today={today}
+                    defaultOpen={
+                      expandSettled &&
+                      isDebtAccountType(account.account_type) &&
+                      account.current_balance === 0
+                    }
+                  />
                 ))}
               </div>
             </section>
