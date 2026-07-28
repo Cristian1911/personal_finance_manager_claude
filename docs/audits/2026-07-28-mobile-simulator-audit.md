@@ -41,6 +41,24 @@ Criterio: la webapp es la fuente de verdad. P0 = crash, ruta inalcanzable, núme
 | 15 | **Dos ortografías del español en la misma fila** | La lista de cuentas mostraba "Lulo **Préstamo**" junto al chip "Prestamo". Alineado con `account-types.ts` de la webapp, incluido el short label ("Tarjeta", no "T. Credito"). | `5ed377eb` |
 | 16 | **Separador colgante en el hero de Plan** | "· $ 0/día restante" — el `·` estaba hardcodeado como prefijo, sin nada antes. | `897cb9ca` |
 
+### P1 — Presupuesto y Ajustes (tercera tanda)
+
+| # | Defecto | Detalle | Commit |
+|---|---|---|---|
+| 17 | **Campos de dinero sin formato al armar presupuesto** | Los inputs mostraban dígitos crudos ("147933") y el seed desde la base tampoco agrupaba, así que un presupuesto existente se abría sin separadores. Solo 2 de 15 superficies con input de dinero usaban el helper `formatAmountInput` que ya existe. **El parseo tenía que cambiar junto con el formato**: `parseLocalizedAmount` solo trata el punto como millar desde 3 grupos, así que con el input agrupado habría leído "3.130" como 3,13 — al guardar y en el total en vivo. | `b67f188f` |
+| 18 | **Filas de presupuesto sin decir qué es qué** | "$ 3.130.871 · $ 147.933" — el hero de la misma pantalla usa "de". Ahora usan "/" como la fila equivalente de la webapp. | `b67f188f` |
+| 19 | **Ajustes decía "Última: Nunca"** | `useSync` guardaba `lastSynced` solo en estado de componente. No se puede derivar de `sync_metadata.last_synced_at` (son cursores del servidor, no marcas de corrida): se persiste bajo la clave centinela `__last_run`. | `73c76af3` |
+
+### Corrección importante: la sintaxis `/opacity` de la webapp SÍ funciona
+
+Afirmé que NativeWind no soportaba `bg-z-income/10` y reemplacé 50 clases. **Era falso.** El proyecto está en NativeWind **4.2.2** con Tailwind 3.3.5, no en v3. Verificado dos veces: Tailwind genera `bg-z-brass/30` → `rgb(147 120 68 / 0.3)`, y una sonda en el simulador con ambas variantes lado a lado las renderiza idénticas.
+
+Los reemplazos además degradaban 8 valores de alfa al "ajustar al token más cercano". Revertidos en `eda3261d`.
+
+El origen del error fue un comentario obsoleto en `lib/constants/styles.ts` que declaraba el archivo "NativeWind v3-compatible" — ya actualizado. Los ~60 tokens precalculados son residuo de v3 y podrían colapsarse en la sintaxis de la webapp (BACKLOG).
+
+Se conservó de ese commit el fix de layout del planificador, que era un defecto real y verificado.
+
 ### Limpieza
 
 - `app/modal.tsx` (`<Text>Modal</Text>` del template de Expo, cero referencias) borrado.
