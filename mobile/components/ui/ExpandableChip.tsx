@@ -118,8 +118,12 @@ export function ChipEyebrow({
   const t = TONE[tone];
   return (
     <Text
-      className={`text-[10px] font-inter-semibold uppercase tracking-[2px] ${t.label}`}
-      numberOfLines={1}
+      // tracking mirrors the webapp's `tracking-[0.18em]` at a 10px font.
+      // Two lines, not one: the webapp counterpart is a <p> that wraps, so
+      // truncating here clipped "Gasto de hoy" / "Por resolver" in the
+      // 3-column tools row.
+      className={`text-[10px] font-inter-semibold uppercase tracking-[1.8px] ${t.label}`}
+      numberOfLines={2}
     >
       {children}
     </Text>

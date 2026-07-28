@@ -1,5 +1,6 @@
 import { pullAll } from "./pull";
 import { pushPendingChanges } from "./push";
+import { notifyLocalDataChanged } from "./notify";
 import { supabase } from "../supabase";
 
 export type SyncStatus = "idle" | "syncing" | "error";
@@ -102,5 +103,12 @@ async function doSyncAll(): Promise<SyncResult> {
   // Push first so local changes don't get overwritten by stale remote data
   const pushed = await pushPendingChanges({ shouldAbort });
   const pulled = await pullAll({ shouldAbort });
+
+  // Screens load once on focus, which for the landing screen happens before
+  // this run finishes — without this they'd sit on the pre-sync snapshot until
+  // a pull-to-refresh. Only fire when something actually landed locally.
+  const pulledRows = Object.values(pulled).reduce((sum, n) => sum + n, 0);
+  if (pushed > 0 || pulledRows > 0) notifyLocalDataChanged();
+
   return { pushed, pulled };
 }
