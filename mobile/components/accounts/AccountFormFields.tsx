@@ -57,6 +57,8 @@ export function DayPicker({
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
+      // Pill row: never grow vertically (see PlanificadorRoot).
+      style={{ flexGrow: 0, flexShrink: 0 }}
       contentContainerStyle={{ gap: 8 }}
     >
       {DAYS_OF_MONTH.map((day) => {

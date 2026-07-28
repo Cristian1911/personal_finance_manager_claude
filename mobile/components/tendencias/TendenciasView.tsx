@@ -47,6 +47,8 @@ export function PeriodControl({
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
+      // Pill row: never grow vertically (see PlanificadorRoot).
+      style={{ flexGrow: 0, flexShrink: 0 }}
       contentContainerStyle={{ gap: 8 }}
       className="mt-3"
       accessibilityRole="tablist"

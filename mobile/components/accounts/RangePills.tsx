@@ -22,6 +22,8 @@ export function RangePills({ value, onChange }: Props) {
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
+      // Pill row: never grow vertically (see PlanificadorRoot).
+      style={{ flexGrow: 0, flexShrink: 0 }}
       contentContainerStyle={{ gap: 4, paddingHorizontal: 2 }}
     >
       {RANGES.map((r) => {
