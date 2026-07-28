@@ -83,6 +83,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (!nextUserId) {
       await SecureStore.deleteItemAsync(LAST_AUTH_USER_KEY).catch(() => {});
+      // El proceso sobrevive al logout, así que este ref sobrevive con él. Sin
+      // limpiarlo, volver a entrar con el MISMO usuario hacía que
+      // triggerInitialSyncOnce saliera por su propio guard y nunca sincronizara
+      // — y como el logout ya vació SQLite, la sesión arrancaba en cero hasta
+      // que el usuario hiciera pull-to-refresh a mano.
+      autoSyncedUserRef.current = null;
       return;
     }
 

@@ -21,7 +21,7 @@ import {
   RefreshCw,
 } from "lucide-react-native";
 
-import { formatCurrency, type CurrencyCode } from "@zeta/shared";
+import { formatCurrency, formatDate, type CurrencyCode } from "@zeta/shared";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
 import {
@@ -400,7 +400,9 @@ export default function CaptureScreenshotScreen() {
                     <Text className="text-sm text-foreground" numberOfLines={1}>
                       {t.description || "Sin descripción"}
                     </Text>
-                    <Text className="text-xs text-z-sage-dark">{t.date}</Text>
+                    <Text className="text-xs text-z-sage-dark">
+                      {t.date ? formatDate(t.date, "dd MMM yyyy") : ""}
+                    </Text>
                   </View>
                   <Text
                     className={`text-sm font-inter-semibold ${

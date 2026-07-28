@@ -98,6 +98,36 @@ En el mismo formulario, "Tasa de interés mensual (%)" y "Día de corte" tienen 
 
 ---
 
+## Hallazgos de la segunda pasada (Importar, Personas, Deseos, ¿Comprarlo?, Categorizar, Destinatarios, Suscripciones)
+
+**El wizard de Importar es lo mejor de la app.** Vale estudiarlo como referencia antes de rediseñar otras pantallas: su paso 3 presenta cuatro métricas que dicen la *consecuencia*, no el dato — "se agregan", "se omiten", "tú eliges". Eso es exactamente el "responde sin explicación" que persigue el milestone, y ninguna otra pantalla lo hace.
+
+**Afordancias falsas.** En Personas las filas parecen tocables (tarjeta, icono, cifra a la derecha) pero no responden — móvil es read-only por diseño hasta la Fase 2, sólo que nada lo comunica. Un tap muerto enseña al usuario a desconfiar del resto.
+
+**El control le roba espacio al dato.** Categorizar repite un botón "Categorizar" en cada fila —en una pantalla que ya se llama así— y ese botón consume tanto ancho que trunca las descripciones ("SEGUROS DE VIDA SUR…", "AVANCE SUCURSAL VIR…"). El dato que el usuario necesita para decidir es justo lo que se corta. La fila entera podría ser el control.
+
+**Dos etiquetas para el mismo enum, en ambas plataformas.** `IMPULSE` se muestra como "Capricho" en ¿Comprarlo? y como "Impulso" en Deseos. No es drift móvil↔webapp: la webapp tiene la misma incoherencia (`afford-page-client.tsx` vs `deseos-item.tsx`). Hay que decidir la palabra y aplicarla en los cuatro sitios a la vez.
+
+**Anatomías distintas en la misma lista.** En Deseos, una tarjeta enriquecida muestra veredicto + score + chips + 3 acciones; una sin enriquecer muestra un CTA y 2 acciones. Son la misma entidad en dos estados, pero se leen como dos componentes distintos.
+
+**Copy repetido en lugar de encabezado.** Suscripciones repite "Detectamos cobros mensuales repetidos de este comercio." una vez por tarjeta detectada. Es información de la sección, no de la fila.
+
+**Todos los destinatarios usan el icono de tienda**, incluso los que son personas ("Emerson · Préstamos personales"). El schema ya tiene `destinatarios.kind`; la UI no lo refleja.
+
+### Tercera pasada (Categorías, detalle de destinatario, Periodo, Perfil)
+
+**Periodo confirma visualmente la deuda de color que el backlog ya anotaba.** Los sobres de ingreso usan azul, morado y naranja stock de iOS (`envelope-colors.ts` no usa la paleta de marca). Junto al brass es el choque cromático más fuerte de la app — parecen dos productos distintos en la misma pantalla.
+
+**Periodo repite el patrón de Categorizar**: un botón "Pagar" por fila que consume ancho hasta partir la descripción en dos líneas, más un chip "Pendiente" en las 15 filas. Cuando todas las filas comparten estado, el chip deja de informar y solo agrega ruido.
+
+**El candado de "categoría del sistema" se repite en las 97 filas** de Categorías, sin leyenda que explique qué significa.
+
+**Perfil está bien** — y sirve de contraste: al ser ruta de stack y no modal, su header **no** tiene el hundimiento de ~60pt. Es la comparación que confirma el diagnóstico de abajo.
+
+### Defecto técnico con consecuencia visual
+
+**Las 7 pantallas modales tienen el header hundido ~60pt de más.** `MobileHeader` aplica `paddingTop: insets.top` incondicionalmente, pero en una presentación `modal` iOS ya desplaza la tarjeta hacia abajo, así que el inset se suma dos veces. Afecta a `capture`, `transaction/[id]`, `account/[id]`, `account/create`, `subscriptions`, `purchase-decision` y `bug-report`. No se arregló en el barrido: `MobileHeader` lo usan ~40 pantallas y el cambio exige verificar modales **y** no-modales una por una. Merece su propio cambio enfocado.
+
 ## Por dónde empezaría
 
 1. **El selector de día** — es acotado, se repite en tres pantallas, y hoy es el control que más fricción genera por toque.
