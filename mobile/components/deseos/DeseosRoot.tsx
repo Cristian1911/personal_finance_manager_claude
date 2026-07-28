@@ -1,4 +1,5 @@
 import { memo, useCallback, useRef, useState } from "react";
+import { formatAmountInput, parseFormattedAmount } from "../../lib/amount";
 import {
   Alert,
   Pressable,
@@ -139,7 +140,7 @@ export function DeseosRoot() {
   }, [sync, loadData]);
 
   const handleCreate = useCallback(async () => {
-    const amount = parseFloat(formAmount);
+    const amount = parseFormattedAmount(formAmount);
     if (!formName.trim() || isNaN(amount) || amount <= 0) return;
     if (!userId) return;
 
@@ -297,7 +298,7 @@ export function DeseosRoot() {
               placeholder="Precio estimado"
               placeholderTextColor={COLORS.sageDark}
               value={formAmount}
-              onChangeText={setFormAmount}
+              onChangeText={(next) => setFormAmount(formatAmountInput(next))}
               keyboardType="numeric"
               className="rounded-lg border border-white-6 bg-black-10 px-3 py-2.5 text-[14px] font-inter text-foreground mb-3"
             />

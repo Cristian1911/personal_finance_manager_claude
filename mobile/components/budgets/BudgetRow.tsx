@@ -15,7 +15,7 @@ import {
   GHOST_BUTTON_CLASS,
   PANEL_SURFACE_SUBTLE_CLASS,
 } from "../../lib/constants/styles";
-import { parseLocalizedAmount } from "../../lib/amount";
+import { formatAmountInput, parseFormattedAmount } from "../../lib/amount";
 import { COLORS } from "../../lib/constants/colors";
 import type { BudgetProgressRow } from "../../lib/repositories/budgets";
 
@@ -45,13 +45,13 @@ function BudgetRowBase({
   onInputFocus,
 }: BudgetRowProps) {
   const [expanded, setExpanded] = useState(false);
-  const [amountInput, setAmountInput] = useState(String(Math.round(item.amount)));
+  const [amountInput, setAmountInput] = useState(formatAmountInput(String(Math.round(item.amount))));
 
   // Re-sync input when row collapses so the next open shows the latest amount
   // (e.g., after save + reload, or when main data refreshes).
   useEffect(() => {
     if (!expanded) {
-      setAmountInput(String(Math.round(item.amount)));
+      setAmountInput(formatAmountInput(String(Math.round(item.amount))));
     }
   }, [expanded, item.amount]);
 
@@ -68,7 +68,7 @@ function BudgetRowBase({
   }));
 
   const handleSave = useCallback(async () => {
-    const parsed = parseLocalizedAmount(amountInput);
+    const parsed = parseFormattedAmount(amountInput);
     if (!Number.isFinite(parsed) || parsed <= 0) {
       Alert.alert("Monto inválido", "Ingresa un valor mayor a cero.");
       return;
@@ -125,7 +125,9 @@ function BudgetRowBase({
         </View>
 
         <Text className="mt-2 text-sm font-inter text-muted-foreground">
-          {formatCurrency(item.spent, currency)} · {formatCurrency(item.amount, currency)}
+          {/* "/" like the webapp row (mobile-presupuesto.tsx): the "·" it used
+              didn't say which number was spent and which was the budget. */}
+          {formatCurrency(item.spent, currency)} / {formatCurrency(item.amount, currency)}
         </Text>
 
         <View className="mt-3 h-2 rounded-full bg-black-10">
@@ -143,7 +145,7 @@ function BudgetRowBase({
           </Text>
           <TextInput
             value={amountInput}
-            onChangeText={setAmountInput}
+            onChangeText={(next) => setAmountInput(formatAmountInput(next))}
             onFocus={() => onInputFocus?.(index)}
             keyboardType="numeric"
             placeholder="0"

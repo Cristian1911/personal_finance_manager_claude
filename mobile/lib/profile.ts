@@ -1,5 +1,17 @@
+import { useEffect, useState } from "react";
 import type { CurrencyCode } from "@zeta/shared";
 import { getDatabase } from "./db/database";
+import type { NavFocus } from "./constants/mobile-nav";
+import {
+  getCachedNavFocus,
+  getCachedPreferredCurrency,
+  invalidateNavFocus,
+  invalidatePreferredCurrency,
+  setCachedNavFocus,
+  setCachedPreferredCurrency,
+} from "./profile-cache";
+
+export { invalidateNavFocus, invalidatePreferredCurrency };
 
 export type LocalProfile = {
   id: string;
@@ -15,6 +27,8 @@ export type LocalProfile = {
   location_tracking_enabled: number;
   dashboard_config?: string | null;
   mobile_dashboard_config?: string | null;
+  /** "PLAN" | "DEBT" — drives which screen owns the third tab slot. */
+  nav_focus?: string | null;
 };
 
 export async function getLocalProfile(): Promise<LocalProfile | null> {
@@ -23,7 +37,7 @@ export async function getLocalProfile(): Promise<LocalProfile | null> {
     `SELECT id, full_name, app_purpose, estimated_monthly_income,
             estimated_monthly_expenses, preferred_currency, timezone, locale,
             onboarding_completed, location_tracking_enabled,
-            dashboard_config, mobile_dashboard_config
+            dashboard_config, mobile_dashboard_config, nav_focus
      FROM profiles
      ORDER BY updated_at DESC
      LIMIT 1`
@@ -97,22 +111,54 @@ export async function updateProfile(params: {
 }
 
 /**
- * In-memory cache for the preferred currency. The profile row is effectively
- * immutable during a session (changing it requires a Supabase write via
- * Settings), so there's no reason to re-hit SQLite on every filter change in
- * every Root screen. Call `invalidatePreferredCurrency()` from any path that
- * mutates `profiles.preferred_currency`.
+ * The profile row is effectively immutable during a session (changing it
+ * requires a Supabase write via Settings), so there's no reason to re-hit
+ * SQLite on every filter change in every Root screen. The cache itself lives
+ * in `profile-cache.ts` so `clearDatabase()` can drop it without an import
+ * cycle; call the invalidators from any path that mutates the profile row.
  */
-let cachedPreferredCurrency: CurrencyCode | null = null;
-
-export function invalidatePreferredCurrency(): void {
-  cachedPreferredCurrency = null;
+export async function getPreferredCurrency(): Promise<CurrencyCode> {
+  const cached = getCachedPreferredCurrency();
+  if (cached) return cached;
+  const profile = await getLocalProfile();
+  const value = (profile?.preferred_currency as CurrencyCode | null) ?? "COP";
+  setCachedPreferredCurrency(value);
+  return value;
 }
 
-export async function getPreferredCurrency(): Promise<CurrencyCode> {
-  if (cachedPreferredCurrency) return cachedPreferredCurrency;
+/**
+ * Which screen owns the third tab slot — mirrors the webapp's
+ * `NavFocusProvider`.
+ */
+export async function getNavFocus(): Promise<NavFocus> {
+  const cached = getCachedNavFocus();
+  if (cached) return cached;
   const profile = await getLocalProfile();
-  cachedPreferredCurrency =
-    (profile?.preferred_currency as CurrencyCode | null) ?? "COP";
-  return cachedPreferredCurrency;
+  const value: NavFocus = profile?.nav_focus === "DEBT" ? "DEBT" : "PLAN";
+  setCachedNavFocus(value);
+  return value;
+}
+
+/**
+ * Reads `nav_focus` from local SQLite. Starts at "PLAN" (the DB default) and
+ * corrects on the first read — never blocks a tap on a remote round-trip.
+ */
+export function useNavFocus(): NavFocus {
+  const [focus, setFocus] = useState<NavFocus>(getCachedNavFocus() ?? "PLAN");
+
+  useEffect(() => {
+    let active = true;
+    getNavFocus()
+      .then((value) => {
+        if (active) setFocus(value);
+      })
+      .catch(() => {
+        // Profile not pulled yet — "PLAN" (the DB default) stays correct.
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return focus;
 }

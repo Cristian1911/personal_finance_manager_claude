@@ -8,6 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
 import { COLORS } from "../../../lib/constants/colors";
@@ -39,6 +40,7 @@ function FieldLabel({ children }: { children: string }) {
 }
 
 export default function EditDestinatarioScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [categories, setCategories] = useState<CategoryRow[]>([]);
@@ -126,7 +128,9 @@ export default function EditDestinatarioScreen() {
       ) : (
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+          // Focus-mode screen: tab bar hidden, so nothing else reserves the
+          // home indicator.
+          contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32 }}
           keyboardShouldPersistTaps="handled"
         >
           <View className="mb-4">

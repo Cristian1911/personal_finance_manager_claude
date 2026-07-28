@@ -13,7 +13,7 @@ import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import type { AccountRow } from "../../lib/repositories/accounts";
 import { registerPayment } from "../../lib/repositories/accounts";
 import { isDebtAccountType, LIQUID_ACCOUNT_TYPES } from "../../lib/constants/accounts";
-import { parseLocalizedAmount } from "../../lib/amount";
+import { parseFormattedAmount } from "../../lib/amount";
 import { COLORS } from "../../lib/constants/colors";
 import { BRASS_BUTTON_CLASS, PANEL_INSET_CLASS } from "../../lib/constants/styles";
 import { MobileSheet } from "../ui/MobileSheet";
@@ -86,7 +86,7 @@ export function PaymentActionSheet({
     }
   }, [visible, sourceAccounts]);
 
-  const parsedAmount = parseLocalizedAmount(amountInput);
+  const parsedAmount = parseFormattedAmount(amountInput);
   const hasValidAmount = Number.isFinite(parsedAmount) && parsedAmount > 0;
   // For debt accounts a source account is required (the paired OUTFLOW). For
   // non-debt accounts (recording income) the source is optional.

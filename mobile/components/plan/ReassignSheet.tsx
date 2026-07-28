@@ -13,7 +13,7 @@ import { useAuth } from "../../lib/auth";
 import { COLORS } from "../../lib/constants/colors";
 import { BRASS_BUTTON_CLASS, PANEL_INSET_CLASS } from "../../lib/constants/styles";
 import { MobileSheet } from "../ui/MobileSheet";
-import { parseLocalizedAmount } from "../../lib/amount";
+import { formatAmountInput, parseFormattedAmount } from "../../lib/amount";
 import {
   createAssignment,
   deleteAssignment,
@@ -73,14 +73,26 @@ export function ReassignSheet({
   const handleSelectIncome = useCallback((incomeId: string, remaining: number) => {
     setSelectedIncomeId(incomeId);
     if (target) {
-      setAmountInput(String(Math.min(target.currentAmount, remaining + (incomeId === target.currentIncomeEntryId ? target.currentAmount : 0))));
+      setAmountInput(
+        formatAmountInput(
+          String(
+            Math.min(
+              target.currentAmount,
+              remaining +
+                (incomeId === target.currentIncomeEntryId
+                  ? target.currentAmount
+                  : 0)
+            )
+          )
+        )
+      );
     }
   }, [target]);
 
   const handleReassign = useCallback(async () => {
     if (!target || !selectedIncomeId || !session?.user?.id) return;
 
-    const amount = parseLocalizedAmount(amountInput);
+    const amount = parseFormattedAmount(amountInput);
     if (!Number.isFinite(amount) || amount <= 0) {
       setError("Monto invalido");
       return;
@@ -197,7 +209,7 @@ export function ReassignSheet({
                   placeholder="Monto"
                   keyboardType="numeric"
                   value={amountInput}
-                  onChangeText={setAmountInput}
+                  onChangeText={(next) => setAmountInput(formatAmountInput(next))}
                 />
               </View>
             )}

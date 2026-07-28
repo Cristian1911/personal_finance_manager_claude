@@ -523,7 +523,9 @@ export default function CaptureScreen() {
       </View>
 
       <AppKeyboardAwareScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
+        // Modal reaches the bottom screen edge, so a fixed 24 left the last
+        // field under the home indicator (34pt on notched devices).
+        contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24 }}
       >
         {/* Type */}
         <TypePills value={type} onChange={handleTypeChange} />

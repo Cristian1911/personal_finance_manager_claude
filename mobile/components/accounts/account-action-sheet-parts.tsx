@@ -1,4 +1,5 @@
 import { Check, ChevronDown } from "lucide-react-native";
+import { formatAmountInput } from "../../lib/amount";
 import { Pressable, Text, TextInput, View } from "react-native";
 import type { AccountRow } from "../../lib/repositories/accounts";
 import { COLORS } from "../../lib/constants/colors";
@@ -38,7 +39,9 @@ export function SheetAmountInput({
       placeholder={placeholder}
       keyboardType="numeric"
       value={value}
-      onChangeText={onChangeText}
+      // This input is money-only (its placeholder is "Ej: 150.000"), so group
+      // here rather than in each of the four sheets that use it.
+      onChangeText={(next) => onChangeText(formatAmountInput(next))}
       autoFocus={autoFocus}
     />
   );

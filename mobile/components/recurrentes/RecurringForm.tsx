@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Calendar, ChevronDown, ChevronRight } from "lucide-react-native";
 import { getDebtPaymentCategoryId, type TransactionDirection } from "@zeta/shared";
@@ -147,6 +148,7 @@ export function RecurringForm({
   saving: boolean;
   onSubmit: (values: RecurringFormValues) => void;
 }) {
+  const insets = useSafeAreaInsets();
   const today = toLocalDateString(new Date());
 
   const [merchantName, setMerchantName] = useState(initial?.merchant_name ?? "");
@@ -231,7 +233,9 @@ export function RecurringForm({
   return (
     <ScrollView
       className="flex-1"
-      contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+      // Focus-mode screen: the tab bar is hidden, so nothing else reserves the
+      // home indicator. A fixed 32 sat just inside it on notched devices.
+      contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32 }}
       keyboardShouldPersistTaps="handled"
     >
       {error ? (

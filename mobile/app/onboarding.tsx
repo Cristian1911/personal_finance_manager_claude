@@ -28,6 +28,7 @@ import {
 } from "../lib/constants/styles";
 import { useTheme, themeSurfaceClasses } from "../lib/theme";
 import { parseMoney } from "../lib/utils/money";
+import { formatAmountInput, formatSignedAmountInput } from "../lib/amount";
 import { trackProductEvent } from "../lib/analytics/product-events";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
@@ -378,9 +379,9 @@ export default function MobileOnboardingScreen() {
             purpose={data.purpose}
             currency={data.currency}
             income={data.incomeMonthly}
-            onIncomeChange={(next) => set("incomeMonthly", next)}
+            onIncomeChange={(next) => set("incomeMonthly", formatAmountInput(next))}
             expenses={data.expensesMonthly}
-            onExpensesChange={(next) => set("expensesMonthly", next)}
+            onExpensesChange={(next) => set("expensesMonthly", formatAmountInput(next))}
             debtCount={data.debtCount}
             onDebtCountChange={(next) => set("debtCount", next)}
             neutral={neutral}
@@ -394,7 +395,7 @@ export default function MobileOnboardingScreen() {
             accountType={data.accountType}
             onAccountTypeChange={(next) => set("accountType", next)}
             balance={data.balance}
-            onBalanceChange={(next) => set("balance", next)}
+            onBalanceChange={(next) => set("balance", formatSignedAmountInput(next))}
             neutral={neutral}
           />
         )}

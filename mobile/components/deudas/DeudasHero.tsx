@@ -26,7 +26,7 @@ export function DeudasHero({
     <Pressable onPress={onToggle}>
       <GradientCard>
         <Text className="text-[10px] font-inter-semibold uppercase tracking-[3px] text-z-sage-dark">
-          Presion mensual
+          Presión mensual
         </Text>
 
         <View className="mt-2 flex-row items-baseline gap-1">

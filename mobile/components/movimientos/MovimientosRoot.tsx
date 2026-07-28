@@ -1,7 +1,8 @@
 import { useMemo, useCallback, useRef, useState } from "react";
 // (useMemo already imported; used below to derive a stable Set from linkableIds)
 import { View, Text, RefreshControl, FlatList, ActivityIndicator, Platform } from "react-native";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
+import { useReloadOnFocusAndSync } from "../../lib/sync/notify";
 import { formatDate, type CurrencyCode } from "@zeta/shared";
 import { useSync } from "../../lib/sync/hooks";
 import {
@@ -158,7 +159,7 @@ export function MovimientosRoot() {
     [searchQuery, currentMonth, filters.accountId]
   );
 
-  useFocusEffect(
+  useReloadOnFocusAndSync(
     useCallback(() => {
       void loadData({ reset: true });
     }, [loadData])

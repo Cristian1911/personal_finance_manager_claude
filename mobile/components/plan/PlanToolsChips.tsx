@@ -33,7 +33,7 @@ function Status({ parts }: { parts: Array<{ text: string; emphasis?: boolean }> 
       {parts.map((p, i) => (
         <Text
           key={i}
-          className={p.emphasis ? "font-inter-semibold text-z-brass-hot" : ""}
+          className={p.emphasis ? "font-inter-semibold text-z-brass" : ""}
         >
           {p.text}
         </Text>

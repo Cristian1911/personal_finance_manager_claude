@@ -10,6 +10,9 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { formatSignedAmountInput, parseFormattedAmount } from "../../../lib/amount";
+import { parseMoney } from "../../../lib/utils/money";
 import { useEffect, useState } from "react";
 import { AccountTypeGrid } from "../../../components/accounts/AccountTypeGrid";
 import { ColorPicker } from "../../../components/accounts/ColorPicker";
@@ -36,6 +39,7 @@ import {
 } from "../../../lib/constants/styles";
 
 export default function EditAccountScreen() {
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { session } = useAuth();
@@ -65,7 +69,7 @@ export default function EditAccountScreen() {
           setName(account.name);
           setInstitution(account.institution_name ?? "");
           setCurrency(account.currency_code);
-          setBalance(String(account.current_balance));
+          setBalance(formatSignedAmountInput(String(account.current_balance)));
           setColor(account.color ?? "#6366f1");
           setCreditLimit(account.credit_limit != null ? String(account.credit_limit) : "");
           setInterestRate(account.interest_rate != null ? String(account.interest_rate) : "");
@@ -110,10 +114,13 @@ export default function EditAccountScreen() {
         account_type: accountType,
         institution_name: institution.trim() || null,
         currency_code: currency,
-        current_balance: parseFloat(balance) || 0,
+        // parseMoney, not parseFormattedAmount: this field is formatted with
+        // formatSignedAmountInput, which keeps the "-" of a negative balance,
+        // and only parseMoney carries the sign back.
+        current_balance: parseMoney(balance),
         color,
         credit_limit:
-          isCreditCard && creditLimit ? parseFloat(creditLimit) : null,
+          isCreditCard && creditLimit ? parseFormattedAmount(creditLimit) : null,
         interest_rate:
           (isCreditCard || isLoan) && interestRate
             ? parseFloat(interestRate)
@@ -156,7 +163,7 @@ export default function EditAccountScreen() {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
       >
@@ -200,7 +207,7 @@ export default function EditAccountScreen() {
 
         {/* Balance */}
         <FormField label="Balance actual" required>
-          <NumericInput value={balance} onChangeText={setBalance} />
+          <NumericInput value={balance} onChangeText={setBalance} money />
         </FormField>
 
         {/* Credit card specific */}
@@ -210,6 +217,7 @@ export default function EditAccountScreen() {
               <NumericInput
                 value={creditLimit}
                 onChangeText={setCreditLimit}
+                money
                 placeholder="Ej: 5000000"
               />
             </FormField>

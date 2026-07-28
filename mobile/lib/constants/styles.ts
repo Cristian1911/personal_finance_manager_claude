@@ -1,6 +1,13 @@
 /**
- * NativeWind v3-compatible style constants.
- * Mirrors webapp/src/lib/constants/styles.ts using pre-computed opacity colors.
+ * Style constants. Mirrors webapp/src/lib/constants/styles.ts.
+ *
+ * NOTE: the pre-computed opacity colors below (`z-brass-12`, `white-6`, …) are
+ * legacy from NativeWind v3, which couldn't resolve the `/opacity` modifier.
+ * The app is on NativeWind 4.2.2 + Tailwind 3.3.5, where the webapp's own
+ * `bg-z-brass/12` syntax compiles and renders correctly — verified on device.
+ * Prefer the webapp syntax in new code so both codebases read the same; the
+ * pre-computed tokens stay because ~hundreds of call sites still use them.
+ * Collapsing the two dialects is tracked in BACKLOG.md.
  */
 
 /** Primary action button */

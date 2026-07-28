@@ -76,7 +76,7 @@ export function DeudasAccountsAccordion({
                   )}
                   {account.paymentDay && (
                     <Text className="text-[10px] font-inter text-muted-foreground">
-                      Dia {account.paymentDay}
+                      Día {account.paymentDay}
                     </Text>
                   )}
                 </View>

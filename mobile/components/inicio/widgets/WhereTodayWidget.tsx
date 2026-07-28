@@ -46,7 +46,14 @@ export function renderWhereTodayWidget({
     chip: (
       <View className="items-center gap-1">
         <ChipEyebrow tone={tone}>Gasto de hoy</ChipEyebrow>
-        <Text className="text-[20px] font-inter-bold leading-none tabular-nums text-foreground">
+        {/* One line, shrink to fit: in the 3-column tools row a 6-figure COP
+            amount wrapped between the "$" and the digits. */}
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
+          className="text-[20px] font-inter-bold leading-none tabular-nums text-foreground"
+        >
           {formatCurrency(spentToday, currency)}
         </Text>
         <Text

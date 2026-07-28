@@ -35,10 +35,10 @@ export const ACCOUNT_TYPES = [
   },
   {
     value: "CREDIT_CARD",
-    label: "Tarjeta de Credito",
-    shortLabel: "T. Credito",
+    label: "Tarjeta de Crédito",
+    shortLabel: "Tarjeta",
     icon: CreditCard,
-    description: "Tarjeta de credito con limite",
+    description: "Tarjeta de crédito con límite",
   },
   {
     value: "CASH",
@@ -49,17 +49,17 @@ export const ACCOUNT_TYPES = [
   },
   {
     value: "INVESTMENT",
-    label: "Inversion",
-    shortLabel: "Inversion",
+    label: "Inversión",
+    shortLabel: "Inversión",
     icon: TrendingUp,
     description: "CDT, fondos, acciones",
   },
   {
     value: "LOAN",
-    label: "Prestamo",
-    shortLabel: "Prestamo",
+    label: "Préstamo",
+    shortLabel: "Préstamo",
     icon: Landmark,
-    description: "Deuda o prestamo por pagar",
+    description: "Deuda o préstamo por pagar",
   },
   {
     value: "OTHER",
@@ -72,8 +72,8 @@ export const ACCOUNT_TYPES = [
 
 export const CURRENCIES = [
   { code: "COP", name_es: "Peso Colombiano" },
-  { code: "USD", name_es: "Dolar Estadounidense" },
-  { code: "BRL", name_es: "Real Brasileno" },
+  { code: "USD", name_es: "Dólar Estadounidense" },
+  { code: "BRL", name_es: "Real Brasileño" },
   { code: "MXN", name_es: "Peso Mexicano" },
   { code: "EUR", name_es: "Euro" },
   { code: "PEN", name_es: "Sol Peruano" },

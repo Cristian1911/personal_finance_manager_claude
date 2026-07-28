@@ -12,7 +12,7 @@ import { X } from "lucide-react-native";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import type { AccountRow } from "../../lib/repositories/accounts";
 import { createTransfer } from "../../lib/repositories/transfers";
-import { parseLocalizedAmount } from "../../lib/amount";
+import { parseFormattedAmount } from "../../lib/amount";
 import { toLocalDateString } from "../../lib/utils/date";
 import { COLORS } from "../../lib/constants/colors";
 import { BRASS_BUTTON_CLASS } from "../../lib/constants/styles";
@@ -89,7 +89,7 @@ export function TransferSheet({
     [allAccounts, fromId, fromAccount?.currency_code]
   );
 
-  const parsedAmount = parseLocalizedAmount(amountInput);
+  const parsedAmount = parseFormattedAmount(amountInput);
   const hasValidAmount = Number.isFinite(parsedAmount) && parsedAmount > 0;
   const canSubmit = !!fromId && !!toId && hasValidAmount && !submitting;
 

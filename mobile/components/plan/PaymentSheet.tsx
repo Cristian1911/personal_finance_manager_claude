@@ -22,7 +22,7 @@ import { BRASS_BUTTON_CLASS, PANEL_INSET_CLASS } from "../../lib/constants/style
 import { MobileSheet } from "../ui/MobileSheet";
 import { getDatabase } from "../../lib/db/database";
 import { toLocalMonthString } from "../../lib/utils/date";
-import { parseLocalizedAmount } from "../../lib/amount";
+import { formatAmountInput, parseFormattedAmount } from "../../lib/amount";
 import { isDebtAccountType } from "../../lib/constants/accounts";
 import { markEntryCompleted } from "../../lib/repositories/planning";
 import { registerPayment } from "../../lib/repositories/accounts";
@@ -174,7 +174,7 @@ export function PaymentSheet({
     if (amountOption === "planned") return entry.amount;
     if (amountOption === "total_debt" && debtAccount) return Math.abs(debtAccount.current_balance);
     if (amountOption === "custom") {
-      const parsed = parseLocalizedAmount(customAmount);
+      const parsed = parseFormattedAmount(customAmount);
       return Number.isNaN(parsed) || parsed <= 0 ? null : parsed;
     }
     return null;
@@ -507,7 +507,7 @@ export function PaymentSheet({
                         placeholder="Ej: 150.000"
                         keyboardType="numeric"
                         value={customAmount}
-                        onChangeText={setCustomAmount}
+                        onChangeText={(next) => setCustomAmount(formatAmountInput(next))}
                         autoFocus
                       />
                     </View>

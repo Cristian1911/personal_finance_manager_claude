@@ -293,7 +293,7 @@ export default function CaptureVoiceScreen() {
         >
           <ArrowLeft size={18} color={COLORS.foreground} />
         </Pressable>
-        <Text className="text-lg font-semibold text-z-white">
+        <Text className="text-lg font-inter-semibold text-z-white">
           Capturar por voz
         </Text>
       </View>
@@ -334,7 +334,7 @@ export default function CaptureVoiceScreen() {
             >
               <Mic size={36} color={COLORS.brass} />
             </Animated.View>
-            <Text className="text-sm font-medium text-z-white">Escuchando…</Text>
+            <Text className="text-sm font-inter-medium text-z-white">Escuchando…</Text>
             <View className="w-full rounded-2xl bg-z-surface-2-55 px-4 py-3 min-h-20">
               <Text className="text-base text-z-white">
                 {transcript || "…"}
@@ -346,7 +346,7 @@ export default function CaptureVoiceScreen() {
               className={`${GHOST_BUTTON_CLASS} flex-row items-center justify-center gap-2 rounded-2xl px-4 py-3`}
             >
               <Square size={16} color={COLORS.foreground} />
-              <Text className="text-sm font-medium text-z-white">Detener</Text>
+              <Text className="text-sm font-inter-medium text-z-white">Detener</Text>
             </Pressable>
           </View>
         )}
@@ -370,7 +370,7 @@ export default function CaptureVoiceScreen() {
                       Detectado
                     </Text>
                     <Text
-                      className={`text-sm font-semibold ${
+                      className={`text-sm font-inter-semibold ${
                         parsed.direction === "OUTFLOW"
                           ? "text-z-expense"
                           : "text-z-income"
@@ -379,7 +379,7 @@ export default function CaptureVoiceScreen() {
                       {parsed.direction === "OUTFLOW" ? "Gasto" : "Ingreso"}
                     </Text>
                   </View>
-                  <Text className="text-xl font-semibold text-z-white">
+                  <Text className="text-xl font-inter-semibold text-z-white">
                     {formatCurrency(
                       parsed.amount,
                       (accounts.find((a) => a.id === selectedAccountId)?.currency_code ||
@@ -415,7 +415,7 @@ export default function CaptureVoiceScreen() {
                             >
                               <Text
                                 className={`text-xs ${
-                                  isSelected ? "font-semibold text-z-brass" : "text-z-white"
+                                  isSelected ? "font-inter-semibold text-z-brass" : "text-z-white"
                                 }`}
                               >
                                 {a.name}
@@ -441,7 +441,7 @@ export default function CaptureVoiceScreen() {
                       !selectedAccountId ? "opacity-50" : ""
                     }`}
                   >
-                    <Text className="text-base font-semibold text-z-ink">
+                    <Text className="text-base font-inter-semibold text-z-ink">
                       Guardar transacción
                     </Text>
                   </Pressable>
@@ -451,7 +451,7 @@ export default function CaptureVoiceScreen() {
                     className={`${GHOST_BUTTON_CLASS} flex-row items-center justify-center gap-2 rounded-2xl px-4 py-3`}
                   >
                     <RefreshCw size={16} color={COLORS.foreground} />
-                    <Text className="text-sm font-medium text-z-white">
+                    <Text className="text-sm font-inter-medium text-z-white">
                       Intentar de nuevo
                     </Text>
                   </Pressable>
@@ -467,7 +467,7 @@ export default function CaptureVoiceScreen() {
                   accessibilityRole="button"
                   className={`${BRASS_BUTTON_CLASS} flex-row items-center justify-center gap-2 rounded-2xl px-4 py-4`}
                 >
-                  <Text className="text-base font-semibold text-z-ink">
+                  <Text className="text-base font-inter-semibold text-z-ink">
                     Intentar de nuevo
                   </Text>
                 </Pressable>
@@ -486,7 +486,7 @@ export default function CaptureVoiceScreen() {
         {step === "done" && (
           <View className="mt-6 items-center gap-4">
             <CheckCircle size={48} color={COLORS.income} />
-            <Text className="text-lg font-semibold text-z-white">
+            <Text className="text-lg font-inter-semibold text-z-white">
               Transacción guardada
             </Text>
             <View className="w-full gap-3">
@@ -495,7 +495,7 @@ export default function CaptureVoiceScreen() {
                 accessibilityRole="button"
                 className={`${GHOST_BUTTON_CLASS} flex-row items-center justify-center gap-2 rounded-2xl px-4 py-4`}
               >
-                <Text className="text-base font-medium text-z-white">
+                <Text className="text-base font-inter-medium text-z-white">
                   Capturar otra
                 </Text>
               </Pressable>
@@ -504,7 +504,7 @@ export default function CaptureVoiceScreen() {
                 accessibilityRole="button"
                 className={`${BRASS_BUTTON_CLASS} flex-row items-center justify-center gap-2 rounded-2xl px-4 py-4`}
               >
-                <Text className="text-base font-semibold text-z-ink">
+                <Text className="text-base font-inter-semibold text-z-ink">
                   Volver a Inicio
                 </Text>
               </Pressable>

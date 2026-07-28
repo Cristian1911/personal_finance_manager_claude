@@ -1,5 +1,7 @@
 import { pullAll } from "./pull";
 import { pushPendingChanges } from "./push";
+import { notifyLocalDataChanged } from "./notify";
+import { getDatabase } from "../db/database";
 import { supabase } from "../supabase";
 
 export type SyncStatus = "idle" | "syncing" | "error";
@@ -26,6 +28,43 @@ export function isResetInProgress(): boolean {
 }
 
 type SyncResult = { pushed: number; pulled: Record<string, number> };
+
+/**
+ * When a sync last *ran*, for the Settings screen.
+ *
+ * Deliberately not derived from `sync_metadata.last_synced_at`: those are
+ * per-table cursors holding the newest SERVER-side `updated_at` actually
+ * pulled, so on a quiet account they'd report the age of the newest record,
+ * not the age of the last run. Stored under a sentinel key — `pullAll` only
+ * looks up cursors for names in SYNC_TABLES, so the extra row is inert.
+ */
+const LAST_RUN_KEY = "__last_run";
+
+async function recordSyncRun(): Promise<void> {
+  try {
+    const db = await getDatabase();
+    await db.runAsync(
+      `INSERT INTO sync_metadata (table_name, last_synced_at) VALUES (?, ?)
+       ON CONFLICT(table_name) DO UPDATE SET last_synced_at = excluded.last_synced_at`,
+      [LAST_RUN_KEY, new Date().toISOString()]
+    );
+  } catch {
+    // Bookkeeping only — never fail a sync over the timestamp.
+  }
+}
+
+export async function getLastSyncRunAt(): Promise<string | null> {
+  try {
+    const db = await getDatabase();
+    const row = await db.getFirstAsync<{ last_synced_at: string | null }>(
+      `SELECT last_synced_at FROM sync_metadata WHERE table_name = ?`,
+      [LAST_RUN_KEY]
+    );
+    return row?.last_synced_at ?? null;
+  } catch {
+    return null;
+  }
+}
 
 // Single-flight lock with one coalesced follow-up run. syncAll is triggered
 // from many places (auth listener, pull-to-refresh on every root screen,
@@ -102,5 +141,22 @@ async function doSyncAll(): Promise<SyncResult> {
   // Push first so local changes don't get overwritten by stale remote data
   const pushed = await pushPendingChanges({ shouldAbort });
   const pulled = await pullAll({ shouldAbort });
+
+  if (!resetInProgress) await recordSyncRun();
+
+  // Screens load once on focus, which for the landing screen happens before
+  // this run finishes — without this they'd sit on the pre-sync snapshot until
+  // a pull-to-refresh. Only fire when something actually landed locally.
+  // `resetInProgress` is re-checked here, not just in the pull/push loops: the
+  // per-table abort probe runs *before* each table, so if the flag flips while
+  // the LAST table is mid-apply the loop ends normally and we'd reach this line
+  // during a reset. Screens subscribe to the notify regardless of focus, so a
+  // stray bump would run `load()` against a DB that `clearDatabase()` is
+  // deleting table by table (its execAsync isn't a single transaction).
+  const pulledRows = Object.values(pulled).reduce((sum, n) => sum + n, 0);
+  if (!resetInProgress && (pushed > 0 || pulledRows > 0)) {
+    notifyLocalDataChanged();
+  }
+
   return { pushed, pulled };
 }

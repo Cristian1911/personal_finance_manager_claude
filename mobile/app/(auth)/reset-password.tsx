@@ -104,7 +104,7 @@ export default function ResetPasswordScreen() {
       }}
       bottomOffset={20}
     >
-        <Text className="text-3xl font-bold text-center text-foreground mb-2">
+        <Text className="text-3xl font-inter-bold text-center text-foreground mb-2">
           Nueva contraseña
         </Text>
         <Text className="text-base text-center text-muted-foreground mb-10">
@@ -117,7 +117,7 @@ export default function ResetPasswordScreen() {
           </View>
         )}
 
-        <Text className="text-sm font-medium text-muted-foreground mb-1">
+        <Text className="text-sm font-inter-medium text-muted-foreground mb-1">
           Nueva contraseña
         </Text>
         <TextInput
@@ -131,7 +131,7 @@ export default function ResetPasswordScreen() {
           textContentType="newPassword"
         />
 
-        <Text className="text-sm font-medium text-muted-foreground mb-1">
+        <Text className="text-sm font-inter-medium text-muted-foreground mb-1">
           Confirmar contraseña
         </Text>
         <TextInput
@@ -156,7 +156,7 @@ export default function ResetPasswordScreen() {
           {loading ? (
             <ActivityIndicator color={COLORS.ink} />
           ) : (
-            <Text className="text-z-ink font-semibold text-base">
+            <Text className="text-z-ink font-inter-semibold text-base">
               Guardar contraseña
             </Text>
           )}
@@ -166,7 +166,7 @@ export default function ResetPasswordScreen() {
           className="mt-6 items-center"
           onPress={() => router.replace("/(auth)/login")}
         >
-          <Text className="text-sm text-z-brass font-medium">
+          <Text className="text-sm text-z-brass font-inter-medium">
             Volver al inicio de sesión
           </Text>
         </TouchableOpacity>

@@ -9,6 +9,9 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { formatSignedAmountInput, parseFormattedAmount } from "../../lib/amount";
+import { parseMoney } from "../../lib/utils/money";
 import { useState } from "react";
 import { AccountTypeGrid } from "../../components/accounts/AccountTypeGrid";
 import { ColorPicker } from "../../components/accounts/ColorPicker";
@@ -29,6 +32,7 @@ import {
 } from "../../lib/constants/styles";
 
 export default function CreateAccountScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { session } = useAuth();
   const [saving, setSaving] = useState(false);
@@ -61,7 +65,9 @@ export default function CreateAccountScreen() {
       return;
     }
 
-    const parsedBalance = parseFloat(balance) || 0;
+    // parseMoney, not parseFormattedAmount: the latter strips the "-", so a
+    // card created with an existing debt would be saved as a positive balance.
+    const parsedBalance = parseMoney(balance);
 
     if (isCreditCard && !creditLimit.trim()) {
       Alert.alert("Error", "El límite de crédito es requerido para tarjetas.");
@@ -79,7 +85,7 @@ export default function CreateAccountScreen() {
         current_balance: parsedBalance,
         color,
         credit_limit:
-          isCreditCard && creditLimit ? parseFloat(creditLimit) : null,
+          isCreditCard && creditLimit ? parseFormattedAmount(creditLimit) : null,
         interest_rate:
           (isCreditCard || isLoan) && interestRate
             ? parseFloat(interestRate)
@@ -114,7 +120,7 @@ export default function CreateAccountScreen() {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
       >
@@ -157,7 +163,7 @@ export default function CreateAccountScreen() {
 
         {/* Balance */}
         <FormField label="Balance actual" required>
-          <NumericInput value={balance} onChangeText={setBalance} />
+          <NumericInput value={balance} onChangeText={setBalance} money />
         </FormField>
 
         {/* Credit card specific fields */}
@@ -167,6 +173,7 @@ export default function CreateAccountScreen() {
               <NumericInput
                 value={creditLimit}
                 onChangeText={setCreditLimit}
+                money
                 placeholder="Ej: 5000000"
               />
             </FormField>

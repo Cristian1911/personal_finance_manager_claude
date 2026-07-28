@@ -75,6 +75,18 @@ export function formatAmountInput(input: string): string {
 }
 
 /**
+ * `formatAmountInput` for fields that accept a negative value (account
+ * balances). It drops the sign, which would silently flip a debt balance to
+ * positive as soon as the user edits the field.
+ */
+export function formatSignedAmountInput(input: string): string {
+  const negative = (input ?? "").trim().startsWith("-");
+  const formatted = formatAmountInput(input);
+  if (!formatted) return negative ? "-" : "";
+  return negative ? `-${formatted}` : formatted;
+}
+
+/**
  * Parse a formatted amount input (as produced by `formatAmountInput`) to a
  * number. Dots are treated as thousand separators, comma as the decimal mark.
  */

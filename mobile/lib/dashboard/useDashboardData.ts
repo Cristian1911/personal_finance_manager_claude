@@ -1,5 +1,6 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useFocusEffect } from "expo-router";
+import { useSyncVersion } from "../sync/notify";
 import type { CurrencyCode } from "@zeta/shared";
 import { getAllAccounts, type AccountRow } from "../repositories/accounts";
 import { getTransactions } from "../repositories/transactions";
@@ -382,6 +383,18 @@ export function useDashboardData() {
       load();
     }, [load])
   );
+
+  // Focus fires once on mount, before the post-login background sync lands.
+  // Re-read when a sync run writes something *after* this mount — comparing
+  // against a ref instead of `> 0` so remounting after an earlier sync doesn't
+  // double-load on top of the useFocusEffect call above.
+  const syncVersion = useSyncVersion();
+  const seenSyncVersion = useRef(syncVersion);
+  useEffect(() => {
+    if (syncVersion === seenSyncVersion.current) return;
+    seenSyncVersion.current = syncVersion;
+    load();
+  }, [syncVersion, load]);
 
   return { summary, reload: load };
 }

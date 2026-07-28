@@ -15,7 +15,7 @@ import type { AccountRow } from "../../lib/repositories/accounts";
 import { recordRecurringOccurrencePayment } from "../../lib/repositories/recurring";
 import type { OccurrenceWithTemplate } from "../../lib/repositories/recurring";
 import { isDebtAccountType, LIQUID_ACCOUNT_TYPES } from "../../lib/constants/accounts";
-import { parseLocalizedAmount } from "../../lib/amount";
+import { formatAmountInput, parseFormattedAmount } from "../../lib/amount";
 import { COLORS } from "../../lib/constants/colors";
 import { PANEL_INSET_CLASS } from "../../lib/constants/styles";
 import { MobileSheet } from "../ui/MobileSheet";
@@ -85,7 +85,7 @@ export function RecurringConfirmSheet({
   useEffect(() => {
     if (visible && occurrence) {
       if (!hasInitializedRef.current) {
-        setAmountInput(String(Math.round(occurrence.expected_amount)));
+        setAmountInput(formatAmountInput(String(Math.round(occurrence.expected_amount))));
         setSelectedSourceId(sourceAccounts[0]?.id ?? "");
         setShowSourcePicker(false);
         setSubmitting(false);
@@ -97,7 +97,7 @@ export function RecurringConfirmSheet({
     }
   }, [visible, occurrence, sourceAccounts]);
 
-  const parsedAmount = parseLocalizedAmount(amountInput);
+  const parsedAmount = parseFormattedAmount(amountInput);
   const hasValidAmount = Number.isFinite(parsedAmount) && parsedAmount > 0;
   const sourceOk = !isDebt || selectedSourceId !== "";
   const canSubmit = !!occurrence && hasValidAmount && sourceOk && !submitting;
@@ -193,7 +193,9 @@ export function RecurringConfirmSheet({
             {submitting ? (
               <ActivityIndicator size="small" color={COLORS.ink} />
             ) : (
-              <Text className={`text-sm font-inter-semibold ${canSubmit ? "text-z-ink" : "text-z-ink/50"}`}>
+              // Disabled uses muted-foreground, not ink/50: over the dimmed
+              // bg-z-brass/30 the ink composites to near-invisible.
+              <Text className={`text-sm font-inter-semibold ${canSubmit ? "text-z-ink" : "text-muted-fg-70"}`}>
                 Confirmar pago
               </Text>
             )}

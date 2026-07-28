@@ -699,6 +699,18 @@ export const DB_MIGRATIONS: DbMigration[] = [
       )`,
     ],
   },
+  {
+    version: 25,
+    statements: [
+      // ── profiles.nav_focus ────────────────────────────────────────────
+      // Onboarding has always written this to Supabase (mirroring the webapp's
+      // finishOnboarding), but it was never mirrored locally — so the mobile
+      // tab bar had no source for it and the Deudas tab could never render.
+      // Pull does `select("*")` filtered by PRAGMA table_info, so adding the
+      // column here is enough for it to start syncing.
+      `ALTER TABLE profiles ADD COLUMN nav_focus TEXT NOT NULL DEFAULT 'PLAN'`,
+    ],
+  },
 ];
 
 export const LATEST_DB_VERSION =

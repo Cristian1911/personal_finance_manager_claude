@@ -44,6 +44,7 @@ import {
 } from "../lib/constants/styles";
 import { useTheme, themeSurfaceClasses } from "../lib/theme";
 import { parseMoney } from "../lib/utils/money";
+import { formatAmountInput } from "../lib/amount";
 import { toLocalMonthString } from "../lib/utils/date";
 
 const URGENCY_OPTIONS: ReadonlyArray<{ value: PurchaseUrgency; label: string }> = [
@@ -316,7 +317,7 @@ export default function PurchaseDecisionScreen() {
           </Text>
           <TextInput
             value={amount}
-            onChangeText={setAmount}
+            onChangeText={(next) => setAmount(formatAmountInput(next))}
             keyboardType="numeric"
             autoCorrect={false}
             autoCapitalize="none"
