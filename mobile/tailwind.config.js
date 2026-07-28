@@ -95,6 +95,16 @@ module.exports = {
         "z-sage-30": "rgba(217,204,185,0.30)",
 
         // z-surface-2 (base #1E221E = rgb(30,34,30))
+        // Low-alpha tints: used as track/divider/subtle-fill across ~20 call
+        // sites (MobileSheet, SectionDivider, ExpandableChip, PlanNetHero's
+        // burn bar…) that referenced them before they were ever defined here,
+        // so those surfaces rendered fully transparent.
+        "z-surface-2-3": "rgba(30,34,30,0.03)",
+        "z-surface-2-4": "rgba(30,34,30,0.04)",
+        "z-surface-2-5": "rgba(30,34,30,0.05)",
+        "z-surface-2-6": "rgba(30,34,30,0.06)",
+        "z-surface-2-8": "rgba(30,34,30,0.08)",
+        "z-surface-2-10": "rgba(30,34,30,0.10)",
         "z-surface-2-55": "rgba(30,34,30,0.55)",
         "z-surface-2-60": "rgba(30,34,30,0.60)",
         "z-surface-2-80": "rgba(30,34,30,0.80)",
@@ -113,6 +123,8 @@ module.exports = {
         "white-6": "rgba(255,255,255,0.06)",
         "white-8": "rgba(255,255,255,0.08)",
         "white-10": "rgba(255,255,255,0.10)",
+        // Referenced by QuickActionsBar's active state before being defined.
+        "white-12": "rgba(255,255,255,0.12)",
         "white-15": "rgba(255,255,255,0.15)",
         "white-25": "rgba(255,255,255,0.25)",
 

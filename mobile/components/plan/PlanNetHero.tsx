@@ -134,7 +134,7 @@ function PlanNetHeroBase({
         </Text>
         {daysRemaining > 0 && (
           <Text className="text-xs font-inter text-muted-foreground">
-            · {formatCurrency(perDay, currency)}/día restante
+            {formatCurrency(perDay, currency)}/día restante
           </Text>
         )}
 
