@@ -539,7 +539,7 @@ export function PaymentSheet({
                             <Pressable
                               key={acc.id}
                               onPress={() => { setSelectedSourceId(acc.id); setShowSourcePicker(false); }}
-                              className={`flex-row items-center justify-between px-3 py-2.5 active:bg-z-surface-2/5 ${i > 0 ? "border-t border-white-6" : ""}`}
+                              className={`flex-row items-center justify-between px-3 py-2.5 active:bg-white-5 ${i > 0 ? "border-t border-white-6" : ""}`}
                             >
                               <Text className="text-[13px] font-inter-medium text-foreground">{acc.name}</Text>
                               {acc.id === selectedSourceId && <Check size={14} color={COLORS.income} />}
@@ -614,7 +614,7 @@ function RadioOption({ selected, onPress, label, detail }: {
 }) {
   return (
     <Pressable onPress={onPress} className="flex-row items-center gap-3 py-2.5 mb-1">
-      <View className={`h-5 w-5 rounded-full border-2 items-center justify-center ${selected ? "border-z-brass" : "border-white/20"}`}>
+      <View className={`h-5 w-5 rounded-full border-2 items-center justify-center ${selected ? "border-z-brass" : "border-white-25"}`}>
         {selected && <View className="h-2.5 w-2.5 rounded-full bg-z-brass" />}
       </View>
       <View className="flex-1 flex-row items-center justify-between">

@@ -271,7 +271,7 @@ export default function PeriodoScreen() {
           <Text className="text-xs font-inter text-muted-foreground">
             {formatDate(data.period.start_date, "dd MMM")} — {formatDate(data.period.end_date, "dd MMM yyyy")}
           </Text>
-          <View className={`rounded-md px-2 py-0.5 ${percentAssigned >= 100 ? "bg-z-income/10" : "bg-z-brass/10"}`}>
+          <View className={`rounded-md px-2 py-0.5 ${percentAssigned >= 100 ? "bg-z-income-10" : "bg-z-brass-10"}`}>
             <Text className={`text-[10px] font-inter-semibold ${percentAssigned >= 100 ? "text-z-income" : "text-z-brass"}`}>
               {percentAssigned}% asignado
             </Text>
@@ -433,9 +433,9 @@ export default function PeriodoScreen() {
 // ── Status badge ──
 function StatusBadge({ status }: { status: string }) {
   const config: Record<string, { label: string; bg: string; text: string }> = {
-    PLANNED: { label: "Pendiente", bg: "bg-z-alert/10", text: "text-z-alert" },
-    COMPLETED: { label: "Pagado", bg: "bg-z-income/10", text: "text-z-income" },
-    SKIPPED: { label: "Omitido", bg: "bg-z-surface-2/5", text: "text-muted-foreground" },
+    PLANNED: { label: "Pendiente", bg: "bg-z-alert-12", text: "text-z-alert" },
+    COMPLETED: { label: "Pagado", bg: "bg-z-income-10", text: "text-z-income" },
+    SKIPPED: { label: "Omitido", bg: "bg-white-5", text: "text-muted-foreground" },
   };
   const c = config[status] ?? config.PLANNED;
   return (
@@ -494,7 +494,7 @@ function IncomeCard({
                   <Check size={12} color={color} />
                 </View>
               ) : (
-                <View className="h-5 w-5 rounded-md border border-white/10 bg-z-surface-2/5" />
+                <View className="h-5 w-5 rounded-md border border-white-10 bg-white-5" />
               )}
             </View>
           </View>

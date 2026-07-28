@@ -194,7 +194,7 @@ const CashEntryRow = memo(function CashEntryRow({
             </Text>
           )}
           {entry.recurring ? (
-            <View className="flex-row items-center gap-1 rounded-full bg-z-brass/10 px-2 py-0.5">
+            <View className="flex-row items-center gap-1 rounded-full bg-z-brass-10 px-2 py-0.5">
               <Repeat size={9} color={COLORS.brass} />
               <Text className="text-[10px] font-inter-semibold text-z-brass">
                 {entry.recurring.months} meses
@@ -387,7 +387,7 @@ function MonthPicker({ value, onChange }: MonthPickerProps) {
             <Pressable
               key={m}
               onPress={() => onChange(yyyyMm)}
-              className={`w-1/4 items-center py-2 ${selected ? "bg-z-brass/20 rounded-md" : ""}`}
+              className={`w-1/4 items-center py-2 ${selected ? "bg-z-brass-20 rounded-md" : ""}`}
             >
               <Text
                 className={`text-[12px] font-inter-medium ${selected ? "text-z-brass" : "text-foreground"}`}

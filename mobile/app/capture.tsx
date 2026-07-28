@@ -511,7 +511,7 @@ export default function CaptureScreen() {
       >
         <Pressable
           onPress={() => router.back()}
-          className="h-8 w-8 items-center justify-center rounded-full bg-black-10 active:bg-z-surface-2/10"
+          className="h-8 w-8 items-center justify-center rounded-full bg-black-10 active:bg-white-10"
           accessibilityLabel="Volver"
         >
           <ArrowLeft size={16} color={COLORS.sageDark} />

@@ -205,6 +205,10 @@ export function PlanificadorRoot() {
         horizontal
         showsHorizontalScrollIndicator={false}
         className="border-b border-white-6"
+        // Without this the strip stretches to fill the remaining column height
+        // (~900pt), dragging the step content to the bottom of the screen and
+        // pulling each tab's `absolute bottom-0` underline down with it.
+        style={{ flexGrow: 0, flexShrink: 0 }}
         contentContainerStyle={{ paddingHorizontal: 16 }}
       >
         {STEPS.map((s) => {
