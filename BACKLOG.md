@@ -10,6 +10,25 @@
 
 ---
 
+## Audit móvil en simulador (rama `fix/mobile-audit-2026-07-28`, 2026-07-28) — follow-ups
+
+Barrido pantalla por pantalla en el simulador iOS con cuenta real. Arreglado y commiteado: rutas inalcanzables (tab Deudas, hub "Más"), header nativo duplicado, tipografía Inter en auth/captura, broadcast de sync a la UI, safe area en modales/focus-mode, tildes en Deudas. Lo que sigue quedó fuera del alcance P0/P1:
+
+- **(P1) `useReloadOnFocusAndSync` en las ~23 pantallas restantes.** El hook está en `mobile/lib/sync/notify.ts` y ya lo usan Inicio, Movimientos, Plan y Deudas. Las demás siguen con `useFocusEffect(useCallback(load,[load]))` pelado, así que si el sync de fondo termina mientras el usuario está en ellas, no se enteran. Candidatas (todas ya identificadas): `accounts-list`, `(tabs)/accounts`, `(tabs)/import`, `etiquetas`, `periodo`, `subscriptions`, `tendencias`, `settings`, `BudgetsRoot`, `CategoriesRoot`, `CategorizarRoot`, `DeseosRoot`, `DestinatariosRoot`, `DestinatarioDetail`, `PersonasRoot`, `RecurrentesRoot`, `PlanificadorRoot`.
+- **(P1) Verificación pendiente del broadcast de sync.** El camino end-to-end (DB vacía → login → el sync llena la pantalla sin tocar nada) NO se re-probó: requiere vaciar `transactions` local, y el clasificador bloqueó el DELETE. Se validó el diagnóstico (SQLite con 557 tx mientras la UI mostraba $0) y el mecanismo está tipado, pero conviene confirmarlo en el próximo login desde cero.
+- **(P1) "Captura rápida" es una acción muerta en el FAB** — `Alert.alert("Próximamente")` en `MobileTabBar.tsx:99`, y con diálogo nativo en tema claro sobre una app oscura. La webapp sí la tiene (`mobile-quick-capture-sheet.tsx`, refactorizada en 74c46eea). Decisión del usuario 2026-07-28: dejarla visible hasta implementarla. Portar el parser a una pantalla RN.
+- **(P2) `VincularPicker` debería reusar `<MobileSheet>`** — es el único de los 12 sheets hecho a mano (Modal + `justify-end` propios). Se le parchó el `insets.bottom`; la deuda real es la reutilización.
+- **(P2) Converger el padding inferior de los modales restantes** — `transaction/[id]`, `account/create`, `account/edit/[id]` usan 40 fijo. Libra el home indicator pero no sigue el patrón `insets.bottom + N`.
+- **(P2) Acción destructiva duplicada en `transaction/[id]`** — ícono de basura en el header Y botón "Eliminar transacción" al final. Dos entradas al mismo destructivo; la webapp tiene una.
+- **(P2) Tres dialectos de eyebrow.** `styles.ts` `SECTION_EYEBROW_CLASS` usa `tracking-[4px]`; `TOKENS.md` y `FormField.tsx` dicen `tracking-[0.18em]`; `ChipEyebrow` estaba en `2px` (ya bajado a 1.8px = el 0.18em de la webapp). Unificar en un solo token.
+- **(P2) Números divergentes entre Inicio y Movimientos** — el hero dice "Gastados $7.913.532" y Movimientos "GASTOS $12.473.947" para el mismo mes. Probablemente correcto por diseño (el hero excluye pagos a tarjeta y transferencias), pero no se verificó contra la webapp. Confirmar y, si es correcto, diferenciar el copy para que no se lean como el mismo dato.
+- **(P2) Pantallas duplicadas**: `accounts-list` vs `(tabs)/accounts` (casi idénticas; la segunda tiene loading state y la primera no), y `presupuesto` vs `(tabs)/budgets`.
+- **(P2) Primitivas de la webapp sin espejo móvil** (deuda estructural de los últimos 4 commits de webapp): `EntityRow` + `TickGauge`, `Field`/`FIELD_LABEL_CLASS`, y `Verdict` 4-estado — móvil define otro `Verdict` en `lib/constants/verdict.ts` (el de `PurchaseDecisionResult`): misma palabra, dos vocabularios. También falta un `EmptyState` compartido (~20 empty states ad-hoc).
+- **(P2) Superficies webapp sin contraparte móvil**: `/pendientes`, `/modos`, el AttentionHub del hub "Más", y `settings/{analytics,email,integraciones,pdf-passwords}`.
+- **(P3) Drift de nombres de ruta móvil↔webapp**: `/transaction/[id]` vs `/transactions/[id]`, `/account/[id]` vs `/accounts/[id]`, `/menu` vs `/gestionar`. Riesgo real para deep links de notificaciones, que empujan strings de ruta crudos.
+- **(P3) Código muerto**: `components/inicio/_vault/*`, `components/inicio/widgets/PulseWidget.tsx`.
+- **(P3) Lotes del barrido sin recorrer**: Cuentas/Importar (lote 4), Plan/Presupuesto/Recurrentes (lote 5), y la cola larga (lote 7: categorizar, categorías, destinatarios, etiquetas, deseos, purchase-decision, tendencias, subscriptions, settings, bug-report).
+
 ## Plan ↔ ocurrencias: conciliación tolerante (rama fix/plan-entry-occurrence-drift) — follow-ups
 
 - [ ] **"Préstamo" de ocurrencia entre períodos adyacentes** — RESUELTO para filas con FK (`occurrence_id` es único por diseño: hidratación excluye ocurrencias ya reclamadas por FK, el seed chequea claims globales cross-período). Residual: solo entradas legacy SIN FK en dos períodos podrían mostrar el mismo pago dos veces vía fallback por ventana; se cura solo al sincronizar (el link pass persiste la FK). Cerrar cuando no queden filas recurrentes sin FK. (server-action-reviewer, MEDIUM → mitigado)
