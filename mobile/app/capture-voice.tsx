@@ -25,6 +25,7 @@ import {
 
 import {
   formatCurrency,
+  formatDate,
   parseQuickCaptureText,
   type CurrencyCode,
 } from "@zeta/shared";
@@ -387,7 +388,11 @@ export default function CaptureVoiceScreen() {
                     )}
                   </Text>
                   <Text className="text-sm text-z-white">{parsed.description}</Text>
-                  <Text className="text-xs text-z-sage-dark">{parsed.transaction_date}</Text>
+                  <Text className="text-xs text-z-sage-dark">
+                    {parsed.transaction_date
+                      ? formatDate(parsed.transaction_date, "dd MMM yyyy")
+                      : ""}
+                  </Text>
                 </View>
 
                 <View className="gap-2">

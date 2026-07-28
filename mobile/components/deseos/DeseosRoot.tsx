@@ -14,7 +14,6 @@ import {
   Check,
   CheckCircle2,
   Heart,
-  Pencil,
   Plus,
   Sparkles,
   Trash2,
@@ -526,14 +525,10 @@ const DeseosRow = memo(function DeseosRow({
               onPress={() => onRescore(item)}
             />
           )}
-          {needsEnrichment && (
-            <ActionPill
-              label="Completar"
-              icon={Pencil}
-              onPress={() => onEnrich(item)}
-              tone="brass"
-            />
-          )}
+          {/* "Completar" ya se ofrece arriba a la derecha, en el slot donde las
+              tarjetas evaluadas muestran su veredicto — ahí comunica por qué
+              falta. Repetirlo aquí daba dos botones con la misma etiqueta y la
+              misma acción en una sola tarjeta. */}
           <ActionPill
             label="Comprado"
             icon={Check}
