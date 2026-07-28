@@ -188,11 +188,13 @@ export function RecurringConfirmSheet({
           <Pressable
             onPress={handleSubmit}
             disabled={!canSubmit}
-            className={`rounded-xl py-3 items-center mt-2 ${canSubmit ? "bg-z-brass" : "bg-z-brass-30"}`}
+            className={`rounded-xl py-3 items-center mt-2 ${canSubmit ? "bg-z-brass" : "bg-z-brass/30"}`}
           >
             {submitting ? (
               <ActivityIndicator size="small" color={COLORS.ink} />
             ) : (
+              // Disabled uses muted-foreground, not ink/50: over the dimmed
+              // bg-z-brass/30 the ink composites to near-invisible.
               <Text className={`text-sm font-inter-semibold ${canSubmit ? "text-z-ink" : "text-muted-fg-70"}`}>
                 Confirmar pago
               </Text>

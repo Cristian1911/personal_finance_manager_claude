@@ -77,7 +77,7 @@ export const DetailStep = memo(function DetailStep({
             <Pressable
               key={i}
               onPress={() => setSelectedIndex(i)}
-              className={`flex-row items-center gap-1.5 rounded-full border px-2.5 py-1 ${active ? "border-z-brass bg-z-brass-15" : "border-white-6"}`}
+              className={`flex-row items-center gap-1.5 rounded-full border px-2.5 py-1 ${active ? "border-z-brass bg-z-brass/15" : "border-white-6"}`}
             >
               <View
                 className="h-2 w-2 rounded-full"
@@ -129,7 +129,7 @@ export const DetailStep = memo(function DetailStep({
       </View>
 
       {/* Before vs after */}
-      <MCard className="gap-2 border-z-income-20 bg-z-income-5">
+      <MCard className="gap-2 border-z-income/20 bg-z-income/5">
         <Text className="text-[10px] font-inter-semibold uppercase tracking-[3px] text-z-sage-dark">
           Hoy vs con tu plan
         </Text>
@@ -209,7 +209,7 @@ export const DetailStep = memo(function DetailStep({
                       14
                     )}
                   </Text>
-                  <View className="rounded-full bg-z-brass-10 px-1.5">
+                  <View className="rounded-full bg-z-brass/10 px-1.5">
                     <Text className="text-[9px] font-inter-semibold text-z-brass">
                       {formatCalendarMonth(entry.calendarMonth)}
                     </Text>
@@ -283,7 +283,7 @@ const SummaryTile = memo(function SummaryTile({
 }: SummaryTileProps) {
   return (
     <View
-      className={`${PANEL_INSET_CLASS} flex-1 p-3 gap-1 ${highlight ? "border-z-income-30 bg-z-income-5" : ""}`}
+      className={`${PANEL_INSET_CLASS} flex-1 p-3 gap-1 ${highlight ? "border-z-income/30 bg-z-income/5" : ""}`}
     >
       <View className="flex-row items-center gap-1.5">{icon}</View>
       <Text
@@ -375,9 +375,9 @@ const MonthRow = memo(function MonthRow({
   const hasPaidOff = events.some((e) => e.type === "account_paid_off");
   const hasCash = events.some((e) => e.type === "cash_injection");
   const bgClass = hasPaidOff
-    ? "bg-z-income-5 border-z-income-20"
+    ? "bg-z-income/5 border-z-income/20"
     : hasCash
-    ? "bg-z-brass-6 border-z-brass-20"
+    ? "bg-z-brass/5 border-z-brass/20"
     : "border-white-6";
 
   return (
@@ -410,7 +410,7 @@ const EventBadge = memo(function EventBadge({
 }) {
   if (type === "cash_injection") {
     return (
-      <View className="flex-row items-center gap-1 rounded-full bg-z-brass-15 px-1.5 py-0.5">
+      <View className="flex-row items-center gap-1 rounded-full bg-z-brass/15 px-1.5 py-0.5">
         <Zap size={9} color={COLORS.brass} />
         <Text className="text-[9px] font-inter-semibold text-z-brass">
           {description}
@@ -420,7 +420,7 @@ const EventBadge = memo(function EventBadge({
   }
   if (type === "account_paid_off") {
     return (
-      <View className="flex-row items-center gap-1 rounded-full bg-z-income-12 px-1.5 py-0.5">
+      <View className="flex-row items-center gap-1 rounded-full bg-z-income/15 px-1.5 py-0.5">
         <CalendarCheck size={9} color={COLORS.income} />
         <Text className="text-[9px] font-inter-semibold text-z-income">
           {description}
@@ -430,7 +430,7 @@ const EventBadge = memo(function EventBadge({
   }
   if (type === "cascade_redirect") {
     return (
-      <View className="flex-row items-center gap-1 rounded-full bg-z-alert-12 px-1.5 py-0.5">
+      <View className="flex-row items-center gap-1 rounded-full bg-z-alert/15 px-1.5 py-0.5">
         <ArrowRight size={9} color={COLORS.alert} />
         <Text className="text-[9px] font-inter-semibold text-z-alert">
           {description}

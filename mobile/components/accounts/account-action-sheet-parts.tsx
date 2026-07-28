@@ -86,7 +86,7 @@ export function SheetAccountPicker({
             <Pressable
               key={acc.id}
               onPress={() => onSelect(acc.id)}
-              className={`flex-row items-center justify-between px-3 py-2.5 active:bg-white-5 ${
+              className={`flex-row items-center justify-between px-3 py-2.5 active:bg-z-surface-2/5 ${
                 i > 0 ? "border-t border-white-6" : ""
               }`}
             >
@@ -112,7 +112,7 @@ export function SheetAccountPicker({
 /** Inline error banner — mirrors PaymentSheet's error surface. */
 export function SheetError({ message }: { message: string }) {
   return (
-    <View className="rounded-xl bg-z-debt-10 px-3 py-2 mb-2">
+    <View className="rounded-xl bg-z-debt/10 px-3 py-2 mb-2">
       <Text className="text-xs font-inter-medium text-z-debt">{message}</Text>
     </View>
   );

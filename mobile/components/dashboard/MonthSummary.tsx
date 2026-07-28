@@ -19,7 +19,7 @@ export function MonthSummary({
       {/* Income card */}
       <View className="flex-1 bg-z-surface-2-55 rounded-lg p-4">
         <View className="flex-row items-center mb-2">
-          <View className="bg-z-income-10 rounded-full p-1.5">
+          <View className="bg-z-income/10 rounded-full p-1.5">
             <TrendingUp size={14} color={COLORS.income} />
           </View>
           <Text className="text-muted-foreground font-inter text-xs ml-2">
@@ -34,7 +34,7 @@ export function MonthSummary({
       {/* Expenses card */}
       <View className="flex-1 bg-z-surface-2-55 rounded-lg p-4">
         <View className="flex-row items-center mb-2">
-          <View className="bg-z-expense-10 rounded-full p-1.5">
+          <View className="bg-z-expense/10 rounded-full p-1.5">
             <TrendingDown size={14} color={COLORS.expense} />
           </View>
           <Text className="text-muted-foreground font-inter text-xs ml-2">

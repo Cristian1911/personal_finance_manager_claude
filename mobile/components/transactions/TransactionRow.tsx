@@ -39,7 +39,7 @@ export function TransactionRow({
 
   return (
     <Pressable
-      className="flex-row items-center px-4 py-3 bg-z-surface-2-55 active:bg-white-5"
+      className="flex-row items-center px-4 py-3 bg-z-surface-2-55 active:bg-z-surface-2/5"
       onPress={() => router.push(`/transaction/${id}`)}
     >
       {/* Category icon circle */}

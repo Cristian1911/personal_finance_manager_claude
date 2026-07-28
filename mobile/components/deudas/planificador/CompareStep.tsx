@@ -62,7 +62,7 @@ export const CompareStep = memo(function CompareStep({
         <Pressable
           onPress={() => dispatch({ type: "ADD_SCENARIO" })}
           disabled={!canAdd}
-          className={`flex-row items-center gap-1 rounded-full border border-z-brass-30 px-3 py-1.5 ${!canAdd ? "opacity-40" : ""}`}
+          className={`flex-row items-center gap-1 rounded-full border border-z-brass/40 px-3 py-1.5 ${!canAdd ? "opacity-40" : ""}`}
         >
           <Plus size={11} color={COLORS.brass} />
           <Text className="text-[11px] font-inter-semibold text-z-brass">
@@ -221,7 +221,7 @@ const MetricCol = memo(function MetricCol({
           {label}
         </Text>
         {recommended && (
-          <View className="ml-auto rounded-full bg-z-income-12 px-1.5 py-0.5">
+          <View className="ml-auto rounded-full bg-z-income/15 px-1.5 py-0.5">
             <Text className="text-[8px] font-inter-bold text-z-income">★</Text>
           </View>
         )}
@@ -294,7 +294,7 @@ const SavingsCard = memo(function SavingsCard({
   currency,
 }: SavingsCardProps) {
   return (
-    <View className="rounded-2xl border border-z-income-30 bg-z-income-10 p-3 flex-row items-start gap-2">
+    <View className="rounded-2xl border border-z-income/30 bg-z-income/10 p-3 flex-row items-start gap-2">
       <TrendingDown size={14} color={COLORS.income} />
       <View className="flex-1">
         <Text className="text-[12px] font-inter text-z-income leading-snug">

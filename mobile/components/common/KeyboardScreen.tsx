@@ -30,7 +30,7 @@ export function KeyboardScreen({
       >
         <Pressable
           onPress={onBack}
-          className="h-8 w-8 items-center justify-center rounded-full bg-black-10 active:bg-white-10"
+          className="h-8 w-8 items-center justify-center rounded-full bg-black-10 active:bg-z-surface-2/10"
         >
           <ArrowLeft size={18} color={COLORS.sageDark} />
         </Pressable>

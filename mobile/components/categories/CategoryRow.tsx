@@ -17,7 +17,7 @@ export function CategoryRow({ category, isSystem, onEdit }: CategoryRowProps) {
     <Pressable
       onPress={!isSystem && onEdit ? () => onEdit(category.id) : undefined}
       className={`flex-row items-center gap-3 px-3.5 py-2.5 ${
-        !isSystem ? "active:bg-white-5" : ""
+        !isSystem ? "active:bg-z-surface-2/5" : ""
       }`}
       disabled={isSystem}
       accessibilityLabel={displayName}
@@ -29,7 +29,7 @@ export function CategoryRow({ category, isSystem, onEdit }: CategoryRowProps) {
           style={{ backgroundColor: category.color } as ViewStyle}
         />
       ) : (
-        <View className="h-3 w-3 rounded-full bg-muted-fg-50" />
+        <View className="h-3 w-3 rounded-full bg-z-sage-dark/40" />
       )}
 
       {/* Name */}

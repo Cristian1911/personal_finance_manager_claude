@@ -301,7 +301,7 @@ const StrategyTile = memo(function StrategyTile({
   return (
     <Pressable
       onPress={onPress}
-      className={`rounded-xl border p-3 ${selected ? "border-z-brass bg-z-brass-10" : "border-white-6"}`}
+      className={`rounded-xl border p-3 ${selected ? "border-z-brass bg-z-brass/10" : "border-white-6"}`}
     >
       <View className="flex-row items-center gap-2">
         {icon}
@@ -387,7 +387,7 @@ const CascadeRow = memo(function CascadeRow({
               onChange("auto");
               setOpen(false);
             }}
-            className={`rounded-md px-2 py-1.5 ${currentTo === "auto" ? "bg-z-brass-20" : ""}`}
+            className={`rounded-md px-2 py-1.5 ${currentTo === "auto" ? "bg-z-brass/20" : ""}`}
           >
             <Text className="text-[12px] font-inter text-foreground">
               Automático
@@ -400,7 +400,7 @@ const CascadeRow = memo(function CascadeRow({
                 onChange(o.id);
                 setOpen(false);
               }}
-              className={`rounded-md px-2 py-1.5 ${currentTo === o.id ? "bg-z-brass-20" : ""}`}
+              className={`rounded-md px-2 py-1.5 ${currentTo === o.id ? "bg-z-brass/20" : ""}`}
             >
               <Text
                 className="text-[12px] font-inter text-foreground"
