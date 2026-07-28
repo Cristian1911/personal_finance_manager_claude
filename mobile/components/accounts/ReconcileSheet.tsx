@@ -13,7 +13,7 @@ import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import type { AccountRow } from "../../lib/repositories/accounts";
 import { reconcileBalance } from "../../lib/repositories/accounts";
 import { isDebtAccountType } from "../../lib/constants/accounts";
-import { parseFormattedAmount } from "../../lib/amount";
+import { formatAmountInput, parseFormattedAmount } from "../../lib/amount";
 import { COLORS } from "../../lib/constants/colors";
 import { BRASS_BUTTON_CLASS, PANEL_INSET_CLASS } from "../../lib/constants/styles";
 import { MobileSheet } from "../ui/MobileSheet";
@@ -46,9 +46,12 @@ export function ReconcileSheet({ visible, account, onClose, onSuccess }: Reconci
 
   useEffect(() => {
     if (visible) {
-      // Pre-fill with the current balance (no thousands grouping — the numeric
-      // keypad + parseFormattedAmount accept a plain integer).
-      setAmountInput(currentBalance ? String(Math.round(currentBalance)) : "");
+      // Grouped like every other money field: SheetAmountInput now formats on
+      // every keystroke, so seeding raw made the sheet open ungrouped and
+      // regroup as soon as the user typed.
+      setAmountInput(
+        currentBalance ? formatAmountInput(String(Math.round(currentBalance))) : ""
+      );
       setSubmitting(false);
       setError(null);
     }

@@ -12,6 +12,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { formatSignedAmountInput, parseFormattedAmount } from "../../../lib/amount";
+import { parseMoney } from "../../../lib/utils/money";
 import { useEffect, useState } from "react";
 import { AccountTypeGrid } from "../../../components/accounts/AccountTypeGrid";
 import { ColorPicker } from "../../../components/accounts/ColorPicker";
@@ -113,7 +114,10 @@ export default function EditAccountScreen() {
         account_type: accountType,
         institution_name: institution.trim() || null,
         currency_code: currency,
-        current_balance: parseFloat(balance) || 0,
+        // parseMoney, not parseFormattedAmount: this field is formatted with
+        // formatSignedAmountInput, which keeps the "-" of a negative balance,
+        // and only parseMoney carries the sign back.
+        current_balance: parseMoney(balance),
         color,
         credit_limit:
           isCreditCard && creditLimit ? parseFormattedAmount(creditLimit) : null,

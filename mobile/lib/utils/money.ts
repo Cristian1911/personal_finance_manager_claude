@@ -9,6 +9,9 @@ import { parseFormattedAmount } from "../amount";
  * did `Number(raw.replace(/[^0-9.-]/g, ""))`, which reads "3.130.871" as NaN
  * (→ 0, silently losing the user's income) and "3.130" as 3.13.
  */
+// Expects `formatAmountInput`/`formatSignedAmountInput`-shaped input: grouped
+// with ".", decimal mark ",". Do NOT hand it a raw string that uses "." as a
+// decimal ("3.5" reads as 3500, not 3.5).
 export function parseMoney(raw: string): number {
   if (!raw) return 0;
   // parseFormattedAmount only keeps digits and separators, so carry the sign

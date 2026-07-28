@@ -118,5 +118,12 @@ export async function clearDatabase(): Promise<void> {
     DELETE FROM sync_queue;
     DELETE FROM sync_metadata;
   `);
+  // Again, after the deletes. The call above only closes the window if nothing
+  // reads in between — but this execAsync is not a transaction and
+  // `DELETE FROM profiles` is near its end, so a concurrent
+  // getPreferredCurrency()/getNavFocus() can find the cache empty, still read
+  // the outgoing user's row, and repopulate it. Only 2 of the 9 clearDatabase()
+  // call sites raise `resetInProgress`, so that window is genuinely reachable.
+  invalidateProfileCaches();
   await database.execAsync(`PRAGMA user_version = ${LATEST_DB_VERSION}`);
 }

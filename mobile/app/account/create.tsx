@@ -10,7 +10,8 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { parseFormattedAmount } from "../../lib/amount";
+import { formatSignedAmountInput, parseFormattedAmount } from "../../lib/amount";
+import { parseMoney } from "../../lib/utils/money";
 import { useState } from "react";
 import { AccountTypeGrid } from "../../components/accounts/AccountTypeGrid";
 import { ColorPicker } from "../../components/accounts/ColorPicker";
@@ -64,7 +65,9 @@ export default function CreateAccountScreen() {
       return;
     }
 
-    const parsedBalance = parseFormattedAmount(balance) || 0;
+    // parseMoney, not parseFormattedAmount: the latter strips the "-", so a
+    // card created with an existing debt would be saved as a positive balance.
+    const parsedBalance = parseMoney(balance);
 
     if (isCreditCard && !creditLimit.trim()) {
       Alert.alert("Error", "El límite de crédito es requerido para tarjetas.");
