@@ -110,7 +110,7 @@ export function AccountBalanceCard({ account }: Props) {
               {formatCurrency(Math.abs(account.current_balance), currency)} usado
             </Text>
             <Text className="text-muted-fg-70 font-inter text-[10px]">
-              {formatCurrency(account.credit_limit!, currency)} limite
+              {formatCurrency(account.credit_limit!, currency)} límite
             </Text>
           </View>
         </View>
