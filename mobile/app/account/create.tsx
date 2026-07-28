@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useState } from "react";
 import { AccountTypeGrid } from "../../components/accounts/AccountTypeGrid";
 import { ColorPicker } from "../../components/accounts/ColorPicker";
@@ -29,6 +30,7 @@ import {
 } from "../../lib/constants/styles";
 
 export default function CreateAccountScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { session } = useAuth();
   const [saving, setSaving] = useState(false);
@@ -114,7 +116,7 @@ export default function CreateAccountScreen() {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
       >

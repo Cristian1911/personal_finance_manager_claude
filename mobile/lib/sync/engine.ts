@@ -107,8 +107,16 @@ async function doSyncAll(): Promise<SyncResult> {
   // Screens load once on focus, which for the landing screen happens before
   // this run finishes — without this they'd sit on the pre-sync snapshot until
   // a pull-to-refresh. Only fire when something actually landed locally.
+  // `resetInProgress` is re-checked here, not just in the pull/push loops: the
+  // per-table abort probe runs *before* each table, so if the flag flips while
+  // the LAST table is mid-apply the loop ends normally and we'd reach this line
+  // during a reset. Screens subscribe to the notify regardless of focus, so a
+  // stray bump would run `load()` against a DB that `clearDatabase()` is
+  // deleting table by table (its execAsync isn't a single transaction).
   const pulledRows = Object.values(pulled).reduce((sum, n) => sum + n, 0);
-  if (pushed > 0 || pulledRows > 0) notifyLocalDataChanged();
+  if (!resetInProgress && (pushed > 0 || pulledRows > 0)) {
+    notifyLocalDataChanged();
+  }
 
   return { pushed, pulled };
 }

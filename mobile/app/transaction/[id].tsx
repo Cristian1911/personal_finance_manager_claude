@@ -615,7 +615,7 @@ export default function TransactionDetailScreen() {
         >
           <ScrollView
             className="flex-1"
-            contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+            contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
           >

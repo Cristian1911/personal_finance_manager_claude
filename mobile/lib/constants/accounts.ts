@@ -72,8 +72,8 @@ export const ACCOUNT_TYPES = [
 
 export const CURRENCIES = [
   { code: "COP", name_es: "Peso Colombiano" },
-  { code: "USD", name_es: "Dolar Estadounidense" },
-  { code: "BRL", name_es: "Real Brasileno" },
+  { code: "USD", name_es: "Dólar Estadounidense" },
+  { code: "BRL", name_es: "Real Brasileño" },
   { code: "MXN", name_es: "Peso Mexicano" },
   { code: "EUR", name_es: "Euro" },
   { code: "PEN", name_es: "Sol Peruano" },

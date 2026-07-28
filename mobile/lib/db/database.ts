@@ -1,5 +1,6 @@
 import * as SQLite from "expo-sqlite";
 import { DB_MIGRATIONS, LATEST_DB_VERSION } from "./schema";
+import { invalidateProfileCaches } from "../profile-cache";
 
 let db: SQLite.SQLiteDatabase | null = null;
 let dbInitPromise: Promise<SQLite.SQLiteDatabase> | null = null;
@@ -71,6 +72,12 @@ async function runMigrations(database: SQLite.SQLiteDatabase): Promise<void> {
 }
 
 export async function clearDatabase(): Promise<void> {
+  // Session caches derived from the profile row must die with the data. This
+  // runs on logout, user switch, demo enter/exit, account deletion and "borrar
+  // todos mis datos" — 9 call sites, so invalidating here instead of at each
+  // one is what keeps a second user on the same device from inheriting the
+  // first user's nav_focus / preferred_currency.
+  invalidateProfileCaches();
   const database = await getDatabase();
   // Order matters: `PRAGMA foreign_keys = ON` (set in applyConnectionPragmas) rejects
   // deletes that would orphan referenced rows. Delete dependent rows first,

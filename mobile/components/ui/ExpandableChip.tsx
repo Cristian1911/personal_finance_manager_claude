@@ -121,8 +121,11 @@ export function ChipEyebrow({
       // tracking mirrors the webapp's `tracking-[0.18em]` at a 10px font.
       // Two lines, not one: the webapp counterpart is a <p> that wraps, so
       // truncating here clipped "Gasto de hoy" / "Por resolver" in the
-      // 3-column tools row.
+      // 3-column tools row. minHeight reserves both lines so a 1-line eyebrow
+      // ("Ritmo") doesn't pull its tile's content up relative to a 2-line
+      // neighbour, which left the row with a jagged bottom edge.
       className={`text-[10px] font-inter-semibold uppercase tracking-[1.8px] ${t.label}`}
+      style={{ minHeight: 26 }}
       numberOfLines={2}
     >
       {children}
