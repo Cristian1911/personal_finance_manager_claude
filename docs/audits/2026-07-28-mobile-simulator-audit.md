@@ -79,6 +79,14 @@ Vale registrarlos para no volver a "arreglarlos":
 
 ---
 
+## Cierre (2026-07-29)
+
+Ambos PRs mergeados: **#379** y **#380**. Cobertura final: **30 de 45 rutas** recorridas en el simulador. El inventario pantalla por pantalla de lo que falta, con cómo llegar a cada una, está en `HANDOVER.md` §8.
+
+**El broadcast de sync quedó verificado end-to-end**, y hacerlo destapó una segunda causa, upstream de la primera: `handleUserBoundary` no limpiaba `autoSyncedUserRef` al cerrar sesión, así que volver a entrar con el mismo usuario salía por el guard de `triggerInitialSyncOnce` y el sync nunca corría — con la base ya vaciada por el logout. Los dos bugs producen el mismo síntoma visible, y el primero tapó al segundo durante dos sesiones.
+
+Lección de método: **haber marcado esa pieza como "pendiente de verificar" en vez de bloquearla dejó el bug vivo dos PRs.** La fila `sync_metadata['__last_run']` —añadida para otra cosa, el timestamp de Ajustes— fue lo que lo delató, porque existe solo si `doSyncAll` llega al final.
+
 ## Pendiente
 
 Detalle completo en `BACKLOG.md`, sección "Audit móvil en simulador". Lo principal:
