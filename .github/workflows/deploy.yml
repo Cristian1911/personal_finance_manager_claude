@@ -29,11 +29,16 @@ env:
 jobs:
   changes:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     outputs:
       webapp_changed: ${{ steps.set-outputs.outputs.webapp_changed }}
       parser_changed: ${{ steps.set-outputs.outputs.parser_changed }}
       any_deploy: ${{ steps.set-outputs.outputs.any_deploy }}
       merge_sha: ${{ steps.find-pr.outputs.merge_sha }}
+      webapp_latest_missing: ${{ steps.latest-tags.outputs.webapp_missing }}
+      parser_latest_missing: ${{ steps.latest-tags.outputs.parser_missing }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -56,6 +61,40 @@ jobs:
               - 'infra/**'
               - '.github/workflows/deploy.yml'
               - '.github/workflows/pr-build-images.yml'
+
+      # Un tag -latest puede desaparecer del registry aunque su código no haya
+      # cambiado: el cleanup semanal de GHCR borra manifests hijo sin tag, y los
+      # builds de buildx publican un índice cuyos hijos (imagen + attestation)
+      # van justamente sin tag. El VPS hace `docker compose pull` de AMBOS
+      # servicios en cada deploy, así que ambos tags tienen que existir siempre.
+      # Si falta uno, forzamos su rebuild en vez de abortar con `manifest
+      # unknown` (que fue lo que rompió el deploy del 2026-08-04).
+      - name: Check -latest tags still exist in GHCR
+        id: latest-tags
+        env:
+          GHCR_TOKEN: ${{ secrets.GHCR_PAT_READ || github.token }}
+        run: |
+          set -uo pipefail
+
+          if ! echo "$GHCR_TOKEN" | docker login "$REGISTRY" -u "$GHCR_USERNAME" --password-stdin; then
+            # No podemos consultar el registry. Asumir "falta" es el lado seguro:
+            # reconstruir de más solo cuesta tiempo, dar por existente una imagen
+            # ausente tumba producción en el `docker compose down` del VPS.
+            echo "::warning::No se pudo autenticar contra $REGISTRY — se fuerza rebuild de ambas imágenes."
+            echo "webapp_missing=true" >> "$GITHUB_OUTPUT"
+            echo "parser_missing=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          for img in webapp parser; do
+            if docker manifest inspect "${REGISTRY}/${REPO}:${img}-latest" > /dev/null 2>&1; then
+              echo "${img}-latest presente en el registry."
+              echo "${img}_missing=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "::warning::${img}-latest no está en el registry — se fuerza su rebuild."
+              echo "${img}_missing=true" >> "$GITHUB_OUTPUT"
+            fi
+          done
 
       - name: Find PR merge SHA
         id: find-pr
@@ -107,7 +146,9 @@ jobs:
           fi
 
   promote-webapp:
-    if: needs.changes.outputs.webapp_changed == 'true'
+    if: |
+      needs.changes.outputs.webapp_changed == 'true' ||
+      needs.changes.outputs.webapp_latest_missing == 'true'
     runs-on: ubuntu-latest
     needs: [changes]
     permissions:
@@ -174,7 +215,9 @@ jobs:
           cache-to: type=gha,mode=max
 
   promote-parser:
-    if: needs.changes.outputs.parser_changed == 'true'
+    if: |
+      needs.changes.outputs.parser_changed == 'true' ||
+      needs.changes.outputs.parser_latest_missing == 'true'
     runs-on: ubuntu-latest
     needs: [changes]
     permissions:
