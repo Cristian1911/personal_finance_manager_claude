@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Repeat } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
+import { formatTime } from "@/lib/utils/date";
 import { PANEL_SURFACE_CLASS } from "@/lib/constants/styles";
 import { chipBackground, zoneBorder, zoneTextColor } from "@/lib/utils/zone-colors";
 import { TagChip } from "@/components/tags/tag-chip";
@@ -41,6 +42,9 @@ export function MovimientosTransactionRow({
     tx.merchant_name || tx.clean_description || tx.raw_description || "Sin descripción";
   const categoryName = localCategory?.name_es ?? localCategory?.name ?? null;
   const catColor = localCategory ? resolveCategoryColor(categories, localCategory.id) : null;
+  // La fecha vive en el header del grupo; aquí solo la hora. Null en la mayoría
+  // de tx importadas por PDF — la meta-línea degrada al chip de categoría solo.
+  const timeStr = formatTime(tx.transaction_time);
 
   function handleCategorized(txId: string, categoryId: string) {
     const cat = categories
@@ -107,7 +111,7 @@ export function MovimientosTransactionRow({
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-col items-center gap-1">
+        <div className="flex shrink-0 flex-col items-end gap-1">
           <span
             className={cn(
               "text-[15px] font-medium tabular-nums",
@@ -118,13 +122,20 @@ export function MovimientosTransactionRow({
             {tx.direction === "INFLOW" ? "+" : "−"}
             {formatCurrency(tx.amount, tx.currency_code)}
           </span>
-          <span className="flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-z-sage-dark">
-            <span
-              className="inline-block h-[5px] w-[5px] shrink-0 rounded-full"
-              style={{ backgroundColor: tx.account.color ?? undefined }}
-            />
-            {accountTail(tx.account.name)}
-          </span>
+          <div className="flex items-center gap-1">
+            {timeStr && (
+              <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] tabular-nums text-z-sage-dark">
+                {timeStr}
+              </span>
+            )}
+            <span className="flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-z-sage-dark">
+              <span
+                className="inline-block h-[5px] w-[5px] shrink-0 rounded-full"
+                style={{ backgroundColor: tx.account.color ?? undefined }}
+              />
+              {accountTail(tx.account.name)}
+            </span>
+          </div>
         </div>
       </button>
 
