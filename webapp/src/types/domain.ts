@@ -67,6 +67,11 @@ export type DestinatarioKind = Enums<"destinatario_kind">;
 export type PersonalDebtWithDetails = PersonalDebt & {
   destinatario_name: string;
   destinatario_default_category_id: string | null;
+  /**
+   * True when the counterparty is a throwaway person materialized by a split
+   * (hidden from every picker). Drives the "Guardar como contacto" affordance.
+   */
+  destinatario_is_ad_hoc: boolean;
   /** Sum of linked repayment transaction amounts (>= 0). */
   total_repaid: number;
   /** True when due_date is past and status is 'active'. */

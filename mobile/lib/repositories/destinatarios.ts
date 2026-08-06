@@ -11,6 +11,8 @@ export type DestinatarioRow = {
   default_category_id: string | null;
   notes: string | null;
   is_active: number;
+  /** 1 = throwaway person created by a split; hidden from the list and picker. */
+  is_ad_hoc: number;
   created_at: string;
   updated_at: string;
 };
@@ -42,7 +44,7 @@ export async function getAllDestinatarios(): Promise<DestinatarioWithCount[]> {
       (SELECT COUNT(*) FROM transactions t WHERE t.destinatario_id = d.id) AS transaction_count
     FROM destinatarios d
     LEFT JOIN categories c ON d.default_category_id = c.id
-    WHERE d.is_active = 1
+    WHERE d.is_active = 1 AND d.is_ad_hoc = 0
     ORDER BY d.name ASC`
   );
 }
