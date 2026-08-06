@@ -17,6 +17,7 @@ import {
   OCCURRENCE_AUTO_LINK_DAY_WINDOW,
   type AnchoredBalanceResult,
   type ReconciliationCandidate,
+  isDebtAccountType,
 } from "@zeta/shared";
 import type { TransactionCaptureMethod } from "@/types/domain";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -1856,7 +1857,7 @@ export async function importTransactions(
         // both reads agree. Per-currency `credit_limit` wins over the
         // account-level column when present.
         const isDebt =
-          account.account_type === "CREDIT_CARD" || account.account_type === "LOAN";
+          isDebtAccountType(account.account_type);
         const creditLimit =
           (typeof currencyEntry?.credit_limit === "number" ? currencyEntry.credit_limit : null) ??
           (account.credit_limit != null ? Number(account.credit_limit) : null);

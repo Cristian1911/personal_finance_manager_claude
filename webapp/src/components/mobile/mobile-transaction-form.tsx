@@ -44,6 +44,7 @@ import type {
   CategoryWithChildren,
   TransactionDirection,
 } from "@/types/domain";
+import { isDebtAccountType } from "@zeta/shared";
 
 interface MobileTransactionFormProps {
   accounts: Account[];
@@ -183,8 +184,7 @@ export function MobileTransactionForm({
     [accounts, selectedAccountId]
   );
   const isDebtAccount =
-    selectedAccount?.account_type === "CREDIT_CARD" ||
-    selectedAccount?.account_type === "LOAN";
+    isDebtAccountType(selectedAccount?.account_type ?? "");
 
   // Colombian calendar day / time-of-day — never the device tz or UTC, which
   // drift the default a day off (toISOString is UTC; toTimeString is device-local).

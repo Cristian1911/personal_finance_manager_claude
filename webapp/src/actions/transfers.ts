@@ -7,6 +7,7 @@ import {
   TRANSFER_CATEGORY_ID,
   computeIdempotencyKey,
   getDebtPaymentCategoryId,
+  isDebtAccountType,
 } from "@zeta/shared";
 import {
   buildDebtBalanceUpdatePayload,
@@ -79,8 +80,8 @@ export async function createTransfer(
 
   const now = new Date().toISOString();
   const transferGroupId = crypto.randomUUID();
-  const isFromDebt = fromAccount.account_type === "CREDIT_CARD" || fromAccount.account_type === "LOAN";
-  const isToDebt = toAccount.account_type === "CREDIT_CARD" || toAccount.account_type === "LOAN";
+  const isFromDebt = isDebtAccountType(fromAccount.account_type);
+  const isToDebt = isDebtAccountType(toAccount.account_type);
 
   // 3. Build idempotency keys
   const outflowDescription = `Transferencia a ${toAccount.name}`;

@@ -7,6 +7,8 @@ import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { StaggerList, StaggerItem, FadeIn } from "./motion";
+import { computeMonthlyAggregates, isDebtAccountType } from "@zeta/shared";
+import { useAccounts } from "@/components/providers/app-data-provider";
 import type {
   Transaction,
   Category,
@@ -44,6 +46,8 @@ export function MobileMovimientos({
   transactions,
   categories,
 }: MobileMovimientosProps) {
+  const accounts = useAccounts();
+
   const categoryMap = useMemo(() => {
     const flat = flattenCategories(categories);
     const map = new Map<string, Category>();
@@ -53,19 +57,25 @@ export function MobileMovimientos({
     return map;
   }, [categories]);
 
+  // Hand-rolled totals used to count every INFLOW as income, including payments
+  // landing on a credit card — so paying the card read as earning money. They
+  // also ignored reconciled rows and shared-payment repayments. Delegate to the
+  // canonical aggregator instead of re-deriving the rules here.
+  const debtAccountIds = useMemo(
+    () =>
+      new Set(
+        accounts.filter((a) => isDebtAccountType(a.account_type)).map((a) => a.id),
+      ),
+    [accounts],
+  );
+
   const { inflow, outflow } = useMemo(() => {
-    let inflowSum = 0;
-    let outflowSum = 0;
-    for (const t of transactions) {
-      if (t.is_excluded) continue;
-      if (t.direction === "INFLOW") {
-        inflowSum += t.amount;
-      } else {
-        outflowSum += t.amount;
-      }
-    }
-    return { inflow: inflowSum, outflow: outflowSum };
-  }, [transactions]);
+    const totals = computeMonthlyAggregates(transactions, {
+      debtAccountIds,
+      withDaysByDate: false,
+    });
+    return { inflow: totals.totalInflow, outflow: totals.totalOutflow };
+  }, [transactions, debtAccountIds]);
 
   const categoryChips = useMemo(() => {
     const totals = new Map<string, number>();

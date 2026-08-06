@@ -1,16 +1,20 @@
-export { DEBT_PAYMENT_CATEGORY_ID } from "@zeta/shared";
+/**
+ * Transaction semantics for the mobile UI.
+ *
+ * `isDebtAccountType` and `isDebtInflow` used to be redefined here. They now
+ * come from `@zeta/shared` so mobile and webapp cannot drift — a divergence
+ * between the two is exactly what produced 7-33x different "Resumen del mes"
+ * numbers before `computeMonthlyAggregates` was introduced.
+ */
+export {
+  DEBT_PAYMENT_CATEGORY_ID,
+  isDebtAccountType,
+  isDebtInflow,
+} from "@zeta/shared";
 
-export function isDebtAccountType(accountType: string | null | undefined): boolean {
-  return accountType === "CREDIT_CARD" || accountType === "LOAN";
-}
+import { isDebtInflow } from "@zeta/shared";
 
-export function isDebtInflow(params: {
-  direction: "INFLOW" | "OUTFLOW" | string | null | undefined;
-  accountType: string | null | undefined;
-}): boolean {
-  return params.direction === "INFLOW" && isDebtAccountType(params.accountType);
-}
-
+/** Spanish label for a movement, as shown on the transaction row and detail. */
 export function getTransactionTypeLabel(params: {
   direction: "INFLOW" | "OUTFLOW";
   accountType: string | null | undefined;

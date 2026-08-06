@@ -28,6 +28,7 @@ import type {
   RecurringTemplateWithRelations,
 } from "@/types/domain";
 import type { RecurringOccurrence, OccurrenceSubPayment } from "@/actions/occurrences";
+import { isDebtAccountType } from "@zeta/shared";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -76,7 +77,7 @@ function mapToOccurrenceItem(
   // account. An OUTFLOW occurrence on a debt account is a recurring charge
   // billed to the card — confirmed as a single transaction, like any expense.
   const isDebtPayment =
-    (o.account_type === "CREDIT_CARD" || o.account_type === "LOAN") &&
+    (isDebtAccountType(o.account_type)) &&
     o.direction === "INFLOW";
   const acct = accounts.find((a) => a.id === o.account_id);
   return {
@@ -469,8 +470,7 @@ export function useRecurringMonth(
         .filter(
           (o) =>
             o.direction === "OUTFLOW" ||
-            o.account_type === "CREDIT_CARD" ||
-            o.account_type === "LOAN"
+            isDebtAccountType(o.account_type)
         )
         .reduce((sum, o) => sum + o.expected_amount, 0),
     [occurrences]

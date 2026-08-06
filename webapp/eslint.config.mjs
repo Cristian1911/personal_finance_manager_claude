@@ -32,10 +32,39 @@ const noRawZIndex = {
   },
 };
 
+// Debt-account discipline: forbid hand-inlining the debt predicate. An INFLOW to
+// a CREDIT_CARD or LOAN is a payment against debt, never income, and every copy
+// of that check is a place the rule can silently rot. charts.ts alone had five
+// copies while importing the shared helper and using it once.
+//
+// The target is the *pair* — a single expression testing both CREDIT_CARD and
+// LOAN — because that pair is the debt predicate spelled out by hand. Comparing
+// against one of them alone is legitimate and common (loan amortization,
+// credit-card utilization, loan-only form fields), so those are not flagged.
+const DEBT_PREDICATE_MESSAGE =
+  'Inlined debt-account check. Use isDebtAccountType() / isDebtInflow() from "@zeta/shared" — an INFLOW to CREDIT_CARD or LOAN is a debt payment, not income.';
+const noInlineDebtPredicate = {
+  files: ["src/**/*.{ts,tsx}"],
+  ignores: ["src/lib/constants/**", "src/types/**"],
+  rules: {
+    "no-restricted-syntax": [
+      "error",
+      {
+        // Catches both `x === "CREDIT_CARD" || x === "LOAN"` and the negated
+        // `x !== "CREDIT_CARD" && x !== "LOAN"`.
+        selector:
+          'LogicalExpression:has(BinaryExpression[right.value="CREDIT_CARD"]):has(BinaryExpression[right.value="LOAN"])',
+        message: DEBT_PREDICATE_MESSAGE,
+      },
+    ],
+  },
+};
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   noRawZIndex,
+  noInlineDebtPredicate,
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

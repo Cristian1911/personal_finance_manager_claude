@@ -31,6 +31,7 @@ import { Switch } from "@/components/ui/switch";
 import { X } from "lucide-react";
 import type { ActionResult } from "@/types/actions";
 import type { Account, CategoryWithChildren, Tag, Transaction, TransactionDirection } from "@/types/domain";
+import { isDebtAccountType } from "@zeta/shared";
 
 const FREQUENCY_OPTIONS = [
   { value: "WEEKLY", label: "Semanal" },
@@ -130,8 +131,7 @@ export function TransactionForm({
   const selectedAccount =
     accounts.find((account) => account.id === selectedAccountId) ?? defaultAccount;
   const isDebtAccount =
-    selectedAccount?.account_type === "CREDIT_CARD" ||
-    selectedAccount?.account_type === "LOAN";
+    isDebtAccountType(selectedAccount?.account_type ?? "");
   const allowRelatedSetup = !transaction;
 
   function handleCreateDestinatarioSetup(checked: boolean) {

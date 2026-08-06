@@ -27,6 +27,7 @@ export * from "./utils/extra-payment";
 export * from "./utils/cc-projection";
 export * from "./utils/dashboard-layout";
 export * from "./utils/account-balance";
+export * from "./utils/flow-class";
 export * from "./utils/debt-balance";
 export * from "./utils/monthly-aggregates";
 export * from "./utils/ritmo";

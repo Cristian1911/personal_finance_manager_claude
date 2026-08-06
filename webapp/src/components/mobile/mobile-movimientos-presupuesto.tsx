@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { CategoryIcon } from "@/components/categories/category-icon";
 import { FadeIn, StaggerList, StaggerItem } from "./motion";
+import { computeMonthlyAggregates, isDebtAccountType } from "@zeta/shared";
+import { useAccounts } from "@/components/providers/app-data-provider";
 import type {
   Transaction,
   Category,
@@ -46,6 +48,8 @@ export function MobileMovimientosPresupuesto({
   categories,
   budgetCategories,
 }: MobileMovimientosPresupuestoProps) {
+  const accounts = useAccounts();
+
   const categoryMap = useMemo(() => {
     const flat = flattenCategories(categories);
     const map = new Map<string, Category>();
@@ -55,19 +59,23 @@ export function MobileMovimientosPresupuesto({
     return map;
   }, [categories]);
 
+  // Same defect as mobile-movimientos: every INFLOW counted as income, so a
+  // credit-card payment read as earning money. Use the canonical aggregator.
+  const debtAccountIds = useMemo(
+    () =>
+      new Set(
+        accounts.filter((a) => isDebtAccountType(a.account_type)).map((a) => a.id),
+      ),
+    [accounts],
+  );
+
   const { inflow, outflow } = useMemo(() => {
-    let inflowSum = 0;
-    let outflowSum = 0;
-    for (const t of transactions) {
-      if (t.is_excluded) continue;
-      if (t.direction === "INFLOW") {
-        inflowSum += t.amount;
-      } else {
-        outflowSum += t.amount;
-      }
-    }
-    return { inflow: inflowSum, outflow: outflowSum };
-  }, [transactions]);
+    const totals = computeMonthlyAggregates(transactions, {
+      debtAccountIds,
+      withDaysByDate: false,
+    });
+    return { inflow: totals.totalInflow, outflow: totals.totalOutflow };
+  }, [transactions, debtAccountIds]);
 
   // Determine the primary currency from the first non-excluded transaction
   const currency = useMemo(() => {

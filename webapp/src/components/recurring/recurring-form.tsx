@@ -27,7 +27,9 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { BRASS_BUTTON_CLASS, BRASS_GHOST_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import { parseSubPayments } from "@/lib/utils/sub-payments";
-import { SUBCATEGORY_PAGO_TARJETA, SUBCATEGORY_CUOTA_CREDITO } from "@zeta/shared";
+import { SUBCATEGORY_PAGO_TARJETA, SUBCATEGORY_CUOTA_CREDITO,
+  isDebtAccountType,
+} from "@zeta/shared";
 import type { ActionResult } from "@/types/actions";
 import type { Account, CategoryWithChildren, RecurringTemplate, SubPayment, TransactionDirection } from "@/types/domain";
 
@@ -134,8 +136,7 @@ export function RecurringForm({
   const cutoffDay = selectedAccount?.cutoff_day ?? null;
   const paymentDay = selectedAccount?.payment_day ?? null;
   const isDebtAccount =
-    selectedAccount?.account_type === "CREDIT_CARD" ||
-    selectedAccount?.account_type === "LOAN";
+    isDebtAccountType(selectedAccount?.account_type ?? "");
 
   // Available currencies for the account (from currency_balances)
   const accountCurrencies = useMemo(() => {
@@ -179,7 +180,7 @@ export function RecurringForm({
   function handleAccountChange(newAccountId: string) {
     const acct = accounts.find((a) => a.id === newAccountId);
     const acctType = acct?.account_type;
-    const newIsDebt = acctType === "CREDIT_CARD" || acctType === "LOAN";
+    const newIsDebt = isDebtAccountType(acctType ?? "");
     setAccountId(newAccountId);
     if (newIsDebt) {
       // Switching INTO debt from non-debt defaults to "Abono a deuda" (the
