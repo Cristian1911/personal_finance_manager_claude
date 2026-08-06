@@ -9,6 +9,7 @@ import {
   type PurchaseDecisionResult,
   type PurchaseFundingType,
   type PurchaseUrgency,
+  isDebtAccountType,
 } from "@zeta/shared";
 import { z } from "zod";
 import { uuidStr } from "@/lib/validators/shared";
@@ -163,8 +164,7 @@ export async function analyzePurchaseDecisionAction(
   const liquidCashAvailable = accounts
     .filter(
       (account) =>
-        account.account_type !== "CREDIT_CARD" &&
-        account.account_type !== "LOAN"
+        !isDebtAccountType(account.account_type)
     )
     .reduce((sum, account) => sum + Math.max(account.current_balance, 0), 0);
 
@@ -172,8 +172,7 @@ export async function analyzePurchaseDecisionAction(
     .filter(
       (item) =>
         item.template.direction === "OUTFLOW" &&
-        item.template.account.account_type !== "CREDIT_CARD" &&
-        item.template.account.account_type !== "LOAN"
+        !isDebtAccountType(item.template.account.account_type)
     )
     .reduce((sum, item) => sum + item.template.amount, 0);
 

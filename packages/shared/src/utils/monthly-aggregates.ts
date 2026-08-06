@@ -18,6 +18,8 @@
  */
 
 /** Minimum-information row shape — both platforms can project into this. */
+import { effectiveFlowClass, isIncomeClass, isSpendClass } from "./flow-class";
+
 export interface AggregatableTransaction {
   amount: number;
   direction: "INFLOW" | "OUTFLOW";
@@ -34,6 +36,14 @@ export interface AggregatableTransaction {
    * participants pay back). NULL/0/undefined for every normal transaction.
    */
   split_repaid_amount?: number | null;
+  /**
+   * Persisted flow class, when the row has one. Honored in preference to the
+   * `debtAccountIds` heuristic: the account type cannot tell a loan disbursed
+   * into savings from a salary, nor a card payment from a purchase.
+   */
+  flow_class?: string | null;
+  /** User correction. Always wins over `flow_class`. */
+  flow_class_override?: string | null;
 }
 
 export interface MonthlyAggregatesResult {
@@ -88,27 +98,34 @@ export function computeMonthlyAggregates(
 
     count += 1;
 
+    // Prefer the persisted class when the row carries one; fall back to the
+    // account-type heuristic for rows written before flow_class existed.
+    const flowClass = effectiveFlowClass(row);
     const isDebt = options.debtAccountIds.has(row.account_id);
+    const countsAsIncome = flowClass ? isIncomeClass(flowClass) : !isDebt;
+    const countsAsSpend = flowClass ? isSpendClass(flowClass) : true;
 
     // Effective OUTFLOW spend nets out the shared-payment repaid portion.
     const outflowSpend = row.amount - Number(row.split_repaid_amount ?? 0);
 
     if (row.direction === "INFLOW") {
-      if (!isDebt) {
+      if (countsAsIncome) {
         totalInflow += row.amount;
       }
     } else {
       // OUTFLOW
-      totalOutflow += outflowSpend;
-      if (row.category_id === null || row.category_id === undefined) {
-        uncategorizedCount += 1;
+      if (countsAsSpend) {
+        totalOutflow += outflowSpend;
+        if (row.category_id === null || row.category_id === undefined) {
+          uncategorizedCount += 1;
+        }
       }
     }
 
     if (withDays) {
       const bucket = dayBuckets.get(row.transaction_date) ?? { income: 0, expense: 0 };
-      if (row.direction === "INFLOW" && !isDebt) bucket.income += row.amount;
-      if (row.direction === "OUTFLOW") bucket.expense += outflowSpend;
+      if (row.direction === "INFLOW" && countsAsIncome) bucket.income += row.amount;
+      if (row.direction === "OUTFLOW" && countsAsSpend) bucket.expense += outflowSpend;
       dayBuckets.set(row.transaction_date, bucket);
     }
   }

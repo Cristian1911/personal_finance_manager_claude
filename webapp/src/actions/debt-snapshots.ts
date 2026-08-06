@@ -3,6 +3,7 @@
 import { cache } from "react";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { getAccounts } from "./accounts";
+import { isDebtAccountType } from "@zeta/shared";
 
 export interface LatestDebtSnapshot {
   account_id: string;
@@ -18,7 +19,7 @@ export const getLatestDebtSnapshots = cache(async () => {
   const accountsResult = await getAccounts();
   const accounts = accountsResult.success ? accountsResult.data : [];
   const debtAccounts = accounts.filter((a: { account_type: string }) =>
-    a.account_type === "CREDIT_CARD" || a.account_type === "LOAN"
+    isDebtAccountType(a.account_type)
   );
 
   const snapshotsByAccount = new Map<string, LatestDebtSnapshot>();

@@ -37,6 +37,7 @@ import { deleteAccount, archiveDebtObligation, setPrimaryAccount } from "@/actio
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { Account } from "@/types/domain";
+import { isDebtAccountType } from "@zeta/shared";
 
 interface QuickActionsBarProps {
   account: Account;
@@ -170,7 +171,7 @@ export function QuickActionsBar({ account, allAccounts }: QuickActionsBarProps) 
     }
   }
 
-  const isDebt = accountType === "CREDIT_CARD" || accountType === "LOAN";
+  const isDebt = isDebtAccountType(accountType);
 
   // "Principal" = the account first in display_order (what every form defaults
   // to). Hide the action when this account already holds that spot.

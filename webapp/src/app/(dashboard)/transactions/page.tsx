@@ -19,7 +19,9 @@ import { Pagination } from "@/components/transactions/pagination";
 import { MonthSelector } from "@/components/month-selector";
 import { MovimientosRoot } from "@/components/mobile/v2/movimientos/movimientos-root";
 import { getPreferredCurrency } from "@/actions/profile";
-import { computeMonthlyAggregates } from "@zeta/shared";
+import { computeMonthlyAggregates,
+  isDebtAccountType,
+} from "@zeta/shared";
 import { parseMonth, formatMonthLabel } from "@/lib/utils/date";
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils";
@@ -86,7 +88,7 @@ export default async function TransactionsPage({
   const visibleTransactions = transactionsResult.data.filter((tx) => !tx.is_excluded);
   const debtAccountIds = new Set(
     accounts
-      .filter((a) => a.account_type === "CREDIT_CARD" || a.account_type === "LOAN")
+      .filter((a) => isDebtAccountType(a.account_type))
       .map((a) => a.id)
   );
   // Filtered view totals, computed with the SAME helper and the same exclusions

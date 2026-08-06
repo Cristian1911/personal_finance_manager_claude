@@ -195,7 +195,7 @@ async function getMonthlyCashflowCached(
 
     const entry = map.get(m)!;
     const acctType = (tx.accounts as { account_type: string } | null)?.account_type;
-    const isDebtAccount = acctType === "CREDIT_CARD" || acctType === "LOAN";
+    const isDebtAccount = acctType != null && isDebtAccountType(acctType);
 
     if (tx.direction === "INFLOW" && !isDebtAccount) {
       entry.income += tx.amount;
@@ -320,7 +320,7 @@ async function getMonthMetricsCached(
   let expenses = 0;
   for (const tx of transactions) {
     const acctType = (tx.accounts as { account_type: string } | null)?.account_type;
-    const isDebtAccount = acctType === "CREDIT_CARD" || acctType === "LOAN";
+    const isDebtAccount = acctType != null && isDebtAccountType(acctType);
     if (tx.direction === "INFLOW" && !isDebtAccount) income += tx.amount;
     else if (tx.direction === "OUTFLOW") expenses += tx.amount - Number(tx.split_repaid_amount ?? 0);
   }
@@ -374,7 +374,7 @@ async function getDailyCashflowCached(
   for (const tx of transactions) {
     const day = map.get(tx.transaction_date) ?? { income: 0, expenses: 0 };
     const acctType = (tx.accounts as { account_type: string } | null)?.account_type;
-    const isDebtAccount = acctType === "CREDIT_CARD" || acctType === "LOAN";
+    const isDebtAccount = acctType != null && isDebtAccountType(acctType);
 
     if (tx.direction === "INFLOW" && !isDebtAccount) {
       day.income += tx.amount;
@@ -484,8 +484,6 @@ async function getAccountsWithSparklineDataCached(
   }
 
   // 4. Build AccountWithSparkline for each account
-  const isDebtType = (type: string) => type === "CREDIT_CARD" || type === "LOAN";
-
   const result: GroupedAccounts = { deposits: [], debt: [] };
 
   for (const account of accounts) {
@@ -532,7 +530,7 @@ async function getAccountsWithSparklineDataCached(
       installmentProgress,
     };
 
-    if (isDebtType(account.account_type)) {
+    if (isDebtAccountType(account.account_type)) {
       result.debt.push(item);
     } else {
       result.deposits.push(item);
@@ -663,11 +661,11 @@ export async function getNetWorthHistory(month?: string, currency?: CurrencyCode
     a.currency_code === baseCurrency || nwRates.has(a.currency_code as CurrencyCode);
 
   const totalAssets = accounts
-    .filter((a) => a.account_type !== "CREDIT_CARD" && a.account_type !== "LOAN" && nwConvertible(a))
+    .filter((a) => !isDebtAccountType(a.account_type) && nwConvertible(a))
     .reduce((sum, a) => sum + toBase(a.current_balance ?? 0, a.currency_code as CurrencyCode), 0);
 
   const totalLiabilities = accounts
-    .filter((a) => (a.account_type === "CREDIT_CARD" || a.account_type === "LOAN") && nwConvertible(a))
+    .filter((a) => isDebtAccountType(a.account_type) && nwConvertible(a))
     .reduce((sum, a) => sum + toBase(
       computeDebtBalance(a as Parameters<typeof computeDebtBalance>[0]),
       a.currency_code as CurrencyCode
@@ -846,7 +844,7 @@ export async function getDashboardHeroData(
     a.currency_code === baseCurrency || rates.has(a.currency_code);
 
   const liquidAccounts = dashboardAccounts.filter(
-    (account) => account.account_type !== "CREDIT_CARD" && account.account_type !== "LOAN" && convertible(account)
+    (account) => !isDebtAccountType(account.account_type) && convertible(account)
   );
   const creditCardAccounts = dashboardAccounts.filter(
     (account) => account.account_type === "CREDIT_CARD" && convertible(account)
@@ -914,7 +912,7 @@ export async function getDashboardHeroData(
 
   // 4. Pending INFLOW occurrences within window (expected income, NOT added to availableToSpend)
   const pendingInflowOccurrences = windowOccurrences
-    .filter((o) => o.direction === "INFLOW" && o.account_type !== "CREDIT_CARD" && o.account_type !== "LOAN");
+    .filter((o) => o.direction === "INFLOW" && !isDebtAccountType(o.account_type));
   const pendingIncome = pendingInflowOccurrences.reduce(
     (sum, o) => sum + toBase(o.expected_amount, o.currency_code as CurrencyCode), 0
   );

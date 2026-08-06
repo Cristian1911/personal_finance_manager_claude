@@ -28,6 +28,7 @@ import type { AccountWithSparkline, GroupedAccounts } from "@/actions/charts";
 import type { Json } from "@/types/database";
 import { ACCOUNT_TYPE_DASHBOARD_LABELS } from "@/lib/constants/account-types";
 import type { AccountType, CurrencyCode } from "@/types/domain";
+import { isDebtAccountType } from "@zeta/shared";
 
 export type QuickValueUpdateAccount = {
   id: string;
@@ -202,7 +203,7 @@ interface AccountsOverviewProps {
 }
 
 function AccountRow({ account }: { account: AccountWithSparkline }) {
-  const isDebt = account.account_type === "CREDIT_CARD" || account.account_type === "LOAN";
+  const isDebt = isDebtAccountType(account.account_type);
   const kind = isDebt ? "debt" : "deposit";
 
   const changeColor = getAccountSemanticColor(account.changePercent, kind);

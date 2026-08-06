@@ -7,6 +7,7 @@ import {
   computeIdempotencyKey,
   computeMonthlyAggregates,
   type MonthlyAggregatesResult,
+  isDebtAccountType,
 } from "@zeta/shared";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createDestinatario, matchTransactionToDestinatario } from "@/actions/destinatarios";
@@ -623,7 +624,7 @@ async function getMonthlyAggregatesCached(
     .eq("user_id", userId);
   const debtAccountIds = new Set(
     (accounts ?? [])
-      .filter((a) => a.account_type === "CREDIT_CARD" || a.account_type === "LOAN")
+      .filter((a) => isDebtAccountType(a.account_type))
       .map((a) => a.id),
   );
 
