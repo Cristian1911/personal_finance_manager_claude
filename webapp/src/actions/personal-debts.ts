@@ -8,6 +8,7 @@ import {
   createPersonalDebtSchema,
   updatePersonalDebtSchema,
   recordRepaymentSchema,
+  splitPersonalDebtSchema,
 } from "@/lib/validators/personal-debt";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
@@ -16,14 +17,27 @@ import {
   recomputeSplitRepaid,
   detachTransactionFromDebt,
 } from "@/lib/personal-debts/recompute";
-import { inferPersonalDebtRole, isPersonalDebtOverdue } from "@zeta/shared";
+import {
+  resolveSplitParticipants,
+  cleanupAdHocDestinatarios,
+} from "@/lib/personal-debts/ad-hoc";
+import { SPLIT_ERROR_MESSAGES } from "@/lib/personal-debts/split-errors";
+import {
+  computeSplit,
+  getCurrencyDecimals,
+  inferPersonalDebtRole,
+  isPersonalDebtOverdue,
+} from "@zeta/shared";
 import { toColombiaDateString } from "@/lib/utils/date";
 import type { ActionResult } from "@/types/actions";
 import type { Database } from "@/types/database";
 import type {
+  CurrencyCode,
   PersonalDebtWithDetails,
   PersonalDebtDirection,
 } from "@/types/domain";
+
+type PersonalDebtInsert = Database["public"]["Tables"]["personal_debts"]["Insert"];
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -55,7 +69,7 @@ async function getPersonalDebtsCached(
       id, user_id, destinatario_id, direction, principal_amount,
       currency_code, outstanding_amount, opened_on, due_date, status,
       origin_transaction_id, split_group_id, notes, is_demo, created_at, updated_at,
-      destinatario:destinatarios!personal_debts_destinatario_id_fkey ( name, default_category_id ),
+      destinatario:destinatarios!personal_debts_destinatario_id_fkey ( name, default_category_id, is_ad_hoc ),
       repayments:transactions!transactions_enc_personal_debt_id_fkey ( amount, pd_role )
     `)
     .eq("user_id", userId)
@@ -75,6 +89,7 @@ async function getPersonalDebtsCached(
       ...row,
       destinatario_name: row.destinatario?.name ?? "—",
       destinatario_default_category_id: row.destinatario?.default_category_id ?? null,
+      destinatario_is_ad_hoc: !!row.destinatario?.is_ad_hoc,
       total_repaid,
       is_overdue: isPersonalDebtOverdue(row.due_date, row.status, today),
     };
@@ -349,9 +364,12 @@ export async function deletePersonalDebt(id: string): Promise<ActionResult<undef
     .delete()
     .eq("id", id)
     .eq("user_id", user.id)
-    .select("id, split_group_id");
+    .select("id, split_group_id, destinatario_id");
   if (error) return { success: false, error: "Error al eliminar la deuda" };
   if (!data || data.length === 0) return { success: false, error: "Deuda no encontrada" };
+
+  // An ad-hoc person only ever existed to back this debt; drop them with it.
+  await cleanupAdHocDestinatarios(supabase, user.id, [data[0].destinatario_id]);
 
   // Removing one participant changes both what the group owes and what it has
   // recovered; without this the origin tx keeps crediting a debt that is gone.
@@ -372,6 +390,170 @@ export async function deletePersonalDebt(id: string): Promise<ActionResult<undef
   revalidateFinancialViews();
   updateTag("personal-debts");
   return { success: true, data: undefined };
+}
+
+// ============================================================
+// Dividir una deuda existente entre varias personas.
+//
+// Turns ONE `lent` debt into N sibling debts sharing a fresh split_group_id —
+// the "pagué la cuenta y ahora me deben 6 personas" case, when the debt was
+// already recorded as a single lump. Participants may be existing contacts or
+// ad-hoc typed names (materialized into hidden destinatarios).
+//
+// The debt's principal IS what others owe, so there is no user share: the whole
+// principal is divided among the participants (userIncluded = false). Contrast
+// with `createSharedPayment`, which splits a PAYMENT total the user may share in.
+//
+// If the debt has an origin transaction it is re-tagged into the split group so
+// the grouped card reads its real total (and `userShare = total − Σ owed` falls
+// out for free). Deleting the original debt clears that tx's personal_debt_id
+// via ON DELETE SET NULL — exactly what the shared-payment model requires of an
+// origin tx — and we clear the now-meaningless pd_role alongside it.
+// ============================================================
+export async function splitPersonalDebt(
+  id: string,
+  formData: FormData,
+): Promise<ActionResult<{ split_group_id: string; debt_ids: string[] }>> {
+  if (!personalDebtIdSchema.safeParse(id).success) {
+    return { success: false, error: "ID inválido" };
+  }
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  let participantsRaw: unknown = [];
+  try {
+    participantsRaw = JSON.parse(String(formData.get("participants") ?? "[]"));
+  } catch {
+    return { success: false, error: "Datos de personas inválidos" };
+  }
+  const parsed = splitPersonalDebtSchema.safeParse({
+    method: formData.get("method") || "equal",
+    participants: participantsRaw,
+  });
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0].message };
+  }
+
+  const { data: debt, error: debtErr } = await supabase
+    .from("personal_debts")
+    .select(
+      "id, destinatario_id, direction, principal_amount, currency_code, opened_on, due_date, notes, status, origin_transaction_id, split_group_id, is_demo",
+    )
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .single();
+  if (debtErr || !debt) return { success: false, error: "Deuda no encontrada" };
+  if (debt.split_group_id) {
+    return { success: false, error: "Esta deuda ya está repartida entre varias personas" };
+  }
+  if (debt.direction !== "lent") {
+    return { success: false, error: "Solo puedes dividir una deuda que te deben" };
+  }
+  if (debt.status !== "active") {
+    return { success: false, error: "Solo puedes dividir una deuda activa" };
+  }
+
+  // Existing repayments can't be attributed to any one participant, and the
+  // original debt row is about to disappear — so refuse rather than silently
+  // losing who paid what.
+  const { count, error: repErr } = await supabase
+    .from("transactions")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("personal_debt_id", id)
+    .eq("pd_role", "repayment");
+  if (repErr) return { success: false, error: "Error al revisar los abonos de la deuda" };
+  if ((count ?? 0) > 0) {
+    return {
+      success: false,
+      error:
+        "Esta deuda ya tiene abonos registrados y no se puede dividir. Elimínala y regístrala como pago compartido.",
+    };
+  }
+
+  const resolved = await resolveSplitParticipants(supabase, user.id, parsed.data.participants);
+  if (!resolved.ok) return { success: false, error: resolved.error };
+  const { participants: people, createdIds } = resolved;
+
+  const principal = Number(debt.principal_amount);
+  const split = computeSplit({
+    total: principal,
+    method: parsed.data.method,
+    participants: people.map((x) => ({
+      destinatario_id: x.destinatario_id,
+      value: x.value,
+    })),
+    userIncluded: false,
+    decimals: getCurrencyDecimals(debt.currency_code as CurrencyCode),
+  });
+  if (!split.ok) {
+    await cleanupAdHocDestinatarios(supabase, user.id, createdIds);
+    return { success: false, error: SPLIT_ERROR_MESSAGES[split.reason] };
+  }
+
+  const splitGroupId = crypto.randomUUID();
+  const debtIds: string[] = [];
+  const rows: PersonalDebtInsert[] = split.shares.map((share) => {
+    const debtId = crypto.randomUUID();
+    debtIds.push(debtId);
+    return {
+      id: debtId,
+      user_id: user.id,
+      destinatario_id: share.destinatario_id!,
+      direction: "lent",
+      principal_amount: share.amount,
+      outstanding_amount: share.amount,
+      currency_code: debt.currency_code,
+      opened_on: debt.opened_on,
+      due_date: debt.due_date,
+      notes: debt.notes,
+      status: "active",
+      is_demo: debt.is_demo,
+      split_group_id: splitGroupId,
+      origin_transaction_id: debt.origin_transaction_id,
+    };
+  });
+
+  // 1) Siblings first — if this fails nothing has been destroyed yet.
+  const { error: insErr } = await supabase.from("personal_debts").insert(rows);
+  if (insErr) {
+    await cleanupAdHocDestinatarios(supabase, user.id, createdIds);
+    return { success: false, error: "Error al crear las deudas del reparto" };
+  }
+
+  // 2) Replace the original lump.
+  const { error: delErr } = await supabase
+    .from("personal_debts")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
+  if (delErr) {
+    await supabase.from("personal_debts").delete().eq("user_id", user.id).in("id", debtIds);
+    await cleanupAdHocDestinatarios(supabase, user.id, createdIds);
+    return { success: false, error: "Error al reemplazar la deuda original" };
+  }
+
+  // 3) Re-tag the origin transaction, if there was one. Non-fatal: without it
+  //    the group still reads correctly (total falls back to Σ principals and
+  //    `recovered` is derived from the debts themselves).
+  if (debt.origin_transaction_id) {
+    const { error: txErr } = await supabase
+      .from("transactions")
+      .update({ split_group_id: splitGroupId, split_repaid_amount: 0, pd_role: null })
+      .eq("id", debt.origin_transaction_id)
+      .eq("user_id", user.id);
+    if (txErr) {
+      console.error("splitPersonalDebt: failed to tag origin transaction:", txErr);
+    }
+  }
+
+  // 4) The lump's counterparty (often a stand-in like "Compañeros") may now be
+  //    an unreferenced ad-hoc row.
+  await cleanupAdHocDestinatarios(supabase, user.id, [debt.destinatario_id]);
+
+  revalidateFinancialViews();
+  updateTag("personal-debts");
+  return { success: true, data: { split_group_id: splitGroupId, debt_ids: debtIds } };
 }
 
 export async function settlePersonalDebt(id: string): Promise<ActionResult<undefined>> {

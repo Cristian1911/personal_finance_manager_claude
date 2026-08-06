@@ -15,13 +15,23 @@
 export type SplitMethod = "equal" | "amount" | "percent";
 
 export interface SplitParticipantInput {
-  destinatario_id: string;
+  /**
+   * Opaque passthrough — the engine only echoes it back on the matching share,
+   * never interprets it. Optional so the live UI preview can compute a split for
+   * ad-hoc participants (a typed name with no contact behind it yet); the server
+   * materializes those into destinatarios before persisting anything.
+   */
+  destinatario_id?: string | null;
   /** method="amount" → the person's fixed amount; method="percent" → their % */
   value?: number;
 }
 
 export interface SplitShare {
-  /** null = the user's own share; otherwise the participant's destinatario id */
+  /**
+   * The participant's destinatario id, echoed from the input — null when the
+   * caller did not supply one (ad-hoc participant, preview only). `shares` never
+   * contains the user's own share; that is returned separately as `userShare`.
+   */
   destinatario_id: string | null;
   amount: number;
 }
@@ -163,7 +173,7 @@ export function computeSplit(params: {
     ok: true,
     userShare,
     shares: participants.map((p, i) => ({
-      destinatario_id: p.destinatario_id,
+      destinatario_id: p.destinatario_id ?? null,
       amount: participantShares[i],
     })),
   });

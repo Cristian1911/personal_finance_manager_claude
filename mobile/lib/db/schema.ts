@@ -711,6 +711,18 @@ export const DB_MIGRATIONS: DbMigration[] = [
       `ALTER TABLE profiles ADD COLUMN nav_focus TEXT NOT NULL DEFAULT 'PLAN'`,
     ],
   },
+  {
+    version: 26,
+    statements: [
+      // ── destinatarios.is_ad_hoc ───────────────────────────────────────
+      // Throwaway people materialized by a split ("Pago compartido" /
+      // "Dividir deuda") so personal_debts.destinatario_id has something to
+      // point at. The webapp hides them from every picker and from the
+      // destinatarios page; without this column they would pull down and show
+      // up on mobile as contacts the user never created.
+      `ALTER TABLE destinatarios ADD COLUMN is_ad_hoc INTEGER NOT NULL DEFAULT 0`,
+    ],
+  },
 ];
 
 export const LATEST_DB_VERSION =

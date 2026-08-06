@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { splitParticipantSchema } from "./shared-payment";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -36,6 +37,19 @@ export const updatePersonalDebtSchema = z.object({
   ),
   due_date: optionalDate,
   notes: optionalText,
+});
+
+/**
+ * "Dividir entre varias personas": turn ONE existing `lent` debt into N sibling
+ * debts sharing a split_group_id. There is no `user_included` flag — the debt's
+ * principal is by definition what OTHERS owe, so the user never takes a share
+ * of it (contrast with a fresh Pago compartido, which splits a payment total).
+ */
+export const splitPersonalDebtSchema = z.object({
+  method: z.enum(["equal", "amount", "percent"]).default("equal"),
+  participants: z
+    .array(splitParticipantSchema)
+    .min(2, "Divide entre al menos dos personas"),
 });
 
 export const recordRepaymentSchema = z.object({

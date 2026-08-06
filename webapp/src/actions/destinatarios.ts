@@ -212,10 +212,18 @@ async function getDestinatariosCached(
   cacheLife("zeta");
 
   const supabase = createCachedClient(accessToken);
+  // Ad-hoc counterparties (materialized by a split from a typed name) are
+  // deliberately excluded here. This one filter hides them everywhere at once:
+  // the destinatarios page, every DestinatarioZonePicker (they reach the client
+  // through AppDataProvider, which is fed by this action) and
+  // getDestinatariosWithSpend. Their name still reaches the UI via the
+  // personal_debts read join — the debt shows the person, the contact list
+  // doesn't gain six ghosts.
   const { data: destinatarios, error } = await supabase
     .from("destinatarios")
     .select("*, destinatario_rules!destinatario_rules_destinatario_id_fkey(count), transactions!transactions_destinatario_id_fkey(count)")
     .eq("user_id", userId)
+    .eq("is_ad_hoc", false)
     .order("name", { ascending: true });
 
   if (error) throw error;
@@ -628,6 +636,44 @@ export async function patchDestinatario(
   // destinatarios appear in cached pickers/joins.
   revalidateFinancialViews();
   updateTag("destinatarios");
+  return { success: true, data: null };
+}
+
+// ─── promoteAdHocDestinatario ────────────────────────────────────────────────
+
+/**
+ * Turn a hidden ad-hoc counterparty into a real contact.
+ *
+ * Ad-hoc rows are created by a split when the user typed a bare name instead of
+ * picking someone (see `lib/personal-debts/ad-hoc.ts`). When one of those people
+ * turns out to be recurring, this promotes them in place — the debts keep
+ * pointing at the same row, so no history is rewritten; they simply start
+ * showing up in the destinatarios page and in every picker.
+ */
+export async function promoteAdHocDestinatario(
+  id: string,
+): Promise<ActionResult<null>> {
+  if (!UUID_RE.test(id)) return { success: false, error: "ID inválido" };
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { data, error } = await supabase
+    .from("destinatarios")
+    .update({ is_ad_hoc: false })
+    .eq("user_id", user.id)
+    .eq("id", id)
+    // Guard against a double-click racing itself into a confusing success.
+    .eq("is_ad_hoc", true)
+    .select("id");
+
+  if (error) return { success: false, error: "Error al guardar el contacto" };
+  if (!data || data.length === 0) {
+    return { success: false, error: "Esta persona ya es un contacto" };
+  }
+
+  updateTag("destinatarios");
+  // The debt cards render the ad-hoc flag, so they must re-read too.
+  updateTag("personal-debts");
   return { success: true, data: null };
 }
 
