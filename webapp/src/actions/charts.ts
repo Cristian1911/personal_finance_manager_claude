@@ -84,6 +84,7 @@ async function getCategorySpendingCached(
       .gte("transaction_date", monthStartStr(target))
       .lte("transaction_date", monthEndStr(target))
       .is("reconciled_into_transaction_id", null)
+      .is("transfer_group_id", null)
       .in("flow_class_effective", COUNTED_FLOW_CLASSES as string[])
       // Exclude all personal-debt movements (standalone lend/borrow origins +
       // every repayment) — they're balance movements, not the user's spend. The
@@ -180,7 +181,8 @@ async function getMonthlyCashflowCached(
     .lte("transaction_date", monthEndStr(target))
     .order("transaction_date")
     .is("reconciled_into_transaction_id", null)
-    .in("flow_class_effective", COUNTED_FLOW_CLASSES as string[])
+    .is("transfer_group_id", null)
+      .in("flow_class_effective", COUNTED_FLOW_CLASSES as string[])
     .is("personal_debt_id", null);
 
   if (error) throw error;
@@ -248,7 +250,8 @@ async function getDailySpendingCached(
     .lte("transaction_date", monthEndStr(target))
     .order("transaction_date")
     .is("reconciled_into_transaction_id", null)
-    .in("flow_class_effective", COUNTED_FLOW_CLASSES as string[])
+    .is("transfer_group_id", null)
+      .in("flow_class_effective", COUNTED_FLOW_CLASSES as string[])
     .is("personal_debt_id", null);
 
   if (error) throw error;
@@ -312,7 +315,8 @@ async function getMonthMetricsCached(
     .gte("transaction_date", monthStartStr(target))
     .lte("transaction_date", monthEndStr(target))
     .is("reconciled_into_transaction_id", null)
-    .in("flow_class_effective", COUNTED_FLOW_CLASSES as string[])
+    .is("transfer_group_id", null)
+      .in("flow_class_effective", COUNTED_FLOW_CLASSES as string[])
     .is("personal_debt_id", null);
 
   if (error) throw error;
@@ -365,7 +369,8 @@ async function getDailyCashflowCached(
     .lte("transaction_date", endStr)
     .order("transaction_date")
     .is("reconciled_into_transaction_id", null)
-    .in("flow_class_effective", COUNTED_FLOW_CLASSES as string[])
+    .is("transfer_group_id", null)
+      .in("flow_class_effective", COUNTED_FLOW_CLASSES as string[])
     .is("personal_debt_id", null);
 
   if (error) throw error;

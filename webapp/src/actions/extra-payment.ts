@@ -147,9 +147,13 @@ export async function applyExtraDebtPayment(
     const debtAccountName = allocation.accountName || debtAccount.name;
 
     // Both legs share a transfer_group_id, exactly like createTransfer: moving
-    // your own money to your own debt is not spending. Every spend metric
-    // filters `.is("transfer_group_id", null)`, so without this the dashboard
-    // reports the payoff as an expense of the same size.
+    // your own money to your own debt is not spending.
+    //
+    // This is still load-bearing. Spend metrics now ALSO filter on
+    // flow_class_effective, but no write path sets flow_class yet, so these legs
+    // land UNCLASSIFIED — which is inside the counted allow-list. Until the write
+    // paths classify, transfer_group_id is the only thing keeping a debt payoff
+    // from being reported as an expense of the same size.
     const transferGroupId = crypto.randomUUID();
 
     // ── 1. OUTFLOW on source account ────────────────────────────────────────

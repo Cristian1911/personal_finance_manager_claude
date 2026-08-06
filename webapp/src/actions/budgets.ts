@@ -77,7 +77,12 @@ async function getBudgetSummaryCached(
         // amount − repaid (converges to the user's share).
         .is("personal_debt_id", null)
         // Moving your own money between your own accounts is not spending.
-        .in("flow_class_effective", COUNTED_FLOW_CLASSES as string[]);
+        // Two filters on purpose: transfer_group_id catches linked in-app
+        // transfers, flow_class catches the ones that only a description reveals
+        // (imported card payments, cash advances). The first comes out once every
+        // write path sets flow_class.
+        .is("transfer_group_id", null)
+      .in("flow_class_effective", COUNTED_FLOW_CLASSES as string[]);
 
     const totalSpent =
         (transactions as BudgetSummaryTransactionRow[] | null)?.reduce(
