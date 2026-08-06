@@ -63,6 +63,41 @@ export const NEUTRAL_CLASSES: ReadonlySet<FlowClass> = new Set<FlowClass>([
   "SELF_TRANSFER",
 ]);
 
+/**
+ * Value stored in `flow_class_effective` when a row has no verdict yet — the
+ * column is `coalesce(flow_class_override, flow_class, 'UNCLASSIFIED')` and is
+ * never NULL.
+ */
+export const UNCLASSIFIED = "UNCLASSIFIED";
+
+/**
+ * The allow-list for `.in("flow_class_effective", ...)` on any metrics query.
+ *
+ * Use a POSITIVE list, never `.not.in(NEUTRAL)`. Three reasons:
+ *  1. `NOT IN` cannot seek on the (user_id, flow_class_effective, date) index —
+ *     it degrades the class column to a filter and takes the date range with it.
+ *  2. It fails closed: a 9th class added next quarter is simply not counted
+ *     until someone decides where it belongs, instead of silently landing in
+ *     spend. Failing open is what produced the $73M-vs-$13M discrepancy.
+ *  3. No three-valued-logic trap if the column ever does go NULL.
+ *
+ * Safe for both directions: an OUTFLOW can never classify as INCOME or
+ * DEBT_CREDIT, so one list covers spend-only, income-only and mixed queries.
+ *
+ * `UNCLASSIFIED` is included on purpose. Rows written by a path that does not
+ * yet call `classifyFlow` — and every row belonging to a user whose backfill
+ * has not run — keep behaving exactly as they do today. Drop it from this list
+ * once every write path classifies, and add a data-quality check that counts
+ * what is still stuck there.
+ */
+export const COUNTED_FLOW_CLASSES: readonly string[] = [
+  "INCOME",
+  "SPEND",
+  "CASH_WITHDRAWAL",
+  "BANK_FEE",
+  UNCLASSIFIED,
+];
+
 export function isSpendClass(flowClass: string | null | undefined): boolean {
   return flowClass != null && SPEND_CLASSES.has(flowClass as FlowClass);
 }

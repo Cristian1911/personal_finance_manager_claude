@@ -10,6 +10,7 @@ import { getPreferredCurrency } from "@/actions/profile";
 import type { Database } from "@/types/database";
 import type { ActionResult } from "@/types/actions";
 import type { Budget } from "@/types/domain";
+import { COUNTED_FLOW_CLASSES } from "@zeta/shared";
 
 type BudgetSummaryTransactionRow = {
     amount: number;
@@ -76,7 +77,7 @@ async function getBudgetSummaryCached(
         // amount − repaid (converges to the user's share).
         .is("personal_debt_id", null)
         // Moving your own money between your own accounts is not spending.
-        .is("transfer_group_id", null);
+        .in("flow_class_effective", COUNTED_FLOW_CLASSES as string[]);
 
     const totalSpent =
         (transactions as BudgetSummaryTransactionRow[] | null)?.reduce(
