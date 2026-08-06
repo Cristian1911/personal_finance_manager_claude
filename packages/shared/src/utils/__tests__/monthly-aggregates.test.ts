@@ -95,10 +95,12 @@ describe("computeMonthlyAggregates", () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────
-// flow_class takes precedence over the account-type heuristic
-// ─────────────────────────────────────────────────────────────────
-describe("flow_class support", () => {
+// flow_class is deliberately NOT honoured by computeMonthlyAggregates yet — see
+// the comment in monthly-aggregates.ts. Turning it on requires the column in
+// both the webapp slim select and the mobile SQLite projection, or the same
+// Movimientos screen reports two different totals depending on whether a filter
+// is active. The tests for that behaviour land with the change that wires both.
+describe("flow_class is not honoured yet", () => {
   const base = {
     account_id: "acct",
     category_id: "cat",
@@ -107,62 +109,11 @@ describe("flow_class support", () => {
     transaction_date: "2026-04-10",
   };
 
-  it("a loan disbursed into a liquid account is not income", () => {
-    // The account is a savings account, so debtAccountIds cannot catch this.
-    // Before flow_class, $22.441.478 of new debt was reported as income.
-    const r = computeMonthlyAggregates(
-      [{ ...base, amount: 22441478, direction: "INFLOW", flow_class: "DEBT_DRAWDOWN" }],
-      { debtAccountIds: new Set(), withDaysByDate: false },
-    );
-    expect(r.totalInflow).toBe(0);
-  });
-
-  it("a card payment is not spending", () => {
+  it("a row carrying flow_class still follows the debtAccountIds heuristic", () => {
     const r = computeMonthlyAggregates(
       [{ ...base, amount: 2024211, direction: "OUTFLOW", flow_class: "DEBT_PAYMENT" }],
       { debtAccountIds: new Set(), withDaysByDate: false },
     );
-    expect(r.totalOutflow).toBe(0);
-    expect(r.uncategorizedCount).toBe(0);
-  });
-
-  it("a user override beats the machine verdict", () => {
-    const r = computeMonthlyAggregates(
-      [
-        {
-          ...base,
-          amount: 500000,
-          direction: "OUTFLOW",
-          flow_class: "SPEND",
-          flow_class_override: "SELF_TRANSFER",
-        },
-      ],
-      { debtAccountIds: new Set(), withDaysByDate: false },
-    );
-    expect(r.totalOutflow).toBe(0);
-  });
-
-  it("rows without flow_class keep the old debtAccountIds behaviour", () => {
-    const r = computeMonthlyAggregates(
-      [
-        { ...base, account_id: "debt", amount: 100, direction: "INFLOW" },
-        { ...base, amount: 200, direction: "INFLOW" },
-        { ...base, amount: 50, direction: "OUTFLOW" },
-      ],
-      { debtAccountIds: new Set(["debt"]), withDaysByDate: false },
-    );
-    expect(r.totalInflow).toBe(200);
-    expect(r.totalOutflow).toBe(50);
-  });
-
-  it("daily buckets honour flow_class too", () => {
-    const r = computeMonthlyAggregates(
-      [
-        { ...base, amount: 900, direction: "OUTFLOW", flow_class: "DEBT_PAYMENT" },
-        { ...base, amount: 100, direction: "OUTFLOW", flow_class: "SPEND" },
-      ],
-      { debtAccountIds: new Set(), withDaysByDate: true },
-    );
-    expect(r.daysByDate).toEqual([{ date: "2026-04-10", income: 0, expense: 100 }]);
+    expect(r.totalOutflow).toBe(2024211);
   });
 });
