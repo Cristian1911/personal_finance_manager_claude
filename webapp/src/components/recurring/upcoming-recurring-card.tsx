@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
-import { frequencyLabel } from "@zeta/shared";
+import { frequencyLabel, isDebtAccountType } from "@zeta/shared";
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import type { CurrencyCode, UpcomingRecurrence } from "@/types/domain";
@@ -37,7 +37,7 @@ export function UpcomingRecurringCard({
               const acctType = item.template.account?.account_type;
               // An OUTFLOW on a debt account is a recurring charge, not an abono.
               const isDebtPayment =
-                (acctType === "CREDIT_CARD" || acctType === "LOAN") &&
+                (isDebtAccountType(acctType)) &&
                 item.template.direction === "INFLOW";
               const isIncome = item.template.direction === "INFLOW" && !isDebtPayment;
               return (

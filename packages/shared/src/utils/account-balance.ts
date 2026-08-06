@@ -6,6 +6,25 @@ export function isDebtAccountType(accountType: string): accountType is AccountTy
   return DEBT_ACCOUNT_TYPES.has(accountType as AccountType);
 }
 
+/**
+ * An INFLOW to a credit card or loan is a payment against debt, never income.
+ * Promoted from `mobile/lib/transaction-semantics.ts`, which had the only named
+ * helper for a rule the rest of the codebase kept re-inlining.
+ *
+ * Null-tolerant because callers read it off joined rows where the account may
+ * not have been selected.
+ */
+export function isDebtInflow(params: {
+  direction: string | null | undefined;
+  accountType: string | null | undefined;
+}): boolean {
+  return (
+    params.direction === "INFLOW" &&
+    params.accountType != null &&
+    isDebtAccountType(params.accountType)
+  );
+}
+
 export function applyAccountBalanceDelta(params: {
   currentBalance: number;
   accountType: string;

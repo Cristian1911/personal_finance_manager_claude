@@ -10,6 +10,7 @@ import {
   type PurchaseDecisionResult,
   type PurchaseFundingType,
   type PurchaseUrgency,
+  isDebtAccountType,
 } from "@zeta/shared";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
@@ -445,7 +446,7 @@ export async function getFinancialSnapshot(): Promise<FinancialSnapshot | null> 
 
   const liquidCashAvailable = accounts
     .filter(
-      (a) => a.account_type !== "CREDIT_CARD" && a.account_type !== "LOAN"
+      (a) => !isDebtAccountType(a.account_type)
     )
     .reduce((sum, a) => sum + Math.max(a.current_balance, 0), 0);
 
@@ -453,8 +454,7 @@ export async function getFinancialSnapshot(): Promise<FinancialSnapshot | null> 
     .filter(
       (item) =>
         item.template.direction === "OUTFLOW" &&
-        item.template.account.account_type !== "CREDIT_CARD" &&
-        item.template.account.account_type !== "LOAN"
+        !isDebtAccountType(item.template.account.account_type)
     )
     .reduce((sum, item) => sum + item.template.amount, 0);
 
@@ -498,7 +498,7 @@ async function scoreItemWithSnapshot(
   const selectedAccount = item.account_id
     ? snapshot.accounts.find((a) => a.id === item.account_id)
     : snapshot.accounts.find(
-        (a) => a.account_type !== "CREDIT_CARD" && a.account_type !== "LOAN"
+        (a) => !isDebtAccountType(a.account_type)
       );
 
   if (!selectedAccount) return null;

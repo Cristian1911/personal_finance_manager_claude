@@ -21,6 +21,7 @@ import type {
   PlanMainAccountsSummary,
   PlanPageData,
 } from "@/types/plan";
+import { isDebtAccountType } from "@zeta/shared";
 
 const MAIN_ACCOUNT_TYPES: AccountType[] = ["CHECKING", "SAVINGS", "CASH"];
 
@@ -249,8 +250,7 @@ export const getPlanPageData = cache(
     const dueSoon = currencyFiltered
       .filter((entry) =>
         entry.template.direction === "OUTFLOW" ||
-        entry.template.account.account_type === "CREDIT_CARD" ||
-        entry.template.account.account_type === "LOAN"
+        isDebtAccountType(entry.template.account.account_type)
       )
       .slice(0, 6);
     const dueSoonTotal = dueSoon.reduce((sum, entry) => sum + entry.template.amount, 0);
@@ -258,8 +258,7 @@ export const getPlanPageData = cache(
     const upcomingIncome = currencyFiltered
       .filter((entry) =>
         entry.template.direction === "INFLOW" &&
-        entry.template.account.account_type !== "CREDIT_CARD" &&
-        entry.template.account.account_type !== "LOAN"
+        !isDebtAccountType(entry.template.account.account_type)
       )
       .slice(0, 4);
 

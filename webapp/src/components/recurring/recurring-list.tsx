@@ -15,7 +15,9 @@ import {
   toggleRecurringTemplate,
 } from "@/actions/recurring-templates";
 import { formatCurrency } from "@/lib/utils/currency";
-import { frequencyLabel, getNextOccurrence } from "@zeta/shared";
+import { frequencyLabel, getNextOccurrence,
+  isDebtAccountType,
+} from "@zeta/shared";
 import { formatDate } from "@/lib/utils/date";
 import {
   ArrowDownLeft,
@@ -100,8 +102,7 @@ function RecurringCard({
   // "Abono a deuda" = an INFLOW that reduces the debt (paid via transfer).
   // An OUTFLOW on a debt account is a recurring charge, not an abono.
   const isDebtPayment =
-    (template.account.account_type === "CREDIT_CARD" ||
-      template.account.account_type === "LOAN") &&
+    (isDebtAccountType(template.account.account_type)) &&
     template.direction === "INFLOW";
   const isIncome = template.direction === "INFLOW" && !isDebtPayment;
 

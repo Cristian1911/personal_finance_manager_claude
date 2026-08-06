@@ -589,7 +589,7 @@ export async function registerPayment(
 
   if (accountError || !account) return { success: false, error: "Cuenta no encontrada" };
 
-  const isDebt = account.account_type === "CREDIT_CARD" || account.account_type === "LOAN";
+  const isDebt = isDebtAccountType(account.account_type);
   const now = new Date().toISOString();
   // Colombia is UTC-5: slicing the ISO string books anything after ~19:00 COT
   // on tomorrow's date.

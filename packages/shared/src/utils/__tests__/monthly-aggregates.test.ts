@@ -94,3 +94,26 @@ describe("computeMonthlyAggregates", () => {
     });
   });
 });
+
+// flow_class is deliberately NOT honoured by computeMonthlyAggregates yet — see
+// the comment in monthly-aggregates.ts. Turning it on requires the column in
+// both the webapp slim select and the mobile SQLite projection, or the same
+// Movimientos screen reports two different totals depending on whether a filter
+// is active. The tests for that behaviour land with the change that wires both.
+describe("flow_class is not honoured yet", () => {
+  const base = {
+    account_id: "acct",
+    category_id: "cat",
+    is_excluded: false,
+    reconciled_into_transaction_id: null,
+    transaction_date: "2026-04-10",
+  };
+
+  it("a row carrying flow_class still follows the debtAccountIds heuristic", () => {
+    const r = computeMonthlyAggregates(
+      [{ ...base, amount: 2024211, direction: "OUTFLOW", flow_class: "DEBT_PAYMENT" }],
+      { debtAccountIds: new Set(), withDaysByDate: false },
+    );
+    expect(r.totalOutflow).toBe(2024211);
+  });
+});

@@ -29,6 +29,12 @@ interface Props {
   stmtIdx?: number;
   onCategoryChange?: (txIdx: number, categoryId: string | null) => void;
   /** Keyed `${stmtIdx}-${txIdx}` → assigned destinatario (auto-matched or created here). */
+  /**
+   * Keys (`${stmtIdx}-${txIdx}`) whose category came from the rule engine rather
+   * than a destinatario match or an explicit pick. Rendered with a "Sugerida"
+   * marker so a 0.7-confidence guess is never mistaken for a confirmed choice.
+   */
+  suggestedKeys?: ReadonlySet<string>;
   destinatarioMap?: Map<string, { id: string; name: string }>;
   /** Open the seeded create form for a parsed row. */
   onCreateDestinatario?: (txIdx: number) => void;
@@ -95,6 +101,7 @@ function MobileList({
   categoryMap,
   stmtIdx,
   onCategoryChange,
+  suggestedKeys,
   destinatarioMap,
   onCreateDestinatario,
 }: Props) {
@@ -177,9 +184,17 @@ function MobileList({
                     {catName && (
                       <>
                         <span>·</span>
-                        <span className="rounded bg-muted px-1.5 py-px">
+                        <Badge
+                          variant={suggestedKeys?.has(`${stmtIdx}-${i}`) ? "outline" : "secondary"}
+                          className="px-1.5 py-0 text-[10px] font-normal"
+                        >
                           {catName}
-                        </span>
+                        </Badge>
+                        {suggestedKeys?.has(`${stmtIdx}-${i}`) && (
+                          <span className="shrink-0 text-[10px] text-muted-foreground">
+                            Sugerida
+                          </span>
+                        )}
                       </>
                     )}
                     {tx.installment_current != null && (
@@ -251,6 +266,7 @@ function DesktopTable({
   categoryMap,
   stmtIdx,
   onCategoryChange,
+  suggestedKeys,
   destinatarioMap,
   onCreateDestinatario,
 }: Props) {
@@ -317,6 +333,11 @@ function DesktopTable({
                       direction={tx.direction}
                       triggerClassName="w-full sm:w-[180px] h-8 text-xs"
                     />
+                    {suggestedKeys?.has(`${stmtIdx}-${i}`) && (
+                      <span className="mt-0.5 block text-[10px] text-muted-foreground">
+                        Sugerida
+                      </span>
+                    )}
                   </TableCell>
                 )}
                 {showDestinatarios && (

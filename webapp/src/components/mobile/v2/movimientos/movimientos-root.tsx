@@ -21,6 +21,7 @@ import type {
   Tag,
   CurrencyCode,
 } from "@/types/domain";
+import { isDebtAccountType } from "@zeta/shared";
 
 interface MovimientosRootProps {
   transactions: TransactionWithAccount[];
@@ -117,7 +118,7 @@ export function MovimientosRoot({
     () =>
       new Set(
         accounts
-          .filter((a) => a.account_type === "CREDIT_CARD" || a.account_type === "LOAN")
+          .filter((a) => isDebtAccountType(a.account_type))
           .map((a) => a.id)
       ),
     [accounts]

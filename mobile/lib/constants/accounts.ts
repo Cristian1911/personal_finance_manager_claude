@@ -8,12 +8,14 @@ import {
   CircleDot,
 } from "lucide-react-native";
 
-/** Canonical set of debt account types — use this instead of inline Set literals */
-export const DEBT_ACCOUNT_TYPES = new Set(["CREDIT_CARD", "LOAN"]);
+/**
+ * Canonical debt-account predicate. Re-exported from `@zeta/shared` rather than
+ * redefined here — a second copy is how mobile and webapp drift apart.
+ */
+export { isDebtAccountType } from "@zeta/shared";
 
-export function isDebtAccountType(type: string): boolean {
-  return DEBT_ACCOUNT_TYPES.has(type);
-}
+/** Kept for the handful of call sites that want the set itself. */
+export const DEBT_ACCOUNT_TYPES = new Set(["CREDIT_CARD", "LOAN"]);
 
 /** Liquid account types — CHECKING + SAVINGS. Used for plan calculations and disponible. */
 export const LIQUID_ACCOUNT_TYPES = new Set(["CHECKING", "SAVINGS"]);
