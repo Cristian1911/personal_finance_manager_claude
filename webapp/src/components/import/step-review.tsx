@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { ChevronDown, Loader2 } from "lucide-react";
 import {
+  autoCategorize,
   matchDestinatario,
   prepareDestinatarioRules,
   type DestinatarioRule,
@@ -31,7 +32,7 @@ import { useCategories } from "@/components/providers/app-data-provider";
 import { computeInstallmentGroupId } from "@/lib/utils/idempotency";
 import { trackClientEvent } from "@/lib/utils/analytics";
 import { cn } from "@/lib/utils";
-import type { Account, CurrencyCode } from "@/types/domain";
+import type { Account, CurrencyCode, CategoryWithChildren } from "@/types/domain";
 import type {
   ParseResponse,
   ReconciliationPreviewResult,
@@ -116,6 +117,28 @@ export function StepReview({
     return { destMap: dest, catMap: cat };
   }, [parseResult, destinatarioRules]);
 
+  // Rule-engine suggestions for rows no destinatario placed. The import path
+  // never ran the categorizer, so statement rows arrived uncategorized however
+  // obvious the merchant was. Computed here (not in the server action) so the
+  // suggestion is visible and editable in the review step before insert.
+  const sysCatMap = useMemo(() => {
+    const out = new Map<string, { categoryId: string; confidence: number }>();
+    parseResult.statements.forEach((stmt, stmtIdx) => {
+      stmt.transactions.forEach((tx, txIdx) => {
+        const key = `${stmtIdx}-${txIdx}`;
+        if (catMap.get(key)) return;
+        const hit = autoCategorize(tx.description);
+        if (hit) {
+          out.set(key, {
+            categoryId: hit.category_id,
+            confidence: hit.categorization_confidence,
+          });
+        }
+      });
+    });
+    return out;
+  }, [parseResult, catMap]);
+
   // Auto-match + in-review overrides combined; overrides win.
   const mergedDestMap = useMemo(() => {
     if (destOverrides.size === 0) return destMap;
@@ -130,6 +153,19 @@ export function StepReview({
     for (const [key, value] of catOverrides) merged.set(key, value);
     return merged;
   }, [catMap, catOverrides]);
+
+  // What the review table shows: explicit assignment wins, suggestion fills in.
+  const displayCatMap = useMemo(() => {
+    const merged = new Map<string, string | null>(mergedCatMap);
+    for (const [key, sug] of sysCatMap) {
+      if (!merged.get(key)) merged.set(key, sug.categoryId);
+    }
+    return merged;
+  }, [mergedCatMap, sysCatMap]);
+
+  function handleCategoryChange(stmtIdx: number, txIdx: number, categoryId: string | null) {
+    setCatOverrides((prev) => new Map(prev).set(`${stmtIdx}-${txIdx}`, categoryId));
+  }
 
   function openDestDialog(stmtIdx: number, txIdx: number) {
     setDestDialogTarget({ stmtIdx, txIdx });
@@ -288,14 +324,31 @@ export function StepReview({
 
     return rows.map((row, i) => {
       const key = `${row.stmtIdx}-${row.txIdx}`;
-      const categoryId = mergedCatMap.get(key) ?? null;
       const destMatch = mergedDestMap.get(key);
       const destinatarioId = destMatch?.id ?? null;
       const merchantName = destMatch?.name ?? null;
 
-      let categorizationSource: "USER_LEARNED" | "USER_OVERRIDE" | undefined;
-      if (categoryId) {
+      // Destinatario match (or an explicit user pick) wins. When neither placed
+      // the row, fall back to the rule engine — the import path never ran it, so
+      // every statement row arrived uncategorized no matter how obvious the
+      // merchant was. Suggestions land here, in the review step, so they are
+      // visible and editable before anything is inserted.
+      const matchedCategoryId = mergedCatMap.get(key) ?? null;
+      const suggestion = matchedCategoryId ? null : sysCatMap.get(key);
+      const categoryId = matchedCategoryId ?? suggestion?.categoryId ?? null;
+
+      let categorizationSource:
+        | "USER_LEARNED"
+        | "USER_OVERRIDE"
+        | "SYSTEM_DEFAULT"
+        | undefined;
+      let categorizationConfidence: number | null = null;
+      if (matchedCategoryId) {
         categorizationSource = destinatarioId ? "USER_LEARNED" : "USER_OVERRIDE";
+        categorizationConfidence = destinatarioId ? 0.8 : null;
+      } else if (suggestion) {
+        categorizationSource = "SYSTEM_DEFAULT";
+        categorizationConfidence = suggestion.confidence;
       }
 
       return {
@@ -308,7 +361,7 @@ export function StepReview({
         raw_description: row.tx.description,
         category_id: categoryId,
         categorization_source: categorizationSource,
-        categorization_confidence: categoryId && destinatarioId ? 0.8 : null,
+        categorization_confidence: categorizationConfidence,
         installment_current: row.tx.installment_current,
         installment_total: row.tx.installment_total,
         installment_group_id: installmentIds[i],
@@ -411,6 +464,9 @@ export function StepReview({
           }
           destinatarioMap={mergedDestMap}
           onCreateDestinatario={openDestDialog}
+          categories={categories}
+          categoryMap={displayCatMap}
+          onCategoryChange={handleCategoryChange}
         />
       ) : (
         parseResult.statements.map((stmt, idx) => {
@@ -459,6 +515,11 @@ export function StepReview({
               stmtIdx={idx}
               destinatarioMap={mergedDestMap}
               onCreateDestinatario={(txIdx) => openDestDialog(idx, txIdx)}
+              categories={categories}
+              categoryMap={displayCatMap}
+              onCategoryChange={(txIdx, categoryId) =>
+                handleCategoryChange(idx, txIdx, categoryId)
+              }
             />
           );
         })
@@ -584,6 +645,9 @@ function StatementBlock({
   stmtIdx,
   destinatarioMap,
   onCreateDestinatario,
+  categories,
+  categoryMap,
+  onCategoryChange,
 }: {
   stmt: ParseResponse["statements"][number];
   accounts: Account[];
@@ -605,6 +669,9 @@ function StatementBlock({
   stmtIdx: number;
   destinatarioMap: Map<string, { id: string; name: string }>;
   onCreateDestinatario: (txIdx: number) => void;
+  categories: CategoryWithChildren[];
+  categoryMap: Map<string, string | null>;
+  onCategoryChange: (txIdx: number, categoryId: string | null) => void;
 }) {
   return (
     <div className="space-y-3">
@@ -680,6 +747,9 @@ function StatementBlock({
             stmtIdx={stmtIdx}
             destinatarioMap={destinatarioMap}
             onCreateDestinatario={onCreateDestinatario}
+            categories={categories}
+            categoryMap={categoryMap}
+            onCategoryChange={onCategoryChange}
           />
         )}
       </div>
@@ -703,6 +773,9 @@ function MultiCreditCardGroup({
   onToggleExpanded,
   destinatarioMap,
   onCreateDestinatario,
+  categories,
+  categoryMap,
+  onCategoryChange,
 }: {
   statements: ParseResponse["statements"];
   mappings: StatementAccountMapping[];
@@ -719,6 +792,9 @@ function MultiCreditCardGroup({
   onToggleExpanded: (stmtIdx: number) => void;
   destinatarioMap: Map<string, { id: string; name: string }>;
   onCreateDestinatario: (stmtIdx: number, txIdx: number) => void;
+  categories: CategoryWithChildren[];
+  categoryMap: Map<string, string | null>;
+  onCategoryChange: (stmtIdx: number, txIdx: number, categoryId: string | null) => void;
 }) {
   const firstMapping = mappings[0];
   const accountId = firstMapping?.accountId ?? "";
@@ -808,6 +884,9 @@ function MultiCreditCardGroup({
                     stmtIdx={idx}
                     destinatarioMap={destinatarioMap}
                     onCreateDestinatario={(txIdx) => onCreateDestinatario(idx, txIdx)}
+                    categories={categories}
+                    categoryMap={categoryMap}
+                    onCategoryChange={(txIdx, categoryId) => onCategoryChange(idx, txIdx, categoryId)}
                   />
                 </div>
               )}
