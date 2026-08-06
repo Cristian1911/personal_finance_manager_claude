@@ -163,6 +163,16 @@ export function StepReview({
     return merged;
   }, [mergedCatMap, sysCatMap]);
 
+  // Keys the rule engine filled in. A user pick or a destinatario match removes
+  // the key, so confirming a suggestion also drops the "Sugerida" marker.
+  const suggestedKeys = useMemo(() => {
+    const out = new Set<string>();
+    for (const key of sysCatMap.keys()) {
+      if (!mergedCatMap.get(key)) out.add(key);
+    }
+    return out;
+  }, [sysCatMap, mergedCatMap]);
+
   function handleCategoryChange(stmtIdx: number, txIdx: number, categoryId: string | null) {
     setCatOverrides((prev) => new Map(prev).set(`${stmtIdx}-${txIdx}`, categoryId));
   }
@@ -467,6 +477,7 @@ export function StepReview({
           categories={categories}
           categoryMap={displayCatMap}
           onCategoryChange={handleCategoryChange}
+          suggestedKeys={suggestedKeys}
         />
       ) : (
         parseResult.statements.map((stmt, idx) => {
@@ -520,6 +531,7 @@ export function StepReview({
               onCategoryChange={(txIdx, categoryId) =>
                 handleCategoryChange(idx, txIdx, categoryId)
               }
+              suggestedKeys={suggestedKeys}
             />
           );
         })
@@ -648,6 +660,7 @@ function StatementBlock({
   categories,
   categoryMap,
   onCategoryChange,
+  suggestedKeys,
 }: {
   stmt: ParseResponse["statements"][number];
   accounts: Account[];
@@ -672,6 +685,7 @@ function StatementBlock({
   categories: CategoryWithChildren[];
   categoryMap: Map<string, string | null>;
   onCategoryChange: (txIdx: number, categoryId: string | null) => void;
+  suggestedKeys: ReadonlySet<string>;
 }) {
   return (
     <div className="space-y-3">
@@ -750,6 +764,7 @@ function StatementBlock({
             categories={categories}
             categoryMap={categoryMap}
             onCategoryChange={onCategoryChange}
+            suggestedKeys={suggestedKeys}
           />
         )}
       </div>
@@ -776,6 +791,7 @@ function MultiCreditCardGroup({
   categories,
   categoryMap,
   onCategoryChange,
+  suggestedKeys,
 }: {
   statements: ParseResponse["statements"];
   mappings: StatementAccountMapping[];
@@ -795,6 +811,7 @@ function MultiCreditCardGroup({
   categories: CategoryWithChildren[];
   categoryMap: Map<string, string | null>;
   onCategoryChange: (stmtIdx: number, txIdx: number, categoryId: string | null) => void;
+  suggestedKeys: ReadonlySet<string>;
 }) {
   const firstMapping = mappings[0];
   const accountId = firstMapping?.accountId ?? "";
@@ -887,6 +904,7 @@ function MultiCreditCardGroup({
                     categories={categories}
                     categoryMap={categoryMap}
                     onCategoryChange={(txIdx, categoryId) => onCategoryChange(idx, txIdx, categoryId)}
+                    suggestedKeys={suggestedKeys}
                   />
                 </div>
               )}
