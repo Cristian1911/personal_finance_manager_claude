@@ -98,8 +98,11 @@ const RE_DEBT_PAYMENT =
 
 const RE_CASH_WITHDRAWAL = /retiro\s+(cajero|atm|corresponsal)/;
 
+// `cuota\s+de?\s*manejo` was broken: `de?` requires a literal "d", so it matched
+// "cuota de manejo" but never the bare "cuota manejo" the banks actually print.
+// The group makes "de" optional as a unit.
 const RE_BANK_FEE =
-  /impto\s+gobierno|4x1000|cuota\s+de?\s*manejo|comision|comision\s+avance|interes(es)?\s+corriente|interes(es)?\s+mora|cobro\s+transf|ajuste\s+interes/;
+  /impto\s+gobierno|4x1000|cuota\s+(de\s+)?manejo|comision|comision\s+avance|interes(es)?\s+corriente|interes(es)?\s+mora|cobro\s+transf|ajuste\s+interes/;
 
 /**
  * Bare transfers with no merchant attached.
@@ -157,9 +160,33 @@ export interface FlowClassInput {
   transferGroupId?: string | null;
   /** Account type of the *other* leg, when the transfer is linked. */
   counterpartAccountType?: string | null;
+  /**
+   * Account type of one of the SAME user's OTHER accounts whose mask or name
+   * appears in the description — i.e. the movement names where it went.
+   *
+   * Resolved by the caller from accounts it already holds (AppDataProvider, the
+   * import wizard's statement mapping), never fetched here: `accounts.mask` and
+   * `.name` are encrypted, so looking them up would make this function impure
+   * and unusable in an index or a generated column.
+   *
+   * Callers MUST exclude the transaction's own account. Card statements print
+   * the card's own last-4 on every line, so without that guard every purchase
+   * would self-match and be filed as a payment to itself.
+   */
+  matchedAccountType?: string | null;
   /** Raw parser signal — `pattern_type` (email) or `source_hint` (PDF). */
   sourcePattern?: string | null;
 }
+
+/**
+ * Who wrote `flow_class_override`.
+ *
+ * `USER` is an explicit correction in the app. `CATEGORY_SEED` is the one-time
+ * backfill from the user's "Cuota crédito" / "Tarjeta de crédito" category — a
+ * strong prior, not an assertion, and safe to clear once the classifier agrees
+ * on its own. Only `USER` may render as a user correction in the UI.
+ */
+export type FlowClassOverrideSource = "USER" | "CATEGORY_SEED";
 
 export interface FlowClassResult {
   flowClass: FlowClass;
@@ -229,6 +256,25 @@ export function classifyFlow(input: FlowClassInput): FlowClassResult {
   }
 
   // OUTFLOW from here down.
+
+  // Structural evidence beats wording: money leaving a liquid account toward an
+  // account the user owns and owes on is a payment, however the bank phrased it.
+  // This is what catches `bancolombia prestamo ****7507` and `lulo bank s a` —
+  // descriptions that name only the lender and give no verb to match on.
+  //
+  // Placed AFTER the cash-advance rule on purpose: `avance ****7507` carries its
+  // own card's mask and is a drawdown, not a payment.
+  if (
+    !isDebtAccount(input.accountType) &&
+    isDebtAccount(input.matchedAccountType)
+  ) {
+    return {
+      flowClass: "DEBT_PAYMENT",
+      confidence: 1,
+      reason: "structural:pays_own_debt_account",
+    };
+  }
+
   if (RE_DEBT_PAYMENT.test(desc)) {
     return { flowClass: "DEBT_PAYMENT", confidence: 0.9, reason: "text:debt_payment" };
   }

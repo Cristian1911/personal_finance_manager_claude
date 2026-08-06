@@ -151,7 +151,8 @@ const NON_CATEGORIZABLE: RegExp[] = [
   /impto\s+gobierno|4x1000/,
   /cobro\s+transf/,
   /comision\s+avance/,
-  /cuota\s+de?\s*manejo/,
+  // `de?` required a literal "d", so the bare "cuota manejo" form never matched.
+  /cuota\s+(de\s+)?manejo/,
   /ajuste\s+(manual|interes)/,
   /intereses?\s+mora/,
 ];

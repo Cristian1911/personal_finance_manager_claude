@@ -242,3 +242,76 @@ describe("audit trail", () => {
     ).toBe("SPEND");
   });
 });
+
+// ─────────────────────────────────────────────────────────────────
+// Structural destination match
+// ─────────────────────────────────────────────────────────────────
+// Measured on production: 57 rows carry a debt-payment category, of which only
+// 7 name the destination account in a way the text rules can recover. Those 7
+// are what this rule is for; the rest need the category seed.
+describe("destination account match", () => {
+  it("names one of the user's own debt accounts -> DEBT_PAYMENT", () => {
+    expect(
+      flowClassOf({
+        direction: "OUTFLOW",
+        accountType: "SAVINGS",
+        description: "bancolombia prestamo ****7507",
+        matchedAccountType: "LOAN",
+      }),
+    ).toBe("DEBT_PAYMENT");
+  });
+
+  it("beats the plain-transfer wording", () => {
+    // Without the rule this reads as SELF_TRANSFER and leaves the debt unpaid.
+    expect(
+      flowClassOf({
+        direction: "OUTFLOW",
+        accountType: "SAVINGS",
+        description: "transferencia a bancolombia visa ****7022",
+        matchedAccountType: "CREDIT_CARD",
+      }),
+    ).toBe("DEBT_PAYMENT");
+  });
+
+  it("a cash advance is still a drawdown even though its own mask matches", () => {
+    // Card statements print the card's own last-4 on every line.
+    expect(
+      flowClassOf({
+        direction: "OUTFLOW",
+        accountType: "CREDIT_CARD",
+        description: "avance sucursal virtual ****7507",
+        matchedAccountType: "LOAN",
+      }),
+    ).toBe("DEBT_DRAWDOWN");
+  });
+
+  it("does not fire when the source account is itself a debt account", () => {
+    expect(
+      flowClassOf({
+        direction: "OUTFLOW",
+        accountType: "CREDIT_CARD",
+        description: "compra en exito",
+        matchedAccountType: "CREDIT_CARD",
+      }),
+    ).toBe("SPEND");
+  });
+
+  it("a non-debt destination does not make it a payment", () => {
+    expect(
+      flowClassOf({
+        direction: "OUTFLOW",
+        accountType: "SAVINGS",
+        description: "compra en exito",
+        matchedAccountType: "SAVINGS",
+      }),
+    ).toBe("SPEND");
+  });
+});
+
+describe("bank-fee regex accepts both spellings of cuota manejo", () => {
+  it.each(["cuota manejo tarjeta", "cuota de manejo tarjeta"])("%s -> BANK_FEE", (d) => {
+    expect(flowClassOf({ direction: "OUTFLOW", accountType: "SAVINGS", description: d })).toBe(
+      "BANK_FEE",
+    );
+  });
+});
