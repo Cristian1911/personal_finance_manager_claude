@@ -10,7 +10,6 @@ import {
 } from "@/lib/validators/cashflow-planner";
 import { getExchangeRate } from "@/actions/exchange-rate";
 import { OCCURRENCE_AUTO_LINK_DAY_WINDOW,
-  COUNTED_FLOW_CLASSES,
 } from "@zeta/shared";
 import { addDays, format, parseISO, endOfMonth } from "date-fns";
 import { pairOccurrencesToEntries } from "@/lib/utils/plan-occurrence-reconciliation";
@@ -1438,7 +1437,7 @@ export async function findCandidateTransactions(params: {
     .eq("user_id", user.id)
     .eq("direction", "OUTFLOW")
     .eq("is_excluded", false)
-    .in("flow_class_effective", COUNTED_FLOW_CLASSES as string[])
+    .is("transfer_group_id", null)
     .is("recurrence_group_id", null)
     .gte("transaction_date", monthStart)
     .lte("transaction_date", monthEnd)
@@ -1462,7 +1461,7 @@ export async function findCandidateTransactions(params: {
       .eq("account_id", params.debtAccountId)
       .eq("direction", "INFLOW")
       .eq("is_excluded", false)
-      .in("flow_class_effective", COUNTED_FLOW_CLASSES as string[])
+      .is("transfer_group_id", null)
       .is("recurrence_group_id", null)
       .gte("transaction_date", monthStart)
       .lte("transaction_date", monthEnd)

@@ -289,6 +289,7 @@ async function getCategoriesWithBudgetDataCached(
       .gte("transaction_date", monthStartStr(target))
       .lte("transaction_date", monthEndStr(target))
       .is("reconciled_into_transaction_id", null)
+      .is("transfer_group_id", null)
       .in("flow_class_effective", COUNTED_FLOW_CLASSES as string[])
       .is("personal_debt_id", null)
       .in("account_id", spendAccountIds ?? []),
@@ -305,6 +306,7 @@ async function getCategoriesWithBudgetDataCached(
       .gte("transaction_date", monthsBeforeStart(target, 3))
       .lt("transaction_date", monthStartStr(target))
       .is("reconciled_into_transaction_id", null)
+      .is("transfer_group_id", null)
       .in("flow_class_effective", COUNTED_FLOW_CLASSES as string[])
       .is("personal_debt_id", null)
       .in("account_id", spendAccountIds ?? []),

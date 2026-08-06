@@ -18,8 +18,6 @@
  */
 
 /** Minimum-information row shape — both platforms can project into this. */
-import { effectiveFlowClass, isIncomeClass, isSpendClass } from "./flow-class";
-
 export interface AggregatableTransaction {
   amount: number;
   direction: "INFLOW" | "OUTFLOW";
@@ -98,12 +96,19 @@ export function computeMonthlyAggregates(
 
     count += 1;
 
-    // Prefer the persisted class when the row carries one; fall back to the
-    // account-type heuristic for rows written before flow_class existed.
-    const flowClass = effectiveFlowClass(row);
+    // flow_class is NOT honoured yet — deliberately. Whether a row carries it
+    // depends on the caller's SELECT: transactions.ts:481 uses select("*") so
+    // its rows have it, while getMonthlyAggregatesCached uses a slim explicit
+    // list that does not. Honouring it would make the same Movimientos screen
+    // report two different totals depending on whether a filter is active, and
+    // mobile — whose SQLite has no such column — would silently stay on the old
+    // path, re-opening the webapp/mobile divergence this helper exists to close.
+    //
+    // Turn this on in the same change that adds the column to BOTH the webapp
+    // slim select and the mobile projection, not before.
     const isDebt = options.debtAccountIds.has(row.account_id);
-    const countsAsIncome = flowClass ? isIncomeClass(flowClass) : !isDebt;
-    const countsAsSpend = flowClass ? isSpendClass(flowClass) : true;
+    const countsAsIncome = !isDebt;
+    const countsAsSpend = true;
 
     // Effective OUTFLOW spend nets out the shared-payment repaid portion.
     const outflowSpend = row.amount - Number(row.split_repaid_amount ?? 0);

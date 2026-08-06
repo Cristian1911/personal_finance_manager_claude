@@ -15,22 +15,6 @@ import nextTs from "eslint-config-next/typescript";
 // candidates and emits it as invalid CSS, crashing the dev server.
 const Z_INDEX_MESSAGE =
   "Raw z-index literal. Use a --z-layer-* token, e.g. z-[var(--z-layer-modal)] (defined in globals.css) — see docs/design-system/Z_INDEX.md.";
-const noRawZIndex = {
-  files: ["src/**/*.{ts,tsx}"],
-  rules: {
-    "no-restricted-syntax": [
-      "error",
-      {
-        selector: "Literal[value=/z-\\[\\d{2,}\\]/]",
-        message: Z_INDEX_MESSAGE,
-      },
-      {
-        selector: "TemplateElement[value.cooked=/z-\\[\\d{2,}\\]/]",
-        message: Z_INDEX_MESSAGE,
-      },
-    ],
-  },
-};
 
 // Debt-account discipline: forbid hand-inlining the debt predicate. An INFLOW to
 // a CREDIT_CARD or LOAN is a payment against debt, never income, and every copy
@@ -43,12 +27,23 @@ const noRawZIndex = {
 // credit-card utilization, loan-only form fields), so those are not flagged.
 const DEBT_PREDICATE_MESSAGE =
   'Inlined debt-account check. Use isDebtAccountType() / isDebtInflow() from "@zeta/shared" — an INFLOW to CREDIT_CARD or LOAN is a debt payment, not income.';
-const noInlineDebtPredicate = {
+// NOTE: `no-restricted-syntax` must be configured ONCE. In flat config a later
+// config object replaces a rule's options wholesale rather than merging them, so
+// a second entry silently disables every selector in the first. Both guards live
+// in the single object below for that reason.
+const noRestrictedSyntax = {
   files: ["src/**/*.{ts,tsx}"],
-  ignores: ["src/lib/constants/**", "src/types/**"],
   rules: {
     "no-restricted-syntax": [
       "error",
+      {
+        selector: "Literal[value=/z-\\[\\d{2,}\\]/]",
+        message: Z_INDEX_MESSAGE,
+      },
+      {
+        selector: "TemplateElement[value.cooked=/z-\\[\\d{2,}\\]/]",
+        message: Z_INDEX_MESSAGE,
+      },
       {
         // Catches both `x === "CREDIT_CARD" || x === "LOAN"` and the negated
         // `x !== "CREDIT_CARD" && x !== "LOAN"`.
@@ -63,8 +58,7 @@ const noInlineDebtPredicate = {
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  noRawZIndex,
-  noInlineDebtPredicate,
+  noRestrictedSyntax,
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
