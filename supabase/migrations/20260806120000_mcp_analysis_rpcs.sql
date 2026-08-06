@@ -352,9 +352,8 @@ returns table (
   name            text,
   amount          numeric,
   currency_code   text,
-  direction       text,
   frequency       text,
-  day_of_month    integer,
+  day_of_month    smallint,
   category        text,
   is_active       boolean,
   monthly_equiv   numeric
@@ -373,7 +372,6 @@ as $$
     ) as name,
     r.amount,
     r.currency_code::text,
-    r.direction::text,
     r.frequency::text,
     r.day_of_month,
     coalesce(c.name_es, c.name) as category,
