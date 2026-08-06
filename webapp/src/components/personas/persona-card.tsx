@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ChevronDown, Pencil, Split, Trash2 } from "lucide-react";
@@ -31,9 +32,18 @@ import {
   reopenPersonalDebt,
 } from "@/actions/personal-debts";
 import { RecordRepaymentDialog } from "./record-repayment-dialog";
-import { SplitPersonalDebtSheet } from "./split-personal-debt-sheet";
 import { EditPersonalDebtSheet } from "./edit-personal-debt-sheet";
 import type { PersonalDebtWithDetails, CurrencyCode } from "@/types/domain";
+
+/**
+ * One PersonaCard renders per debt, so a static import would pull this sheet —
+ * and the DestinatarioZonePicker graph behind it (create dialog, pattern dialog,
+ * Radix Dialog/Drawer/Popover) — into the personas page bundle for every visit,
+ * whether or not anyone ever splits a debt. Load it when the sheet opens.
+ */
+const SplitPersonalDebtSheet = dynamic(() =>
+  import("./split-personal-debt-sheet").then((m) => ({ default: m.SplitPersonalDebtSheet })),
+);
 
 interface PersonaCardProps {
   persona: PersonalDebtWithDetails;

@@ -24,6 +24,7 @@ import {
   DESTRUCTIVE_GHOST_BUTTON_CLASS,
   GHOST_BUTTON_CLASS,
   ICON_DESTRUCTIVE_TRIGGER_CLASS,
+  ICON_TRIGGER_CLASS,
   PANEL_INSET_CLASS,
   SECTION_EYEBROW_CLASS,
 } from "@/lib/constants/styles";
@@ -140,7 +141,7 @@ export function SharedPaymentCard({ group, currency }: SharedPaymentCardProps) {
                   aria-label={`Guardar a ${d.destinatario_name} como contacto`}
                   title="Guardar como contacto"
                   disabled={pending}
-                  className="shrink-0 text-muted-foreground transition-colors hover:text-z-brass"
+                  className={cn(ICON_TRIGGER_CLASS, "shrink-0")}
                   onClick={() =>
                     run(
                       () => promoteAdHocDestinatario(d.destinatario_id),

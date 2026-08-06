@@ -503,10 +503,10 @@ async function getSharedPaymentGroupsCached(
   const { data: originTxs } = originIds.length
     ? await supabase
         .from("transactions")
-        .select("id, amount, split_repaid_amount, raw_description, transaction_date, account_id")
+        .select("id, amount, split_repaid_amount, raw_description, transaction_date, account_id, split_group_id")
         .eq("user_id", userId)
         .in("id", originIds)
-    : { data: [] as { id: string; amount: number | null; split_repaid_amount: number | null; raw_description: string | null; transaction_date: string; account_id: string | null }[] };
+    : { data: [] as { id: string; amount: number | null; split_repaid_amount: number | null; raw_description: string | null; transaction_date: string; account_id: string | null; split_group_id: string | null }[] };
   const txById = new Map((originTxs ?? []).map((t) => [t.id, t]));
 
   const today = toColombiaDateString(new Date());
@@ -547,7 +547,12 @@ async function getSharedPaymentGroupsCached(
     // instead, using the same rule as `recomputeSplitRepaid`: a settled share
     // counts in full (the user marked it resolved without a transaction),
     // everything else counts what was actually repaid, clamped per participant.
-    const recovered = originTx
+    // Keyed on the tx actually CARRYING the group tag, not merely existing: if
+    // the re-tag step of splitPersonalDebt failed, the tx is still referenced by
+    // the debts but holds no split_repaid_amount, and recomputeSplitRepaid's
+    // writes (which target split_group_id) would silently update 0 rows — the
+    // card would read "Recuperado $0" forever. Deriving in that case self-heals.
+    const recovered = originTx?.split_group_id === gid
       ? Number(originTx.split_repaid_amount ?? 0)
       : gdebts.reduce((s, d) => {
           const principal = Number(d.principal_amount ?? 0);

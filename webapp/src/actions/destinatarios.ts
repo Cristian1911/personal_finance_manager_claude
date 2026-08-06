@@ -213,12 +213,17 @@ async function getDestinatariosCached(
 
   const supabase = createCachedClient(accessToken);
   // Ad-hoc counterparties (materialized by a split from a typed name) are
-  // deliberately excluded here. This one filter hides them everywhere at once:
-  // the destinatarios page, every DestinatarioZonePicker (they reach the client
-  // through AppDataProvider, which is fed by this action) and
+  // deliberately excluded here. This covers every contact-SELECTION surface at
+  // once: the destinatarios page, every DestinatarioZonePicker (they reach the
+  // client through AppDataProvider, which is fed by this action) and
   // getDestinatariosWithSpend. Their name still reaches the UI via the
   // personal_debts read join — the debt shows the person, the contact list
   // doesn't gain six ghosts.
+  //
+  // Surfaces keyed off transactions rather than this list (getRecentDestinatarios,
+  // the per-destinatario analytics in actions/analytics.ts) need no filter because
+  // no transaction ever carries an ad-hoc destinatario_id — recordRepayment
+  // deliberately leaves it null for them.
   const { data: destinatarios, error } = await supabase
     .from("destinatarios")
     .select("*, destinatario_rules!destinatario_rules_destinatario_id_fkey(count), transactions!transactions_destinatario_id_fkey(count)")

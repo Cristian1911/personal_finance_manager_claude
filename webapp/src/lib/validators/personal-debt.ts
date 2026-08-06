@@ -49,7 +49,8 @@ export const splitPersonalDebtSchema = z.object({
   method: z.enum(["equal", "amount", "percent"]).default("equal"),
   participants: z
     .array(splitParticipantSchema)
-    .min(2, "Divide entre al menos dos personas"),
+    .min(2, "Divide entre al menos dos personas")
+    .max(50, "Son demasiadas personas para un solo reparto"),
 });
 
 export const recordRepaymentSchema = z.object({

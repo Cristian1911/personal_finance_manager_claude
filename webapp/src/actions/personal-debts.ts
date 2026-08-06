@@ -521,16 +521,25 @@ export async function splitPersonalDebt(
     return { success: false, error: "Error al crear las deudas del reparto" };
   }
 
-  // 2) Replace the original lump.
-  const { error: delErr } = await supabase
+  // 2) Replace the original lump. `.select()` is load-bearing: PostgREST reports
+  //    error=null for a delete that matched ZERO rows, so without the row-count
+  //    check two interleaved splits of the same debt would both "succeed" and
+  //    leave 2N siblings — the amount owed silently doubled.
+  const { data: deleted, error: delErr } = await supabase
     .from("personal_debts")
     .delete()
     .eq("id", id)
-    .eq("user_id", user.id);
-  if (delErr) {
+    .eq("user_id", user.id)
+    .select("id");
+  if (delErr || !deleted || deleted.length === 0) {
     await supabase.from("personal_debts").delete().eq("user_id", user.id).in("id", debtIds);
     await cleanupAdHocDestinatarios(supabase, user.id, createdIds);
-    return { success: false, error: "Error al reemplazar la deuda original" };
+    return {
+      success: false,
+      error: delErr
+        ? "Error al reemplazar la deuda original"
+        : "Esta deuda ya fue dividida o eliminada",
+    };
   }
 
   // 3) Re-tag the origin transaction, if there was one. Non-fatal: without it
@@ -541,7 +550,10 @@ export async function splitPersonalDebt(
       .from("transactions")
       .update({ split_group_id: splitGroupId, split_repaid_amount: 0, pd_role: null })
       .eq("id", debt.origin_transaction_id)
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
+      // Never steal a tx that already anchors another split group — that would
+      // orphan the other group's origin and freeze its recovered total at 0.
+      .is("split_group_id", null);
     if (txErr) {
       console.error("splitPersonalDebt: failed to tag origin transaction:", txErr);
     }
@@ -945,7 +957,9 @@ export async function recordRepayment(
 
   const { data: debt, error: debtErr } = await supabase
     .from("personal_debts")
-    .select("id, direction, principal_amount, currency_code, destinatario_id, split_group_id")
+    .select(
+      "id, direction, principal_amount, currency_code, destinatario_id, split_group_id, destinatario:destinatarios!personal_debts_destinatario_id_fkey ( is_ad_hoc )",
+    )
     .eq("id", personalDebtId)
     .eq("user_id", user.id)
     .single();
@@ -978,7 +992,13 @@ export async function recordRepayment(
       currency_code: debt.currency_code as Database["public"]["Enums"]["currency_code"],
       transaction_date: r.transaction_date,
       raw_description: rawDescription,
-      destinatario_id: debt.destinatario_id,
+      // An ad-hoc person is hidden from AppDataProvider, so stamping their id
+      // here would leave the transaction pointing at a destinatario the edit
+      // form's picker can't resolve (renders blank, and a save would clear it)
+      // and would surface the throwaway name in per-destinatario analytics. The
+      // repayment is still tied to the person through personal_debt_id.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      destinatario_id: (debt as any).destinatario?.is_ad_hoc ? null : debt.destinatario_id,
       provider: "MANUAL",
       capture_method: "MANUAL_FORM",
       idempotency_key: idempotencyKey,

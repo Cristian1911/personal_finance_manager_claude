@@ -132,8 +132,22 @@ export function SplitPersonalDebtSheet({
 
             <p className="text-xs text-muted-foreground">
               Esta deuda se reemplaza por una por persona, agrupadas en la pestaña
-              Compartidas. Podrás registrar el pago de cada quien por separado.
+              Compartidas. Podrás registrar el pago de cada quien por separado. No se
+              puede deshacer.
             </p>
+
+            {/* Splitting relinks the origin transaction into the shared-payment
+                model, where it counts as gasto that shrinks as people repay.
+                Before the split it was excluded from every metric, so this
+                retroactively moves historical numbers — say so, since the action
+                is one-way. Only relevant when an origin tx actually exists. */}
+            {debt.origin_transaction_id && (
+              <p className="rounded-lg border border-white/6 bg-white/[0.02] px-3 py-2.5 text-xs text-muted-foreground">
+                El gasto que originó esta deuda pasará a contar como gasto compartido:
+                aparecerá completo en tus métricas del mes en que se hizo y bajará a
+                medida que cada quien te pague.
+              </p>
+            )}
 
             <Button
               type="button"

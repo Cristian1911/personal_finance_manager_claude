@@ -1,22 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useCallback, useState } from "react";
 import { Plus, UserRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import { Chip } from "@/components/ui/chip";
 import { DestinatarioZonePicker } from "@/components/destinatarios/destinatario-zone-picker";
 import { cn } from "@/lib/utils";
 import {
   BRASS_GHOST_BUTTON_CLASS,
   GHOST_BUTTON_CLASS,
   ICON_DESTRUCTIVE_TRIGGER_CLASS,
+  ICON_TRIGGER_CLASS,
   PANEL_INSET_CLASS,
 } from "@/lib/constants/styles";
 import { formatCurrency } from "@/lib/utils/currency";
 import type { computeSplit, SplitMethod } from "@zeta/shared";
-import type { CurrencyCode } from "@/types/domain";
+import type { CurrencyCode, DestinatarioKind } from "@/types/domain";
 
 /**
  * One row of a split. `destinatarioId` set = an existing contact was picked;
@@ -58,6 +60,14 @@ export function toSplitInput(rows: SplitParticipantRow[]) {
   }));
 }
 
+/**
+ * Module-level so the reference is stable. Inlining `kindFilter={["person"]}` at
+ * the call site hands DestinatarioZonePicker a fresh array on every render,
+ * which invalidates its internal `active` memo and re-filters the whole
+ * contacts list on every keystroke in any participant row.
+ */
+const PERSON_KIND_FILTER: DestinatarioKind[] = ["person"];
+
 const METHOD_LABELS: { value: SplitMethod; label: string }[] = [
   { value: "equal", label: "Iguales" },
   { value: "amount", label: "Montos" },
@@ -66,7 +76,12 @@ const METHOD_LABELS: { value: SplitMethod; label: string }[] = [
 
 interface SplitParticipantsEditorProps {
   participants: SplitParticipantRow[];
-  onChange: (next: SplitParticipantRow[]) => void;
+  /**
+   * A setState dispatcher, not a plain callback: functional updates let the
+   * per-row handlers below stay referentially stable across renders, which is
+   * what makes `memo(ParticipantRowFields)` actually prevent re-renders.
+   */
+  onChange: React.Dispatch<React.SetStateAction<SplitParticipantRow[]>>;
   method: SplitMethod;
   onMethodChange: (method: SplitMethod) => void;
   /** Keep at least this many rows on screen (the remove button hides below it). */
@@ -80,11 +95,26 @@ export function SplitParticipantsEditor({
   onMethodChange,
   minRows = 1,
 }: SplitParticipantsEditorProps) {
-  const nextKey = participants.reduce((max, p) => Math.max(max, p.key), 0) + 1;
+  const update = useCallback(
+    (key: number, patch: Partial<SplitParticipantRow>) => {
+      onChange((prev) => prev.map((p) => (p.key === key ? { ...p, ...patch } : p)));
+    },
+    [onChange],
+  );
 
-  function update(key: number, patch: Partial<SplitParticipantRow>) {
-    onChange(participants.map((p) => (p.key === key ? { ...p, ...patch } : p)));
-  }
+  const remove = useCallback(
+    (key: number) => {
+      onChange((prev) => prev.filter((p) => p.key !== key));
+    },
+    [onChange],
+  );
+
+  const add = useCallback(() => {
+    onChange((prev) => [
+      ...prev,
+      newParticipantRow(prev.reduce((max, p) => Math.max(max, p.key), 0) + 1),
+    ]);
+  }, [onChange]);
 
   return (
     <>
@@ -115,20 +145,21 @@ export function SplitParticipantsEditor({
             tu lista de personas.
           </p>
         </div>
-        {participants.map((p) => (
+        {participants.map((p, i) => (
           <ParticipantRowFields
             key={p.key}
             row={p}
+            index={i}
             method={method}
             canRemove={participants.length > minRows}
-            onChange={(patch) => update(p.key, patch)}
-            onRemove={() => onChange(participants.filter((x) => x.key !== p.key))}
+            onUpdate={update}
+            onRemove={remove}
           />
         ))}
         <Button
           type="button"
           variant="ghost"
-          onClick={() => onChange([...participants, newParticipantRow(nextKey)])}
+          onClick={add}
           className={cn(GHOST_BUTTON_CLASS, "w-full")}
         >
           <Plus className="mr-1.5 size-4" />
@@ -139,51 +170,58 @@ export function SplitParticipantsEditor({
   );
 }
 
-function ParticipantRowFields({
+const ParticipantRowFields = memo(function ParticipantRowFields({
   row,
+  index,
   method,
   canRemove,
-  onChange,
+  onUpdate,
   onRemove,
 }: {
   row: SplitParticipantRow;
+  index: number;
   method: SplitMethod;
   canRemove: boolean;
-  onChange: (patch: Partial<SplitParticipantRow>) => void;
-  onRemove: () => void;
+  onUpdate: (key: number, patch: Partial<SplitParticipantRow>) => void;
+  onRemove: (key: number) => void;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const isContact = row.destinatarioId !== null;
+  const onChange = useCallback(
+    (patch: Partial<SplitParticipantRow>) => onUpdate(row.key, patch),
+    [onUpdate, row.key],
+  );
 
   return (
     <div className="flex items-start gap-2">
       <div className="flex flex-1 items-center gap-2">
         {isContact ? (
-          <div className="flex h-9 flex-1 items-center gap-2 rounded-md border border-z-brass/30 bg-z-brass/10 px-3 text-sm">
-            <UserRound className="size-3.5 shrink-0 text-z-brass" />
+          <Chip variant="active" size="md" className="h-9 flex-1 justify-start rounded-md">
+            <UserRound />
             <span className="truncate">{row.name}</span>
             <button
               type="button"
               onClick={() => onChange({ destinatarioId: null, name: "" })}
-              aria-label="Quitar contacto"
-              className="ml-auto shrink-0 text-muted-foreground hover:text-foreground"
+              aria-label={`Quitar a ${row.name}`}
+              className={cn(ICON_TRIGGER_CLASS, "ml-auto shrink-0")}
             >
               <X className="size-3.5" />
             </button>
-          </div>
+          </Chip>
         ) : (
           <>
             <Input
               value={row.name}
               onChange={(e) => onChange({ name: e.target.value })}
               placeholder="Nombre de la persona"
+              aria-label={`Nombre de la persona ${index + 1}`}
               className="flex-1"
             />
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              aria-label="Elegir un contacto existente"
+              aria-label={`Elegir un contacto para la persona ${index + 1}`}
               title="Elegir un contacto existente"
               onClick={() => setPickerOpen(true)}
               className={cn(GHOST_BUTTON_CLASS, "size-9 shrink-0")}
@@ -192,18 +230,23 @@ function ParticipantRowFields({
             </Button>
           </>
         )}
-        {/* Always mounted but trigger-less: the icon button above drives it. */}
-        <DestinatarioZonePicker
-          value={row.destinatarioId}
-          onValueChange={(id, name) => onChange({ destinatarioId: id, name: name ?? "" })}
-          selectedName={isContact ? row.name : null}
-          kindFilter={["person"]}
-          createKind="person"
-          variant="dialog"
-          hideTrigger
-          controlledOpen={pickerOpen}
-          onControlledOpenChange={setPickerOpen}
-        />
+        {/* Mounted only while open. DestinatarioZonePicker builds its full
+            contact-list JSX unconditionally during render, so keeping it
+            always-mounted would redo that work for every row on every
+            keystroke — invisible, but O(rows x contacts) per character. */}
+        {pickerOpen && (
+          <DestinatarioZonePicker
+            value={row.destinatarioId}
+            onValueChange={(id, name) => onChange({ destinatarioId: id, name: name ?? "" })}
+            selectedName={isContact ? row.name : null}
+            kindFilter={PERSON_KIND_FILTER}
+            createKind="person"
+            variant="dialog"
+            hideTrigger
+            controlledOpen
+            onControlledOpenChange={setPickerOpen}
+          />
+        )}
       </div>
 
       {method === "amount" && (
@@ -232,8 +275,8 @@ function ParticipantRowFields({
       {canRemove && (
         <button
           type="button"
-          onClick={onRemove}
-          aria-label="Quitar persona"
+          onClick={() => onRemove(row.key)}
+          aria-label={`Quitar persona ${index + 1}`}
           className={cn(ICON_DESTRUCTIVE_TRIGGER_CLASS, "mt-1 shrink-0 p-1.5")}
         >
           <X className="size-4" />
@@ -241,7 +284,7 @@ function ParticipantRowFields({
       )}
     </div>
   );
-}
+});
 
 const ERROR_TEXT: Record<string, string> = {
   no_participants: "Agrega al menos una persona.",

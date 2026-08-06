@@ -78,7 +78,10 @@ export const createSharedPaymentSchema = z
     due_date: optionalDate,
     participants: z
       .array(splitParticipantSchema)
-      .min(1, "Agrega al menos una persona"),
+      .min(1, "Agrega al menos una persona")
+      // Bounded: each ad-hoc entry costs an encrypt + insert, so an unbounded
+      // array is a cheap way to make one request do thousands of writes.
+      .max(50, "Son demasiadas personas para un solo reparto"),
   })
   .refine(
     (d) => d.mode !== "existing" || !!d.origin_transaction_id,
