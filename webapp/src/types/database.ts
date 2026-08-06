@@ -916,6 +916,7 @@ export type Database = {
           default_category_id: string | null
           id: string
           is_active: boolean
+          is_ad_hoc: boolean
           name: string
           name_hmac: string | null
           kind: Database["public"]["Enums"]["destinatario_kind"]
@@ -928,6 +929,7 @@ export type Database = {
           default_category_id?: string | null
           id?: string
           is_active?: boolean
+          is_ad_hoc?: boolean
           name: string
           name_hmac?: string | null
           kind?: Database["public"]["Enums"]["destinatario_kind"]
@@ -940,6 +942,7 @@ export type Database = {
           default_category_id?: string | null
           id?: string
           is_active?: boolean
+          is_ad_hoc?: boolean
           name?: string
           name_hmac?: string | null
           kind?: Database["public"]["Enums"]["destinatario_kind"]
@@ -977,6 +980,7 @@ export type Database = {
           default_category_id: string | null
           id: string
           is_active: boolean
+          is_ad_hoc: boolean
           name: string
           name_hmac: string | null
           kind: Database["public"]["Enums"]["destinatario_kind"]
@@ -989,6 +993,7 @@ export type Database = {
           default_category_id?: string | null
           id?: string
           is_active?: boolean
+          is_ad_hoc?: boolean
           name: string
           name_hmac?: string | null
           kind?: Database["public"]["Enums"]["destinatario_kind"]
@@ -1001,6 +1006,7 @@ export type Database = {
           default_category_id?: string | null
           id?: string
           is_active?: boolean
+          is_ad_hoc?: boolean
           name?: string
           name_hmac?: string | null
           kind?: Database["public"]["Enums"]["destinatario_kind"]

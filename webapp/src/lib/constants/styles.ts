@@ -31,6 +31,10 @@ export const DESTRUCTIVE_GHOST_BUTTON_CLASS =
 export const ICON_DESTRUCTIVE_TRIGGER_CLASS =
   "rounded-md text-z-sage-dark transition-colors hover:text-z-debt disabled:opacity-50";
 
+/** Neutral sibling of the above: borderless icon-only trigger, brass on hover. */
+export const ICON_TRIGGER_CLASS =
+  "rounded-md text-z-sage-dark transition-colors hover:text-z-brass disabled:opacity-50";
+
 /**
  * Z-index — single ascending, spaced token scale (defined in globals.css as
  * `--z-layer-*` tokens, referenced via the arbitrary form, e.g.

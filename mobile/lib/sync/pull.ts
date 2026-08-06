@@ -42,7 +42,7 @@ const BOOLEAN_FIELDS: Record<string, string[]> = {
   categories: ["is_system"],
   transactions: ["is_excluded", "is_subscription", "is_recurring"],
   recurring_transaction_templates: ["is_active"],
-  destinatarios: ["is_active"],
+  destinatarios: ["is_active", "is_ad_hoc"],
   tag_groups: ["is_system"],
   tags: ["is_system"],
   recurring_occurrences: ["linked_manually"],

@@ -23,11 +23,37 @@ const optionalNumber = z.preprocess(
   z.coerce.number().nonnegative("El valor no puede ser negativo").optional(),
 );
 
-export const splitParticipantSchema = z.object({
-  destinatario_id: z.string().regex(UUID, "Persona inválida"),
-  // amount (method="amount") or percent (method="percent"); ignored for "equal"
-  value: optionalNumber,
-});
+/**
+ * A typed-in participant name. Whitespace-normalized here so the value the
+ * resolver dedupes on is the same one the user sees ("  Juan  Pérez " and
+ * "Juan Pérez" must resolve to a single ad-hoc destinatario).
+ */
+export const optionalPersonName = z.preprocess(
+  (v) => {
+    if (typeof v !== "string") return undefined;
+    const trimmed = v.trim().replace(/\s+/g, " ");
+    return trimmed === "" ? undefined : trimmed;
+  },
+  z.string().max(80, "El nombre es muy largo").optional(),
+);
+
+/**
+ * A participant is EITHER an existing contact (`destinatario_id`) OR an ad-hoc
+ * person the user just typed a name for (`name`) — never both, never neither.
+ * Ad-hoc names are materialized into hidden `is_ad_hoc` destinatarios by
+ * `resolveSplitParticipants()` before anything is persisted, because
+ * `personal_debts.destinatario_id` is NOT NULL.
+ */
+export const splitParticipantSchema = z
+  .object({
+    destinatario_id: optionalUuid,
+    name: optionalPersonName,
+    // amount (method="amount") or percent (method="percent"); ignored for "equal"
+    value: optionalNumber,
+  })
+  .refine((p) => !!p.destinatario_id !== !!p.name, {
+    message: "Cada persona necesita un contacto o un nombre",
+  });
 
 export const createSharedPaymentSchema = z
   .object({
@@ -52,7 +78,10 @@ export const createSharedPaymentSchema = z
     due_date: optionalDate,
     participants: z
       .array(splitParticipantSchema)
-      .min(1, "Agrega al menos una persona"),
+      .min(1, "Agrega al menos una persona")
+      // Bounded: each ad-hoc entry costs an encrypt + insert, so an unbounded
+      // array is a cheap way to make one request do thousands of writes.
+      .max(50, "Son demasiadas personas para un solo reparto"),
   })
   .refine(
     (d) => d.mode !== "existing" || !!d.origin_transaction_id,

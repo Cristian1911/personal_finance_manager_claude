@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Receipt, Trash2 } from "lucide-react";
+import { Receipt, Trash2, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
@@ -24,11 +24,13 @@ import {
   DESTRUCTIVE_GHOST_BUTTON_CLASS,
   GHOST_BUTTON_CLASS,
   ICON_DESTRUCTIVE_TRIGGER_CLASS,
+  ICON_TRIGGER_CLASS,
   PANEL_INSET_CLASS,
   SECTION_EYEBROW_CLASS,
 } from "@/lib/constants/styles";
 import { RecordRepaymentDialog } from "./record-repayment-dialog";
 import { reopenPersonalDebt } from "@/actions/personal-debts";
+import { promoteAdHocDestinatario } from "@/actions/destinatarios";
 import { deleteSharedPayment } from "@/actions/shared-payments";
 import type { CurrencyCode, SharedPaymentGroup } from "@/types/domain";
 
@@ -131,6 +133,25 @@ export function SharedPaymentCard({ group, currency }: SharedPaymentCardProps) {
           return (
             <div key={d.id} className="flex items-center justify-between gap-2 text-sm">
               <span className="min-w-0 flex-1 truncate">{d.destinatario_name}</span>
+              {/* Ad-hoc people exist only to back this split. Offer to keep one
+                  when they turn out to be someone you deal with regularly. */}
+              {d.destinatario_is_ad_hoc && (
+                <button
+                  type="button"
+                  aria-label={`Guardar a ${d.destinatario_name} como contacto`}
+                  title="Guardar como contacto"
+                  disabled={pending}
+                  className={cn(ICON_TRIGGER_CLASS, "shrink-0")}
+                  onClick={() =>
+                    run(
+                      () => promoteAdHocDestinatario(d.destinatario_id),
+                      `${d.destinatario_name} guardado como contacto`,
+                    )
+                  }
+                >
+                  <UserPlus className="size-3.5" />
+                </button>
+              )}
               <span
                 className={cn(
                   "shrink-0 tabular-nums",

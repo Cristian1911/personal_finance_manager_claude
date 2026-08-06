@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ChevronDown, Pencil, Trash2 } from "lucide-react";
+import { ChevronDown, Pencil, Split, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -34,6 +35,16 @@ import { RecordRepaymentDialog } from "./record-repayment-dialog";
 import { EditPersonalDebtSheet } from "./edit-personal-debt-sheet";
 import type { PersonalDebtWithDetails, CurrencyCode } from "@/types/domain";
 
+/**
+ * One PersonaCard renders per debt, so a static import would pull this sheet —
+ * and the DestinatarioZonePicker graph behind it (create dialog, pattern dialog,
+ * Radix Dialog/Drawer/Popover) — into the personas page bundle for every visit,
+ * whether or not anyone ever splits a debt. Load it when the sheet opens.
+ */
+const SplitPersonalDebtSheet = dynamic(() =>
+  import("./split-personal-debt-sheet").then((m) => ({ default: m.SplitPersonalDebtSheet })),
+);
+
 interface PersonaCardProps {
   persona: PersonalDebtWithDetails;
   currency: CurrencyCode;
@@ -45,6 +56,7 @@ export function PersonaCard({ persona, currency }: PersonaCardProps) {
   const [repayOpen, setRepayOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [splitOpen, setSplitOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const code = (persona.currency_code ?? currency) as CurrencyCode;
@@ -55,6 +67,15 @@ export function PersonaCard({ persona, currency }: PersonaCardProps) {
     persona.principal_amount > 0
       ? Math.min(100, Math.round((persona.total_repaid / persona.principal_amount) * 100))
       : 0;
+  // Splitting rewrites the debt into one row per person, so it only makes sense
+  // while nothing has been repaid yet — an existing abono can't be attributed to
+  // any one participant. `lent` only: you can't divide what YOU owe among others.
+  const canSplit =
+    isActive &&
+    !isBorrowed &&
+    !persona.split_group_id &&
+    persona.total_repaid === 0 &&
+    persona.principal_amount > 0;
 
   function runAction(action: () => Promise<{ success: boolean; error?: string }>, okMsg: string) {
     startTransition(async () => {
@@ -135,6 +156,18 @@ export function PersonaCard({ persona, currency }: PersonaCardProps) {
                 >
                   Registrar pago
                 </Button>
+                {canSplit && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className={cn(GHOST_BUTTON_CLASS)}
+                    disabled={pending}
+                    onClick={() => setSplitOpen(true)}
+                  >
+                    <Split className="mr-1 size-3.5" />
+                    Dividir
+                  </Button>
+                )}
                 <Button
                   size="sm"
                   variant="ghost"
@@ -178,6 +211,16 @@ export function PersonaCard({ persona, currency }: PersonaCardProps) {
             </Button>
           </div>
         </div>
+      )}
+
+      {/* Conditionally mounted so the participant rows reset between openings. */}
+      {splitOpen && (
+        <SplitPersonalDebtSheet
+          open={splitOpen}
+          onOpenChange={setSplitOpen}
+          debt={persona}
+          currency={currency}
+        />
       )}
 
       {/* Conditionally mounted so the form re-initializes from the debt on every

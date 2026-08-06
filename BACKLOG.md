@@ -146,6 +146,11 @@ Two parts on that branch:
   `transactions` + `personal_debts` so the sync upsert (allow-list by local columns) stops silently
   dropping the column. No mobile WRITE path yet — read parity only (mobile reads webapp-created
   shared payments). Mobile create/split UI is a later phase (tracks with Personas mobile writes).
+  **Ampliado (2026-08-06):** `splitPersonalDebt` (dividir una deuda existente entre varias personas)
+  es un SEGUNDO productor de filas con `split_group_id`, además del flujo original de pago compartido.
+  El volumen de filas que llegan a móvil sin ese campo crece más rápido; la paridad de lectura sigue
+  degradada (no se pueden agrupar hermanas ni derivar `recovered`), no rota — el upsert descarta la
+  columna desconocida, no la fila.
 
 ## Pago compartido — riesgos de reconciliación + abono (2026-06-30, post-rediseño)
 

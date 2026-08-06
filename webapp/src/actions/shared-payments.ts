@@ -6,12 +6,17 @@ import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { createSharedPaymentSchema } from "@/lib/validators/shared-payment";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
+import {
+  resolveSplitParticipants,
+  cleanupAdHocDestinatarios,
+  type RawSplitParticipant,
+} from "@/lib/personal-debts/ad-hoc";
 import { toColombiaDateString } from "@/lib/utils/date";
+import { SPLIT_ERROR_MESSAGES } from "@/lib/personal-debts/split-errors";
 import {
   computeSplit,
   getCurrencyDecimals,
   isPersonalDebtOverdue,
-  type SplitErrorReason,
 } from "@zeta/shared";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ActionResult } from "@/types/actions";
@@ -32,20 +37,16 @@ export type CreateSharedPaymentResult = ActionResult<{
   debt_ids: string[];
 }>;
 
-const SPLIT_ERROR_MESSAGES: Record<SplitErrorReason, string> = {
-  no_participants: "Agrega al menos una persona",
-  invalid_total: "El monto total no es válido",
-  negative_value: "Los valores no pueden ser negativos",
-  amount_sum_exceeds_total: "Las partes asignadas superan el total del pago",
-  amount_sum_mismatch: "Las partes deben sumar exactamente el total del pago",
-  percent_out_of_range: "Los porcentajes superan el 100%",
-  percent_sum_mismatch: "Los porcentajes deben sumar 100%",
-};
-
 export type SplitTxConfig = {
   method: "equal" | "amount" | "percent";
   userIncluded: boolean;
-  participants: { destinatario_id: string; value?: number }[];
+  /**
+   * Each entry is an existing contact (`destinatario_id`) OR an ad-hoc person
+   * (`name`) that gets materialized into a hidden destinatario here. Callers
+   * that already hold ids (e.g. `shareModoTransactions`) pass them through
+   * untouched — resolution is a no-op when no names are present.
+   */
+  participants: RawSplitParticipant[];
   opened_on: string;
   due_date?: string | null;
   description?: string | null;
@@ -70,18 +71,28 @@ export async function splitExistingTransaction(
   | { ok: true; split_group_id: string; debt_ids: string[] }
   | { ok: false; error: string }
 > {
+  // Materialize any ad-hoc (typed-name) participants first — every debt needs a
+  // destinatario_id. Done BEFORE the split math so a resolution failure costs
+  // nothing but the hidden rows we clean up on the error paths below.
+  const resolved = await resolveSplitParticipants(supabase, userId, config.participants);
+  if (!resolved.ok) return { ok: false, error: resolved.error };
+  const { participants: people, createdIds } = resolved;
+
   const decimals = getCurrencyDecimals(tx.currency_code as CurrencyCode);
   const split = computeSplit({
     total: tx.amount,
     method: config.method,
-    participants: config.participants.map((x) => ({
+    participants: people.map((x) => ({
       destinatario_id: x.destinatario_id,
       value: x.value,
     })),
     userIncluded: config.userIncluded,
     decimals,
   });
-  if (!split.ok) return { ok: false, error: SPLIT_ERROR_MESSAGES[split.reason] };
+  if (!split.ok) {
+    await cleanupAdHocDestinatarios(supabase, userId, createdIds);
+    return { ok: false, error: SPLIT_ERROR_MESSAGES[split.reason] };
+  }
 
   const splitGroupId = crypto.randomUUID();
   const { error: updErr } = await supabase
@@ -90,6 +101,7 @@ export async function splitExistingTransaction(
     .eq("id", tx.id)
     .eq("user_id", userId);
   if (updErr) {
+    await cleanupAdHocDestinatarios(supabase, userId, createdIds);
     return { ok: false, error: "Error al marcar la transacción como pago compartido" };
   }
 
@@ -115,12 +127,14 @@ export async function splitExistingTransaction(
   });
   const { error: debtsErr } = await supabase.from("personal_debts").insert(debtsToInsert);
   if (debtsErr) {
-    // Compensating: un-tag (no hubo delta de saldo — la tx ya estaba posteada).
+    // Compensating: un-tag (no hubo delta de saldo — la tx ya estaba posteada)
+    // y borrar las personas ad-hoc que quedaron sin respaldo.
     await supabase
       .from("transactions")
       .update({ split_group_id: null, split_repaid_amount: null })
       .eq("id", tx.id)
       .eq("user_id", userId);
+    await cleanupAdHocDestinatarios(supabase, userId, createdIds);
     return { ok: false, error: "Error al crear las deudas del reparto" };
   }
 
@@ -251,11 +265,17 @@ export async function createSharedPayment(
   // Compute the split (exact-sum guaranteed by @zeta/shared). The participant
   // shares are what is owed to the user; their sum = total − userShare.
   // ----------------------------------------------------------------
+  // Ad-hoc (typed-name) participants become hidden destinatarios before any of
+  // the money moves, so every debt below has a real destinatario_id to point at.
+  const resolved = await resolveSplitParticipants(supabase, user.id, p.participants);
+  if (!resolved.ok) return { success: false, error: resolved.error };
+  const { participants: people, createdIds } = resolved;
+
   const decimals = getCurrencyDecimals(currency as CurrencyCode);
   const split = computeSplit({
     total,
     method: p.method,
-    participants: p.participants.map((x) => ({
+    participants: people.map((x) => ({
       destinatario_id: x.destinatario_id,
       value: x.value,
     })),
@@ -263,6 +283,7 @@ export async function createSharedPayment(
     decimals,
   });
   if (!split.ok) {
+    await cleanupAdHocDestinatarios(supabase, user.id, createdIds);
     return { success: false, error: SPLIT_ERROR_MESSAGES[split.reason] };
   }
   const { shares } = split;
@@ -301,6 +322,7 @@ export async function createSharedPayment(
     split_repaid_amount: 0,
   });
   if (insErr) {
+    await cleanupAdHocDestinatarios(supabase, user.id, createdIds);
     if (insErr.code === "23505") {
       return { success: false, error: "Este pago compartido ya existe (duplicado)" };
     }
@@ -335,6 +357,7 @@ export async function createSharedPayment(
     // Compensating cleanup so we never leave an orphaned split tx with no debts
     // (no balance has been applied yet — see step 3).
     await supabase.from("transactions").delete().eq("id", originTransactionId).eq("user_id", user.id);
+    await cleanupAdHocDestinatarios(supabase, user.id, createdIds);
     return { success: false, error: "Error al crear las deudas del reparto" };
   }
 
@@ -398,6 +421,17 @@ export async function deleteSharedPayment(
     return { success: false, error: "Error al eliminar el pago compartido" };
   }
 
+  // Who the group's debts pointed at, captured BEFORE the delete so any ad-hoc
+  // (hidden) person left with nothing behind them can be garbage-collected.
+  const { data: groupDebts } = await supabase
+    .from("personal_debts")
+    .select("destinatario_id")
+    .eq("user_id", user.id)
+    .eq("split_group_id", splitGroupId);
+  const touchedDestinatarioIds = (groupDebts ?? [])
+    .map((d) => d.destinatario_id)
+    .filter((id): id is string => !!id);
+
   // Deleting the debts cascades `ON DELETE SET NULL` onto their repayment
   // transactions (transactions.personal_debt_id). Those INFLOWs then pass the
   // `.is("personal_debt_id", null)` cashflow filter and start counting as income
@@ -426,6 +460,8 @@ export async function deleteSharedPayment(
     return { success: false, error: "Error al eliminar el pago compartido" };
   }
 
+  await cleanupAdHocDestinatarios(supabase, user.id, touchedDestinatarioIds);
+
   revalidateFinancialViews();
   updateTag("personal-debts");
   return { success: true, data: undefined };
@@ -450,7 +486,7 @@ async function getSharedPaymentGroupsCached(
       id, user_id, destinatario_id, direction, principal_amount,
       currency_code, outstanding_amount, opened_on, due_date, status,
       origin_transaction_id, notes, is_demo, created_at, updated_at, split_group_id,
-      destinatario:destinatarios!personal_debts_destinatario_id_fkey ( name, default_category_id ),
+      destinatario:destinatarios!personal_debts_destinatario_id_fkey ( name, default_category_id, is_ad_hoc ),
       repayments:transactions!transactions_enc_personal_debt_id_fkey ( amount, pd_role )
     `)
     .eq("user_id", userId)
@@ -467,10 +503,10 @@ async function getSharedPaymentGroupsCached(
   const { data: originTxs } = originIds.length
     ? await supabase
         .from("transactions")
-        .select("id, amount, split_repaid_amount, raw_description, transaction_date, account_id")
+        .select("id, amount, split_repaid_amount, raw_description, transaction_date, account_id, split_group_id")
         .eq("user_id", userId)
         .in("id", originIds)
-    : { data: [] as { id: string; amount: number | null; split_repaid_amount: number | null; raw_description: string | null; transaction_date: string; account_id: string | null }[] };
+    : { data: [] as { id: string; amount: number | null; split_repaid_amount: number | null; raw_description: string | null; transaction_date: string; account_id: string | null; split_group_id: string | null }[] };
   const txById = new Map((originTxs ?? []).map((t) => [t.id, t]));
 
   const today = toColombiaDateString(new Date());
@@ -488,6 +524,7 @@ async function getSharedPaymentGroupsCached(
       ...row,
       destinatario_name: row.destinatario?.name ?? "—",
       destinatario_default_category_id: row.destinatario?.default_category_id ?? null,
+      destinatario_is_ad_hoc: !!row.destinatario?.is_ad_hoc,
       total_repaid,
       is_overdue: isPersonalDebtOverdue(row.due_date, row.status, today),
     } as PersonalDebtWithDetails;
@@ -504,7 +541,23 @@ async function getSharedPaymentGroupsCached(
       : undefined;
     // total = the real payment; userShare = total − Σ(owed); recovered = repaid.
     const total = originTx?.amount != null ? Number(originTx.amount) : principalSum;
-    const recovered = Number(originTx?.split_repaid_amount ?? 0);
+    // `split_repaid_amount` lives on the origin transaction, so a group with no
+    // origin tx — a debt split via `splitPersonalDebt` that was never backed by
+    // a recorded payment — has nowhere to store it. Derive it from the debts
+    // instead, using the same rule as `recomputeSplitRepaid`: a settled share
+    // counts in full (the user marked it resolved without a transaction),
+    // everything else counts what was actually repaid, clamped per participant.
+    // Keyed on the tx actually CARRYING the group tag, not merely existing: if
+    // the re-tag step of splitPersonalDebt failed, the tx is still referenced by
+    // the debts but holds no split_repaid_amount, and recomputeSplitRepaid's
+    // writes (which target split_group_id) would silently update 0 rows — the
+    // card would read "Recuperado $0" forever. Deriving in that case self-heals.
+    const recovered = originTx?.split_group_id === gid
+      ? Number(originTx.split_repaid_amount ?? 0)
+      : gdebts.reduce((s, d) => {
+          const principal = Number(d.principal_amount ?? 0);
+          return s + (d.status === "settled" ? principal : Math.min(d.total_repaid, principal));
+        }, 0);
     const userShare = Math.max(0, total - principalSum);
     const outstanding = gdebts
       .filter((d) => d.status === "active")
