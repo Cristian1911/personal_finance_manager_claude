@@ -10,7 +10,9 @@ import {
   INCOME_CLASSES,
   NEUTRAL_CLASSES,
   EMAIL_PATTERN_TO_FLOW,
+  matchOwnDebtAccount,
   type FlowClass,
+  type OwnAccountRef,
 } from "../flow-class";
 
 const outflow = (description: string, accountType = "SAVINGS") =>
@@ -313,5 +315,71 @@ describe("bank-fee regex accepts both spellings of cuota manejo", () => {
     expect(flowClassOf({ direction: "OUTFLOW", accountType: "SAVINGS", description: d })).toBe(
       "BANK_FEE",
     );
+  });
+});
+
+describe("matchOwnDebtAccount — mirror of the SQL dest LATERAL", () => {
+  const ACCOUNTS: OwnAccountRef[] = [
+    { id: "loan-1", accountType: "LOAN", name: "Bancolombia Préstamo", mask: "****7507" },
+    { id: "card-1", accountType: "CREDIT_CARD", name: "Visa", mask: "1234" },
+    { id: "card-2", accountType: "CREDIT_CARD", name: "Lulo Bank S A", mask: null },
+    { id: "sav-1", accountType: "SAVINGS", name: "Ahorros Bancolombia", mask: "9999" },
+    { id: "card-3", accountType: "CREDIT_CARD", name: "Nu", mask: null },
+  ];
+
+  it("matches the loan by mask — the description names no verb", () => {
+    expect(matchOwnDebtAccount("bancolombia prestamo ****7507", ACCOUNTS, "sav-1")?.id)
+      .toBe("loan-1");
+  });
+
+  it("matches by name when there is no mask", () => {
+    expect(matchOwnDebtAccount("lulo bank s a", ACCOUNTS, "sav-1")?.id).toBe("card-2");
+  });
+
+  it("normalizes diacritics on both sides", () => {
+    expect(matchOwnDebtAccount("PAGO BANCOLOMBIA PRESTAMO", ACCOUNTS, "sav-1")?.id)
+      .toBe("loan-1");
+  });
+
+  // The guard without which a card's entire spend vanishes: statements print
+  // the card's own last-4 on every line.
+  it("never matches the transaction's own account", () => {
+    expect(matchOwnDebtAccount("compra exito 1234", ACCOUNTS, "card-1")).toBeNull();
+  });
+
+  it("does not match a mask sitting inside a longer number", () => {
+    expect(matchOwnDebtAccount("compra por 175075 pesos", ACCOUNTS, "sav-1")).toBeNull();
+  });
+
+  it("ignores liquid accounts — only debt is a candidate", () => {
+    expect(matchOwnDebtAccount("traslado ahorros bancolombia 9999", ACCOUNTS, "card-1"))
+      .toBeNull();
+  });
+
+  it("will not match a name shorter than 4 chars", () => {
+    // "Nu" would otherwise fire on menu, nuevo, nube.
+    expect(matchOwnDebtAccount("almuerzo del menu nuevo", ACCOUNTS, "sav-1")).toBeNull();
+  });
+
+  it("matches names whole-token, not as a substring", () => {
+    expect(matchOwnDebtAccount("visado consular", ACCOUNTS, "sav-1")).toBeNull();
+    expect(matchOwnDebtAccount("pago visa", ACCOUNTS, "sav-1")?.id).toBe("card-1");
+  });
+
+  it("prefers a mask hit over a name hit", () => {
+    expect(matchOwnDebtAccount("visa pago ****7507", ACCOUNTS, "sav-1")?.id).toBe("loan-1");
+  });
+
+  it("feeds the structural DEBT_PAYMENT rule end to end", () => {
+    const matched = matchOwnDebtAccount("bancolombia prestamo ****7507", ACCOUNTS, "sav-1");
+    const result = classifyFlow({
+      direction: "OUTFLOW",
+      accountType: "SAVINGS",
+      description: "bancolombia prestamo ****7507",
+      matchedAccountType: matched?.accountType,
+    });
+    expect(result.flowClass).toBe("DEBT_PAYMENT");
+    expect(result.confidence).toBe(1);
+    expect(result.reason).toBe("structural:pays_own_debt_account");
   });
 });

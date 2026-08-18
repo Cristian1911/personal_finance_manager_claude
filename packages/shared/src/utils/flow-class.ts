@@ -341,3 +341,80 @@ export function effectiveFlowClass(row: {
 }): FlowClass | null {
   return (row.flow_class_override ?? row.flow_class ?? null) as FlowClass | null;
 }
+
+// ─────────────────────────────────────────────────────────────────
+// Destination match — resolving `matchedAccountType`
+// ─────────────────────────────────────────────────────────────────
+
+/** One of the user's own accounts, as seen by the destination matcher. */
+export interface OwnAccountRef {
+  id: string;
+  accountType: string | null | undefined;
+  /** Decrypted account name. */
+  name?: string | null;
+  /** Decrypted card/account mask; non-digits are stripped before matching. */
+  mask?: string | null;
+}
+
+/**
+ * Find which of the user's OWN debt accounts a description names, if any.
+ *
+ * This resolves `FlowClassInput.matchedAccountType`, and it is the rule that
+ * catches the descriptions no verb can: `bancolombia prestamo ****7507` and
+ * `lulo bank s a` name only the lender, so text matching alone files them as
+ * ordinary spend. Structurally they are payments — money leaving a liquid
+ * account toward an account the same user owns and owes on.
+ *
+ * Only debt accounts are candidates. A liquid-to-liquid match would be a
+ * SELF_TRANSFER, but `classifyFlow` does not consult this input for that case,
+ * so widening the candidate set would cost decryption for a result nobody reads.
+ *
+ * Exact mirror of the `dest` LATERAL in `zeta_flow_class_candidates`
+ * (20260806150000). The two implementations must agree row for row: SQL does
+ * the backfill, this does every write from here on, and a disagreement means
+ * the same movement is classified one way in history and another going forward.
+ */
+export function matchOwnDebtAccount(
+  description: string | null | undefined,
+  accounts: readonly OwnAccountRef[],
+  ownAccountId: string | null | undefined,
+): OwnAccountRef | null {
+  const desc = normalize(description);
+  if (!desc) return null;
+
+  const padded = " " + desc + " ";
+  let best: { account: OwnAccountRef; byMask: boolean; nameLength: number } | null = null;
+
+  for (const account of accounts) {
+    // Card statements print the card's own last-4 on every line. Without this
+    // guard every purchase self-matches as a payment to itself and the card's
+    // entire spend disappears from the totals.
+    if (account.id === ownAccountId) continue;
+    if (!isDebtAccount(account.accountType)) continue;
+
+    const mask = (account.mask ?? "").replace(/[^0-9]/g, "");
+    const name = normalize(account.name);
+
+    let byMask = false;
+    if (mask.length >= 4 && new RegExp(`(^|[^0-9])${mask}([^0-9]|$)`).test(desc)) {
+      // Digit-adjacency matters: a bare `7507` also sits inside the amount
+      // `175075`.
+      byMask = true;
+    } else if (!(name.length >= 4 && padded.includes(" " + name + " "))) {
+      // Whole-token, and >= 4 chars. A 2-character name like "Nu" is
+      // deliberately unmatchable — it would fire on "menu", "nuevo", "nube".
+      continue;
+    }
+
+    const candidate = { account, byMask, nameLength: name.length };
+    if (
+      best === null ||
+      (candidate.byMask && !best.byMask) ||
+      (candidate.byMask === best.byMask && candidate.nameLength > best.nameLength)
+    ) {
+      best = candidate;
+    }
+  }
+
+  return best?.account ?? null;
+}
