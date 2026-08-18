@@ -3247,6 +3247,11 @@ export type Database = {
           destinatario_id: string | null
           direction: Database["public"]["Enums"]["transaction_direction"]
           exchange_rate: number
+          flow_class_effective: string | null
+          flow_class: string | null
+          flow_class_override: string | null
+          flow_class_override_source: string | null
+          flow_class_version: number | null
           id: string
           idempotency_key: string
           installment_current: number | null
@@ -3270,6 +3275,7 @@ export type Database = {
           reconciliation_score: number | null
           recurrence_group_id: string | null
           secondary_category_id: string | null
+          source_pattern: string | null
           status: Database["public"]["Enums"]["transaction_status"]
           tags: string[] | null
           title_locked: boolean
@@ -3299,6 +3305,10 @@ export type Database = {
           destinatario_id?: string | null
           direction: Database["public"]["Enums"]["transaction_direction"]
           exchange_rate?: number
+          flow_class?: string | null
+          flow_class_override?: string | null
+          flow_class_override_source?: string | null
+          flow_class_version?: number | null
           id?: string
           idempotency_key: string
           installment_current?: number | null
@@ -3322,6 +3332,7 @@ export type Database = {
           reconciliation_score?: number | null
           recurrence_group_id?: string | null
           secondary_category_id?: string | null
+          source_pattern?: string | null
           status?: Database["public"]["Enums"]["transaction_status"]
           tags?: string[] | null
           title_locked?: boolean
@@ -3351,6 +3362,10 @@ export type Database = {
           destinatario_id?: string | null
           direction?: Database["public"]["Enums"]["transaction_direction"]
           exchange_rate?: number
+          flow_class?: string | null
+          flow_class_override?: string | null
+          flow_class_override_source?: string | null
+          flow_class_version?: number | null
           id?: string
           idempotency_key?: string
           installment_current?: number | null
@@ -3374,6 +3389,7 @@ export type Database = {
           reconciliation_score?: number | null
           recurrence_group_id?: string | null
           secondary_category_id?: string | null
+          source_pattern?: string | null
           status?: Database["public"]["Enums"]["transaction_status"]
           tags?: string[] | null
           title_locked?: boolean

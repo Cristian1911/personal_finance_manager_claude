@@ -4,8 +4,13 @@ import { cacheTag, cacheLife, updateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { accountSchema } from "@/lib/validators/account";
-import { computeIdempotencyKey, MANUAL_BALANCE_ADJUSTMENT_PREFIX } from "@zeta/shared";
+import {
+  computeIdempotencyKey,
+  FLOW_CLASS_RULES_VERSION,
+  MANUAL_BALANCE_ADJUSTMENT_PREFIX,
+} from "@zeta/shared";
 import { getDirectionForBalanceDelta, isDebtAccountType } from "@/lib/utils/account-balance";
+import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import { toColombiaDateString } from "@/lib/utils/date";
 import { deactivateTemplatesForPaidOffAccount } from "@/lib/debt/payoff";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
@@ -525,6 +530,19 @@ export async function reconcileBalance(
       capture_method: "MANUAL_FORM",
       categorization_source: "SYSTEM_DEFAULT",
       is_excluded: false,
+      // A reconciliation plug, not a movement. Today these rows carry no
+      // transfer_group_id and are not excluded, so they land in spend or income
+      // and inflate whichever side the correction happened to point at —
+      // precisely the class of error this work exists to remove.
+      //
+      // SELF_TRANSFER is the closest of the eight: neutral, counted by neither
+      // side. It is not literally a transfer between the user's accounts, and
+      // the honest fix is a ninth ADJUSTMENT class. Recorded here rather than
+      // added now, because a new class means a CHECK constraint, an enum on
+      // both platforms, and a decision about where it sorts in every breakdown.
+      flow_class: "SELF_TRANSFER",
+      flow_class_version: FLOW_CLASS_RULES_VERSION,
+      source_pattern: null,
     });
   }
 
@@ -653,6 +671,14 @@ export async function registerPayment(
     categorization_source: "SYSTEM_DEFAULT",
     notes: input.notes || null,
     status: "POSTED",
+    // Structural: INFLOW to a card/loan is DEBT_CREDIT, INFLOW to a liquid
+    // account is INCOME. The same form writes both, which is why the account
+    // type decides rather than the caller.
+    ...flowClassColumns({
+      direction,
+      accountType: account.account_type,
+      description: merchantName,
+    }),
   });
 
   if (txError) {

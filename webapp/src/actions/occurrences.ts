@@ -4,6 +4,7 @@ import "server-only";
 import { updateTag, cacheTag, cacheLife } from "next/cache";
 import { addDays, format, startOfDay, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { toColombiaDateString } from "@/lib/utils/date";
+import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import { PAY_CYCLE_LOOKAHEAD_DAYS } from "@/lib/constants/occurrences";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
@@ -1279,6 +1280,13 @@ async function ensureDebtCompanionLeg(params: {
       is_recurring: true,
       recurrence_group_id: sourceTx?.recurrence_group_id ?? null,
       categorization_source: template.category_id ? "USER_CREATED" : "SYSTEM_DEFAULT",
+      // DEBT_CREDIT structurally: the guard above already established that
+      // template.account_id is a card or a loan.
+      ...flowClassColumns({
+        direction: "INFLOW",
+        accountType: debtAccount.account_type,
+        description: label,
+      }),
     });
 
     if (insertError) {

@@ -10,6 +10,7 @@ import {
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
+import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import {
   buildDebtBalanceUpdatePayload,
   deactivateTemplatesForPaidOffAccount,
@@ -149,11 +150,9 @@ export async function applyExtraDebtPayment(
     // Both legs share a transfer_group_id, exactly like createTransfer: moving
     // your own money to your own debt is not spending.
     //
-    // This is still load-bearing. Spend metrics now ALSO filter on
-    // flow_class_effective, but no write path sets flow_class yet, so these legs
-    // land UNCLASSIFIED — which is inside the counted allow-list. Until the write
-    // paths classify, transfer_group_id is the only thing keeping a debt payoff
-    // from being reported as an expense of the same size.
+    // transfer_group_id is now a LINK, not a filter — flow_class below is what
+    // keeps a debt payoff from being reported as an expense of the same size.
+    // The group id stays because the two legs still need to find each other.
     const transferGroupId = crypto.randomUUID();
 
     // ── 1. OUTFLOW on source account ────────────────────────────────────────
@@ -185,6 +184,14 @@ export async function applyExtraDebtPayment(
         status: "POSTED",
         idempotency_key: outflowKey,
         transfer_group_id: transferGroupId,
+        // DEBT_PAYMENT via linked:pays_debt — the counterpart is the card/loan.
+        ...flowClassColumns({
+          direction: "OUTFLOW",
+          accountType: sourceAccount.account_type,
+          description: outflowDescription,
+          transferGroupId,
+          counterpartAccountType: debtAccount.account_type,
+        }),
       });
 
     if (outflowError) {
@@ -226,6 +233,14 @@ export async function applyExtraDebtPayment(
         status: "POSTED",
         idempotency_key: inflowKey,
         transfer_group_id: transferGroupId,
+        // DEBT_CREDIT via linked:debt_leg — money arriving on the card itself.
+        ...flowClassColumns({
+          direction: "INFLOW",
+          accountType: debtAccount.account_type,
+          description: inflowDescription,
+          transferGroupId,
+          counterpartAccountType: sourceAccount.account_type,
+        }),
       });
 
     if (inflowError) {
