@@ -169,6 +169,24 @@ export const EMAIL_PATTERN_TO_FLOW: Readonly<Record<string, FlowClass>> = {
   pago_recibido_cuenta: "INCOME",
   qr_recibido: "INCOME",
   transferencia_recibida: "INCOME",
+  // Bre-B key transfer received — same shape as transferencia_recibida, money
+  // arriving on the user's own account. (PR #385)
+  transferencia_recibida_llave: "INCOME",
+  // "Compraste X en Y … asociada a T.Cred *NNNN" — the verb settles it. (PR #385)
+  compra_asociada: "SPEND",
+  //
+  // DELIBERATELY ABSENT — mapping these would LOCK IN a verdict at 0.95 and
+  // outrank the description rules, which is worse than the 0.6 default they
+  // fall through to today. Same reasoning as `transferencia` below.
+  //
+  //   `factura_programada` — a scheduled bill can be a CREDIT-CARD bill, which
+  //   is DEBT_PAYMENT, not SPEND. Mapping it to SPEND would hard-code the exact
+  //   error this module exists to remove, and block `pago tarjeta` from firing.
+  //
+  //   `recarga` — topping up a Cívica transit card is consumption; topping up
+  //   the user's own Nequi/Daviplata wallet is a SELF_TRANSFER. The parser
+  //   cannot tell them apart, so neither should this map.
+  //
   // `transferencia` (outbound, unqualified) is intentionally absent: without a
   // counterpart it cannot be told from a merchant payment. Falls through to the
   // description rules.
