@@ -300,6 +300,123 @@ describe("parseBancolombiaEmail", () => {
     );
   });
 
+  // Pattern 15: Transferencia recibida por llave / Bre-B (INFLOW)
+  it("parses Bre-B inbound transfer (recibiste una transferencia de X por $Y ... conectada a la llave)", () => {
+    const line =
+      "Logo Bancolombia [https://example.com/logo.png] yellow-icon [https://example.com/chulo.png] ¡Listo! Todo salió bien con tus movimientos Bancolombia: CRISTIAN, recibiste una transferencia de JHON ALEXANDER SANCHEZ PATIÑO por $37,700.00 en tu cuenta *4398 conectada a la llave 1152224099 el 06/08/26 a las 13:40. Con llaves es de una y gratis. Dudas al 018000912345.";
+    const result = parseBancolombiaEmail(line);
+    expect(result).not.toBeNull();
+    expect(result!.direction).toBe("INFLOW");
+    expect(result!.amount).toBe(37700);
+    expect(result!.merchant).toBe("JHON ALEXANDER SANCHEZ PATIÑO");
+    expect(result!.destination).toBe("1152224099");
+    expect(result!.card_last4).toBe("4398");
+    expect(result!.card_type).toBe("Cta");
+    expect(result!.transaction_date).toBe("2026-08-06");
+    expect(result!.transaction_time).toBe("13:40");
+    expect(result!.pattern_type).toBe("transferencia_recibida_llave");
+  });
+
+  // Pattern 16: Recarga — plantilla legacy "Bancolombia le informa", hora sin cero inicial
+  it("parses Recarga from the legacy \"Bancolombia le informa\" template", () => {
+    const line =
+      "Fluid Grid Master --> --> Notificacion Transaccional Bancolombia le informa Recarga de Tarjeta Civica por $10,000.00 desde cta *4398. 06/08/2026 8:06. Inquietudes al 018000945555.";
+    const result = parseBancolombiaEmail(line);
+    expect(result).not.toBeNull();
+    expect(result!.direction).toBe("OUTFLOW");
+    expect(result!.amount).toBe(10000);
+    expect(result!.merchant).toBe("Recarga Tarjeta Civica");
+    expect(result!.card_last4).toBe("4398");
+    expect(result!.card_type).toBe("Cta");
+    expect(result!.transaction_date).toBe("2026-08-06");
+    // hora normalizada a HH:MM
+    expect(result!.transaction_time).toBe("08:06");
+    expect(result!.pattern_type).toBe("recarga");
+    expect(result!.raw_line).toBe(
+      "Recarga de Tarjeta Civica por $10,000.00 desde cta *4398. 06/08/2026 8:06"
+    );
+  });
+
+  // Pattern 17: Factura programada — plantilla legacy, sin hora
+  it("parses scheduled bill payment (pago Factura Programada) without a time", () => {
+    const line =
+      "Fluid Grid Master --> --> Notificacion Informativa Bancolombia informa pago Factura Programada IGS MULTIASISTE Ref 11065995 por $34.063,00 desde Aho*4398. 16/07/2026. Inquietudes 6045109095/018000931987.";
+    const result = parseBancolombiaEmail(line);
+    expect(result).not.toBeNull();
+    expect(result!.direction).toBe("OUTFLOW");
+    expect(result!.amount).toBe(34063);
+    expect(result!.merchant).toBe("IGS MULTIASISTE");
+    expect(result!.card_last4).toBe("4398");
+    expect(result!.card_type).toBe("Cta");
+    expect(result!.transaction_date).toBe("2026-07-16");
+    expect(result!.transaction_time).toBe("00:00");
+    expect(result!.pattern_type).toBe("factura_programada");
+  });
+
+  // Pattern 14: Compra con la tarjeta en una frase aparte
+  it("parses purchase where the card is named in a separate sentence", () => {
+    const line =
+      "Bancolombia: Compraste COP18.642,54 en Amazon Prime, el 22/07/2026 a las 19:50. Esta compra esta asociada a T.Cred *7022. Si tienes dudas, encuentranos aqui: 01800931987. Siempre contigo.";
+    const result = parseBancolombiaEmail(line);
+    expect(result).not.toBeNull();
+    expect(result!.direction).toBe("OUTFLOW");
+    expect(result!.amount).toBeCloseTo(18642.54);
+    expect(result!.merchant).toBe("Amazon Prime");
+    expect(result!.card_last4).toBe("7022");
+    expect(result!.card_type).toBe("T.Cred");
+    expect(result!.transaction_date).toBe("2026-07-22");
+    expect(result!.transaction_time).toBe("19:50");
+    expect(result!.pattern_type).toBe("compra_asociada");
+  });
+
+  // Pattern 4c: destino con espacio despues del asterisco ("a la cuenta * 01014602131")
+  it("parses transfer when the destination account has a space after the asterisk", () => {
+    const line =
+      "Bancolombia: Transferiste $26,100 desde tu cuenta *4398 a la cuenta * 01014602131 el 05/08/2026 a las 17:02. ¿Dudas? Llamanos al 018000931987. Estamos cerca.";
+    const result = parseBancolombiaEmail(line);
+    expect(result).not.toBeNull();
+    expect(result!.direction).toBe("OUTFLOW");
+    expect(result!.amount).toBe(26100);
+    expect(result!.destination).toBe("01014602131");
+    expect(result!.card_last4).toBe("4398");
+    expect(result!.transaction_date).toBe("2026-08-05");
+    expect(result!.pattern_type).toBe("transferencia");
+  });
+
+  // Pattern 6b: llave alfanumerica (@handle) en pago por codigo QR
+  it("parses QR payment to an @-handle Bre-B key", () => {
+    const line =
+      "Bancolombia: CRISTIAN CAMILO GIRALDO MAZO pagaste $13,800.00 por codigo QR desde tu cuenta *4398 a la llave @empanadasminegra el 25/07/2026 a las 09:16. Con codigo QR es facil y de una. Dudas al 018000912345.";
+    const result = parseBancolombiaEmail(line);
+    expect(result).not.toBeNull();
+    expect(result!.direction).toBe("OUTFLOW");
+    expect(result!.amount).toBe(13800);
+    expect(result!.destination).toBe("@empanadasminegra");
+    expect(result!.card_last4).toBe("4398");
+    expect(result!.transaction_date).toBe("2026-07-25");
+    expect(result!.pattern_type).toBe("qr_pago");
+  });
+
+  // Guard: el marcador ampliado ("Bancolombia informa") no debe engancharse al pie de seguridad
+  it("returns null for the security footer alone", () => {
+    const line =
+      "Bancolombia nunca le solicitara datos financieros como usuarios, claves, numeros de tarjetas de credito con sus codigos de seguridad y fechas de vencimiento mediante vinculos de correo electronico o llamadas. Reportalo a correosospechoso@bancolombia.com.co";
+    expect(parseBancolombiaEmail(line)).toBeNull();
+  });
+
+  it("returns null for non-transactional alerts (clave dinamica, tarjeta on/off)", () => {
+    expect(
+      parseBancolombiaEmail(
+        "Bancolombia: Desbloqueamos tu Clave Dinamica. ¿Dudas? Llamanos: 018000912345, opciones 3/3."
+      )
+    ).toBeNull();
+    expect(
+      parseBancolombiaEmail(
+        "Bancolombia: Apagaste tu tarjeta de credito *7022 el 16/06/2026 12:40. Desactivaste transacciones, avances y pagos programados con ella."
+      )
+    ).toBeNull();
+  });
+
   // Unrecognized emails
   it("returns null for non-Bancolombia email", () => {
     const line = "Your Amazon order has shipped!";
