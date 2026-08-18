@@ -2,6 +2,7 @@ import { after } from "next/server";
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import { parseBancolombiaEmail } from "@/lib/parsers/bancolombia-email";
 import { resolveSuggestedEmailAccountId } from "@/lib/email-ingest/account-matching";
 import {
@@ -834,6 +835,12 @@ async function processEmail(ctx: {
       capture_method: "EMAIL_IMPORT",
       categorization_source: categorizationSource,
       status: "POSTED",
+      ...flowClassColumns({
+        direction: parsed.direction,
+        accountType: matchedAccount?.account_type,
+        description: parsed.merchant ?? parsed.destination ?? parsed.raw_line,
+        sourcePattern: parsed.pattern_type,
+      }),
     }).select("id").single();
 
     if (insertError) {

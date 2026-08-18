@@ -2,6 +2,7 @@
 
 import { cacheTag, cacheLife, updateTag } from "next/cache";
 import { createCachedClient } from "@/lib/supabase/cached";
+import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { nanoid } from "nanoid";
 import {
@@ -143,6 +144,16 @@ async function persistParsedEmail(params: {
       capture_method: "EMAIL_IMPORT",
       categorization_source: categorizationSource,
       status: "POSTED",
+      // pattern_type has been parsed and thrown away on every email since this
+      // path existed. It is the strongest signal available here — `nomina`
+      // settles INCOME outright, `avance` settles DEBT_DRAWDOWN — and it is
+      // persisted alongside the verdict so a rules bump can re-derive from it.
+      ...flowClassColumns({
+        direction: parsed.direction,
+        accountType: matchedAccount?.account_type,
+        description: parsed.merchant ?? parsed.destination ?? parsed.raw_line,
+        sourcePattern: parsed.pattern_type,
+      }),
     }).select("id").single();
 
     if (insertError) {
@@ -768,6 +779,12 @@ export async function approveEmailTransaction(
       categorization_source: categorizationSource,
       destinatario_id: destinatarioId,
       status: "POSTED",
+      ...flowClassColumns({
+        direction: parsed.direction,
+        accountType: account.account_type,
+        description: cleanDescription,
+        sourcePattern: parsed.pattern_type,
+      }),
     })
     .select("id, category_id, categorization_source, notes")
     .single();

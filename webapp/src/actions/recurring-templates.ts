@@ -5,6 +5,7 @@ import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
+import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import { recurringTemplateSchema } from "@/lib/validators/recurring-template";
 import { parseSubPayments } from "@/lib/utils/sub-payments";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
@@ -612,6 +613,15 @@ type RecurringTxDraft = {
   merchant_name: string;
   category_id: string | null;
   notes: string;
+  /** Type of the account this leg is recorded against. */
+  account_type: string | null;
+  /**
+   * Type of the other leg's account. A debt-payment template emits two legs
+   * that share no transfer_group_id, so without this the outflow leg would be
+   * classified from its wording alone — "Transferencia a X" reads as a plain
+   * SELF_TRANSFER at 0.7 when it is structurally a DEBT_PAYMENT.
+   */
+  counterpart_account_type?: string | null;
 };
 type CreatedTxDelta = {
   account_id: string;
@@ -788,6 +798,8 @@ function buildRecurringPaymentTransactions(params: {
           merchant_name: `Transferencia a ${params.targetAccount.name}`,
           category_id: TRANSFER_CATEGORY_ID,
           notes: "Pago recurrente marcado desde checklist",
+          account_type: sourceAccount.account_type,
+          counterpart_account_type: params.targetAccount.account_type,
         },
         {
           account_id: params.targetAccount.id,
@@ -797,6 +809,8 @@ function buildRecurringPaymentTransactions(params: {
           merchant_name: baseLabel,
           category_id: params.template.category_id ?? getDebtPaymentCategoryId(params.targetAccount.account_type),
           notes: "Abono de deuda marcado desde checklist recurrente",
+          account_type: params.targetAccount.account_type,
+          counterpart_account_type: sourceAccount.account_type,
         },
       ],
       error: null,
@@ -813,6 +827,8 @@ function buildRecurringPaymentTransactions(params: {
         merchant_name: baseLabel,
         category_id: params.template.category_id,
         notes: "Transacción recurrente marcada desde checklist",
+        account_type:
+          params.accountMap.get(params.template.account_id)?.account_type ?? null,
       },
     ],
     error: null,
@@ -867,6 +883,17 @@ async function insertRecurringTransactions(params: {
       is_recurring: true,
       recurrence_group_id: params.recurrenceGroupId,
       categorization_source: tx.category_id ? "USER_CREATED" : "SYSTEM_DEFAULT",
+      // The two legs of a debt-payment template share no transfer_group_id, so
+      // the linked branch does not apply. matchedAccountType is the right input
+      // and says literally what is true: money leaving a liquid account toward
+      // an account this user owns and owes on. The INFLOW leg needs nothing —
+      // its own account being a card or loan already settles it.
+      ...flowClassColumns({
+        direction: tx.direction,
+        accountType: tx.account_type,
+        description: tx.merchant_name || tx.raw_description,
+        matchedAccountType: tx.counterpart_account_type,
+      }),
     });
 
     if (error) {

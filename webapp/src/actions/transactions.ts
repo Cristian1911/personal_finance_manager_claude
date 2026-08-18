@@ -23,6 +23,7 @@ import {
 } from "@/lib/validators/transaction";
 import { parseMonth, monthStartStr, monthEndStr } from "@/lib/utils/date";
 import { dedupeTransactionIds } from "@/lib/utils/tag-ids";
+import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import {
   applyAccountBalanceDelta,
   reverseAccountBalanceDelta,
@@ -374,12 +375,24 @@ async function persistTransaction(
   supabase: SupabaseClient<Database>,
   params: PersistTransactionParams
 ): Promise<ActionResult<Transaction>> {
-  const idempotencyKey = await computeIdempotencyKey({
-    provider: "MANUAL",
-    transactionDate: params.transaction_date,
-    amount: params.amount,
-    rawDescription: params.raw_description ?? params.merchant_name ?? "",
-  });
+  // A PK lookup on a column the balance code re-reads moments later, run in
+  // parallel with the key so it costs no extra latency. Paid on every manual
+  // entry so an INFLOW to a card is filed as DEBT_CREDIT rather than income —
+  // a distinction the form itself never asks the user about.
+  const [idempotencyKey, accountTypeRes] = await Promise.all([
+    computeIdempotencyKey({
+      provider: "MANUAL",
+      transactionDate: params.transaction_date,
+      amount: params.amount,
+      rawDescription: params.raw_description ?? params.merchant_name ?? "",
+    }),
+    supabase
+      .from("accounts")
+      .select("account_type")
+      .eq("id", params.account_id)
+      .eq("user_id", params.userId)
+      .maybeSingle(),
+  ]);
 
   const { data, error } = await supabase
     .from("transactions")
@@ -404,6 +417,12 @@ async function persistTransaction(
       categorization_source: params.category_id ? "USER_CREATED" : "SYSTEM_DEFAULT",
       is_subscription: params.is_subscription ?? false,
       location_id: params.location_id ?? null,
+      ...flowClassColumns({
+        direction: params.direction,
+        accountType: accountTypeRes.data?.account_type,
+        description:
+          params.merchant_name ?? params.raw_description ?? params.notes ?? null,
+      }),
     })
     .select()
     .single();
