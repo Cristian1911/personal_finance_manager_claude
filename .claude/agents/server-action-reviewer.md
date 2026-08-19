@@ -48,6 +48,9 @@ You are a server action reviewer for the Zeta personal finance app — a Next.js
 - `webapp/src/lib/cache/revalidation.ts` — `revalidateFinancialViews()` and tag constants
 - `webapp/src/types/actions.ts` — `ActionResult<T>` type definition
 - `webapp/src/actions/charts.ts` — `getMonthlyCashflowCached()` reference for income filtering
+- `packages/shared/src/utils/flow-class.ts` — `classifyFlow()`, `COUNTED_FLOW_CLASSES`, `matchOwnAccount()`; the canonical flow-class rules
+- `webapp/src/lib/utils/flow-class-columns.ts` — `flowClassColumns()`, the only sanctioned way to write the flow columns
+- `packages/shared/src/constants/categories.ts` — `countedFlowClassesForCategories()` for the budget exception
 
 ## Review Scope
 
@@ -251,26 +254,95 @@ Rules:
 
 ---
 
-## Check 7: Income/Metrics Rules (HIGH)
+## Check 7: Flow class — what counts as spend or income (HIGH)
 
-Any action that calculates income, ingresos, or cashflow MUST exclude debt inflows:
+**Category and flow class are orthogonal axes.** Category answers "what did I
+buy"; flow class answers "did I buy anything at all". Neither derives from the
+other, and conflating them is what made April 2026 report $73.480.217 of
+outflow when real consumption was $15.160.412 — the rest was card payments,
+cash advances and movements between the user's own accounts. On the income side
+a $22.441.478 loan disbursement was counted as salary.
+
+Every transaction carries `flow_class` (the machine verdict),
+`flow_class_override` (the user's correction), `flow_class_version`, and
+`source_pattern`. Reads use the generated column `flow_class_effective` =
+`coalesce(override, class, 'UNCLASSIFIED')`.
+
+The eight classes: `INCOME`, `SPEND`, `DEBT_PAYMENT`, `DEBT_CREDIT`,
+`DEBT_DRAWDOWN`, `SELF_TRANSFER`, `CASH_WITHDRAWAL`, `BANK_FEE`.
+
+### Reads
+
+Filter with the POSITIVE allow-list, never `.not.in(NEUTRAL)`:
 
 ```ts
-// Debt inflows are NOT income
-const debtAccountIds = new Set(
-  accounts
-    .filter(a => a.account_type === "CREDIT_CARD" || a.account_type === "LOAN")
-    .map(a => a.id)
-);
+import { COUNTED_FLOW_CLASSES } from "@zeta/shared";
 
-const income = transactions
-  .filter(tx => tx.direction === "INFLOW" && !debtAccountIds.has(tx.account_id));
+.in("flow_class_effective", COUNTED_FLOW_CLASSES as string[])
 ```
 
-Reference implementation: `getMonthlyCashflowCached()` in `webapp/src/actions/charts.ts`.
+`.in()` can seek on `(user_id, flow_class_effective, transaction_date)`;
+`NOT IN` degrades the class to a filter and drags the date range with it. It
+also fails closed — a ninth class added next quarter is simply not counted
+until someone decides where it belongs, rather than silently landing in spend.
+
+One list serves spend, income and mixed queries: an OUTFLOW can never classify
+as `INCOME` or `DEBT_CREDIT`.
+
+**Budgets are the documented exception.** A budget bar measures money
+ALLOCATED, not consumed, so paying a card fills a "Tarjeta de crédito" budget.
+Use `countedFlowClassesForCategories()` from `@zeta/shared` — shared by
+`budgets.ts` and `categories.ts`, which are required to agree and have reported
+different "gastado" for the same month once already.
+
+### Writes
+
+Every insert into `transactions` sets the columns via `flowClassColumns()`
+(`@/lib/utils/flow-class-columns`), which bundles the verdict with the rules
+version so the version cannot be forgotten.
+
+`updateTransaction` must RE-classify: it edits direction, account_id,
+merchant_name and raw_description — every classifier input — and a stale class
+is invisible to every spend metric. The DB trigger is `BEFORE INSERT` only and
+will not catch it.
+
+Two paths deliberately set the class by hand AND write
+`flow_class_version: null`, meaning "not classifier-derived, do not re-derive":
+manual balance adjustments (`accounts.ts`) and personal-debt repayments
+(`personal-debts.ts`). The classifier would call them SPEND and INCOME
+respectively, so a version-keyed backfill must skip them.
+
+Never write `flow_class_override` from an automatic path. It is the user's
+channel; that is the whole reason the verdict and the correction are two
+columns.
+
+### The legacy rule, and why it is no longer sufficient
+
+```ts
+// FALLBACK ONLY — correct for rows with no flow_class, wrong as the rule.
+.filter(tx => tx.direction === "INFLOW" && !debtAccountIds.has(tx.account_id))
+```
+
+This still appears in `computeMonthlyAggregates` as the fallback for
+unclassified rows, and it is the right fallback. It is NOT the rule: a loan
+disbursed into a savings account is an INFLOW to a liquid account and passes
+this filter cleanly. Only the description reveals it, which is precisely what
+`flow_class` stores.
+
+Reference: `getMonthlyCashflowCached()` in `webapp/src/actions/charts.ts`,
+`income.ts` for the inference path.
 
 **Flag as HIGH:**
-- Income calculation that doesn't filter out CREDIT_CARD/LOAN inflows
+- A spend or income query with no `flow_class_effective` filter
+- `.not.in()` against the neutral classes instead of the positive allow-list
+- An insert into `transactions` that does not call `flowClassColumns()`
+- An update touching direction / account_id / description that does not reclassify
+- Any automatic path writing `flow_class_override`
+- A hand-set verdict stamped with a real `flow_class_version`
+- Income logic relying on `debtAccountIds` alone
+- `transfer_group_id` used as a metrics filter — it is a LINK between two legs,
+  not a classification, and was replaced precisely because the same card
+  payment counted twice through one route and zero times through another
 
 ---
 
@@ -363,5 +435,5 @@ Before reporting:
 2. Did you check auth + defense-in-depth + revalidation for EVERY mutation?
 3. Did you verify mutations use `updateTag` (not `revalidateTag`)?
 4. Did you check for `z.string().uuid()` usage?
-5. Did you check income calculations exclude debt inflows?
+5. Did you check that every spend/income query filters `flow_class_effective`, and that every insert and reclassifying update calls `flowClassColumns()`?
 6. Did you check client-side mutation handlers wrap server actions in `startTransition` when the page has server component props that depend on the mutated data?

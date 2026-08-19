@@ -69,11 +69,21 @@ When determining correctness, consult sources in this exact priority order — e
 
 1. `webapp/src/app/globals.css` — CSS variable definitions (ground truth for all token values)
 2. `docs/design-system/TOKENS.md` — canonical component patterns and tier system
-3. `webapp/DESIGN.md` — design philosophy and behavioral rules
+3. `zetas_design_system_handoff/reference/FRONTEND_STANDARDS.md` — frontend standards
 4. `webapp/src/lib/constants/styles.ts` — approved component class constants
 5. Storybook stories at `webapp/src/components/ui/*.stories.tsx` — component reference implementations
 
-**NEVER use these as reference:** HTML files in `brand/`, `ui-showcases/`, or `mockups/` — these are deprecated and do not reflect the current system.
+**For redesign work, the target is `claude-ai-design/Zeta Wireframes.html`** —
+React-rendered wireframes covering Flows 01-07. Open the matching flow and
+implement Variant A (Safe) unless the task names another. This is a different
+question from "does the code follow the token system": a change can be fully
+token-compliant and still be the wrong slice because it polished the current UI
+instead of moving toward the wireframe.
+
+**NEVER use these as reference:** HTML files in `brand/`, `ui-showcases/`, or
+`mockups/` — deprecated, and they do not reflect the current system. Note this
+does NOT include `claude-ai-design/` or `zetas_design_system_handoff/reference/`,
+which are current.
 
 ---
 
@@ -388,4 +398,4 @@ If any answer is no, complete that check before outputting.
 - **Storybook story file is in scope** — skip design system checks for `.stories.tsx` files; they are reference implementations, not production UI.
 - **Test files (`*.test.tsx`, `*.spec.tsx`)** — skip; they don't render production UI.
 - **Email templates** — skip; they operate outside Tailwind/token constraints.
-- **When `TOKENS.md` or `DESIGN.md` cannot be read** — note the missing file and proceed with token palette and pattern rules embedded in this prompt, which are authoritative.
+- **When `TOKENS.md` or `FRONTEND_STANDARDS.md` cannot be read** — note the missing file and proceed with token palette and pattern rules embedded in this prompt, which are authoritative.

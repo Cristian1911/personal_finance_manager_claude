@@ -230,6 +230,34 @@ CREATE INDEX idx_transactions_enc_merchant_hmac
   ON transactions_enc (user_id, merchant_name_hmac);
 ```
 
+### Pattern 7: GENERATED Columns on an Encrypted Table
+
+A `GENERATED ALWAYS AS (...) STORED` column is the right tool when PostgREST
+needs to FILTER on a derived value — PostgREST cannot express
+`coalesce(a, b)` in a filter, so the alternative is filtering in JS, which
+defeats the point of storing it.
+
+```sql
+ALTER TABLE transactions_enc
+  ADD COLUMN flow_class_effective text
+  GENERATED ALWAYS AS (coalesce(flow_class_override, flow_class, 'UNCLASSIFIED')) STORED;
+```
+
+Three rules, each of which fails at a different time:
+
+1. **It goes in the view's SELECT, NEVER in the INSTEAD OF trigger column
+   lists.** A generated column is not writable. Put it in the trigger's INSERT
+   or UPDATE list and every write to the view fails at runtime.
+2. **Index the generated column, not its inputs.** The whole reason it exists
+   is to be filtered on.
+3. **Give it a non-null floor when reads use a positive allow-list.** A NULL
+   would be dropped by `IN (...)`'s three-valued logic; the `'UNCLASSIFIED'`
+   sentinel above is what keeps un-backfilled rows visible instead of silently
+   vanishing from every metric.
+
+Mobile must NOT mirror it — see `mobile-sync-doctor`, which documents why a
+local generated column breaks every pull forever.
+
 ---
 
 ## Workflow
@@ -257,14 +285,33 @@ cd /Users/cristian/Documents/developing/current-projects/zeta && npx supabase mi
 
 Write the SQL following the appropriate pattern above.
 
-### Step 4: Regenerate Types
+### Step 4: Update Types — DO NOT overwrite the file
 
-After any schema change:
+**Never pipe the generator over `webapp/src/types/database.ts`.** That file is
+hand-adjusted and the adjustment is load-bearing: `accounts` and `transactions`
+have been MOVED from `Views` to `Tables` so `.from("accounts").insert()`
+type-checks. The generator emits them under `Views`, where Insert/Update are not
+usable, so overwriting rewrites ~2800 lines and breaks every insert in the app.
+
+Generate to a scratch file, diff it, and hand-apply only the columns you added:
+
 ```bash
-npx supabase gen types --lang=typescript --project-id tgkhaxipfgskxydotdtu > webapp/src/types/database.ts
+npx supabase gen types --lang=typescript --project-id tgkhaxipfgskxydotdtu > /tmp/newtypes.ts
+diff webapp/src/types/database.ts /tmp/newtypes.ts
 ```
 
-**Always verify** the output starts with `export type Json =` — shell `compdef` warnings can corrupt the first line.
+Add each new column to all three sections (Row / Insert / Update) of the table's
+entry, matching the alphabetical order the generator uses.
+
+**Generated columns go in `Row` ONLY.** Omitting them from Insert/Update turns a
+runtime PostgREST rejection into a compile error.
+
+**Note on why stale types can hide:** `...spreadHelper()` does NOT trigger
+TypeScript's excess-property check — spreads are exempt — so an insert built
+that way compiles against outdated types. Only an explicit object literal
+fails. Do not treat a passing `tsc` as evidence the types are current.
+
+**Always verify** generated output starts with `export type Json =` — shell `compdef` warnings can corrupt the first line.
 
 ### Step 5: Update App Code
 

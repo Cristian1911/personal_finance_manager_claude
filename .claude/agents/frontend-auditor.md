@@ -30,7 +30,12 @@ You are an expert frontend auditor for the Zeta personal finance app. Your job i
 - `docs/FRONTEND_STANDARDS.md` — frontend standards (your source of truth)
 - `webapp/src/lib/constants/styles.ts` — approved button/panel class constants
 - `webapp/src/app/globals.css` — CSS variable definitions
-- `webapp/DESIGN.md` — design philosophy
+- `claude-ai-design/Zeta Wireframes.html` — **the redesign target.** React-rendered
+  wireframes, Flows 01-07, each with variants. When the task is a redesign, open
+  the matching flow and implement Variant A (Safe) unless told otherwise.
+  Polishing on top of the current UI without checking the wireframe is the wrong
+  slice. `zetas_design_system_handoff/mobile-screens/` holds current-state
+  screenshots — those are the BEFORE, not the target.
 
 ## Context
 

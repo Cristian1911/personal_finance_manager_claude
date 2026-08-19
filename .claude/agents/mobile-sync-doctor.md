@@ -60,6 +60,27 @@ You are a domain specialist for Zeta's mobile sync layer. Your job is to ensure 
 - `mobile/lib/sync/hooks.ts` — React hooks for sync state
 - `mobile/lib/repositories/*.ts` — Data access layer over SQLite
 
+### The three transaction INSERT sites — check ALL of them
+
+There is no single choke point, and assuming there is one has already shipped a
+bug. Any change to what a transaction row must carry has to be applied three
+times:
+
+1. `mobile/lib/repositories/transactions.ts` → `_insertTxBody`, reached from
+   `createTransaction` and `createTransactionAndApplyBalance`. Manual capture,
+   OCR, voice, email approve, PDF import.
+2. `mobile/lib/repositories/ledger-helpers.ts` → `insertLedgerTransaction`,
+   built by `buildLedgerTxPayload`. Called from `accounts.ts` (registerPayment,
+   reconcileBalance), `transfers.ts` (both legs) and `recurring.ts`. These are
+   the structurally-neutral movements — payments, transfers — which is exactly
+   where a missing field does the most damage.
+3. `mobile/lib/demo-data.ts` — seeded fixtures. Local only (it clears
+   `sync_queue` afterwards) but it drives the demo's numbers.
+
+Prefer making a new required field REQUIRED on `LedgerTxInput` rather than
+optional: the compiler then names every call site, which is how site 2 was
+found after a commit message claimed site 1 was the only one.
+
 ### Supabase Schema
 - `webapp/src/types/database.ts` — Canonical Supabase types (generated from schema)
 - `supabase/migrations/` — All migration files including encryption migrations
@@ -103,6 +124,41 @@ When reviewing mobile sync code, verify ALL of the following:
 - [ ] Column types are correct (TEXT for strings, REAL for numbers, INTEGER for booleans)
 - [ ] No encrypted BYTEA columns in SQLite (those belong in `_enc`, not the view)
 - [ ] New columns added to Supabase have corresponding SQLite migration
+- [ ] **GENERATED columns are NOT mirrored.** `pull.ts`'s `upsertRow` builds its
+      INSERT from the columns PRAGMA reports, so a same-named local column is
+      KEPT, not dropped — declare one GENERATED locally and SQLite raises
+      "cannot INSERT into generated column" on every row, forever. Declare it as
+      a plain column instead and it goes stale the moment its inputs change
+      locally. Derive it in code. `transactions.flow_class_effective`
+      (`coalesce(flow_class_override, flow_class, 'UNCLASSIFIED')` server-side)
+      is the live example; `effectiveFlowClass()` in `@zeta/shared` is the
+      local derivation, and it returns null when both inputs are unset, so
+      apply the `'UNCLASSIFIED'` floor at the call site.
+- [ ] A column that exists remotely but not locally is dropped SILENTLY on every
+      pull — no error, row still applies. That is the intended behaviour for
+      generated columns and a silent data gap for everything else. `accounts.mask`
+      was thrown away this way for months.
+
+### 1b. Flow class (`transactions`)
+
+Category and flow class are orthogonal axes: category answers "what did I buy",
+flow class answers "did I buy anything at all". Mobile mirrors four columns —
+`flow_class`, `flow_class_override`, `flow_class_override_source`,
+`flow_class_version`, plus `source_pattern` — and derives the fifth.
+
+- [ ] Every INSERT site (all three, above) writes `flow_class` +
+      `flow_class_version`. A NULL class means the row falls back to the
+      account-type heuristic, so a mobile-created transfer counts as spend while
+      the identical webapp-created one does not — the cross-platform divergence
+      `computeMonthlyAggregates` exists to close.
+- [ ] Classification reads LOCAL SQLite only. `classifyFlow()` and
+      `matchOwnAccount()` from `@zeta/shared` are pure; the account lookup they
+      need is a local query. A remote call here breaks the round-trip budget.
+- [ ] `matchOwnAccount()` receives EVERY account the user owns, not just the
+      debt ones. Narrowing that list silently turns real transfers into SPEND.
+- [ ] Any screen calling `computeMonthlyAggregates` projects `flow_class` AND
+      `flow_class_override`. Both platforms must project them or neither —
+      turning it on for one side reopens the 7-33x divergence.
 
 ### 2. Sync Pull (pull.ts)
 - [ ] Table is in SYNC_TABLES array in correct dependency order
