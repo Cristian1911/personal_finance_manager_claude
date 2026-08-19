@@ -6,7 +6,6 @@ import { createCachedClient } from "@/lib/supabase/cached";
 import { accountSchema } from "@/lib/validators/account";
 import {
   computeIdempotencyKey,
-  FLOW_CLASS_RULES_VERSION,
   MANUAL_BALANCE_ADJUSTMENT_PREFIX,
 } from "@zeta/shared";
 import { getDirectionForBalanceDelta, isDebtAccountType } from "@/lib/utils/account-balance";
@@ -541,7 +540,12 @@ export async function reconcileBalance(
       // added now, because a new class means a CHECK constraint, an enum on
       // both platforms, and a decision about where it sorts in every breakdown.
       flow_class: "SELF_TRANSFER",
-      flow_class_version: FLOW_CLASS_RULES_VERSION,
+      // NULL version, not FLOW_CLASS_RULES_VERSION: no rules version produced
+      // this. Running the classifier on `Ajuste de saldo manual` yields SPEND,
+      // so stamping a real version would let the next version-keyed backfill
+      // "correct" this row into spend — the very thing the comment above says
+      // it prevents. NULL means "not classifier-derived, do not re-derive".
+      flow_class_version: null,
       source_pattern: null,
     });
   }

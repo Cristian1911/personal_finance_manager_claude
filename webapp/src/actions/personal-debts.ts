@@ -24,7 +24,6 @@ import {
 import { SPLIT_ERROR_MESSAGES } from "@/lib/personal-debts/split-errors";
 import {
   computeSplit,
-  FLOW_CLASS_RULES_VERSION,
   getCurrencyDecimals,
   inferPersonalDebtRole,
   isPersonalDebtOverdue,
@@ -1024,7 +1023,10 @@ export async function recordRepayment(
       // separate decision about what a receivable is worth, not part of wiring
       // the write paths.
       flow_class: direction === "OUTFLOW" ? "DEBT_PAYMENT" : "DEBT_CREDIT",
-      flow_class_version: FLOW_CLASS_RULES_VERSION,
+      // NULL version — see the note on FLOW_CLASS_RULES_VERSION. The classifier
+      // would call an INFLOW to a CHECKING account INCOME, so a version-keyed
+      // backfill would undo exactly the fix this site makes.
+      flow_class_version: null,
       source_pattern: null,
     })
     .select("id, account_id, amount, direction, is_excluded")

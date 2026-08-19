@@ -1,5 +1,7 @@
 import * as Crypto from "expo-crypto";
 import {
+  classifyFlow,
+  type FlowClass,
   getDebtPaymentCategoryId,
   getOccurrencesBetween,
   isDebtAccountType,
@@ -831,6 +833,7 @@ type RecurringLeg = {
   merchantName: string;
   categoryId: string | null;
   notes: string;
+  flowClass: FlowClass;
 };
 
 /**
@@ -963,6 +966,11 @@ export async function recordRecurringOccurrencePayment(
         merchantName: `Transferencia a ${targetAccount.name}`,
         categoryId: TRANSFER_CATEGORY_ID,
         notes: "Pago recurrente marcado desde checklist",
+        // Structural: money leaving a liquid account toward the card/loan this
+        // template pays. Mirrors webapp recurring-templates.ts, which reaches
+        // the same verdict via matchedAccountType — the two legs share no
+        // transfer_group_id, so the linked branch never applies.
+        flowClass: "DEBT_PAYMENT",
       },
       {
         accountId: targetAccount.id,
@@ -972,6 +980,8 @@ export async function recordRecurringOccurrencePayment(
         merchantName: baseLabel,
         categoryId: template.category_id ?? getDebtPaymentCategoryId(targetAccount.account_type),
         notes: "Abono de deuda marcado desde checklist recurrente",
+        // The receiving leg lands on the card/loan itself.
+        flowClass: "DEBT_CREDIT",
       },
     ];
   } else {
@@ -984,6 +994,13 @@ export async function recordRecurringOccurrencePayment(
         merchantName: baseLabel,
         categoryId: template.category_id,
         notes: "Transacción recurrente marcada desde checklist",
+        // Not a debt template, so the class comes from the account type and the
+        // label — a recurring INFLOW to a card is still DEBT_CREDIT.
+        flowClass: classifyFlow({
+          direction: template.direction,
+          accountType: targetAccount.account_type,
+          description: baseLabel,
+        }).flowClass,
       },
     ];
   }
@@ -1037,6 +1054,7 @@ export async function recordRecurringOccurrencePayment(
           currencyCode: template.currency_code,
           direction: leg.direction,
           transactionDate: effectivePaymentDate,
+          flowClass: leg.flowClass,
           rawDescription: leg.rawDescription,
           merchantName: leg.merchantName,
           categoryId: leg.categoryId,

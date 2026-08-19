@@ -21,7 +21,25 @@
  * TypeScript implementation is canonical; keep the two in step.
  */
 
-/** Bump when the rules below change, so stored verdicts can be re-derived. */
+/**
+ * Bump when the rules below change, so stored verdicts can be re-derived.
+ *
+ * A row's `flow_class_version` records which rules version produced its
+ * verdict, so a backfill can find and re-derive everything below the current
+ * one: `WHERE flow_class_version IS NOT NULL AND flow_class_version < N`.
+ *
+ * `flow_class_version IS NULL` means **not classifier-derived — do not
+ * re-derive**. Two write paths set a class this module cannot express, because
+ * the deciding fact is carried by nothing the classifier can see:
+ *
+ *   * a manual balance adjustment (a reconciliation plug, not a movement)
+ *   * a personal-debt repayment (the counterparty is a person, not an account)
+ *
+ * Stamping those with a real version would be a lie with teeth: the next
+ * version-keyed backfill would "correct" them to SPEND and INCOME, which is
+ * exactly what those two sites exist to prevent. NULL keeps them out of its
+ * WHERE clause.
+ */
 export const FLOW_CLASS_RULES_VERSION = 2;
 
 export type FlowClass =

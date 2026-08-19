@@ -760,6 +760,28 @@ export const DB_MIGRATIONS: DbMigration[] = [
       `ALTER TABLE transactions ADD COLUMN source_pattern TEXT`,
     ],
   },
+  {
+    version: 28,
+    statements: [
+      // ── accounts.mask — required by the flow classifier ────────────────
+      // matchOwnAccount() resolves `matchedAccountType` by looking for one of
+      // the user's OWN accounts named in a movement's description, matching on
+      // account name or last-4. That is what turns `bancolombia prestamo
+      // ****7507` from ordinary spend into a debt payment, and what tells a
+      // real savings-to-savings transfer apart from a merchant payment now
+      // that wording alone no longer decides.
+      //
+      // The local table only ever had `debit_card_mask` (v20), which is a
+      // different field — added for debit-card email matching, and null on
+      // credit cards and loans. The generic `accounts.mask` that the webapp
+      // reads (see import-transactions.ts) had no local counterpart, so
+      // pull.ts's getTableColumns() filter silently dropped it on every sync.
+      //
+      // Without this column the classifier could never see mask data on
+      // mobile, and the query that reads it fails outright.
+      `ALTER TABLE accounts ADD COLUMN mask TEXT`,
+    ],
+  },
 ];
 
 export const LATEST_DB_VERSION =

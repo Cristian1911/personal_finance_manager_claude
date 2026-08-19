@@ -420,8 +420,10 @@ async function persistTransaction(
       ...flowClassColumns({
         direction: params.direction,
         accountType: accountTypeRes.data?.account_type,
-        description:
-          params.merchant_name ?? params.raw_description ?? params.notes ?? null,
+        // `notes` is deliberately NOT a fallback here: the SQL mirror coalesces
+        // merchant_name / clean_description / raw_description only, and the two
+        // implementations have to agree row for row.
+        description: params.merchant_name ?? params.raw_description ?? null,
       }),
     })
     .select()
@@ -1064,12 +1066,34 @@ export async function updateTransaction(
     ...updatableFields
   } = parsed.data;
 
+  // Reclassify: this form edits direction, account_id, merchant_name and
+  // raw_description — every input the classifier reads. Leaving the stored
+  // class alone would strand it, and post-bridge a stale DEBT_PAYMENT or
+  // SELF_TRANSFER is invisible to EVERY spend metric. That is the same silent
+  // loss the write paths were wired to prevent, reached through the edit path
+  // instead of the insert path, and neither the UNCLASSIFIED floor nor the DB
+  // trigger catches it (the trigger is BEFORE INSERT only).
+  //
+  // A user correction lives in flow_class_override and is untouched here, so
+  // re-deriving the machine verdict cannot overwrite a human decision.
+  const { data: nextAccount } = await supabase
+    .from("accounts")
+    .select("account_type")
+    .eq("id", parsed.data.account_id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
   const { data, error } = await supabase
     .from("transactions")
     .update({
       ...updatableFields,
       clean_description: parsed.data.merchant_name || parsed.data.raw_description || null,
       ...(categoryChanged ? { categorization_source: "USER_OVERRIDE" as const } : {}),
+      ...flowClassColumns({
+        direction: parsed.data.direction,
+        accountType: nextAccount?.account_type,
+        description: parsed.data.merchant_name ?? parsed.data.raw_description ?? null,
+      }),
     })
     .eq("user_id", user.id)
     .eq("id", id)

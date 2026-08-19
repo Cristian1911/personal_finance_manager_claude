@@ -10,7 +10,10 @@ import type { ActionResult } from "@/types/actions";
 import { parseMonth, monthStartStr, monthEndStr, monthsBeforeStart } from "@/lib/utils/date";
 import { rollupGroup } from "@/lib/utils/budget-rollup";
 import type { Category, CategoryWithChildren, CategoryWithBudget, CategoryBudgetData, TransactionDirection, CurrencyCode } from "@/types/domain";
-import { COUNTED_FLOW_CLASSES } from "@zeta/shared";
+import {
+  COUNTED_FLOW_CLASSES,
+  countedFlowClassesForCategories,
+} from "@zeta/shared";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -254,6 +257,12 @@ async function getCategoriesWithBudgetDataCached(
   // and from the other demo mode, so it never matched the budget bar.
   const spendAccountIds = await getDemoAccountIds(supabase, userId, isDemo);
 
+  // The grid is scoped to every category, so it always includes the allocation
+  // ones. Shared with getBudgetSummary deliberately: those two are documented
+  // as having to agree, and they reported different "gastado" for the same
+  // month once already because the rule was spelled out twice.
+  const gridCountedClasses = countedFlowClassesForCategories(COUNTED_FLOW_CLASSES, null);
+
   const [catRes, budgetRes, spentRes, avgRes, recurringRes, childrenRes] = await Promise.all([
     // 1. Parent categories only
     supabase
@@ -289,7 +298,7 @@ async function getCategoriesWithBudgetDataCached(
       .gte("transaction_date", monthStartStr(target))
       .lte("transaction_date", monthEndStr(target))
       .is("reconciled_into_transaction_id", null)
-      .in("flow_class_effective", COUNTED_FLOW_CLASSES as string[])
+      .in("flow_class_effective", gridCountedClasses)
       .is("personal_debt_id", null)
       .in("account_id", spendAccountIds ?? []),
 
@@ -305,7 +314,7 @@ async function getCategoriesWithBudgetDataCached(
       .gte("transaction_date", monthsBeforeStart(target, 3))
       .lt("transaction_date", monthStartStr(target))
       .is("reconciled_into_transaction_id", null)
-      .in("flow_class_effective", COUNTED_FLOW_CLASSES as string[])
+      .in("flow_class_effective", gridCountedClasses)
       .is("personal_debt_id", null)
       .in("account_id", spendAccountIds ?? []),
 
