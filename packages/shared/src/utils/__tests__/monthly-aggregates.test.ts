@@ -95,12 +95,7 @@ describe("computeMonthlyAggregates", () => {
   });
 });
 
-// flow_class is deliberately NOT honoured by computeMonthlyAggregates yet — see
-// the comment in monthly-aggregates.ts. Turning it on requires the column in
-// both the webapp slim select and the mobile SQLite projection, or the same
-// Movimientos screen reports two different totals depending on whether a filter
-// is active. The tests for that behaviour land with the change that wires both.
-describe("flow_class is not honoured yet", () => {
+describe("flow_class decides, with the old heuristic as fallback", () => {
   const base = {
     account_id: "acct",
     category_id: "cat",
@@ -109,11 +104,51 @@ describe("flow_class is not honoured yet", () => {
     transaction_date: "2026-04-10",
   };
 
-  it("a row carrying flow_class still follows the debtAccountIds heuristic", () => {
+  it("a debt payment is not spend, whatever account it sits on", () => {
     const r = computeMonthlyAggregates(
       [{ ...base, amount: 2024211, direction: "OUTFLOW", flow_class: "DEBT_PAYMENT" }],
       { debtAccountIds: new Set(), withDaysByDate: false },
     );
-    expect(r.totalOutflow).toBe(2024211);
+    expect(r.totalOutflow).toBe(0);
+  });
+
+  it("a loan disbursement into savings is not income", () => {
+    const r = computeMonthlyAggregates(
+      [{ ...base, amount: 22441478, direction: "INFLOW", flow_class: "DEBT_DRAWDOWN" }],
+      { debtAccountIds: new Set(), withDaysByDate: false },
+    );
+    expect(r.totalInflow).toBe(0);
+  });
+
+  it("a user correction wins over the machine verdict", () => {
+    const r = computeMonthlyAggregates(
+      [{
+        ...base,
+        amount: 50000,
+        direction: "OUTFLOW",
+        flow_class: "SELF_TRANSFER",
+        flow_class_override: "SPEND",
+      }],
+      { debtAccountIds: new Set(), withDaysByDate: false },
+    );
+    expect(r.totalOutflow).toBe(50000);
+  });
+
+  // Rows written before flow_class existed, and every row of a user whose
+  // backfill has not run, must keep behaving exactly as they do today.
+  it("falls back to debtAccountIds when the row carries no class", () => {
+    const rows = [{ ...base, amount: 300000, direction: "INFLOW" as const }];
+    expect(
+      computeMonthlyAggregates(rows, {
+        debtAccountIds: new Set(["acct"]),
+        withDaysByDate: false,
+      }).totalInflow,
+    ).toBe(0);
+    expect(
+      computeMonthlyAggregates(rows, {
+        debtAccountIds: new Set(),
+        withDaysByDate: false,
+      }).totalInflow,
+    ).toBe(300000);
   });
 });

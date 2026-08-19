@@ -611,7 +611,7 @@ async function getMonthlyAggregatesCached(
   let query = supabase
     .from("transactions")
     .select(
-      "amount, split_repaid_amount, direction, account_id, category_id, is_excluded, reconciled_into_transaction_id, transaction_date",
+      "amount, split_repaid_amount, direction, account_id, category_id, is_excluded, reconciled_into_transaction_id, transaction_date, flow_class, flow_class_override",
     )
     .eq("user_id", userId)
     .in("account_id", demoAccountIds)

@@ -10,7 +10,30 @@ import { getPreferredCurrency } from "@/actions/profile";
 import type { Database } from "@/types/database";
 import type { ActionResult } from "@/types/actions";
 import type { Budget } from "@/types/domain";
-import { COUNTED_FLOW_CLASSES } from "@zeta/shared";
+import {
+    COUNTED_FLOW_CLASSES,
+    SUB_CUOTA_CREDITO,
+    SUB_PAGO_TARJETA,
+} from "@zeta/shared";
+
+/**
+ * Categories whose budget measures money ALLOCATED, not money consumed.
+ *
+ * A budget bar answers "how much did I put toward this", and paying your card
+ * is putting money toward it. Every other metric excludes debt payments — that
+ * exclusion is what took April 2026 from a reported $73.480.217 of outflow down
+ * to $13.715.710 of real consumption — but applying it here too would leave the
+ * target counting and the spend not, so the bar would read 0% forever. Measured
+ * on production: 48 rows / $76.264.159 across "Cuota crédito" and "Tarjeta de
+ * crédito".
+ *
+ * Scoped to this one query on purpose. Identified by id rather than by name, so
+ * renaming a category cannot silently change what counts.
+ */
+const ALLOCATION_BUDGET_CATEGORY_IDS = new Set<string>([
+    SUB_CUOTA_CREDITO,
+    SUB_PAGO_TARJETA,
+]);
 
 type BudgetSummaryTransactionRow = {
     amount: number;
@@ -57,6 +80,17 @@ async function getBudgetSummaryCached(
     const accountIds = await getDemoAccountIds(supabase, userId, isDemo);
     if (!accountIds) return { totalTarget, totalSpent: 0, progress: 0 };
 
+    // If ANY budgeted category is an allocation category, DEBT_PAYMENT has to
+    // be counted for the query as a whole — PostgREST cannot vary a filter per
+    // row. Over-counting is confined to those users' debt categories, and the
+    // category_id filter below already restricts the rows to budgeted ones.
+    const hasAllocationBudget = budgetedCategoryIds.some((id) =>
+        ALLOCATION_BUDGET_CATEGORY_IDS.has(id),
+    );
+    const countedClassesForBudget = hasAllocationBudget
+        ? [...COUNTED_FLOW_CLASSES, "DEBT_PAYMENT"]
+        : [...COUNTED_FLOW_CLASSES];
+
     const { data: transactions } = await supabase
         .from("transactions")
         .select("amount, split_repaid_amount")
@@ -76,13 +110,10 @@ async function getBudgetSummaryCached(
         // shared-payment tx stays (personal_debt_id null); its budget spend is
         // amount − repaid (converges to the user's share).
         .is("personal_debt_id", null)
-        // Moving your own money between your own accounts is not spending.
-        // Two filters on purpose: transfer_group_id catches linked in-app
-        // transfers, flow_class catches the ones that only a description reveals
-        // (imported card payments, cash advances). The first comes out once every
-        // write path sets flow_class.
-        .is("transfer_group_id", null)
-      .in("flow_class_effective", COUNTED_FLOW_CLASSES as string[]);
+        // Moving your own money between your own accounts is not spending —
+        // except into a category whose whole purpose is to track paying it down.
+        // See ALLOCATION_BUDGET_CATEGORY_IDS.
+        .in("flow_class_effective", countedClassesForBudget);
 
     const totalSpent =
         (transactions as BudgetSummaryTransactionRow[] | null)?.reduce(

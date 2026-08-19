@@ -104,7 +104,6 @@ async function getTendenciasDatasetCached(
       .gte("transaction_date", from)
       .lte("transaction_date", to)
       .is("reconciled_into_transaction_id", null)
-      .is("transfer_group_id", null)
       .in("flow_class_effective", COUNTED_FLOW_CLASSES as string[])
       .is("personal_debt_id", null),
     supabase.from("budgets").select("category_id, amount").eq("user_id", userId),
@@ -416,7 +415,6 @@ async function getDrilldownTransactionsCached(
     .gte("transaction_date", dateFrom)
     .lte("transaction_date", dateTo)
     .is("reconciled_into_transaction_id", null)
-    .is("transfer_group_id", null)
       .in("flow_class_effective", COUNTED_FLOW_CLASSES as string[])
     .is("personal_debt_id", null)
     .order("transaction_date", { ascending: false })
