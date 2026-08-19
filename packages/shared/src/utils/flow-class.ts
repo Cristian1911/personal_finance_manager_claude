@@ -22,7 +22,7 @@
  */
 
 /** Bump when the rules below change, so stored verdicts can be re-derived. */
-export const FLOW_CLASS_RULES_VERSION = 1;
+export const FLOW_CLASS_RULES_VERSION = 2;
 
 export type FlowClass =
   /** Real income — INFLOW to a non-debt account. */
@@ -140,14 +140,42 @@ const RE_BANK_FEE =
   /impto\s+gobierno|4x1000|cuota\s+(de\s+)?manejo|comision|comision\s+avance|interes(es)?\s+corriente|interes(es)?\s+mora|cobro\s+transf|ajuste\s+interes/;
 
 /**
- * Bare transfers with no merchant attached.
- *
- * QR transfers are deliberately excluded: in Colombia `TRANSF QR`/`PAGO QR` are
- * overwhelmingly merchant payments, not movements between own accounts. Treating
- * them as transfers would erase real spending from the totals.
+ * Transfer-ish wording. In rules version 2 this is a CORROBORATING signal only:
+ * it can confirm a structural match against one of the user's own liquid
+ * accounts, but on its own it decides nothing. See the note below.
  */
 const RE_SELF_TRANSFER =
   /^(transferencia|transferencias\s+a\s|traslado|envio\s+de\s+dinero)/;
+
+/*
+ * DEMOTED in rules version 2: `^transferencia` used to map to SELF_TRANSFER on
+ * its own, at confidence 0.7.
+ *
+ * It was the same mistake this file already calls out for QR, one rail over. In
+ * Colombia almost everything is paid BY transfer — rent, the vet, groceries,
+ * the Uber driver — so the word says how the money moved, not who got it.
+ * Movements between the user's own accounts are the rare case.
+ *
+ * Measured on production before removing it: 278 rows / $30.830.132 classified
+ * SELF_TRANSFER, ZERO of them linked in-app, and 98% carrying one of two
+ * generic bank templates (`TRANSFERENCIA CTA SUC VIRTUAL`, `TRANSFERENCIAS A
+ * NEQUI`) that name no destination at all. Rows the user had categorised as
+ * Mercado, Uber, Restaurantes and Mascotas were being dropped from spend.
+ *
+ * What makes the demotion safe is that it costs no coverage: genuine
+ * own-account movements are caught STRUCTURALLY by matchOwnAccount() below,
+ * which matches on mask or account name. Verified on production —
+ * `Transferencia a Bancolombia VISA ****7022` resolves via mask, never needing
+ * the wording at all.
+ *
+ * The wording is still required for the LIQUID branch, and deliberately so. A
+ * bare structural match is conclusive for debt (money reaching a card you owe
+ * on is a payment however it was phrased) but not for liquid: a merchant line
+ * like `COMPRA EXITO 4398` can collide with an account's last-4 by accident,
+ * and treating that as a transfer would erase a real purchase from spend —
+ * exactly the silent erasure this module exists to stop. Structure AND wording
+ * for liquid; structure alone for debt.
+ */
 
 /**
  * Intent hints emitted by the Bancolombia email parser (`pattern_type`).
@@ -161,7 +189,7 @@ export const EMAIL_PATTERN_TO_FLOW: Readonly<Record<string, FlowClass>> = {
   boton_bancolombia: "SPEND",
   pago_pse: "SPEND",
   bre_b: "SPEND",
-  // See RE_SELF_TRANSFER — QR is a merchant rail in practice.
+  // QR is a merchant rail in practice, not a transfer.
   qr_transferencia: "SPEND",
   avance: "DEBT_DRAWDOWN",
   nomina: "INCOME",
@@ -317,15 +345,28 @@ export function classifyFlow(input: FlowClassInput): FlowClassResult {
   //
   // Placed AFTER the cash-advance rule on purpose: `avance ****7507` carries its
   // own card's mask and is a drawdown, not a payment.
-  if (
-    !isDebtAccount(input.accountType) &&
-    isDebtAccount(input.matchedAccountType)
-  ) {
-    return {
-      flowClass: "DEBT_PAYMENT",
-      confidence: 1,
-      reason: "structural:pays_own_debt_account",
-    };
+  if (input.matchedAccountType) {
+    if (
+      !isDebtAccount(input.accountType) &&
+      isDebtAccount(input.matchedAccountType)
+    ) {
+      return {
+        flowClass: "DEBT_PAYMENT",
+        confidence: 1,
+        reason: "structural:pays_own_debt_account",
+      };
+    }
+    // Any other match is money reaching another account this user owns:
+    // savings to savings, or a balance transfer between two of their cards.
+    // Neither is consumption — but require the wording to agree, so a merchant
+    // line that merely collides with an account's last-4 stays a purchase.
+    if (RE_SELF_TRANSFER.test(desc)) {
+      return {
+        flowClass: "SELF_TRANSFER",
+        confidence: 1,
+        reason: "structural:own_account",
+      };
+    }
   }
 
   if (RE_DEBT_PAYMENT.test(desc)) {
@@ -337,10 +378,6 @@ export function classifyFlow(input: FlowClassInput): FlowClassResult {
   if (RE_BANK_FEE.test(desc)) {
     return { flowClass: "BANK_FEE", confidence: 0.9, reason: "text:bank_fee" };
   }
-  if (RE_SELF_TRANSFER.test(desc)) {
-    return { flowClass: "SELF_TRANSFER", confidence: 0.7, reason: "text:transfer" };
-  }
-
   return { flowClass: "SPEND", confidence: 0.6, reason: "default:outflow" };
 }
 
@@ -375,7 +412,7 @@ export interface OwnAccountRef {
 }
 
 /**
- * Find which of the user's OWN debt accounts a description names, if any.
+ * Find which of the user's OWN accounts a description names, if any.
  *
  * This resolves `FlowClassInput.matchedAccountType`, and it is the rule that
  * catches the descriptions no verb can: `bancolombia prestamo ****7507` and
@@ -383,16 +420,19 @@ export interface OwnAccountRef {
  * ordinary spend. Structurally they are payments — money leaving a liquid
  * account toward an account the same user owns and owes on.
  *
- * Only debt accounts are candidates. A liquid-to-liquid match would be a
- * SELF_TRANSFER, but `classifyFlow` does not consult this input for that case,
- * so widening the candidate set would cost decryption for a result nobody reads.
+ * ALL account types are candidates, not just debt. That widening is what lets
+ * the `^transferencia` text rule be retired: a genuine savings-to-savings move
+ * is now recognised by naming the destination account rather than by the word
+ * "transferencia", which in Colombia says how the money moved and not who
+ * received it. Callers must therefore pass EVERY account the user owns — hand
+ * it only the debt ones and real transfers silently become SPEND.
  *
- * Exact mirror of the `dest` LATERAL in `zeta_flow_class_candidates`
+ * Mirror of the `dest` LATERAL in `zeta_flow_class_candidates`
  * (20260806150000). The two implementations must agree row for row: SQL does
  * the backfill, this does every write from here on, and a disagreement means
  * the same movement is classified one way in history and another going forward.
  */
-export function matchOwnDebtAccount(
+export function matchOwnAccount(
   description: string | null | undefined,
   accounts: readonly OwnAccountRef[],
   ownAccountId: string | null | undefined,
@@ -408,7 +448,6 @@ export function matchOwnDebtAccount(
     // guard every purchase self-matches as a payment to itself and the card's
     // entire spend disappears from the totals.
     if (account.id === ownAccountId) continue;
-    if (!isDebtAccount(account.accountType)) continue;
 
     const mask = (account.mask ?? "").replace(/[^0-9]/g, "");
     const name = normalize(account.name);

@@ -18,7 +18,7 @@ import {
   type AnchoredBalanceResult,
   type ReconciliationCandidate,
   isDebtAccountType,
-  matchOwnDebtAccount,
+  matchOwnAccount,
   type OwnAccountRef,
 } from "@zeta/shared";
 import { flowClassColumns } from "@/lib/utils/flow-class-columns";
@@ -1350,18 +1350,20 @@ export async function importTransactions(
   };
   const INSERTED_SELECT = "id, idempotency_key, category_id, categorization_source, notes";
 
-  // Every account the user owns — not just the ones being imported into. The
-  // destination matcher needs the *other* accounts: an OUTFLOW from savings
-  // whose description carries a card's last-4 is a payment to that card, and
-  // that is the only signal `bancolombia prestamo ****7507` gives. name/mask
-  // are encrypted, so this must come from the authenticated client.
+  // EVERY account the user owns, not only the ones being imported into, and
+  // not only the debt ones. The matcher needs the *other* accounts: an OUTFLOW
+  // from savings whose description carries a card's last-4 is a payment to that
+  // card — the only signal `bancolombia prestamo ****7507` gives — and one
+  // naming another savings account is a real transfer. Narrowing this list to
+  // debt accounts would silently turn genuine transfers into SPEND, now that
+  // the text rule is gone. name/mask are encrypted, so this needs the
+  // authenticated client.
   const { data: ownAccountRows } = await supabase
     .from("accounts")
     .select("id, name, mask, account_type")
-    .eq("user_id", user!.id)
-    .in("account_type", ["CREDIT_CARD", "LOAN"]);
+    .eq("user_id", user!.id);
 
-  const ownDebtAccounts: OwnAccountRef[] = (ownAccountRows ?? []).map((a) => ({
+  const ownAccounts: OwnAccountRef[] = (ownAccountRows ?? []).map((a) => ({
     id: a.id,
     accountType: a.account_type,
     name: a.name,
@@ -1389,7 +1391,7 @@ export async function importTransactions(
     idempotencyKey: string,
   ): Database["public"]["Tables"]["transactions"]["Insert"] {
     const description = tx.merchant_name ?? tx.raw_description;
-    const matched = matchOwnDebtAccount(description, ownDebtAccounts, tx.account_id);
+    const matched = matchOwnAccount(description, ownAccounts, tx.account_id);
     return {
       user_id: user!.id,
       account_id: tx.account_id,
