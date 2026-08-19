@@ -10,6 +10,12 @@ import { getPreferredCurrency } from "@/actions/profile";
 import type { Database } from "@/types/database";
 import type { ActionResult } from "@/types/actions";
 import type { Budget } from "@/types/domain";
+import {
+    COUNTED_FLOW_CLASSES,
+    countedFlowClassesForCategories,
+} from "@zeta/shared";
+
+
 
 type BudgetSummaryTransactionRow = {
     amount: number;
@@ -56,6 +62,15 @@ async function getBudgetSummaryCached(
     const accountIds = await getDemoAccountIds(supabase, userId, isDemo);
     if (!accountIds) return { totalTarget, totalSpent: 0, progress: 0 };
 
+    // If ANY budgeted category measures allocation, DEBT_PAYMENT has to be
+    // counted for the query as a whole — PostgREST cannot vary a filter per
+    // row. The over-count is bounded by the category_id filter below, which
+    // already restricts rows to budgeted categories.
+    const countedClassesForBudget = countedFlowClassesForCategories(
+        COUNTED_FLOW_CLASSES,
+        budgetedCategoryIds,
+    );
+
     const { data: transactions } = await supabase
         .from("transactions")
         .select("amount, split_repaid_amount")
@@ -75,8 +90,10 @@ async function getBudgetSummaryCached(
         // shared-payment tx stays (personal_debt_id null); its budget spend is
         // amount − repaid (converges to the user's share).
         .is("personal_debt_id", null)
-        // Moving your own money between your own accounts is not spending.
-        .is("transfer_group_id", null);
+        // Moving your own money between your own accounts is not spending —
+        // except into a category whose whole purpose is to track paying it down.
+        // See ALLOCATION_BUDGET_CATEGORY_IDS.
+        .in("flow_class_effective", countedClassesForBudget);
 
     const totalSpent =
         (transactions as BudgetSummaryTransactionRow[] | null)?.reduce(

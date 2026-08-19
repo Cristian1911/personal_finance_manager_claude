@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { updateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { computeIdempotencyKey } from "@zeta/shared";
 import { DEMO_ACCOUNTS, getDemoTransactions, DEMO_BUDGETS } from "@/lib/demo-data";
@@ -314,6 +315,13 @@ async function seedDemoDataInternal(
         categorization_source: "SYSTEM_DEFAULT" as const,
         status: "POSTED" as const,
         is_excluded: false,
+        // Seed data goes through the same classifier as real data, so the demo
+        // does not show the inflated totals this work exists to remove.
+        ...flowClassColumns({
+          direction: tx.direction,
+          accountType: DEMO_ACCOUNTS[tx.accountIndex]?.account_type,
+          description: tx.merchant_name ?? tx.raw_description,
+        }),
       };
     })
   );

@@ -9,10 +9,12 @@ import {
   planningAssignmentSchema,
 } from "@/lib/validators/cashflow-planner";
 import { getExchangeRate } from "@/actions/exchange-rate";
-import { OCCURRENCE_AUTO_LINK_DAY_WINDOW } from "@zeta/shared";
+import { OCCURRENCE_AUTO_LINK_DAY_WINDOW,
+} from "@zeta/shared";
 import { addDays, format, parseISO, endOfMonth } from "date-fns";
 import { pairOccurrencesToEntries } from "@/lib/utils/plan-occurrence-reconciliation";
 import { isDebtAccountType } from "@/lib/utils/account-balance";
+import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import { toColombiaDateString } from "@/lib/utils/date";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import type { ActionResult } from "@/types/actions";
@@ -1659,6 +1661,23 @@ export async function payPlanningEntry(params: {
     });
   })();
 
+  // Both account types are needed BEFORE the insert so flow_class is settled
+  // structurally rather than guessed from the label. The balance updates below
+  // reuse these rows, so this is a hoist, not an extra round-trip.
+  const settlementAccountIds = [params.sourceAccountId];
+  if (params.debtAccountId) settlementAccountIds.push(params.debtAccountId);
+  const { data: settlementAccounts } = await supabase
+    .from("accounts")
+    .select("id, current_balance, account_type")
+    .in("id", settlementAccountIds)
+    .eq("user_id", user.id);
+
+  const sourceAcct =
+    settlementAccounts?.find((a) => a.id === params.sourceAccountId) ?? null;
+  const debtAcct = params.debtAccountId
+    ? (settlementAccounts?.find((a) => a.id === params.debtAccountId) ?? null)
+    : null;
+
   // OUTFLOW from source account
   const { error: txErr } = await supabase
     .from("transactions")
@@ -1676,6 +1695,15 @@ export async function payPlanningEntry(params: {
       idempotency_key: idempotencyKey,
       transfer_group_id: transferGroupId,
       category_id: params.categoryId ?? entry.category_id ?? null,
+      // Settling a planned debt payment yields DEBT_PAYMENT; a standalone
+      // expense entry has no counterpart and falls through to the text rules.
+      ...flowClassColumns({
+        direction: "OUTFLOW",
+        accountType: sourceAcct?.account_type,
+        description: params.label ?? entry.label,
+        transferGroupId,
+        counterpartAccountType: debtAcct?.account_type,
+      }),
     } as any)
     .single();
 
@@ -1685,13 +1713,6 @@ export async function payPlanningEntry(params: {
   }
 
   // Update source account balance
-  const { data: sourceAcct } = await supabase
-    .from("accounts")
-    .select("current_balance, account_type")
-    .eq("id", params.sourceAccountId)
-    .eq("user_id", user.id)
-    .single();
-
   if (sourceAcct) {
     const { applyAccountBalanceDelta } = await import("@/lib/utils/account-balance");
     const newBalance = applyAccountBalanceDelta({
@@ -1737,6 +1758,14 @@ export async function payPlanningEntry(params: {
         idempotency_key: debtIdempotencyKey,
         transfer_group_id: transferGroupId,
         category_id: params.categoryId ?? entry.category_id ?? null,
+        // DEBT_CREDIT — money arriving on the card/loan being paid off.
+        ...flowClassColumns({
+          direction: "INFLOW",
+          accountType: debtAcct?.account_type,
+          description: `Pago: ${params.label ?? entry.label}`,
+          transferGroupId,
+          counterpartAccountType: sourceAcct?.account_type,
+        }),
       } as any)
       .single();
 
@@ -1745,13 +1774,6 @@ export async function payPlanningEntry(params: {
     }
 
     // Update debt account balance
-    const { data: debtAcct } = await supabase
-      .from("accounts")
-      .select("current_balance, account_type")
-      .eq("id", params.debtAccountId)
-      .eq("user_id", user.id)
-      .single();
-
     if (debtAcct) {
       const { applyAccountBalanceDelta } = await import("@/lib/utils/account-balance");
       const newBalance = applyAccountBalanceDelta({
@@ -1915,6 +1937,14 @@ export async function confirmIncomeReceived(params: {
       capture_method: "MANUAL_FORM",
       idempotency_key: idempotencyKey,
       category_id: entry.category_id ?? null,
+      // Debt accounts are rejected above, so this is INCOME unless the label
+      // names a disbursement — which is exactly the $22.4M case, and the reason
+      // the classifier runs here rather than hardcoding "INFLOW means income".
+      ...flowClassColumns({
+        direction: "INFLOW",
+        accountType: acct.account_type,
+        description: params.label ?? entry.label,
+      }),
     } as any)
     .single();
 

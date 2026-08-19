@@ -1,6 +1,7 @@
 "use server";
 import { cacheTag, cacheLife, updateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { createSharedPaymentSchema } from "@/lib/validators/shared-payment";
@@ -299,6 +300,16 @@ export async function createSharedPayment(
   //    ("existing" mode returned early above via splitExistingTransaction.)
   // ----------------------------------------------------------------
   const originTransactionId = crypto.randomUUID();
+  // Hoisted from step 3, which used to fetch this after the insert. Needed here
+  // so flow_class is settled from the account type rather than guessed. The
+  // validation stays in step 3 so a missing account still fails exactly where
+  // it did before.
+  const { data: acct, error: acctErr } = await supabase
+    .from("accounts")
+    .select("id, account_type, current_balance")
+    .eq("id", accountId)
+    .eq("user_id", user.id)
+    .single();
   const idempotencyKey = await computeIdempotencyKey({
     provider: "MANUAL",
     providerTransactionId: `split:${splitGroupId}:origin`,
@@ -320,6 +331,14 @@ export async function createSharedPayment(
     idempotency_key: idempotencyKey,
     split_group_id: splitGroupId,
     split_repaid_amount: 0,
+    // The full expense is real spend; what the others owe comes back through
+    // split_repaid_amount, which the aggregator nets out. Classifying the
+    // origin leg as anything neutral would erase the user's own share too.
+    ...flowClassColumns({
+      direction: "OUTFLOW",
+      accountType: acct?.account_type,
+      description,
+    }),
   });
   if (insErr) {
     await cleanupAdHocDestinatarios(supabase, user.id, createdIds);
@@ -365,12 +384,6 @@ export async function createSharedPayment(
   // 3) tx + debts are in place — apply the ONE balance delta now.
   // ----------------------------------------------------------------
   {
-    const { data: acct, error: acctErr } = await supabase
-      .from("accounts")
-      .select("id, account_type, current_balance")
-      .eq("id", accountId)
-      .eq("user_id", user.id)
-      .single();
     if (acctErr || !acct || acct.account_type == null) {
       return { success: false, error: "Cuenta no encontrada para aplicar el saldo" };
     }

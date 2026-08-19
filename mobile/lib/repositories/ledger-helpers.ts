@@ -5,6 +5,8 @@ import {
   buildDebtBalanceUpdatePayload,
   computeIdempotencyKey as sharedComputeIdempotencyKey,
   isDebtAccountType,
+  FLOW_CLASS_RULES_VERSION,
+  type FlowClass,
   type HashFn,
   type TransactionDirection,
 } from "@zeta/shared";
@@ -128,6 +130,17 @@ export type LedgerTxInput = {
   categorizationSource?: string | null;
   notes?: string | null;
   idempotencyKey: string;
+  /**
+   * REQUIRED, deliberately not optional.
+   *
+   * Every caller of this builder writes a movement whose class is structurally
+   * known — a payment onto a card, a balance plug, a transfer leg — so there is
+   * no honest default. Leaving it optional would let a new call site write NULL,
+   * and since the read sites now filter by class, a NULL row is invisible to
+   * every spend metric: silent data loss rather than a visible gap. Making it
+   * required turns that into a compile error.
+   */
+  flowClass: FlowClass;
   transferGroupId?: string | null;
   recurrenceGroupId?: string | null;
   isRecurring?: boolean;
@@ -139,6 +152,9 @@ export type LedgerTxInput = {
 
 type LedgerTxPayload = {
   id: string;
+  flow_class: string;
+  flow_class_version: number;
+  source_pattern: string | null;
   user_id: string;
   account_id: string;
   category_id: string | null;
@@ -177,6 +193,10 @@ export function buildLedgerTxPayload(
     input.cleanDescription ?? (input.merchantName || input.rawDescription);
   return {
     id: Crypto.randomUUID(),
+    flow_class: input.flowClass,
+    flow_class_version: FLOW_CLASS_RULES_VERSION,
+    // No parser is involved on any of these paths; they are all app-originated.
+    source_pattern: null,
     user_id: input.userId,
     account_id: input.accountId,
     category_id: input.categoryId ?? null,
@@ -227,8 +247,9 @@ export async function insertLedgerTransaction(
          amount, currency_code, direction,
          description, merchant_name, raw_description, transaction_date, status, idempotency_key,
          is_excluded, is_recurring, notes, provider, capture_method,
-         transfer_group_id, recurrence_group_id, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         transfer_group_id, recurrence_group_id,
+         flow_class, flow_class_version, source_pattern, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         payload.id,
         payload.user_id,
@@ -251,6 +272,9 @@ export async function insertLedgerTransaction(
         payload.capture_method,
         payload.transfer_group_id,
         payload.recurrence_group_id,
+        payload.flow_class,
+        payload.flow_class_version,
+        payload.source_pattern,
         payload.created_at,
         payload.updated_at,
       ]

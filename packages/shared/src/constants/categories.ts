@@ -214,3 +214,49 @@ export const SUBCATEGORY_IDS = {
   SALARIO: SUB_SALARIO,
   DIVIDENDOS: SUB_DIVIDENDOS,
 } as const;
+
+// ─────────────────────────────────────────────────────────────────
+// Budget policy: categories that measure allocation, not consumption
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * Categories whose "gastado" means money ALLOCATED rather than consumed.
+ *
+ * A budget on "Tarjeta de crédito" is a plan to pay the card down, and paying
+ * it is exactly what should fill that bar. Every other metric excludes debt
+ * payments — that exclusion is what takes April 2026 from a reported
+ * $73.480.217 of outflow to $13.715.710 of real consumption — but applying it
+ * to these categories would leave the target counting and the spend not, so the
+ * bar would read 0% forever.
+ *
+ * The parent zone is included, not just the two leaves: a user can budget
+ * `Obligaciones` directly, and `budgetedCategoryIds` expands sub→parent but
+ * never parent→sub, so keying on the leaves alone left exactly those users with
+ * a permanently empty bar — the failure this policy exists to prevent.
+ */
+export const ALLOCATION_CATEGORY_IDS: ReadonlySet<string> = new Set<string>([
+  CATEGORY_OBLIGACIONES,
+  SUB_CUOTA_CREDITO,
+  SUB_PAGO_TARJETA,
+]);
+
+/**
+ * The `flow_class_effective` allow-list for a spend query scoped to
+ * `categoryIds`.
+ *
+ * Shared by the dashboard budget bar (`budgets.ts`) and the Presupuesto grid
+ * (`categories.ts`) on purpose. Those two are documented as having to agree —
+ * they reported different "gastado" for the same month once already — so the
+ * rule that decides what counts lives in one place rather than being spelled
+ * out twice.
+ */
+export function countedFlowClassesForCategories(
+  countedFlowClasses: readonly string[],
+  categoryIds: readonly string[] | null | undefined,
+): string[] {
+  const includesAllocation =
+    categoryIds == null || categoryIds.some((id) => ALLOCATION_CATEGORY_IDS.has(id));
+  return includesAllocation
+    ? [...countedFlowClasses, "DEBT_PAYMENT"]
+    : [...countedFlowClasses];
+}

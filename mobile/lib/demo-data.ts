@@ -1,3 +1,4 @@
+import { classifyFlow, FLOW_CLASS_RULES_VERSION } from "@zeta/shared";
 import * as Crypto from "expo-crypto";
 import {
   CATEGORY_INGRESOS,
@@ -216,8 +217,9 @@ export async function seedDemoData(): Promise<void> {
   for (const tx of demoTransactions) {
     await db.runAsync(
       `INSERT INTO transactions
-        (id, user_id, account_id, category_id, amount, direction, description, merchant_name, raw_description, transaction_date, status, idempotency_key, is_excluded, notes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, 'POSTED', ?, 0, NULL, ?, ?)`,
+        (id, user_id, account_id, category_id, amount, direction, description, merchant_name, raw_description, transaction_date, status, idempotency_key, is_excluded, notes,
+         flow_class, flow_class_version, source_pattern, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, 'POSTED', ?, 0, NULL, ?, ?, NULL, ?, ?)`,
       [
         Crypto.randomUUID(),
         DEMO_USER_ID,
@@ -228,6 +230,19 @@ export async function seedDemoData(): Promise<void> {
         tx.description,
         tx.date,
         Crypto.randomUUID(),
+        // Seeded fixtures classify like real data, so the demo does not show
+        // the inflated totals this feature exists to remove.
+        classifyFlow({
+          direction: tx.direction as "INFLOW" | "OUTFLOW",
+          accountType:
+            tx.accountId === creditCardId
+              ? "CREDIT_CARD"
+              : tx.accountId === loanId
+                ? "LOAN"
+                : "CHECKING",
+          description: tx.description,
+        }).flowClass,
+        FLOW_CLASS_RULES_VERSION,
         now,
         now,
       ]

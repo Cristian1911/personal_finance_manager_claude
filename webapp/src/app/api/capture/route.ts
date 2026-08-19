@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import { authenticateCaptureToken } from "@/app/api/_shared/capture-auth";
 import { autoCategorize } from "@zeta/shared";
 import { matchTransactionToDestinatario } from "@/actions/destinatarios";
@@ -110,7 +111,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CaptureRe
   const admin = createAdminClient();
   const { data: account } = await admin
     .from("accounts")
-    .select("id, currency_code")
+    .select("id, currency_code, account_type")
     .eq("id", accountId)
     .eq("user_id", auth.userId)
     .single();
@@ -169,6 +170,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<CaptureRe
       capture_method: "TEXT_QUICK_CAPTURE",
       capture_input_text,
       categorization_source: categorizationSource,
+      ...flowClassColumns({
+        direction,
+        accountType: account.account_type,
+        description: merchant_name ?? description ?? capture_input_text,
+      }),
     })
     .select("id, amount, direction, merchant_name, category_id, account_id, transaction_date")
     .single();

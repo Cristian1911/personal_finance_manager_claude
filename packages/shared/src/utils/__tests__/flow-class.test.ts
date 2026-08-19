@@ -10,7 +10,9 @@ import {
   INCOME_CLASSES,
   NEUTRAL_CLASSES,
   EMAIL_PATTERN_TO_FLOW,
+  matchOwnAccount,
   type FlowClass,
+  type OwnAccountRef,
 } from "../flow-class";
 
 const outflow = (description: string, accountType = "SAVINGS") =>
@@ -67,9 +69,14 @@ describe("QR is a merchant rail in Colombia, not a transfer", () => {
 
 describe("transfers, cash and fees", () => {
   it.each([
-    ["TRANSFERENCIA CTA SUC VIRTUAL", "SELF_TRANSFER"],
-    ["TRANSFERENCIAS A NEQUI", "SELF_TRANSFER"],
-    ["TRASLADO SALDOS MENORES", "SELF_TRANSFER"],
+    // Rules v2: wording alone no longer makes a transfer. In Colombia almost
+    // everything is paid BY transfer, so these are spend until a structural
+    // match against one of the user's own accounts says otherwise. Measured:
+    // 278 rows / $30.8M were being dropped from spend by the old rule, none of
+    // them linked in-app.
+    ["TRANSFERENCIA CTA SUC VIRTUAL", "SPEND"],
+    ["TRANSFERENCIAS A NEQUI", "SPEND"],
+    ["TRASLADO SALDOS MENORES", "SPEND"],
     ["RETIRO CAJERO", "CASH_WITHDRAWAL"],
     ["RETIRO CAJERO ATM EDS TEXACO", "CASH_WITHDRAWAL"],
     ["IMPTO GOBIERNO 4X1000", "BANK_FEE"],
@@ -240,5 +247,205 @@ describe("audit trail", () => {
     expect(
       flowClassOf({ direction: "OUTFLOW", accountType: "SAVINGS", description: null }),
     ).toBe("SPEND");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────
+// Structural destination match
+// ─────────────────────────────────────────────────────────────────
+// Measured on production: 57 rows carry a debt-payment category, of which only
+// 7 name the destination account in a way the text rules can recover. Those 7
+// are what this rule is for; the rest need the category seed.
+describe("destination account match", () => {
+  it("names one of the user's own debt accounts -> DEBT_PAYMENT", () => {
+    expect(
+      flowClassOf({
+        direction: "OUTFLOW",
+        accountType: "SAVINGS",
+        description: "bancolombia prestamo ****7507",
+        matchedAccountType: "LOAN",
+      }),
+    ).toBe("DEBT_PAYMENT");
+  });
+
+  it("beats the plain-transfer wording", () => {
+    // Without the rule this reads as SELF_TRANSFER and leaves the debt unpaid.
+    expect(
+      flowClassOf({
+        direction: "OUTFLOW",
+        accountType: "SAVINGS",
+        description: "transferencia a bancolombia visa ****7022",
+        matchedAccountType: "CREDIT_CARD",
+      }),
+    ).toBe("DEBT_PAYMENT");
+  });
+
+  it("a cash advance is still a drawdown even though its own mask matches", () => {
+    // Card statements print the card's own last-4 on every line.
+    expect(
+      flowClassOf({
+        direction: "OUTFLOW",
+        accountType: "CREDIT_CARD",
+        description: "avance sucursal virtual ****7507",
+        matchedAccountType: "LOAN",
+      }),
+    ).toBe("DEBT_DRAWDOWN");
+  });
+
+  it("does not fire when the source account is itself a debt account", () => {
+    expect(
+      flowClassOf({
+        direction: "OUTFLOW",
+        accountType: "CREDIT_CARD",
+        description: "compra en exito",
+        matchedAccountType: "CREDIT_CARD",
+      }),
+    ).toBe("SPEND");
+  });
+
+  it("a non-debt destination does not make it a payment", () => {
+    expect(
+      flowClassOf({
+        direction: "OUTFLOW",
+        accountType: "SAVINGS",
+        description: "compra en exito",
+        matchedAccountType: "SAVINGS",
+      }),
+    ).toBe("SPEND");
+  });
+});
+
+describe("bank-fee regex accepts both spellings of cuota manejo", () => {
+  it.each(["cuota manejo tarjeta", "cuota de manejo tarjeta"])("%s -> BANK_FEE", (d) => {
+    expect(flowClassOf({ direction: "OUTFLOW", accountType: "SAVINGS", description: d })).toBe(
+      "BANK_FEE",
+    );
+  });
+});
+
+describe("matchOwnAccount — structural destination match", () => {
+  const ACCOUNTS: OwnAccountRef[] = [
+    { id: "loan-1", accountType: "LOAN", name: "Bancolombia Préstamo", mask: "****7507" },
+    { id: "card-1", accountType: "CREDIT_CARD", name: "Visa", mask: "1234" },
+    { id: "card-2", accountType: "CREDIT_CARD", name: "Lulo Bank S A", mask: null },
+    { id: "sav-1", accountType: "SAVINGS", name: "Ahorros Bancolombia", mask: "9999" },
+    { id: "card-3", accountType: "CREDIT_CARD", name: "Nu", mask: null },
+  ];
+
+  it("matches the loan by mask — the description names no verb", () => {
+    expect(matchOwnAccount("bancolombia prestamo ****7507", ACCOUNTS, "sav-1")?.id)
+      .toBe("loan-1");
+  });
+
+  it("matches by name when there is no mask", () => {
+    expect(matchOwnAccount("lulo bank s a", ACCOUNTS, "sav-1")?.id).toBe("card-2");
+  });
+
+  it("normalizes diacritics on both sides", () => {
+    expect(matchOwnAccount("PAGO BANCOLOMBIA PRESTAMO", ACCOUNTS, "sav-1")?.id)
+      .toBe("loan-1");
+  });
+
+  // The guard without which a card's entire spend vanishes: statements print
+  // the card's own last-4 on every line.
+  it("never matches the transaction's own account", () => {
+    expect(matchOwnAccount("compra exito 1234", ACCOUNTS, "card-1")).toBeNull();
+  });
+
+  it("does not match a mask sitting inside a longer number", () => {
+    expect(matchOwnAccount("compra por 175075 pesos", ACCOUNTS, "sav-1")).toBeNull();
+  });
+
+  // Rules v2: liquid accounts ARE candidates now. This is what lets the
+  // `^transferencia` text rule go — a real own-account move is recognised by
+  // naming the destination, not by the word "transferencia".
+  it("matches liquid accounts too, so real self-transfers survive", () => {
+    const hit = matchOwnAccount("traslado ahorros bancolombia 9999", ACCOUNTS, "card-1");
+    expect(hit?.id).toBe("sav-1");
+    // Structure AND wording: "traslado" corroborates the account match.
+    expect(
+      classifyFlow({
+        direction: "OUTFLOW",
+        accountType: "SAVINGS",
+        description: "traslado ahorros bancolombia 9999",
+        matchedAccountType: hit?.accountType,
+      }).flowClass,
+    ).toBe("SELF_TRANSFER");
+  });
+
+  it("will not match a name shorter than 4 chars", () => {
+    // "Nu" would otherwise fire on menu, nuevo, nube.
+    expect(matchOwnAccount("almuerzo del menu nuevo", ACCOUNTS, "sav-1")).toBeNull();
+  });
+
+  it("matches names whole-token, not as a substring", () => {
+    expect(matchOwnAccount("visado consular", ACCOUNTS, "sav-1")).toBeNull();
+    expect(matchOwnAccount("pago visa", ACCOUNTS, "sav-1")?.id).toBe("card-1");
+  });
+
+  it("prefers a mask hit over a name hit", () => {
+    expect(matchOwnAccount("visa pago ****7507", ACCOUNTS, "sav-1")?.id).toBe("loan-1");
+  });
+
+  it("feeds the structural DEBT_PAYMENT rule end to end", () => {
+    const matched = matchOwnAccount("bancolombia prestamo ****7507", ACCOUNTS, "sav-1");
+    const result = classifyFlow({
+      direction: "OUTFLOW",
+      accountType: "SAVINGS",
+      description: "bancolombia prestamo ****7507",
+      matchedAccountType: matched?.accountType,
+    });
+    expect(result.flowClass).toBe("DEBT_PAYMENT");
+    expect(result.confidence).toBe(1);
+    expect(result.reason).toBe("structural:pays_own_debt_account");
+  });
+});
+
+describe("liquid destination matches need the wording to agree", () => {
+  const ACCOUNTS: OwnAccountRef[] = [
+    { id: "sav-1", accountType: "SAVINGS", name: "Bancolombia Ahorros", mask: "4398" },
+    { id: "card-1", accountType: "CREDIT_CARD", name: "Bancolombia VISA", mask: "7022" },
+  ];
+
+  it("a real transfer naming the destination account is SELF_TRANSFER", () => {
+    const hit = matchOwnAccount("Transferencia a Bancolombia Ahorros ****4398", ACCOUNTS, "card-1");
+    expect(hit?.id).toBe("sav-1");
+    expect(
+      classifyFlow({
+        direction: "OUTFLOW",
+        accountType: "CREDIT_CARD",
+        description: "Transferencia a Bancolombia Ahorros ****4398",
+        matchedAccountType: hit?.accountType,
+      }),
+    ).toMatchObject({ flowClass: "SELF_TRANSFER", reason: "structural:own_account" });
+  });
+
+  // The false positive this guard exists for: a merchant line whose digits
+  // collide with an account's last-4. Without the wording check the purchase
+  // would vanish from spend entirely.
+  it("a purchase that merely collides with an account mask stays SPEND", () => {
+    const hit = matchOwnAccount("COMPRA EXITO 4398", ACCOUNTS, "card-1");
+    expect(hit?.id).toBe("sav-1");
+    expect(
+      classifyFlow({
+        direction: "OUTFLOW",
+        accountType: "CREDIT_CARD",
+        description: "COMPRA EXITO 4398",
+        matchedAccountType: hit?.accountType,
+      }).flowClass,
+    ).toBe("SPEND");
+  });
+
+  // Debt is different: money reaching a card you owe on is a payment however
+  // the bank phrased it, so no corroboration is required there.
+  it("a debt destination needs no wording", () => {
+    expect(
+      classifyFlow({
+        direction: "OUTFLOW",
+        accountType: "SAVINGS",
+        description: "lulo bank s a",
+        matchedAccountType: "LOAN",
+      }),
+    ).toMatchObject({ flowClass: "DEBT_PAYMENT", reason: "structural:pays_own_debt_account" });
   });
 });

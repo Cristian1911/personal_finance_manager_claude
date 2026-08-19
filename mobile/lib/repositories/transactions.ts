@@ -1,5 +1,8 @@
 import * as Crypto from "expo-crypto";
 import {
+  classifyFlow,
+  matchOwnAccount,
+  FLOW_CLASS_RULES_VERSION,
   computeIdempotencyKey,
   computeMonthlyAggregates,
   extractPattern,
@@ -146,7 +149,13 @@ export type LocalReconciliationDecision = {
   score: number;
 };
 
-function buildInsertPayload(id: string, now: string, params: CreateTransactionParams, idempotencyKey: string) {
+function buildInsertPayload(
+  id: string,
+  now: string,
+  params: CreateTransactionParams,
+  idempotencyKey: string,
+  flowColumns: { flow_class: string; flow_class_version: number; source_pattern: string | null },
+) {
   return {
     id,
     user_id: params.user_id,
@@ -185,6 +194,12 @@ function buildInsertPayload(id: string, now: string, params: CreateTransactionPa
     installment_total: params.installment_total ?? null,
     installment_group_id: params.installment_group_id ?? null,
     original_amount: params.original_amount ?? null,
+    // flow_class_effective is deliberately NOT mirrored in SQLite (it is a
+    // GENERATED column server-side; a local generated column would break every
+    // pull). Derive it in code from these two.
+    flow_class: flowColumns.flow_class,
+    flow_class_version: flowColumns.flow_class_version,
+    source_pattern: flowColumns.source_pattern,
     created_at: now,
     updated_at: now,
   };
@@ -208,8 +223,9 @@ async function _insertTxBody(
        amount, currency_code, direction,
        description, merchant_name, raw_description, transaction_date, transaction_time, location_id, status, idempotency_key,
        is_excluded, is_subscription, notes, provider, capture_method, capture_input_text, reconciled_into_transaction_id,
-       reconciliation_score, installment_current, installment_total, installment_group_id, original_amount, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       reconciliation_score, installment_current, installment_total, installment_group_id, original_amount,
+       flow_class, flow_class_version, source_pattern, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       payload.id,
       payload.user_id,
@@ -241,6 +257,9 @@ async function _insertTxBody(
       payload.installment_total,
       payload.installment_group_id,
       payload.original_amount,
+      payload.flow_class,
+      payload.flow_class_version,
+      payload.source_pattern,
       payload.created_at,
       payload.updated_at,
     ]
@@ -287,12 +306,63 @@ async function getLedgerAccountRow(
   );
 }
 
+/**
+ * Classify the movement from LOCAL SQLite only.
+ *
+ * Two reads against the local db — the row's own account type, and every
+ * account the user owns for the destination matcher. No remote round-trip, so
+ * this stays inside the interactive budget: a tap must never block on network.
+ *
+ * Mirrors webapp's flowClassColumns(). Keeping the version stamp next to the
+ * verdict is the point: a row claiming version 1 written by version 2 rules can
+ * never be found again to re-derive.
+ */
+async function resolveFlowClassColumns(
+  db: Awaited<ReturnType<typeof getDatabase>>,
+  params: CreateTransactionParams,
+): Promise<{ flow_class: string; flow_class_version: number; source_pattern: string | null }> {
+  const own = await db.getAllAsync<{
+    id: string;
+    account_type: string | null;
+    name: string | null;
+    mask: string | null;
+  }>(`SELECT id, account_type, name, mask FROM accounts`);
+
+  const accountType = own.find((a) => a.id === params.account_id)?.account_type ?? null;
+  const description =
+    params.merchant_name ?? params.description ?? params.raw_description ?? null;
+  const matched = matchOwnAccount(
+    description,
+    own.map((a) => ({
+      id: a.id,
+      accountType: a.account_type,
+      name: a.name,
+      mask: a.mask,
+    })),
+    params.account_id,
+  );
+
+  const { flowClass } = classifyFlow({
+    direction: params.direction,
+    accountType,
+    description,
+    matchedAccountType: matched?.accountType,
+  });
+
+  return {
+    flow_class: flowClass,
+    flow_class_version: FLOW_CLASS_RULES_VERSION,
+    source_pattern: null,
+  };
+}
+
 export async function createTransaction(params: CreateTransactionParams): Promise<string> {
   const db = await getDatabase();
   const now = new Date().toISOString();
   const txId = Crypto.randomUUID();
   const idempotencyKey = await resolveIdempotencyKey(params);
-  const payload = buildInsertPayload(txId, now, params, idempotencyKey);
+  const flowColumns = await resolveFlowClassColumns(db, params);
+  const payload = buildInsertPayload(txId, now, params, idempotencyKey, flowColumns);
 
   await db.withTransactionAsync(async () => {
     await _insertTxBody(db, payload, now);
@@ -322,7 +392,8 @@ export async function createTransactionAndApplyBalance(
   const now = new Date().toISOString();
   const txId = Crypto.randomUUID();
   const idempotencyKey = await resolveIdempotencyKey(params);
-  const payload = buildInsertPayload(txId, now, params, idempotencyKey);
+  const flowColumns = await resolveFlowClassColumns(db, params);
+  const payload = buildInsertPayload(txId, now, params, idempotencyKey, flowColumns);
 
   await db.withTransactionAsync(async () => {
     await _insertTxBody(db, payload, now);
@@ -435,9 +506,16 @@ export async function getMonthlyAggregates(options: {
     is_excluded: number;
     reconciled_into_transaction_id: string | null;
     transaction_date: string;
+    flow_class: string | null;
+    flow_class_override: string | null;
   }>(
+    // flow_class/flow_class_override are projected so computeMonthlyAggregates
+    // honours the stored class here too. The webapp's slim select carries the
+    // same two columns; adding them on one side only would reopen the 7-33x
+    // webapp/mobile divergence that helper exists to close.
     `SELECT t.amount, t.direction, t.account_id, t.category_id, t.is_excluded,
-            t.reconciled_into_transaction_id, t.transaction_date
+            t.reconciled_into_transaction_id, t.transaction_date,
+            t.flow_class, t.flow_class_override
        FROM transactions t
       WHERE t.transaction_date LIKE ?
         AND t.reconciled_into_transaction_id IS NULL${accountFilter}`,

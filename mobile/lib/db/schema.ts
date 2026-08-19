@@ -723,6 +723,65 @@ export const DB_MIGRATIONS: DbMigration[] = [
       `ALTER TABLE destinatarios ADD COLUMN is_ad_hoc INTEGER NOT NULL DEFAULT 0`,
     ],
   },
+  {
+    version: 27,
+    statements: [
+      // ── transactions: flow classification ─────────────────────────────
+      // Live on Supabase since 20260806150000_add_flow_class_to_transactions.
+      // Separates real consumption from balance-sheet movement: paying a card
+      // is not spending, a loan disbursed into savings is not income.
+      //
+      // These columns are already arriving on every pull and being thrown
+      // away. `pull.ts` does select("*"), and `upsertRow` filters the payload
+      // through `getTableColumns()` (a PRAGMA table_info read) — so a remote
+      // column with no local counterpart is dropped silently, no error, row
+      // still applies. Same silent-drop this schema already fixed for
+      // bank_key (v8), dashboard_config (v9) and nav_focus (v25).
+      //
+      // flow_class_version is `smallint` server-side; SQLite has no smallint,
+      // and INTEGER is what every other integer column here uses.
+      //
+      // flow_class_effective is DELIBERATELY NOT mirrored. Server-side it is
+      // GENERATED ALWAYS STORED. Declaring it GENERATED locally would break
+      // every pull forever: upsertRow builds `INSERT OR REPLACE INTO
+      // transactions (...)` from the columns PRAGMA reports, so a same-named
+      // local column is KEPT rather than dropped, and SQLite then raises
+      // "cannot INSERT into generated column" on every transaction row.
+      // Declaring it as a plain column would store a value that goes stale the
+      // moment flow_class_override changes locally. Local code derives it
+      // instead: `effectiveFlowClass()` from @zeta/shared over
+      // flow_class/flow_class_override — note it returns null when both are
+      // unset, so apply the 'UNCLASSIFIED' floor at the call site to match
+      // COUNTED_FLOW_CLASSES.
+      `ALTER TABLE transactions ADD COLUMN flow_class TEXT`,
+      `ALTER TABLE transactions ADD COLUMN flow_class_override TEXT`,
+      `ALTER TABLE transactions ADD COLUMN flow_class_override_source TEXT`,
+      `ALTER TABLE transactions ADD COLUMN flow_class_version INTEGER`,
+      `ALTER TABLE transactions ADD COLUMN source_pattern TEXT`,
+    ],
+  },
+  {
+    version: 28,
+    statements: [
+      // ── accounts.mask — required by the flow classifier ────────────────
+      // matchOwnAccount() resolves `matchedAccountType` by looking for one of
+      // the user's OWN accounts named in a movement's description, matching on
+      // account name or last-4. That is what turns `bancolombia prestamo
+      // ****7507` from ordinary spend into a debt payment, and what tells a
+      // real savings-to-savings transfer apart from a merchant payment now
+      // that wording alone no longer decides.
+      //
+      // The local table only ever had `debit_card_mask` (v20), which is a
+      // different field — added for debit-card email matching, and null on
+      // credit cards and loans. The generic `accounts.mask` that the webapp
+      // reads (see import-transactions.ts) had no local counterpart, so
+      // pull.ts's getTableColumns() filter silently dropped it on every sync.
+      //
+      // Without this column the classifier could never see mask data on
+      // mobile, and the query that reads it fails outright.
+      `ALTER TABLE accounts ADD COLUMN mask TEXT`,
+    ],
+  },
 ];
 
 export const LATEST_DB_VERSION =

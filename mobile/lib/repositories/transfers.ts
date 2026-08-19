@@ -1,4 +1,5 @@
 import * as Crypto from "expo-crypto";
+import { isDebtAccountType } from "@zeta/shared";
 import { getDatabase } from "../db/database";
 import {
   applyLocalBalanceDelta,
@@ -114,6 +115,12 @@ export async function createTransfer(
       notes: input.notes ?? null,
       idempotencyKey: outflowKey,
       transferGroupId,
+      // Both account types are in hand, so this is structural, not a reading of
+      // the wording — same verdict webapp's createTransfer produces. Paying a
+      // card through this flow is DEBT_PAYMENT, not SELF_TRANSFER.
+      flowClass: isDebtAccountType(toAccount.account_type)
+        ? "DEBT_PAYMENT"
+        : "SELF_TRANSFER",
     },
     now
   );
@@ -130,6 +137,11 @@ export async function createTransfer(
       notes: input.notes ?? null,
       idempotencyKey: inflowKey,
       transferGroupId,
+      // The receiving leg: landing on a card is DEBT_CREDIT, landing on a
+      // liquid account is a plain move between the user's own accounts.
+      flowClass: isDebtAccountType(toAccount.account_type)
+        ? "DEBT_CREDIT"
+        : "SELF_TRANSFER",
     },
     now
   );

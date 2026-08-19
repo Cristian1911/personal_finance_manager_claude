@@ -18,7 +18,10 @@ import {
   type AnchoredBalanceResult,
   type ReconciliationCandidate,
   isDebtAccountType,
+  matchOwnAccount,
+  type OwnAccountRef,
 } from "@zeta/shared";
+import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import type { TransactionCaptureMethod } from "@/types/domain";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
@@ -1347,10 +1350,48 @@ export async function importTransactions(
   };
   const INSERTED_SELECT = "id, idempotency_key, category_id, categorization_source, notes";
 
+  // EVERY account the user owns, not only the ones being imported into, and
+  // not only the debt ones. The matcher needs the *other* accounts: an OUTFLOW
+  // from savings whose description carries a card's last-4 is a payment to that
+  // card — the only signal `bancolombia prestamo ****7507` gives — and one
+  // naming another savings account is a real transfer. Narrowing this list to
+  // debt accounts would silently turn genuine transfers into SPEND, now that
+  // the text rule is gone. name/mask are encrypted, so this needs the
+  // authenticated client.
+  const { data: ownAccountRows } = await supabase
+    .from("accounts")
+    .select("id, name, mask, account_type")
+    .eq("user_id", user!.id);
+
+  const ownAccounts: OwnAccountRef[] = (ownAccountRows ?? []).map((a) => ({
+    id: a.id,
+    accountType: a.account_type,
+    name: a.name,
+    mask: a.mask,
+  }));
+
+  // Account type per imported row, resolved once instead of per transaction.
+  const importAccountTypes = new Map<string, string>(
+    (ownAccountRows ?? []).map((a) => [a.id, a.account_type as string]),
+  );
+  const missingTypeIds = [...new Set(transactions.map((t) => t.account_id))].filter(
+    (id) => !importAccountTypes.has(id),
+  );
+  if (missingTypeIds.length > 0) {
+    const { data: rest } = await supabase
+      .from("accounts")
+      .select("id, account_type")
+      .eq("user_id", user!.id)
+      .in("id", missingTypeIds);
+    for (const a of rest ?? []) importAccountTypes.set(a.id, a.account_type as string);
+  }
+
   function buildInsertRow(
     tx: TransactionToImport,
     idempotencyKey: string,
   ): Database["public"]["Tables"]["transactions"]["Insert"] {
+    const description = tx.merchant_name ?? tx.raw_description;
+    const matched = matchOwnAccount(description, ownAccounts, tx.account_id);
     return {
       user_id: user!.id,
       account_id: tx.account_id,
@@ -1374,6 +1415,15 @@ export async function importTransactions(
       original_amount: tx.original_amount ?? null,
       destinatario_id: tx.destinatario_id ?? null,
       merchant_name: tx.merchant_name ?? null,
+      // The highest-value classification site in the app: card payments, cash
+      // advances and loan disbursements all arrive through here, and until now
+      // every one of them was counted as ordinary spend or income.
+      ...flowClassColumns({
+        direction: tx.direction,
+        accountType: importAccountTypes.get(tx.account_id),
+        description,
+        matchedAccountType: matched?.accountType,
+      }),
     };
   }
 

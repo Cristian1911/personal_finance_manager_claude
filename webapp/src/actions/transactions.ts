@@ -23,6 +23,7 @@ import {
 } from "@/lib/validators/transaction";
 import { parseMonth, monthStartStr, monthEndStr } from "@/lib/utils/date";
 import { dedupeTransactionIds } from "@/lib/utils/tag-ids";
+import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import {
   applyAccountBalanceDelta,
   reverseAccountBalanceDelta,
@@ -374,12 +375,24 @@ async function persistTransaction(
   supabase: SupabaseClient<Database>,
   params: PersistTransactionParams
 ): Promise<ActionResult<Transaction>> {
-  const idempotencyKey = await computeIdempotencyKey({
-    provider: "MANUAL",
-    transactionDate: params.transaction_date,
-    amount: params.amount,
-    rawDescription: params.raw_description ?? params.merchant_name ?? "",
-  });
+  // A PK lookup on a column the balance code re-reads moments later, run in
+  // parallel with the key so it costs no extra latency. Paid on every manual
+  // entry so an INFLOW to a card is filed as DEBT_CREDIT rather than income —
+  // a distinction the form itself never asks the user about.
+  const [idempotencyKey, accountTypeRes] = await Promise.all([
+    computeIdempotencyKey({
+      provider: "MANUAL",
+      transactionDate: params.transaction_date,
+      amount: params.amount,
+      rawDescription: params.raw_description ?? params.merchant_name ?? "",
+    }),
+    supabase
+      .from("accounts")
+      .select("account_type")
+      .eq("id", params.account_id)
+      .eq("user_id", params.userId)
+      .maybeSingle(),
+  ]);
 
   const { data, error } = await supabase
     .from("transactions")
@@ -404,6 +417,14 @@ async function persistTransaction(
       categorization_source: params.category_id ? "USER_CREATED" : "SYSTEM_DEFAULT",
       is_subscription: params.is_subscription ?? false,
       location_id: params.location_id ?? null,
+      ...flowClassColumns({
+        direction: params.direction,
+        accountType: accountTypeRes.data?.account_type,
+        // `notes` is deliberately NOT a fallback here: the SQL mirror coalesces
+        // merchant_name / clean_description / raw_description only, and the two
+        // implementations have to agree row for row.
+        description: params.merchant_name ?? params.raw_description ?? null,
+      }),
     })
     .select()
     .single();
@@ -592,7 +613,7 @@ async function getMonthlyAggregatesCached(
   let query = supabase
     .from("transactions")
     .select(
-      "amount, split_repaid_amount, direction, account_id, category_id, is_excluded, reconciled_into_transaction_id, transaction_date",
+      "amount, split_repaid_amount, direction, account_id, category_id, is_excluded, reconciled_into_transaction_id, transaction_date, flow_class, flow_class_override",
     )
     .eq("user_id", userId)
     .in("account_id", demoAccountIds)
@@ -1045,12 +1066,34 @@ export async function updateTransaction(
     ...updatableFields
   } = parsed.data;
 
+  // Reclassify: this form edits direction, account_id, merchant_name and
+  // raw_description — every input the classifier reads. Leaving the stored
+  // class alone would strand it, and post-bridge a stale DEBT_PAYMENT or
+  // SELF_TRANSFER is invisible to EVERY spend metric. That is the same silent
+  // loss the write paths were wired to prevent, reached through the edit path
+  // instead of the insert path, and neither the UNCLASSIFIED floor nor the DB
+  // trigger catches it (the trigger is BEFORE INSERT only).
+  //
+  // A user correction lives in flow_class_override and is untouched here, so
+  // re-deriving the machine verdict cannot overwrite a human decision.
+  const { data: nextAccount } = await supabase
+    .from("accounts")
+    .select("account_type")
+    .eq("id", parsed.data.account_id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
   const { data, error } = await supabase
     .from("transactions")
     .update({
       ...updatableFields,
       clean_description: parsed.data.merchant_name || parsed.data.raw_description || null,
       ...(categoryChanged ? { categorization_source: "USER_OVERRIDE" as const } : {}),
+      ...flowClassColumns({
+        direction: parsed.data.direction,
+        accountType: nextAccount?.account_type,
+        description: parsed.data.merchant_name ?? parsed.data.raw_description ?? null,
+      }),
     })
     .eq("user_id", user.id)
     .eq("id", id)

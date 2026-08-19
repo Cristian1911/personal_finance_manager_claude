@@ -525,6 +525,19 @@ const FAILED_TX_PHRASES = [
   "intento fallido",
 ];
 
+/**
+ * Every pattern_type this parser can emit, derived from PATTERNS so it cannot
+ * drift from the real list.
+ *
+ * Exists so `EMAIL_PATTERN_TO_FLOW` in @zeta/shared can be checked against it:
+ * a new format added here without a decision about its flow class silently
+ * degrades that email to the 0.6 text-rule default. The contract test in
+ * __tests__/pattern-flow-coverage.test.ts turns that into a failure.
+ */
+export const BANCOLOMBIA_PATTERN_TYPES: ReadonlyArray<
+  ParsedEmailTransaction["pattern_type"]
+> = [...new Set(PATTERNS.map((p) => p.type))];
+
 export function parseBancolombiaEmail(
   body: string
 ): ParsedEmailTransaction | null {

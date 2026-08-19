@@ -17,6 +17,8 @@
  * decrypted Supabase view (webapp) and the local SQLite mirror (mobile).
  */
 
+import { effectiveFlowClass, isIncomeClass, isSpendClass } from "./flow-class";
+
 /** Minimum-information row shape — both platforms can project into this. */
 export interface AggregatableTransaction {
   amount: number;
@@ -96,19 +98,16 @@ export function computeMonthlyAggregates(
 
     count += 1;
 
-    // flow_class is NOT honoured yet — deliberately. Whether a row carries it
-    // depends on the caller's SELECT: transactions.ts:481 uses select("*") so
-    // its rows have it, while getMonthlyAggregatesCached uses a slim explicit
-    // list that does not. Honouring it would make the same Movimientos screen
-    // report two different totals depending on whether a filter is active, and
-    // mobile — whose SQLite has no such column — would silently stay on the old
-    // path, re-opening the webapp/mobile divergence this helper exists to close.
-    //
-    // Turn this on in the same change that adds the column to BOTH the webapp
-    // slim select and the mobile projection, not before.
+    // Prefer the stored class; fall back to the account-type heuristic for rows
+    // written before flow_class existed, or belonging to a user whose backfill
+    // has not run. Both callers now project the column — the webapp's slim
+    // select and mobile's SQLite projection — which is what this being enabled
+    // depends on: honour it on one platform only and the 7-33x divergence this
+    // helper was built to close reopens.
+    const flowClass = effectiveFlowClass(row);
     const isDebt = options.debtAccountIds.has(row.account_id);
-    const countsAsIncome = !isDebt;
-    const countsAsSpend = true;
+    const countsAsIncome = flowClass ? isIncomeClass(flowClass) : !isDebt;
+    const countsAsSpend = flowClass ? isSpendClass(flowClass) : true;
 
     // Effective OUTFLOW spend nets out the shared-payment repaid portion.
     const outflowSpend = row.amount - Number(row.split_repaid_amount ?? 0);

@@ -1009,6 +1009,25 @@ export async function recordRepayment(
       // mistaken for salary/bonus). Borrowed repayments are OUTFLOWs (you paying
       // back) and get no income category.
       category_id: debt.direction === "lent" ? LOAN_REPAYMENT_CATEGORY_ID : null,
+      // Settling a debt with a person is neither consumption nor earnings, so
+      // both legs are neutral — this is one of the four surfaces that counted a
+      // repayment received as income.
+      //
+      // Set literally rather than through classifyFlow: the counterparty is a
+      // person, not an account, so no account_type carries the fact. An INFLOW
+      // to a CHECKING account is INCOME by every structural rule the classifier
+      // has, and it would be wrong here.
+      //
+      // Known asymmetry, left as-is deliberately: the ORIGINAL outflow when the
+      // money was lent is still classified as SPEND. Netting that out is a
+      // separate decision about what a receivable is worth, not part of wiring
+      // the write paths.
+      flow_class: direction === "OUTFLOW" ? "DEBT_PAYMENT" : "DEBT_CREDIT",
+      // NULL version — see the note on FLOW_CLASS_RULES_VERSION. The classifier
+      // would call an INFLOW to a CHECKING account INCOME, so a version-keyed
+      // backfill would undo exactly the fix this site makes.
+      flow_class_version: null,
+      source_pattern: null,
     })
     .select("id, account_id, amount, direction, is_excluded")
     .single();

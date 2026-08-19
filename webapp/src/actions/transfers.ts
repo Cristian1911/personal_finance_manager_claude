@@ -9,6 +9,7 @@ import {
   getDebtPaymentCategoryId,
   isDebtAccountType,
 } from "@zeta/shared";
+import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import {
   buildDebtBalanceUpdatePayload,
   deactivateTemplatesForPaidOffAccount,
@@ -125,6 +126,16 @@ export async function createTransfer(
       categorization_source: "SYSTEM_DEFAULT",
       idempotency_key: outflowKey,
       transfer_group_id: transferGroupId,
+      // Structural, confidence 1.0: both account types are in hand, so the
+      // classifier never falls back to reading the description. Paying a card
+      // through this flow yields DEBT_PAYMENT, not SELF_TRANSFER.
+      ...flowClassColumns({
+        direction: "OUTFLOW",
+        accountType: fromAccount.account_type,
+        description: outflowDescription,
+        transferGroupId,
+        counterpartAccountType: toAccount.account_type,
+      }),
       notes: notes || null,
       status: "POSTED",
     })
@@ -159,6 +170,13 @@ export async function createTransfer(
       categorization_source: "SYSTEM_DEFAULT",
       idempotency_key: inflowKey,
       transfer_group_id: transferGroupId,
+      ...flowClassColumns({
+        direction: "INFLOW",
+        accountType: toAccount.account_type,
+        description: inflowDescription,
+        transferGroupId,
+        counterpartAccountType: fromAccount.account_type,
+      }),
       notes: notes || null,
       status: "POSTED",
     })

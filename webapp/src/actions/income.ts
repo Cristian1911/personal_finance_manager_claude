@@ -8,6 +8,7 @@ import { toISODateString } from "@/lib/utils/date";
 import { toMonthlyAmount } from "@/lib/utils/recurring";
 import { isDebtAccountType } from "@/lib/utils/account-balance";
 import type { CurrencyCode } from "@zeta/shared";
+import { COUNTED_FLOW_CLASSES } from "@zeta/shared";
 
 export interface IncomeEstimate {
   monthlyAverage: number;
@@ -119,6 +120,17 @@ async function getEstimatedIncomeCached(
     .in("account_id", liquidAccountIds)
     .gte("transaction_date", twelveMonthsAgo)
     .is("personal_debt_id", null)
+    // The fourth divergent income rule in the codebase, and the one that still
+    // counted the $22.441.478 `ABONO DESEMBOLSO DE CREDITO` as salary. Money
+    // borrowed and paid into a savings account is an INFLOW to a liquid account
+    // by every structural test, so only the description reveals it — which is
+    // precisely what flow_class already stores.
+    //
+    // COUNTED_FLOW_CLASSES rather than a bare "INCOME": for an INFLOW it
+    // resolves to INCOME + UNCLASSIFIED (a spend class cannot appear on an
+    // inflow), so rows written before the backfill keep behaving as they do
+    // today instead of silently dropping this user's income to zero.
+    .in("flow_class_effective", COUNTED_FLOW_CLASSES as string[])
     .order("transaction_date", { ascending: false })
     .limit(500);
 

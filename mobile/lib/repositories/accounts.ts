@@ -1,6 +1,10 @@
 import { getDatabase } from "../db/database";
 import * as Crypto from "expo-crypto";
-import { getDirectionForBalanceDelta, MANUAL_BALANCE_ADJUSTMENT_PREFIX } from "@zeta/shared";
+import {
+  getDirectionForBalanceDelta,
+  isDebtAccountType,
+  MANUAL_BALANCE_ADJUSTMENT_PREFIX,
+} from "@zeta/shared";
 import { setPdfPasswordForAccount } from "../pdf-passwords";
 import {
   applyLocalBalanceDelta,
@@ -312,6 +316,9 @@ export async function registerPayment(
       merchantName,
       notes: input.notes ?? null,
       idempotencyKey,
+      // Structural, mirroring webapp accounts.ts registerPayment: INFLOW to a
+      // card or loan is DEBT_CREDIT; INFLOW to a liquid account is income.
+      flowClass: isDebtAccountType(account.account_type) ? "DEBT_CREDIT" : "INCOME",
     },
     now
   );
@@ -509,6 +516,10 @@ export async function reconcileBalance(
           // Webapp sets merchant_name = null + a distinct clean_description.
           // rawDescription stays byte-matched to the webapp idempotency string.
           merchantName: null,
+          // A reconciliation plug, not a movement — neutral, counted by neither
+          // side. Mirrors webapp accounts.ts. SELF_TRANSFER is the closest of
+          // the eight; the honest fix is a ninth ADJUSTMENT class, deferred.
+          flowClass: "SELF_TRANSFER",
           cleanDescription: MANUAL_BALANCE_ADJUSTMENT_PREFIX,
           categoryId: null,
           categorizationSource: "SYSTEM_DEFAULT",
