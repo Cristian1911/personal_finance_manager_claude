@@ -275,3 +275,17 @@ export interface ImpactEvent {
   currencyCode: string;
   metrics: ImpactEventMetrics;
 }
+
+/** The counterpart half of a transfer: just enough to render "origen → destino"
+ *  on a row whose other leg is off-page. Deliberately not a full transaction —
+ *  these rows are never rendered on their own. */
+export interface TransferLegSummary {
+  id: string;
+  direction: "INFLOW" | "OUTFLOW";
+  transfer_group_id: string | null;
+  /** The OUTFLOW leg usually carries the movement's real name ("Pago NU tarjeta"),
+   *  so a merged row can title itself with it instead of the generic word. */
+  merchant_name: string | null;
+  clean_description: string | null;
+  account: { name: string; color: string | null };
+}

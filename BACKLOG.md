@@ -1774,3 +1774,29 @@ Phase 3 (planificador 4-step + Deseos/Puedo-pagar parity) shipped via PRs #248 a
 ## 2026-08-18 — patrones de correo Bancolombia (fix/bancolombia-email-patterns-2026-08): diferido
 
 - **[P3] Distinguir "sin patrón" de "no es una transacción" en `email_ingest_logs`.** Las alertas no transaccionales de Bancolombia (clave dinámica bloqueada/desbloqueada, encendiste/apagaste la tarjeta, inscripción de cuentas y facturas, "tu factura está lista para pagar", avisos de reintegro futuro tipo "Recibirás $X en 10 días hábiles") se registran hoy como `status = 'parse_failed'`. Son ~13 de las últimas 60 filas: ruido que compite visualmente con los fallos reales en `email-ingest-logs-card.tsx` y hace imposible saber de un vistazo si se perdió una transacción. Propuesta: lista de frases "no transaccional" en `bancolombia-email.ts` + nuevo estado `ignored` en el CHECK de `email_ingest_logs.status` (migración) + filtro en la tarjeta de settings. No es pérdida de datos — solo legibilidad del log.
+
+## Transferencias y deudas personales (2026-08-19)
+
+- **Write-off de deudas personales `lent`.** `cancelPersonalDebt` deja `personal_debt_id` puesto, así que un préstamo que nunca vuelve queda invisible: no cuenta como gasto en ningún lado y el dinero simplemente desapareció del saldo. Falta un "dar por perdida" que limpie el vínculo (o re-etiquete el tx como gasto) para que aterrice en las métricas. Hoy solo *borrar* la deuda lo consigue (FK ON DELETE SET NULL).
+- **Línea de contexto en el detalle del día** (`hybrid-hero.tsx`, tarjeta del cuadro seleccionado): mostrar cuánto quedó fuera por transferencias / deuda personal / tarjeta de crédito. El 18 ago el cuadro decía $5.029.081 sobre $21.137.540 de salidas reales sin explicar la diferencia.
+- **`getSpendingHeatmap` no pasa `liquidOnly`** mientras el hero sí → dos "gastado" distintos para el mismo día (5.342.081 vs 5.029.081 el 18 ago). Alinear el widget Actividad con el hero.
+- **Tabla de Movimientos (desktop) sin acción de transferencia.** "Es una transferencia" vive en `TransactionQuickActions` (móvil) y en el detalle `/transactions/[id]`; la tabla desktop solo llega por el detalle.
+- **Detección automática de transferencias entre fuentes distintas.** El par NU (email + manual) nunca se enlazó solo; hoy depende de que el usuario lo marque a mano.
+- **Espejo sintético y conciliación.** La pata que crea `createTransferCounterpart` lleva `raw_description = "Transferencia desde X"` y `notes = "[espejo-auto]"` (sentinel sin migración). Falta (a) columna propia en vez del sentinel, y (b) verificar en una importación real que el scorer de conciliación la casa con la línea del banco.
+- **Revisión UI diferida** (`transaction-quick-actions.tsx`): extraer `SHEET_TILE_LINKED_CLASS` (repetido 4×), explicar el estado `disabled` del tile de transferencia en su sublabel, y verificar en dispositivo real la cadena Drawer→Drawer del picker de cuenta (vaul puede dejar `pointer-events` en `<body>` si el primero se desmonta a mitad de transición).
+
+## Cuentas archivadas — RESUELTO (2026-08-20)
+
+`getDemoAccountIds()` filtraba `is_active = true` y por ahí pasaban gasto diario, cashflow, métricas de mes, Tendencias y el feed. 126 tx de 2026 en cuentas archivadas eran invisibles. Ahora el filtro es opt-in (`activeOnly`) y ninguna lectura histórica lo usa; `getAccounts()` lo mantiene, así que los pickers siguen mostrando solo cuentas abiertas. Gasto restaurado en 2026: ene 2.48M · feb 708K · mar 3.85M · abr 732K. Cero ingreso fantasma (todas las archivadas son deuda, y sus INFLOW ya estaban excluidos por la regla de ingresos).
+
+Pendiente de esto:
+- **El filtro de cuenta no puede seleccionar archivadas.** Sus movimientos ya salen en el feed, pero el dropdown se alimenta de `getAccounts()` (solo activas), así que no hay forma de filtrar por una cuenta saldada.
+- Revisar si `/deudas` y el planificador deberían mostrar las saldadas en una sección "pagadas" en vez de desaparecerlas.
+
+## Revisión de transferencias — diferido (2026-08-20)
+
+- Extraer `useTransferLinking(tx)` + `accountsToTransferCandidates(accounts, tx)`: ~90 líneas duplicadas entre `transaction-quick-actions.tsx` y `transaction-detail-client.tsx`.
+- Unificar copy: conviven "el otro movimiento", "el otro lado" y "el movimiento espejo" para lo mismo. Estandarizar en "el otro lado".
+- "Cargar más" en Movimientos móvil añade filas en cliente sin sus patas faltantes → degradan a fila individual. Se cierra si `getTransferLegs` se cachea por mes en vez de por conjunto de ids (entra al `Promise.all` y elimina el hop serial).
+- `getTransferLegs` no filtra `is_demo`: una pata demo podría completar un par real. Bajo impacto mientras el modo demo no se use en serio.
+- Enlace a la otra pata desde el detalle (`/transactions/[id]`): hoy solo existe en la fila expandida del móvil.

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Repeat } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeftRight, ArrowRight, Repeat } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatTime } from "@/lib/utils/date";
@@ -14,7 +15,7 @@ import {
   accountTail,
   resolveCategoryColor,
 } from "@/components/transactions/transaction-quick-actions";
-import type { TransactionWithAccount, CategoryWithChildren } from "@/types/domain";
+import type { TransactionWithAccount, CategoryWithChildren , TransferLegSummary } from "@/types/domain";
 
 interface MovimientosTransactionRowProps {
   transaction: TransactionWithAccount;
@@ -24,6 +25,33 @@ interface MovimientosTransactionRowProps {
   linkableAccountIds?: Set<string>;
   /** Called after a successful category assignment — used by categorizar to remove from list / prompt bulk apply */
   onCategorized?: (txId: string, categoryId: string) => void;
+  /** The other leg of the same transfer, when the feed has it in hand. Turns the
+   *  row into a single "origen → destino" movement instead of two rows that read
+   *  as a spend and an income that never happened. */
+  counterpart?: TransactionWithAccount | TransferLegSummary;
+}
+
+/** Last four digits alone: two of these plus an arrow must fit one row, and the
+ *  brand prefix `accountTail` keeps ("VISA ····7022") overflows it. */
+function accountMask(name: string): string {
+  const match = name.match(/(\d{4})\s*$/);
+  return match ? `····${match[1]}` : accountTail(name);
+}
+
+/** Account chip used by transfer rows: same dot + tail language as the account
+ *  chip in the amount column, so a transfer reads as "this account → that one".
+ *  A null account is the side the feed can't see — never guessed. */
+function AccountChip({ account }: { account: { name: string; color: string | null } | null }) {
+  return (
+    <span className="flex min-w-0 items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-[11px] text-z-sage-light">
+      <span
+        className="inline-block h-[5px] w-[5px] shrink-0 rounded-full"
+        style={{ backgroundColor: account?.color ?? "var(--z-sage-dark)" }}
+        aria-hidden="true"
+      />
+      <span className="truncate">{account ? accountMask(account.name) : "otra cuenta"}</span>
+    </span>
+  );
 }
 
 export function MovimientosTransactionRow({
@@ -32,14 +60,38 @@ export function MovimientosTransactionRow({
   tags = [],
   linkableAccountIds,
   onCategorized,
+  counterpart,
 }: MovimientosTransactionRowProps) {
   const [expanded, setExpanded] = useState(false);
   // Optimistic category for the collapsed-row subtitle (the action surface owns
   // the rest of the mutations and reports back via onCategorized).
   const [localCategory, setLocalCategory] = useState(tx.category);
 
-  const description =
-    tx.merchant_name || tx.clean_description || tx.raw_description || "Sin descripción";
+  // A transfer moves money between the user's own accounts: it is neither spend
+  // nor income (every metric filters it out via `transfer_group_id IS NULL`), so
+  // the row drops the +/− and the income/expense colour and states the flow.
+  const isTransfer = Boolean(tx.transfer_group_id);
+  const origin = counterpart
+    ? (tx.direction === "OUTFLOW" ? tx : counterpart).account
+    : tx.direction === "OUTFLOW"
+      ? tx.account
+      : null;
+  const destination = counterpart
+    ? (tx.direction === "OUTFLOW" ? counterpart : tx).account
+    : tx.direction === "INFLOW"
+      ? tx.account
+      : null;
+
+  // The account chips below carry origin → destination, so the title is free to
+  // name the movement itself. The OUTFLOW leg is the one that carries a useful
+  // name ("Pago NU tarjeta"); the INFLOW side is usually just the source account.
+  const outflowLeg =
+    tx.direction === "OUTFLOW" ? tx : counterpart?.direction === "OUTFLOW" ? counterpart : null;
+  const transferName =
+    outflowLeg?.merchant_name || outflowLeg?.clean_description || "Transferencia";
+  const description = isTransfer
+    ? transferName
+    : tx.merchant_name || tx.clean_description || tx.raw_description || "Sin descripción";
   const categoryName = localCategory?.name_es ?? localCategory?.name ?? null;
   const catColor = localCategory ? resolveCategoryColor(categories, localCategory.id) : null;
   // La fecha vive en el header del grupo; aquí solo la hora. Null en la mayoría
@@ -71,13 +123,27 @@ export function MovimientosTransactionRow({
         type="button"
         onClick={() => setExpanded((prev) => !prev)}
         aria-expanded={expanded}
-        aria-label={expanded ? `Ocultar acciones de ${description}` : `Ver acciones de ${description}`}
+        aria-label={
+          isTransfer
+            ? `${expanded ? "Ocultar" : "Ver"} acciones de la transferencia ${
+                origin && destination
+                  ? `de ${origin.name} a ${destination.name}`
+                  : origin
+                    ? `desde ${origin.name}`
+                    : `hacia ${destination!.name}`
+              }`
+            : `${expanded ? "Ocultar" : "Ver"} acciones de ${description}`
+        }
         className={cn(
           "flex w-full items-center gap-3 text-left",
           tx.is_excluded && "opacity-40",
         )}
       >
-        <TransactionIconTile category={localCategory} categories={categories} />
+        <TransactionIconTile
+          category={isTransfer ? null : localCategory}
+          categories={categories}
+          icon={isTransfer ? <ArrowLeftRight className="size-[17px]" /> : undefined}
+        />
 
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 truncate text-[15px] font-medium">
@@ -90,6 +156,13 @@ export function MovimientosTransactionRow({
             <span className="truncate">{description}</span>
           </p>
           <div className="mt-1 flex min-w-0">
+            {isTransfer ? (
+              <span className="flex min-w-0 items-center gap-1.5">
+                <AccountChip account={origin} />
+                <ArrowRight className="size-3 shrink-0 text-z-sage-dark" aria-hidden="true" />
+                <AccountChip account={destination} />
+              </span>
+            ) : (
             <span
               className="inline-flex max-w-full items-center truncate rounded-full border px-2 py-px text-[11px] font-medium"
               style={
@@ -108,6 +181,7 @@ export function MovimientosTransactionRow({
             >
               {categoryName ?? "Sin categoría"}
             </span>
+            )}
           </div>
         </div>
 
@@ -115,11 +189,15 @@ export function MovimientosTransactionRow({
           <span
             className={cn(
               "text-[15px] font-medium tabular-nums",
-              tx.direction === "INFLOW" ? "text-z-income" : "text-z-expense",
+              isTransfer
+                ? "text-z-sage-light"
+                : tx.direction === "INFLOW"
+                  ? "text-z-income"
+                  : "text-z-expense",
               tx.is_excluded && "line-through",
             )}
           >
-            {tx.direction === "INFLOW" ? "+" : "−"}
+            {!isTransfer && (tx.direction === "INFLOW" ? "+" : "−")}
             {formatCurrency(tx.amount, tx.currency_code)}
           </span>
           <div className="flex items-center gap-1">
@@ -128,13 +206,15 @@ export function MovimientosTransactionRow({
                 {timeStr}
               </span>
             )}
-            <span className="flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-z-sage-dark">
-              <span
-                className="inline-block h-[5px] w-[5px] shrink-0 rounded-full"
-                style={{ backgroundColor: tx.account.color ?? undefined }}
-              />
-              {accountTail(tx.account.name)}
-            </span>
+            {!isTransfer && (
+              <span className="flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-z-sage-dark">
+                <span
+                  className="inline-block h-[5px] w-[5px] shrink-0 rounded-full"
+                  style={{ backgroundColor: tx.account.color ?? undefined }}
+                />
+                {accountTail(tx.account.name)}
+              </span>
+            )}
           </div>
         </div>
       </button>
@@ -153,7 +233,23 @@ export function MovimientosTransactionRow({
         </div>
       )}
 
-      {/* Expanded: shared quick-action surface */}
+      {/* Expanded: shared quick-action surface. On a merged row the actions act
+          on this leg; the other one gets an explicit escape hatch so the pair is
+          never a black box. */}
+      {expanded && counterpart && (
+        <div className="mt-3 flex items-center justify-between gap-2 rounded-lg border border-white/6 bg-white/[0.03] px-3 py-2">
+          <span className="min-w-0 truncate text-[11px] text-z-sage-dark">
+            Acciones sobre {accountTail(tx.account.name)}
+          </span>
+          <Link
+            href={`/transactions/${counterpart.id}`}
+            aria-label={`Ver el otro lado de la transferencia en ${counterpart.account.name}`}
+            className="shrink-0 text-[11px] font-medium text-z-brass hover:underline"
+          >
+            Ver el otro lado
+          </Link>
+        </div>
+      )}
       {expanded && (
         <div className="mt-3">
           <TransactionQuickActions

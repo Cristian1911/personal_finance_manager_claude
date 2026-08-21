@@ -33,7 +33,12 @@ import {
   recomputeDebtAfterTxAmountChange,
 } from "@/lib/personal-debts/recompute";
 import type { ActionResult, PaginatedResult } from "@/types/actions";
-import type { Transaction, TransactionLocation, TransactionWithAccount } from "@/types/domain";
+import type {
+  Transaction,
+  TransactionLocation,
+  TransactionWithAccount,
+  TransferLegSummary,
+} from "@/types/domain";
 
 type PersistTransactionParams = {
   userId: string;
@@ -539,6 +544,55 @@ async function getTransactionsCached(
     pageSize,
     totalPages: Math.ceil((count ?? 0) / pageSize),
   };
+}
+
+/**
+ * The missing legs of transfers that are only half-present in a page.
+ *
+ * A feed collapses a transfer into one "origen → destino" row, but the two legs
+ * rarely survive the same slice: they can sit up to 3 days apart, an account
+ * filter selects one side, and the day's untimed rows sort last
+ * (`transaction_time DESC NULLS LAST`) so a page boundary routinely splits a
+ * pair. One indexed lookup on the page's `transfer_group_id`s completes them —
+ * these rows are counterpart data for an existing row, never rows of their own.
+ */
+async function getTransferLegsCached(
+  userId: string,
+  accessToken: string,
+  groupIds: string[],
+): Promise<TransferLegSummary[]> {
+  "use cache";
+  cacheTag("transactions");
+  cacheLife("zeta");
+
+  const supabase = createCachedClient(accessToken);
+  // Only the columns a counterpart needs. `select("*")` here would decrypt five
+  // envelope columns per row for data no feed reads.
+  // No `account_id` filter on purpose: the counterpart often lives in an
+  // archived account, which is exactly the leg the feed is missing. A reconciled
+  // row, though, was merged into another transaction and must not stand in.
+  const { data } = await supabase
+    .from("transactions")
+    .select("id, direction, transfer_group_id, merchant_name, clean_description, account:accounts!transactions_account_id_fkey(name, color)")
+    .eq("user_id", userId)
+    .in("transfer_group_id", groupIds)
+    .is("reconciled_into_transaction_id", null);
+
+  return (data ?? []) as unknown as TransferLegSummary[];
+}
+
+/**
+ * `groupIds` should already be narrowed to the groups the page shows only half
+ * of — a complete pair needs nothing fetched.
+ */
+export async function getTransferLegs(
+  groupIds: string[],
+): Promise<TransferLegSummary[]> {
+  if (groupIds.length === 0) return [];
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return [];
+  // Sorted so the same page produces the same cache key regardless of feed order.
+  return getTransferLegsCached(user.id, accessToken, [...new Set(groupIds)].sort());
 }
 
 export async function getTransactions(
@@ -1409,7 +1463,9 @@ export async function deleteTransaction(id: string): Promise<ActionResult> {
 
   const { data: existing, error: existingError } = await supabase
     .from("transactions")
-    .select("account_id, amount, direction, is_excluded, personal_debt_id, pd_role, split_group_id")
+    .select(
+      "account_id, amount, direction, is_excluded, personal_debt_id, pd_role, split_group_id, transfer_group_id"
+    )
     .eq("user_id", user.id)
     .eq("id", id)
     .single();
@@ -1432,6 +1488,23 @@ export async function deleteTransaction(id: string): Promise<ActionResult> {
   const { error } = await supabase.from("transactions").delete().eq("user_id", user.id).eq("id", id);
 
   if (error) return { success: false, error: error.message };
+
+  // A surviving transfer leg keeps `transfer_group_id`, and that tag is what
+  // hides it from every spend/income metric — leaving it set would make the
+  // remaining movement permanently invisible. Free the whole group.
+  if (existing.transfer_group_id) {
+    const { error: groupError } = await supabase
+      .from("transactions")
+      .update({ transfer_group_id: null, updated_at: new Date().toISOString() })
+      .eq("user_id", user.id)
+      .eq("transfer_group_id", existing.transfer_group_id);
+    if (groupError) {
+      console.error("Failed to clear transfer group after deleting a leg", {
+        transferGroupId: existing.transfer_group_id,
+        groupError,
+      });
+    }
+  }
 
   // Repair the linked personal debt right after the delete and BEFORE the
   // balance step: the recompute sums rows still matching pd_role='repayment'

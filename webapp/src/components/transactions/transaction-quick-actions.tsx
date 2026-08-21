@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -19,13 +19,14 @@ import {
   UserRound,
   Receipt,
   MoreHorizontal,
+  ArrowLeftRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { chipBackground, zoneTextColor } from "@/lib/utils/zone-colors";
-import { GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import { BRASS_GHOST_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import { SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
 import { CategoryIcon } from "@/components/categories/category-icon";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
@@ -50,13 +51,20 @@ import {
 } from "@/components/ui/alert-dialog";
 import { LinkPickerSheet, type LinkCandidate } from "@/components/recurring/link-picker-sheet";
 import { CreatePersonalDebtSheet } from "@/components/personas/create-personal-debt-sheet";
-import { useDestinatarios } from "@/components/providers/app-data-provider";
+import { useAccounts, useDestinatarios } from "@/components/providers/app-data-provider";
 import {
   categorizeTransaction,
   assignDestinatario,
   removeDestinatarioFromTransaction,
 } from "@/actions/categorize";
 import { toggleExcludeTransaction } from "@/actions/transactions";
+import {
+  createTransferCounterpart,
+  getTransferCandidates,
+  linkTransactionsAsTransfer,
+  unlinkTransfer,
+} from "@/actions/transfers";
+import { ACCOUNT_TYPE_LABELS } from "@/lib/constants/account-types";
 import {
   getCandidateOccurrencesForTransaction,
   getLinkedRecurringForTransaction,
@@ -79,9 +87,18 @@ const TRIO_BTN_CLASS = cn(
   GHOST_BUTTON_CLASS,
 );
 
-/** "Más" sheet action tile — fixed 2×2 grid slot. */
+/** "Más" sheet action tile — fixed grid slot (2 cols; the transfer slot spans both). */
 const SHEET_TILE_CLASS =
   "flex h-[84px] flex-col items-center justify-center gap-1.5 rounded-2xl border px-3.5 py-2.5 text-center";
+
+/** Assigned (linked) state of a sheet tile: BRASS_GHOST_BUTTON_CLASS without its
+ *  text colour, so each tile keeps its own label colour. */
+const SHEET_TILE_LINKED_CLASS = cn(BRASS_GHOST_BUTTON_CLASS, "text-inherit");
+
+/** Full-width variant: the 5th slot spans both columns and reads as a row, not
+ *  a second giant tile competing with the four square ones above it. */
+const SHEET_TILE_WIDE_CLASS =
+  "col-span-2 h-[52px] flex-row items-center justify-start gap-2 px-4 text-left";
 
 /** Actionable (unassigned) state of a sheet tile — ghost surface + tile extras. */
 const SHEET_TILE_ACTION_CLASS = cn(
@@ -116,9 +133,13 @@ export function accountTail(name: string): string {
 export function TransactionIconTile({
   category,
   categories,
+  icon,
 }: {
   category: { id: string; icon: string | null } | null;
   categories: CategoryWithChildren[];
+  /** Replaces the category glyph while keeping the tile's size, radius and fill —
+   *  used by rows that aren't about a category at all (transfers). */
+  icon?: ReactNode;
 }) {
   const color = category ? resolveCategoryColor(categories, category.id) : null;
   return (
@@ -130,7 +151,9 @@ export function TransactionIconTile({
           : "color-mix(in srgb, var(--z-sage) 14%, transparent)",
       }}
     >
-      {category?.icon ? (
+      {icon ? (
+        <span className="flex text-z-sage-light">{icon}</span>
+      ) : category?.icon ? (
         <span className="flex" style={{ color: color ? zoneTextColor(color) : "var(--z-sage-light)" }}>
           <CategoryIcon icon={category.icon} className="size-[17px]" />
         </span>
@@ -198,6 +221,7 @@ export function TransactionQuickActions({
 }: TransactionQuickActionsProps) {
   const router = useRouter();
   const destinatarios = useDestinatarios();
+  const accounts = useAccounts();
   const [, startTransition] = useTransition();
 
   // Optimistic local state mirrors the row's category/destinatario/excluded.
@@ -214,6 +238,11 @@ export function TransactionQuickActions({
   const [occurrenceCandidates, setOccurrenceCandidates] = useState<CandidateOccurrence[]>([]);
   const [isLinking, startLinkTransition] = useTransition();
   const [personaPickerOpen, setPersonaPickerOpen] = useState(false);
+  const [transferPickerOpen, setTransferPickerOpen] = useState(false);
+  const [transferCandidates, setTransferCandidates] = useState<LinkCandidate[]>([]);
+  const [confirmUnlinkTransferOpen, setConfirmUnlinkTransferOpen] = useState(false);
+  const [counterpartPickerOpen, setCounterpartPickerOpen] = useState(false);
+  const [transferLoading, setTransferLoading] = useState(false);
   const [personaCandidates, setPersonaCandidates] = useState<LinkCandidate[]>([]);
   const [personaCreateOpen, setPersonaCreateOpen] = useState(false);
   // Actions for an already-linked transaction. Until this existed a mis-tap on
@@ -262,6 +291,11 @@ export function TransactionQuickActions({
   // A split origin's amount already lives in its shared-payment debts — the
   // link action rejects it, so don't offer it.
   const canLinkPersona = !tx.personal_debt_id && !tx.transfer_group_id && !tx.split_group_id;
+  // Linking the mirror leg only makes sense while the tx is free of every other
+  // link — the server rejects the rest anyway, so don't offer a dead tile.
+  const isTransfer = Boolean(tx.transfer_group_id);
+  const canLinkTransfer =
+    !tx.transfer_group_id && !tx.personal_debt_id && !tx.split_group_id;
   // A shared payment splits a spend the user fronted: only OUTFLOWs, not already
   // linked to a person/transfer, and not already split.
   const canSplit =
@@ -503,6 +537,74 @@ export function TransactionQuickActions({
     });
   }
 
+  function handleOpenTransferPicker() {
+    setMoreOpen(false);
+    setTransferPickerOpen(true);
+    setTransferCandidates([]);
+    // The sheet opens before the fetch resolves; without this flag its empty
+    // state offers "Crear el otro lado" while a real mirror may still be
+    // loading — one fast tap would create a duplicate leg.
+    setTransferLoading(true);
+    getTransferCandidates(tx.id)
+      .then((result) => {
+        if (!result.success) {
+          toast.error(result.error ?? "Error al buscar el otro movimiento");
+          setTransferPickerOpen(false);
+          return;
+        }
+        setTransferCandidates(result.data);
+      })
+      .catch(() => {
+        toast.error("Error de red al buscar el otro movimiento");
+        setTransferPickerOpen(false);
+      })
+      .finally(() => setTransferLoading(false));
+  }
+
+  function handleConfirmTransferLink(counterpartId: string) {
+    setTransferPickerOpen(false);
+    startLinkTransition(async () => {
+      const result = await linkTransactionsAsTransfer(tx.id, counterpartId);
+      if (result.success) {
+        toast.success("Marcados como transferencia · ya no cuentan como gasto");
+        router.refresh();
+      } else {
+        toast.error(result.error ?? "No se pudo vincular");
+      }
+    });
+  }
+
+  function handleCreateCounterpart(accountId: string) {
+    setCounterpartPickerOpen(false);
+    startLinkTransition(async () => {
+      const result = await createTransferCounterpart(tx.id, accountId);
+      if (result.success) {
+        toast.success("Transferencia creada · se registró el movimiento espejo");
+        router.refresh();
+      } else {
+        toast.error(result.error ?? "No se pudo crear el otro lado");
+      }
+    });
+  }
+
+  function handleUnlinkTransfer() {
+    startLinkTransition(async () => {
+      const result = await unlinkTransfer(tx.id);
+      if (result.success) {
+        setConfirmUnlinkTransferOpen(false);
+        setMoreOpen(false);
+        toast.success(
+          result.data.deletedLegs > 0
+            ? "Transferencia deshecha · se eliminó el movimiento espejo"
+            : "Transferencia deshecha · vuelven a contar",
+        );
+        router.refresh();
+      } else {
+        toast.error(result.error ?? "No se pudo desvincular");
+      }
+    });
+  }
+
   function handleUnlinkPersona() {
     startLinkTransition(async () => {
       const result = await unlinkTransactionFromPersonalDebt(tx.id);
@@ -583,7 +685,11 @@ export function TransactionQuickActions({
           <DrawerBody className="pb-[calc(3rem_+_env(safe-area-inset-bottom))]">
             {/* Transaction header */}
             <div className="flex items-center gap-3 border-b border-white/6 px-1 pb-3.5">
-              <TransactionIconTile category={localCategory} categories={categories} />
+              <TransactionIconTile
+                category={isTransfer ? null : localCategory}
+                categories={categories}
+                icon={isTransfer ? <ArrowLeftRight className="size-[17px]" /> : undefined}
+              />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[15px] font-medium">{description}</p>
                 <p className="mt-0.5 truncate text-[11.5px] text-z-sage-dark first-letter:uppercase">{sheetMeta}</p>
@@ -591,10 +697,14 @@ export function TransactionQuickActions({
               <span
                 className={cn(
                   "shrink-0 text-[15px] font-medium tabular-nums",
-                  tx.direction === "INFLOW" ? "text-z-income" : "text-z-expense",
+                  isTransfer
+                    ? "text-z-sage-light"
+                    : tx.direction === "INFLOW"
+                      ? "text-z-income"
+                      : "text-z-expense",
                 )}
               >
-                {tx.direction === "INFLOW" ? "+" : "−"}
+                {!isTransfer && (tx.direction === "INFLOW" ? "+" : "−")}
                 {formatCurrency(tx.amount, tx.currency_code as CurrencyCode)}
               </span>
             </div>
@@ -609,17 +719,17 @@ export function TransactionQuickActions({
               />
             </div>
 
-            {/* Acciones — 4 posiciones FIJAS: Recurrente · Deuda personal ·
-                Repartir · Excluir. Un slot ya asignado cambia de estado en su
-                sitio (nunca desaparece), para que la memoria muscular no se
-                rompa entre transacciones. */}
+            {/* Acciones — 5 posiciones FIJAS: Recurrente · Deuda personal ·
+                Repartir · Excluir · Transferencia (fila completa). Un slot ya
+                asignado cambia de estado en su sitio (nunca desaparece), para
+                que la memoria muscular no se rompa entre transacciones. */}
             <p className={cn(SECTION_EYEBROW_CLASS, "px-1 pb-2")}>Acciones</p>
             <div className="grid grid-cols-2 gap-2 px-1">
               {isLinkedRecurring ? (
                 <button
                   type="button"
                   onClick={() => setRecurringActionsOpen(true)}
-                  className={cn(SHEET_TILE_CLASS, "border-z-brass/20 bg-z-brass/8 transition-colors hover:bg-z-brass/12")}
+                  className={cn(SHEET_TILE_CLASS, SHEET_TILE_LINKED_CLASS)}
                 >
                   <Repeat className="size-[18px] text-z-brass" />
                   <span className="max-w-full truncate px-1 text-[13px] leading-tight text-z-brass">
@@ -643,7 +753,7 @@ export function TransactionQuickActions({
                 <button
                   type="button"
                   onClick={() => setPersonaActionsOpen(true)}
-                  className={cn(SHEET_TILE_CLASS, "border-z-brass/20 bg-z-brass/8 transition-colors hover:bg-z-brass/12")}
+                  className={cn(SHEET_TILE_CLASS, SHEET_TILE_LINKED_CLASS)}
                 >
                   <Users className="size-[18px] text-z-brass" />
                   <span className="text-[13px] leading-tight text-z-brass">Deuda personal</span>
@@ -668,7 +778,7 @@ export function TransactionQuickActions({
                     setMoreOpen(false);
                     router.push("/deudas-personales");
                   }}
-                  className={cn(SHEET_TILE_CLASS, "border-z-brass/20 bg-z-brass/8 transition-colors hover:bg-z-brass/12")}
+                  className={cn(SHEET_TILE_CLASS, SHEET_TILE_LINKED_CLASS)}
                 >
                   <Receipt className="size-[18px] text-z-brass" />
                   <span className="text-[13px] leading-tight text-z-brass">Gasto repartido</span>
@@ -703,6 +813,38 @@ export function TransactionQuickActions({
                   {excluded ? "Incluir en métricas" : "Excluir de métricas"}
                 </span>
               </button>
+
+              {tx.transfer_group_id ? (
+                <button
+                  type="button"
+                  onClick={() => setConfirmUnlinkTransferOpen(true)}
+                  disabled={isLinking}
+                  className={cn(
+                    SHEET_TILE_CLASS,
+                    SHEET_TILE_WIDE_CLASS,
+                    SHEET_TILE_LINKED_CLASS,
+                  )}
+                >
+                  <ArrowLeftRight className="size-[18px] shrink-0 text-z-brass" />
+                  <span className="text-[13px] leading-tight text-z-brass">Transferencia</span>
+                  <span className="min-w-0 truncate text-[10px] text-z-sage-dark">· toca para deshacer</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleOpenTransferPicker}
+                  disabled={!canLinkTransfer || isLinking}
+                  className={cn(SHEET_TILE_CLASS, SHEET_TILE_ACTION_CLASS, SHEET_TILE_WIDE_CLASS)}
+                >
+                  <ArrowLeftRight className="size-[18px] shrink-0 text-z-brass-hot" />
+                  <span className="text-[13px] leading-tight text-z-sage-light">
+                    Es una transferencia
+                  </span>
+                  <span className="truncate text-[10px] text-z-sage-dark">
+                    · vincula el movimiento espejo
+                  </span>
+                </button>
+              )}
             </div>
 
             <Link
@@ -946,6 +1088,7 @@ export function TransactionQuickActions({
           title="Vincular a deuda personal"
           subtitle={`${description} · ${formatCurrency(tx.amount, tx.currency_code as CurrencyCode)}`}
           candidates={personaCandidates}
+          emptyLabel="No tienes deudas personales activas en esta moneda. Crea una abajo."
           onConfirm={handleConfirmPersonaLink}
           isPending={isLinking}
           onCreateNew={() => {
@@ -957,6 +1100,97 @@ export function TransactionQuickActions({
           createNewIcon={<UserPlus className="size-4 text-z-brass" aria-hidden="true" />}
         />
       )}
+
+      {/* Link-as-transfer picker */}
+      {transferPickerOpen && (
+        <LinkPickerSheet
+          open={transferPickerOpen}
+          onOpenChange={setTransferPickerOpen}
+          title="Es una transferencia"
+          subtitle={`${description} · ${formatCurrency(tx.amount, tx.currency_code as CurrencyCode)}`}
+          candidates={transferCandidates}
+          onConfirm={handleConfirmTransferLink}
+          isPending={isLinking}
+          emptyLabel={
+            transferLoading
+              ? "Buscando el movimiento espejo…"
+              : "No hay un movimiento espejo con el mismo monto en otra cuenta. Crea el otro lado abajo."
+          }
+          onCreateNew={
+            transferLoading
+              ? undefined
+              : () => {
+                  setTransferPickerOpen(false);
+                  setCounterpartPickerOpen(true);
+                }
+          }
+          createNewLabel="Crear el otro lado"
+          createNewSublabel={`Registra el movimiento espejo en la cuenta ${tx.direction === "OUTFLOW" ? "destino" : "origen"}`}
+          createNewIcon={<ArrowLeftRight className="size-4 text-z-brass" aria-hidden="true" />}
+        />
+      )}
+
+      {/* Counterpart account picker — creates the missing mirror leg */}
+      {counterpartPickerOpen && (
+        <LinkPickerSheet
+          open={counterpartPickerOpen}
+          onOpenChange={setCounterpartPickerOpen}
+          title={tx.direction === "OUTFLOW" ? "¿A qué cuenta fue?" : "¿De qué cuenta salió?"}
+          subtitle={`${description} · ${formatCurrency(tx.amount, tx.currency_code as CurrencyCode)}`}
+          candidates={accounts
+            .filter(
+              (a) =>
+                a.is_active &&
+                a.id !== tx.account_id &&
+                (a.currency_code ?? "COP") === (tx.currency_code ?? "COP"),
+            )
+            .map((a) => ({
+              id: a.id,
+              label: a.name,
+              sublabel: `${ACCOUNT_TYPE_LABELS[a.account_type] ?? a.account_type} · Saldo ${formatCurrency(
+                a.current_balance,
+                (a.currency_code ?? "COP") as CurrencyCode,
+              )}`,
+              // The row renders a transaction amount — show the leg about to be
+              // created, not the account's balance.
+              amount: tx.amount,
+              currencyCode: a.currency_code ?? "COP",
+              direction: tx.direction === "OUTFLOW" ? ("INFLOW" as const) : ("OUTFLOW" as const),
+              matchScore: 0,
+            }))}
+          onConfirm={handleCreateCounterpart}
+          isPending={isLinking}
+          emptyLabel="No hay otra cuenta activa en esta moneda."
+          confirmLabel="Crear el otro lado"
+          confirmPendingLabel="Creando…"
+          confirmIcon={<ArrowLeftRight className="mr-2 size-4" />}
+        />
+      )}
+
+      {/* Confirm undo transfer link */}
+      <AlertDialog open={confirmUnlinkTransferOpen} onOpenChange={setConfirmUnlinkTransferOpen}>
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Deshacer la transferencia?</AlertDialogTitle>
+            <AlertDialogDescription>
+              El movimiento vuelve a contar como gasto en tus métricas. Si el otro lado lo
+              creó Zeta, se elimina y su saldo se revierte.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLinking}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isLinking}
+              onClick={(e) => {
+                e.preventDefault();
+                handleUnlinkTransfer();
+              }}
+            >
+              {isLinking ? "Deshaciendo…" : "Deshacer"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Create deuda personal + auto-link */}
       {personaCreateOpen && (

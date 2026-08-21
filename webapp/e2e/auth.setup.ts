@@ -13,7 +13,7 @@ setup("authenticate", async ({ page }) => {
 
   await page.goto("/login");
   await page.getByLabel("Correo electrónico").fill(TEST_EMAIL);
-  await page.getByLabel("Contraseña").fill(TEST_PASSWORD);
+  await page.locator("#password").fill(TEST_PASSWORD);
   await page.getByRole("button", { name: "Iniciar sesión" }).click();
 
   // Wait for redirect to dashboard
