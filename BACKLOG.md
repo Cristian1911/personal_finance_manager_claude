@@ -10,6 +10,15 @@
 
 ---
 
+## Fecha en pago rápido (rama `fix/debt-payment-date`, 2026-08-21) — paridad móvil
+
+El webapp ya deja elegir la fecha al registrar un pago/ingreso (#388). Móvil quedó atrás, con un bug extra encima:
+
+- **(P1, bug real) `registerPayment` de móvil fecha en UTC.** `mobile/lib/repositories/accounts.ts:278` hace `now.slice(0, 10)` sobre un ISO UTC. Después de las ~19:00 COT eso registra el pago **con la fecha de mañana**, en silencio. La regla del repo es `toColombiaDateString()`; esto es más urgente que la paridad de abajo porque escribe datos incorrectos hoy.
+- **(P1, paridad) `registerPayment` de móvil no acepta `date`.** Añadir el parámetro opcional (misma forma que el webapp: validar `YYYY-MM-DD`, propagar a las dos ramas) y un selector de fecha en las dos hojas que lo llaman: `mobile/components/accounts/PaymentActionSheet.tsx` y `mobile/components/plan/PaymentSheet.tsx`. Pasar por `mobile-webapp-parity` + `mobile-sync-doctor` antes de mergear.
+
+---
+
 ## Audit móvil en simulador (rama `fix/mobile-audit-2026-07-28`, 2026-07-28) — follow-ups
 
 Barrido pantalla por pantalla en el simulador iOS con cuenta real. Arreglado y commiteado: rutas inalcanzables (tab Deudas, hub "Más"), header nativo duplicado, tipografía Inter en auth/captura, broadcast de sync a la UI, safe area en modales/focus-mode, tildes en Deudas. Lo que sigue quedó fuera del alcance P0/P1:
