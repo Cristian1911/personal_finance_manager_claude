@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowDownLeft,
+  ArrowLeftRight,
   ArrowUpRight,
   ArrowRight,
   Repeat,
@@ -161,13 +162,25 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
                   isOpen && "border-l-2 border-l-z-brass pl-2",
                 )}
               >
+                {/* A transfer is neither spend nor income — every metric filters
+                    it out, so the row must not paint it red or green. */}
                 <div
                   className={cn(
                     "mt-0.5 flex size-[22px] shrink-0 items-center justify-center rounded-md",
-                    tx.direction === "INFLOW" ? "bg-z-income/12 text-z-income" : "bg-z-expense/12 text-z-expense",
+                    tx.transfer_group_id
+                      ? "bg-white/[0.06] text-z-sage-light"
+                      : tx.direction === "INFLOW"
+                        ? "bg-z-income/12 text-z-income"
+                        : "bg-z-expense/12 text-z-expense",
                   )}
                 >
-                  {tx.direction === "INFLOW" ? <ArrowDownLeft className="size-3" /> : <ArrowUpRight className="size-3" />}
+                  {tx.transfer_group_id ? (
+                    <ArrowLeftRight className="size-3" />
+                  ) : tx.direction === "INFLOW" ? (
+                    <ArrowDownLeft className="size-3" />
+                  ) : (
+                    <ArrowUpRight className="size-3" />
+                  )}
                 </div>
 
                 <div className="min-w-0 flex-1">
@@ -219,10 +232,12 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
                 <span
                   className={cn(
                     "shrink-0 text-xs font-medium tabular-nums",
-                    tx.direction === "INFLOW" && "text-z-income",
+                    tx.transfer_group_id
+                      ? "text-z-sage-light"
+                      : tx.direction === "INFLOW" && "text-z-income",
                   )}
                 >
-                  {tx.direction === "INFLOW" ? "+" : "-"}
+                  {!tx.transfer_group_id && (tx.direction === "INFLOW" ? "+" : "-")}
                   {formatCurrency(tx.amount, tx.currency_code)}
                 </span>
               </button>

@@ -85,7 +85,9 @@ async function getTendenciasDatasetCached(
     .from("accounts")
     .select("id, account_type, current_balance, currency_code")
     .eq("user_id", userId)
-    .eq("is_active", true)
+    // No `is_active` filter: this scopes a HISTORY query. An archived account
+    // (a loan archived once it was paid off) still owns the movements it had
+    // while it was open — see getDemoAccountIds.
     .eq("is_demo", isDemo);
   if (accountsErr) throw accountsErr;
   if (!accountRows?.length) return { ...EMPTY, months, horizonMonths };

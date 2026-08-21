@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useMemo, useState, useTransition } from "react";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/utils/date";
+import { groupTransferPairs, type TransferFeedItem } from "@/lib/utils/transfer-pairs";
 import { SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
 import { useExpandableZone } from "@/components/mobile/v2/use-expandable-zone";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
@@ -20,11 +21,16 @@ import type {
   Account,
   Tag,
   CurrencyCode,
+  TransferLegSummary,
 } from "@/types/domain";
 import { isDebtAccountType } from "@zeta/shared";
 
 interface MovimientosRootProps {
   transactions: TransactionWithAccount[];
+  /** Counterpart legs for transfers split across pages — never rendered as rows.
+   *  ponytail: only covers the server's first page; rows appended by "Cargar más"
+   *  fall back to the single-leg treatment. */
+  transferLegs?: TransferLegSummary[];
   categories: CategoryWithChildren[];
   accounts: Account[];
   tags: Tag[];
@@ -45,6 +51,7 @@ interface MovimientosRootProps {
 
 export function MovimientosRoot({
   transactions: initialTransactions,
+  transferLegs = [],
   categories,
   accounts,
   tags,
@@ -144,20 +151,23 @@ export function MovimientosRoot({
     return map;
   }, [transactions]);
 
-  /** Group transactions by date, sorted descending */
+  /** Feed items (transfers already collapsed) grouped by date, sorted descending.
+   *  Pairing runs ONCE over the whole slice, not per day: a transfer's legs can
+   *  be days apart, and pairing inside each day group would emit the same pair
+   *  under both date headers. The pair is filed under its on-page leg's date. */
   const groupedByDate = useMemo(() => {
-    const groups = new Map<string, TransactionWithAccount[]>();
-    for (const tx of transactions) {
-      const date = tx.transaction_date;
+    const groups = new Map<string, TransferFeedItem<TransactionWithAccount, TransferLegSummary>[]>();
+    for (const item of groupTransferPairs(transactions, transferLegs)) {
+      const date = item.tx.transaction_date;
       const existing = groups.get(date);
       if (existing) {
-        existing.push(tx);
+        existing.push(item);
       } else {
-        groups.set(date, [tx]);
+        groups.set(date, [item]);
       }
     }
     return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a));
-  }, [transactions]);
+  }, [transactions, transferLegs]);
 
   return (
     <div className="space-y-3">
@@ -213,7 +223,7 @@ export function MovimientosRoot({
         </div>
       ) : (
         <div className="space-y-4">
-          {groupedByDate.map(([date, txs]) => (
+          {groupedByDate.map(([date, items]) => (
             <div key={date}>
               <div className="mb-2.5 flex items-center gap-3 px-0.5">
                 <p className={cn("shrink-0", SECTION_EYEBROW_CLASS)}>
@@ -222,8 +232,15 @@ export function MovimientosRoot({
                 <div className="h-px flex-1 bg-white/6" />
               </div>
               <div className="space-y-2">
-                {txs.map((tx) => (
-                  <MovimientosTransactionRow key={tx.id} transaction={tx} categories={categories} tags={tagsByTxId.get(tx.id)} linkableAccountIds={linkableAccountIds} />
+                {items.map((item) => (
+                  <MovimientosTransactionRow
+                    key={item.tx.id}
+                    transaction={item.tx}
+                    counterpart={item.kind === "pair" ? item.counterpart : undefined}
+                    categories={categories}
+                    tags={tagsByTxId.get(item.tx.id)}
+                    linkableAccountIds={linkableAccountIds}
+                  />
                 ))}
               </div>
             </div>

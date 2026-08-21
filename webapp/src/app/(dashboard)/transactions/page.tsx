@@ -2,7 +2,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import Link from "next/link";
 import { ArrowRight, Brain } from "lucide-react";
-import { getTransactions, getMonthlyAggregates } from "@/actions/transactions";
+import { getTransactions, getTransferLegs, getMonthlyAggregates } from "@/actions/transactions";
 import { getUncategorizedTransactions } from "@/actions/categorize";
 import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
@@ -124,11 +124,30 @@ export default async function TransactionsPage({
     ? `Estás viendo ${transactionsResult.count} movimientos filtrados ${scopeLabel}. Úsalos para limpiar ruido y corregir criterio antes de que afecten presupuesto y plan.`
     : `${monthLabel} en una sola vista: ingresos, gastos y excepciones para leer rápido qué pasó antes de bajar al detalle.`;
 
+  // Legs of a transfer whose partner missed this page (untimed rows sort last
+  // within a day, so a page boundary routinely splits a pair; the counterpart
+  // also lives in an archived account sometimes). Feed-only data: these never
+  // render as rows, they just let a row show "origen → destino".
+  //
+  // Only groups the page holds HALF of are worth a query — when both legs are
+  // already here the feed pairs them on its own. In the common case that leaves
+  // an empty list and `getTransferLegs` returns without a round-trip at all.
+  const legsPerGroup = new Map<string, number>();
+  for (const tx of transactionsResult.data) {
+    if (!tx.transfer_group_id) continue;
+    legsPerGroup.set(tx.transfer_group_id, (legsPerGroup.get(tx.transfer_group_id) ?? 0) + 1);
+  }
+  const incompleteGroupIds = [...legsPerGroup.entries()]
+    .filter(([, count]) => count === 1)
+    .map(([groupId]) => groupId);
+  const transferLegs = await getTransferLegs(incompleteGroupIds);
+
   return (
     <div className={PAGE_STACK_CLASS}>
       <div className={cn(MOBILE_TAB_BAR_CLEARANCE_CLASS, "lg:hidden lg:pb-0")}>
         <MovimientosRoot
           transactions={transactionsResult.data}
+          transferLegs={transferLegs}
           page={transactionsResult.page}
           totalPages={transactionsResult.totalPages}
           filterParams={params}
@@ -256,7 +275,7 @@ export default async function TransactionsPage({
 
         <PendingEmailTransactions transactions={pendingTransactions} accounts={accounts} />
 
-        <TransactionTable transactions={transactionsResult.data} categories={categories} />
+        <TransactionTable transactions={transactionsResult.data} transferLegs={transferLegs} categories={categories} />
 
         <Suspense>
           <Pagination

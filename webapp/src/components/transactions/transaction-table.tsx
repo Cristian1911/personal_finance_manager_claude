@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -20,33 +20,28 @@ import {
 } from "@/components/ui/tooltip";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { cn } from "@/lib/utils";
+import { groupTransferPairs } from "@/lib/utils/transfer-pairs";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDateTime } from "@/lib/utils/date";
 import { toggleExcludeTransaction } from "@/actions/transactions";
 import { categorizeTransaction, uncategorizeTransaction, assignDestinatario } from "@/actions/categorize";
 import { DestinatarioCreateDialog } from "@/components/destinatarios/destinatario-create-form";
 import { toast } from "sonner";
-import type { TransactionWithAccount, Category, CategoryWithChildren, CurrencyCode } from "@/types/domain";
+import type { TransactionWithAccount, CategoryWithChildren, CurrencyCode , TransferLegSummary } from "@/types/domain";
 import Link from "next/link";
-import { ArrowDownLeft, ArrowUpRight, Eye, EyeOff, FileUp, Inbox, Plus, UserPlus } from "lucide-react";
-import { flattenCategories } from "@/lib/utils/categories";
+import { ArrowDownLeft, ArrowLeftRight, ArrowRight, ArrowUpRight, Eye, EyeOff, FileUp, Inbox, Plus, UserPlus } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 
 export function TransactionTable({
   transactions,
+  transferLegs = [],
   categories,
 }: {
   transactions: TransactionWithAccount[];
+  /** Counterpart legs for transfers split across pages — never rendered as rows. */
+  transferLegs?: TransferLegSummary[];
   categories: CategoryWithChildren[];
 }) {
-  const categoryMap = useMemo(() => {
-    const flat = flattenCategories(categories);
-    const map = new Map<string, Category>();
-    for (const cat of flat) {
-      map.set(cat.id, cat);
-    }
-    return map;
-  }, [categories]);
 
   if (transactions.length === 0) {
     return (
@@ -62,13 +57,6 @@ export function TransactionTable({
 
   return (
     <>
-      {/* Mobile: card layout */}
-      <div className="sm:hidden space-y-2">
-        {transactions.map((tx) => (
-          <MobileTransactionCard key={tx.id} tx={tx} categoryMap={categoryMap} categories={categories} />
-        ))}
-      </div>
-
       {/* Desktop: table layout */}
       <div className="hidden sm:block rounded-lg border">
         <Table>
@@ -85,8 +73,15 @@ export function TransactionTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {transactions.map((tx) => (
-              <TransactionRow key={tx.id} tx={tx} categories={categories} />
+            {/* A transfer's two legs collapse into one origin → destination row
+                when both are on this page; otherwise each renders on its own. */}
+            {groupTransferPairs(transactions, transferLegs).map((item) => (
+              <TransactionRow
+                key={item.tx.id}
+                tx={item.tx}
+                counterpart={item.kind === "pair" ? item.counterpart : undefined}
+                categories={categories}
+              />
             ))}
           </TableBody>
         </Table>
@@ -158,86 +153,58 @@ function CreateDestinatarioAction({
   );
 }
 
-function MobileTransactionCard({
-  tx,
-  categoryMap,
-  categories,
-}: {
-  tx: TransactionWithAccount;
-  categoryMap: Map<string, Category>;
-  categories: CategoryWithChildren[];
-}) {
-  const description =
-    tx.merchant_name ||
-    tx.clean_description ||
-    tx.raw_description ||
-    "Sin descripción";
-  const category = tx.category_id ? categoryMap.get(tx.category_id) : null;
-
-  return (
-    <div
-      className={cn("flex items-center gap-3 rounded-lg border p-3", tx.is_excluded && "opacity-40")}
-    >
-      <Link
-        href={`/transactions/${tx.id}`}
-        className="flex min-w-0 flex-1 items-center gap-3"
-      >
-        <div className="shrink-0">
-          {tx.direction === "INFLOW" ? (
-            <ArrowDownLeft className="h-4 w-4 text-green-500" />
-          ) : (
-            <ArrowUpRight className="h-4 w-4 text-orange-500" />
-          )}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">{description}</p>
-          <p className="text-xs text-muted-foreground">
-            <span
-              className="inline-block h-1.5 w-1.5 rounded-full align-middle mr-1"
-              style={{ backgroundColor: tx.account.color ?? undefined }}
-            />
-            <span>{tx.account.name}</span>
-            {category && (
-              <>
-                {" · "}
-                <span
-                  className="inline-block h-1.5 w-1.5 rounded-full align-middle mr-1"
-                  style={{ backgroundColor: category.color }}
-                />
-                <span>{category.name_es ?? category.name}</span>
-              </>
-            )}
-            {" · "}
-            {formatDateTime(tx.transaction_date, tx.transaction_time)}
-            {tx.status !== "POSTED" && (
-              <span>
-                {" · "}
-                {tx.status === "PENDING" ? "Pendiente" : "Cancelada"}
-              </span>
-            )}
-            {tx.is_excluded && <span> · Excluida</span>}
-          </p>
-        </div>
-      </Link>
-      <span
-        className={cn("text-sm font-semibold shrink-0", tx.direction === "INFLOW" && "text-green-600", tx.is_excluded && "line-through")}
-      >
-        {tx.direction === "INFLOW" ? "+" : "-"}
-        {formatCurrency(tx.amount, tx.currency_code)}
-      </span>
-      <CreateDestinatarioAction tx={tx} categories={categories} className="shrink-0" />
-    </div>
-  );
+/** A transfer is neither spend nor income — every metric filters it out. The
+ *  feed says so: no +/−, no income/expense colour, and the flow between the two
+ *  accounts as the title. With only one leg on the page it states the half it
+ *  can prove instead of inventing the other account. */
+function transferPresentation(
+  tx: TransactionWithAccount,
+  counterpart?: TransactionWithAccount | TransferLegSummary,
+): {
+  title: string;
+  subtitle: string;
+  origin: { name: string; color: string | null } | null;
+  destination: { name: string; color: string | null } | null;
+} | null {
+  if (!tx.transfer_group_id) return null;
+  const origin = counterpart ? (tx.direction === "OUTFLOW" ? tx : counterpart).account : null;
+  const destination = counterpart ? (tx.direction === "OUTFLOW" ? counterpart : tx).account : null;
+  if (origin && destination) {
+    // The OUTFLOW leg carries the movement's real name ("Pago NU tarjeta"); the
+    // INFLOW side is usually just the source account repeated. Fall back to the
+    // flow when neither leg was ever named.
+    const outflowLeg =
+      tx.direction === "OUTFLOW" ? tx : counterpart!.direction === "OUTFLOW" ? counterpart! : null;
+    return {
+      title:
+        outflowLeg?.merchant_name ||
+        outflowLeg?.clean_description ||
+        `${origin.name} → ${destination.name}`,
+      subtitle: `Transferencia · ${origin.name} → ${destination.name}`,
+      origin,
+      destination,
+    };
+  }
+  return {
+    title:
+      tx.direction === "OUTFLOW" ? `Salió de ${tx.account.name}` : `Entró a ${tx.account.name}`,
+    subtitle: "Transferencia · el otro lado no está en esta vista",
+    origin: tx.direction === "OUTFLOW" ? tx.account : null,
+    destination: tx.direction === "OUTFLOW" ? null : tx.account,
+  };
 }
 
 function TransactionRow({
   tx,
+  counterpart,
   categories,
 }: {
   tx: TransactionWithAccount;
+  counterpart?: TransactionWithAccount | TransferLegSummary;
   categories: CategoryWithChildren[];
 }) {
   const [isPending, startTransition] = useTransition();
+  const transfer = transferPresentation(tx, counterpart);
 
   function handleToggleExclude() {
     startTransition(async () => {
@@ -250,7 +217,9 @@ function TransactionRow({
       className={`cursor-pointer ${tx.is_excluded ? "opacity-40" : ""}`}
     >
       <TableCell>
-        {tx.direction === "INFLOW" ? (
+        {transfer ? (
+          <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
+        ) : tx.direction === "INFLOW" ? (
           <ArrowDownLeft className="h-4 w-4 text-green-500" />
         ) : (
           <ArrowUpRight className="h-4 w-4 text-orange-500" />
@@ -262,24 +231,58 @@ function TransactionRow({
           className="hover:underline"
         >
           <p className="font-medium text-sm">
-            {tx.merchant_name ||
-              tx.clean_description ||
-              tx.raw_description ||
-              "Sin descripción"}
+            {transfer?.title ??
+              (tx.merchant_name ||
+                tx.clean_description ||
+                tx.raw_description ||
+                "Sin descripción")}
           </p>
         </Link>
       </TableCell>
       <TableCell>
-        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+        {counterpart ? (
+          // The merged row's title already names both accounts; repeating them
+          // here would be noise, so the cell carries the pair's dot pair only.
           <span
-            className="inline-block h-2 w-2 rounded-full shrink-0"
-            style={{ backgroundColor: tx.account.color ?? undefined }}
-          />
-          <span className="truncate max-w-[120px]">{tx.account.name}</span>
-        </span>
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground"
+            title={`${transfer?.origin?.name} → ${transfer?.destination?.name}`}
+          >
+            {/* Origin first, always — the anchor row can be either leg, so ordering
+                by `tx` would draw the arrow backwards half the time. Colour alone
+                can't carry this either, hence the sr-only names. */}
+            <span className="sr-only">
+              De {transfer?.origin?.name} a {transfer?.destination?.name}
+            </span>
+            <span
+              aria-hidden="true"
+              className="inline-block h-2 w-2 rounded-full shrink-0"
+              style={{ backgroundColor: transfer?.origin?.color ?? undefined }}
+            />
+            <ArrowRight aria-hidden="true" className="size-3 shrink-0" />
+            <span
+              aria-hidden="true"
+              className="inline-block h-2 w-2 rounded-full shrink-0"
+              style={{ backgroundColor: transfer?.destination?.color ?? undefined }}
+            />
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span
+              className="inline-block h-2 w-2 rounded-full shrink-0"
+              style={{ backgroundColor: tx.account.color ?? undefined }}
+            />
+            <span className="truncate max-w-[120px]">{tx.account.name}</span>
+          </span>
+        )}
       </TableCell>
       <TableCell>
-        <InlineCategoryEdit tx={tx} categories={categories} />
+        {transfer ? (
+          <span className="text-xs text-muted-foreground" title={transfer.subtitle}>
+            Transferencia{counterpart ? "" : " · solo un lado"}
+          </span>
+        ) : (
+          <InlineCategoryEdit tx={tx} categories={categories} />
+        )}
       </TableCell>
       <TableCell className="text-sm text-muted-foreground">
         {formatDateTime(tx.transaction_date, tx.transaction_time)}
@@ -305,15 +308,21 @@ function TransactionRow({
       </TableCell>
       <TableCell className="text-right">
         <span
-          className={`font-medium ${tx.direction === "INFLOW" ? "text-green-600" : ""} ${tx.is_excluded ? "line-through" : ""}`}
+          className={cn(
+            "font-medium tabular-nums",
+            transfer
+              ? "text-muted-foreground"
+              : tx.direction === "INFLOW" && "text-green-600",
+            tx.is_excluded && "line-through",
+          )}
         >
-          {tx.direction === "INFLOW" ? "+" : "-"}
+          {!transfer && (tx.direction === "INFLOW" ? "+" : "-")}
           {formatCurrency(tx.amount, tx.currency_code)}
         </span>
       </TableCell>
       <TableCell>
         <div className="flex items-center justify-end gap-0.5">
-          <CreateDestinatarioAction tx={tx} categories={categories} />
+          {!transfer && <CreateDestinatarioAction tx={tx} categories={categories} />}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>

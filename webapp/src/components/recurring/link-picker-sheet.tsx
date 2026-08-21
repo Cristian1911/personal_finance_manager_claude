@@ -41,6 +41,12 @@ interface LinkPickerSheetProps {
   showAllLabel?: string;
   onShowAll?: () => void;
   isLoadingAll?: boolean;
+  /** Copy for the no-candidates state (defaults to the recurrente case). */
+  emptyLabel?: string;
+  /** Footer CTA copy — the action isn't always "link" (it can create). */
+  confirmLabel?: string;
+  confirmPendingLabel?: string;
+  confirmIcon?: ReactNode;
   /** Secondary action: offer to create a brand-new template from this tx. */
   onCreateNew?: () => void;
   /** Copy + icon for the create-new affordance (defaults to the recurrente case). */
@@ -60,6 +66,10 @@ export function LinkPickerSheet({
   showAllLabel,
   onShowAll,
   isLoadingAll,
+  emptyLabel = "Ninguna recurrente pendiente encaja con este movimiento. Puedes crear una abajo.",
+  confirmLabel = "Vincular",
+  confirmPendingLabel = "Vinculando...",
+  confirmIcon,
   onCreateNew,
   createNewLabel = "Crear nueva recurrente",
   createNewSublabel = "Promueve esta transacción a una plantilla mensual",
@@ -82,8 +92,11 @@ export function LinkPickerSheet({
       )
     : candidates;
 
-  const bestMatch = filtered.length > 0 ? filtered[0] : null;
-  const rest = filtered.slice(1);
+  // A zero score means the list isn't ranked (account pickers, persona pickers):
+  // promoting the first row to "Mejor coincidencia" would invent a match.
+  const hasRanking = filtered.length > 0 && filtered[0].matchScore > 0;
+  const bestMatch = hasRanking ? filtered[0] : null;
+  const rest = hasRanking ? filtered.slice(1) : filtered;
 
   return (
     <Drawer open={open} onOpenChange={handleOpenChange}>
@@ -109,7 +122,7 @@ export function LinkPickerSheet({
             <p className="py-8 text-center text-sm text-muted-foreground">
               {search
                 ? `Nada coincide con «${search}»`
-                : "Ninguna recurrente pendiente encaja con este movimiento. Puedes crear una abajo."}
+                : emptyLabel}
             </p>
           )}
 
@@ -191,8 +204,8 @@ export function LinkPickerSheet({
             disabled={!selectedId || isPending}
             className={cn(BRASS_BUTTON_CLASS, "w-full")}
           >
-            <Link2 className="mr-2 size-4" />
-            {isPending ? "Vinculando..." : "Vincular"}
+            {confirmIcon ?? <Link2 className="mr-2 size-4" />}
+            {isPending ? confirmPendingLabel : confirmLabel}
           </Button>
         </DrawerFooter>
       </DrawerContent>

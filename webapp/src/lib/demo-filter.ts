@@ -43,19 +43,30 @@ export async function getIsDemoFilter(userId: string): Promise<boolean> {
  * (same set as `isDebtAccountType` in @zeta/shared). Used by cash-pace
  * metrics (hero/ritmo, "gasto de hoy") where a credit-card purchase must
  * not count against the liquid-balance budget.
+ *
+ * `activeOnly` restricts to accounts still open for new movements. It is OFF by
+ * default on purpose: `is_active` answers "can I still register something here?",
+ * not "did this ever happen?". Every consumer of this helper reads HISTORY —
+ * spend per day, cashflow, month totals, the Movimientos feed — and a loan that
+ * was archived the day it was paid off must keep the payments it received all
+ * year. Filtering them out silently deleted that history from every metric.
+ * Reach for `activeOnly` only where the question is about the present: pickers,
+ * new-transaction forms, the active-debt list.
  */
 export async function getDemoAccountIds(
   supabase: SupabaseClient<Database>,
   userId: string,
   isDemo: boolean,
-  opts?: { liquidOnly?: boolean }
+  opts?: { liquidOnly?: boolean; activeOnly?: boolean }
 ): Promise<string[] | null> {
   let query = supabase
     .from("accounts")
     .select("id")
     .eq("user_id", userId)
-    .eq("is_active", true)
     .eq("is_demo", isDemo);
+  if (opts?.activeOnly) {
+    query = query.eq("is_active", true);
+  }
   if (opts?.liquidOnly) {
     query = query.not("account_type", "in", "(CREDIT_CARD,LOAN)");
   }

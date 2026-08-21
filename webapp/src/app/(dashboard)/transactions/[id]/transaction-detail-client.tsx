@@ -21,6 +21,7 @@ import {
   Trash2,
   UserRound,
   X,
+  ArrowLeftRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -39,7 +40,14 @@ import { CategoryIcon } from "@/components/categories/category-icon";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { DestinatarioZonePicker } from "@/components/destinatarios/destinatario-zone-picker";
 import { TagZonePicker } from "@/components/tags/tag-zone-picker";
-import { LinkPickerSheet } from "@/components/recurring/link-picker-sheet";
+import { LinkPickerSheet, type LinkCandidate } from "@/components/recurring/link-picker-sheet";
+import {
+  createTransferCounterpart,
+  getTransferCandidates,
+  linkTransactionsAsTransfer,
+  unlinkTransfer,
+} from "@/actions/transfers";
+import { ACCOUNT_TYPE_LABELS } from "@/lib/constants/account-types";
 import { PromoteToRecurringButton } from "@/components/transactions/promote-to-recurring-button";
 import { TransactionFormDialog } from "@/components/transactions/transaction-form-dialog";
 import { Button } from "@/components/ui/button";
@@ -430,6 +438,81 @@ export function TransactionDetailClient({
   const [isLinkingPending, startLinkTransition] = useTransition();
   const vincularEligible =
     !isLinkedToOccurrence && linkableAccountIds.includes(tx.account_id);
+
+  /* ─── Link the mirror leg as a transfer ──────────────────────────── */
+  const [transferPickerOpen, setTransferPickerOpen] = useState(false);
+  const [transferCandidates, setTransferCandidates] = useState<LinkCandidate[]>([]);
+  const [confirmUnlinkTransferOpen, setConfirmUnlinkTransferOpen] = useState(false);
+  const [counterpartPickerOpen, setCounterpartPickerOpen] = useState(false);
+  const [transferLoading, setTransferLoading] = useState(false);
+  const canLinkTransfer =
+    !tx.transfer_group_id && !tx.personal_debt_id && !tx.split_group_id;
+
+  function handleOpenTransferPicker() {
+    setTransferPickerOpen(true);
+    setTransferCandidates([]);
+    // The sheet opens before the fetch resolves; without this flag its empty
+    // state offers "Crear el otro lado" while a real mirror may still be
+    // loading — one fast tap would create a duplicate leg.
+    setTransferLoading(true);
+    getTransferCandidates(tx.id)
+      .then((result) => {
+        if (!result.success) {
+          toast.error(result.error ?? "Error al buscar el otro movimiento");
+          setTransferPickerOpen(false);
+          return;
+        }
+        setTransferCandidates(result.data);
+      })
+      .catch(() => {
+        toast.error("Error de red al buscar el otro movimiento");
+        setTransferPickerOpen(false);
+      })
+      .finally(() => setTransferLoading(false));
+  }
+
+  function handleConfirmTransferLink(counterpartId: string) {
+    setTransferPickerOpen(false);
+    startLinkTransition(async () => {
+      const result = await linkTransactionsAsTransfer(tx.id, counterpartId);
+      if (result.success) {
+        toast.success("Marcados como transferencia · ya no cuentan como gasto");
+        router.refresh();
+      } else {
+        toast.error(result.error ?? "No se pudo vincular");
+      }
+    });
+  }
+
+  function handleCreateCounterpart(accountId: string) {
+    setCounterpartPickerOpen(false);
+    startLinkTransition(async () => {
+      const result = await createTransferCounterpart(tx.id, accountId);
+      if (result.success) {
+        toast.success("Transferencia creada · se registró el movimiento espejo");
+        router.refresh();
+      } else {
+        toast.error(result.error ?? "No se pudo crear el otro lado");
+      }
+    });
+  }
+
+  function handleUnlinkTransfer() {
+    startLinkTransition(async () => {
+      const result = await unlinkTransfer(tx.id);
+      if (result.success) {
+        setConfirmUnlinkTransferOpen(false);
+        toast.success(
+          result.data.deletedLegs > 0
+            ? "Transferencia deshecha · se eliminó el movimiento espejo"
+            : "Transferencia deshecha · vuelven a contar",
+        );
+        router.refresh();
+      } else {
+        toast.error(result.error ?? "No se pudo desvincular");
+      }
+    });
+  }
 
   async function handleOpenLinkPicker() {
     setLinking(true);
@@ -847,6 +930,30 @@ export function TransactionDetailClient({
             {optExcluded ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
             {optExcluded ? "Incluir en métricas" : "Excluir de métricas"}
           </button>
+          {tx.transfer_group_id ? (
+            <button
+              type="button"
+              onClick={() => setConfirmUnlinkTransferOpen(true)}
+              disabled={isLinkingPending}
+              className={cn(
+                DETAIL_ACTION_CHIP_CLASS,
+                "w-full border-z-brass/20 bg-z-brass/8 text-z-brass",
+              )}
+            >
+              <ArrowLeftRight className="size-3.5" />
+              Transferencia · deshacer
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleOpenTransferPicker}
+              disabled={!canLinkTransfer || isLinkingPending}
+              className={cn(DETAIL_ACTION_CHIP_CLASS, "w-full")}
+            >
+              <ArrowLeftRight className="size-3.5" />
+              Es una transferencia
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setDeleteConfirmOpen(true)}
@@ -1161,6 +1268,104 @@ export function TransactionDetailClient({
           isPending={isLinkingPending}
         />
       )}
+
+      {/* ── Link-as-transfer picker ─────────────────────────────────── */}
+      {transferPickerOpen && (
+        <LinkPickerSheet
+          open={transferPickerOpen}
+          onOpenChange={setTransferPickerOpen}
+          title="Es una transferencia"
+          subtitle={`${title} · ${formatCurrency(tx.amount, tx.currency_code as CurrencyCode)}`}
+          candidates={transferCandidates}
+          onConfirm={handleConfirmTransferLink}
+          isPending={isLinkingPending}
+          emptyLabel={
+            transferLoading
+              ? "Buscando el movimiento espejo…"
+              : "No hay un movimiento espejo con el mismo monto en otra cuenta. Crea el otro lado abajo."
+          }
+          onCreateNew={
+            transferLoading
+              ? undefined
+              : () => {
+                  setTransferPickerOpen(false);
+                  setCounterpartPickerOpen(true);
+                }
+          }
+          createNewLabel="Crear el otro lado"
+          createNewSublabel={`Registra el movimiento espejo en la cuenta ${tx.direction === "OUTFLOW" ? "destino" : "origen"}`}
+          createNewIcon={<ArrowLeftRight className="size-4 text-z-brass" aria-hidden="true" />}
+        />
+      )}
+
+      {/* ── Counterpart account picker — creates the missing mirror leg ── */}
+      {counterpartPickerOpen && (
+        <LinkPickerSheet
+          open={counterpartPickerOpen}
+          onOpenChange={setCounterpartPickerOpen}
+          title={tx.direction === "OUTFLOW" ? "¿A qué cuenta fue?" : "¿De qué cuenta salió?"}
+          subtitle={`${title} · ${formatCurrency(tx.amount, tx.currency_code as CurrencyCode)}`}
+          candidates={accounts
+            .filter(
+              (a) =>
+                a.is_active &&
+                a.id !== tx.account_id &&
+                (a.currency_code ?? "COP") === (tx.currency_code ?? "COP"),
+            )
+            .map((a) => ({
+              id: a.id,
+              label: a.name,
+              sublabel: `${ACCOUNT_TYPE_LABELS[a.account_type] ?? a.account_type} · Saldo ${formatCurrency(
+                a.current_balance,
+                (a.currency_code ?? "COP") as CurrencyCode,
+              )}`,
+              // The row renders a transaction amount — show the leg about to be
+              // created, not the account's balance.
+              amount: tx.amount,
+              currencyCode: a.currency_code ?? "COP",
+              direction: tx.direction === "OUTFLOW" ? ("INFLOW" as const) : ("OUTFLOW" as const),
+              matchScore: 0,
+            }))}
+          onConfirm={handleCreateCounterpart}
+          isPending={isLinkingPending}
+          emptyLabel="No hay otra cuenta activa en esta moneda."
+          confirmLabel="Crear el otro lado"
+          confirmPendingLabel="Creando…"
+          confirmIcon={<ArrowLeftRight className="mr-2 size-4" />}
+        />
+      )}
+
+      {/* ── Undo transfer link confirm ──────────────────────────────── */}
+      <Dialog open={confirmUnlinkTransferOpen} onOpenChange={setConfirmUnlinkTransferOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>¿Deshacer la transferencia?</DialogTitle>
+            <DialogDescription>
+              El movimiento vuelve a contar como gasto en tus métricas. Si el otro lado lo
+              creó Zeta, se elimina y su saldo se revierte.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              className={GHOST_BUTTON_CLASS}
+              disabled={isLinkingPending}
+              onClick={() => setConfirmUnlinkTransferOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              className={cn(BRASS_BUTTON_CLASS, "font-semibold")}
+              disabled={isLinkingPending}
+              onClick={handleUnlinkTransfer}
+            >
+              {isLinkingPending ? "Deshaciendo…" : "Deshacer"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Replace-title confirm (locked title + differing destinatario) ── */}
       <Dialog
