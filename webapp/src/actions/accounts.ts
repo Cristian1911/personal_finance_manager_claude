@@ -594,12 +594,18 @@ export async function reconcileBalance(
 
 // ─── Quick Payment ───────────────────────────────────────────────────────────
 
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 export async function registerPayment(
   accountId: string,
-  input: { amount: number; sourceAccountId?: string; notes?: string }
+  input: { amount: number; sourceAccountId?: string; notes?: string; date?: string }
 ): Promise<ActionResult<null>> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
+
+  if (input.date && !ISO_DATE_RE.test(input.date)) {
+    return { success: false, error: "Fecha inválida" };
+  }
 
   // Get target account details
   const { data: account, error: accountError } = await supabase
@@ -614,8 +620,10 @@ export async function registerPayment(
   const isDebt = isDebtAccountType(account.account_type);
   const now = new Date().toISOString();
   // Colombia is UTC-5: slicing the ISO string books anything after ~19:00 COT
-  // on tomorrow's date.
-  const transactionDate = toColombiaDateString(new Date());
+  // on tomorrow's date. `input.date` lets the user back-date a payment they
+  // made earlier — without it they had to save, then hand-edit both transfer
+  // legs on /transactions.
+  const transactionDate = input.date ?? toColombiaDateString(new Date());
 
   // Paying from one of your own accounts moves money between two accounts —
   // that is a transfer. Delegating to createTransfer gives it both legs (this
