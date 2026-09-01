@@ -1,19 +1,16 @@
 "use client";
 
 import { useCallback, useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowDownLeft,
   ArrowUpRight,
+  ArrowRight,
   Check,
   X,
   Loader2,
   Mail,
-  CreditCard,
-  Wallet,
-  QrCode,
-  Building,
-  Banknote,
   AlertTriangle,
   CheckCheck,
 } from "lucide-react";
@@ -34,35 +31,13 @@ import {
   dismissEmailTransaction,
   type ReconciliationCandidatePreview,
 } from "@/actions/email-ingest";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { EmailReconcileDialog } from "@/components/import/email-reconcile-dialog";
+import { getEmailPatternLabel } from "@/lib/email-ingest/pattern-labels";
 import { formatDate } from "@/lib/utils/date";
 import { formatCurrency } from "@/lib/utils/currency";
 import type { ParsedEmailTransaction } from "@/lib/parsers/bancolombia-email";
 import { resolveSuggestedEmailAccountId } from "@/lib/email-ingest/account-matching";
 import type { Account, PendingEmailTransaction } from "@/types/domain";
-
-const PATTERN_LABELS: Record<string, { label: string; icon: typeof Mail }> = {
-  retiro: { label: "Retiro ATM", icon: Banknote },
-  compra_debito: { label: "Compra débito", icon: CreditCard },
-  compra_credito: { label: "Compra crédito", icon: CreditCard },
-  transferencia: { label: "Transferencia", icon: ArrowUpRight },
-  boton_bancolombia: { label: "Botón Bancolombia", icon: Building },
-  qr_transferencia: { label: "Transferencia QR", icon: QrCode },
-  qr_pago: { label: "Pago QR", icon: QrCode },
-  pago_pse: { label: "Pago PSE", icon: Building },
-  bre_b: { label: "Bre-B", icon: Wallet },
-  nomina: { label: "Nómina", icon: Banknote },
-  avance: { label: "Avance", icon: CreditCard },
-  transferencia_recibida: { label: "Transferencia recibida", icon: ArrowDownLeft },
-  pago_recibido_cuenta: { label: "Pago recibido", icon: ArrowDownLeft },
-};
 
 interface PendingEmailTransactionsProps {
   transactions: PendingEmailTransaction[];
@@ -207,7 +182,7 @@ export function PendingEmailTransactions({
     });
   }
 
-  function handleReconcile() {
+  function handleReconChoice(reconcile: boolean) {
     if (!reconMatch) return;
     const { pendingId, candidate } = reconMatch;
     const override = accountOverrides[pendingId] ?? clientMatches[pendingId];
@@ -215,38 +190,16 @@ export function PendingEmailTransactions({
     setReconLoading(true);
     startTransition(async () => {
       try {
-        const result = await approveEmailTransaction(pendingId, override, candidate.id);
+        const result = await approveEmailTransaction(
+          pendingId,
+          override,
+          reconcile ? candidate.id : undefined,
+        );
         setReconLoading(false);
         if (result.success) {
           clearPending(pendingId);
           router.refresh();
-          toast.success("Transacción reconciliada");
-        } else {
-          toast.error(result.error);
-        }
-      } catch {
-        setReconLoading(false);
-        clearPending(pendingId);
-        router.refresh();
-        toast.success("Transacción reconciliada");
-      }
-    });
-  }
-
-  function handleImportAsNew() {
-    if (!reconMatch) return;
-    const { pendingId } = reconMatch;
-    const override = accountOverrides[pendingId] ?? clientMatches[pendingId];
-    setReconMatch(null);
-    setReconLoading(true);
-    startTransition(async () => {
-      try {
-        const result = await approveEmailTransaction(pendingId, override);
-        setReconLoading(false);
-        if (result.success) {
-          clearPending(pendingId);
-          router.refresh();
-          toast.success("Transacción importada");
+          toast.success(reconcile ? "Transacción reconciliada" : "Transacción importada");
         } else {
           toast.error(result.error);
         }
@@ -346,6 +299,13 @@ export function PendingEmailTransactions({
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              href="/import/correo"
+              className="inline-flex h-7 items-center gap-1 text-xs font-semibold text-z-brass hover:underline"
+            >
+              Abrir bandeja
+              <ArrowRight className="size-3.5" />
+            </Link>
             <Button
               size="sm"
               variant="ghost"
@@ -383,8 +343,8 @@ export function PendingEmailTransactions({
               parsed.merchant ?? parsed.destination ?? "Transacción";
             const isInflow = parsed.direction === "INFLOW";
             const isLoading = loadingId === tx.id;
-            const pattern = PATTERN_LABELS[parsed.pattern_type];
-            const PatternIcon = pattern?.icon ?? Mail;
+            const pattern = getEmailPatternLabel(parsed.pattern_type);
+            const PatternIcon = pattern.icon;
             const account = resolveAccount(tx);
             const hasAccount = !!account;
 
@@ -445,8 +405,19 @@ export function PendingEmailTransactions({
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1.5 rounded-full border border-white/6 bg-white/3 px-2.5 py-1 text-xs text-muted-foreground">
                       <PatternIcon className="size-3" />
-                      <span>{pattern?.label ?? parsed.pattern_type}</span>
+                      <span>{pattern.label}</span>
                     </div>
+                    {(tx.category_id || (tx.tag_ids?.length ?? 0) > 0) && (
+                      <Link
+                        href="/import/correo"
+                        className="rounded-full border border-z-brass/25 bg-z-brass/8 px-2.5 py-1 text-xs text-z-brass"
+                      >
+                        {tx.category_id ? "Categorizada" : "Etiquetada"}
+                        {tx.category_id && (tx.tag_ids?.length ?? 0) > 0
+                          ? ` · ${tx.tag_ids.length} etiq.`
+                          : ""}
+                      </Link>
+                    )}
 
                     <Select
                       value={hasAccount ? account.id : undefined}
@@ -499,66 +470,13 @@ export function PendingEmailTransactions({
         </div>
       </CardContent>
 
-      <Dialog open={!!reconMatch} onOpenChange={(open) => !open && setReconMatch(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Posible duplicado encontrado</DialogTitle>
-            <DialogDescription>
-              Ya existe una transacción similar en esta cuenta:
-            </DialogDescription>
-          </DialogHeader>
-          {reconMatch && (
-            <div className="rounded-lg border border-white/6 bg-white/3 p-4">
-              <div className="flex items-center gap-3">
-                <div
-                  className={`flex size-8 shrink-0 items-center justify-center rounded-full ${
-                    reconMatch.candidate.direction === "INFLOW"
-                      ? "bg-z-income/10 text-z-income"
-                      : "bg-white/5 text-muted-foreground"
-                  }`}
-                >
-                  {reconMatch.candidate.direction === "INFLOW" ? (
-                    <ArrowDownLeft className="size-3.5" />
-                  ) : (
-                    <ArrowUpRight className="size-3.5" />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">
-                    {reconMatch.candidate.merchant_name ??
-                      reconMatch.candidate.raw_description ??
-                      "Transacción"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDate(reconMatch.candidate.transaction_date)}
-                  </p>
-                </div>
-                <p
-                  className={`shrink-0 text-sm font-semibold tabular-nums ${
-                    reconMatch.candidate.direction === "INFLOW" ? "text-z-income" : ""
-                  }`}
-                >
-                  {reconMatch.candidate.direction === "INFLOW" ? "+" : "-"}
-                  {formatCurrency(reconMatch.candidate.amount, "COP")}
-                </p>
-              </div>
-            </div>
-          )}
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              onClick={handleImportAsNew}
-              disabled={reconLoading}
-            >
-              Importar como nueva
-            </Button>
-            <Button onClick={handleReconcile} disabled={reconLoading}>
-              {reconLoading && <Loader2 className="mr-2 size-4 animate-spin" />}
-              Reconciliar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EmailReconcileDialog
+        candidate={reconMatch?.candidate ?? null}
+        currency="COP"
+        loading={reconLoading}
+        onClose={() => setReconMatch(null)}
+        onChoose={handleReconChoice}
+      />
     </Card>
   );
 }

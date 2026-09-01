@@ -89,7 +89,7 @@ export function buildTimelineItems(sources: TimelineSources): TimelineItem[] {
       title: `${n} movimiento${n === 1 ? "" : "s"} sin importar`,
       subtitle: "Revisar y confirmar",
       isIncome: false,
-      href: "/gestionar",
+      href: "/import/correo",
     });
   }
 

@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 
 import Link from "next/link";
-import { ArrowUpRight, ArrowDownLeft, ArrowRight, QrCode, CreditCard, Banknote, Building, Wallet, ArrowUpRight as TransferIcon, Mail, Hash, UserRound, Pencil, FileUp, Clock } from "lucide-react";
+import { ArrowUpRight, ArrowDownLeft, ArrowRight, Mail, Hash, UserRound, Pencil, FileUp, Clock, Tag } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -24,15 +24,8 @@ import {
   dismissEmailTransaction,
   type ReconciliationCandidatePreview,
 } from "@/actions/email-ingest";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { EmailReconcileDialog } from "@/components/import/email-reconcile-dialog";
+import { getEmailPatternLabel } from "@/lib/email-ingest/pattern-labels";
 import { toast } from "sonner";
 import type {
   Transaction,
@@ -458,22 +451,6 @@ function CategorizarDetail({
 
 /* ─── Pattern labels ─────────────────────────────────────────────────────── */
 
-const PATTERN_LABELS: Record<string, { label: string; icon: typeof Mail }> = {
-  retiro: { label: "Retiro ATM", icon: Banknote },
-  compra_debito: { label: "Compra débito", icon: CreditCard },
-  compra_credito: { label: "Compra crédito", icon: CreditCard },
-  transferencia: { label: "Transferencia", icon: TransferIcon },
-  boton_bancolombia: { label: "Botón Bancolombia", icon: Building },
-  qr_transferencia: { label: "Transferencia QR", icon: QrCode },
-  qr_pago: { label: "Pago QR", icon: QrCode },
-  pago_pse: { label: "Pago PSE", icon: Building },
-  bre_b: { label: "Bre-B", icon: Wallet },
-  nomina: { label: "Nómina", icon: Banknote },
-  avance: { label: "Avance", icon: CreditCard },
-  transferencia_recibida: { label: "Transferencia recibida", icon: ArrowDownLeft },
-  pago_recibido_cuenta: { label: "Pago recibido", icon: ArrowDownLeft },
-};
-
 /* ─── Importar detail ────────────────────────────────────────────────────── */
 
 function ImportarDetail({
@@ -681,8 +658,9 @@ function ImportarDetail({
           const cardInfo = parsed ? `*${parsed.card_last4}` : null;
           const amount = parsed?.amount ?? 0;
           const direction = parsed?.direction ?? "OUTFLOW";
-          const pattern = parsed ? PATTERN_LABELS[parsed.pattern_type] : null;
+          const pattern = parsed ? getEmailPatternLabel(parsed.pattern_type) : null;
           const PatternIcon = pattern?.icon ?? Mail;
+          const hasEnrichment = !!email.category_id || (email.tag_ids?.length ?? 0) > 0;
 
           const resolvedAccountId = accountOverrides[email.id] ?? email.suggested_account_id;
           const resolvedAccount = resolvedAccountId
@@ -703,9 +681,15 @@ function ImportarDetail({
                 <DirectionIcon direction={direction} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs">{label}</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {formatDate(dateStr, "dd MMM")}
-                    {cardInfo && <span className="ml-1.5">{cardInfo}</span>}
+                  <p className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                    <span>{formatDate(dateStr, "dd MMM")}</span>
+                    {cardInfo && <span>{cardInfo}</span>}
+                    {hasEnrichment && (
+                      <span className="inline-flex items-center gap-0.5 text-z-brass">
+                        <Tag className="size-2.5" />
+                        {email.category_id ? "Categorizada" : "Etiquetada"}
+                      </span>
+                    )}
                   </p>
                 </div>
                 <p className="shrink-0 text-xs font-semibold tabular-nums">
@@ -785,9 +769,13 @@ function ImportarDetail({
       </div>
 
       <div className="flex items-center justify-between pt-1">
-        <p className="text-[10px] text-muted-foreground">
-          {totalCount} pendiente{totalCount !== 1 ? "s" : ""}
-        </p>
+        <Link
+          href="/import/correo"
+          className="inline-flex items-center gap-1 text-[11px] font-semibold text-z-brass"
+        >
+          {totalCount} pendiente{totalCount !== 1 ? "s" : ""} · Ver bandeja
+          <ArrowRight className="size-3" />
+        </Link>
         <button
           type="button"
           onClick={handleBulkApprove}
@@ -798,67 +786,13 @@ function ImportarDetail({
         </button>
       </div>
 
-      <Dialog open={!!reconMatch} onOpenChange={(open) => !open && setReconMatch(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Posible duplicado encontrado</DialogTitle>
-            <DialogDescription>
-              Ya existe una transacción similar en esta cuenta:
-            </DialogDescription>
-          </DialogHeader>
-          {reconMatch && (
-            <div className="rounded-lg border border-white/6 bg-white/3 p-4">
-              <div className="flex items-center gap-3">
-                <div
-                  className={cn(
-                    "flex size-8 shrink-0 items-center justify-center rounded-full",
-                    reconMatch.candidate.direction === "INFLOW"
-                      ? "bg-z-income/10 text-z-income"
-                      : "bg-white/5 text-muted-foreground",
-                  )}
-                >
-                  {reconMatch.candidate.direction === "INFLOW" ? (
-                    <ArrowDownLeft className="size-3.5" />
-                  ) : (
-                    <ArrowUpRight className="size-3.5" />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">
-                    {reconMatch.candidate.merchant_name ??
-                      reconMatch.candidate.raw_description ??
-                      "Transacción"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDate(reconMatch.candidate.transaction_date)}
-                  </p>
-                </div>
-                <p
-                  className={cn(
-                    "shrink-0 text-sm font-semibold tabular-nums",
-                    reconMatch.candidate.direction === "INFLOW" && "text-z-income",
-                  )}
-                >
-                  {reconMatch.candidate.direction === "INFLOW" ? "+" : "-"}
-                  {formatCurrency(reconMatch.candidate.amount, currency)}
-                </p>
-              </div>
-            </div>
-          )}
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              onClick={() => handleReconChoice(false)}
-              disabled={isPending}
-            >
-              Importar como nueva
-            </Button>
-            <Button onClick={() => handleReconChoice(true)} disabled={isPending}>
-              Reconciliar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EmailReconcileDialog
+        candidate={reconMatch?.candidate ?? null}
+        currency={currency}
+        loading={isPending}
+        onClose={() => setReconMatch(null)}
+        onChoose={handleReconChoice}
+      />
     </div>
   );
 }

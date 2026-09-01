@@ -39,8 +39,17 @@ import { toast } from "sonner";
 import type { Tag, TagGroupWithTags, TaggableEntity } from "@/types/domain";
 
 interface TagZonePickerProps {
-  entityType: TaggableEntity;
-  entityId: string;
+  /**
+   * Entity mode: tags are read from / written to the junction table for this
+   * entity on every add/remove. Omit both (and pass `selectedTagIds`) for a
+   * controlled selection that doesn't touch the server — e.g. picking tags
+   * for a record that doesn't exist yet.
+   */
+  entityType?: TaggableEntity;
+  entityId?: string;
+  /** Controlled selection — when defined, the picker never calls entity actions. */
+  selectedTagIds?: string[];
+  onSelectedTagIdsChange?: (ids: string[]) => void;
   placeholder?: string;
   triggerClassName?: string;
   /** Render as a small icon button instead of a combobox */
@@ -56,6 +65,8 @@ interface TagZonePickerProps {
 export function TagZonePicker({
   entityType,
   entityId,
+  selectedTagIds,
+  onSelectedTagIdsChange,
   placeholder = "Etiquetas",
   triggerClassName,
   compact = false,
@@ -78,7 +89,8 @@ export function TagZonePicker({
   const variant = variantProp ?? (isDesktop ? "popover" : "drawer");
 
   const contextTagGroups = useTagGroups();
-  const [currentTags, setCurrentTags] = useState<Tag[]>([]);
+  const isControlledSelection = selectedTagIds !== undefined;
+  const [entityTags, setEntityTags] = useState<Tag[]>([]);
   const [tagGroups, setTagGroups] = useState<TagGroupWithTags[]>(contextTagGroups);
   const [search, setSearch] = useState("");
   const [recentTags, setRecentTags] = useState<Array<{ id: string; name: string; color: string | null }>>([]);
@@ -95,9 +107,11 @@ export function TagZonePicker({
       setSearch("");
       return;
     }
-    getTagsForEntity(entityType, entityId).then((tags) => setCurrentTags(tags));
+    if (!isControlledSelection && entityType && entityId) {
+      getTagsForEntity(entityType, entityId).then((tags) => setEntityTags(tags));
+    }
     getRecentTags(5).then(setRecentTags);
-  }, [open, entityType, entityId]);
+  }, [open, entityType, entityId, isControlledSelection]);
 
   const allTags = useMemo(
     () =>
@@ -106,6 +120,12 @@ export function TagZonePicker({
       ),
     [tagGroups]
   );
+
+  const currentTags = useMemo<Tag[]>(() => {
+    if (!isControlledSelection) return entityTags;
+    const selected = new Set(selectedTagIds);
+    return allTags.filter((t) => selected.has(t.id));
+  }, [isControlledSelection, entityTags, selectedTagIds, allTags]);
 
   const currentTagIds = useMemo(
     () => new Set(currentTags.map((t) => t.id)),
@@ -144,25 +164,37 @@ export function TagZonePicker({
   );
 
   function handleAdd(tag: Tag) {
-    const prev = currentTags;
-    setCurrentTags([...prev, tag]);
     setSearch("");
+    if (isControlledSelection) {
+      if (!currentTagIds.has(tag.id)) {
+        onSelectedTagIdsChange?.([...(selectedTagIds ?? []), tag.id]);
+      }
+      return;
+    }
+    if (!entityType || !entityId) return;
+    const prev = entityTags;
+    setEntityTags([...prev, tag]);
     startTransition(async () => {
       const result = await addTagToEntity(tag.id, entityType, entityId);
       if (!result.success) {
-        setCurrentTags(prev);
+        setEntityTags(prev);
         toast.error("Error al agregar etiqueta");
       }
     });
   }
 
   function handleRemove(tagId: string) {
-    const prev = currentTags;
-    setCurrentTags(prev.filter((t) => t.id !== tagId));
+    if (isControlledSelection) {
+      onSelectedTagIdsChange?.((selectedTagIds ?? []).filter((id) => id !== tagId));
+      return;
+    }
+    if (!entityType || !entityId) return;
+    const prev = entityTags;
+    setEntityTags(prev.filter((t) => t.id !== tagId));
     startTransition(async () => {
       const result = await removeTagFromEntity(tagId, entityType, entityId);
       if (!result.success) {
-        setCurrentTags(prev);
+        setEntityTags(prev);
         toast.error("Error al remover etiqueta");
       }
     });

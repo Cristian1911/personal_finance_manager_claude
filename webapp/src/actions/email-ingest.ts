@@ -5,12 +5,15 @@ import { createCachedClient } from "@/lib/supabase/cached";
 import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { nanoid } from "nanoid";
+import { z } from "zod";
 import {
   autoCategorize,
+  extractPattern,
   findReconciliationCandidates,
   mergeTransactionMetadata,
   type ReconciliationCandidate,
 } from "@zeta/shared";
+import { uuidStr } from "@/lib/validators/shared";
 import { toISODateString } from "@/lib/utils/date";
 import { matchTransactionToDestinatario } from "./destinatarios";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
@@ -733,7 +736,7 @@ export async function approveEmailTransaction(
 
   let destinatarioId: string | null = null;
   let categoryId: string | null = null;
-  let categorizationSource: "SYSTEM_DEFAULT" | "USER_LEARNED" | undefined;
+  let categorizationSource: "SYSTEM_DEFAULT" | "USER_LEARNED" | "USER_OVERRIDE" | undefined;
 
   if (destMatch) {
     destinatarioId = destMatch.destinatario_id;
@@ -746,6 +749,17 @@ export async function approveEmailTransaction(
     categoryId = categoryResult?.category_id ?? null;
     if (categoryId) categorizationSource = "SYSTEM_DEFAULT";
   }
+
+  // Enrichment the user set while the row sat in the queue beats every
+  // automatic guess — it's the same authority as categorizing the
+  // transaction by hand afterwards, just earlier.
+  const userCategoryId = pending.category_id ?? null;
+  if (userCategoryId) {
+    categoryId = userCategoryId;
+    categorizationSource = "USER_OVERRIDE";
+  }
+  const userNotes = pending.notes?.trim() ? pending.notes.trim() : null;
+  const userTagIds = [...new Set(pending.tag_ids ?? [])];
 
   // Compute idempotency key (reuse the one stored on the pending row when possible)
   const idempotencyKey =
@@ -778,6 +792,7 @@ export async function approveEmailTransaction(
       category_id: categoryId,
       categorization_source: categorizationSource,
       destinatario_id: destinatarioId,
+      notes: userNotes,
       status: "POSTED",
       ...flowClassColumns({
         direction: parsed.direction,
@@ -810,6 +825,34 @@ export async function approveEmailTransaction(
       parsed.amount, parsed.direction, insertedTx.id,
       destinatarioId,
     );
+
+    if (userTagIds.length > 0) {
+      const { error: tagError } = await supabase.from("transaction_tags").insert(
+        userTagIds.map((tagId) => ({
+          transaction_id: insertedTx.id,
+          tag_id: tagId,
+          user_id: user.id,
+        })),
+      );
+      if (tagError) {
+        console.error("[approveEmailTransaction] tag insert failed:", tagError.message);
+      }
+    }
+
+    // A category chosen in the queue teaches the same rule as categorizing
+    // the transaction afterwards would, so the next email from this merchant
+    // arrives already categorized.
+    if (userCategoryId) {
+      await learnCategoryFromApproval({
+        supabase,
+        userId: user.id,
+        categoryId: userCategoryId,
+        merchantName,
+        cleanDescription,
+        rawDescription,
+        destinatarioId,
+      });
+    }
   }
 
   // Reconcile with existing manual transaction if requested
@@ -881,6 +924,127 @@ export async function approveEmailTransaction(
   if (updateError) return { success: false, error: updateError.message };
 
   revalidateFinancialViews();
+  updateTag("email-ingest");
+  if (userTagIds.length > 0) updateTag("tags");
+  return { success: true, data: null };
+}
+
+async function learnCategoryFromApproval(params: {
+  supabase: AuthenticatedSupabase;
+  userId: string;
+  categoryId: string;
+  merchantName: string | null;
+  cleanDescription: string | null;
+  rawDescription: string | null;
+  destinatarioId: string | null;
+}): Promise<void> {
+  const { supabase, userId, categoryId, destinatarioId } = params;
+  const pattern = extractPattern(
+    params.merchantName,
+    params.cleanDescription,
+    params.rawDescription,
+  );
+
+  if (pattern) {
+    const { error } = await supabase.from("category_rules").upsert(
+      { user_id: userId, pattern, category_id: categoryId, match_count: 1 },
+      { onConflict: "user_id,pattern" },
+    );
+    if (error) console.error("[approveEmailTransaction] rule upsert failed:", error.message);
+  }
+
+  if (destinatarioId) {
+    await supabase
+      .from("destinatarios")
+      .update({ default_category_id: categoryId })
+      .eq("user_id", userId)
+      .eq("id", destinatarioId)
+      .is("default_category_id", null);
+    updateTag("destinatarios");
+  }
+}
+
+const pendingEnrichmentSchema = z.object({
+  categoryId: uuidStr("Categoría inválida").nullable().optional(),
+  tagIds: z.array(uuidStr("Etiqueta inválida")).max(20, "Máximo 20 etiquetas").optional(),
+  notes: z.string().trim().max(500, "La nota es muy larga").nullable().optional(),
+});
+
+export type PendingEmailEnrichment = z.infer<typeof pendingEnrichmentSchema>;
+
+/**
+ * Save category / tags / notes on a queued email transaction so they apply
+ * when it's imported. Only touches rows still `pending` — an imported or
+ * dismissed row is no longer editable.
+ */
+export async function updatePendingEmailTransaction(
+  pendingId: string,
+  patch: PendingEmailEnrichment,
+): Promise<ActionResult<null>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  if (!uuidStr().safeParse(pendingId).success) {
+    return { success: false, error: "Transacción pendiente inválida" };
+  }
+  const parsed = pendingEnrichmentSchema.safeParse(patch);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0].message };
+  }
+  const { categoryId, tagIds, notes } = parsed.data;
+
+  const update: {
+    category_id?: string | null;
+    tag_ids?: string[];
+    notes?: string | null;
+  } = {};
+
+  if (categoryId !== undefined) {
+    if (categoryId) {
+      const { data: category } = await supabase
+        .from("categories")
+        .select("id")
+        .eq("id", categoryId)
+        .or(`user_id.eq.${user.id},user_id.is.null`)
+        .maybeSingle();
+      if (!category) return { success: false, error: "Categoría no encontrada" };
+    }
+    update.category_id = categoryId;
+  }
+
+  if (tagIds !== undefined) {
+    const uniqueTagIds = [...new Set(tagIds)];
+    if (uniqueTagIds.length > 0) {
+      const { count } = await supabase
+        .from("tags")
+        .select("id", { count: "exact", head: true })
+        .in("id", uniqueTagIds)
+        .or(`user_id.eq.${user.id},user_id.is.null`);
+      if ((count ?? 0) !== uniqueTagIds.length) {
+        return { success: false, error: "Etiqueta no encontrada" };
+      }
+    }
+    update.tag_ids = uniqueTagIds;
+  }
+
+  if (notes !== undefined) {
+    update.notes = notes ? notes : null;
+  }
+
+  if (Object.keys(update).length === 0) return { success: true, data: null };
+
+  const { data: updated, error } = await supabase
+    .from("pending_email_transactions")
+    .update(update)
+    .eq("id", pendingId)
+    .eq("user_id", user.id)
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle();
+
+  if (error) return { success: false, error: error.message };
+  if (!updated) return { success: false, error: "Transacción pendiente no encontrada" };
+
   updateTag("email-ingest");
   return { success: true, data: null };
 }
