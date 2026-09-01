@@ -9,12 +9,10 @@ import { z } from "zod";
 import {
   autoCategorize,
   extractPattern,
-  findReconciliationCandidates,
   mergeTransactionMetadata,
   type ReconciliationCandidate,
 } from "@zeta/shared";
 import { uuidStr } from "@/lib/validators/shared";
-import { toISODateString } from "@/lib/utils/date";
 import { matchTransactionToDestinatario } from "./destinatarios";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { linkTransactionToOccurrence } from "@/actions/occurrences";
@@ -23,6 +21,8 @@ import {
   type ParsedEmailTransaction,
 } from "@/lib/parsers/bancolombia-email";
 import { resolveSuggestedEmailAccountId } from "@/lib/email-ingest/account-matching";
+import { findEmailDuplicateCandidate } from "@/lib/email-ingest/duplicate-check";
+import { normalizeEmailTime } from "@/lib/email-ingest/time";
 import { accountMaskSuffixMatches } from "@/lib/utils/account-mask";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
@@ -35,20 +35,6 @@ type AuthenticatedSupabase = Awaited<
 >["supabase"];
 
 type ReprocessResult = "imported" | "queued" | "duplicate";
-
-/**
- * Bancolombia emails carry the execution time as "HH:mm" (e.g. "11:20").
- * Postgres TIME wants "HH:mm:ss" — normalise at the write boundary so email
- * imports land with the same precision as the manual form / mobile sync.
- * Returns null for anything that isn't a well-formed time so we never write
- * garbage into the column.
- */
-function normalizeEmailTime(raw: string | null | undefined): string | null {
-  if (typeof raw !== "string") return null;
-  const match = raw.trim().match(/^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/);
-  if (!match) return null;
-  return `${match[1]}:${match[2]}:${match[3] ?? "00"}`;
-}
 
 function stripHtml(html: string): string {
   return html
@@ -108,7 +94,25 @@ async function persistParsedEmail(params: {
     });
   }
 
+  // Auto import never decides a possible duplicate on its own (#389): when
+  // the alert collides with an existing transaction it goes to the queue
+  // flagged with the candidate, and the user resolves it with the prompt.
+  let conflictTransactionId: string | null = null;
   if (autoImport && suggestedAccountId) {
+    try {
+      const duplicate = await findEmailDuplicateCandidate({
+        client: supabase,
+        userId,
+        accountId: suggestedAccountId,
+        parsed,
+      });
+      conflictTransactionId = duplicate?.candidate.id ?? null;
+    } catch (error) {
+      console.error("[persistParsedEmail] duplicate check failed:", error);
+    }
+  }
+
+  if (autoImport && suggestedAccountId && !conflictTransactionId) {
     const matchedAccount = candidateAccounts?.find((a) => a.id === suggestedAccountId);
     const currencyCode = matchedAccount?.currency_code ?? parsed.currency;
     const matchText = parsed.merchant ?? parsed.destination ?? parsed.raw_line ?? "";
@@ -206,6 +210,7 @@ async function persistParsedEmail(params: {
     raw_body: rawBody,
     status: "pending",
     suggested_account_id: suggestedAccountId,
+    conflict_transaction_id: conflictTransactionId,
   });
 
   if (queueError) {
@@ -1186,64 +1191,34 @@ export async function checkEmailReconciliation(
 
   if (!accountId) return { success: true, data: null };
 
-  // ±3 days to match scoring tolerance in scoreReconciliationCandidate
-  const txDate = new Date(parsed.transaction_date);
-  const fromDate = new Date(txDate);
-  fromDate.setDate(fromDate.getDate() - 3);
-  const toDate = new Date(txDate);
-  toDate.setDate(toDate.getDate() + 3);
-  const from = toISODateString(fromDate);
-  const to = toISODateString(toDate);
-
-  // Fetch existing transactions that could be duplicates (any capture method)
-  const { data: candidates, error: candError } = await supabase
-    .from("transactions")
-    .select(
-      "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method"
-    )
-    .eq("account_id", accountId)
-    .eq("user_id", user.id)
-    .gte("transaction_date", from)
-    .lte("transaction_date", to)
-    .is("reconciled_into_transaction_id", null);
-
-  if (candError) return { success: false, error: candError.message };
-  if (!candidates || candidates.length === 0) return { success: true, data: null };
-
-  const importTx = {
-    account_id: accountId,
-    amount: parsed.amount,
-    direction: parsed.direction,
-    transaction_date: parsed.transaction_date,
-    raw_description: parsed.raw_line,
-  };
-
-  const result = findReconciliationCandidates(
-    importTx,
-    candidates as ReconciliationCandidate[]
-  );
-
-  if (!result.bestMatch || result.bestMatch.decision === "NO_MATCH") {
-    return { success: true, data: null };
+  let duplicate: Awaited<ReturnType<typeof findEmailDuplicateCandidate>>;
+  try {
+    duplicate = await findEmailDuplicateCandidate({
+      client: supabase,
+      userId: user.id,
+      accountId,
+      parsed,
+    });
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Error" };
   }
+  if (!duplicate) return { success: true, data: null };
 
-  const matched = candidates.find((c) => c.id === result.bestMatch!.candidateId);
-  if (!matched) return { success: true, data: null };
-
+  const { candidate, match } = duplicate;
   return {
     success: true,
     data: {
       candidate: {
-        id: matched.id,
-        raw_description: matched.raw_description,
-        merchant_name: matched.merchant_name,
-        transaction_date: matched.transaction_date,
-        amount: matched.amount,
-        direction: matched.direction,
-        category_id: matched.category_id,
-        score: result.bestMatch.score,
+        id: candidate.id,
+        raw_description: candidate.raw_description,
+        merchant_name: candidate.merchant_name,
+        transaction_date: candidate.transaction_date,
+        amount: candidate.amount,
+        direction: candidate.direction,
+        category_id: candidate.category_id,
+        score: match.score,
       },
-      decision: result.bestMatch.decision as "AUTO_MERGE" | "REVIEW",
+      decision: match.decision as "AUTO_MERGE" | "REVIEW",
     },
   };
 }
