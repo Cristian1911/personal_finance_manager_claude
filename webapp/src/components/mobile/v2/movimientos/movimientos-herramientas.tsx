@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 
 import Link from "next/link";
 import { ArrowUpRight, ArrowDownLeft, ArrowRight, Mail, Hash, UserRound, Pencil, FileUp, Clock, Tag } from "lucide-react";
@@ -18,12 +18,7 @@ import { PANEL_INSET_CLASS, BRASS_BUTTON_CLASS, CONFIRM_BUTTON_CLASS } from "@/l
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate, formatTime } from "@/lib/utils/date";
 import { categorizeTransaction, uncategorizeTransaction } from "@/actions/categorize";
-import {
-  approveEmailTransaction,
-  checkEmailReconciliation,
-  dismissEmailTransaction,
-  type ReconciliationCandidatePreview,
-} from "@/actions/email-ingest";
+import { useEmailQueueActions } from "@/hooks/use-email-queue-actions";
 import { EmailReconcileDialog } from "@/components/import/email-reconcile-dialog";
 import { getEmailPatternLabel } from "@/lib/email-ingest/pattern-labels";
 import { toast } from "sonner";
@@ -470,129 +465,34 @@ function ImportarDetail({
 }) {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [accountOverrides, setAccountOverrides] = useState<Record<string, string>>({});
-  const [isPending, startTransition] = useTransition();
-  const [reconMatch, setReconMatch] = useState<{
-    pendingId: string;
-    candidate: ReconciliationCandidatePreview;
-  } | null>(null);
 
   const visibleEmails = pendingEmails.filter((e) => !processedIds.has(e.id));
   const items = visibleEmails.slice(0, MAX_ITEMS);
   const totalCount = visibleEmails.length;
 
+  const resolveAccountId = useCallback(
+    (id: string): string | undefined =>
+      accountOverrides[id] ??
+      pendingEmails.find((e) => e.id === id)?.suggested_account_id ??
+      undefined,
+    [accountOverrides, pendingEmails],
+  );
+  const processOne = useCallback((id: string) => onProcess([id]), [onProcess]);
+  const rollbackOne = useCallback((id: string) => onRollback([id]), [onRollback]);
+
+  // Optimistic: rows leave the list on tap and come back only if the server
+  // rejects the change — the parent owns `processedIds`.
+  const { isPending, reconMatch, closeRecon, importOne, chooseRecon, dismiss, bulkImport } =
+    useEmailQueueActions({
+      resolveAccountId,
+      mode: "optimistic",
+      onProcessed: processOne,
+      onRollback: rollbackOne,
+    });
+
   function parseTx(raw: unknown): ParsedEmailTransaction | null {
     if (!raw || typeof raw !== "object") return null;
     return raw as ParsedEmailTransaction;
-  }
-
-  function handleApprove(id: string) {
-    const overrideAccountId = accountOverrides[id];
-    startTransition(async () => {
-      // Same duplicate check as the desktop Importar — this surface used to
-      // skip it and import blind. On a match the row stays visible and the
-      // user decides via the dialog; a failed check falls through to import.
-      try {
-        const recon = await checkEmailReconciliation(id, overrideAccountId);
-        if (recon.success && recon.data) {
-          setReconMatch({ pendingId: id, candidate: recon.data.candidate });
-          return;
-        }
-      } catch {
-        // Check unavailable — import directly, same as the desktop surface.
-      }
-      onProcess([id]);
-      const result = await approveEmailTransaction(id, overrideAccountId);
-      if (result.success) {
-        toast.success("Importada");
-      } else {
-        onRollback([id]);
-        toast.error(result.error ?? "Error al importar");
-      }
-    });
-  }
-
-  function handleReconChoice(reconcile: boolean) {
-    if (!reconMatch) return;
-    const { pendingId, candidate } = reconMatch;
-    const overrideAccountId = accountOverrides[pendingId];
-    setReconMatch(null);
-    onProcess([pendingId]);
-    startTransition(async () => {
-      const result = await approveEmailTransaction(
-        pendingId,
-        overrideAccountId,
-        reconcile ? candidate.id : undefined,
-      );
-      if (result.success) {
-        toast.success(reconcile ? "Transacción reconciliada" : "Importada");
-      } else {
-        onRollback([pendingId]);
-        toast.error(result.error ?? "Error al importar");
-      }
-    });
-  }
-
-  function handleDismiss(id: string) {
-    onProcess([id]);
-    startTransition(async () => {
-      const result = await dismissEmailTransaction(id);
-      if (result.success) {
-        toast.success("Descartada");
-      } else {
-        onRollback([id]);
-        toast.error(result.error ?? "Error al descartar");
-      }
-    });
-  }
-
-  function handleBulkApprove() {
-    const ids = visibleEmails.map((e) => e.id);
-    onProcess(ids);
-    startTransition(async () => {
-      let approved = 0;
-      let failed = 0;
-      let needsReview = 0;
-      const rollbackIds: string[] = [];
-
-      for (const id of ids) {
-        const overrideAccountId = accountOverrides[id];
-
-        try {
-          // Same duplicate check as the single-row Importar. Rows with a
-          // candidate stay pending — bulk never decides a merge silently.
-          const recon = await checkEmailReconciliation(id, overrideAccountId);
-          if (recon.success && recon.data) {
-            needsReview++;
-            rollbackIds.push(id);
-            continue;
-          }
-          const result = await approveEmailTransaction(id, overrideAccountId);
-          if (result.success) {
-            approved++;
-          } else {
-            failed++;
-            rollbackIds.push(id);
-          }
-        } catch {
-          failed++;
-          rollbackIds.push(id);
-        }
-      }
-
-      if (rollbackIds.length > 0) {
-        onRollback(rollbackIds);
-      }
-
-      if (failed === 0 && needsReview === 0) {
-        toast.success(`${approved} importadas`);
-      } else if (needsReview > 0) {
-        toast.warning(
-          `${approved} importadas · ${needsReview} con posible duplicado — impórtalas una por una${failed > 0 ? ` · ${failed} con error` : ""}`,
-        );
-      } else {
-        toast.warning(`${approved} importadas, ${failed} con error`);
-      }
-    });
   }
 
   if (totalCount === 0) {
@@ -700,7 +600,7 @@ function ImportarDetail({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleApprove(email.id);
+                      importOne(email.id);
                     }}
                     className={cn(CONFIRM_BUTTON_CLASS, "shrink-0 rounded-lg px-2.5 py-1 text-[10px] font-semibold transition-colors")}
                   >
@@ -747,14 +647,14 @@ function ImportarDetail({
                     </Select>
                   </div>
                   <div className="ml-auto flex items-center gap-1.5">
-                    <ActionPill onClick={() => handleDismiss(email.id)} variant="danger">
+                    <ActionPill onClick={() => dismiss(email.id)} variant="danger">
                       Descartar
                     </ActionPill>
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleApprove(email.id);
+                        importOne(email.id);
                       }}
                       className={cn(CONFIRM_BUTTON_CLASS, "rounded-lg px-2.5 py-1 text-[10px] font-semibold transition-colors")}
                     >
@@ -778,7 +678,7 @@ function ImportarDetail({
         </Link>
         <button
           type="button"
-          onClick={handleBulkApprove}
+          onClick={() => bulkImport(visibleEmails.map((e) => e.id))}
           className="inline-flex items-center gap-1 text-[11px] font-semibold text-z-sage-light"
         >
           Importar todas
@@ -790,8 +690,8 @@ function ImportarDetail({
         candidate={reconMatch?.candidate ?? null}
         currency={currency}
         loading={isPending}
-        onClose={() => setReconMatch(null)}
-        onChoose={handleReconChoice}
+        onClose={closeRecon}
+        onChoose={chooseRecon}
       />
     </div>
   );

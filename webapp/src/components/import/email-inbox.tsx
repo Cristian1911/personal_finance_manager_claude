@@ -33,13 +33,10 @@ import {
   useCategories,
 } from "@/components/providers/app-data-provider";
 import {
-  approveEmailTransaction,
-  checkEmailReconciliation,
-  dismissEmailTransaction,
   updatePendingEmailTransaction,
   type PendingEmailEnrichment,
-  type ReconciliationCandidatePreview,
 } from "@/actions/email-ingest";
+import { useEmailQueueActions } from "@/hooks/use-email-queue-actions";
 import { resolveSuggestedEmailAccountId } from "@/lib/email-ingest/account-matching";
 import { getEmailPatternLabel } from "@/lib/email-ingest/pattern-labels";
 import {
@@ -93,13 +90,7 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
   }, [initialTransactions]);
   const [accountOverrides, setAccountOverrides] = useState<Record<string, string>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [bulkLoading, setBulkLoading] = useState(false);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
-  const [reconMatch, setReconMatch] = useState<{
-    pendingId: string;
-    candidate: ReconciliationCandidatePreview;
-  } | null>(null);
   const [, startTransition] = useTransition();
 
   const accountMap = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts]);
@@ -121,14 +112,19 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
     return matches;
   }, [initialTransactions, accounts]);
 
+  const rowsById = useMemo(() => new Map(rows.map((t) => [t.id, t])), [rows]);
+
   const resolveAccountId = useCallback(
-    (tx: PendingEmailTransaction): string | undefined =>
-      accountOverrides[tx.id] ?? tx.suggested_account_id ?? clientMatches[tx.id] ?? undefined,
-    [accountOverrides, clientMatches],
+    (pendingId: string): string | undefined =>
+      accountOverrides[pendingId] ??
+      rowsById.get(pendingId)?.suggested_account_id ??
+      clientMatches[pendingId] ??
+      undefined,
+    [accountOverrides, rowsById, clientMatches],
   );
 
   const importableIds = useMemo(
-    () => rows.filter((tx) => resolveAccountId(tx)).map((tx) => tx.id),
+    () => rows.filter((tx) => resolveAccountId(tx.id)).map((tx) => tx.id),
     [rows, resolveAccountId],
   );
 
@@ -148,7 +144,7 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
       .map(([date, items]) => ({ date, items }));
   }, [rows]);
 
-  function removeRow(id: string) {
+  const removeRow = useCallback((id: string) => {
     removedIdsRef.current.add(id);
     setRows((prev) => prev.filter((t) => t.id !== id));
     setAccountOverrides((prev) => {
@@ -156,8 +152,8 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
       delete next[id];
       return next;
     });
-    if (expandedId === id) setExpandedId(null);
-  }
+    setExpandedId((current) => (current === id ? null : current));
+  }, []);
 
   /** Optimistic enrichment save; reverts the row on failure. */
   function patchRow(id: string, patch: PendingEmailEnrichment) {
@@ -188,10 +184,29 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
   }
 
   /** Blocks until the row's last enrichment save has landed. */
-  async function flushSaves(id: string) {
+  const flushSaves = useCallback(async (id: string) => {
     const save = pendingSavesRef.current.get(id);
     if (save) await save.catch(() => undefined);
-  }
+  }, []);
+
+  const refresh = useCallback(() => router.refresh(), [router]);
+
+  const {
+    busyId,
+    bulkLoading,
+    isPending,
+    reconMatch,
+    closeRecon,
+    importOne,
+    chooseRecon,
+    dismiss,
+    bulkImport,
+  } = useEmailQueueActions({
+    resolveAccountId,
+    onProcessed: removeRow,
+    beforeApprove: flushSaves,
+    afterChange: refresh,
+  });
 
   function commitNote(id: string) {
     const draft = noteDrafts[id];
@@ -202,122 +217,10 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
     patchRow(id, { notes: trimmed ? trimmed : null });
   }
 
-  async function importOne(id: string, reconcileWithId?: string): Promise<boolean> {
-    const tx = rows.find((t) => t.id === id);
-    if (!tx) return false;
-    await flushSaves(id);
-    const override = accountOverrides[id] ?? clientMatches[id];
-    const result = await approveEmailTransaction(id, override, reconcileWithId);
-    if (result.success) {
-      removeRow(id);
-      return true;
-    }
-    toast.error(result.error);
-    return false;
-  }
-
-  function handleImport(id: string) {
-    const override = accountOverrides[id] ?? clientMatches[id];
-    setBusyId(id);
-    startTransition(async () => {
-      try {
-        const recon = await checkEmailReconciliation(id, override);
-        if (recon.success && recon.data) {
-          setBusyId(null);
-          setReconMatch({ pendingId: id, candidate: recon.data.candidate });
-          return;
-        }
-        const ok = await importOne(id);
-        setBusyId(null);
-        if (ok) {
-          router.refresh();
-          toast.success("Transacción importada");
-        }
-      } catch {
-        setBusyId(null);
-        toast.error("Error al importar. Inténtalo de nuevo.");
-      }
-    });
-  }
-
-  function handleReconChoice(reconcile: boolean) {
-    if (!reconMatch) return;
-    const { pendingId, candidate } = reconMatch;
-    setReconMatch(null);
-    setBusyId(pendingId);
-    startTransition(async () => {
-      try {
-        const ok = await importOne(pendingId, reconcile ? candidate.id : undefined);
-        setBusyId(null);
-        if (ok) {
-          router.refresh();
-          toast.success(reconcile ? "Transacción reconciliada" : "Transacción importada");
-        }
-      } catch {
-        setBusyId(null);
-        toast.error("Error al importar. Inténtalo de nuevo.");
-      }
-    });
-  }
-
-  function handleDismiss(id: string) {
-    setBusyId(id);
-    startTransition(async () => {
-      const result = await dismissEmailTransaction(id);
-      setBusyId(null);
-      if (result.success) {
-        removeRow(id);
-        router.refresh();
-      } else {
-        toast.error(result.error);
-      }
-    });
-  }
-
   function handleBulkImport() {
-    const ids = importableIds;
-    if (ids.length === 0) return;
     // A note still focused when the user taps "Importar N" hasn't blurred yet.
     for (const id of Object.keys(noteDrafts)) commitNote(id);
-    setBulkLoading(true);
-    startTransition(async () => {
-      let imported = 0;
-      let failed = 0;
-      let needsReview = 0;
-      for (const id of ids) {
-        const override = accountOverrides[id] ?? clientMatches[id];
-        try {
-          // Rows with a possible duplicate stay in the queue — bulk never
-          // decides a merge silently; the user resolves those one by one.
-          const recon = await checkEmailReconciliation(id, override);
-          if (recon.success && recon.data) {
-            needsReview++;
-            continue;
-          }
-          await flushSaves(id);
-          const result = await approveEmailTransaction(id, override);
-          if (result.success) {
-            imported++;
-            removeRow(id);
-          } else {
-            failed++;
-          }
-        } catch {
-          failed++;
-        }
-      }
-      setBulkLoading(false);
-      router.refresh();
-      if (failed === 0 && needsReview === 0) {
-        toast.success(`${imported} transacciones importadas`);
-      } else if (needsReview > 0) {
-        toast.warning(
-          `${imported} importadas · ${needsReview} con posible duplicado — impórtalas una por una${failed > 0 ? ` · ${failed} con error` : ""}`,
-        );
-      } else {
-        toast.warning(`${imported} importadas, ${failed} con error`);
-      }
-    });
+    bulkImport(importableIds);
   }
 
   if (rows.length === 0) {
@@ -378,7 +281,7 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
               const time = parsed ? formatTime(parsed.transaction_time) : null;
               const pattern = parsed ? getEmailPatternLabel(parsed.pattern_type) : null;
               const PatternIcon = pattern?.icon ?? Mail;
-              const accountId = resolveAccountId(tx);
+              const accountId = resolveAccountId(tx.id);
               const account = accountId ? accountMap.get(accountId) : undefined;
               const isBusy = busyId === tx.id || bulkLoading;
               const isExpanded = expandedId === tx.id;
@@ -498,7 +401,7 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
                     <Button
                       size="sm"
                       className={cn(CONFIRM_BUTTON_CLASS, "ml-auto h-8 gap-1.5 rounded-full px-3 text-xs font-medium")}
-                      onClick={() => handleImport(tx.id)}
+                      onClick={() => importOne(tx.id)}
                       disabled={isBusy || !account}
                       title={!account ? "Selecciona una cuenta primero" : undefined}
                     >
@@ -542,7 +445,7 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
                           size="sm"
                           variant="ghost"
                           className={cn(DESTRUCTIVE_GHOST_BUTTON_CLASS, "h-8 gap-1.5 text-xs")}
-                          onClick={() => handleDismiss(tx.id)}
+                          onClick={() => dismiss(tx.id)}
                           disabled={isBusy}
                         >
                           <X className="size-3.5" />
@@ -561,9 +464,9 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
       <EmailReconcileDialog
         candidate={reconMatch?.candidate ?? null}
         currency="COP"
-        loading={!!reconMatch && busyId === reconMatch.pendingId}
-        onClose={() => setReconMatch(null)}
-        onChoose={handleReconChoice}
+        loading={isPending}
+        onClose={closeRecon}
+        onChoose={chooseRecon}
       />
     </div>
   );
