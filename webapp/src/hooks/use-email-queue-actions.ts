@@ -55,9 +55,16 @@ export function useEmailQueueActions({
 
   const optimistic = mode === "optimistic";
 
-  /** Approve one row; returns whether it left the queue. */
+  /**
+   * Approve one row; returns whether it left the queue. `notify` controls the
+   * per-row error toast — bulk runs report failures once, in their summary.
+   */
   const approve = useCallback(
-    async (pendingId: string, reconcileWithId?: string): Promise<boolean> => {
+    async (
+      pendingId: string,
+      reconcileWithId?: string,
+      { notify = true }: { notify?: boolean } = {},
+    ): Promise<boolean> => {
       const accountId = resolveAccountId(pendingId);
       if (optimistic) onProcessed(pendingId);
       try {
@@ -68,11 +75,11 @@ export function useEmailQueueActions({
           return true;
         }
         if (optimistic) onRollback?.(pendingId);
-        toast.error(result.error ?? "Error al importar");
+        if (notify) toast.error(result.error ?? "Error al importar");
         return false;
       } catch {
         if (optimistic) onRollback?.(pendingId);
-        toast.error("Error al importar. Inténtalo de nuevo.");
+        if (notify) toast.error("Error al importar. Inténtalo de nuevo.");
         return false;
       }
     },
@@ -174,7 +181,7 @@ export function useEmailQueueActions({
           } catch {
             // Same fallback as importOne — the server dedups.
           }
-          if (await approve(id)) imported++;
+          if (await approve(id, undefined, { notify: false })) imported++;
           else failed++;
         }
         setBulkLoading(false);

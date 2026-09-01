@@ -168,6 +168,9 @@ export function PendingEmailTransactions({
 
   function handleBulkApprove() {
     bulkImport(selectedImportable);
+    // Rows that need the duplicate prompt stay in the list; don't leave them
+    // checked or "Importar N" would just replay the same warning.
+    setSelected(new Set());
   }
 
   return (
