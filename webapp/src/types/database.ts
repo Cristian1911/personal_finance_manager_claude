@@ -1414,39 +1414,55 @@ export type Database = {
       }
       pending_email_transactions: {
         Row: {
+          category_id: string | null
           created_at: string
           email_ingest_id: string
           id: string
           idempotency_key: string
+          notes: string | null
           parsed_data: Json
           raw_body: string
           status: string
           suggested_account_id: string | null
+          tag_ids: string[]
           user_id: string
         }
         Insert: {
+          category_id?: string | null
           created_at?: string
           email_ingest_id: string
           id?: string
           idempotency_key: string
+          notes?: string | null
           parsed_data: Json
           raw_body: string
           status?: string
           suggested_account_id?: string | null
+          tag_ids?: string[]
           user_id: string
         }
         Update: {
+          category_id?: string | null
           created_at?: string
           email_ingest_id?: string
           id?: string
           idempotency_key?: string
+          notes?: string | null
           parsed_data?: Json
           raw_body?: string
           status?: string
           suggested_account_id?: string | null
+          tag_ids?: string[]
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "pending_email_transactions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pending_email_transactions_email_ingest_id_fkey"
             columns: ["email_ingest_id"]

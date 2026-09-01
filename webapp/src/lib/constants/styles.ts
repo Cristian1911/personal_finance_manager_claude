@@ -10,6 +10,10 @@ export const GHOST_BUTTON_CLASS =
 export const BRASS_GHOST_BUTTON_CLASS =
   "border-z-brass/20 bg-z-brass/8 text-z-brass hover:bg-z-brass/12";
 
+/** Positive confirm button (income tint) — "Importar", "Aprobar", "Confirmar" on review queues. */
+export const CONFIRM_BUTTON_CLASS =
+  "bg-z-income/15 text-z-income hover:bg-z-income/25";
+
 /** Solid destructive button — for confirm-destroy actions (deletes, unrecoverable ops). */
 export const DESTRUCTIVE_BUTTON_CLASS =
   "bg-z-debt text-z-white hover:bg-z-debt/90";

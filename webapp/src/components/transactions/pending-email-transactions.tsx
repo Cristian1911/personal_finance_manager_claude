@@ -1,23 +1,19 @@
 "use client";
 
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowDownLeft,
   ArrowUpRight,
+  ArrowRight,
   Check,
   X,
   Loader2,
   Mail,
-  CreditCard,
-  Wallet,
-  QrCode,
-  Building,
-  Banknote,
   AlertTriangle,
   CheckCheck,
 } from "lucide-react";
-import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -28,41 +24,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  approveEmailTransaction,
-  checkEmailReconciliation,
-  dismissEmailTransaction,
-  type ReconciliationCandidatePreview,
-} from "@/actions/email-ingest";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { useEmailQueueActions } from "@/hooks/use-email-queue-actions";
+import { EmailReconcileDialog } from "@/components/import/email-reconcile-dialog";
+import { getEmailPatternLabel } from "@/lib/email-ingest/pattern-labels";
+import { CONFIRM_BUTTON_CLASS } from "@/lib/constants/styles";
+import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/utils/date";
 import { formatCurrency } from "@/lib/utils/currency";
 import type { ParsedEmailTransaction } from "@/lib/parsers/bancolombia-email";
 import { resolveSuggestedEmailAccountId } from "@/lib/email-ingest/account-matching";
 import type { Account, PendingEmailTransaction } from "@/types/domain";
-
-const PATTERN_LABELS: Record<string, { label: string; icon: typeof Mail }> = {
-  retiro: { label: "Retiro ATM", icon: Banknote },
-  compra_debito: { label: "Compra débito", icon: CreditCard },
-  compra_credito: { label: "Compra crédito", icon: CreditCard },
-  transferencia: { label: "Transferencia", icon: ArrowUpRight },
-  boton_bancolombia: { label: "Botón Bancolombia", icon: Building },
-  qr_transferencia: { label: "Transferencia QR", icon: QrCode },
-  qr_pago: { label: "Pago QR", icon: QrCode },
-  pago_pse: { label: "Pago PSE", icon: Building },
-  bre_b: { label: "Bre-B", icon: Wallet },
-  nomina: { label: "Nómina", icon: Banknote },
-  avance: { label: "Avance", icon: CreditCard },
-  transferencia_recibida: { label: "Transferencia recibida", icon: ArrowDownLeft },
-  pago_recibido_cuenta: { label: "Pago recibido", icon: ArrowDownLeft },
-};
 
 interface PendingEmailTransactionsProps {
   transactions: PendingEmailTransaction[];
@@ -75,16 +46,8 @@ export function PendingEmailTransactions({
 }: PendingEmailTransactionsProps) {
   const router = useRouter();
   const [transactions, setTransactions] = useState(initialTransactions);
-  const [loadingId, setLoadingId] = useState<string | null>(null);
-  const [bulkLoading, setBulkLoading] = useState(false);
   const [accountOverrides, setAccountOverrides] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [reconMatch, setReconMatch] = useState<{
-    pendingId: string;
-    candidate: ReconciliationCandidatePreview;
-  } | null>(null);
-  const [reconLoading, setReconLoading] = useState(false);
-  const [, startTransition] = useTransition();
 
   const accountMap = useMemo(
     () => new Map(accounts.map((a) => [a.id, a])),
@@ -127,23 +90,23 @@ export function PendingEmailTransactions({
     setAccountOverrides((prev) => ({ ...prev, [txId]: accountId }));
   }
 
-  function removeOverride(id: string) {
-    setAccountOverrides((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
-  }
+  const suggestedById = useMemo(
+    () => new Map(transactions.map((tx) => [tx.id, tx.suggested_account_id])),
+    [transactions]
+  );
 
   const resolveAccountId = useCallback(
-    (tx: PendingEmailTransaction): string | undefined =>
-      accountOverrides[tx.id] ?? tx.suggested_account_id ?? clientMatches[tx.id] ?? undefined,
-    [accountOverrides, clientMatches]
+    (pendingId: string): string | undefined =>
+      accountOverrides[pendingId] ??
+      suggestedById.get(pendingId) ??
+      clientMatches[pendingId] ??
+      undefined,
+    [accountOverrides, suggestedById, clientMatches]
   );
 
   // Transactions that have a resolved account (importable)
   const importableIds = useMemo(
-    () => new Set(transactions.filter((tx) => resolveAccountId(tx)).map((tx) => tx.id)),
+    () => new Set(transactions.filter((tx) => resolveAccountId(tx.id)).map((tx) => tx.id)),
     [transactions, resolveAccountId]
   );
 
@@ -151,6 +114,38 @@ export function PendingEmailTransactions({
     () => [...selected].filter((id) => importableIds.has(id)),
     [selected, importableIds]
   );
+
+  const clearPending = useCallback((pendingId: string) => {
+    setTransactions((prev) => prev.filter((t) => t.id !== pendingId));
+    setAccountOverrides((prev) => {
+      const next = { ...prev };
+      delete next[pendingId];
+      return next;
+    });
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.delete(pendingId);
+      return next;
+    });
+  }, []);
+
+  const refresh = useCallback(() => router.refresh(), [router]);
+
+  const {
+    busyId,
+    bulkLoading,
+    isPending,
+    reconMatch,
+    closeRecon,
+    importOne,
+    chooseRecon,
+    dismiss,
+    bulkImport,
+  } = useEmailQueueActions({
+    resolveAccountId,
+    onProcessed: clearPending,
+    afterChange: refresh,
+  });
 
   if (transactions.length === 0) return null;
 
@@ -171,167 +166,11 @@ export function PendingEmailTransactions({
     }
   }
 
-  function clearPending(pendingId: string) {
-    setTransactions((prev) => prev.filter((t) => t.id !== pendingId));
-    removeOverride(pendingId);
-    setSelected((prev) => { const next = new Set(prev); next.delete(pendingId); return next; });
-  }
-
-  function handleApprove(pendingId: string) {
-    const override = accountOverrides[pendingId] ?? clientMatches[pendingId];
-    setLoadingId(pendingId);
-    startTransition(async () => {
-      try {
-        // Check for reconciliation candidates before importing
-        const reconResult = await checkEmailReconciliation(pendingId, override);
-        if (reconResult.success && reconResult.data) {
-          setLoadingId(null);
-          setReconMatch({ pendingId, candidate: reconResult.data.candidate });
-          return;
-        }
-
-        // No match (or check failed) — import directly
-        const result = await approveEmailTransaction(pendingId, override);
-        setLoadingId(null);
-        if (result.success) {
-          clearPending(pendingId);
-          router.refresh();
-          toast.success("Transacción importada");
-        } else {
-          toast.error(result.error);
-        }
-      } catch {
-        setLoadingId(null);
-        toast.error("Error al importar. Inténtalo de nuevo.");
-      }
-    });
-  }
-
-  function handleReconcile() {
-    if (!reconMatch) return;
-    const { pendingId, candidate } = reconMatch;
-    const override = accountOverrides[pendingId] ?? clientMatches[pendingId];
-    setReconMatch(null);
-    setReconLoading(true);
-    startTransition(async () => {
-      try {
-        const result = await approveEmailTransaction(pendingId, override, candidate.id);
-        setReconLoading(false);
-        if (result.success) {
-          clearPending(pendingId);
-          router.refresh();
-          toast.success("Transacción reconciliada");
-        } else {
-          toast.error(result.error);
-        }
-      } catch {
-        setReconLoading(false);
-        clearPending(pendingId);
-        router.refresh();
-        toast.success("Transacción reconciliada");
-      }
-    });
-  }
-
-  function handleImportAsNew() {
-    if (!reconMatch) return;
-    const { pendingId } = reconMatch;
-    const override = accountOverrides[pendingId] ?? clientMatches[pendingId];
-    setReconMatch(null);
-    setReconLoading(true);
-    startTransition(async () => {
-      try {
-        const result = await approveEmailTransaction(pendingId, override);
-        setReconLoading(false);
-        if (result.success) {
-          clearPending(pendingId);
-          router.refresh();
-          toast.success("Transacción importada");
-        } else {
-          toast.error(result.error);
-        }
-      } catch {
-        setReconLoading(false);
-        toast.error("Error al importar. Inténtalo de nuevo.");
-      }
-    });
-  }
-
   function handleBulkApprove() {
-    const ids = selectedImportable;
-    if (ids.length === 0) return;
-
-    setBulkLoading(true);
-    startTransition(async () => {
-      let imported = 0;
-      let failed = 0;
-      let needsReview = 0;
-      const done: string[] = [];
-
-      for (const id of ids) {
-        const tx = transactions.find((t) => t.id === id);
-        if (!tx) continue;
-        const override = accountOverrides[id] ?? clientMatches[id];
-        try {
-          // Same duplicate check as the single-row Importar. Rows with a
-          // candidate stay pending — bulk never decides a merge silently;
-          // the user resolves those one by one with the full prompt.
-          const reconResult = await checkEmailReconciliation(id, override);
-          if (reconResult.success && reconResult.data) {
-            needsReview++;
-            continue;
-          }
-          const result = await approveEmailTransaction(id, override);
-          if (result.success) {
-            imported++;
-            done.push(id);
-          } else {
-            failed++;
-          }
-        } catch {
-          // Action likely completed server-side
-          imported++;
-          done.push(id);
-        }
-      }
-
-      setTransactions((prev) => prev.filter((t) => !done.includes(t.id)));
-      setSelected(new Set());
-      setBulkLoading(false);
-      router.refresh();
-
-      if (failed === 0 && needsReview === 0) {
-        toast.success(`${imported} transacciones importadas`);
-      } else if (needsReview > 0) {
-        toast.warning(
-          `${imported} importadas · ${needsReview} con posible duplicado — impórtalas una por una${failed > 0 ? ` · ${failed} con error` : ""}`,
-        );
-      } else {
-        toast.warning(`${imported} importadas, ${failed} con error`);
-      }
-    });
-  }
-
-  function handleDismiss(pendingId: string) {
-    setLoadingId(pendingId);
-    startTransition(async () => {
-      try {
-        const result = await dismissEmailTransaction(pendingId);
-        setLoadingId(null);
-        if (result.success) {
-          setTransactions((prev) => prev.filter((t) => t.id !== pendingId));
-          removeOverride(pendingId);
-          setSelected((prev) => { const next = new Set(prev); next.delete(pendingId); return next; });
-        } else {
-          toast.error(result.error);
-        }
-      } catch {
-        setLoadingId(null);
-        setTransactions((prev) => prev.filter((t) => t.id !== pendingId));
-        removeOverride(pendingId);
-        setSelected((prev) => { const next = new Set(prev); next.delete(pendingId); return next; });
-      }
-    });
+    bulkImport(selectedImportable);
+    // Rows that need the duplicate prompt stay in the list; don't leave them
+    // checked or "Importar N" would just replay the same warning.
+    setSelected(new Set());
   }
 
   return (
@@ -346,6 +185,13 @@ export function PendingEmailTransactions({
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              href="/import/correo"
+              className="inline-flex h-7 items-center gap-1 text-xs font-semibold text-z-brass hover:underline"
+            >
+              Abrir bandeja
+              <ArrowRight className="size-3.5" />
+            </Link>
             <Button
               size="sm"
               variant="ghost"
@@ -360,7 +206,7 @@ export function PendingEmailTransactions({
             {selectedImportable.length > 0 && (
               <Button
                 size="sm"
-                className="h-7 gap-1.5 bg-z-income/15 text-xs font-medium text-z-income hover:bg-z-income/25"
+                className={cn(CONFIRM_BUTTON_CLASS, "h-7 gap-1.5 text-xs font-medium")}
                 onClick={handleBulkApprove}
                 disabled={bulkLoading}
               >
@@ -382,9 +228,9 @@ export function PendingEmailTransactions({
             const merchant =
               parsed.merchant ?? parsed.destination ?? "Transacción";
             const isInflow = parsed.direction === "INFLOW";
-            const isLoading = loadingId === tx.id;
-            const pattern = PATTERN_LABELS[parsed.pattern_type];
-            const PatternIcon = pattern?.icon ?? Mail;
+            const isLoading = busyId === tx.id;
+            const pattern = getEmailPatternLabel(parsed.pattern_type);
+            const PatternIcon = pattern.icon;
             const account = resolveAccount(tx);
             const hasAccount = !!account;
 
@@ -445,8 +291,19 @@ export function PendingEmailTransactions({
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1.5 rounded-full border border-white/6 bg-white/3 px-2.5 py-1 text-xs text-muted-foreground">
                       <PatternIcon className="size-3" />
-                      <span>{pattern?.label ?? parsed.pattern_type}</span>
+                      <span>{pattern.label}</span>
                     </div>
+                    {(tx.category_id || (tx.tag_ids?.length ?? 0) > 0) && (
+                      <Link
+                        href="/import/correo"
+                        className="rounded-full border border-z-brass/25 bg-z-brass/8 px-2.5 py-1 text-xs text-z-brass"
+                      >
+                        {tx.category_id ? "Categorizada" : "Etiquetada"}
+                        {tx.category_id && (tx.tag_ids?.length ?? 0) > 0
+                          ? ` · ${tx.tag_ids.length} etiq.`
+                          : ""}
+                      </Link>
+                    )}
 
                     <Select
                       value={hasAccount ? account.id : undefined}
@@ -471,7 +328,7 @@ export function PendingEmailTransactions({
                       size="sm"
                       variant="ghost"
                       className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-destructive"
-                      onClick={() => handleDismiss(tx.id)}
+                      onClick={() => dismiss(tx.id)}
                       disabled={isLoading}
                     >
                       <X className="size-3.5" />
@@ -479,8 +336,8 @@ export function PendingEmailTransactions({
                     </Button>
                     <Button
                       size="sm"
-                      className="h-7 gap-1.5 bg-z-income/15 text-xs font-medium text-z-income hover:bg-z-income/25"
-                      onClick={() => handleApprove(tx.id)}
+                      className={cn(CONFIRM_BUTTON_CLASS, "h-7 gap-1.5 text-xs font-medium")}
+                      onClick={() => importOne(tx.id)}
                       disabled={isLoading || !hasAccount}
                       title={!hasAccount ? "Selecciona una cuenta primero" : undefined}
                     >
@@ -499,66 +356,13 @@ export function PendingEmailTransactions({
         </div>
       </CardContent>
 
-      <Dialog open={!!reconMatch} onOpenChange={(open) => !open && setReconMatch(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Posible duplicado encontrado</DialogTitle>
-            <DialogDescription>
-              Ya existe una transacción similar en esta cuenta:
-            </DialogDescription>
-          </DialogHeader>
-          {reconMatch && (
-            <div className="rounded-lg border border-white/6 bg-white/3 p-4">
-              <div className="flex items-center gap-3">
-                <div
-                  className={`flex size-8 shrink-0 items-center justify-center rounded-full ${
-                    reconMatch.candidate.direction === "INFLOW"
-                      ? "bg-z-income/10 text-z-income"
-                      : "bg-white/5 text-muted-foreground"
-                  }`}
-                >
-                  {reconMatch.candidate.direction === "INFLOW" ? (
-                    <ArrowDownLeft className="size-3.5" />
-                  ) : (
-                    <ArrowUpRight className="size-3.5" />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">
-                    {reconMatch.candidate.merchant_name ??
-                      reconMatch.candidate.raw_description ??
-                      "Transacción"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDate(reconMatch.candidate.transaction_date)}
-                  </p>
-                </div>
-                <p
-                  className={`shrink-0 text-sm font-semibold tabular-nums ${
-                    reconMatch.candidate.direction === "INFLOW" ? "text-z-income" : ""
-                  }`}
-                >
-                  {reconMatch.candidate.direction === "INFLOW" ? "+" : "-"}
-                  {formatCurrency(reconMatch.candidate.amount, "COP")}
-                </p>
-              </div>
-            </div>
-          )}
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              onClick={handleImportAsNew}
-              disabled={reconLoading}
-            >
-              Importar como nueva
-            </Button>
-            <Button onClick={handleReconcile} disabled={reconLoading}>
-              {reconLoading && <Loader2 className="mr-2 size-4 animate-spin" />}
-              Reconciliar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EmailReconcileDialog
+        candidate={reconMatch?.candidate ?? null}
+        currency="COP"
+        loading={isPending}
+        onClose={closeRecon}
+        onChoose={chooseRecon}
+      />
     </Card>
   );
 }
