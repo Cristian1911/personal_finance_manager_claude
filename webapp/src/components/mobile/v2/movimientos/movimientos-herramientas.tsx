@@ -14,7 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { MobileZone } from "@/components/mobile/v2/mobile-zone";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
-import { PANEL_INSET_CLASS, BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
+import { PANEL_INSET_CLASS, BRASS_BUTTON_CLASS, CONFIRM_BUTTON_CLASS } from "@/lib/constants/styles";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate, formatTime } from "@/lib/utils/date";
 import { categorizeTransaction, uncategorizeTransaction } from "@/actions/categorize";
@@ -246,7 +246,7 @@ function DirectionIcon({ direction }: { direction: "OUTFLOW" | "INFLOW" }) {
     <div
       className={cn(
         "flex size-5 shrink-0 items-center justify-center rounded-md",
-        isOutflow ? "bg-red-500/10 text-red-400" : "bg-green-500/10 text-green-400"
+        isOutflow ? "bg-z-debt/10 text-z-expense" : "bg-z-income/10 text-z-income"
       )}
     >
       {isOutflow ? (
@@ -279,7 +279,7 @@ function ActionPill({
       className={cn(
         "rounded-lg border px-2 py-0.5 text-[10px] transition-colors",
         variant === "danger"
-          ? "border-red-500/20 bg-red-500/5 text-red-400"
+          ? "border-z-debt/20 bg-z-debt/5 text-z-expense"
           : "border-white/10 bg-white/[0.03] text-muted-foreground"
       )}
     >
@@ -546,7 +546,7 @@ function ImportarDetail({
   }
 
   function handleBulkApprove() {
-    const ids = pendingEmails.map((e) => e.id);
+    const ids = visibleEmails.map((e) => e.id);
     onProcess(ids);
     startTransition(async () => {
       let approved = 0;
@@ -702,7 +702,7 @@ function ImportarDetail({
                       e.stopPropagation();
                       handleApprove(email.id);
                     }}
-                    className="shrink-0 rounded-lg bg-green-500/10 px-2.5 py-1 text-[10px] font-semibold text-green-400 transition-colors hover:bg-green-500/20"
+                    className={cn(CONFIRM_BUTTON_CLASS, "shrink-0 rounded-lg px-2.5 py-1 text-[10px] font-semibold transition-colors")}
                   >
                     Importar
                   </button>
@@ -732,7 +732,7 @@ function ImportarDetail({
                           "h-auto gap-1 rounded-lg px-2.5 py-1 text-[10px]",
                           resolvedAccount
                             ? "border-white/10 bg-white/[0.03] text-muted-foreground"
-                            : "border-amber-400/30 bg-amber-400/5 text-amber-400"
+                            : "border-z-alert/30 bg-z-alert/5 text-z-alert"
                         )}
                       >
                         <SelectValue placeholder="Sin cuenta" />
@@ -756,7 +756,7 @@ function ImportarDetail({
                         e.stopPropagation();
                         handleApprove(email.id);
                       }}
-                      className="rounded-lg bg-green-500/10 px-2.5 py-1 text-[10px] font-semibold text-green-400 transition-colors hover:bg-green-500/20"
+                      className={cn(CONFIRM_BUTTON_CLASS, "rounded-lg px-2.5 py-1 text-[10px] font-semibold transition-colors")}
                     >
                       Importar
                     </button>

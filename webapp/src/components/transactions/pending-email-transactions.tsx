@@ -33,6 +33,8 @@ import {
 } from "@/actions/email-ingest";
 import { EmailReconcileDialog } from "@/components/import/email-reconcile-dialog";
 import { getEmailPatternLabel } from "@/lib/email-ingest/pattern-labels";
+import { CONFIRM_BUTTON_CLASS } from "@/lib/constants/styles";
+import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/utils/date";
 import { formatCurrency } from "@/lib/utils/currency";
 import type { ParsedEmailTransaction } from "@/lib/parsers/bancolombia-email";
@@ -320,7 +322,7 @@ export function PendingEmailTransactions({
             {selectedImportable.length > 0 && (
               <Button
                 size="sm"
-                className="h-7 gap-1.5 bg-z-income/15 text-xs font-medium text-z-income hover:bg-z-income/25"
+                className={cn(CONFIRM_BUTTON_CLASS, "h-7 gap-1.5 text-xs font-medium")}
                 onClick={handleBulkApprove}
                 disabled={bulkLoading}
               >
@@ -450,7 +452,7 @@ export function PendingEmailTransactions({
                     </Button>
                     <Button
                       size="sm"
-                      className="h-7 gap-1.5 bg-z-income/15 text-xs font-medium text-z-income hover:bg-z-income/25"
+                      className={cn(CONFIRM_BUTTON_CLASS, "h-7 gap-1.5 text-xs font-medium")}
                       onClick={() => handleApprove(tx.id)}
                       disabled={isLoading || !hasAccount}
                       title={!hasAccount ? "Selecciona una cuenta primero" : undefined}

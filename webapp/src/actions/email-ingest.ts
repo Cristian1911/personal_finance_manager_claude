@@ -668,13 +668,16 @@ export async function approveEmailTransaction(
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
-  // Fetch the pending transaction
+  // Fetch the pending transaction — only rows still in the queue. A row
+  // already imported or dismissed must not be replayed (bulk approve used to
+  // resubmit processed ids and ride the duplicate branch).
   const { data: pending, error: fetchError } = await supabase
     .from("pending_email_transactions")
     .select("*")
     .eq("id", pendingId)
     .eq("user_id", user.id)
-    .single();
+    .eq("status", "pending")
+    .maybeSingle();
 
   if (fetchError) return { success: false, error: fetchError.message };
   if (!pending) return { success: false, error: "Transacción pendiente no encontrada" };
@@ -806,14 +809,58 @@ export async function approveEmailTransaction(
 
   if (insertError) {
     if (insertError.code === "23505") {
-      // Duplicate — still mark as imported so it doesn't linger
+      // Duplicate — the transaction already exists (same email processed
+      // twice, or auto-import raced the queue). Don't lose what the user set
+      // in the queue: carry it onto the surviving row, then retire the pending
+      // row so it doesn't linger.
+      const { data: existingTx } = await supabase
+        .from("transactions")
+        .select("id, category_id, notes")
+        .eq("user_id", user.id)
+        .eq("idempotency_key", idempotencyKey)
+        .maybeSingle();
+
+      if (existingTx) {
+        const dupUpdate: {
+          category_id?: string;
+          categorization_source?: "USER_OVERRIDE";
+          notes?: string;
+        } = {};
+        if (userCategoryId) {
+          dupUpdate.category_id = userCategoryId;
+          dupUpdate.categorization_source = "USER_OVERRIDE";
+        }
+        if (userNotes && !existingTx.notes) dupUpdate.notes = userNotes;
+        if (Object.keys(dupUpdate).length > 0) {
+          await supabase
+            .from("transactions")
+            .update(dupUpdate)
+            .eq("user_id", user.id)
+            .eq("id", existingTx.id);
+        }
+        await attachQueueTags(supabase, user.id, existingTx.id, userTagIds);
+        if (userCategoryId) {
+          await learnCategoryFromApproval({
+            supabase,
+            userId: user.id,
+            categoryId: userCategoryId,
+            merchantName,
+            cleanDescription,
+            rawDescription,
+            destinatarioId,
+          });
+        }
+      }
+
       await supabase
         .from("pending_email_transactions")
         .update({ status: "imported" })
         .eq("id", pendingId)
-        .eq("user_id", user.id);
+        .eq("user_id", user.id)
+        .eq("status", "pending");
+      revalidateFinancialViews();
       updateTag("email-ingest");
-      updateTag("dashboard:hero");
+      if (userTagIds.length > 0) updateTag("tags");
       return { success: true, data: null };
     }
     return { success: false, error: insertError.message };
@@ -826,34 +873,13 @@ export async function approveEmailTransaction(
       destinatarioId,
     );
 
-    if (userTagIds.length > 0) {
-      const { error: tagError } = await supabase.from("transaction_tags").insert(
-        userTagIds.map((tagId) => ({
-          transaction_id: insertedTx.id,
-          tag_id: tagId,
-          user_id: user.id,
-        })),
-      );
-      if (tagError) {
-        console.error("[approveEmailTransaction] tag insert failed:", tagError.message);
-      }
-    }
-
-    // A category chosen in the queue teaches the same rule as categorizing
-    // the transaction afterwards would, so the next email from this merchant
-    // arrives already categorized.
-    if (userCategoryId) {
-      await learnCategoryFromApproval({
-        supabase,
-        userId: user.id,
-        categoryId: userCategoryId,
-        merchantName,
-        cleanDescription,
-        rawDescription,
-        destinatarioId,
-      });
-    }
+    await attachQueueTags(supabase, user.id, insertedTx.id, userTagIds);
   }
+
+  // Category that ends up on the surviving transaction. The reconcile merge
+  // below can override it when the existing row carries a user-set category
+  // with higher authority.
+  let finalCategoryId: string | null = categoryId;
 
   // Reconcile with existing manual transaction if requested
   if (reconcileWithTransactionId && insertedTx) {
@@ -878,10 +904,20 @@ export async function approveEmailTransaction(
         }
       );
 
+      finalCategoryId = merged.category_id ?? null;
+      const categoryCarriedFromExisting =
+        (merged.category_id ?? null) !== (insertedTx.category_id ?? null);
+
       await supabase
         .from("transactions")
         .update({
           category_id: merged.category_id ?? null,
+          // The source must travel with the category: a carried-over
+          // USER_OVERRIDE must not be relabelled as an automatic guess, and a
+          // rejected queue category must not keep claiming USER_OVERRIDE.
+          ...(categoryCarriedFromExisting
+            ? { categorization_source: manualTx.categorization_source }
+            : {}),
           notes: merged.notes ?? null,
           capture_method: merged.capture_method,
         })
@@ -894,6 +930,23 @@ export async function approveEmailTransaction(
         .eq("user_id", user.id)
         .eq("id", manualTx.id);
     }
+  }
+
+  // A category chosen in the queue teaches the same rule as categorizing the
+  // transaction afterwards would, so the next email from this merchant arrives
+  // already categorized — but only when that category actually survived the
+  // reconcile merge; teaching a rejected category would misfile every future
+  // email from the merchant.
+  if (insertedTx && userCategoryId && finalCategoryId === userCategoryId) {
+    await learnCategoryFromApproval({
+      supabase,
+      userId: user.id,
+      categoryId: userCategoryId,
+      merchantName,
+      cleanDescription,
+      rawDescription,
+      destinatarioId,
+    });
   }
 
   // Update account balance — skip when reconciling (manual tx already counted it)
@@ -919,7 +972,8 @@ export async function approveEmailTransaction(
     .from("pending_email_transactions")
     .update({ status: "imported" })
     .eq("id", pendingId)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .eq("status", "pending");
 
   if (updateError) return { success: false, error: updateError.message };
 
@@ -927,6 +981,41 @@ export async function approveEmailTransaction(
   updateTag("email-ingest");
   if (userTagIds.length > 0) updateTag("tags");
   return { success: true, data: null };
+}
+
+/**
+ * Attach the tags picked in the queue to a transaction. `tag_ids` on the
+ * pending row has no FK, so a tag deleted between queueing and approval is
+ * dropped here instead of failing the whole batch; already-attached pairs are
+ * ignored (PK on transaction_id + tag_id).
+ */
+async function attachQueueTags(
+  supabase: AuthenticatedSupabase,
+  userId: string,
+  transactionId: string,
+  tagIds: string[],
+): Promise<void> {
+  if (tagIds.length === 0) return;
+
+  const { data: validTags } = await supabase
+    .from("tags")
+    .select("id")
+    .in("id", tagIds)
+    .or(`user_id.eq.${userId},user_id.is.null`);
+  const survivors = (validTags ?? []).map((t) => t.id);
+  if (survivors.length === 0) return;
+
+  const { error } = await supabase.from("transaction_tags").upsert(
+    survivors.map((tagId) => ({
+      transaction_id: transactionId,
+      tag_id: tagId,
+      user_id: userId,
+    })),
+    { onConflict: "transaction_id,tag_id", ignoreDuplicates: true },
+  );
+  if (error) {
+    console.error("[approveEmailTransaction] tag upsert failed:", error.message);
+  }
 }
 
 async function learnCategoryFromApproval(params: {

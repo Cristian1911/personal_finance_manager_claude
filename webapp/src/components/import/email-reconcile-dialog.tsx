@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
@@ -48,7 +49,7 @@ export function EmailReconcileDialog({
           </DialogDescription>
         </DialogHeader>
         {candidate && (
-          <div className="rounded-lg border border-white/6 bg-white/3 p-4">
+          <div className={cn(PANEL_INSET_CLASS, "p-4")}>
             <div className="flex items-center gap-3">
               <div
                 className={cn(

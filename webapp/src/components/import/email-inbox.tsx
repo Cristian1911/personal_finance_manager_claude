@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -44,6 +45,7 @@ import { getEmailPatternLabel } from "@/lib/email-ingest/pattern-labels";
 import {
   BRASS_BUTTON_CLASS,
   CHIP_NEUTRAL_CLASS,
+  CONFIRM_BUTTON_CLASS,
   DESTRUCTIVE_GHOST_BUTTON_CLASS,
   MOBILE_CARD_TIGHT_CLASS,
   SECTION_EYEBROW_CLASS,
@@ -73,6 +75,22 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
   const categories = useCategories();
 
   const [rows, setRows] = useState(initialTransactions);
+  // Rows imported/dismissed in this session — a stale refresh must not resurrect them.
+  const removedIdsRef = useRef(new Set<string>());
+  // In-flight enrichment saves per row, awaited before that row is imported so
+  // the approve action always reads what the user last set.
+  const pendingSavesRef = useRef(new Map<string, Promise<unknown>>());
+
+  // Re-sync with the server after router.refresh(): new emails appear, but
+  // enrichment already edited locally is kept (it's saved optimistically).
+  useEffect(() => {
+    setRows((prev) => {
+      const prevById = new Map(prev.map((t) => [t.id, t]));
+      return initialTransactions
+        .filter((t) => !removedIdsRef.current.has(t.id))
+        .map((t) => prevById.get(t.id) ?? t);
+    });
+  }, [initialTransactions]);
   const [accountOverrides, setAccountOverrides] = useState<Record<string, string>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -131,6 +149,7 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
   }, [rows]);
 
   function removeRow(id: string) {
+    removedIdsRef.current.add(id);
     setRows((prev) => prev.filter((t) => t.id !== id));
     setAccountOverrides((prev) => {
       const next = { ...prev };
@@ -156,13 +175,22 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
           : t,
       ),
     );
+    const save = updatePendingEmailTransaction(id, patch);
+    pendingSavesRef.current.set(id, save);
     startTransition(async () => {
-      const result = await updatePendingEmailTransaction(id, patch);
+      const result = await save;
+      if (pendingSavesRef.current.get(id) === save) pendingSavesRef.current.delete(id);
       if (!result.success) {
         setRows((prev) => prev.map((t) => (t.id === id ? previous : t)));
         toast.error(result.error);
       }
     });
+  }
+
+  /** Blocks until the row's last enrichment save has landed. */
+  async function flushSaves(id: string) {
+    const save = pendingSavesRef.current.get(id);
+    if (save) await save.catch(() => undefined);
   }
 
   function commitNote(id: string) {
@@ -177,6 +205,7 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
   async function importOne(id: string, reconcileWithId?: string): Promise<boolean> {
     const tx = rows.find((t) => t.id === id);
     if (!tx) return false;
+    await flushSaves(id);
     const override = accountOverrides[id] ?? clientMatches[id];
     const result = await approveEmailTransaction(id, override, reconcileWithId);
     if (result.success) {
@@ -248,6 +277,8 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
   function handleBulkImport() {
     const ids = importableIds;
     if (ids.length === 0) return;
+    // A note still focused when the user taps "Importar N" hasn't blurred yet.
+    for (const id of Object.keys(noteDrafts)) commitNote(id);
     setBulkLoading(true);
     startTransition(async () => {
       let imported = 0;
@@ -263,6 +294,7 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
             needsReview++;
             continue;
           }
+          await flushSaves(id);
           const result = await approveEmailTransaction(id, override);
           if (result.success) {
             imported++;
@@ -359,7 +391,7 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
                     type="button"
                     onClick={() => setExpandedId(isExpanded ? null : tx.id)}
                     aria-expanded={isExpanded}
-                    className="flex w-full items-start gap-3 text-left"
+                    className="flex w-full items-start gap-3 rounded-lg text-left transition-colors hover:bg-white/[0.02] active:opacity-70"
                   >
                     <div
                       className={cn(
@@ -465,7 +497,7 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
 
                     <Button
                       size="sm"
-                      className="ml-auto h-8 gap-1.5 rounded-full bg-z-income/15 px-3 text-xs font-medium text-z-income hover:bg-z-income/25"
+                      className={cn(CONFIRM_BUTTON_CLASS, "ml-auto h-8 gap-1.5 rounded-full px-3 text-xs font-medium")}
                       onClick={() => handleImport(tx.id)}
                       disabled={isBusy || !account}
                       title={!account ? "Selecciona una cuenta primero" : undefined}
@@ -486,7 +518,7 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
                           {parsed.raw_line}
                         </p>
                       )}
-                      <input
+                      <Input
                         type="text"
                         value={noteValue}
                         maxLength={500}
@@ -499,7 +531,7 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
                         onKeyDown={(e) => {
                           if (e.key === "Enter") (e.target as HTMLInputElement).blur();
                         }}
-                        className="w-full rounded-xl border border-white/6 bg-white/[0.03] px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:border-z-brass/40"
+                        className="h-10 rounded-xl border-white/6 bg-white/[0.03] px-3 text-sm shadow-none focus-visible:border-z-brass/40 focus-visible:ring-0"
                       />
                       <div className="flex items-center justify-between gap-2">
                         <span className={cn(CHIP_NEUTRAL_CLASS, "text-muted-foreground")}>
