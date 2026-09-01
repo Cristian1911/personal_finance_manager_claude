@@ -260,6 +260,14 @@ export function MobileTransactionForm({
     <form
       action={formAction}
       className="space-y-4 pb-4"
+      onKeyDown={(event) => {
+        // The soft keyboard's Enter/"Ir" would implicitly submit this
+        // single-submit-button form while the user is still typing the
+        // description or the amount. Only the explicit button submits.
+        if (event.key !== "Enter") return;
+        const target = event.target;
+        if (target instanceof HTMLInputElement) event.preventDefault();
+      }}
       onFocusCapture={(event) => {
         const target = event.target;
         if (!(target instanceof HTMLElement)) return;
