@@ -1834,7 +1834,7 @@ export async function findCoveringDebtOccurrence(
   const { data: tx } = await supabase
     .from("transactions")
     .select(
-      `id, account_id, direction, transaction_date, amount, recurrence_group_id,
+      `id, account_id, direction, transaction_date, amount, currency_code, recurrence_group_id,
        account:accounts!transactions_account_id_fkey(account_type)`,
     )
     .eq("id", transactionId)
@@ -1881,12 +1881,16 @@ export async function findCoveringDebtOccurrence(
     currency_code: string;
   } | null;
 
-  const candidates = (rows ?? []).map((row) => ({
-    id: row.id,
-    occurrenceDate: row.occurrence_date,
-    expectedAmount: Number(row.expected_amount),
-    template: row.template as unknown as CoverTemplate,
-  }));
+  // expected_amount is the template's primary-currency minimum — never
+  // compare it against a payment in another currency (multi-currency cards).
+  const candidates = (rows ?? [])
+    .map((row) => ({
+      id: row.id,
+      occurrenceDate: row.occurrence_date,
+      expectedAmount: Number(row.expected_amount),
+      template: row.template as CoverTemplate,
+    }))
+    .filter((c) => c.template?.currency_code === tx.currency_code);
 
   const best = pickCoveredDebtOccurrence(
     tx.transaction_date,

@@ -273,17 +273,18 @@ async function pushDebtCoverHint(params: {
       templateId: params.templateId,
       dueDate: params.dueDate,
       expectedAmount: params.expectedAmount,
+      currencyCode: params.currency,
     });
     if (!payment) return;
-    params.details.push(
-      IMPORT_DETAIL_MESSAGES.debtCoverHint(
-        params.accountName,
-        formatCurrency(payment.amount, params.currency as CurrencyCode),
-        formatDate(payment.transaction_date),
-        formatDate(params.dueDate),
-        formatCurrency(params.expectedAmount, params.currency as CurrencyCode),
-      ),
+    const hint = IMPORT_DETAIL_MESSAGES.debtCoverHint(
+      params.accountName,
+      formatCurrency(payment.amount, params.currency as CurrencyCode),
+      formatDate(payment.transaction_date),
+      formatDate(params.dueDate),
+      formatCurrency(params.expectedAmount, params.currency as CurrencyCode),
     );
+    // One account can sync twice in a run (COP + USD statements) — say it once.
+    if (!params.details.includes(hint)) params.details.push(hint);
   } catch (error) {
     // Best-effort hint: never let it fail the import.
     console.error("[importTransactions] debt cover hint failed:", error);

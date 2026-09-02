@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useRef, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   findCoveringDebtOccurrence,
@@ -55,8 +56,12 @@ export function useDebtCoverPrompt(): {
   maybeAsk: (args: DebtCoverAskArgs) => Promise<boolean>;
   dialog: ReactNode;
 } {
+  const router = useRouter();
   const [prompt, setPrompt] = useState<PendingPrompt | null>(null);
   const [linking, setLinking] = useState(false);
+  // Radix fires both the Cancel onClick and onOpenChange(false) for one tap;
+  // the ref makes finish() single-shot regardless of which handler wins.
+  const finishedRef = useRef(false);
 
   const maybeAsk = useCallback(async (args: DebtCoverAskArgs) => {
     if (!args.accountType || !isDebtAccountType(args.accountType)) return false;
@@ -68,11 +73,14 @@ export function useDebtCoverPrompt(): {
       return false;
     }
     if (!candidate) return false;
+    finishedRef.current = false;
     setPrompt({ candidate, transactionId: args.transactionId, onDone: args.onDone });
     return true;
   }, []);
 
   const finish = useCallback(() => {
+    if (finishedRef.current) return;
+    finishedRef.current = true;
     const done = prompt?.onDone;
     setPrompt(null);
     setLinking(false);
@@ -88,11 +96,14 @@ export function useDebtCoverPrompt(): {
     );
     if (result.success) {
       toast.success("Cuota marcada como pagada con este abono");
+      // The form's own refresh ran before the link — re-render the RSC tree
+      // so the cuota shows as paid without a manual navigation.
+      router.refresh();
     } else {
       toast.error(result.error);
     }
     finish();
-  }, [prompt, finish]);
+  }, [prompt, finish, router]);
 
   const dialog = prompt ? (
     <AlertDialog
@@ -127,7 +138,10 @@ export function useDebtCoverPrompt(): {
           <AlertDialogCancel
             className={GHOST_BUTTON_CLASS}
             disabled={linking}
-            onClick={finish}
+            onClick={(e) => {
+              e.preventDefault();
+              finish();
+            }}
           >
             No, es aporte extra
           </AlertDialogCancel>

@@ -28,6 +28,7 @@ type TxRow = {
   direction: "INFLOW" | "OUTFLOW";
   transaction_date: string;
   amount: number;
+  currency_code: string;
   recurrence_group_id: string | null;
   account: { account_type: string } | null;
 };
@@ -76,6 +77,7 @@ const cardPayment = (amount: number, date: string): TxRow => ({
   direction: "INFLOW",
   transaction_date: date,
   amount,
+  currency_code: "COP",
   recurrence_group_id: null,
   account: { account_type: "CREDIT_CARD" },
 });
@@ -139,6 +141,14 @@ describe("findCoveringDebtOccurrence", () => {
       getAuthenticatedClient.mockResolvedValue({ user: USER, supabase: client });
       expect(await findCoveringDebtOccurrence(TX)).toBeNull();
     }
+  });
+
+  it("never matches a cuota in another currency (multi-currency cards)", async () => {
+    const usdPayment = { ...cardPayment(3_646_525, "2026-08-18"), currency_code: "USD" };
+    const { client } = buildSupabase({ tx: usdPayment, occurrences: [sep1] });
+    getAuthenticatedClient.mockResolvedValue({ user: USER, supabase: client });
+
+    expect(await findCoveringDebtOccurrence(TX)).toBeNull();
   });
 
   it("rejects an invalid id without touching the database", async () => {

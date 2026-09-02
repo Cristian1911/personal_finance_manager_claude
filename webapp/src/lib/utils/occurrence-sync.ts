@@ -48,8 +48,8 @@ export interface CoveringDebtPayment {
 /**
  * A payment already recorded INTO a debt account that could be carrying the
  * cuota due on `dueDate` (the statement minimum, `expectedAmount`): an
- * unlinked INFLOW inside [due − DEBT_PAYMENT_COVER_LOOKAHEAD_DAYS, due + 3d]
- * with amount ≥ minimum. Largest first — a full-balance payment is the usual
+ * unlinked, non-excluded INFLOW in the template's currency inside
+ * [due − DEBT_PAYMENT_COVER_LOOKAHEAD_DAYS, due + 3d] with amount ≥ minimum. Largest first — a full-balance payment is the usual
  * carrier. Null when the month's occurrence is not pending anymore (already
  * paid/skipped) or no such payment exists.
  *
@@ -65,6 +65,8 @@ export async function findUnlinkedCoveringDebtPayment(
     templateId: string;
     dueDate: string;
     expectedAmount: number;
+    /** Template's primary currency — expected_amount is in this currency. */
+    currencyCode: string;
   },
 ): Promise<CoveringDebtPayment | null> {
   if (params.expectedAmount <= 0) return null;
@@ -92,6 +94,8 @@ export async function findUnlinkedCoveringDebtPayment(
     .eq("user_id", userId)
     .eq("account_id", params.accountId)
     .eq("direction", "INFLOW")
+    .eq("currency_code", params.currencyCode as Database["public"]["Enums"]["currency_code"])
+    .eq("is_excluded", false)
     .is("recurrence_group_id", null)
     .is("reconciled_into_transaction_id", null)
     .gte("transaction_date", from)
