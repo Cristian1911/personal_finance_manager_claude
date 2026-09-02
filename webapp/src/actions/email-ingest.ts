@@ -21,7 +21,10 @@ import {
   type ParsedEmailTransaction,
 } from "@/lib/parsers/bancolombia-email";
 import { resolveSuggestedEmailAccountId } from "@/lib/email-ingest/account-matching";
-import { findEmailDuplicateCandidate } from "@/lib/email-ingest/duplicate-check";
+import {
+  findEmailDuplicateCandidate,
+  findTransactionByIdempotencyKey,
+} from "@/lib/email-ingest/duplicate-check";
 import { normalizeEmailTime } from "@/lib/email-ingest/time";
 import { accountMaskSuffixMatches } from "@/lib/utils/account-mask";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
@@ -73,6 +76,22 @@ async function persistParsedEmail(params: {
     amount: parsed.amount,
     rawDescription: parsed.raw_line,
   });
+
+  // Same email already imported (redelivery, retry of a processed log): a
+  // clean skip, before any fuzzy duplicate scoring gets a chance to queue it.
+  try {
+    const existingId = await findTransactionByIdempotencyKey({
+      client: supabase,
+      userId,
+      idempotencyKey,
+    });
+    if (existingId) {
+      updateTag("email-ingest");
+      return { success: true, data: "duplicate" };
+    }
+  } catch (error) {
+    console.error("[persistParsedEmail] idempotency lookup failed:", error);
+  }
 
   let suggestedAccountId = defaultAccountId ?? null;
 

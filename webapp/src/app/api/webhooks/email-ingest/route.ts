@@ -5,7 +5,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import { parseBancolombiaEmail } from "@/lib/parsers/bancolombia-email";
 import { resolveSuggestedEmailAccountId } from "@/lib/email-ingest/account-matching";
-import { findEmailDuplicateCandidate } from "@/lib/email-ingest/duplicate-check";
+import {
+  findEmailDuplicateCandidate,
+  findTransactionByIdempotencyKey,
+} from "@/lib/email-ingest/duplicate-check";
 import { normalizeEmailTime } from "@/lib/email-ingest/time";
 import {
   computePdfHash,
@@ -779,6 +782,31 @@ async function processEmail(ctx: {
     amount: parsed.amount,
     rawDescription: parsed.raw_line,
   });
+
+  // Webhook delivery is at-least-once. An email whose transaction already
+  // exists is a clean skip — checked BEFORE the fuzzy duplicate scoring so a
+  // redelivery can never pile up "posible duplicado" rows in the queue.
+  try {
+    const existingId = await findTransactionByIdempotencyKey({
+      client: admin,
+      userId,
+      idempotencyKey,
+    });
+    if (existingId) {
+      console.log(`[email-ingest][${emailId}] Already imported as ${existingId} (idempotency key) — skipping`);
+      await insertLog({
+        userId,
+        emailIngestId,
+        fromAddress: from,
+        status: "duplicate",
+        rawBody: rawBodyPreview,
+        errorMessage: "Duplicate transaction (idempotency key already imported)",
+      });
+      return NextResponse.json({ ok: true });
+    }
+  } catch (error) {
+    console.error(`[email-ingest][${emailId}] idempotency lookup failed:`, error);
+  }
 
   let suggestedAccountId = defaultAccountId ?? null;
 

@@ -32,6 +32,29 @@ export type EmailDuplicateResult = {
   match: ReconciliationMatch;
 };
 
+/**
+ * Id of the transaction already carrying this idempotency key, or null. The
+ * exact-key check runs before any fuzzy scoring: a webhook redelivery of an
+ * email that was already imported must stay a silent skip, never a
+ * "posible duplicado" queue row. `idempotency_key` is a plain column, so the
+ * filter works through the view for the admin client as well.
+ */
+export async function findTransactionByIdempotencyKey(params: {
+  client: SupabaseClient<Database>;
+  userId: string;
+  idempotencyKey: string;
+}): Promise<string | null> {
+  const { data, error } = await params.client
+    .from("transactions")
+    .select("id")
+    .eq("user_id", params.userId)
+    .eq("idempotency_key", params.idempotencyKey)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.id ?? null;
+}
+
 /** ±3 days — must match the date tolerance in `scoreReconciliationCandidate`. */
 const WINDOW_DAYS = 3;
 
