@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, useTransition } from "react";
 
 import Link from "next/link";
-import { ArrowUpRight, ArrowDownLeft, ArrowRight, Mail, Hash, UserRound, Pencil, FileUp, Clock, Tag } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, ArrowDownLeft, ArrowRight, Mail, Hash, UserRound, Pencil, FileUp, Clock, Tag } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -584,6 +584,12 @@ function ImportarDetail({
                   <p className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                     <span>{formatDate(dateStr, "dd MMM")}</span>
                     {cardInfo && <span>{cardInfo}</span>}
+                    {email.conflict_transaction_id && (
+                      <span className="inline-flex items-center gap-0.5 text-z-alert">
+                        <AlertTriangle className="size-2.5" />
+                        Posible duplicado
+                      </span>
+                    )}
                     {hasEnrichment && (
                       <span className="inline-flex items-center gap-0.5 text-z-brass">
                         <Tag className="size-2.5" />

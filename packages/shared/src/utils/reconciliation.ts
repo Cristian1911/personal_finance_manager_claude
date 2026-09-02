@@ -17,6 +17,10 @@ export type ReconciliationCandidate = {
   notes?: string | null;
   reconciled_into_transaction_id?: string | null;
   capture_method?: TransactionCaptureMethod | null;
+  /** "HH:mm" or "HH:mm:ss" when the source carried a time of day. */
+  transaction_time?: string | null;
+  /** Parser alert family (e.g. email `pattern_type`) persisted with the row. */
+  source_pattern?: string | null;
 };
 
 export type ImportTransactionForReconciliation = {
@@ -28,7 +32,51 @@ export type ImportTransactionForReconciliation = {
   category_id?: string | null;
   notes?: string | null;
   capture_method?: TransactionCaptureMethod | null;
+  transaction_time?: string | null;
+  source_pattern?: string | null;
 };
+
+/**
+ * What kind of movement an alert family describes. Two rows whose families
+ * fall in different kinds are different transactions no matter how close the
+ * amount is — an ATM withdrawal is never a card purchase.
+ */
+const SOURCE_PATTERN_KIND: Record<string, "cash" | "purchase" | "transfer" | "inflow"> = {
+  retiro: "cash",
+  avance: "cash",
+  compra_debito: "purchase",
+  compra_credito: "purchase",
+  compra_asociada: "purchase",
+  transferencia: "transfer",
+  qr_transferencia: "transfer",
+  qr_pago: "transfer",
+  bre_b: "transfer",
+  boton_bancolombia: "transfer",
+  pago_pse: "transfer",
+  factura_programada: "transfer",
+  recarga: "transfer",
+  pago_recibido: "inflow",
+  pago_recibido_cuenta: "inflow",
+  nomina: "inflow",
+  qr_recibido: "inflow",
+  transferencia_recibida: "inflow",
+  transferencia_recibida_llave: "inflow",
+};
+
+function sourcePatternKind(pattern: string | null | undefined) {
+  return pattern ? SOURCE_PATTERN_KIND[pattern] ?? null : null;
+}
+
+/** Minutes since midnight for "HH:mm" / "HH:mm:ss"; null when unparseable. */
+function timeToMinutes(time: string | null | undefined): number | null {
+  if (!time) return null;
+  const match = time.match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return null;
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
+/** Same-alert tolerance: the bank stamps one time per transaction. */
+const SAME_EMAIL_TIME_TOLERANCE_MIN = 2;
 
 export type ReconciliationDecision = "AUTO_MERGE" | "REVIEW" | "NO_MATCH";
 
@@ -108,6 +156,31 @@ export function scoreReconciliationCandidate(
   );
 
   if (daysDiff > 3) return null;
+
+  // Structured evidence beats text. A bank alert describes exactly one
+  // movement with its own timestamp and family, so when both sides carry
+  // that evidence and it disagrees, they are different transactions —
+  // regardless of how many template words ("con tu tarjeta *1234…") the two
+  // emails share. Issue #391: a 20k ATM withdrawal was proposed as a
+  // duplicate of a 20k purchase three days earlier.
+  const importKind = sourcePatternKind(importTx.source_pattern);
+  const candidateKind = sourcePatternKind(candidate.source_pattern);
+  if (importKind && candidateKind && importKind !== candidateKind) return null;
+
+  const bothFromEmail =
+    importTx.capture_method === "EMAIL_IMPORT" && candidate.capture_method === "EMAIL_IMPORT";
+  if (bothFromEmail) {
+    if (daysDiff !== 0) return null;
+    const importMinutes = timeToMinutes(importTx.transaction_time);
+    const candidateMinutes = timeToMinutes(candidate.transaction_time);
+    if (
+      importMinutes !== null &&
+      candidateMinutes !== null &&
+      Math.abs(importMinutes - candidateMinutes) > SAME_EMAIL_TIME_TOLERANCE_MIN
+    ) {
+      return null;
+    }
+  }
 
   const sourceText = normalizeTransactionDescription(importTx.raw_description);
   const candidateText = normalizeTransactionDescription(

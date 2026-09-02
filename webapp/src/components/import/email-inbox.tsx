@@ -248,6 +248,7 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
           </p>
           <p className="text-xs text-muted-foreground/80">
             Categoría, etiquetas y nota se guardan solas y viajan con el movimiento al importarlo.
+            Las marcadas como posible duplicado se resuelven una por una.
           </p>
         </div>
         <Button
@@ -329,6 +330,12 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
                               {pattern.label}
                             </span>
                           </>
+                        )}
+                        {tx.conflict_transaction_id && (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-z-alert/30 bg-z-alert/5 px-2 py-0.5 text-[11px] font-medium text-z-alert">
+                            <AlertTriangle className="size-3" />
+                            Posible duplicado
+                          </span>
                         )}
                       </div>
                     </div>

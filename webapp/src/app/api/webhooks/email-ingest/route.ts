@@ -6,6 +6,11 @@ import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import { parseBancolombiaEmail } from "@/lib/parsers/bancolombia-email";
 import { resolveSuggestedEmailAccountId } from "@/lib/email-ingest/account-matching";
 import {
+  findEmailDuplicateCandidate,
+  findTransactionByIdempotencyKey,
+} from "@/lib/email-ingest/duplicate-check";
+import { normalizeEmailTime } from "@/lib/email-ingest/time";
+import {
   computePdfHash,
   filterPdfAttachments,
   isPdfEncrypted,
@@ -778,6 +783,31 @@ async function processEmail(ctx: {
     rawDescription: parsed.raw_line,
   });
 
+  // Webhook delivery is at-least-once. An email whose transaction already
+  // exists is a clean skip — checked BEFORE the fuzzy duplicate scoring so a
+  // redelivery can never pile up "posible duplicado" rows in the queue.
+  try {
+    const existingId = await findTransactionByIdempotencyKey({
+      client: admin,
+      userId,
+      idempotencyKey,
+    });
+    if (existingId) {
+      console.log(`[email-ingest][${emailId}] Already imported as ${existingId} (idempotency key) — skipping`);
+      await insertLog({
+        userId,
+        emailIngestId,
+        fromAddress: from,
+        status: "duplicate",
+        rawBody: rawBodyPreview,
+        errorMessage: "Duplicate transaction (idempotency key already imported)",
+      });
+      return NextResponse.json({ ok: true });
+    }
+  } catch (error) {
+    console.error(`[email-ingest][${emailId}] idempotency lookup failed:`, error);
+  }
+
   let suggestedAccountId = defaultAccountId ?? null;
 
   // Use RPC to decrypt masks — admin client has no JWT so zeta_decrypt() in the
@@ -795,9 +825,29 @@ async function processEmail(ctx: {
     console.warn("[email-ingest] account matching fallback:", accountLookupError.message);
   }
 
-  // 9. Auto-import or queue
+  // 9. Auto-import or queue. Auto import never decides a possible duplicate
+  // on its own (#389): a collision with an existing transaction goes to the
+  // queue flagged with the candidate and the user resolves it with the prompt.
   console.log(`[email-ingest][${emailId}] autoImport=${autoImport} suggestedAccountId=${suggestedAccountId}`);
+  let conflictTransactionId: string | null = null;
   if (autoImport && suggestedAccountId) {
+    try {
+      const duplicate = await findEmailDuplicateCandidate({
+        client: admin,
+        userId,
+        accountId: suggestedAccountId,
+        parsed,
+      });
+      conflictTransactionId = duplicate?.candidate.id ?? null;
+      if (conflictTransactionId) {
+        console.log(`[email-ingest][${emailId}] Possible duplicate of ${conflictTransactionId} — queuing instead of auto-importing`);
+      }
+    } catch (error) {
+      console.error(`[email-ingest][${emailId}] duplicate check failed:`, error);
+    }
+  }
+
+  if (autoImport && suggestedAccountId && !conflictTransactionId) {
     const matchedAccount = candidateAccounts?.find((a) => a.id === suggestedAccountId);
     const currencyCode = matchedAccount?.currency_code ?? parsed.currency;
     const matchText = parsed.merchant ?? parsed.destination ?? parsed.raw_line ?? "";
@@ -825,6 +875,9 @@ async function processEmail(ctx: {
       currency_code: currencyCode,
       direction: parsed.direction,
       transaction_date: parsed.transaction_date,
+      // The alert's time of day is what tells two same-amount movements
+      // apart later (issue #391); the manual approve path already stored it.
+      transaction_time: normalizeEmailTime(parsed.transaction_time),
       raw_description: parsed.raw_line,
       clean_description: parsed.merchant ?? parsed.destination ?? parsed.raw_line,
       merchant_name: parsed.merchant,
@@ -919,7 +972,8 @@ async function processEmail(ctx: {
     return NextResponse.json({ ok: true });
   }
 
-  // 10. Queue in pending_email_transactions (auto_import off or no suggested account)
+  // 10. Queue in pending_email_transactions (auto_import off, no suggested
+  //     account, or possible duplicate)
   console.log(`[email-ingest][${emailId}] Queuing for manual review`);
   const { error: queueError } = await admin.from("pending_email_transactions").insert({
     user_id: userId,
@@ -929,6 +983,7 @@ async function processEmail(ctx: {
     raw_body: emailBody,
     status: "pending",
     suggested_account_id: suggestedAccountId,
+    conflict_transaction_id: conflictTransactionId,
   });
 
   if (queueError) {
@@ -964,9 +1019,12 @@ async function processEmail(ctx: {
     fromAddress: from,
     status: "queued",
     rawBody: rawBodyPreview,
-    errorMessage: null,
+    errorMessage: conflictTransactionId
+      ? "Posible duplicado de una transacción existente — en cola para que decidas"
+      : null,
   });
 
   revalidateTag("email-ingest", "zeta");
+  revalidateTag("attention", "zeta");
   return NextResponse.json({ ok: true });
 }

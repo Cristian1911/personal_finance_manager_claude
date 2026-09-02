@@ -143,6 +143,87 @@ describe("scoreReconciliationCandidate — hard filters", () => {
   });
 });
 
+describe("scoreReconciliationCandidate — structured evidence from bank alerts (#391)", () => {
+  const RETIRO_20K = {
+    account_id: "acc-1",
+    amount: 20000,
+    direction: "OUTFLOW" as const,
+    transaction_date: "2026-08-21",
+    transaction_time: "11:25",
+    source_pattern: "retiro",
+    capture_method: "EMAIL_IMPORT" as const,
+    raw_description:
+      "Bancolombia: Retiraste $20.000 en CAJERO CENTRO con tu tarjeta *1234 el 21/08/2026 a las 11:25",
+  };
+  const compraCandidate = makeCandidate({
+    amount: 20000,
+    transaction_date: "2026-08-18",
+    transaction_time: "15:02:00",
+    source_pattern: "compra_debito",
+    capture_method: "EMAIL_IMPORT",
+    raw_description:
+      "Bancolombia: Compraste $20.000 en TIENDA D1 con tu tarjeta *1234 el 18/08/2026 a las 15:02",
+  });
+
+  it("never pairs alert families of different kinds (retiro vs compra)", () => {
+    expect(scoreReconciliationCandidate(RETIRO_20K, compraCandidate)).toBeNull();
+    // Same kind on the same day still scores.
+    expect(
+      scoreReconciliationCandidate(
+        RETIRO_20K,
+        makeCandidate({
+          ...compraCandidate,
+          transaction_date: "2026-08-21",
+          transaction_time: "11:25:00",
+          source_pattern: "retiro",
+        })
+      )
+    ).not.toBeNull();
+  });
+
+  it("requires the same day and time when both rows came from emails", () => {
+    const sameFamilyOtherDay = makeCandidate({
+      ...compraCandidate,
+      source_pattern: "retiro",
+    });
+    expect(scoreReconciliationCandidate(RETIRO_20K, sameFamilyOtherDay)).toBeNull();
+
+    const sameDayOtherTime = makeCandidate({
+      ...sameFamilyOtherDay,
+      transaction_date: "2026-08-21",
+      transaction_time: "18:40:00",
+    });
+    expect(scoreReconciliationCandidate(RETIRO_20K, sameDayOtherTime)).toBeNull();
+
+    const sameDayNearTime = makeCandidate({
+      ...sameFamilyOtherDay,
+      transaction_date: "2026-08-21",
+      transaction_time: "11:26:00",
+    });
+    expect(scoreReconciliationCandidate(RETIRO_20K, sameDayNearTime)?.decision).not.toBe(
+      "NO_MATCH"
+    );
+  });
+
+  it("keeps the ±3 day window for manual or bank-verified candidates", () => {
+    const manual = makeCandidate({
+      amount: 20000,
+      transaction_date: "2026-08-19",
+      capture_method: "MANUAL_FORM",
+      raw_description: "retiro cajero",
+    });
+    expect(scoreReconciliationCandidate(RETIRO_20K, manual)).not.toBeNull();
+
+    const pdfRow = makeCandidate({
+      amount: 20000,
+      transaction_date: "2026-08-22",
+      capture_method: "PDF_IMPORT",
+      raw_description: "RETIRO CAJERO CENTRO",
+    });
+    expect(scoreReconciliationCandidate(RETIRO_20K, pdfRow)).not.toBeNull();
+  });
+});
+
 describe("scoreReconciliationCandidate — user-entered near-match REVIEW floor", () => {
   // Real pair from the June-2026 savings statement: the user pre-typed a loan
   // prepayment with an estimated amount; the bank settled a slightly lower

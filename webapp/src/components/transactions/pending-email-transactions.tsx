@@ -293,6 +293,12 @@ export function PendingEmailTransactions({
                       <PatternIcon className="size-3" />
                       <span>{pattern.label}</span>
                     </div>
+                    {tx.conflict_transaction_id && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-z-alert/30 bg-z-alert/5 px-2.5 py-1 text-xs text-z-alert">
+                        <AlertTriangle className="size-3" />
+                        Posible duplicado
+                      </span>
+                    )}
                     {(tx.category_id || (tx.tag_ids?.length ?? 0) > 0) && (
                       <Link
                         href="/import/correo"

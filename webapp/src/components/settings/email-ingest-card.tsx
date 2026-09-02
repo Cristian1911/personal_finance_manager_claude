@@ -377,7 +377,8 @@ export function EmailIngestCard({ accounts, initialAddress, initialAllowedSender
               <div className="space-y-0.5">
                 <p className="text-sm font-medium">Importar automáticamente</p>
                 <p className="text-xs text-muted-foreground">
-                  Si está activo, las transacciones se crean sin pasar por revisión manual.
+                  Si está activo, las transacciones se crean sin pasar por revisión manual. Si Zeta
+                  detecta un posible duplicado, ese correo queda en cola para que decidas tú.
                 </p>
               </div>
               <Switch
