@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { HandCoins } from "lucide-react";
@@ -25,6 +26,7 @@ import { toast } from "sonner";
 import { registerPayment } from "@/actions/accounts";
 import { isDebtAccountType } from "@/lib/utils/account-balance";
 import { formatCurrency } from "@/lib/utils/currency";
+import { toColombiaDateString } from "@/lib/utils/date";
 import type { Account } from "@/types/domain";
 import type { CurrencyCode } from "@/types/domain";
 
@@ -55,6 +57,7 @@ export function QuickPaymentDialog({
   const [amountRaw, setAmountRaw] = useState("");
   const [sourceAccountId, setSourceAccountId] = useState("");
   const [notes, setNotes] = useState("");
+  const [date, setDate] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -92,6 +95,8 @@ export function QuickPaymentDialog({
       setAmountRaw("");
       setSourceAccountId("");
       setNotes("");
+      // Read the clock on open, on the client — never during render.
+      setDate(toColombiaDateString(new Date()));
       setError(null);
     }
   }
@@ -104,6 +109,7 @@ export function QuickPaymentDialog({
         amount: parsedAmount,
         sourceAccountId: sourceAccountId || undefined,
         notes: notes || undefined,
+        date: date || undefined,
       });
 
       if (result.success) {
@@ -177,6 +183,17 @@ export function QuickPaymentDialog({
               </p>
             </div>
           )}
+
+          {/* Date — a payment made days ago used to require editing both legs (#388) */}
+          <div className="space-y-2">
+            <Label>Fecha</Label>
+            <DatePicker
+              value={date}
+              disabled={isPending}
+              onChange={(v) => setDate(v ?? toColombiaDateString(new Date()))}
+              placeholder="Seleccionar fecha"
+            />
+          </div>
 
           {/* Notes */}
           <div className="space-y-2">
