@@ -12,6 +12,7 @@ import {
   CalendarClock,
 } from "lucide-react";
 import { createTransaction } from "@/actions/transactions";
+import { useDebtCoverPrompt } from "@/components/recurring/debt-cover-prompt";
 import { createTransfer } from "@/actions/transfers";
 import { Button } from "@/components/ui/button";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
@@ -115,10 +116,27 @@ export function MobileTransactionForm({
   // (success: true); an effect would replay onSuccess on mount (stale
   // "Guardado" toast + instant router.back() before the form ever shows).
   // Same pattern as TransactionForm / RecurringForm / MobileQuickCaptureSheet.
+  //
+  // A payment INTO a card/loan (income on the card, or a transfer whose
+  // destination is the card) may carry the next cuota: the prompt asks before
+  // closing and runs onSuccess once the user answers.
+  const debtCover = useDebtCoverPrompt();
   const [txState, txFormAction, txPending] = useActionState(
     async (prev: Awaited<ReturnType<typeof createTransaction>>, formData: FormData) => {
       const result = await createTransaction(prev, formData);
-      if (result.success) onSuccess?.();
+      if (result.success) {
+        const finish = () => onSuccess?.();
+        const asked =
+          result.data.direction === "INFLOW"
+            ? await debtCover.maybeAsk({
+                transactionId: result.data.id,
+                accountType: accounts.find((a) => a.id === result.data.account_id)
+                  ?.account_type,
+                onDone: finish,
+              })
+            : false;
+        if (!asked) finish();
+      }
       return result;
     },
     { success: false, error: "" },
@@ -126,7 +144,16 @@ export function MobileTransactionForm({
   const [transferState, transferFormAction, transferPending] = useActionState(
     async (prev: Awaited<ReturnType<typeof createTransfer>>, formData: FormData) => {
       const result = await createTransfer(prev, formData);
-      if (result.success) onSuccess?.();
+      if (result.success) {
+        const finish = () => onSuccess?.();
+        const toAccountId = String(formData.get("toAccountId") ?? "");
+        const asked = await debtCover.maybeAsk({
+          transactionId: result.data.inflowId,
+          accountType: accounts.find((a) => a.id === toAccountId)?.account_type,
+          onDone: finish,
+        });
+        if (!asked) finish();
+      }
       return result;
     },
     { success: false, error: "" },
@@ -257,426 +284,429 @@ export function MobileTransactionForm({
         : "Registrar gasto";
 
   return (
-    <form
-      action={formAction}
-      className="space-y-4 pb-4"
-      onKeyDown={(event) => {
-        // The soft keyboard's Enter/"Ir" would implicitly submit this
-        // single-submit-button form while the user is still typing the
-        // description or the amount. Only the explicit button submits.
-        if (event.key !== "Enter") return;
-        const target = event.target;
-        if (target instanceof HTMLInputElement) event.preventDefault();
-      }}
-      onFocusCapture={(event) => {
-        const target = event.target;
-        if (!(target instanceof HTMLElement)) return;
+    <>
+      {debtCover.dialog}
+      <form
+        action={formAction}
+        className="space-y-4 pb-4"
+        onKeyDown={(event) => {
+          // The soft keyboard's Enter/"Ir" would implicitly submit this
+          // single-submit-button form while the user is still typing the
+          // description or the amount. Only the explicit button submits.
+          if (event.key !== "Enter") return;
+          const target = event.target;
+          if (target instanceof HTMLInputElement) event.preventDefault();
+        }}
+        onFocusCapture={(event) => {
+          const target = event.target;
+          if (!(target instanceof HTMLElement)) return;
 
-        window.setTimeout(() => {
-          target.scrollIntoView({ block: "nearest", inline: "nearest" });
-        }, 120);
-      }}
-    >
-      {!state.success && state.error && (
-        <div
-          role="alert"
-          className="rounded-md bg-destructive/10 p-3 text-sm text-destructive"
-        >
-          {state.error}
-        </div>
-      )}
-
-      {/* Hidden fields */}
-      <input type="hidden" name="direction" value={direction} />
-      <input type="hidden" name="transaction_date" value={transactionDate} />
-      <input type="hidden" name="currency_code" value={currencyCode} />
-      <input
-        type="hidden"
-        name="is_subscription"
-        value={isSubscription ? "true" : "false"}
-      />
-      <input
-        type="hidden"
-        name="create_recurring_template"
-        value={createRecurringSetup ? "true" : "false"}
-      />
-      <input type="hidden" name="recurring_frequency" value={recurringFrequency} />
-      <input type="hidden" name="recurring_start_date" value={recurringStartDate} />
-      <input
-        type="hidden"
-        name="recurring_transfer_source_account_id"
-        value={recurringTransferSourceAccountId}
-      />
-
-      {/* Transfer-only fields consumed by createTransfer */}
-      {isTransferMode && (
-        <>
-          <input type="hidden" name="currencyCode" value={currencyCode} />
-          <input type="hidden" name="date" value={transactionDate} />
-        </>
-      )}
-
-      {/* Direction selector — only shown when no preset */}
-      {showTypeSelector && (
-        <div className="flex gap-1 rounded-lg bg-muted p-1">
-          {TRANSACTION_TYPES.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTransactionType(t.id)}
-              className={cn(
-                "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                transactionType === t.id
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <t.icon className="size-4" />
-              {t.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Amount */}
-      <AmountInput
-        name="amount"
-        autoFocus={!showTypeSelector}
-      />
-
-      {/* ── DETALLES ────────────────────────────────────────── */}
-      <SectionEyebrow>Detalles</SectionEyebrow>
-
-      {/* Description — full width (not used for transfers) */}
-      {!isTransferMode && (
-        <div className="space-y-2">
-          <Label htmlFor="mobile-merchant">Descripción</Label>
-          <Input
-            id="mobile-merchant"
-            name="merchant_name"
-            value={merchantName}
-            onChange={(event) => setMerchantName(event.target.value)}
-            placeholder="Ej: Almuerzo, Uber, Arriendo..."
-          />
-        </div>
-      )}
-
-      {/* Cuenta (origen for transfers) */}
-      <div className="space-y-2">
-        <Label htmlFor="mobile-account">
-          {isTransferMode ? "Cuenta origen" : "Cuenta"}
-        </Label>
-        <Select
-          name={isTransferMode ? "fromAccountId" : "account_id"}
-          value={selectedAccountId}
-          onValueChange={(value) => {
-            setSelectedAccountId(value);
-            if (recurringTransferSourceAccountId === value) {
-              setRecurringTransferSourceAccountId("");
-            }
-            // Clear a destination that's no longer valid for the new source
-            // (same account, or a now-mismatched currency).
-            const dest = accounts.find((a) => a.id === destinationAccountId);
-            const newSource = accounts.find((a) => a.id === value);
-            if (
-              dest &&
-              (dest.id === value ||
-                dest.currency_code !== newSource?.currency_code)
-            ) {
-              setDestinationAccountId("");
-            }
-          }}
-        >
-          <SelectTrigger id="mobile-account">
-            <SelectValue placeholder="Seleccionar cuenta" />
-          </SelectTrigger>
-          <SelectContent>
-            {accounts.map((acc) => (
-              <SelectItem key={acc.id} value={acc.id}>
-                {acc.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Cuenta destino — transfers only */}
-      {isTransferMode && (
-        <div className="space-y-2">
-          <Label htmlFor="mobile-destination-account">Cuenta destino</Label>
-          <Select
-            name="toAccountId"
-            required
-            value={destinationAccountId}
-            onValueChange={setDestinationAccountId}
+          window.setTimeout(() => {
+            target.scrollIntoView({ block: "nearest", inline: "nearest" });
+          }, 120);
+        }}
+      >
+        {!state.success && state.error && (
+          <div
+            role="alert"
+            className="rounded-md bg-destructive/10 p-3 text-sm text-destructive"
           >
-            <SelectTrigger id="mobile-destination-account">
+            {state.error}
+          </div>
+        )}
+
+        {/* Hidden fields */}
+        <input type="hidden" name="direction" value={direction} />
+        <input type="hidden" name="transaction_date" value={transactionDate} />
+        <input type="hidden" name="currency_code" value={currencyCode} />
+        <input
+          type="hidden"
+          name="is_subscription"
+          value={isSubscription ? "true" : "false"}
+        />
+        <input
+          type="hidden"
+          name="create_recurring_template"
+          value={createRecurringSetup ? "true" : "false"}
+        />
+        <input type="hidden" name="recurring_frequency" value={recurringFrequency} />
+        <input type="hidden" name="recurring_start_date" value={recurringStartDate} />
+        <input
+          type="hidden"
+          name="recurring_transfer_source_account_id"
+          value={recurringTransferSourceAccountId}
+        />
+
+        {/* Transfer-only fields consumed by createTransfer */}
+        {isTransferMode && (
+          <>
+            <input type="hidden" name="currencyCode" value={currencyCode} />
+            <input type="hidden" name="date" value={transactionDate} />
+          </>
+        )}
+
+        {/* Direction selector — only shown when no preset */}
+        {showTypeSelector && (
+          <div className="flex gap-1 rounded-lg bg-muted p-1">
+            {TRANSACTION_TYPES.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTransactionType(t.id)}
+                className={cn(
+                  "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  transactionType === t.id
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <t.icon className="size-4" />
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Amount */}
+        <AmountInput
+          name="amount"
+          autoFocus={!showTypeSelector}
+        />
+
+        {/* ── DETALLES ────────────────────────────────────────── */}
+        <SectionEyebrow>Detalles</SectionEyebrow>
+
+        {/* Description — full width (not used for transfers) */}
+        {!isTransferMode && (
+          <div className="space-y-2">
+            <Label htmlFor="mobile-merchant">Descripción</Label>
+            <Input
+              id="mobile-merchant"
+              name="merchant_name"
+              value={merchantName}
+              onChange={(event) => setMerchantName(event.target.value)}
+              placeholder="Ej: Almuerzo, Uber, Arriendo..."
+            />
+          </div>
+        )}
+
+        {/* Cuenta (origen for transfers) */}
+        <div className="space-y-2">
+          <Label htmlFor="mobile-account">
+            {isTransferMode ? "Cuenta origen" : "Cuenta"}
+          </Label>
+          <Select
+            name={isTransferMode ? "fromAccountId" : "account_id"}
+            value={selectedAccountId}
+            onValueChange={(value) => {
+              setSelectedAccountId(value);
+              if (recurringTransferSourceAccountId === value) {
+                setRecurringTransferSourceAccountId("");
+              }
+              // Clear a destination that's no longer valid for the new source
+              // (same account, or a now-mismatched currency).
+              const dest = accounts.find((a) => a.id === destinationAccountId);
+              const newSource = accounts.find((a) => a.id === value);
+              if (
+                dest &&
+                (dest.id === value ||
+                  dest.currency_code !== newSource?.currency_code)
+              ) {
+                setDestinationAccountId("");
+              }
+            }}
+          >
+            <SelectTrigger id="mobile-account">
               <SelectValue placeholder="Seleccionar cuenta" />
             </SelectTrigger>
             <SelectContent>
-              {destinationAccounts.map((acc) => (
+              {accounts.map((acc) => (
                 <SelectItem key={acc.id} value={acc.id}>
                   {acc.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <p className="text-xs text-muted-foreground">
-            Se registrará una salida en la cuenta origen y una entrada en la
-            cuenta destino.
-          </p>
         </div>
-      )}
 
-      {/* Fecha + hora */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2">
-          <Label>Fecha</Label>
-          <DatePicker
-            value={transactionDate}
-            onChange={(v) => setTransactionDate(v ?? today)}
-            placeholder="Seleccionar fecha"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="transaction_time">Hora</Label>
-          <TimePicker
-            name="transaction_time"
-            value={transactionTime}
-            onChange={(v) => setTransactionTime(v ?? "")}
-          />
-        </div>
-      </div>
-
-      {/* Category — full width (not used for transfers) */}
-      {!isTransferMode && (
-        <div className="space-y-2">
-          <Label>Categoría</Label>
-          <CategoryZonePicker
-            variant="popover"
-            categories={categories}
-            value={categoryId}
-            onValueChange={setCategoryId}
-            direction={direction}
-            name="category_id"
-          />
-        </div>
-      )}
-
-      {/* Notas — transfers only (other modes have it under "Más opciones") */}
-      {isTransferMode && (
-        <div className="space-y-2">
-          <Label htmlFor="mobile-transfer-notes">Notas (opcional)</Label>
-          <Input
-            id="mobile-transfer-notes"
-            name="notes"
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
-            placeholder="Ej: Pago cuota préstamo"
-          />
-        </div>
-      )}
-
-      {/* ── ASIGNAR ─────────────────────────────────────────── */}
-      {allowRelatedSetup && (
-        <>
-          <SectionEyebrow>Asignar</SectionEyebrow>
-
+        {/* Cuenta destino — transfers only */}
+        {isTransferMode && (
           <div className="space-y-2">
-            <Label>Destinatario</Label>
-            <DestinatarioZonePicker
-              value={destinatarioId}
-              onValueChange={(id, name) => {
-                setDestinatarioId(id);
-                setDestinatarioSelectedName(name);
-                // Pre-fill the category the destinatario already implies, but
-                // never overwrite a choice the user already made.
-                if (id && !categoryId) {
-                  const preset = destinatarios.find((d) => d.id === id)
-                    ?.default_category_id;
-                  if (preset) setCategoryId(preset);
-                }
-              }}
-              selectedName={destinatarioSelectedName}
-              placeholder="Elegir o crear destinatario"
-              triggerClassName="w-full"
-              categories={categories}
-              merchantName={merchantName}
-            />
-            <input type="hidden" name="destinatario_id" value={destinatarioId ?? ""} />
+            <Label htmlFor="mobile-destination-account">Cuenta destino</Label>
+            <Select
+              name="toAccountId"
+              required
+              value={destinationAccountId}
+              onValueChange={setDestinationAccountId}
+            >
+              <SelectTrigger id="mobile-destination-account">
+                <SelectValue placeholder="Seleccionar cuenta" />
+              </SelectTrigger>
+              <SelectContent>
+                {destinationAccounts.map((acc) => (
+                  <SelectItem key={acc.id} value={acc.id}>
+                    {acc.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Se registrará una salida en la cuenta origen y una entrada en la
+              cuenta destino.
+            </p>
           </div>
-        </>
-      )}
+        )}
 
-      {allowRelatedSetup && (
-        <>
-          <Collapsible
-            open={advancedOpen}
-            onOpenChange={setAdvancedOpen}
-            className="rounded-lg border border-border/60 bg-muted/10"
-          >
-            <CollapsibleTrigger asChild>
-              <button
-                type="button"
-                className="flex w-full items-start justify-between gap-4 px-4 py-3 text-left sm:items-center"
-              >
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">Más opciones</p>
-                  <p className="text-xs text-muted-foreground">
-                    Suscripción, pago recurrente y notas.
-                  </p>
-                </div>
-                <ChevronDown
-                  className={`size-4 shrink-0 text-muted-foreground transition-transform ${
-                    advancedOpen ? "rotate-180" : ""
-                  }`}
-                />
-              </button>
-            </CollapsibleTrigger>
+        {/* Fecha + hora */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label>Fecha</Label>
+            <DatePicker
+              value={transactionDate}
+              onChange={(v) => setTransactionDate(v ?? today)}
+              placeholder="Seleccionar fecha"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="transaction_time">Hora</Label>
+            <TimePicker
+              name="transaction_time"
+              value={transactionTime}
+              onChange={(v) => setTransactionTime(v ?? "")}
+            />
+          </div>
+        </div>
 
-            <CollapsibleContent className="space-y-4 border-t px-4 py-4">
-              {/* Es una suscripción */}
-              <div className="flex items-center gap-3">
-                <Repeat className="size-[18px] shrink-0 text-muted-foreground" />
-                <div className="min-w-0 flex-1">
-                  <Label
-                    htmlFor="mobile-is_subscription"
-                    className="cursor-pointer text-sm font-medium"
-                  >
-                    Es una suscripción
-                  </Label>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">
-                    Marca este movimiento como parte de una suscripción
-                  </p>
-                </div>
-                <Switch
-                  id="mobile-is_subscription"
-                  checked={isSubscription}
-                  onCheckedChange={setIsSubscription}
-                />
-              </div>
+        {/* Category — full width (not used for transfers) */}
+        {!isTransferMode && (
+          <div className="space-y-2">
+            <Label>Categoría</Label>
+            <CategoryZonePicker
+              variant="popover"
+              categories={categories}
+              value={categoryId}
+              onValueChange={setCategoryId}
+              direction={direction}
+              name="category_id"
+            />
+          </div>
+        )}
 
-              {/* Same row shape as "Es una suscripción" above — the old
-                  flex-col dropped the switch below-left on mobile, so the two
-                  toggles in one panel used two different layouts. */}
-              <div className="flex items-center gap-3">
-                <CalendarClock className="size-[18px] shrink-0 text-muted-foreground" />
-                <div className="min-w-0 flex-1">
-                  <Label
-                    htmlFor="mobile-create_recurring_template"
-                    className="cursor-pointer text-sm font-medium"
-                  >
-                    Crear pago recurrente
-                  </Label>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">
-                    Útil si este movimiento se repite cada semana, mes o trimestre.
-                  </p>
-                </div>
-                <Switch
-                  id="mobile-create_recurring_template"
-                  checked={createRecurringSetup}
-                  onCheckedChange={handleCreateRecurringSetup}
-                />
-              </div>
+        {/* Notas — transfers only (other modes have it under "Más opciones") */}
+        {isTransferMode && (
+          <div className="space-y-2">
+            <Label htmlFor="mobile-transfer-notes">Notas (opcional)</Label>
+            <Input
+              id="mobile-transfer-notes"
+              name="notes"
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              placeholder="Ej: Pago cuota préstamo"
+            />
+          </div>
+        )}
 
-              {createRecurringSetup && (
-                <>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="mobile-recurring_frequency">Frecuencia</Label>
-                      <Select
-                        value={recurringFrequency}
-                        onValueChange={(value) =>
-                          setRecurringFrequency(
-                            value as (typeof FREQUENCY_OPTIONS)[number]["value"]
-                          )
-                        }
-                      >
-                        <SelectTrigger id="mobile-recurring_frequency">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {FREQUENCY_OPTIONS.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+        {/* ── ASIGNAR ─────────────────────────────────────────── */}
+        {allowRelatedSetup && (
+          <>
+            <SectionEyebrow>Asignar</SectionEyebrow>
 
-                    <div className="space-y-2">
-                      <Label>Fecha de inicio</Label>
-                      <DatePicker
-                        value={recurringStartDate}
-                        onChange={(v) => setRecurringStartDate(v ?? "")}
-                        placeholder="Fecha de inicio"
-                      />
-                    </div>
+            <div className="space-y-2">
+              <Label>Destinatario</Label>
+              <DestinatarioZonePicker
+                value={destinatarioId}
+                onValueChange={(id, name) => {
+                  setDestinatarioId(id);
+                  setDestinatarioSelectedName(name);
+                  // Pre-fill the category the destinatario already implies, but
+                  // never overwrite a choice the user already made.
+                  if (id && !categoryId) {
+                    const preset = destinatarios.find((d) => d.id === id)
+                      ?.default_category_id;
+                    if (preset) setCategoryId(preset);
+                  }
+                }}
+                selectedName={destinatarioSelectedName}
+                placeholder="Elegir o crear destinatario"
+                triggerClassName="w-full"
+                categories={categories}
+                merchantName={merchantName}
+              />
+              <input type="hidden" name="destinatario_id" value={destinatarioId ?? ""} />
+            </div>
+          </>
+        )}
+
+        {allowRelatedSetup && (
+          <>
+            <Collapsible
+              open={advancedOpen}
+              onOpenChange={setAdvancedOpen}
+              className="rounded-lg border border-border/60 bg-muted/10"
+            >
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className="flex w-full items-start justify-between gap-4 px-4 py-3 text-left sm:items-center"
+                >
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Más opciones</p>
+                    <p className="text-xs text-muted-foreground">
+                      Suscripción, pago recurrente y notas.
+                    </p>
                   </div>
+                  <ChevronDown
+                    className={`size-4 shrink-0 text-muted-foreground transition-transform ${
+                      advancedOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+              </CollapsibleTrigger>
 
-                  {isDebtAccount && (
-                    <div className="space-y-2">
-                      <Label htmlFor="mobile-recurring_transfer_source_account_id">
-                        Cuenta origen del pago
-                      </Label>
-                      <Select
-                        value={recurringTransferSourceAccountId}
-                        onValueChange={setRecurringTransferSourceAccountId}
-                      >
-                        <SelectTrigger id="mobile-recurring_transfer_source_account_id">
-                          <SelectValue placeholder="Seleccionar cuenta origen" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {accounts
-                            .filter((account) => account.id !== selectedAccountId)
-                            .map((account) => (
-                              <SelectItem key={account.id} value={account.id}>
-                                {account.name}
+              <CollapsibleContent className="space-y-4 border-t px-4 py-4">
+                {/* Es una suscripción */}
+                <div className="flex items-center gap-3">
+                  <Repeat className="size-[18px] shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <Label
+                      htmlFor="mobile-is_subscription"
+                      className="cursor-pointer text-sm font-medium"
+                    >
+                      Es una suscripción
+                    </Label>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      Marca este movimiento como parte de una suscripción
+                    </p>
+                  </div>
+                  <Switch
+                    id="mobile-is_subscription"
+                    checked={isSubscription}
+                    onCheckedChange={setIsSubscription}
+                  />
+                </div>
+
+                {/* Same row shape as "Es una suscripción" above — the old
+                    flex-col dropped the switch below-left on mobile, so the two
+                    toggles in one panel used two different layouts. */}
+                <div className="flex items-center gap-3">
+                  <CalendarClock className="size-[18px] shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <Label
+                      htmlFor="mobile-create_recurring_template"
+                      className="cursor-pointer text-sm font-medium"
+                    >
+                      Crear pago recurrente
+                    </Label>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      Útil si este movimiento se repite cada semana, mes o trimestre.
+                    </p>
+                  </div>
+                  <Switch
+                    id="mobile-create_recurring_template"
+                    checked={createRecurringSetup}
+                    onCheckedChange={handleCreateRecurringSetup}
+                  />
+                </div>
+
+                {createRecurringSetup && (
+                  <>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="mobile-recurring_frequency">Frecuencia</Label>
+                        <Select
+                          value={recurringFrequency}
+                          onValueChange={(value) =>
+                            setRecurringFrequency(
+                              value as (typeof FREQUENCY_OPTIONS)[number]["value"]
+                            )
+                          }
+                        >
+                          <SelectTrigger id="mobile-recurring_frequency">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FREQUENCY_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
                               </SelectItem>
                             ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground">
-                        Para deudas, el recurrente se guarda como abono y necesita una cuenta
-                        origen.
-                      </p>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Fecha de inicio</Label>
+                        <DatePicker
+                          value={recurringStartDate}
+                          onChange={(v) => setRecurringStartDate(v ?? "")}
+                          placeholder="Fecha de inicio"
+                        />
+                      </div>
                     </div>
-                  )}
-                </>
-              )}
 
-              {/* Notas (opcional) */}
-              <div className="space-y-2">
-                <Label htmlFor="mobile-notes">Notas (opcional)</Label>
-                <Input
-                  id="mobile-notes"
-                  name="notes"
-                  value={notes}
-                  onChange={(event) => setNotes(event.target.value)}
-                  placeholder="Detalle extra"
-                />
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        </>
-      )}
+                    {isDebtAccount && (
+                      <div className="space-y-2">
+                        <Label htmlFor="mobile-recurring_transfer_source_account_id">
+                          Cuenta origen del pago
+                        </Label>
+                        <Select
+                          value={recurringTransferSourceAccountId}
+                          onValueChange={setRecurringTransferSourceAccountId}
+                        >
+                          <SelectTrigger id="mobile-recurring_transfer_source_account_id">
+                            <SelectValue placeholder="Seleccionar cuenta origen" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {accounts
+                              .filter((account) => account.id !== selectedAccountId)
+                              .map((account) => (
+                                <SelectItem key={account.id} value={account.id}>
+                                  {account.name}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          Para deudas, el recurrente se guarda como abono y necesita una cuenta
+                          origen.
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
 
-      {/* Submit */}
-      <Button
-        type="submit"
-        className={cn(BRASS_BUTTON_CLASS, "h-12 w-full")}
-        disabled={pending}
-      >
-        {pending ? (
-          <>
-            <Loader2 className="mr-2 size-4 animate-spin" />
-            Guardando...
+                {/* Notas (opcional) */}
+                <div className="space-y-2">
+                  <Label htmlFor="mobile-notes">Notas (opcional)</Label>
+                  <Input
+                    id="mobile-notes"
+                    name="notes"
+                    value={notes}
+                    onChange={(event) => setNotes(event.target.value)}
+                    placeholder="Detalle extra"
+                  />
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </>
-        ) : (
-          submitLabel
         )}
-      </Button>
-    </form>
+
+        {/* Submit */}
+        <Button
+          type="submit"
+          className={cn(BRASS_BUTTON_CLASS, "h-12 w-full")}
+          disabled={pending}
+        >
+          {pending ? (
+            <>
+              <Loader2 className="mr-2 size-4 animate-spin" />
+              Guardando...
+            </>
+          ) : (
+            submitLabel
+          )}
+        </Button>
+      </form>
+    </>
   );
 }

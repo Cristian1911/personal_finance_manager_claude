@@ -17,6 +17,8 @@ import {
   getDebtPaymentCategoryId,
   occurrenceAmountMatches,
   OCCURRENCE_AUTO_LINK_DAY_WINDOW,
+  DEBT_PAYMENT_COVER_LOOKAHEAD_DAYS,
+  pickCoveredDebtOccurrence,
 } from "@zeta/shared";
 import { parseSubPayments } from "@/lib/utils/sub-payments";
 import { UUID_RE } from "@/lib/validators/shared";
@@ -25,6 +27,7 @@ import {
   generateOccurrenceRowsBatch,
 } from "@/lib/utils/occurrence-generator";
 import type { ActionResult } from "@/types/actions";
+import type { CurrencyCode } from "@/types/domain";
 
 // ─── Match Score ──────────────────────────────────────────────────────────────
 
@@ -1797,4 +1800,113 @@ export async function getAccountIdsWithPendingOccurrences(): Promise<string[]> {
   const { user, accessToken } = await getAuthenticatedClient();
   if (!user || !accessToken) return [];
   return getAccountIdsWithPendingOccurrencesCached(user.id, accessToken);
+}
+
+// ─── Debt cover prompt ────────────────────────────────────────────────────────
+
+export interface DebtCoverCandidate {
+  occurrenceId: string;
+  occurrenceDate: string;
+  expectedAmount: number;
+  currencyCode: CurrencyCode;
+  merchant: string;
+}
+
+/**
+ * After a payment INTO a credit card / loan account is saved, find the pending
+ * payment occurrence (the statement minimum) that payment could be carrying:
+ * the next one due inside [tx − 3d, tx + DEBT_PAYMENT_COVER_LOOKAHEAD_DAYS]
+ * whose expected amount the payment covers.
+ *
+ * Deliberately NOT linked here. A payment after the statement cut may be a
+ * pure extra contribution with the minimum still to be paid separately, so the
+ * form asks the user and links via linkExistingTransactionToOccurrence only on
+ * a yes. Exact matches never reach this: linkTransactionToOccurrence already
+ * paid them (the row is no longer pending and the tx carries a group id).
+ */
+export async function findCoveringDebtOccurrence(
+  transactionId: string,
+): Promise<DebtCoverCandidate | null> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return null;
+  if (!UUID_RE.test(transactionId)) return null;
+
+  const { data: tx } = await supabase
+    .from("transactions")
+    .select(
+      `id, account_id, direction, transaction_date, amount, currency_code, recurrence_group_id,
+       account:accounts!transactions_account_id_fkey(account_type)`,
+    )
+    .eq("id", transactionId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!tx || tx.direction !== "INFLOW" || tx.recurrence_group_id) return null;
+  const account = tx.account as { account_type: string } | null;
+  if (!account || !isDebtAccountType(account.account_type)) return null;
+
+  const base = parseISO(tx.transaction_date + "T12:00:00");
+  const rangeStart = toColombiaDateString(
+    addDays(base, -OCCURRENCE_AUTO_LINK_DAY_WINDOW),
+  );
+  const rangeEnd = toColombiaDateString(
+    addDays(base, DEBT_PAYMENT_COVER_LOOKAHEAD_DAYS),
+  );
+
+  const { data: rows, error } = await supabase
+    .from("recurring_occurrences")
+    .select(
+      `id, occurrence_date, expected_amount,
+       template:recurring_transaction_templates!recurring_occurrences_template_id_fkey!inner(
+         account_id, direction, is_active, merchant_name, description, currency_code
+       )`,
+    )
+    .eq("user_id", user.id)
+    .eq("status", "pending")
+    .is("transaction_id", null)
+    .eq("template.account_id", tx.account_id)
+    .eq("template.direction", "INFLOW")
+    .eq("template.is_active", true)
+    .gte("occurrence_date", rangeStart)
+    .lte("occurrence_date", rangeEnd);
+
+  if (error) {
+    console.error("[findCoveringDebtOccurrence] lookup failed:", error.message);
+    return null;
+  }
+
+  type CoverTemplate = {
+    merchant_name: string | null;
+    description: string | null;
+    currency_code: string;
+  } | null;
+
+  // expected_amount is the template's primary-currency minimum — never
+  // compare it against a payment in another currency (multi-currency cards).
+  const candidates = (rows ?? [])
+    .map((row) => ({
+      id: row.id,
+      occurrenceDate: row.occurrence_date,
+      expectedAmount: Number(row.expected_amount),
+      template: row.template as CoverTemplate,
+    }))
+    .filter((c) => c.template?.currency_code === tx.currency_code);
+
+  const best = pickCoveredDebtOccurrence(
+    tx.transaction_date,
+    Number(tx.amount),
+    candidates,
+  );
+  if (!best) return null;
+
+  return {
+    occurrenceId: best.id,
+    occurrenceDate: best.occurrenceDate,
+    expectedAmount: best.expectedAmount,
+    currencyCode: (best.template?.currency_code ?? "COP") as CurrencyCode,
+    merchant:
+      best.template?.merchant_name?.trim() ||
+      best.template?.description?.trim() ||
+      "Pago recurrente",
+  };
 }

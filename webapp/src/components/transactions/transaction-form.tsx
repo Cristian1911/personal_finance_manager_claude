@@ -32,6 +32,7 @@ import { X } from "lucide-react";
 import type { ActionResult } from "@/types/actions";
 import type { Account, CategoryWithChildren, Tag, Transaction, TransactionDirection } from "@/types/domain";
 import { isDebtAccountType } from "@zeta/shared";
+import { useDebtCoverPrompt } from "@/components/recurring/debt-cover-prompt";
 
 const FREQUENCY_OPTIONS = [
   { value: "WEEKLY", label: "Semanal" },
@@ -55,6 +56,7 @@ export function TransactionForm({
   onSuccess?: () => void;
 }) {
   const router = useRouter();
+  const debtCover = useDebtCoverPrompt();
   const action = transaction
     ? updateTransaction.bind(null, transaction.id)
     : createTransaction;
@@ -79,7 +81,19 @@ export function TransactionForm({
           }
         }
         router.refresh();
-        onSuccess?.();
+        // A payment INTO a card/loan may carry the next cuota — ask before
+        // closing; onSuccess runs once the user answers (or right away).
+        const finish = () => onSuccess?.();
+        const asked =
+          !transaction && result.data.direction === "INFLOW"
+            ? await debtCover.maybeAsk({
+                transactionId: result.data.id,
+                accountType: accounts.find((a) => a.id === result.data.account_id)
+                  ?.account_type,
+                onDone: finish,
+              })
+            : false;
+        if (!asked) finish();
       }
       return result;
     },
@@ -159,335 +173,338 @@ export function TransactionForm({
   }
 
   return (
-    <form action={formAction} className="space-y-4">
-      {!state.success && state.error && (
-        <div className="bg-destructive/10 text-destructive text-sm rounded-md p-3">
-          {state.error}
-        </div>
-      )}
+    <>
+      {debtCover.dialog}
+      <form action={formAction} className="space-y-4">
+        {!state.success && state.error && (
+          <div className="bg-destructive/10 text-destructive text-sm rounded-md p-3">
+            {state.error}
+          </div>
+        )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="direction">Tipo</Label>
-          <Select
-            name="direction"
-            value={direction}
-            onValueChange={(v) => setDirection(v as TransactionDirection)}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="OUTFLOW">Gasto</SelectItem>
-              <SelectItem value="INFLOW">Ingreso</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="direction">Tipo</Label>
+            <Select
+              name="direction"
+              value={direction}
+              onValueChange={(v) => setDirection(v as TransactionDirection)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="OUTFLOW">Gasto</SelectItem>
+                <SelectItem value="INFLOW">Ingreso</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="amount">Monto</Label>
-          <CurrencyInput
-            id="amount"
-            name="amount"
-            defaultValue={transaction?.amount}
-            placeholder="0"
-            required
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="account_id">Cuenta</Label>
-          <Select
-            name="account_id"
-            value={selectedAccountId}
-            onValueChange={(value) => {
-              setSelectedAccountId(value);
-
-              if (recurringTransferSourceAccountId === value) {
-                setRecurringTransferSourceAccountId("");
-              }
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar cuenta" />
-            </SelectTrigger>
-            <SelectContent>
-              {accounts.map((acc) => (
-                <SelectItem key={acc.id} value={acc.id}>
-                  {acc.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Fecha</Label>
-          <DatePicker
-            value={transactionDate}
-            onChange={(v) => setTransactionDate(v ?? "")}
-            name="transaction_date"
-            placeholder="Fecha"
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="transaction_time">Hora (opcional)</Label>
-          <TimePicker
-            value={transactionTime}
-            onChange={setTransactionTime}
-            name="transaction_time"
-          />
-        </div>
-      </div>
-
-      <input
-        type="hidden"
-        name="currency_code"
-        value={selectedAccount?.currency_code ?? transaction?.currency_code ?? "COP"}
-      />
-      <div className="space-y-2">
-        <Label htmlFor="merchant_name">Descripción / Comercio</Label>
-        <Input
-          id="merchant_name"
-          name="merchant_name"
-          value={merchantName}
-          onChange={(event) => setMerchantName(event.target.value)}
-          placeholder="Ej: Supermercado Éxito"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label>Categoría</Label>
-        <CategoryZonePicker
-          variant="popover"
-          categories={categories}
-          value={categoryId}
-          onValueChange={setCategoryId}
-          direction={direction}
-          name="category_id"
-        />
-      </div>
-
-      {/* Tag selector — available tags as toggleable chips */}
-      {tags && tags.length > 0 && (
-        <div className="space-y-2">
-          <Label>Etiquetas</Label>
-          <div className="flex flex-wrap gap-1.5">
-            {tags.map((tag) => {
-              const isSelected = selectedTagIds.includes(tag.id);
-              return (
-                <button
-                  key={tag.id}
-                  type="button"
-                  onClick={() =>
-                    setSelectedTagIds((prev) =>
-                      isSelected
-                        ? prev.filter((id) => id !== tag.id)
-                        : [...prev, tag.id]
-                    )
-                  }
-                  className={cn(
-                    "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors",
-                    isSelected
-                      ? "border-z-brass/40 bg-z-brass/15 text-z-brass"
-                      : "border-white/10 text-muted-foreground hover:bg-white/5",
-                  )}
-                >
-                  {tag.name}
-                  {isSelected && <X className="size-3" />}
-                </button>
-              );
-            })}
+          <div className="space-y-2">
+            <Label htmlFor="amount">Monto</Label>
+            <CurrencyInput
+              id="amount"
+              name="amount"
+              defaultValue={transaction?.amount}
+              placeholder="0"
+              required
+            />
           </div>
         </div>
-      )}
 
-      <div className="space-y-2">
-        <Label htmlFor="notes">Notas</Label>
-        <Input
-          id="notes"
-          name="notes"
-          defaultValue={transaction?.notes ?? ""}
-          placeholder="Nota opcional"
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="account_id">Cuenta</Label>
+            <Select
+              name="account_id"
+              value={selectedAccountId}
+              onValueChange={(value) => {
+                setSelectedAccountId(value);
+
+                if (recurringTransferSourceAccountId === value) {
+                  setRecurringTransferSourceAccountId("");
+                }
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar cuenta" />
+              </SelectTrigger>
+              <SelectContent>
+                {accounts.map((acc) => (
+                  <SelectItem key={acc.id} value={acc.id}>
+                    {acc.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Fecha</Label>
+            <DatePicker
+              value={transactionDate}
+              onChange={(v) => setTransactionDate(v ?? "")}
+              name="transaction_date"
+              placeholder="Fecha"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="transaction_time">Hora (opcional)</Label>
+            <TimePicker
+              value={transactionTime}
+              onChange={setTransactionTime}
+              name="transaction_time"
+            />
+          </div>
+        </div>
+
+        <input
+          type="hidden"
+          name="currency_code"
+          value={selectedAccount?.currency_code ?? transaction?.currency_code ?? "COP"}
         />
-      </div>
-
-      {allowRelatedSetup && (
-        <>
-          <input
-            type="hidden"
-            name="create_destinatario"
-            value={createDestinatarioSetup ? "true" : "false"}
+        <div className="space-y-2">
+          <Label htmlFor="merchant_name">Descripción / Comercio</Label>
+          <Input
+            id="merchant_name"
+            name="merchant_name"
+            value={merchantName}
+            onChange={(event) => setMerchantName(event.target.value)}
+            placeholder="Ej: Supermercado Éxito"
           />
-          <input
-            type="hidden"
-            name="create_recurring_template"
-            value={createRecurringSetup ? "true" : "false"}
+        </div>
+
+        <div className="space-y-2">
+          <Label>Categoría</Label>
+          <CategoryZonePicker
+            variant="popover"
+            categories={categories}
+            value={categoryId}
+            onValueChange={setCategoryId}
+            direction={direction}
+            name="category_id"
           />
-          <input type="hidden" name="destinatario_name" value={destinatarioName} />
-          <input type="hidden" name="recurring_frequency" value={recurringFrequency} />
-          <input type="hidden" name="recurring_start_date" value={recurringStartDate} />
-          <input
-            type="hidden"
-            name="recurring_transfer_source_account_id"
-            value={recurringTransferSourceAccountId}
+        </div>
+
+        {/* Tag selector — available tags as toggleable chips */}
+        {tags && tags.length > 0 && (
+          <div className="space-y-2">
+            <Label>Etiquetas</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {tags.map((tag) => {
+                const isSelected = selectedTagIds.includes(tag.id);
+                return (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() =>
+                      setSelectedTagIds((prev) =>
+                        isSelected
+                          ? prev.filter((id) => id !== tag.id)
+                          : [...prev, tag.id]
+                      )
+                    }
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors",
+                      isSelected
+                        ? "border-z-brass/40 bg-z-brass/15 text-z-brass"
+                        : "border-white/10 text-muted-foreground hover:bg-white/5",
+                    )}
+                  >
+                    {tag.name}
+                    {isSelected && <X className="size-3" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <Label htmlFor="notes">Notas</Label>
+          <Input
+            id="notes"
+            name="notes"
+            defaultValue={transaction?.notes ?? ""}
+            placeholder="Nota opcional"
           />
+        </div>
 
-          <Collapsible
-            open={advancedOpen}
-            onOpenChange={setAdvancedOpen}
-            className="rounded-lg border border-border/60 bg-muted/10"
-          >
-            <CollapsibleTrigger asChild>
-              <button
-                type="button"
-                className="flex w-full items-start justify-between gap-4 px-4 py-3 text-left sm:items-center"
-              >
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">Opciones relacionadas</p>
-                  <p className="text-xs text-muted-foreground">
-                    Guarda esta transacción y deja listo el destinatario o el pago recurrente.
-                  </p>
-                </div>
-                <ChevronDown
-                  className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
-                    advancedOpen ? "rotate-180" : ""
-                  }`}
-                />
-              </button>
-            </CollapsibleTrigger>
+        {allowRelatedSetup && (
+          <>
+            <input
+              type="hidden"
+              name="create_destinatario"
+              value={createDestinatarioSetup ? "true" : "false"}
+            />
+            <input
+              type="hidden"
+              name="create_recurring_template"
+              value={createRecurringSetup ? "true" : "false"}
+            />
+            <input type="hidden" name="destinatario_name" value={destinatarioName} />
+            <input type="hidden" name="recurring_frequency" value={recurringFrequency} />
+            <input type="hidden" name="recurring_start_date" value={recurringStartDate} />
+            <input
+              type="hidden"
+              name="recurring_transfer_source_account_id"
+              value={recurringTransferSourceAccountId}
+            />
 
-            <CollapsibleContent className="space-y-4 border-t px-4 py-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="space-y-0.5 pr-4">
-                  <Label htmlFor="create_destinatario" className="cursor-pointer">
-                    Crear destinatario
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Te ayuda a reutilizar este comercio en futuras categorizaciones.
-                  </p>
-                </div>
-                <Switch
-                  id="create_destinatario"
-                  checked={createDestinatarioSetup}
-                  onCheckedChange={handleCreateDestinatarioSetup}
-                />
-              </div>
-
-              {createDestinatarioSetup && (
-                <div className="space-y-2">
-                  <Label htmlFor="destinatario_name">Nombre del destinatario</Label>
-                  <Input
-                    id="destinatario_name"
-                    value={destinatarioName}
-                    onChange={(event) => setDestinatarioName(event.target.value)}
-                    placeholder="Ej: Netflix"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Usaremos la descripción actual como patrón inicial para reconocerlo después.
-                  </p>
-                </div>
-              )}
-
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="space-y-0.5 pr-4">
-                  <Label htmlFor="create_recurring_template" className="cursor-pointer">
-                    Crear pago recurrente
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Si esto se repite, deja lista una plantilla desde esta misma captura.
-                  </p>
-                </div>
-                <Switch
-                  id="create_recurring_template"
-                  checked={createRecurringSetup}
-                  onCheckedChange={handleCreateRecurringSetup}
-                />
-              </div>
-
-              {createRecurringSetup && (
-                <>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="recurring_frequency">Frecuencia</Label>
-                      <Select
-                        value={recurringFrequency}
-                        onValueChange={(value) =>
-                          setRecurringFrequency(
-                            value as (typeof FREQUENCY_OPTIONS)[number]["value"]
-                          )
-                        }
-                      >
-                        <SelectTrigger id="recurring_frequency">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {FREQUENCY_OPTIONS.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Fecha de inicio</Label>
-                      <DatePicker
-                        value={recurringStartDate}
-                        onChange={(v) => setRecurringStartDate(v ?? "")}
-                        placeholder="Fecha de inicio"
-                      />
-                    </div>
+            <Collapsible
+              open={advancedOpen}
+              onOpenChange={setAdvancedOpen}
+              className="rounded-lg border border-border/60 bg-muted/10"
+            >
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className="flex w-full items-start justify-between gap-4 px-4 py-3 text-left sm:items-center"
+                >
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Opciones relacionadas</p>
+                    <p className="text-xs text-muted-foreground">
+                      Guarda esta transacción y deja listo el destinatario o el pago recurrente.
+                    </p>
                   </div>
+                  <ChevronDown
+                    className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
+                      advancedOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+              </CollapsibleTrigger>
 
-                  {isDebtAccount && (
-                    <div className="space-y-2">
-                      <Label htmlFor="recurring_transfer_source_account_id">
-                        Cuenta origen del pago
-                      </Label>
-                      <Select
-                        value={recurringTransferSourceAccountId}
-                        onValueChange={setRecurringTransferSourceAccountId}
-                      >
-                        <SelectTrigger id="recurring_transfer_source_account_id">
-                          <SelectValue placeholder="Seleccionar cuenta origen" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {accounts
-                            .filter((account) => account.id !== selectedAccountId)
-                            .map((account) => (
-                              <SelectItem key={account.id} value={account.id}>
-                                {account.name}
+              <CollapsibleContent className="space-y-4 border-t px-4 py-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="space-y-0.5 pr-4">
+                    <Label htmlFor="create_destinatario" className="cursor-pointer">
+                      Crear destinatario
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Te ayuda a reutilizar este comercio en futuras categorizaciones.
+                    </p>
+                  </div>
+                  <Switch
+                    id="create_destinatario"
+                    checked={createDestinatarioSetup}
+                    onCheckedChange={handleCreateDestinatarioSetup}
+                  />
+                </div>
+
+                {createDestinatarioSetup && (
+                  <div className="space-y-2">
+                    <Label htmlFor="destinatario_name">Nombre del destinatario</Label>
+                    <Input
+                      id="destinatario_name"
+                      value={destinatarioName}
+                      onChange={(event) => setDestinatarioName(event.target.value)}
+                      placeholder="Ej: Netflix"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Usaremos la descripción actual como patrón inicial para reconocerlo después.
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="space-y-0.5 pr-4">
+                    <Label htmlFor="create_recurring_template" className="cursor-pointer">
+                      Crear pago recurrente
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Si esto se repite, deja lista una plantilla desde esta misma captura.
+                    </p>
+                  </div>
+                  <Switch
+                    id="create_recurring_template"
+                    checked={createRecurringSetup}
+                    onCheckedChange={handleCreateRecurringSetup}
+                  />
+                </div>
+
+                {createRecurringSetup && (
+                  <>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="recurring_frequency">Frecuencia</Label>
+                        <Select
+                          value={recurringFrequency}
+                          onValueChange={(value) =>
+                            setRecurringFrequency(
+                              value as (typeof FREQUENCY_OPTIONS)[number]["value"]
+                            )
+                          }
+                        >
+                          <SelectTrigger id="recurring_frequency">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FREQUENCY_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
                               </SelectItem>
                             ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground">
-                        Para deudas, el recurrente se guarda como abono y necesita una cuenta
-                        origen.
-                      </p>
-                    </div>
-                  )}
-                </>
-              )}
-            </CollapsibleContent>
-          </Collapsible>
-        </>
-      )}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-      <Button type="submit" className="w-full" disabled={pending}>
-        {pending
-          ? "Guardando..."
-          : transaction
-            ? "Actualizar transacción"
-            : "Crear transacción"}
-      </Button>
-    </form>
+                      <div className="space-y-2">
+                        <Label>Fecha de inicio</Label>
+                        <DatePicker
+                          value={recurringStartDate}
+                          onChange={(v) => setRecurringStartDate(v ?? "")}
+                          placeholder="Fecha de inicio"
+                        />
+                      </div>
+                    </div>
+
+                    {isDebtAccount && (
+                      <div className="space-y-2">
+                        <Label htmlFor="recurring_transfer_source_account_id">
+                          Cuenta origen del pago
+                        </Label>
+                        <Select
+                          value={recurringTransferSourceAccountId}
+                          onValueChange={setRecurringTransferSourceAccountId}
+                        >
+                          <SelectTrigger id="recurring_transfer_source_account_id">
+                            <SelectValue placeholder="Seleccionar cuenta origen" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {accounts
+                              .filter((account) => account.id !== selectedAccountId)
+                              .map((account) => (
+                                <SelectItem key={account.id} value={account.id}>
+                                  {account.name}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          Para deudas, el recurrente se guarda como abono y necesita una cuenta
+                          origen.
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CollapsibleContent>
+            </Collapsible>
+          </>
+        )}
+
+        <Button type="submit" className="w-full" disabled={pending}>
+          {pending
+            ? "Guardando..."
+            : transaction
+              ? "Actualizar transacción"
+              : "Crear transacción"}
+        </Button>
+      </form>
+    </>
   );
 }
