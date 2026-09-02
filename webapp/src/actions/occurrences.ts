@@ -14,11 +14,15 @@ import { detachTransactionFromDebt } from "@/lib/personal-debts/recompute";
 import { applyDebtPaymentToBalances } from "@/lib/debt/payoff";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import {
+  calendarDayDiff,
   getDebtPaymentCategoryId,
   occurrenceAmountMatches,
+  occurrenceIdentityScore,
   OCCURRENCE_AUTO_LINK_DAY_WINDOW,
   DEBT_PAYMENT_COVER_LOOKAHEAD_DAYS,
   pickCoveredDebtOccurrence,
+  scoreOccurrenceCandidate,
+  type IdentityRule,
 } from "@zeta/shared";
 import { parseSubPayments } from "@/lib/utils/sub-payments";
 import { UUID_RE } from "@/lib/validators/shared";
@@ -32,28 +36,58 @@ import type { CurrencyCode } from "@/types/domain";
 // ─── Match Score ──────────────────────────────────────────────────────────────
 
 /**
- * Composite match score for ranking candidates.
- * Date proximity (weight 0.6) + amount proximity (weight 0.4).
- * Returns 0-1 where 1 = perfect match.
+ * Composite rank for the "Vincular" pickers: date proximity (0.4) + amount
+ * proximity (0.3) + merchant identity (0.3). The identity signal is what
+ * keeps an unrelated same-week charge from outranking the tracked merchant —
+ * see `occurrenceIdentityScore` in @zeta/shared (mobile ranks with the same
+ * function, so the two pickers can't drift).
  */
 function computeMatchScore(
   candidateDate: string,
   candidateAmount: number,
   referenceDate: string,
   referenceAmount: number,
+  identity: number,
 ): number {
-  const cDate = parseISO(candidateDate);
-  const rDate = parseISO(referenceDate);
-  const daysDiff = Math.abs(
-    Math.round((cDate.getTime() - rDate.getTime()) / (1000 * 60 * 60 * 24))
-  );
-  const dateScore = Math.max(0, 1 - daysDiff / 30);
+  return scoreOccurrenceCandidate({
+    dayDiff: calendarDayDiff(candidateDate, referenceDate),
+    expectedAmount: referenceAmount,
+    amount: candidateAmount,
+    identity,
+  });
+}
 
-  const amountDiff = Math.abs(candidateAmount - referenceAmount);
-  const amountScore =
-    referenceAmount > 0 ? Math.max(0, 1 - amountDiff / referenceAmount) : 0;
+/**
+ * Detection patterns of the given destinatarios, keyed by destinatario id.
+ * Lets the pickers recognise a transaction the matcher never assigned
+ * (e.g. "ANTHROPIC* CLAUDE SUB" against a template anchored to a
+ * destinatario whose rule is "Anthropic").
+ */
+async function fetchIdentityRules(
+  supabase: Awaited<ReturnType<typeof getAuthenticatedClient>>["supabase"],
+  userId: string,
+  destinatarioIds: string[],
+): Promise<Map<string, IdentityRule[]>> {
+  const map = new Map<string, IdentityRule[]>();
+  const ids = [...new Set(destinatarioIds.filter(Boolean))];
+  if (ids.length === 0) return map;
 
-  return dateScore * 0.6 + amountScore * 0.4;
+  const { data, error } = await supabase
+    .from("destinatario_rules")
+    .select("destinatario_id, pattern, match_type")
+    .eq("user_id", userId)
+    .in("destinatario_id", ids);
+  if (error || !data) return map;
+
+  for (const row of data) {
+    const list = map.get(row.destinatario_id) ?? [];
+    list.push({
+      pattern: row.pattern,
+      match_type: row.match_type === "exact" ? "exact" : "contains",
+    });
+    map.set(row.destinatario_id, list);
+  }
+  return map;
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -1580,13 +1614,17 @@ export interface CandidateTransaction {
   currency_code: string;
   transaction_date: string;
   provider: string | null;
+  capture_method: string | null;
+  destinatario_id: string | null;
   matchScore: number;
 }
 
 /**
  * Fetch candidate transactions to link to a pending occurrence.
- * Pre-filtered: same account, same direction, ±30 days (or all if showAll=true).
- * Sorted by match score (date proximity 0.6 + amount proximity 0.4).
+ * Pre-filtered: same account, same direction, not yet linked, not superseded
+ * by a reconciliation (a screenshot row merged into the statement row must
+ * not show up next to it as a "duplicate"), ±30 days (or all if showAll=true).
+ * Sorted by match score (date 0.4 + amount 0.3 + merchant identity 0.3).
  */
 export async function getCandidateTransactionsForOccurrence(
   occurrenceId: string,
@@ -1603,7 +1641,8 @@ export async function getCandidateTransactionsForOccurrence(
     .from("recurring_occurrences")
     .select(`id, occurrence_date, expected_amount,
       template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(
-        account_id, direction, transfer_source_account_id,
+        account_id, direction, transfer_source_account_id, destinatario_id,
+        merchant_name, description,
         account:accounts!recurring_transaction_templates_account_id_fkey(account_type)
       )`)
     .eq("id", occurrenceId)
@@ -1615,7 +1654,13 @@ export async function getCandidateTransactionsForOccurrence(
     return { success: false, error: "Ocurrencia no encontrada" };
   }
 
-  const template = occurrence.template as TemplateWithAccount | null;
+  const template = occurrence.template as
+    | (TemplateWithAccount & {
+        destinatario_id: string | null;
+        merchant_name: string | null;
+        description: string | null;
+      })
+    | null;
   if (!template) return { success: false, error: "Plantilla no encontrada" };
 
   const isCrossAccountDebt = template.transfer_source_account_id &&
@@ -1623,9 +1668,12 @@ export async function getCandidateTransactionsForOccurrence(
 
   let query = supabase
     .from("transactions")
-    .select("id, clean_description, merchant_name, raw_description, amount, currency_code, transaction_date, provider")
+    .select("id, clean_description, merchant_name, raw_description, amount, currency_code, transaction_date, provider, capture_method, destinatario_id")
     .eq("user_id", user.id)
-    .is("recurrence_group_id", null);
+    .is("recurrence_group_id", null)
+    // A row reconciled into a later import is hidden everywhere else in the
+    // app; listing it here would offer the same movement twice.
+    .is("reconciled_into_transaction_id", null);
 
   if (isCrossAccountDebt) {
     query = query.or(
@@ -1646,23 +1694,53 @@ export async function getCandidateTransactionsForOccurrence(
     query = query.gte("transaction_date", rangeStart).lte("transaction_date", rangeEnd);
   }
 
-  const { data, error } = await query;
+  const [{ data, error }, rulesByDestinatario] = await Promise.all([
+    query,
+    fetchIdentityRules(
+      supabase,
+      user.id,
+      template.destinatario_id ? [template.destinatario_id] : [],
+    ),
+  ]);
   if (error) return { success: false, error: error.message };
 
-  const candidates: CandidateTransaction[] = (data ?? []).map((tx) => ({
-    id: tx.id,
-    description: tx.clean_description ?? tx.merchant_name ?? tx.raw_description ?? "Sin descripción",
-    amount: tx.amount,
-    currency_code: tx.currency_code,
-    transaction_date: tx.transaction_date,
-    provider: tx.provider,
-    matchScore: computeMatchScore(
-      tx.transaction_date,
-      tx.amount,
-      occurrence.occurrence_date,
-      occurrence.expected_amount,
-    ),
-  }));
+  const templateName = template.merchant_name ?? template.description ?? null;
+  const templateRules = template.destinatario_id
+    ? rulesByDestinatario.get(template.destinatario_id)
+    : undefined;
+
+  const candidates: CandidateTransaction[] = (data ?? []).map((tx) => {
+    const description =
+      tx.clean_description ?? tx.merchant_name ?? tx.raw_description ?? "Sin descripción";
+    // Match against every text the row carries: the raw bank descriptor is
+    // what the destinatario's patterns were written against, while the
+    // cleaned/merchant name is what the user recognises.
+    const identityTexts = [tx.raw_description, tx.merchant_name, tx.clean_description]
+      .filter((t): t is string => !!t);
+    return {
+      id: tx.id,
+      description,
+      amount: tx.amount,
+      currency_code: tx.currency_code,
+      transaction_date: tx.transaction_date,
+      provider: tx.provider,
+      capture_method: tx.capture_method,
+      destinatario_id: tx.destinatario_id,
+      matchScore: computeMatchScore(
+        tx.transaction_date,
+        tx.amount,
+        occurrence.occurrence_date,
+        occurrence.expected_amount,
+        occurrenceIdentityScore({
+          txDestinatarioId: tx.destinatario_id,
+          templateDestinatarioId: template.destinatario_id,
+          txDescription: identityTexts,
+          templateName,
+          templateRules,
+        }),
+      ),
+    };
+  });
 
   candidates.sort((a, b) => b.matchScore - a.matchScore);
   return { success: true, data: candidates };
@@ -1675,6 +1753,7 @@ export interface CandidateOccurrence {
   occurrenceDate: string;
   expectedAmount: number;
   currencyCode: string;
+  destinatarioId: string | null;
   matchScore: number;
   categoryIcon: string | null;
   categoryColor: string | null;
@@ -1697,7 +1776,7 @@ export async function getCandidateOccurrencesForTransaction(
 
   const { data: tx, error: txErr } = await supabase
     .from("transactions")
-    .select("id, account_id, direction, transaction_date, amount")
+    .select("id, account_id, direction, transaction_date, amount, destinatario_id, raw_description, merchant_name, clean_description")
     .eq("id", transactionId)
     .eq("user_id", user.id)
     .single();
@@ -1715,7 +1794,7 @@ export async function getCandidateOccurrencesForTransaction(
     .select(`
       id, template_id, occurrence_date, expected_amount,
       template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(
-        merchant_name, description, direction, currency_code, account_id, transfer_source_account_id,
+        merchant_name, description, direction, currency_code, account_id, transfer_source_account_id, destinatario_id,
         account:accounts!recurring_transaction_templates_account_id_fkey(account_type),
         category:categories!recurring_transaction_templates_category_id_fkey(icon, color)
       )
@@ -1735,13 +1814,30 @@ export async function getCandidateOccurrencesForTransaction(
     return isCrossAccountDebtPayment(t, tx.direction as "INFLOW" | "OUTFLOW", tx.account_id);
   });
 
+  type CandidateTemplate = {
+    merchant_name: string | null;
+    description: string | null;
+    currency_code: string;
+    destinatario_id: string | null;
+    category: { icon: string | null; color: string | null } | null;
+  };
+
+  // Rules only matter when the transaction has no destinatario of its own —
+  // with one assigned, identity is decided by the ids alone.
+  const rulesByDestinatario = tx.destinatario_id
+    ? new Map<string, IdentityRule[]>()
+    : await fetchIdentityRules(
+        supabase,
+        user.id,
+        filtered
+          .map((o) => (o.template as CandidateTemplate | null)?.destinatario_id)
+          .filter((id): id is string => !!id),
+      );
+  const identityTexts = [tx.raw_description, tx.merchant_name, tx.clean_description]
+    .filter((t): t is string => !!t);
+
   const candidates: CandidateOccurrence[] = filtered.map((o) => {
-    const t = o.template as {
-      merchant_name: string | null;
-      description: string | null;
-      currency_code: string;
-      category: { icon: string | null; color: string | null } | null;
-    };
+    const t = o.template as CandidateTemplate;
     return {
       id: o.id,
       templateId: o.template_id,
@@ -1749,11 +1845,21 @@ export async function getCandidateOccurrencesForTransaction(
       occurrenceDate: o.occurrence_date,
       expectedAmount: o.expected_amount,
       currencyCode: t.currency_code,
+      destinatarioId: t.destinatario_id,
       matchScore: computeMatchScore(
         tx.transaction_date,
         tx.amount,
         o.occurrence_date,
         o.expected_amount,
+        occurrenceIdentityScore({
+          txDestinatarioId: tx.destinatario_id,
+          templateDestinatarioId: t.destinatario_id,
+          txDescription: identityTexts,
+          templateName: t.merchant_name ?? t.description ?? null,
+          templateRules: t.destinatario_id
+            ? rulesByDestinatario.get(t.destinatario_id)
+            : undefined,
+        }),
       ),
       categoryIcon: t.category?.icon ?? null,
       categoryColor: t.category?.color ?? null,
