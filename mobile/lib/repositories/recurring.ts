@@ -6,7 +6,10 @@ import {
   getOccurrencesBetween,
   isDebtAccountType,
   occurrenceAmountMatches,
+  occurrenceIdentityScore,
   OCCURRENCE_AUTO_LINK_DAY_WINDOW,
+  scoreOccurrenceCandidate,
+  type IdentityRule,
   TRANSFER_CATEGORY_ID,
   type RecurrenceFrequency,
   type TransactionDirection,
@@ -438,22 +441,29 @@ export type CandidateOccurrence = {
   matchScore: number;
 };
 
+/**
+ * Same rank as webapp `computeMatchScore` (occurrences.ts): date 0.4 +
+ * amount 0.3 + merchant identity 0.3, all from @zeta/shared so the two
+ * pickers order candidates identically.
+ */
 function computeMatchScore(
   candidateDate: string,
   candidateAmount: number,
   referenceDate: string,
-  referenceAmount: number
+  referenceAmount: number,
+  identity: number
 ): number {
   const c = new Date(candidateDate + "T12:00:00");
   const r = new Date(referenceDate + "T12:00:00");
-  const daysDiff = Math.abs(
+  const dayDiff = Math.abs(
     Math.round((c.getTime() - r.getTime()) / (1000 * 60 * 60 * 24))
   );
-  const dateScore = Math.max(0, 1 - daysDiff / 30);
-  const amountDiff = Math.abs(candidateAmount - referenceAmount);
-  const amountScore =
-    referenceAmount > 0 ? Math.max(0, 1 - amountDiff / referenceAmount) : 0;
-  return dateScore * 0.6 + amountScore * 0.4;
+  return scoreOccurrenceCandidate({
+    dayDiff,
+    expectedAmount: referenceAmount,
+    amount: candidateAmount,
+    identity,
+  });
 }
 
 /**
@@ -482,8 +492,13 @@ export async function getCandidateOccurrencesForTransaction(
     direction: TransactionDirection;
     transaction_date: string;
     amount: number;
+    destinatario_id: string | null;
+    merchant_name: string | null;
+    raw_description: string | null;
+    description: string | null;
   }>(
-    "SELECT account_id, direction, transaction_date, amount FROM transactions WHERE id = ?",
+    // Local `description` mirrors Supabase `clean_description` (see sync/pull.ts).
+    "SELECT account_id, direction, transaction_date, amount, destinatario_id, merchant_name, raw_description, description FROM transactions WHERE id = ?",
     [transactionId]
   );
   if (!tx) return [];
@@ -534,6 +549,34 @@ export async function getCandidateOccurrencesForTransaction(
     ]
   );
 
+  // Detection patterns of the candidates' destinatarios — only consulted when
+  // the transaction has no destinatario of its own (mirrors webapp).
+  const rulesByDestinatario = new Map<string, IdentityRule[]>();
+  if (!tx.destinatario_id) {
+    const ids = [...new Set(rows.map((r) => r.destinatario_id).filter((id): id is string => !!id))];
+    if (ids.length > 0) {
+      const ruleRows = await db.getAllAsync<{
+        destinatario_id: string;
+        pattern: string;
+        match_type: string;
+      }>(
+        `SELECT destinatario_id, pattern, match_type FROM destinatario_rules
+         WHERE destinatario_id IN (${ids.map(() => "?").join(",")})`,
+        ids
+      );
+      for (const rule of ruleRows) {
+        const list = rulesByDestinatario.get(rule.destinatario_id) ?? [];
+        list.push({
+          pattern: rule.pattern,
+          match_type: rule.match_type === "exact" ? "exact" : "contains",
+        });
+        rulesByDestinatario.set(rule.destinatario_id, list);
+      }
+    }
+  }
+  const identityTexts = [tx.raw_description, tx.merchant_name, tx.description]
+    .filter((t): t is string => !!t);
+
   const candidates: CandidateOccurrence[] = rows.map((r) => ({
     id: r.id,
     templateId: r.template_id,
@@ -549,7 +592,16 @@ export async function getCandidateOccurrencesForTransaction(
       tx.transaction_date,
       tx.amount,
       r.occurrence_date,
-      r.expected_amount
+      r.expected_amount,
+      occurrenceIdentityScore({
+        txDestinatarioId: tx.destinatario_id,
+        templateDestinatarioId: r.destinatario_id,
+        txDescription: identityTexts,
+        templateName: r.merchant_name ?? r.description ?? null,
+        templateRules: r.destinatario_id
+          ? rulesByDestinatario.get(r.destinatario_id)
+          : undefined,
+      })
     ),
   }));
 

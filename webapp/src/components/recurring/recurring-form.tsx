@@ -546,9 +546,10 @@ export function RecurringForm({
         />
         <input type="hidden" name="destinatario_id" value={destinatarioId ?? ""} />
         <p className="text-xs text-muted-foreground">
-          Sirve para reconocer el pago automáticamente: si otro movimiento del
-          mismo valor cae en la misma fecha, el destinatario evita que se
-          vincule al recurrente equivocado.
+          Sirve para reconocer el pago automáticamente: los patrones del
+          destinatario (p. ej. «Anthropic») identifican el movimiento aunque
+          el banco lo describa distinto, y si otro movimiento del mismo valor
+          cae en la misma fecha, evita que se vincule al recurrente equivocado.
         </p>
       </div>
 

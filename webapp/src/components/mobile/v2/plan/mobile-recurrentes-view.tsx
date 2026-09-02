@@ -41,6 +41,7 @@ import {
 import { revertOccurrence, getCandidateTransactionsForOccurrence } from "@/actions/occurrences";
 import type { CandidateTransaction } from "@/actions/occurrences";
 import { LinkPickerSheet } from "@/components/recurring/link-picker-sheet";
+import { captureMethodLabel } from "@/lib/constants/capture-methods";
 import { toast } from "sonner";
 import type { ActionResult } from "@/types/actions";
 import type { CurrencyCode, RecurringTemplateWithRelations, Account } from "@/types/domain";
@@ -473,7 +474,7 @@ export function MobileRecurrentesView({
         candidates={linkCandidates.map((c) => ({
           id: c.id,
           label: c.description,
-          sublabel: `${formatDate(c.transaction_date)} · ${c.provider ?? "Manual"}`,
+          sublabel: `${formatDate(c.transaction_date)} · ${captureMethodLabel(c.capture_method)}`,
           amount: c.amount,
           currencyCode: c.currency_code,
           direction: linkingItem?.direction ?? "OUTFLOW",

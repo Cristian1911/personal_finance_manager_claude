@@ -109,3 +109,163 @@ export function pickCoveredDebtOccurrence<
   }
   return best;
 }
+
+// ─── Manual "Vincular" ranking ───────────────────────────────────────────────
+//
+// The link pickers (occurrence → transaction, transaction → occurrence) rank
+// candidates for a human to confirm. Date and amount alone let an unrelated
+// same-week charge outrank last cycle's charge from the very merchant the
+// template tracks, so merchant identity is a first-class signal here:
+// destinatario anchor > destinatario rule hit > merchant-name token overlap.
+
+/** Days after which date proximity contributes nothing to the rank. */
+export const OCCURRENCE_RANK_DAY_HORIZON = 30;
+
+export const OCCURRENCE_RANK_WEIGHTS = {
+  date: 0.4,
+  amount: 0.3,
+  identity: 0.3,
+} as const;
+
+export interface OccurrenceCandidateSignals {
+  /** Calendar days between the transaction date and the occurrence date. */
+  dayDiff: number;
+  /** The occurrence's expected amount (the reference). */
+  expectedAmount: number;
+  /** The transaction's amount. */
+  amount: number;
+  /** Merchant identity signal in [0, 1] — see `occurrenceIdentityScore`. */
+  identity: number;
+}
+
+/**
+ * Composite rank in [0, 1] for a link-picker candidate. Deterministic and
+ * shared so webapp and mobile pickers order the same rows the same way.
+ */
+export function scoreOccurrenceCandidate(
+  signals: OccurrenceCandidateSignals
+): number {
+  const dateScore = Math.max(
+    0,
+    1 - Math.abs(signals.dayDiff) / OCCURRENCE_RANK_DAY_HORIZON
+  );
+  const amountScore =
+    signals.expectedAmount > 0
+      ? Math.max(
+          0,
+          1 -
+            Math.abs(signals.amount - signals.expectedAmount) /
+              signals.expectedAmount
+        )
+      : 0;
+  const identity = Math.min(1, Math.max(0, signals.identity));
+  return (
+    dateScore * OCCURRENCE_RANK_WEIGHTS.date +
+    amountScore * OCCURRENCE_RANK_WEIGHTS.amount +
+    identity * OCCURRENCE_RANK_WEIGHTS.identity
+  );
+}
+
+/** Whole calendar days between two YYYY-MM-DD dates (Colombia has no DST). */
+export function calendarDayDiff(a: string, b: string): number {
+  const ms =
+    Date.parse(`${a}T12:00:00`) - Date.parse(`${b}T12:00:00`);
+  return Math.abs(Math.round(ms / 86_400_000));
+}
+
+const IDENTITY_NOISE_TOKENS = new Set([
+  "SUC", "SUCURSAL", "OFC", "OFICINA", "PAG", "PAGO", "COMPRA", "COMPRAS",
+  "DISPONIBLE", "REVERSO", "SUB", "SUBSCRIPTION", "SUSCRIPCION",
+  "TRANSFERENCIA", "TRANSF", "ABONO", "CUOTA", "COP", "USD",
+]);
+
+/**
+ * Tokens that identify a merchant: upper-cased, punctuation split ("ANTHROPIC*"
+ * → "ANTHROPIC", "claude.ai" → "CLAUDE" + "AI"), numeric / short / generic
+ * payment words dropped.
+ */
+export function merchantIdentityTokens(text: string | null | undefined): Set<string> {
+  const out = new Set<string>();
+  if (!text) return out;
+  for (const raw of text.toUpperCase().split(/[^A-Z0-9ÁÉÍÓÚÑ]+/)) {
+    const token = raw.trim();
+    if (token.length < 3) continue;
+    if (/^\d+$/.test(token)) continue;
+    if (IDENTITY_NOISE_TOKENS.has(token)) continue;
+    out.add(token);
+  }
+  return out;
+}
+
+/**
+ * Overlap between two merchant strings in [0, 1]: shared identity tokens over
+ * the smaller token set, so "Claude La Maria" vs "ANTHROPIC* CLAUDE SUB"
+ * scores 0.5 (CLAUDE shared; LA/SUB dropped) instead of 0.
+ */
+export function merchantNameSimilarity(
+  a: string | null | undefined,
+  b: string | null | undefined
+): number {
+  const ta = merchantIdentityTokens(a);
+  const tb = merchantIdentityTokens(b);
+  if (ta.size === 0 || tb.size === 0) return 0;
+  let shared = 0;
+  for (const token of ta) if (tb.has(token)) shared++;
+  return shared / Math.min(ta.size, tb.size);
+}
+
+export interface IdentityRule {
+  pattern: string;
+  match_type: "contains" | "exact";
+}
+
+export interface OccurrenceIdentityInput {
+  /** The transaction's destinatario (null when unassigned). */
+  txDestinatarioId: string | null | undefined;
+  /** The template's destinatario anchor (null when not anchored). */
+  templateDestinatarioId: string | null | undefined;
+  /**
+   * Every text the transaction carries (raw bank descriptor, merchant name,
+   * cleaned description). Rules are tested against each one separately — an
+   * `exact` pattern must equal one field, not their concatenation — while the
+   * name overlap looks at all of them together.
+   */
+  txDescription: string | string[] | null | undefined;
+  /** Template merchant name (falls back to description upstream). */
+  templateName: string | null | undefined;
+  /** Detection rules of the template's destinatario, when anchored. */
+  templateRules?: IdentityRule[];
+}
+
+/**
+ * Merchant identity signal in [0, 1]:
+ * - 1.0 — same destinatario, or the transaction text hits one of the
+ *   template destinatario's detection patterns (the tx just wasn't assigned).
+ * - 0.0 — both sides carry a destinatario and they differ (a known other
+ *   merchant is evidence against the link).
+ * - otherwise the merchant-name token overlap.
+ */
+export function occurrenceIdentityScore(input: OccurrenceIdentityInput): number {
+  const { txDestinatarioId, templateDestinatarioId } = input;
+  if (txDestinatarioId && templateDestinatarioId) {
+    if (txDestinatarioId === templateDestinatarioId) return 1;
+    return 0;
+  }
+  const texts = (Array.isArray(input.txDescription)
+    ? input.txDescription
+    : [input.txDescription]
+  )
+    .map((t) => (t ?? "").toLowerCase().trim())
+    .filter((t) => t.length > 0);
+  if (texts.length > 0 && templateDestinatarioId && input.templateRules?.length) {
+    for (const rule of input.templateRules) {
+      const pattern = rule.pattern.toLowerCase().trim();
+      if (!pattern) continue;
+      const hit = texts.some((text) =>
+        rule.match_type === "exact" ? text === pattern : text.includes(pattern)
+      );
+      if (hit) return 1;
+    }
+  }
+  return merchantNameSimilarity(texts.join(" "), input.templateName);
+}

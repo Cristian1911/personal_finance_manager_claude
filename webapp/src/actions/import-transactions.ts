@@ -29,6 +29,7 @@ import type { Database } from "@/types/database";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { importPayloadSchema } from "@/lib/validators/import";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
+import { carryRecurringLinkToSurvivor } from "@/lib/recurring/carry-link";
 import type { ActionResult } from "@/types/actions";
 import type {
   AccountUpdateResult,
@@ -1667,7 +1668,7 @@ export async function importTransactions(
         supabase
           .from("transactions")
           .select(
-            "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method"
+            "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method, recurrence_group_id"
           )
           .eq("user_id", user.id)
           .is("reconciled_into_transaction_id", null)
@@ -1699,6 +1700,8 @@ export async function importTransactions(
     existingId: string;
     score: number;
     merged: ReturnType<typeof mergeTransactionMetadata>;
+    /** The superseded row's recurring link, carried to the survivor. */
+    existingRecurrenceGroupId: string | null;
   };
   const mergeOps: MergeOp[] = [];
   // The old per-merge re-query filtered `reconciled_into_transaction_id IS
@@ -1781,6 +1784,7 @@ export async function importTransactions(
       existingId: existingTx.id,
       score: decision.score,
       merged,
+      existingRecurrenceGroupId: existingTx.recurrence_group_id ?? null,
     });
 
     // Copy existing transaction's tags to surviving (imported) transaction (pre-fetched)
@@ -1818,6 +1822,23 @@ export async function importTransactions(
           .eq("user_id", user.id)
           .eq("id", op.existingId),
       ]),
+    );
+    // A "Confirmar pago" or an earlier screenshot import may already have
+    // paid an occurrence with the row we just reconciled away — move that
+    // link onto the survivor so the ledger row the user sees is the linked
+    // one (and "Vincular" stops offering it as a duplicate).
+    await Promise.all(
+      chunk
+        .filter((op) => op.existingRecurrenceGroupId)
+        .map((op) =>
+          carryRecurringLinkToSurvivor({
+            supabase,
+            userId: user.id,
+            supersededId: op.existingId,
+            survivorId: op.insertedId,
+            recurrenceGroupId: op.existingRecurrenceGroupId,
+          }),
+        ),
     );
     // PostgREST builders resolve with { error } instead of rejecting — a
     // failed merge update would otherwise pass silently and leave the pair

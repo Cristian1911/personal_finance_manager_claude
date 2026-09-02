@@ -17,6 +17,9 @@ export type ReconciliationCandidate = {
   notes?: string | null;
   reconciled_into_transaction_id?: string | null;
   capture_method?: TransactionCaptureMethod | null;
+  /** Set when the row is linked to a recurring occurrence — the link must
+   *  travel to the surviving row when this one is reconciled away. */
+  recurrence_group_id?: string | null;
   /** "HH:mm" or "HH:mm:ss" when the source carried a time of day. */
   transaction_time?: string | null;
   /** Parser alert family (e.g. email `pattern_type`) persisted with the row. */

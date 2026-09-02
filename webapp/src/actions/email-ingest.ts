@@ -28,6 +28,7 @@ import {
 import { normalizeEmailTime } from "@/lib/email-ingest/time";
 import { accountMaskSuffixMatches } from "@/lib/utils/account-mask";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
+import { carryRecurringLinkToSurvivor } from "@/lib/recurring/carry-link";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
 import type { ActionResult } from "@/types/actions";
 import type { EmailIngestAddress, EmailIngestLog, PendingEmailTransaction, UnrecognizedEmail } from "@/types/domain";
@@ -910,7 +911,7 @@ export async function approveEmailTransaction(
     const { data: manualTx } = await supabase
       .from("transactions")
       .select(
-        "id, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method"
+        "id, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method, recurrence_group_id"
       )
       .eq("id", reconcileWithTransactionId)
       .eq("user_id", user.id)
@@ -953,6 +954,17 @@ export async function approveEmailTransaction(
         .update({ reconciled_into_transaction_id: insertedTx.id })
         .eq("user_id", user.id)
         .eq("id", manualTx.id);
+
+      // The manual row may already be the payment of a recurring occurrence
+      // ("Confirmar pago" before the bank email arrived). Carry that link to
+      // the surviving email row so the occurrence points at a visible tx.
+      await carryRecurringLinkToSurvivor({
+        supabase,
+        userId: user.id,
+        supersededId: manualTx.id,
+        survivorId: insertedTx.id,
+        recurrenceGroupId: manualTx.recurrence_group_id,
+      });
     }
   }
 
