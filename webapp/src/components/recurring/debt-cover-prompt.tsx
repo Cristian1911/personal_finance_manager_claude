@@ -17,6 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { isDebtAccountType } from "@zeta/shared";
@@ -97,6 +98,9 @@ export function useDebtCoverPrompt(): {
     <AlertDialog
       open
       onOpenChange={(open) => {
+        // Escape / outside tap counts as "No": the transaction is already
+        // saved, so the form must still complete (navigate away) — leaving it
+        // open would invite a duplicate submit.
         if (!open && !linking) finish();
       }}
     >
@@ -108,20 +112,27 @@ export function useDebtCoverPrompt(): {
           </AlertDialogTitle>
           <AlertDialogDescription>
             {prompt.candidate.merchant} tiene una cuota pendiente de{" "}
-            {formatCurrency(
-              prompt.candidate.expectedAmount,
-              prompt.candidate.currencyCode,
-            )}{" "}
+            <span className="tabular-nums font-medium">
+              {formatCurrency(
+                prompt.candidate.expectedAmount,
+                prompt.candidate.currencyCode,
+              )}
+            </span>{" "}
             que vence el {formatDate(prompt.candidate.occurrenceDate)}. Si este
             abono la incluye, la marcamos como pagada. Si es un aporte extra, la
             cuota sigue pendiente.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={linking} onClick={finish}>
+          <AlertDialogCancel
+            className={GHOST_BUTTON_CLASS}
+            disabled={linking}
+            onClick={finish}
+          >
             No, es aporte extra
           </AlertDialogCancel>
           <AlertDialogAction
+            className={BRASS_BUTTON_CLASS}
             disabled={linking}
             onClick={(e) => {
               e.preventDefault();
