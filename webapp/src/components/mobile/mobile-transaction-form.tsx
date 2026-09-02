@@ -12,6 +12,7 @@ import {
   CalendarClock,
 } from "lucide-react";
 import { createTransaction } from "@/actions/transactions";
+import { useDebtCoverPrompt } from "@/components/recurring/debt-cover-prompt";
 import { createTransfer } from "@/actions/transfers";
 import { Button } from "@/components/ui/button";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
@@ -115,10 +116,27 @@ export function MobileTransactionForm({
   // (success: true); an effect would replay onSuccess on mount (stale
   // "Guardado" toast + instant router.back() before the form ever shows).
   // Same pattern as TransactionForm / RecurringForm / MobileQuickCaptureSheet.
+  //
+  // A payment INTO a card/loan (income on the card, or a transfer whose
+  // destination is the card) may carry the next cuota: the prompt asks before
+  // closing and runs onSuccess once the user answers.
+  const debtCover = useDebtCoverPrompt();
   const [txState, txFormAction, txPending] = useActionState(
     async (prev: Awaited<ReturnType<typeof createTransaction>>, formData: FormData) => {
       const result = await createTransaction(prev, formData);
-      if (result.success) onSuccess?.();
+      if (result.success) {
+        const finish = () => onSuccess?.();
+        const asked =
+          result.data.direction === "INFLOW"
+            ? await debtCover.maybeAsk({
+                transactionId: result.data.id,
+                accountType: accounts.find((a) => a.id === result.data.account_id)
+                  ?.account_type,
+                onDone: finish,
+              })
+            : false;
+        if (!asked) finish();
+      }
       return result;
     },
     { success: false, error: "" },
@@ -126,7 +144,16 @@ export function MobileTransactionForm({
   const [transferState, transferFormAction, transferPending] = useActionState(
     async (prev: Awaited<ReturnType<typeof createTransfer>>, formData: FormData) => {
       const result = await createTransfer(prev, formData);
-      if (result.success) onSuccess?.();
+      if (result.success) {
+        const finish = () => onSuccess?.();
+        const toAccountId = String(formData.get("toAccountId") ?? "");
+        const asked = await debtCover.maybeAsk({
+          transactionId: result.data.inflowId,
+          accountType: accounts.find((a) => a.id === toAccountId)?.account_type,
+          onDone: finish,
+        });
+        if (!asked) finish();
+      }
       return result;
     },
     { success: false, error: "" },
@@ -257,6 +284,8 @@ export function MobileTransactionForm({
         : "Registrar gasto";
 
   return (
+    <>
+    {debtCover.dialog}
     <form
       action={formAction}
       className="space-y-4 pb-4"
@@ -678,5 +707,6 @@ export function MobileTransactionForm({
         )}
       </Button>
     </form>
+    </>
   );
 }

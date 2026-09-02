@@ -32,6 +32,7 @@ import { X } from "lucide-react";
 import type { ActionResult } from "@/types/actions";
 import type { Account, CategoryWithChildren, Tag, Transaction, TransactionDirection } from "@/types/domain";
 import { isDebtAccountType } from "@zeta/shared";
+import { useDebtCoverPrompt } from "@/components/recurring/debt-cover-prompt";
 
 const FREQUENCY_OPTIONS = [
   { value: "WEEKLY", label: "Semanal" },
@@ -55,6 +56,7 @@ export function TransactionForm({
   onSuccess?: () => void;
 }) {
   const router = useRouter();
+  const debtCover = useDebtCoverPrompt();
   const action = transaction
     ? updateTransaction.bind(null, transaction.id)
     : createTransaction;
@@ -79,7 +81,19 @@ export function TransactionForm({
           }
         }
         router.refresh();
-        onSuccess?.();
+        // A payment INTO a card/loan may carry the next cuota — ask before
+        // closing; onSuccess runs once the user answers (or right away).
+        const finish = () => onSuccess?.();
+        const asked =
+          !transaction && result.data.direction === "INFLOW"
+            ? await debtCover.maybeAsk({
+                transactionId: result.data.id,
+                accountType: accounts.find((a) => a.id === result.data.account_id)
+                  ?.account_type,
+                onDone: finish,
+              })
+            : false;
+        if (!asked) finish();
       }
       return result;
     },
@@ -159,6 +173,8 @@ export function TransactionForm({
   }
 
   return (
+    <>
+    {debtCover.dialog}
     <form action={formAction} className="space-y-4">
       {!state.success && state.error && (
         <div className="bg-destructive/10 text-destructive text-sm rounded-md p-3">
@@ -489,5 +505,6 @@ export function TransactionForm({
             : "Crear transacción"}
       </Button>
     </form>
+    </>
   );
 }
