@@ -83,6 +83,24 @@ describe("parseBancolombiaEmail", () => {
     expect(result!.destination).toBe("10382409401");
   });
 
+  // Pattern 4c: Transfer with 2-digit year (template change, Aug 2026)
+  it("parses transfer when the date carries a 2-digit year", () => {
+    const line =
+      "Logo Bancolombia [https://example.com/logo.png] yellow-icon [https://example.com/chulo.png] ¡Listo! Todo salió bien con tus movimientos Bancolombia: Transferiste $22,000.00 desde tu cuenta *4398 a la cuenta *3234381055 el 22/08/26 a las 10:53. ¿Dudas? Llamanos al 018000931987. Estamos cerca. icon1 [https://example.com/icon.png] Tus gastos tienen nombre.";
+    const result = parseBancolombiaEmail(line);
+    expect(result).not.toBeNull();
+    expect(result!.direction).toBe("OUTFLOW");
+    expect(result!.amount).toBe(22000);
+    expect(result!.card_last4).toBe("4398");
+    expect(result!.destination).toBe("3234381055");
+    expect(result!.transaction_date).toBe("2026-08-22");
+    expect(result!.transaction_time).toBe("10:53");
+    expect(result!.pattern_type).toBe("transferencia");
+    expect(result!.raw_line).toBe(
+      "Transferiste $22,000.00 desde tu cuenta *4398 a la cuenta *3234381055 el 22/08/26 a las 10:53"
+    );
+  });
+
   // Pattern: Transferencia por Boton Bancolombia (PSE-style button payment)
   it("parses Boton Bancolombia transfer (Transferiste por Boton Bancolombia)", () => {
     const line =

@@ -258,10 +258,11 @@ const PATTERNS: PatternDef[] = [
   // Pattern 4: Transferencia (plain)
   // "Transferiste $680,000.00 desde tu cuenta 4398 a la cuenta *3196360227 el 27/03/2026 a las 17:19"
   // Bancolombia sometimes renders the destination as "a la cuenta * 01014602131" (space after the asterisk).
+  // Since Aug 2026 the template emits a 2-digit year ("el 22/08/26 a las 10:53"), same as Bre-B alerts.
   {
     type: "transferencia",
     regex:
-      /Transferiste \$([\d.,]+) desde tu cuenta \*?\s*(\d+) a la cuenta \*?\s*(\d+) el (\d{2}\/\d{2}\/\d{4}) a las (\d{2}:\d{2})/,
+      /Transferiste \$([\d.,]+) desde tu cuenta \*?\s*(\d+) a la cuenta \*?\s*(\d+) el (\d{2}\/\d{2}\/\d{2,4}) a las (\d{2}:\d{2})/,
     extract: (m) => ({
       direction: "OUTFLOW",
       amount: parseAmount(m[1]),
