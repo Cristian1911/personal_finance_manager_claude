@@ -1,6 +1,11 @@
 "use server";
 
+import { updateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import {
+  attachTagsToTransactions,
+  readTagIdsFromFormData,
+} from "@/lib/tags/attach-transaction-tags";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { transferSchema } from "@/lib/validators/transfer";
 import {
@@ -37,6 +42,7 @@ export async function createTransfer(
     currencyCode: formData.get("currencyCode") as string,
     date: formData.get("date") as string,
     notes: (formData.get("notes") as string) || undefined,
+    tagIds: readTagIdsFromFormData(formData),
   };
 
   const parsed = transferSchema.safeParse(raw);
@@ -44,7 +50,7 @@ export async function createTransfer(
     return { success: false, error: parsed.error.issues[0].message };
   }
 
-  const { fromAccountId, toAccountId, amount, date, notes } = parsed.data;
+  const { fromAccountId, toAccountId, amount, date, notes, tagIds } = parsed.data;
 
   // 2. Fetch both accounts (validate ownership + get balances)
   const [fromRes, toRes] = await Promise.all([
@@ -203,6 +209,18 @@ export async function createTransfer(
       return { success: false, error: "Esta transferencia ya fue registrada" };
     }
     return { success: false, error: inflowError.message };
+  }
+
+  // Both legs carry the same tags so either side of the transfer reads the
+  // same on its detail page. Enrichment only — never fails the transfer.
+  if (tagIds.length > 0) {
+    const tagResult = await attachTagsToTransactions(
+      supabase, user.id, [outflow.id, inflow.id], tagIds,
+    );
+    if (tagResult.error) {
+      console.error("Failed to tag new transfer", { transferGroupId, error: tagResult.error });
+    }
+    if (tagResult.attached > 0) updateTag("tags");
   }
 
   // 6. Update account balances (following registerPayment pattern)

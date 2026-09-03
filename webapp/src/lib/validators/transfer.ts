@@ -9,6 +9,7 @@ export const transferSchema = z
     currencyCode: z.string().min(3).max(3),
     date: z.string().min(1, "La fecha es requerida"),
     notes: z.string().max(500).optional(),
+    tagIds: z.array(uuidStr("Etiqueta inválida")).default([]),
   })
   .refine((data) => data.fromAccountId !== data.toAccountId, {
     message: "Las cuentas de origen y destino deben ser diferentes",

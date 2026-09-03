@@ -36,7 +36,7 @@ export const transactionSchema = z.object({
   ),
   notes: z.string().optional(),
   capture_input_text: z.string().optional(),
-  tags: z.array(z.string()).optional(),
+  tags: z.array(uuidStr("Etiqueta inválida")).optional(),
   is_subscription: formBoolean,
 });
 

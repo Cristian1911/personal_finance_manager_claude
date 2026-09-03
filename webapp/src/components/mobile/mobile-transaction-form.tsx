@@ -15,9 +15,20 @@ import { createTransaction } from "@/actions/transactions";
 import { useDebtCoverPrompt } from "@/components/recurring/debt-cover-prompt";
 import { createTransfer } from "@/actions/transfers";
 import { Button } from "@/components/ui/button";
+import { AccountPickerDrawer } from "@/components/accounts/account-picker-drawer";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { DestinatarioZonePicker } from "@/components/destinatarios/destinatario-zone-picker";
-import { useDestinatarios } from "@/components/providers/app-data-provider";
+import { TagZonePicker } from "@/components/tags/tag-zone-picker";
+import {
+  ClassificationAccountValue,
+  ClassificationCard,
+  ClassificationCategoryValue,
+  ClassificationDestinatarioValue,
+  ClassificationPrompt,
+  ClassificationRow,
+  ClassificationTagsRow,
+} from "@/components/transactions/classification-card";
+import { useAllTags, useDestinatarios } from "@/components/providers/app-data-provider";
 import {
   Collapsible,
   CollapsibleContent,
@@ -38,8 +49,13 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { findLeafCategory } from "@/lib/utils/categories";
 import { toColombiaDateString, toColombiaTimeString } from "@/lib/utils/date";
-import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
+import {
+  BRASS_BUTTON_CLASS,
+  SEGMENTED_TAB_ACTIVE_CLASS,
+  SEGMENTED_TAB_CLASS,
+} from "@/lib/constants/styles";
 import type {
   Account,
   CategoryWithChildren,
@@ -81,6 +97,15 @@ const FREQUENCY_OPTIONS = [
   { value: "ANNUAL", label: "Anual" },
 ] as const;
 
+/**
+ * Mobile create form (FAB → "Nueva transacción", /transactions/new).
+ *
+ * Mirrors the transaction detail page: amount + description up top, then a
+ * "Clasificación" card with one tappable row per attribute (Cuenta ·
+ * Categoría · Destinatario · Etiquetas) that opens the same pickers the
+ * detail page uses. What you tap to *edit* a movement is what you tap to
+ * *create* one.
+ */
 export function MobileTransactionForm({
   accounts,
   categories,
@@ -193,14 +218,11 @@ export function MobileTransactionForm({
       a.id !== selectedAccountId &&
       a.currency_code === transferSourceCurrency
   );
+  const destinationAccount =
+    accounts.find((a) => a.id === destinationAccountId) ?? null;
 
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const destinatarios = useDestinatarios();
-
-  // Reset category when direction changes (categories are direction-filtered)
-  useEffect(() => {
-    setCategoryId(null);
-  }, [transactionType]);
 
   const currencyCode = useMemo(() => {
     const account = accounts.find((a) => a.id === selectedAccountId);
@@ -250,8 +272,33 @@ export function MobileTransactionForm({
     useState("");
   const allowRelatedSetup = transactionType !== "transfer";
 
-  useEffect(() => {
-    if (transactionType === "transfer") {
+  // ── Clasificación pickers (same controlled pickers as the detail page) ──
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [destinationOpen, setDestinationOpen] = useState(false);
+  const [catOpen, setCatOpen] = useState(false);
+  const [destOpen, setDestOpen] = useState(false);
+  const [tagOpen, setTagOpen] = useState(false);
+
+  // Tags are picked before the row exists; they travel as `tag_ids` hidden
+  // inputs and the server attaches them right after the insert.
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const allTags = useAllTags();
+  const selectedTags = useMemo(() => {
+    const selected = new Set(selectedTagIds);
+    return allTags.filter((t) => selected.has(t.id));
+  }, [allTags, selectedTagIds]);
+
+  const selectedCategory = findLeafCategory(categories, categoryId);
+
+  // The type only changes from the segmented control, so the dependent
+  // resets live in its handler rather than in an effect watching the value.
+  function handleTypeChange(next: TransactionType) {
+    if (next === transactionType) return;
+    setTransactionType(next);
+    // Categories are direction-filtered — a Gasto category is meaningless on
+    // an Ingreso.
+    setCategoryId(null);
+    if (next === "transfer") {
       setCreateRecurringSetup(false);
       setAdvancedOpen(false);
       setRecurringTransferSourceAccountId("");
@@ -261,7 +308,42 @@ export function MobileTransactionForm({
       setDestinatarioId(null);
       setDestinatarioSelectedName(null);
     }
-  }, [transactionType]);
+  }
+
+  function handleAccountSelect(value: string) {
+    setSelectedAccountId(value);
+    setAccountOpen(false);
+    if (recurringTransferSourceAccountId === value) {
+      setRecurringTransferSourceAccountId("");
+    }
+    // Clear a destination that's no longer valid for the new source
+    // (same account, or a now-mismatched currency).
+    const dest = accounts.find((a) => a.id === destinationAccountId);
+    const newSource = accounts.find((a) => a.id === value);
+    if (
+      dest &&
+      (dest.id === value || dest.currency_code !== newSource?.currency_code)
+    ) {
+      setDestinationAccountId("");
+    }
+  }
+
+  function handleCategorySelect(id: string | null) {
+    setCategoryId(id);
+    setCatOpen(false);
+  }
+
+  function handleDestinatarioSelect(id: string | null, name: string | null) {
+    setDestinatarioId(id);
+    setDestinatarioSelectedName(name);
+    setDestOpen(false);
+    // Pre-fill the category the destinatario already implies, but
+    // never overwrite a choice the user already made.
+    if (id && !categoryId) {
+      const preset = destinatarios.find((d) => d.id === id)?.default_category_id;
+      if (preset) setCategoryId(preset);
+    }
+  }
 
   function handleCreateRecurringSetup(checked: boolean) {
     setCreateRecurringSetup(checked);
@@ -282,6 +364,10 @@ export function MobileTransactionForm({
       : transactionType === "income"
         ? "Registrar ingreso"
         : "Registrar gasto";
+
+  // A transfer needs its destination before it can be submitted; the row
+  // above the button says "Elegir cuenta" in brass until one is picked.
+  const missingDestination = isTransferMode && !destinationAccountId;
 
   return (
     <>
@@ -321,6 +407,11 @@ export function MobileTransactionForm({
         <input type="hidden" name="currency_code" value={currencyCode} />
         <input
           type="hidden"
+          name={isTransferMode ? "fromAccountId" : "account_id"}
+          value={selectedAccountId}
+        />
+        <input
+          type="hidden"
           name="is_subscription"
           value={isSubscription ? "true" : "false"}
         />
@@ -336,31 +427,39 @@ export function MobileTransactionForm({
           name="recurring_transfer_source_account_id"
           value={recurringTransferSourceAccountId}
         />
+        {selectedTagIds.map((id) => (
+          <input key={id} type="hidden" name="tag_ids" value={id} />
+        ))}
 
         {/* Transfer-only fields consumed by createTransfer */}
         {isTransferMode && (
           <>
             <input type="hidden" name="currencyCode" value={currencyCode} />
             <input type="hidden" name="date" value={transactionDate} />
+            <input type="hidden" name="toAccountId" value={destinationAccountId} />
           </>
+        )}
+        {!isTransferMode && (
+          <input type="hidden" name="destinatario_id" value={destinatarioId ?? ""} />
         )}
 
         {/* Direction selector — only shown when no preset */}
         {showTypeSelector && (
-          <div className="flex gap-1 rounded-lg bg-muted p-1">
+          <div className="flex gap-1 rounded-full border border-white/6 bg-white/[0.03] p-1">
             {TRANSACTION_TYPES.map((t) => (
               <button
                 key={t.id}
                 type="button"
-                onClick={() => setTransactionType(t.id)}
+                onClick={() => handleTypeChange(t.id)}
+                aria-pressed={transactionType === t.id}
                 className={cn(
-                  "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  "inline-flex items-center justify-center gap-1.5",
                   transactionType === t.id
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
+                    ? SEGMENTED_TAB_ACTIVE_CLASS
+                    : SEGMENTED_TAB_CLASS,
                 )}
               >
-                <t.icon className="size-4" />
+                <t.icon className="size-3.5" />
                 {t.label}
               </button>
             ))}
@@ -370,6 +469,7 @@ export function MobileTransactionForm({
         {/* Amount */}
         <AmountInput
           name="amount"
+          currency={currencyCode}
           autoFocus={!showTypeSelector}
         />
 
@@ -387,73 +487,6 @@ export function MobileTransactionForm({
               onChange={(event) => setMerchantName(event.target.value)}
               placeholder="Ej: Almuerzo, Uber, Arriendo..."
             />
-          </div>
-        )}
-
-        {/* Cuenta (origen for transfers) */}
-        <div className="space-y-2">
-          <Label htmlFor="mobile-account">
-            {isTransferMode ? "Cuenta origen" : "Cuenta"}
-          </Label>
-          <Select
-            name={isTransferMode ? "fromAccountId" : "account_id"}
-            value={selectedAccountId}
-            onValueChange={(value) => {
-              setSelectedAccountId(value);
-              if (recurringTransferSourceAccountId === value) {
-                setRecurringTransferSourceAccountId("");
-              }
-              // Clear a destination that's no longer valid for the new source
-              // (same account, or a now-mismatched currency).
-              const dest = accounts.find((a) => a.id === destinationAccountId);
-              const newSource = accounts.find((a) => a.id === value);
-              if (
-                dest &&
-                (dest.id === value ||
-                  dest.currency_code !== newSource?.currency_code)
-              ) {
-                setDestinationAccountId("");
-              }
-            }}
-          >
-            <SelectTrigger id="mobile-account">
-              <SelectValue placeholder="Seleccionar cuenta" />
-            </SelectTrigger>
-            <SelectContent>
-              {accounts.map((acc) => (
-                <SelectItem key={acc.id} value={acc.id}>
-                  {acc.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Cuenta destino — transfers only */}
-        {isTransferMode && (
-          <div className="space-y-2">
-            <Label htmlFor="mobile-destination-account">Cuenta destino</Label>
-            <Select
-              name="toAccountId"
-              required
-              value={destinationAccountId}
-              onValueChange={setDestinationAccountId}
-            >
-              <SelectTrigger id="mobile-destination-account">
-                <SelectValue placeholder="Seleccionar cuenta" />
-              </SelectTrigger>
-              <SelectContent>
-                {destinationAccounts.map((acc) => (
-                  <SelectItem key={acc.id} value={acc.id}>
-                    {acc.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              Se registrará una salida en la cuenta origen y una entrada en la
-              cuenta destino.
-            </p>
           </div>
         )}
 
@@ -477,21 +510,6 @@ export function MobileTransactionForm({
           </div>
         </div>
 
-        {/* Category — full width (not used for transfers) */}
-        {!isTransferMode && (
-          <div className="space-y-2">
-            <Label>Categoría</Label>
-            <CategoryZonePicker
-              variant="popover"
-              categories={categories}
-              value={categoryId}
-              onValueChange={setCategoryId}
-              direction={direction}
-              name="category_id"
-            />
-          </div>
-        )}
-
         {/* Notas — transfers only (other modes have it under "Más opciones") */}
         {isTransferMode && (
           <div className="space-y-2">
@@ -506,43 +524,142 @@ export function MobileTransactionForm({
           </div>
         )}
 
-        {/* ── ASIGNAR ─────────────────────────────────────────── */}
-        {allowRelatedSetup && (
-          <>
-            <SectionEyebrow>Asignar</SectionEyebrow>
+        {/* ── CLASIFICACIÓN — same rows as the detail page ─────── */}
+        <SectionEyebrow>Clasificación</SectionEyebrow>
 
-            <div className="space-y-2">
-              <Label>Destinatario</Label>
-              <DestinatarioZonePicker
-                value={destinatarioId}
-                onValueChange={(id, name) => {
-                  setDestinatarioId(id);
-                  setDestinatarioSelectedName(name);
-                  // Pre-fill the category the destinatario already implies, but
-                  // never overwrite a choice the user already made.
-                  if (id && !categoryId) {
-                    const preset = destinatarios.find((d) => d.id === id)
-                      ?.default_category_id;
-                    if (preset) setCategoryId(preset);
-                  }
-                }}
-                selectedName={destinatarioSelectedName}
-                placeholder="Elegir o crear destinatario"
-                triggerClassName="w-full"
-                categories={categories}
-                merchantName={merchantName}
+        <ClassificationCard>
+          {/* Cuenta (origen for transfers) */}
+          <ClassificationRow
+            label={isTransferMode ? "Cuenta origen" : "Cuenta"}
+            onClick={() => setAccountOpen(true)}
+          >
+            {selectedAccount ? (
+              <ClassificationAccountValue
+                name={selectedAccount.name}
+                color={selectedAccount.color}
               />
-              <input type="hidden" name="destinatario_id" value={destinatarioId ?? ""} />
-            </div>
+            ) : (
+              <ClassificationPrompt>Elegir cuenta</ClassificationPrompt>
+            )}
+          </ClassificationRow>
+
+          {/* Cuenta destino — transfers only */}
+          {isTransferMode && (
+            <ClassificationRow
+              label="Cuenta destino"
+              onClick={() => setDestinationOpen(true)}
+            >
+              {destinationAccount ? (
+                <ClassificationAccountValue
+                  name={destinationAccount.name}
+                  color={destinationAccount.color}
+                />
+              ) : (
+                <ClassificationPrompt>Elegir cuenta</ClassificationPrompt>
+              )}
+            </ClassificationRow>
+          )}
+
+          {/* Categoría — not used for transfers */}
+          {!isTransferMode && (
+            <ClassificationRow label="Categoría" onClick={() => setCatOpen(true)}>
+              {selectedCategory ? (
+                <ClassificationCategoryValue category={selectedCategory} />
+              ) : (
+                <ClassificationPrompt>Categorizar</ClassificationPrompt>
+              )}
+            </ClassificationRow>
+          )}
+
+          {/* Destinatario — not used for transfers */}
+          {!isTransferMode && (
+            <ClassificationRow label="Destinatario" onClick={() => setDestOpen(true)}>
+              {destinatarioSelectedName ? (
+                <ClassificationDestinatarioValue name={destinatarioSelectedName} />
+              ) : (
+                <ClassificationPrompt muted>Asignar</ClassificationPrompt>
+              )}
+            </ClassificationRow>
+          )}
+
+          {/* Etiquetas */}
+          <ClassificationTagsRow
+            tags={selectedTags}
+            onAdd={() => setTagOpen(true)}
+            onRemove={(tagId) =>
+              setSelectedTagIds((prev) => prev.filter((id) => id !== tagId))
+            }
+          />
+        </ClassificationCard>
+
+        {isTransferMode && (
+          <p className="text-xs text-muted-foreground">
+            Se registrará una salida en la cuenta origen y una entrada en la
+            cuenta destino.
+          </p>
+        )}
+
+        {/* Controlled pickers driven by the rows above */}
+        <AccountPickerDrawer
+          open={accountOpen}
+          onOpenChange={setAccountOpen}
+          accounts={accounts}
+          value={selectedAccountId}
+          onSelect={handleAccountSelect}
+          title={isTransferMode ? "Cuenta origen" : "Cuenta"}
+        />
+        {isTransferMode && (
+          <AccountPickerDrawer
+            open={destinationOpen}
+            onOpenChange={setDestinationOpen}
+            accounts={destinationAccounts}
+            value={destinationAccountId || null}
+            onSelect={(id) => {
+              setDestinationAccountId(id);
+              setDestinationOpen(false);
+            }}
+            title="Cuenta destino"
+            emptyMessage="No hay otra cuenta en la misma moneda."
+          />
+        )}
+        {!isTransferMode && (
+          <>
+            <CategoryZonePicker
+              categories={categories}
+              value={categoryId}
+              onValueChange={handleCategorySelect}
+              direction={direction}
+              name="category_id"
+              hideTrigger
+              controlledOpen={catOpen}
+              onControlledOpenChange={setCatOpen}
+            />
+            <DestinatarioZonePicker
+              value={destinatarioId}
+              selectedName={destinatarioSelectedName}
+              onValueChange={handleDestinatarioSelect}
+              hideTrigger
+              controlledOpen={destOpen}
+              onControlledOpenChange={setDestOpen}
+              categories={categories}
+              merchantName={merchantName}
+            />
           </>
         )}
+        <TagZonePicker
+          selectedTagIds={selectedTagIds}
+          onSelectedTagIdsChange={setSelectedTagIds}
+          hideTrigger
+          controlledOpen={tagOpen}
+          onControlledOpenChange={setTagOpen}
+        />
 
         {allowRelatedSetup && (
           <>
             <Collapsible
               open={advancedOpen}
               onOpenChange={setAdvancedOpen}
-              className="rounded-lg border border-border/60 bg-muted/10"
+              className="rounded-2xl border border-white/6 bg-z-surface-2/60"
             >
               <CollapsibleTrigger asChild>
                 <button
@@ -563,7 +680,7 @@ export function MobileTransactionForm({
                 </button>
               </CollapsibleTrigger>
 
-              <CollapsibleContent className="space-y-4 border-t px-4 py-4">
+              <CollapsibleContent className="space-y-4 border-t border-white/6 px-4 py-4">
                 {/* Es una suscripción */}
                 <div className="flex items-center gap-3">
                   <Repeat className="size-[18px] shrink-0 text-muted-foreground" />
@@ -695,7 +812,7 @@ export function MobileTransactionForm({
         <Button
           type="submit"
           className={cn(BRASS_BUTTON_CLASS, "h-12 w-full")}
-          disabled={pending}
+          disabled={pending || missingDestination}
         >
           {pending ? (
             <>

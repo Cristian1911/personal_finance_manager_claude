@@ -6,7 +6,6 @@ import Link from "next/link";
 import {
   ArrowDownLeft,
   ArrowUpRight,
-  Check,
   ChevronDown,
   ChevronRight,
   ChevronUp,
@@ -15,31 +14,36 @@ import {
   Link2,
   MapPin,
   Pencil,
-  Plus,
   Receipt,
   Repeat,
   Trash2,
-  UserRound,
-  X,
   ArrowLeftRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
-import { chipBackground, zoneTextColor } from "@/lib/utils/zone-colors";
+import { findLeafCategory } from "@/lib/utils/categories";
 import {
   BRASS_BUTTON_CLASS,
   DESTRUCTIVE_BUTTON_CLASS,
   DETAIL_ACTION_CHIP_CLASS,
   GHOST_BUTTON_CLASS,
-  MOBILE_SHEET_SAFE_AREA_CLASS,
   SECTION_EYEBROW_CLASS,
 } from "@/lib/constants/styles";
-import { CategoryIcon } from "@/components/categories/category-icon";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { DestinatarioZonePicker } from "@/components/destinatarios/destinatario-zone-picker";
 import { TagZonePicker } from "@/components/tags/tag-zone-picker";
+import { AccountPickerDrawer } from "@/components/accounts/account-picker-drawer";
+import {
+  ClassificationAccountValue,
+  ClassificationCard,
+  ClassificationCategoryValue,
+  ClassificationDestinatarioValue,
+  ClassificationPrompt,
+  ClassificationRow,
+  ClassificationTagsRow,
+} from "@/components/transactions/classification-card";
 import { LinkPickerSheet, type LinkCandidate } from "@/components/recurring/link-picker-sheet";
 import {
   createTransferCounterpart,
@@ -104,7 +108,6 @@ import type {
 /** Fallback category chip color when a category has no `color` set. Hex literal
  * is intentional — `chipBackground()` / `zoneTextColor()` in `zone-colors.ts`
  * process raw hex, not CSS variables. Matches --z-sage (#768053). */
-const FALLBACK_CAT_COLOR = "#768053";
 
 interface TransactionDetailClientProps {
   transaction: Transaction;
@@ -120,29 +123,6 @@ interface TransactionDetailClientProps {
   linkableAccountIds: string[];
   /** Set when this tx is a shared-payment origin — surfaces a summary block. */
   sharedPayment: SharedPaymentGroup | null;
-}
-
-function findLeafCategory(
-  categories: CategoryWithChildren[],
-  id: string | null,
-): { id: string; name: string; icon: string | null; color: string | null } | null {
-  if (!id) return null;
-  for (const zone of categories) {
-    if (zone.id === id) {
-      return { id: zone.id, name: zone.name_es ?? zone.name ?? "", icon: zone.icon ?? null, color: zone.color ?? null };
-    }
-    const child = zone.children.find((c) => c.id === id);
-    if (child) {
-      // child inherits zone color when it doesn't have its own
-      return {
-        id: child.id,
-        name: child.name_es ?? child.name ?? "",
-        icon: child.icon ?? null,
-        color: child.color ?? zone.color ?? null,
-      };
-    }
-  }
-  return null;
 }
 
 export function TransactionDetailClient({
@@ -573,8 +553,6 @@ export function TransactionDetailClient({
 
   /* ─── Render ─────────────────────────────────────────────────────── */
 
-  const catChipColor = selectedCategory?.color ?? FALLBACK_CAT_COLOR;
-
   return (
     <div className="space-y-0">
       {/* ── Hero (centered metadata) ─────────────────────────────────── */}
@@ -725,102 +703,33 @@ export function TransactionDetailClient({
       {/* ── Clasificación (actionable controls) ──────────────────────── */}
       <section className="px-4 pt-5">
         <p className={cn(SECTION_EYEBROW_CLASS, "mb-2")}>Clasificación</p>
-        <div className="overflow-hidden rounded-2xl border border-white/6 bg-z-surface-2/60">
-          {/* Cuenta */}
-          <button
-            type="button"
-            onClick={() => setAccountOpen(true)}
-            className="flex w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition-colors hover:bg-white/[0.03]"
-          >
-            <span className="text-sm text-muted-foreground">Cuenta</span>
-            <span className="flex min-w-0 items-center gap-1.5">
-              <span
-                className="size-2 shrink-0 rounded-full"
-                style={{ backgroundColor: account?.color ?? undefined }}
-              />
-              <span className="truncate text-sm font-medium">{account?.name ?? "Sin cuenta"}</span>
-              <ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
-            </span>
-          </button>
+        <ClassificationCard>
+          <ClassificationRow label="Cuenta" onClick={() => setAccountOpen(true)}>
+            <ClassificationAccountValue name={account?.name} color={account?.color} />
+          </ClassificationRow>
 
-          {/* Categoría */}
-          <button
-            type="button"
-            onClick={() => setCatOpen(true)}
-            className="flex w-full items-center justify-between gap-3 border-t border-white/6 px-3.5 py-3 text-left transition-colors hover:bg-white/[0.03]"
-          >
-            <span className="text-sm text-muted-foreground">Categoría</span>
-            <span className="flex min-w-0 items-center gap-1.5">
-              {selectedCategory ? (
-                <span
-                  className="inline-flex min-w-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold"
-                  style={{ backgroundColor: chipBackground(catChipColor), color: zoneTextColor(catChipColor) }}
-                >
-                  {selectedCategory.icon && <CategoryIcon icon={selectedCategory.icon} className="size-3.5 shrink-0" />}
-                  <span className="truncate">{selectedCategory.name}</span>
-                </span>
-              ) : (
-                <span className="text-sm text-z-brass">Categorizar</span>
-              )}
-              <ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
-            </span>
-          </button>
-
-          {/* Destinatario */}
-          <button
-            type="button"
-            onClick={() => setDestOpen(true)}
-            className="flex w-full items-center justify-between gap-3 border-t border-white/6 px-3.5 py-3 text-left transition-colors hover:bg-white/[0.03]"
-          >
-            <span className="text-sm text-muted-foreground">Destinatario</span>
-            <span className="flex min-w-0 items-center gap-1.5">
-              {optDestName ? (
-                <span className="inline-flex min-w-0 items-center gap-1.5 rounded-full bg-z-brass/12 px-2 py-0.5 text-xs font-semibold text-z-brass">
-                  <UserRound className="size-3.5 shrink-0" />
-                  <span className="truncate">{optDestName}</span>
-                </span>
-              ) : (
-                <span className="text-sm text-muted-foreground">Asignar</span>
-              )}
-              <ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
-            </span>
-          </button>
-
-          {/* Etiquetas */}
-          <div className="border-t border-white/6 px-3.5 py-3">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-sm text-muted-foreground">Etiquetas</span>
-              <button
-                type="button"
-                onClick={() => setTagOpen(true)}
-                className="inline-flex items-center gap-1 text-sm text-z-brass"
-              >
-                <Plus className="size-3.5" />
-                {tags.length > 0 ? "Editar" : "Agregar"}
-              </button>
-            </div>
-            {tags.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {tags.map((t) => (
-                  <span
-                    key={t.id}
-                    className="inline-flex items-center gap-1 rounded-full border border-z-brass/20 bg-z-brass/10 py-0.5 pl-2.5 pr-1 text-[11px] font-medium text-z-brass"
-                  >
-                    <span className="truncate">{t.name}</span>
-                    <button
-                      type="button"
-                      aria-label={`Quitar etiqueta ${t.name}`}
-                      onClick={() => handleRemoveTag(t.id)}
-                      className="ml-0.5 inline-flex size-4 items-center justify-center rounded-full text-z-brass/60 transition-colors hover:bg-z-brass/15 hover:text-z-brass"
-                    >
-                      <X className="size-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
+          <ClassificationRow label="Categoría" onClick={() => setCatOpen(true)}>
+            {selectedCategory ? (
+              <ClassificationCategoryValue category={selectedCategory} />
+            ) : (
+              <ClassificationPrompt>Categorizar</ClassificationPrompt>
             )}
-          </div>
-        </div>
+          </ClassificationRow>
+
+          <ClassificationRow label="Destinatario" onClick={() => setDestOpen(true)}>
+            {optDestName ? (
+              <ClassificationDestinatarioValue name={optDestName} />
+            ) : (
+              <ClassificationPrompt muted>Asignar</ClassificationPrompt>
+            )}
+          </ClassificationRow>
+
+          <ClassificationTagsRow
+            tags={tags}
+            onAdd={() => setTagOpen(true)}
+            onRemove={handleRemoveTag}
+          />
+        </ClassificationCard>
 
         {/* Controlled pickers driven by the rows above */}
         <CategoryZonePicker
@@ -858,34 +767,13 @@ export function TransactionDetailClient({
         />
 
         {/* Account picker */}
-        <Drawer open={accountOpen} onOpenChange={setAccountOpen}>
-          <DrawerContent>
-            <DrawerHeader>
-              <DrawerTitle>Cuenta</DrawerTitle>
-            </DrawerHeader>
-            <DrawerBody className={cn("px-2", MOBILE_SHEET_SAFE_AREA_CLASS)}>
-              {accounts
-                .filter((a) => a.currency_code === tx.currency_code)
-                .map((a) => (
-                <button
-                  key={a.id}
-                  type="button"
-                  onClick={() => handleAccountSelect(a.id)}
-                  className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-white/5"
-                >
-                  <span className="flex min-w-0 items-center gap-2">
-                    <span
-                      className="size-2.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: a.color ?? undefined }}
-                    />
-                    <span className="truncate">{a.name}</span>
-                  </span>
-                  {a.id === optAccountId && <Check className="size-4 shrink-0 text-z-brass" />}
-                </button>
-              ))}
-            </DrawerBody>
-          </DrawerContent>
-        </Drawer>
+        <AccountPickerDrawer
+          open={accountOpen}
+          onOpenChange={setAccountOpen}
+          accounts={accounts.filter((a) => a.currency_code === tx.currency_code)}
+          value={optAccountId}
+          onSelect={handleAccountSelect}
+        />
       </section>
 
       {/* ── Acciones (uniform grid, reachable above the fold) ────────── */}
