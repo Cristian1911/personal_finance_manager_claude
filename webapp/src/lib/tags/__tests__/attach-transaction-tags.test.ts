@@ -16,10 +16,35 @@ const TAG_FOREIGN = "00000000-0000-0000-0000-0000000000c2";
  * Minimal PostgREST-like mock: `.from("tags")` resolves the ownership lookup
  * with `ownedTagRows`; `.from("transaction_tags").upsert` records the rows.
  */
-function makeSupabase(ownedTagRows: Array<{ id: string }>, upsertError: { message: string } | null = null) {
-  const upsert = vi.fn().mockResolvedValue({ error: upsertError });
+function makeSupabase(
+  ownedTagRows: Array<{ id: string }>,
+  opts: { upsertError?: { message: string } | null; ownedTxCount?: number | null; written?: number } = {},
+) {
+  const { upsertError = null, ownedTxCount = null, written } = opts;
+  const select = vi.fn().mockImplementation(() =>
+    Promise.resolve(
+      upsertError
+        ? { data: null, error: upsertError }
+        : { data: Array.from({ length: written ?? 0 }, (_, i) => ({ tag_id: `t${i}` })), error: null },
+    ),
+  );
+  const upsert = vi.fn().mockReturnValue({ select });
   const orFilter = vi.fn();
+  const txFilter = vi.fn();
   const from = vi.fn((table: string) => {
+    if (table === "transactions") {
+      return {
+        select: () => ({
+          eq: (col: string, val: string) => ({
+            in: (_c: string, ids: string[]) => {
+              txFilter(col, val, ids);
+              // Mimic PostgREST: count matches the ids the user owns.
+              return Promise.resolve({ count: ownedTxCount ?? ids.length, error: null });
+            },
+          }),
+        }),
+      };
+    }
     if (table === "tags") {
       return {
         select: () => ({
@@ -35,7 +60,7 @@ function makeSupabase(ownedTagRows: Array<{ id: string }>, upsertError: { messag
     if (table === "transaction_tags") return { upsert };
     throw new Error(`unexpected table ${table}`);
   });
-  return { client: { from } as unknown as SupabaseClient<Database>, upsert, orFilter };
+  return { client: { from } as unknown as SupabaseClient<Database>, upsert, orFilter, txFilter };
 }
 
 describe("attachTagsToTransactions", () => {
@@ -47,10 +72,11 @@ describe("attachTagsToTransactions", () => {
   });
 
   it("only attaches tags the user owns (or system tags) and writes user_id on each row", async () => {
-    const { client, upsert, orFilter } = makeSupabase([{ id: TAG_OWN }]);
+    const { client, upsert, orFilter, txFilter } = makeSupabase([{ id: TAG_OWN }], { written: 2 });
     const result = await attachTagsToTransactions(client, USER, [TX_A, TX_B], [TAG_OWN, TAG_FOREIGN, TAG_OWN]);
 
     expect(result).toEqual({ attached: 2, error: null });
+    expect(txFilter).toHaveBeenCalledWith("user_id", USER, [TX_A, TX_B]);
     expect(orFilter).toHaveBeenCalledWith(`user_id.eq.${USER},user_id.is.null`);
     expect(upsert).toHaveBeenCalledWith(
       [
@@ -67,8 +93,22 @@ describe("attachTagsToTransactions", () => {
     expect(upsert).not.toHaveBeenCalled();
   });
 
+  it("refuses transactions the user does not own", async () => {
+    const { client, upsert } = makeSupabase([{ id: TAG_OWN }], { ownedTxCount: 1 });
+    expect(await attachTagsToTransactions(client, USER, [TX_A, TX_B], [TAG_OWN])).toEqual({
+      attached: 0,
+      error: "Transacciones no encontradas",
+    });
+    expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it("reports only the rows actually written when pairs already existed", async () => {
+    const { client } = makeSupabase([{ id: TAG_OWN }], { written: 0 });
+    expect(await attachTagsToTransactions(client, USER, [TX_A], [TAG_OWN])).toEqual({ attached: 0, error: null });
+  });
+
   it("surfaces the junction write error without throwing", async () => {
-    const { client } = makeSupabase([{ id: TAG_OWN }], { message: "boom" });
+    const { client } = makeSupabase([{ id: TAG_OWN }], { upsertError: { message: "boom" } });
     expect(await attachTagsToTransactions(client, USER, [TX_A], [TAG_OWN])).toEqual({ attached: 0, error: "boom" });
   });
 });
@@ -80,6 +120,12 @@ describe("readTagIdsFromFormData", () => {
     fd.append("tag_ids", "");
     fd.append("tag_ids", TAG_FOREIGN);
     fd.append("tag_ids", new Blob(["x"]));
+    expect(readTagIdsFromFormData(fd)).toEqual([TAG_OWN, TAG_FOREIGN]);
+  });
+
+  it("accepts a single JSON-encoded array (the modos form convention)", () => {
+    const fd = new FormData();
+    fd.set("tag_ids", JSON.stringify([TAG_OWN, "", TAG_FOREIGN]));
     expect(readTagIdsFromFormData(fd)).toEqual([TAG_OWN, TAG_FOREIGN]);
   });
 

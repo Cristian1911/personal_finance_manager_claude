@@ -2,6 +2,7 @@
 
 import { cacheTag, cacheLife, updateTag } from "next/cache";
 import { createCachedClient } from "@/lib/supabase/cached";
+import { attachTagsToTransactions } from "@/lib/tags/attach-transaction-tags";
 import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { nanoid } from "nanoid";
@@ -1022,8 +1023,8 @@ export async function approveEmailTransaction(
 /**
  * Attach the tags picked in the queue to a transaction. `tag_ids` on the
  * pending row has no FK, so a tag deleted between queueing and approval is
- * dropped here instead of failing the whole batch; already-attached pairs are
- * ignored (PK on transaction_id + tag_id).
+ * dropped by the shared helper instead of failing the whole batch;
+ * already-attached pairs are ignored (PK on transaction_id + tag_id).
  */
 async function attachQueueTags(
   supabase: AuthenticatedSupabase,
@@ -1031,26 +1032,9 @@ async function attachQueueTags(
   transactionId: string,
   tagIds: string[],
 ): Promise<void> {
-  if (tagIds.length === 0) return;
-
-  const { data: validTags } = await supabase
-    .from("tags")
-    .select("id")
-    .in("id", tagIds)
-    .or(`user_id.eq.${userId},user_id.is.null`);
-  const survivors = (validTags ?? []).map((t) => t.id);
-  if (survivors.length === 0) return;
-
-  const { error } = await supabase.from("transaction_tags").upsert(
-    survivors.map((tagId) => ({
-      transaction_id: transactionId,
-      tag_id: tagId,
-      user_id: userId,
-    })),
-    { onConflict: "transaction_id,tag_id", ignoreDuplicates: true },
-  );
-  if (error) {
-    console.error("[approveEmailTransaction] tag upsert failed:", error.message);
+  const result = await attachTagsToTransactions(supabase, userId, [transactionId], tagIds);
+  if (result.error) {
+    console.error("[approveEmailTransaction] tag upsert failed:", result.error);
   }
 }
 

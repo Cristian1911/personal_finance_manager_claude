@@ -1136,10 +1136,13 @@ export async function updateTransaction(
   // `updateTransaction` reuses `transactionSchema` but does not read the
   // `is_subscription` / `destinatario_id` form fields. Strip them from the
   // spread so their Zod defaults (false / undefined) don't overwrite the
-  // existing row on every edit.
+  // existing row on every edit. `tags` is stripped too: tag membership lives
+  // in `transaction_tags`, and letting it ride along would land in the legacy
+  // `transactions.tags` column instead.
   const {
     is_subscription: _ignoredIsSubscription,
     destinatario_id: _ignoredDestinatarioId,
+    tags: _ignoredTags,
     ...updatableFields
   } = parsed.data;
 

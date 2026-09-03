@@ -2,12 +2,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 
 /**
- * Attach a set of tags to transactions that were just created by `userId`.
+ * Attach a set of tags to transactions owned by `userId`.
  *
- * Tags must belong to the user (or be system tags); unknown ids are dropped
- * rather than failing the whole write. Never throws: by the time this runs the
- * transaction already moved balances, so a tagging failure is reported back
- * for logging and the caller still returns the created row.
+ * Both sides are verified app-side (defense-in-depth on top of RLS): the
+ * transactions must belong to the user, and the tags must be the user's own
+ * or system tags. Unknown tag ids are dropped rather than failing the write.
+ * Never throws: on the create paths the transaction already moved balances,
+ * so a tagging failure is reported back for logging and the caller still
+ * returns the created row.
  */
 export async function attachTagsToTransactions(
   supabase: SupabaseClient<Database>,
@@ -21,34 +23,67 @@ export async function attachTagsToTransactions(
     return { attached: 0, error: null };
   }
 
-  // Defense-in-depth: only the user's own tags (or system tags) may be
-  // attached, mirroring bulkTagTransactions.
-  const { data: allowedTags, error: tagError } = await supabase
-    .from("tags")
-    .select("id")
-    .in("id", uniqueTagIds)
-    .or(`user_id.eq.${userId},user_id.is.null`);
-  if (tagError) return { attached: 0, error: tagError.message };
+  const [txRes, tagRes] = await Promise.all([
+    supabase
+      .from("transactions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .in("id", uniqueTxIds),
+    // Only the user's own tags (or system tags) may be attached, mirroring
+    // bulkTagTransactions.
+    supabase
+      .from("tags")
+      .select("id")
+      .in("id", uniqueTagIds)
+      .or(`user_id.eq.${userId},user_id.is.null`),
+  ]);
+  if (txRes.error) return { attached: 0, error: txRes.error.message };
+  if (txRes.count !== uniqueTxIds.length) {
+    return { attached: 0, error: "Transacciones no encontradas" };
+  }
+  if (tagRes.error) return { attached: 0, error: tagRes.error.message };
 
-  const allowedIds = (allowedTags ?? []).map((t) => t.id);
+  const allowedIds = (tagRes.data ?? []).map((t) => t.id);
   if (allowedIds.length === 0) return { attached: 0, error: null };
 
   const rows = uniqueTxIds.flatMap((transaction_id) =>
     allowedIds.map((tag_id) => ({ transaction_id, tag_id, user_id: userId })),
   );
 
-  const { error } = await supabase
+  // `ignoreDuplicates` skips pairs that already exist; the returned rows are
+  // the ones actually written, so `attached` is a real count.
+  const { data, error } = await supabase
     .from("transaction_tags")
-    .upsert(rows, { onConflict: "transaction_id,tag_id", ignoreDuplicates: true });
+    .upsert(rows, { onConflict: "transaction_id,tag_id", ignoreDuplicates: true })
+    .select("tag_id");
   if (error) return { attached: 0, error: error.message };
 
-  return { attached: rows.length, error: null };
+  return { attached: data?.length ?? 0, error: null };
 }
 
-/** Read the `tag_ids` multi-value field a create form submits. */
+/**
+ * Read the `tag_ids` field a form submits. Accepts both wire formats in use:
+ * repeated scalar inputs (`<input name="tag_ids">` per id — the transaction
+ * forms) and a single JSON-encoded array (the modos form). Blanks and
+ * non-string values are dropped.
+ */
 export function readTagIdsFromFormData(formData: FormData): string[] {
-  return formData
+  const values = formData
     .getAll("tag_ids")
     .map((v) => (typeof v === "string" ? v.trim() : ""))
     .filter(Boolean);
+
+  if (values.length === 1 && values[0].startsWith("[")) {
+    try {
+      const parsed: unknown = JSON.parse(values[0]);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((v) => (typeof v === "string" ? v.trim() : ""))
+          .filter(Boolean);
+      }
+    } catch {
+      // Not JSON — fall through and treat it as a plain id.
+    }
+  }
+  return values;
 }
