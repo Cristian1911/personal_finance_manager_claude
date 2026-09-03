@@ -1,7 +1,8 @@
 export interface ParsedEmailTransaction {
   direction: "OUTFLOW" | "INFLOW";
   amount: number;
-  currency: "COP";
+  /** Currency the alert states for the movement. "$"/"COP" → COP; foreign-currency card purchases say "USD". */
+  currency: "COP" | "USD";
   merchant: string | null;
   destination: string | null;
   card_last4: string;
@@ -96,6 +97,14 @@ function parseAmount(raw: string): number {
   return parseFloat(cleaned);
 }
 
+/**
+ * Currency prefix of the amount in a purchase alert. Bancolombia writes COP as
+ * "$" or "COP"; foreign-currency card purchases carry "USD" (e.g. "Compraste USD1,00").
+ */
+function parseCurrencyPrefix(raw: string): ParsedEmailTransaction["currency"] {
+  return raw === "USD" ? "USD" : "COP";
+}
+
 function parseDateDMY(raw: string): string {
   const parts = raw.split("/");
   if (parts.length !== 3) return raw;
@@ -141,20 +150,22 @@ const PATTERNS: PatternDef[] = [
   },
   // Pattern 3: Compra con T.Cred (COP prefix) — must come before compra_debito
   // "Compraste COP81.000,00 en DLO*GOOGLE ChatGPT con tu T.Cred *2365, el 27/03/2026 a las 15:25"
+  // Foreign-currency purchases keep the same shape with a USD prefix:
+  // "Compraste USD1,00 en LOUNGEKEY con tu T.Cred *7706, el 26/08/2026 a las 16:10"
   {
     type: "compra_credito",
     regex:
-      /Compraste (?:COP|\$)([\d.,]+) en (.+?) con tu (T\.Cred) \*(\d+),? el (\d{2}\/\d{2}\/\d{4}) a las (\d{2}:\d{2})/,
+      /Compraste (COP|USD|\$)([\d.,]+) en (.+?) con tu (T\.Cred) \*(\d+),? el (\d{2}\/\d{2}\/\d{4}) a las (\d{2}:\d{2})/,
     extract: (m) => ({
       direction: "OUTFLOW",
-      amount: parseAmount(m[1]),
-      currency: "COP",
-      merchant: m[2].trim(),
+      amount: parseAmount(m[2]),
+      currency: parseCurrencyPrefix(m[1]),
+      merchant: m[3].trim(),
       destination: null,
-      card_last4: m[4],
+      card_last4: m[5],
       card_type: "T.Cred",
-      transaction_date: parseDateDMY(m[5]),
-      transaction_time: m[6],
+      transaction_date: parseDateDMY(m[6]),
+      transaction_time: m[7],
       pattern_type: "compra_credito",
     }),
   },
@@ -163,17 +174,17 @@ const PATTERNS: PatternDef[] = [
   {
     type: "compra_debito",
     regex:
-      /Compraste (?:COP|\$)([\d.,]+) en (.+?) con tu (T\.Deb) \*{1,2}(\d+),? el (\d{2}\/\d{2}\/\d{4}) a las (\d{2}:\d{2})/,
+      /Compraste (COP|USD|\$)([\d.,]+) en (.+?) con tu (T\.Deb) \*{1,2}(\d+),? el (\d{2}\/\d{2}\/\d{4}) a las (\d{2}:\d{2})/,
     extract: (m) => ({
       direction: "OUTFLOW",
-      amount: parseAmount(m[1]),
-      currency: "COP",
-      merchant: m[2].trim(),
+      amount: parseAmount(m[2]),
+      currency: parseCurrencyPrefix(m[1]),
+      merchant: m[3].trim(),
       destination: null,
-      card_last4: m[4],
+      card_last4: m[5],
       card_type: "T.Deb",
-      transaction_date: parseDateDMY(m[5]),
-      transaction_time: m[6],
+      transaction_date: parseDateDMY(m[6]),
+      transaction_time: m[7],
       pattern_type: "compra_debito",
     }),
   },
@@ -182,17 +193,17 @@ const PATTERNS: PatternDef[] = [
   {
     type: "compra_asociada",
     regex:
-      /Compraste (?:COP|\$)([\d.,]+) en (.+?),? el (\d{2}\/\d{2}\/\d{4}) a las (\d{2}:\d{2})\.? Esta compra esta asociada a (T\.Cred|T\.Deb) \*{1,2}(\d+)/,
+      /Compraste (COP|USD|\$)([\d.,]+) en (.+?),? el (\d{2}\/\d{2}\/\d{4}) a las (\d{2}:\d{2})\.? Esta compra esta asociada a (T\.Cred|T\.Deb) \*{1,2}(\d+)/,
     extract: (m) => ({
       direction: "OUTFLOW",
-      amount: parseAmount(m[1]),
-      currency: "COP",
-      merchant: m[2].trim(),
+      amount: parseAmount(m[2]),
+      currency: parseCurrencyPrefix(m[1]),
+      merchant: m[3].trim(),
       destination: null,
-      card_last4: m[6],
-      card_type: m[5] as "T.Cred" | "T.Deb",
-      transaction_date: parseDateDMY(m[3]),
-      transaction_time: m[4],
+      card_last4: m[7],
+      card_type: m[6] as "T.Cred" | "T.Deb",
+      transaction_date: parseDateDMY(m[4]),
+      transaction_time: m[5],
       pattern_type: "compra_asociada",
     }),
   },

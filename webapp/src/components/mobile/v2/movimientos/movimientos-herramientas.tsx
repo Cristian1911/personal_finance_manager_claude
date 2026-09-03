@@ -557,6 +557,10 @@ function ImportarDetail({
           const timeStr = parsed ? formatTime(parsed.transaction_time) : null;
           const cardInfo = parsed ? `*${parsed.card_last4}` : null;
           const amount = parsed?.amount ?? 0;
+          // Foreign-currency purchases ("Compraste USD1,00") keep the alert's
+          // currency; peso alerts fall back to the list's currency.
+          const amountCurrency: CurrencyCode =
+            parsed?.currency && parsed.currency !== "COP" ? parsed.currency : currency;
           const direction = parsed?.direction ?? "OUTFLOW";
           const pattern = parsed ? getEmailPatternLabel(parsed.pattern_type) : null;
           const PatternIcon = pattern?.icon ?? Mail;
@@ -599,7 +603,7 @@ function ImportarDetail({
                   </p>
                 </div>
                 <p className="shrink-0 text-xs font-semibold tabular-nums">
-                  {formatCurrency(amount, currency)}
+                  {formatCurrency(amount, amountCurrency)}
                 </p>
                 {!isExpanded && (
                   <button

@@ -18,6 +18,57 @@ describe("parseBancolombiaEmail", () => {
     expect(result!.pattern_type).toBe("retiro");
   });
 
+  it("parses foreign-currency credit card purchase (Compraste USD) keeping USD", () => {
+    const line =
+      "Logo Bancolombia [https://example.com/logo.png] ¡Listo! Todo salió bien con tus movimientos Bancolombia: Compraste USD1,00 en LOUNGEKEY con tu T.Cred *7706, el 26/08/2026 a las 16:10. Si tienes dudas, encuentranos aqui: 6045109095 o 018000931987. Estamos cerca.";
+    const result = parseBancolombiaEmail(line);
+    expect(result).not.toBeNull();
+    expect(result!.direction).toBe("OUTFLOW");
+    expect(result!.amount).toBe(1);
+    expect(result!.currency).toBe("USD");
+    expect(result!.merchant).toBe("LOUNGEKEY");
+    expect(result!.card_last4).toBe("7706");
+    expect(result!.card_type).toBe("T.Cred");
+    expect(result!.transaction_date).toBe("2026-08-26");
+    expect(result!.transaction_time).toBe("16:10");
+    expect(result!.pattern_type).toBe("compra_credito");
+    expect(result!.raw_line).toBe(
+      "Compraste USD1,00 en LOUNGEKEY con tu T.Cred *7706, el 26/08/2026 a las 16:10"
+    );
+  });
+
+  it("parses USD purchase with cents and thousands (Compraste USD1.234,56)", () => {
+    const line =
+      "Bancolombia: Compraste USD1.234,56 en AMAZON.COM con tu T.Cred *7706, el 26/08/2026 a las 16:10. Estamos cerca.";
+    const result = parseBancolombiaEmail(line);
+    expect(result).not.toBeNull();
+    expect(result!.amount).toBe(1234.56);
+    expect(result!.currency).toBe("USD");
+  });
+
+  it("keeps COP for peso purchases with either prefix", () => {
+    const cop = parseBancolombiaEmail(
+      "Bancolombia: Compraste COP81.000,00 en DLO*GOOGLE ChatGPT con tu T.Cred *2365, el 27/03/2026 a las 15:25. Estamos cerca."
+    );
+    const dollarSign = parseBancolombiaEmail(
+      "Bancolombia: Compraste $22.000,00 en DUNKIN DONUTS con tu T.Deb *0735, el 26/03/2026 a las 14:11. Estamos cerca."
+    );
+    expect(cop!.currency).toBe("COP");
+    expect(dollarSign!.currency).toBe("COP");
+  });
+
+  it("parses USD purchase where the card is named in a separate sentence", () => {
+    const line =
+      "Bancolombia: Compraste USD18,64 en Amazon Prime, el 22/07/2026 a las 19:50. Esta compra esta asociada a T.Cred *7022. Estamos cerca.";
+    const result = parseBancolombiaEmail(line);
+    expect(result).not.toBeNull();
+    expect(result!.amount).toBe(18.64);
+    expect(result!.currency).toBe("USD");
+    expect(result!.merchant).toBe("Amazon Prime");
+    expect(result!.card_last4).toBe("7022");
+    expect(result!.pattern_type).toBe("compra_asociada");
+  });
+
   // Pattern 2: Compra con T.Deb
   it("parses debit purchase (Compraste T.Deb)", () => {
     const line =
