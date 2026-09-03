@@ -105,10 +105,6 @@ import type {
   TransactionLocation,
 } from "@/types/domain";
 
-/** Fallback category chip color when a category has no `color` set. Hex literal
- * is intentional — `chipBackground()` / `zoneTextColor()` in `zone-colors.ts`
- * process raw hex, not CSS variables. Matches --z-sage (#768053). */
-
 interface TransactionDetailClientProps {
   transaction: Transaction;
   /** Current destinatario name — fetched alongside the tx to avoid a type extension. */

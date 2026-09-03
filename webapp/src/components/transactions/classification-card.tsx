@@ -13,7 +13,9 @@ import type { LeafCategory } from "@/lib/utils/categories";
  * Destinatario · Etiquetas), value on the right with a chevron.
  */
 
-/** Fallback chip color when a category has none (sage). */
+/** Fallback category chip color when a category has no `color` set. Hex literal
+ * is intentional — `chipBackground()` / `zoneTextColor()` in `zone-colors.ts`
+ * process raw hex, not CSS variables. Matches --z-sage (#768053). */
 export const FALLBACK_CATEGORY_COLOR = "#768053";
 
 export function ClassificationCard({
