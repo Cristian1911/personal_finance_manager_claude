@@ -6,6 +6,7 @@ import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import { parseBancolombiaEmail } from "@/lib/parsers/bancolombia-email";
 import { resolveEmailTransactionCurrency } from "@/lib/email-ingest/currency";
 import { resolveSuggestedEmailAccountId } from "@/lib/email-ingest/account-matching";
+import { normalizeAccountMaskSuffix } from "@/lib/utils/account-mask";
 import {
   findEmailDuplicateCandidate,
   findTransactionByIdempotencyKey,
@@ -809,7 +810,13 @@ async function processEmail(ctx: {
     console.error(`[email-ingest][${emailId}] idempotency lookup failed:`, error);
   }
 
-  let suggestedAccountId = defaultAccountId ?? null;
+  // Only an unmasked alert may fall back to the ingest default. A masked one
+  // stays unsuggested until the accounts prove otherwise — including when the
+  // mask lookup below fails, so an RPC hiccup can't auto-import a new card's
+  // purchase into the default account.
+  let suggestedAccountId = normalizeAccountMaskSuffix(parsed.card_last4)
+    ? null
+    : defaultAccountId ?? null;
 
   // Use RPC to decrypt masks — admin client has no JWT so zeta_decrypt() in the
   // accounts view returns NULL for encrypted columns (mask, debit_card_mask).
@@ -830,6 +837,12 @@ async function processEmail(ctx: {
   // on its own (#389): a collision with an existing transaction goes to the
   // queue flagged with the candidate and the user resolves it with the prompt.
   console.log(`[email-ingest][${emailId}] autoImport=${autoImport} suggestedAccountId=${suggestedAccountId}`);
+  if (!suggestedAccountId && parsed.card_last4) {
+    // A masked alert no account knows is a product the user hasn't
+    // registered (new card, new account). It never auto-imports into the
+    // default account: it queues, and the inbox asks what the product is.
+    console.log(`[email-ingest][${emailId}] ${parsed.card_type} *${parsed.card_last4} not registered on any account — queuing`);
+  }
   let conflictTransactionId: string | null = null;
   if (autoImport && suggestedAccountId) {
     try {

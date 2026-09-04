@@ -1,16 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AlertTriangle, ArrowUpRight, ArrowDownLeft, ArrowRight, Mail, Hash, UserRound, Pencil, FileUp, Clock, Tag } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { MobileZone } from "@/components/mobile/v2/mobile-zone";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
@@ -20,6 +14,16 @@ import { formatDate, formatTime } from "@/lib/utils/date";
 import { categorizeTransaction, uncategorizeTransaction } from "@/actions/categorize";
 import { useEmailQueueActions } from "@/hooks/use-email-queue-actions";
 import { EmailReconcileDialog } from "@/components/import/email-reconcile-dialog";
+import {
+  EmailAccountSelect,
+  EmailProductDialog,
+  useEmailProductResolver,
+} from "@/components/import/email-product-resolver";
+import {
+  pickPendingEmailAccountId,
+  resolveEmailAccountMatch,
+  type EmailAccountMatch,
+} from "@/lib/email-ingest/account-matching";
 import { getEmailPatternLabel } from "@/lib/email-ingest/pattern-labels";
 import { toast } from "sonner";
 import type {
@@ -38,7 +42,7 @@ interface MovimientosHerramientasProps {
   uncategorizedCount: number;
   pendingEmails: PendingEmailTransaction[];
   categories: CategoryWithChildren[];
-  accounts: Pick<Account, "id" | "name" | "currency_code">[];
+  accounts: Account[];
   currency: CurrencyCode;
   expandedTool: string | null;
   onToggleTool: (id: string) => void;
@@ -448,21 +452,28 @@ function CategorizarDetail({
 
 /* ─── Importar detail ────────────────────────────────────────────────────── */
 
+function parseTx(raw: unknown): ParsedEmailTransaction | null {
+  if (!raw || typeof raw !== "object") return null;
+  return raw as ParsedEmailTransaction;
+}
+
+
 function ImportarDetail({
   pendingEmails,
-  accounts,
+  accounts: initialAccounts,
   currency,
   processedIds,
   onProcess,
   onRollback,
 }: {
   pendingEmails: PendingEmailTransaction[];
-  accounts: Pick<Account, "id" | "name" | "currency_code">[];
+  accounts: Account[];
   currency: CurrencyCode;
   processedIds: Set<string>;
   onProcess: (ids: string[]) => void;
   onRollback: (ids: string[]) => void;
 }) {
+  const router = useRouter();
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [accountOverrides, setAccountOverrides] = useState<Record<string, string>>({});
 
@@ -470,12 +481,47 @@ function ImportarDetail({
   const items = visibleEmails.slice(0, MAX_ITEMS);
   const totalCount = visibleEmails.length;
 
+  const refresh = useCallback(() => router.refresh(), [router]);
+
+  // "Producto no registrado": registering a card/account once points every
+  // queued alert from it at the new account.
+  const applyResolution = useCallback((accountId: string, pendingIds: string[]) => {
+    setAccountOverrides((prev) => {
+      const next = { ...prev };
+      for (const id of pendingIds) next[id] = accountId;
+      return next;
+    });
+  }, []);
+  const resolver = useEmailProductResolver({
+    accounts: initialAccounts,
+    onResolved: applyResolution,
+    afterChange: refresh,
+  });
+  const accounts = resolver.accounts;
+
+  // Match every row's mask against the accounts the client can see — this is
+  // what tells a registered card from a brand-new one.
+  const matchById = useMemo(() => {
+    const matches = new Map<string, EmailAccountMatch>();
+    for (const email of pendingEmails) {
+      const parsed = parseTx(email.parsed_data);
+      if (!parsed) continue;
+      matches.set(
+        email.id,
+        resolveEmailAccountMatch({ accounts, parsed, defaultAccountId: null }),
+      );
+    }
+    return matches;
+  }, [pendingEmails, accounts]);
+
   const resolveAccountId = useCallback(
     (id: string): string | undefined =>
-      accountOverrides[id] ??
-      pendingEmails.find((e) => e.id === id)?.suggested_account_id ??
-      undefined,
-    [accountOverrides, pendingEmails],
+      pickPendingEmailAccountId({
+        override: accountOverrides[id],
+        suggested: pendingEmails.find((e) => e.id === id)?.suggested_account_id,
+        match: matchById.get(id) ?? null,
+      }) ?? undefined,
+    [accountOverrides, pendingEmails, matchById],
   );
   const processOne = useCallback((id: string) => onProcess([id]), [onProcess]);
   const rollbackOne = useCallback((id: string) => onRollback([id]), [onRollback]);
@@ -489,11 +535,6 @@ function ImportarDetail({
       onProcessed: processOne,
       onRollback: rollbackOne,
     });
-
-  function parseTx(raw: unknown): ParsedEmailTransaction | null {
-    if (!raw || typeof raw !== "object") return null;
-    return raw as ParsedEmailTransaction;
-  }
 
   if (totalCount === 0) {
     return (
@@ -566,10 +607,19 @@ function ImportarDetail({
           const PatternIcon = pattern?.icon ?? Mail;
           const hasEnrichment = !!email.category_id || (email.tag_ids?.length ?? 0) > 0;
 
-          const resolvedAccountId = accountOverrides[email.id] ?? email.suggested_account_id;
+          const resolvedAccountId = resolveAccountId(email.id);
           const resolvedAccount = resolvedAccountId
             ? accounts.find((a) => a.id === resolvedAccountId)
             : null;
+          const match = matchById.get(email.id) ?? null;
+          const unrecognized = !resolvedAccount && match?.status === "unrecognized";
+          // Importing needs an account: an unregistered product opens the
+          // prompt, anything else opens the row so the selector is in reach.
+          const handleImport = () => {
+            if (resolvedAccount) importOne(email.id);
+            else if (unrecognized && parsed) resolver.openFor(parsed, email.id);
+            else setExpandedRow(email.id);
+          };
 
           return (
             <div key={email.id}>
@@ -588,6 +638,12 @@ function ImportarDetail({
                   <p className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                     <span>{formatDate(dateStr, "dd MMM")}</span>
                     {cardInfo && <span>{cardInfo}</span>}
+                    {unrecognized && (
+                      <span className="inline-flex items-center gap-0.5 text-z-alert">
+                        <AlertTriangle className="size-2.5" />
+                        No registrada
+                      </span>
+                    )}
                     {email.conflict_transaction_id && (
                       <span className="inline-flex items-center gap-0.5 text-z-alert">
                         <AlertTriangle className="size-2.5" />
@@ -610,7 +666,7 @@ function ImportarDetail({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      importOne(email.id);
+                      handleImport();
                     }}
                     className={cn(CONFIRM_BUTTON_CLASS, "shrink-0 rounded-lg px-2.5 py-1 text-[10px] font-semibold transition-colors")}
                   >
@@ -633,28 +689,16 @@ function ImportarDetail({
                     </span>
                   )}
                   <div onClick={(e) => e.stopPropagation()}>
-                    <Select
-                      value={resolvedAccountId ?? undefined}
-                      onValueChange={(v) => setAccountOverrides((prev) => ({ ...prev, [email.id]: v }))}
-                    >
-                      <SelectTrigger
-                        className={cn(
-                          "h-auto gap-1 rounded-lg px-2.5 py-1 text-[10px]",
-                          resolvedAccount
-                            ? "border-white/10 bg-white/[0.03] text-muted-foreground"
-                            : "border-z-alert/30 bg-z-alert/5 text-z-alert"
-                        )}
-                      >
-                        <SelectValue placeholder="Sin cuenta" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {accounts.map((a) => (
-                          <SelectItem key={a.id} value={a.id} className="text-xs">
-                            {a.name} ({a.currency_code})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <EmailAccountSelect
+                      accounts={accounts}
+                      value={resolvedAccount?.id}
+                      match={match}
+                      product={parsed}
+                      onChange={(v) => setAccountOverrides((prev) => ({ ...prev, [email.id]: v }))}
+                      onRegister={() => parsed && resolver.openFor(parsed, email.id)}
+                      triggerClassName="h-auto gap-1 rounded-lg border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] text-muted-foreground"
+                      itemClassName="text-xs"
+                    />
                   </div>
                   <div className="ml-auto flex items-center gap-1.5">
                     <ActionPill onClick={() => dismiss(email.id)} variant="danger">
@@ -664,7 +708,7 @@ function ImportarDetail({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        importOne(email.id);
+                        handleImport();
                       }}
                       className={cn(CONFIRM_BUTTON_CLASS, "rounded-lg px-2.5 py-1 text-[10px] font-semibold transition-colors")}
                     >
@@ -688,7 +732,19 @@ function ImportarDetail({
         </Link>
         <button
           type="button"
-          onClick={() => bulkImport(visibleEmails.map((e) => e.id))}
+          onClick={() => {
+            // Rows without an account never reach the server: a masked alert
+            // must not fall back to the ingest default, and the server
+            // refuses it anyway — say so instead of counting silent failures.
+            const importable = visibleEmails.filter((e) => resolveAccountId(e.id)).map((e) => e.id);
+            const skipped = visibleEmails.length - importable.length;
+            if (importable.length === 0) {
+              toast.warning("Ninguna tiene cuenta asignada — registra el producto o elige una cuenta");
+              return;
+            }
+            if (skipped > 0) toast.info(`${skipped} sin cuenta se quedan en cola`);
+            bulkImport(importable);
+          }}
           className="inline-flex items-center gap-1 text-[11px] font-semibold text-z-sage-light"
         >
           Importar todas
@@ -702,6 +758,12 @@ function ImportarDetail({
         loading={isPending}
         onClose={closeRecon}
         onChoose={chooseRecon}
+      />
+      <EmailProductDialog
+        product={resolver.product}
+        accounts={accounts}
+        onClose={resolver.close}
+        onResolved={resolver.handleResolved}
       />
     </div>
   );

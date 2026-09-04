@@ -22,19 +22,36 @@ import {
   type ParsedEmailTransaction,
 } from "@/lib/parsers/bancolombia-email";
 import { resolveEmailTransactionCurrency } from "@/lib/email-ingest/currency";
-import { resolveSuggestedEmailAccountId } from "@/lib/email-ingest/account-matching";
+import {
+  accountCarriesEmailProduct,
+  accountFitsEmailProduct,
+  describeEmailProduct,
+  emailProductKind,
+  emailProductMaskToLearn,
+  resolveSuggestedEmailAccountId,
+} from "@/lib/email-ingest/account-matching";
 import {
   findEmailDuplicateCandidate,
   findTransactionByIdempotencyKey,
 } from "@/lib/email-ingest/duplicate-check";
 import { normalizeEmailTime } from "@/lib/email-ingest/time";
-import { accountMaskSuffixMatches } from "@/lib/utils/account-mask";
+import {
+  accountMaskSuffixMatches,
+  normalizeAccountMaskSuffix,
+} from "@/lib/utils/account-mask";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { carryRecurringLinkToSurvivor } from "@/lib/recurring/carry-link";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
+import { accountSchema } from "@/lib/validators/account";
 import type { ActionResult } from "@/types/actions";
-import type { EmailIngestAddress, EmailIngestLog, PendingEmailTransaction, UnrecognizedEmail } from "@/types/domain";
-import type { Json } from "@/types/database";
+import type {
+  Account,
+  EmailIngestAddress,
+  EmailIngestLog,
+  PendingEmailTransaction,
+  UnrecognizedEmail,
+} from "@/types/domain";
+import type { Json, Tables } from "@/types/database";
 
 type AuthenticatedSupabase = Awaited<
   ReturnType<typeof getAuthenticatedClient>
@@ -96,7 +113,11 @@ async function persistParsedEmail(params: {
     console.error("[persistParsedEmail] idempotency lookup failed:", error);
   }
 
-  let suggestedAccountId = defaultAccountId ?? null;
+  // Only an unmasked alert may fall back to the ingest default; a masked one
+  // with no matching account is a product the user hasn't registered.
+  let suggestedAccountId = normalizeAccountMaskSuffix(parsed.card_last4)
+    ? null
+    : defaultAccountId ?? null;
 
   const { data: candidateAccounts, error: accountLookupError } = await supabase
     .from("accounts")
@@ -714,13 +735,7 @@ export async function approveEmailTransaction(
   // Determine the target account: explicit override > suggested > ingest address default
   let accountId = overrideAccountId ?? pending.suggested_account_id;
   if (!accountId) {
-    const { data: ingestAddress } = await supabase
-      .from("email_ingest_addresses")
-      .select("account_id")
-      .eq("id", pending.email_ingest_id)
-      .eq("user_id", user.id)
-      .single();
-    accountId = ingestAddress?.account_id ?? null;
+    accountId = await resolveIngestDefaultAccountId(supabase, user.id, pending, parsed);
   }
 
   if (!accountId) {
@@ -730,7 +745,7 @@ export async function approveEmailTransaction(
   // Get the account's currency
   const { data: account, error: accountError } = await supabase
     .from("accounts")
-    .select("currency_code, account_type, debit_card_mask, current_balance")
+    .select("id, currency_code, account_type, mask, debit_card_mask, current_balance")
     .eq("id", accountId)
     .eq("user_id", user.id)
     .single();
@@ -738,23 +753,28 @@ export async function approveEmailTransaction(
   if (accountError) return { success: false, error: accountError.message };
   if (!account) return { success: false, error: "Cuenta no encontrada" };
 
-  if (
-    parsed.card_type === "T.Deb" &&
-    parsed.card_last4 &&
-    (account.account_type === "SAVINGS" || account.account_type === "CHECKING") &&
-    !accountMaskSuffixMatches(account.debit_card_mask, parsed.card_last4)
-  ) {
+  // Importing into an account teaches it the product the alert came from, so
+  // the next alert from the same card matches without asking again.
+  const learned = emailProductMaskToLearn({
+    account,
+    cardType: parsed.card_type,
+    last4: parsed.card_last4,
+    explicit: false,
+  });
+  if (learned) {
     const { error: learnMappingError } = await supabase
       .from("accounts")
-      .update({ debit_card_mask: parsed.card_last4 })
+      .update({ [learned.column]: learned.value })
       .eq("id", accountId)
       .eq("user_id", user.id);
 
     if (learnMappingError) {
       console.error(
-        "[email-ingest] failed to learn debit card mapping:",
+        "[email-ingest] failed to learn product mapping:",
         learnMappingError.message
       );
+    } else {
+      updateTag("accounts");
     }
   }
 
@@ -1159,6 +1179,275 @@ export async function updatePendingEmailTransaction(
   return { success: true, data: null };
 }
 
+/**
+ * Ingest-address default for a queued row that carries no account. Only
+ * unmasked alerts may fall back to it: a masked alert nobody matched is a
+ * product the user hasn't registered, and quietly importing it into the
+ * default account is how a new credit card's purchases became savings
+ * spending.
+ */
+async function resolveIngestDefaultAccountId(
+  supabase: AuthenticatedSupabase,
+  userId: string,
+  pending: Pick<PendingEmailTransaction, "email_ingest_id">,
+  parsed: Pick<ParsedEmailTransaction, "card_last4">,
+): Promise<string | null> {
+  if (normalizeAccountMaskSuffix(parsed.card_last4)) return null;
+  const { data: ingestAddress } = await supabase
+    .from("email_ingest_addresses")
+    .select("account_id")
+    .eq("id", pending.email_ingest_id)
+    .eq("user_id", userId)
+    .single();
+  return ingestAddress?.account_id ?? null;
+}
+
+// ─── Unrecognized products (new cards / accounts) ────────────────────────────
+
+const emailProductSchema = z.object({
+  cardType: z.enum(["T.Deb", "T.Cred", "Cta", "producto"]),
+  last4: z
+    .string()
+    .transform((value) => normalizeAccountMaskSuffix(value) ?? "")
+    .pipe(z.string().regex(/^\d{1,4}$/, "Máscara inválida")),
+});
+
+/** The product an alert names: which kind of card/account and its last four. */
+export type EmailProductRef = z.input<typeof emailProductSchema>;
+
+const createEmailProductAccountSchema = z.object({
+  name: z.string().trim().min(1, "El nombre es requerido").max(100, "El nombre es muy largo"),
+  accountType: z.enum(["CREDIT_CARD", "SAVINGS", "CHECKING"]),
+  currencyCode: accountSchema.shape.currency_code,
+});
+
+export type CreateEmailProductAccountInput = z.input<typeof createEmailProductAccountSchema>;
+
+export type EmailProductResolution = {
+  account: Account;
+  /** Queued rows from the same product, now suggested into `account`. */
+  pendingIds: string[];
+  /** The account is in place but the queue could not be re-suggested. */
+  warning?: string;
+};
+
+const PENDING_REASSIGN_CHUNK = 100;
+
+function stripAccountSecrets(account: Tables<"accounts">): Account {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- dropped on purpose
+  const { pdf_password, ...rest } = account;
+  return rest;
+}
+
+/**
+ * Point every queued alert from this product at `accountId`, so registering
+ * a card once resolves the whole backlog and every surface (web inbox,
+ * mobile panel, attention items) sees the same suggestion after refresh.
+ */
+async function reassignPendingRowsForProduct(
+  supabase: AuthenticatedSupabase,
+  userId: string,
+  product: z.output<typeof emailProductSchema>,
+  accountId: string,
+): Promise<{ pendingIds: string[]; warning?: string }> {
+  const warning = "La cola de correos no se pudo actualizar; recarga para verla al día.";
+  const { data: rows, error } = await supabase
+    .from("pending_email_transactions")
+    .select("id, parsed_data")
+    .eq("user_id", userId)
+    .eq("status", "pending");
+  if (error) {
+    console.error("[email-ingest] pending lookup for product failed:", error.message);
+    return { pendingIds: [], warning };
+  }
+
+  const kind = emailProductKind(product.cardType);
+  const ids = (rows ?? [])
+    .filter((row) => {
+      const parsed = row.parsed_data as unknown as ParsedEmailTransaction | null;
+      return (
+        !!parsed &&
+        emailProductKind(parsed.card_type) === kind &&
+        accountMaskSuffixMatches(parsed.card_last4, product.last4)
+      );
+    })
+    .map((row) => row.id);
+
+  // Chunked: the id list travels in the PostgREST query string.
+  for (let i = 0; i < ids.length; i += PENDING_REASSIGN_CHUNK) {
+    const chunk = ids.slice(i, i + PENDING_REASSIGN_CHUNK);
+    const { error: updateError } = await supabase
+      .from("pending_email_transactions")
+      .update({ suggested_account_id: accountId })
+      .in("id", chunk)
+      .eq("user_id", userId);
+    if (updateError) {
+      console.error("[email-ingest] pending reassignment failed:", updateError.message);
+      return { pendingIds: ids.slice(0, i), warning };
+    }
+  }
+  return { pendingIds: ids };
+}
+
+function revalidateAfterProductResolution() {
+  updateTag("accounts");
+  updateTag("dashboard:accounts");
+  updateTag("dashboard:hero");
+  updateTag("debt");
+  updateTag("attention");
+  updateTag("email-ingest");
+}
+
+/**
+ * Attach the product an alert names (debit card, credit card, account
+ * number) to an existing account, and re-suggest every queued alert from
+ * it. The "esta tarjeta ya es de una cuenta que tengo" answer to the
+ * "producto no registrado" prompt.
+ */
+export async function linkEmailProductToAccount(
+  product: EmailProductRef,
+  accountId: string,
+): Promise<ActionResult<EmailProductResolution>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  if (!uuidStr().safeParse(accountId).success) {
+    return { success: false, error: "Cuenta inválida" };
+  }
+  const parsedProduct = emailProductSchema.safeParse(product);
+  if (!parsedProduct.success) {
+    return { success: false, error: parsedProduct.error.issues[0].message };
+  }
+  const ref = parsedProduct.data;
+
+  const { data: account, error: accountError } = await supabase
+    .from("accounts")
+    .select("*")
+    .eq("id", accountId)
+    .eq("user_id", user.id)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (accountError) return { success: false, error: accountError.message };
+  if (!account) return { success: false, error: "Cuenta no encontrada" };
+
+  if (!accountFitsEmailProduct(account.account_type, ref.cardType)) {
+    return {
+      success: false,
+      error: `${describeEmailProduct({ card_type: ref.cardType, card_last4: ref.last4 })} no puede asociarse a esta cuenta`,
+    };
+  }
+
+  let current: Tables<"accounts"> = account;
+  const learned = emailProductMaskToLearn({
+    account,
+    cardType: ref.cardType,
+    last4: ref.last4,
+    explicit: true,
+  });
+  // An account number never overwrites a different one (that's another
+  // account, and the mask is what PDF statements match on). Say so instead
+  // of "succeeding" with nothing learned — the next alert would just ask again.
+  if (!learned && !accountCarriesEmailProduct(account, ref.cardType, ref.last4)) {
+    const known = normalizeAccountMaskSuffix(account.mask);
+    return {
+      success: false,
+      error: `${account.name} ya tiene registrado el número *${known}. Crea una cuenta nueva para *${ref.last4}.`,
+    };
+  }
+  if (learned) {
+    const { data: updated, error: updateError } = await supabase
+      .from("accounts")
+      .update({ [learned.column]: learned.value })
+      .eq("id", accountId)
+      .eq("user_id", user.id)
+      .select("*")
+      .single();
+    if (updateError) return { success: false, error: updateError.message };
+    current = updated;
+  }
+
+  const reassigned = await reassignPendingRowsForProduct(supabase, user.id, ref, accountId);
+  revalidateAfterProductResolution();
+  return { success: true, data: { account: stripAccountSecrets(current), ...reassigned } };
+}
+
+/**
+ * Create the account for a product no account knows — a brand-new credit
+ * card, most often — with just a name and currency. Limit, cutoff, payment
+ * day and rate stay empty on purpose: the next PDF statement imported for
+ * this card fills them (`importTransactions` updates account metadata).
+ */
+export async function createAccountForEmailProduct(
+  product: EmailProductRef,
+  input: CreateEmailProductAccountInput,
+): Promise<ActionResult<EmailProductResolution>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const parsedProduct = emailProductSchema.safeParse(product);
+  if (!parsedProduct.success) {
+    return { success: false, error: parsedProduct.error.issues[0].message };
+  }
+  const parsedInput = createEmailProductAccountSchema.safeParse(input);
+  if (!parsedInput.success) {
+    return { success: false, error: parsedInput.error.issues[0].message };
+  }
+  const ref = parsedProduct.data;
+  const { name, accountType, currencyCode } = parsedInput.data;
+
+  if (!accountFitsEmailProduct(accountType, ref.cardType)) {
+    return {
+      success: false,
+      error: `${describeEmailProduct({ card_type: ref.cardType, card_last4: ref.last4 })} no corresponde a ese tipo de cuenta`,
+    };
+  }
+
+  // A retry or a second tab must not mint a twin: two accounts carrying the
+  // same mask make every later alert from it ambiguous (unsuggestable).
+  const { data: existing, error: existingError } = await supabase
+    .from("accounts")
+    .select("id, name, mask, debit_card_mask, account_type")
+    .eq("user_id", user.id)
+    .eq("is_active", true);
+  if (existingError) return { success: false, error: existingError.message };
+  const twin = (existing ?? []).find((a) =>
+    accountCarriesEmailProduct(a, ref.cardType, ref.last4),
+  );
+  if (twin) {
+    return {
+      success: false,
+      error: `${twin.name} ya tiene registrado *${ref.last4}. Asóciala en vez de crear otra.`,
+    };
+  }
+
+  const maskColumns =
+    emailProductKind(ref.cardType) === "debit_card"
+      ? { debit_card_mask: ref.last4 }
+      : { mask: ref.last4 };
+
+  const { data: created, error: insertError } = await supabase
+    .from("accounts")
+    .insert({
+      user_id: user.id,
+      name,
+      account_type: accountType,
+      institution_name: "Bancolombia",
+      bank_key: "bancolombia",
+      currency_code: currencyCode,
+      current_balance: 0,
+      show_in_dashboard: true,
+      display_order: (existing?.length ?? 0) + 1,
+      ...maskColumns,
+    })
+    .select("*")
+    .single();
+  if (insertError) return { success: false, error: insertError.message };
+
+  const reassigned = await reassignPendingRowsForProduct(supabase, user.id, ref, created.id);
+  revalidateAfterProductResolution();
+  return { success: true, data: { account: stripAccountSecrets(created), ...reassigned } };
+}
+
 export type ReconciliationCandidatePreview = {
   id: string;
   raw_description: string | null;
@@ -1196,13 +1485,7 @@ export async function checkEmailReconciliation(
 
   let accountId = overrideAccountId ?? pending.suggested_account_id;
   if (!accountId) {
-    const { data: ingestAddress } = await supabase
-      .from("email_ingest_addresses")
-      .select("account_id")
-      .eq("id", pending.email_ingest_id)
-      .eq("user_id", user.id)
-      .single();
-    accountId = ingestAddress?.account_id ?? null;
+    accountId = await resolveIngestDefaultAccountId(supabase, user.id, pending, parsed);
   }
 
   if (!accountId) return { success: true, data: null };

@@ -18,16 +18,14 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { TagZonePicker } from "@/components/tags/tag-zone-picker";
 import { EmailReconcileDialog } from "@/components/import/email-reconcile-dialog";
+import {
+  EmailAccountSelect,
+  EmailProductDialog,
+  useEmailProductResolver,
+} from "@/components/import/email-product-resolver";
 import {
   useAccounts,
   useCategories,
@@ -37,7 +35,11 @@ import {
   type PendingEmailEnrichment,
 } from "@/actions/email-ingest";
 import { useEmailQueueActions } from "@/hooks/use-email-queue-actions";
-import { resolveSuggestedEmailAccountId } from "@/lib/email-ingest/account-matching";
+import {
+  pickPendingEmailAccountId,
+  resolveEmailAccountMatch,
+  type EmailAccountMatch,
+} from "@/lib/email-ingest/account-matching";
 import { getEmailPatternLabel } from "@/lib/email-ingest/pattern-labels";
 import {
   BRASS_BUTTON_CLASS,
@@ -68,7 +70,7 @@ function parseTx(raw: unknown): ParsedEmailTransaction | null {
 
 export function EmailInbox({ transactions: initialTransactions }: EmailInboxProps) {
   const router = useRouter();
-  const accounts = useAccounts();
+  const contextAccounts = useAccounts();
   const categories = useCategories();
 
   const [rows, setRows] = useState(initialTransactions);
@@ -93,34 +95,51 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [, startTransition] = useTransition();
 
+  const refresh = useCallback(() => router.refresh(), [router]);
+
+  // "Producto no registrado": registering a card/account once points every
+  // queued alert from it at the new account, here and on the server.
+  const applyResolution = useCallback((accountId: string, pendingIds: string[]) => {
+    setAccountOverrides((prev) => {
+      const next = { ...prev };
+      for (const id of pendingIds) next[id] = accountId;
+      return next;
+    });
+  }, []);
+  const resolver = useEmailProductResolver({
+    accounts: contextAccounts,
+    onResolved: applyResolution,
+    afterChange: refresh,
+  });
+  const accounts = resolver.accounts;
+
   const accountMap = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts]);
 
-  // Rows the server couldn't match to an account: try the card mask client-side.
-  const clientMatches = useMemo(() => {
-    const matches: Record<string, string> = {};
-    for (const tx of initialTransactions) {
-      if (tx.suggested_account_id) continue;
+  // Match every row's mask against the accounts the client can see — this is
+  // what tells a registered card from a brand-new one.
+  const matchById = useMemo(() => {
+    const matches = new Map<string, EmailAccountMatch>();
+    for (const tx of rows) {
       const parsed = parseTx(tx.parsed_data);
-      if (!parsed?.card_last4) continue;
-      const matched = resolveSuggestedEmailAccountId({
-        accounts,
-        parsed,
-        defaultAccountId: null,
-      });
-      if (matched) matches[tx.id] = matched;
+      if (!parsed) continue;
+      matches.set(
+        tx.id,
+        resolveEmailAccountMatch({ accounts, parsed, defaultAccountId: null }),
+      );
     }
     return matches;
-  }, [initialTransactions, accounts]);
+  }, [rows, accounts]);
 
   const rowsById = useMemo(() => new Map(rows.map((t) => [t.id, t])), [rows]);
 
   const resolveAccountId = useCallback(
     (pendingId: string): string | undefined =>
-      accountOverrides[pendingId] ??
-      rowsById.get(pendingId)?.suggested_account_id ??
-      clientMatches[pendingId] ??
-      undefined,
-    [accountOverrides, rowsById, clientMatches],
+      pickPendingEmailAccountId({
+        override: accountOverrides[pendingId],
+        suggested: rowsById.get(pendingId)?.suggested_account_id,
+        match: matchById.get(pendingId) ?? null,
+      }) ?? undefined,
+    [accountOverrides, rowsById, matchById],
   );
 
   const importableIds = useMemo(
@@ -189,8 +208,6 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
     if (save) await save.catch(() => undefined);
   }, []);
 
-  const refresh = useCallback(() => router.refresh(), [router]);
-
   const {
     busyId,
     bulkLoading,
@@ -234,6 +251,9 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
   }
 
   const withoutAccount = rows.length - importableIds.length;
+  const unregistered = rows.filter(
+    (tx) => !resolveAccountId(tx.id) && matchById.get(tx.id)?.status === "unrecognized",
+  ).length;
 
   return (
     <div className="space-y-4">
@@ -243,7 +263,11 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
           <p className="text-sm text-muted-foreground">
             {rows.length} {rows.length === 1 ? "movimiento" : "movimientos"} por importar
             {withoutAccount > 0 && (
-              <span className="text-z-alert"> · {withoutAccount} sin cuenta</span>
+              <span className="text-z-alert">
+                {" "}
+                · {withoutAccount} sin cuenta
+                {unregistered > 0 && ` (${unregistered} de producto no registrado)`}
+              </span>
             )}
           </p>
           <p className="text-xs text-muted-foreground/80">
@@ -284,6 +308,8 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
               const PatternIcon = pattern?.icon ?? Mail;
               const accountId = resolveAccountId(tx.id);
               const account = accountId ? accountMap.get(accountId) : undefined;
+              const match = matchById.get(tx.id) ?? null;
+              const unrecognized = !account && match?.status === "unrecognized";
               const isBusy = busyId === tx.id || bulkLoading;
               const isExpanded = expandedId === tx.id;
               const noteValue = noteDrafts[tx.id] ?? tx.notes ?? "";
@@ -361,32 +387,18 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
                   {/* Enrichment row — always visible so a long queue can be
                       worked top to bottom without opening each row. */}
                   <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                    <Select
-                      value={accountId}
-                      onValueChange={(v) =>
+                    <EmailAccountSelect
+                      accounts={accounts}
+                      value={account?.id}
+                      match={match}
+                      product={parsed}
+                      onChange={(v) =>
                         setAccountOverrides((prev) => ({ ...prev, [tx.id]: v }))
                       }
+                      onRegister={() => parsed && resolver.openFor(parsed, tx.id)}
                       disabled={isBusy}
-                    >
-                      <SelectTrigger
-                        aria-label="Cuenta"
-                        className={cn(
-                          ROW_PICKER_CLASS,
-                          "w-auto gap-1.5",
-                          !account && "border-z-alert/30 bg-z-alert/5 text-z-alert",
-                        )}
-                      >
-                        {!account && <AlertTriangle className="size-3" />}
-                        <SelectValue placeholder="Sin cuenta" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {accounts.map((acc) => (
-                          <SelectItem key={acc.id} value={acc.id}>
-                            {acc.name} ({acc.currency_code})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      triggerClassName={cn(ROW_PICKER_CLASS, "w-auto gap-1.5")}
+                    />
 
                     <CategoryZonePicker
                       categories={categories}
@@ -408,9 +420,19 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
                     <Button
                       size="sm"
                       className={cn(CONFIRM_BUTTON_CLASS, "ml-auto h-8 gap-1.5 rounded-full px-3 text-xs font-medium")}
-                      onClick={() => importOne(tx.id)}
-                      disabled={isBusy || !account}
-                      title={!account ? "Selecciona una cuenta primero" : undefined}
+                      onClick={() =>
+                        account
+                          ? importOne(tx.id)
+                          : unrecognized && parsed && resolver.openFor(parsed, tx.id)
+                      }
+                      disabled={isBusy || (!account && !unrecognized)}
+                      title={
+                        !account
+                          ? unrecognized
+                            ? "Registra el producto para importar"
+                            : "Selecciona una cuenta primero"
+                          : undefined
+                      }
                     >
                       {busyId === tx.id ? (
                         <Loader2 className="size-3.5 animate-spin" />
@@ -474,6 +496,12 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
         loading={isPending}
         onClose={closeRecon}
         onChoose={chooseRecon}
+      />
+      <EmailProductDialog
+        product={resolver.product}
+        accounts={accounts}
+        onClose={resolver.close}
+        onResolved={resolver.handleResolved}
       />
     </div>
   );
