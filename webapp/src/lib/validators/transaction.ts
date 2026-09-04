@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { uuidStr } from "./shared";
+import { UUID_RE, uuidStr } from "./shared";
 
 const formBoolean = z.preprocess(
   (val) => val === true || val === "true" || val === "on",
@@ -36,7 +36,15 @@ export const transactionSchema = z.object({
   ),
   notes: z.string().optional(),
   capture_input_text: z.string().optional(),
-  tags: z.array(z.string()).optional(),
+  // Enrichment only: a malformed id is dropped, never a reason to lose the
+  // transaction the user just typed.
+  tags: z.preprocess(
+    (val) =>
+      Array.isArray(val)
+        ? val.filter((v) => typeof v === "string" && UUID_RE.test(v))
+        : val,
+    z.array(z.string()).optional()
+  ),
   is_subscription: formBoolean,
 });
 
