@@ -436,7 +436,7 @@ function EmailProductDialogBody({
               </div>
             )}
             <div className={cn("space-y-1.5", isCredit && "col-span-2")}>
-              <Label htmlFor="email-product-currency">Moneda</Label>
+              <Label htmlFor="email-product-currency">Moneda principal</Label>
               <Select
                 value={currencyCode}
                 onValueChange={(v) => setCurrencyCode(v as CurrencyCode)}
@@ -456,7 +456,7 @@ function EmailProductDialogBody({
           </div>
           <p className={cn(PANEL_INSET_CLASS, "px-3 py-2 text-xs leading-relaxed text-muted-foreground")}>
             {isCredit || accountType === "CREDIT_CARD"
-              ? "Cupo, fecha de corte, día de pago y tasa quedan pendientes: se completan solos al importar el próximo extracto PDF de esta tarjeta."
+              ? "Cupo, fecha de corte, día de pago y tasa quedan pendientes: se completan solos al importar el próximo extracto PDF de esta tarjeta. Si también factura en USD, esas compras se guardan en USD y el extracto añade el saldo en esa moneda."
               : isDebit
                 ? `Se crea con la tarjeta débito *${last4} asociada. El saldo se ajusta al importar el próximo extracto PDF.`
                 : `Se crea con el número *${last4}. El saldo se ajusta al importar el próximo extracto PDF.`}
