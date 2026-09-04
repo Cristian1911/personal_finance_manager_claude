@@ -351,8 +351,8 @@ function EmailProductDialogBody({
             {isDebit
               ? "Elige la cuenta de la que sale el dinero con esta tarjeta débito."
               : isCredit
-                ? "Elige la tarjeta. Pasará a reconocerse con el número *" + last4 + "."
-                : "Elige la cuenta. Si no tiene número registrado, aprenderá *" + last4 + "."}
+                ? `Elige la tarjeta. Pasará a reconocerse con el número *${last4}.`
+                : `Elige la cuenta. Si no tiene número registrado, aprenderá *${last4}.`}
           </p>
           <ul className="max-h-60 space-y-1 overflow-y-auto" role="listbox" aria-label="Cuentas">
             {candidates.map((acc) => {
