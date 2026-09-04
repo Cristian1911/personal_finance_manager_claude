@@ -21,6 +21,7 @@ import {
   parseBancolombiaEmail,
   type ParsedEmailTransaction,
 } from "@/lib/parsers/bancolombia-email";
+import { resolveEmailTransactionCurrency } from "@/lib/email-ingest/currency";
 import { resolveSuggestedEmailAccountId } from "@/lib/email-ingest/account-matching";
 import {
   findEmailDuplicateCandidate,
@@ -135,7 +136,7 @@ async function persistParsedEmail(params: {
 
   if (autoImport && suggestedAccountId && !conflictTransactionId) {
     const matchedAccount = candidateAccounts?.find((a) => a.id === suggestedAccountId);
-    const currencyCode = matchedAccount?.currency_code ?? parsed.currency;
+    const currencyCode = resolveEmailTransactionCurrency(parsed, matchedAccount?.currency_code);
     const matchText = parsed.merchant ?? parsed.destination ?? parsed.raw_line ?? "";
     const destMatch = await matchTransactionToDestinatario(userId, matchText, supabase);
 
@@ -808,7 +809,7 @@ export async function approveEmailTransaction(
       user_id: user.id,
       account_id: accountId,
       amount: parsed.amount,
-      currency_code: account.currency_code,
+      currency_code: resolveEmailTransactionCurrency(parsed, account.currency_code),
       direction: parsed.direction,
       transaction_date: parsed.transaction_date,
       transaction_time: normalizeEmailTime(parsed.transaction_time),

@@ -283,7 +283,7 @@ export function PendingEmailTransactions({
                     }`}
                   >
                     {isInflow ? "+" : ""}
-                    {formatCurrency(parsed.amount, "COP")}
+                    {formatCurrency(parsed.amount, parsed.currency ?? "COP")}
                   </p>
                 </div>
 

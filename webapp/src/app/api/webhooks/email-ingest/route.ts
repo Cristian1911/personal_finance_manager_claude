@@ -4,6 +4,7 @@ import { revalidateTag } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import { parseBancolombiaEmail } from "@/lib/parsers/bancolombia-email";
+import { resolveEmailTransactionCurrency } from "@/lib/email-ingest/currency";
 import { resolveSuggestedEmailAccountId } from "@/lib/email-ingest/account-matching";
 import {
   findEmailDuplicateCandidate,
@@ -849,7 +850,7 @@ async function processEmail(ctx: {
 
   if (autoImport && suggestedAccountId && !conflictTransactionId) {
     const matchedAccount = candidateAccounts?.find((a) => a.id === suggestedAccountId);
-    const currencyCode = matchedAccount?.currency_code ?? parsed.currency;
+    const currencyCode = resolveEmailTransactionCurrency(parsed, matchedAccount?.currency_code);
     const matchText = parsed.merchant ?? parsed.destination ?? parsed.raw_line ?? "";
     const destMatch = await matchTransactionToDestinatario(userId, matchText, admin);
 
