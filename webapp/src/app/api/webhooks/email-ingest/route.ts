@@ -830,6 +830,12 @@ async function processEmail(ctx: {
   // on its own (#389): a collision with an existing transaction goes to the
   // queue flagged with the candidate and the user resolves it with the prompt.
   console.log(`[email-ingest][${emailId}] autoImport=${autoImport} suggestedAccountId=${suggestedAccountId}`);
+  if (!suggestedAccountId && parsed.card_last4) {
+    // A masked alert no account knows is a product the user hasn't
+    // registered (new card, new account). It never auto-imports into the
+    // default account: it queues, and the inbox asks what the product is.
+    console.log(`[email-ingest][${emailId}] ${parsed.card_type} *${parsed.card_last4} not registered on any account — queuing`);
+  }
   let conflictTransactionId: string | null = null;
   if (autoImport && suggestedAccountId) {
     try {

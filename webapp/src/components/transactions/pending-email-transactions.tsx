@@ -17,22 +17,24 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useEmailQueueActions } from "@/hooks/use-email-queue-actions";
 import { EmailReconcileDialog } from "@/components/import/email-reconcile-dialog";
+import {
+  EmailAccountSelect,
+  EmailProductDialog,
+  useEmailProductResolver,
+} from "@/components/import/email-product-resolver";
 import { getEmailPatternLabel } from "@/lib/email-ingest/pattern-labels";
 import { CONFIRM_BUTTON_CLASS } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/utils/date";
 import { formatCurrency } from "@/lib/utils/currency";
 import type { ParsedEmailTransaction } from "@/lib/parsers/bancolombia-email";
-import { resolveSuggestedEmailAccountId } from "@/lib/email-ingest/account-matching";
+import {
+  pickPendingEmailAccountId,
+  resolveEmailAccountMatch,
+  type EmailAccountMatch,
+} from "@/lib/email-ingest/account-matching";
 import type { Account, PendingEmailTransaction } from "@/types/domain";
 
 interface PendingEmailTransactionsProps {
@@ -42,67 +44,69 @@ interface PendingEmailTransactionsProps {
 
 export function PendingEmailTransactions({
   transactions: initialTransactions,
-  accounts,
+  accounts: initialAccounts,
 }: PendingEmailTransactionsProps) {
   const router = useRouter();
   const [transactions, setTransactions] = useState(initialTransactions);
   const [accountOverrides, setAccountOverrides] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
+  const refresh = useCallback(() => router.refresh(), [router]);
+
+  // "Producto no registrado": registering a card/account once points every
+  // queued alert from it at the new account.
+  const applyResolution = useCallback((accountId: string, pendingIds: string[]) => {
+    setAccountOverrides((prev) => {
+      const next = { ...prev };
+      for (const id of pendingIds) next[id] = accountId;
+      return next;
+    });
+  }, []);
+  const resolver = useEmailProductResolver({
+    accounts: initialAccounts,
+    onResolved: applyResolution,
+    afterChange: refresh,
+  });
+  const accounts = resolver.accounts;
+
   const accountMap = useMemo(
     () => new Map(accounts.map((a) => [a.id, a])),
     [accounts]
   );
 
-  const accountOptions = useMemo(
-    () =>
-      accounts.map((acc) => (
-        <SelectItem key={acc.id} value={acc.id}>
-          {acc.name} ({acc.currency_code})
-        </SelectItem>
-      )),
-    [accounts]
-  );
-
-  // Client-side fallback matching for pending rows that lack a suggested_account_id
-  const clientMatches = useMemo(() => {
-    const matches: Record<string, string> = {};
-    for (const tx of initialTransactions) {
-      if (tx.suggested_account_id) continue;
+  // Match every row's mask against the accounts the client can see — this is
+  // what tells a registered card from a brand-new one.
+  const matchById = useMemo(() => {
+    const matches = new Map<string, EmailAccountMatch>();
+    for (const tx of transactions) {
       const parsed = tx.parsed_data as unknown as ParsedEmailTransaction | null;
-      if (!parsed?.card_last4) continue;
-      const matched = resolveSuggestedEmailAccountId({
-        accounts,
-        parsed,
-        defaultAccountId: null,
-      });
-      if (matched) matches[tx.id] = matched;
+      if (!parsed) continue;
+      matches.set(
+        tx.id,
+        resolveEmailAccountMatch({ accounts, parsed, defaultAccountId: null }),
+      );
     }
     return matches;
-  }, [initialTransactions, accounts]);
+  }, [transactions, accounts]);
+
+  const resolveAccountId = useCallback(
+    (pendingId: string): string | undefined =>
+      pickPendingEmailAccountId({
+        override: accountOverrides[pendingId],
+        suggested: transactions.find((tx) => tx.id === pendingId)?.suggested_account_id,
+        match: matchById.get(pendingId) ?? null,
+      }) ?? undefined,
+    [accountOverrides, transactions, matchById]
+  );
 
   function resolveAccount(tx: PendingEmailTransaction): Account | null {
-    const id = accountOverrides[tx.id] ?? tx.suggested_account_id ?? clientMatches[tx.id];
+    const id = resolveAccountId(tx.id);
     return id ? accountMap.get(id) ?? null : null;
   }
 
   function handleAccountChange(txId: string, accountId: string) {
     setAccountOverrides((prev) => ({ ...prev, [txId]: accountId }));
   }
-
-  const suggestedById = useMemo(
-    () => new Map(transactions.map((tx) => [tx.id, tx.suggested_account_id])),
-    [transactions]
-  );
-
-  const resolveAccountId = useCallback(
-    (pendingId: string): string | undefined =>
-      accountOverrides[pendingId] ??
-      suggestedById.get(pendingId) ??
-      clientMatches[pendingId] ??
-      undefined,
-    [accountOverrides, suggestedById, clientMatches]
-  );
 
   // Transactions that have a resolved account (importable)
   const importableIds = useMemo(
@@ -128,8 +132,6 @@ export function PendingEmailTransactions({
       return next;
     });
   }, []);
-
-  const refresh = useCallback(() => router.refresh(), [router]);
 
   const {
     busyId,
@@ -233,6 +235,8 @@ export function PendingEmailTransactions({
             const PatternIcon = pattern.icon;
             const account = resolveAccount(tx);
             const hasAccount = !!account;
+            const match = matchById.get(tx.id) ?? null;
+            const unrecognized = !hasAccount && match?.status === "unrecognized";
 
             return (
               <div
@@ -311,22 +315,16 @@ export function PendingEmailTransactions({
                       </Link>
                     )}
 
-                    <Select
+                    <EmailAccountSelect
+                      accounts={accounts}
                       value={hasAccount ? account.id : undefined}
-                      onValueChange={(v) => handleAccountChange(tx.id, v)}
-                    >
-                      <SelectTrigger
-                        className={`h-7 w-auto gap-1.5 rounded-full px-2.5 text-xs ${
-                          hasAccount
-                            ? "border-white/6 bg-white/3 text-muted-foreground"
-                            : "border-amber-400/30 bg-amber-400/5 text-amber-400"
-                        }`}
-                      >
-                        {!hasAccount && <AlertTriangle className="size-3" />}
-                        <SelectValue placeholder="Sin cuenta" />
-                      </SelectTrigger>
-                      <SelectContent>{accountOptions}</SelectContent>
-                    </Select>
+                      match={match}
+                      product={parsed}
+                      onChange={(v) => handleAccountChange(tx.id, v)}
+                      onRegister={() => resolver.openFor(parsed, tx.id)}
+                      disabled={bulkLoading}
+                      triggerClassName="h-7 w-auto gap-1.5 rounded-full border-white/6 bg-white/3 px-2.5 text-xs text-muted-foreground"
+                    />
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -343,9 +341,19 @@ export function PendingEmailTransactions({
                     <Button
                       size="sm"
                       className={cn(CONFIRM_BUTTON_CLASS, "h-7 gap-1.5 text-xs font-medium")}
-                      onClick={() => importOne(tx.id)}
-                      disabled={isLoading || !hasAccount}
-                      title={!hasAccount ? "Selecciona una cuenta primero" : undefined}
+                      onClick={() =>
+                        hasAccount
+                          ? importOne(tx.id)
+                          : unrecognized && resolver.openFor(parsed, tx.id)
+                      }
+                      disabled={isLoading || (!hasAccount && !unrecognized)}
+                      title={
+                        !hasAccount
+                          ? unrecognized
+                            ? "Registra el producto para importar"
+                            : "Selecciona una cuenta primero"
+                          : undefined
+                      }
                     >
                       {isLoading ? (
                         <Loader2 className="size-3.5 animate-spin" />
@@ -368,6 +376,12 @@ export function PendingEmailTransactions({
         loading={isPending}
         onClose={closeRecon}
         onChoose={chooseRecon}
+      />
+      <EmailProductDialog
+        product={resolver.product}
+        accounts={accounts}
+        onClose={resolver.close}
+        onResolved={resolver.handleResolved}
       />
     </Card>
   );
