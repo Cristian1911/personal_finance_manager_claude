@@ -140,9 +140,31 @@ function resolveSuggestedEmailAccountId(
       : maskSuffixMatches(account.mask, last4);
   });
 
-  if (exact.length === 0) return defaultAccount?.id ?? null;
+  // A mask nobody carries is a product the user hasn't registered (a new
+  // card): never the default account — that's how a new credit card's
+  // purchases became savings spending. Mirrors webapp `resolveEmailAccountMatch`.
+  if (exact.length === 0) return null;
   if (exact.length === 1) return exact[0].id;
   return exact.find((a) => a.id === defaultAccount?.id)?.id ?? null;
+}
+
+/** Which mask an account learns from an alert it absorbs, or null. */
+function maskToLearn(
+  account: { account_type: string; mask: string | null; debit_card_mask: string | null },
+  parsed: Pick<ParsedEmailTransaction, "card_type" | "card_last4">
+): { column: "mask" | "debit_card_mask"; value: string } | null {
+  const last4 = normalizeMaskSuffix(parsed.card_last4);
+  if (!last4) return null;
+  const isDebit = parsed.card_type === "T.Deb";
+  const allowed: string[] = isDebit || parsed.card_type !== "T.Cred"
+    ? ["SAVINGS", "CHECKING"]
+    : ["CREDIT_CARD"];
+  if (!allowed.includes(account.account_type)) return null;
+  const column = isDebit ? "debit_card_mask" : "mask";
+  const current = account[column];
+  if (maskSuffixMatches(current, last4)) return null;
+  if (!isDebit && normalizeMaskSuffix(current)) return null;
+  return { column, value: last4 };
 }
 
 /** Bancolombia emails carry "HH:mm" — Postgres TIME wants "HH:mm:ss". */
@@ -240,11 +262,20 @@ async function getEmailMatchCandidateAccounts(
 
 async function resolveTargetAccountId(
   userId: string,
-  pending: { suggested_account_id: string | null; email_ingest_id: string },
+  pending: {
+    suggested_account_id: string | null;
+    email_ingest_id: string;
+    parsed_data: Pick<ParsedEmailTransaction, "card_last4">;
+  },
   overrideAccountId?: string
 ): Promise<string | null> {
   let accountId = overrideAccountId ?? pending.suggested_account_id ?? null;
   if (accountId) return accountId;
+
+  // Only an unmasked alert may fall back to the ingest default (webapp
+  // `resolveIngestDefaultAccountId`): a masked alert nobody matched is an
+  // unregistered product and must not be imported into the default account.
+  if (normalizeMaskSuffix(pending.parsed_data.card_last4)) return null;
 
   const { data: ingestAddress } = await (supabase as any)
     .from("email_ingest_addresses")
@@ -418,23 +449,22 @@ export async function approveEmailTransaction(
   const db = await getDatabase();
   const now = new Date().toISOString();
 
-  // Learn the debit-card → account mapping LOCALLY (+ enqueue the sync UPDATE)
-  // when a debit notification lands on a bank account without the mask yet.
-  if (
-    parsed.card_type === "T.Deb" &&
-    parsed.card_last4 &&
-    (account.account_type === "SAVINGS" || account.account_type === "CHECKING") &&
-    !maskSuffixMatches(account.debit_card_mask, parsed.card_last4)
-  ) {
+  // Learn the product → account mapping LOCALLY (+ enqueue the sync UPDATE)
+  // so the next alert from the same card matches without asking. Mirrors
+  // webapp `emailProductMaskToLearn` with explicit=false: a debit card always
+  // takes the alert's number (cards get reissued); a credit card or account
+  // number only fills an empty mask — `mask` is what PDF statements match on.
+  const learned = maskToLearn(account, parsed);
+  if (learned) {
     await db.withTransactionAsync(async () => {
       await db.runAsync(
-        "UPDATE accounts SET debit_card_mask = ?, updated_at = ? WHERE id = ?",
-        [parsed.card_last4, now, accountId]
+        `UPDATE accounts SET ${learned.column} = ?, updated_at = ? WHERE id = ?`,
+        [learned.value, now, accountId]
       );
       await enqueueAccountUpdateCoalesced(
         db,
         accountId,
-        { debit_card_mask: parsed.card_last4, updated_at: now },
+        { [learned.column]: learned.value, updated_at: now },
         now
       );
     });

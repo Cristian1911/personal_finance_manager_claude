@@ -246,15 +246,19 @@ function EmailProductDialogBody({
   const isCredit = kind === "credit_card";
   const isDebit = kind === "debit_card";
 
+  // Accounts the product could be attached to. An account number never
+  // replaces a different one (that's another account), so for account-kind
+  // alerts only accounts with no number yet qualify.
   const candidates = useMemo(
     () =>
       accounts.filter(
         (a) =>
           a.is_active &&
           accountFitsEmailProduct(a.account_type, product.card_type) &&
-          !accountCarriesEmailProduct(a, product.card_type, last4),
+          !accountCarriesEmailProduct(a, product.card_type, last4) &&
+          (kind !== "account" || !normalizeAccountMaskSuffix(a.mask)),
       ),
-    [accounts, product.card_type, last4],
+    [accounts, product.card_type, last4, kind],
   );
 
   // A new credit card is almost always created; a debit card or account
@@ -272,8 +276,6 @@ function EmailProductDialogBody({
   const [currencyCode, setCurrencyCode] = useState<CurrencyCode>("COP");
   const [isPending, startTransition] = useTransition();
 
-  const selected = candidates.find((a) => a.id === selectedId) ?? null;
-
   function submit() {
     startTransition(async () => {
       const ref = { cardType: product.card_type, last4: product.card_last4 };
@@ -289,6 +291,7 @@ function EmailProductDialogBody({
         return;
       }
       const count = result.data.pendingIds.length;
+      if (result.data.warning) toast.warning(result.data.warning);
       toast.success(
         mode === "link"
           ? `${productLabel} asociada a ${result.data.account.name}`
@@ -352,7 +355,7 @@ function EmailProductDialogBody({
               ? "Elige la cuenta de la que sale el dinero con esta tarjeta débito."
               : isCredit
                 ? `Elige la tarjeta. Pasará a reconocerse con el número *${last4}.`
-                : `Elige la cuenta. Si no tiene número registrado, aprenderá *${last4}.`}
+                : `Elige la cuenta. Aprenderá el número *${last4}.`}
           </p>
           <ul className="max-h-60 space-y-1 overflow-y-auto" role="listbox" aria-label="Cuentas">
             {candidates.map((acc) => {
@@ -397,11 +400,6 @@ function EmailProductDialogBody({
               );
             })}
           </ul>
-          {!isDebit && !isCredit && selected && normalizeAccountMaskSuffix(selected.mask) && (
-            <p className="text-xs text-z-alert">
-              Esta cuenta ya tiene otro número; solo se usará para las alertas que están en cola.
-            </p>
-          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -429,6 +427,10 @@ function EmailProductDialogBody({
                   <SelectContent>
                     <SelectItem value="SAVINGS">Ahorros</SelectItem>
                     <SelectItem value="CHECKING">Corriente</SelectItem>
+                    {/* Bancolombia's generic "producto" wording may name a card. */}
+                    {product.card_type === "producto" && (
+                      <SelectItem value="CREDIT_CARD">Tarjeta de crédito</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -453,7 +455,7 @@ function EmailProductDialogBody({
             </div>
           </div>
           <p className={cn(PANEL_INSET_CLASS, "px-3 py-2 text-xs leading-relaxed text-muted-foreground")}>
-            {isCredit
+            {isCredit || accountType === "CREDIT_CARD"
               ? "Cupo, fecha de corte, día de pago y tasa quedan pendientes: se completan solos al importar el próximo extracto PDF de esta tarjeta."
               : isDebit
                 ? `Se crea con la tarjeta débito *${last4} asociada. El saldo se ajusta al importar el próximo extracto PDF.`
@@ -479,7 +481,7 @@ function EmailProductDialogBody({
           {isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
           {mode === "link"
             ? "Asociar"
-            : isCredit
+            : isCredit || accountType === "CREDIT_CARD"
               ? "Crear tarjeta"
               : "Crear cuenta"}
         </Button>

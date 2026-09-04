@@ -23,6 +23,7 @@ import {
 } from "@/lib/parsers/bancolombia-email";
 import { resolveEmailTransactionCurrency } from "@/lib/email-ingest/currency";
 import {
+  accountCarriesEmailProduct,
   accountFitsEmailProduct,
   describeEmailProduct,
   emailProductKind,
@@ -112,7 +113,11 @@ async function persistParsedEmail(params: {
     console.error("[persistParsedEmail] idempotency lookup failed:", error);
   }
 
-  let suggestedAccountId = defaultAccountId ?? null;
+  // Only an unmasked alert may fall back to the ingest default; a masked one
+  // with no matching account is a product the user hasn't registered.
+  let suggestedAccountId = normalizeAccountMaskSuffix(parsed.card_last4)
+    ? null
+    : defaultAccountId ?? null;
 
   const { data: candidateAccounts, error: accountLookupError } = await supabase
     .from("accounts")
@@ -1204,7 +1209,7 @@ const emailProductSchema = z.object({
   last4: z
     .string()
     .transform((value) => normalizeAccountMaskSuffix(value) ?? "")
-    .pipe(z.string().regex(/^\d{4}$/, "Máscara inválida")),
+    .pipe(z.string().regex(/^\d{1,4}$/, "Máscara inválida")),
 });
 
 /** The product an alert names: which kind of card/account and its last four. */
@@ -1222,7 +1227,11 @@ export type EmailProductResolution = {
   account: Account;
   /** Queued rows from the same product, now suggested into `account`. */
   pendingIds: string[];
+  /** The account is in place but the queue could not be re-suggested. */
+  warning?: string;
 };
+
+const PENDING_REASSIGN_CHUNK = 100;
 
 function stripAccountSecrets(account: Tables<"accounts">): Account {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- dropped on purpose
@@ -1240,7 +1249,8 @@ async function reassignPendingRowsForProduct(
   userId: string,
   product: z.output<typeof emailProductSchema>,
   accountId: string,
-): Promise<string[]> {
+): Promise<{ pendingIds: string[]; warning?: string }> {
+  const warning = "La cola de correos no se pudo actualizar; recarga para verla al día.";
   const { data: rows, error } = await supabase
     .from("pending_email_transactions")
     .select("id, parsed_data")
@@ -1248,7 +1258,7 @@ async function reassignPendingRowsForProduct(
     .eq("status", "pending");
   if (error) {
     console.error("[email-ingest] pending lookup for product failed:", error.message);
-    return [];
+    return { pendingIds: [], warning };
   }
 
   const kind = emailProductKind(product.cardType);
@@ -1263,18 +1273,20 @@ async function reassignPendingRowsForProduct(
     })
     .map((row) => row.id);
 
-  if (ids.length > 0) {
+  // Chunked: the id list travels in the PostgREST query string.
+  for (let i = 0; i < ids.length; i += PENDING_REASSIGN_CHUNK) {
+    const chunk = ids.slice(i, i + PENDING_REASSIGN_CHUNK);
     const { error: updateError } = await supabase
       .from("pending_email_transactions")
       .update({ suggested_account_id: accountId })
-      .in("id", ids)
+      .in("id", chunk)
       .eq("user_id", userId);
     if (updateError) {
       console.error("[email-ingest] pending reassignment failed:", updateError.message);
-      return [];
+      return { pendingIds: ids.slice(0, i), warning };
     }
   }
-  return ids;
+  return { pendingIds: ids };
 }
 
 function revalidateAfterProductResolution() {
@@ -1332,6 +1344,16 @@ export async function linkEmailProductToAccount(
     last4: ref.last4,
     explicit: true,
   });
+  // An account number never overwrites a different one (that's another
+  // account, and the mask is what PDF statements match on). Say so instead
+  // of "succeeding" with nothing learned — the next alert would just ask again.
+  if (!learned && !accountCarriesEmailProduct(account, ref.cardType, ref.last4)) {
+    const known = normalizeAccountMaskSuffix(account.mask);
+    return {
+      success: false,
+      error: `${account.name} ya tiene registrado el número *${known}. Crea una cuenta nueva para *${ref.last4}.`,
+    };
+  }
   if (learned) {
     const { data: updated, error: updateError } = await supabase
       .from("accounts")
@@ -1344,9 +1366,9 @@ export async function linkEmailProductToAccount(
     current = updated;
   }
 
-  const pendingIds = await reassignPendingRowsForProduct(supabase, user.id, ref, accountId);
+  const reassigned = await reassignPendingRowsForProduct(supabase, user.id, ref, accountId);
   revalidateAfterProductResolution();
-  return { success: true, data: { account: stripAccountSecrets(current), pendingIds } };
+  return { success: true, data: { account: stripAccountSecrets(current), ...reassigned } };
 }
 
 /**
@@ -1380,10 +1402,23 @@ export async function createAccountForEmailProduct(
     };
   }
 
-  const { count } = await supabase
+  // A retry or a second tab must not mint a twin: two accounts carrying the
+  // same mask make every later alert from it ambiguous (unsuggestable).
+  const { data: existing, error: existingError } = await supabase
     .from("accounts")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id);
+    .select("id, name, mask, debit_card_mask, account_type")
+    .eq("user_id", user.id)
+    .eq("is_active", true);
+  if (existingError) return { success: false, error: existingError.message };
+  const twin = (existing ?? []).find((a) =>
+    accountCarriesEmailProduct(a, ref.cardType, ref.last4),
+  );
+  if (twin) {
+    return {
+      success: false,
+      error: `${twin.name} ya tiene registrado *${ref.last4}. Asóciala en vez de crear otra.`,
+    };
+  }
 
   const maskColumns =
     emailProductKind(ref.cardType) === "debit_card"
@@ -1397,19 +1432,20 @@ export async function createAccountForEmailProduct(
       name,
       account_type: accountType,
       institution_name: "Bancolombia",
+      bank_key: "bancolombia",
       currency_code: currencyCode,
       current_balance: 0,
       show_in_dashboard: true,
-      display_order: (count ?? 0) + 1,
+      display_order: (existing?.length ?? 0) + 1,
       ...maskColumns,
     })
     .select("*")
     .single();
   if (insertError) return { success: false, error: insertError.message };
 
-  const pendingIds = await reassignPendingRowsForProduct(supabase, user.id, ref, created.id);
+  const reassigned = await reassignPendingRowsForProduct(supabase, user.id, ref, created.id);
   revalidateAfterProductResolution();
-  return { success: true, data: { account: stripAccountSecrets(created), pendingIds } };
+  return { success: true, data: { account: stripAccountSecrets(created), ...reassigned } };
 }
 
 export type ReconciliationCandidatePreview = {

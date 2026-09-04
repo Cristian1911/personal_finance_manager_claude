@@ -337,6 +337,14 @@ describe("product helpers", () => {
     expect(
       emailProductMaskToLearn({ account: savings, cardType: "T.Cred", last4: "7706", explicit: true }),
     ).toBeNull();
+    // A generic "producto" alert teaches a credit card its mask only when
+    // the user linked it on purpose — never from a row-selector pick.
+    expect(
+      emailProductMaskToLearn({ account: credit, cardType: "producto", last4: "7706", explicit: false }),
+    ).toBeNull();
+    expect(
+      emailProductMaskToLearn({ account: credit, cardType: "producto", last4: "7706", explicit: true }),
+    ).toEqual({ column: "mask", value: "7706" });
   });
 
   it("knows when an account already carries the product", () => {

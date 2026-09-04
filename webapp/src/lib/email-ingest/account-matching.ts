@@ -109,6 +109,13 @@ export function emailProductMaskToLearn({
   if (!accountFitsEmailProduct(account.account_type, cardType)) return null;
 
   const kind = emailProductKind(cardType);
+  // A generic "producto" alert may be matched against any account, but only
+  // an explicit link may teach a mask to something other than the kind's own
+  // account types: `mask` is what PDF statements match on, and a row-selector
+  // pick must not bind a credit card or loan to an account number.
+  if (!explicit && !EMAIL_PRODUCT_ACCOUNT_TYPES[kind].includes(account.account_type)) {
+    return null;
+  }
   const column = emailProductMaskColumn(kind);
   const current = account[column];
   if (accountMaskSuffixMatches(current, normalized)) return null;

@@ -6,6 +6,7 @@ import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import { parseBancolombiaEmail } from "@/lib/parsers/bancolombia-email";
 import { resolveEmailTransactionCurrency } from "@/lib/email-ingest/currency";
 import { resolveSuggestedEmailAccountId } from "@/lib/email-ingest/account-matching";
+import { normalizeAccountMaskSuffix } from "@/lib/utils/account-mask";
 import {
   findEmailDuplicateCandidate,
   findTransactionByIdempotencyKey,
@@ -809,7 +810,13 @@ async function processEmail(ctx: {
     console.error(`[email-ingest][${emailId}] idempotency lookup failed:`, error);
   }
 
-  let suggestedAccountId = defaultAccountId ?? null;
+  // Only an unmasked alert may fall back to the ingest default. A masked one
+  // stays unsuggested until the accounts prove otherwise — including when the
+  // mask lookup below fails, so an RPC hiccup can't auto-import a new card's
+  // purchase into the default account.
+  let suggestedAccountId = normalizeAccountMaskSuffix(parsed.card_last4)
+    ? null
+    : defaultAccountId ?? null;
 
   // Use RPC to decrypt masks — admin client has no JWT so zeta_decrypt() in the
   // accounts view returns NULL for encrypted columns (mask, debit_card_mask).
