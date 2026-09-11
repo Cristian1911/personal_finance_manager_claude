@@ -36,6 +36,12 @@ import {
 } from "@/lib/email-ingest/duplicate-check";
 import { normalizeEmailTime } from "@/lib/email-ingest/time";
 import {
+  processedQueueResult,
+  toProcessedQueueStatus,
+  type EmailQueueActionResult,
+  type ProcessedQueueStatus,
+} from "@/lib/email-ingest/queue-status";
+import {
   accountMaskSuffixMatches,
   normalizeAccountMaskSuffix,
 } from "@/lib/utils/account-mask";
@@ -712,7 +718,7 @@ export async function approveEmailTransaction(
   pendingId: string,
   overrideAccountId?: string,
   reconcileWithTransactionId?: string
-): Promise<ActionResult<null>> {
+): Promise<EmailQueueActionResult> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
@@ -728,9 +734,7 @@ export async function approveEmailTransaction(
 
   if (fetchError) return { success: false, error: fetchError.message };
   if (!pending) return { success: false, error: "Transacción pendiente no encontrada" };
-  if (pending.status !== "pending") {
-    return { success: false, error: processedQueueRowMessage(pending.status) };
-  }
+  if (pending.status !== "pending") return processedQueueResult(pending.status);
 
   const parsed = pending.parsed_data as unknown as ParsedEmailTransaction;
 
@@ -1461,15 +1465,6 @@ export type ReconciliationCandidatePreview = {
   score: number;
 };
 
-/** Status of a queue row that already left the queue. */
-export type ProcessedQueueStatus = "imported" | "dismissed";
-
-function processedQueueRowMessage(status: string): string {
-  return status === "dismissed"
-    ? "Esta transacción ya se había descartado."
-    : "Esta transacción ya se había importado.";
-}
-
 /**
  * What importing a queued row would run into:
  * - `review`: an existing transaction looks like the same movement — the user
@@ -1504,14 +1499,11 @@ export async function checkEmailReconciliation(
     .maybeSingle();
 
   if (fetchError) return { success: false, error: fetchError.message };
-  if (!pending) return { success: false, error: "No encontrada" };
+  if (!pending) return { success: false, error: "Transacción pendiente no encontrada" };
   if (pending.status !== "pending") {
     return {
       success: true,
-      data: {
-        kind: "processed",
-        status: pending.status === "dismissed" ? "dismissed" : "imported",
-      },
+      data: { kind: "processed", status: toProcessedQueueStatus(pending.status) },
     };
   }
 
@@ -1570,15 +1562,29 @@ export async function checkEmailReconciliation(
 
 export async function dismissEmailTransaction(
   pendingId: string
-): Promise<ActionResult<null>> {
+): Promise<EmailQueueActionResult> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
+
+  // Same guard as approve: a stale surface must not relabel a row that
+  // already left the queue (an imported alert must not read as dismissed).
+  const { data: pending, error: fetchError } = await supabase
+    .from("pending_email_transactions")
+    .select("status")
+    .eq("id", pendingId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (fetchError) return { success: false, error: fetchError.message };
+  if (!pending) return { success: false, error: "Transacción pendiente no encontrada" };
+  if (pending.status !== "pending") return processedQueueResult(pending.status);
 
   const { error } = await supabase
     .from("pending_email_transactions")
     .update({ status: "dismissed" })
     .eq("id", pendingId)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .eq("status", "pending");
 
   if (error) return { success: false, error: error.message };
 

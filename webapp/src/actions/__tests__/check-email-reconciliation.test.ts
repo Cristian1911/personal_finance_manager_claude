@@ -21,7 +21,11 @@ vi.mock("next/cache", () => ({
   unstable_cacheTag: vi.fn(), unstable_cacheLife: vi.fn(),
 }));
 
-import { approveEmailTransaction, checkEmailReconciliation } from "@/actions/email-ingest";
+import {
+  approveEmailTransaction,
+  checkEmailReconciliation,
+  dismissEmailTransaction,
+} from "@/actions/email-ingest";
 
 const USER = { id: "user-1" };
 const PARSED = {
@@ -168,7 +172,11 @@ describe("approveEmailTransaction", () => {
 
     const result = await approveEmailTransaction("pending-1");
 
-    expect(result).toEqual({ success: false, error: "Esta transacción ya se había importado." });
+    expect(result).toEqual({
+      success: false,
+      error: "Esta transacción ya se había importado.",
+      processed: "imported",
+    });
   });
 
   it("rechaza con un mensaje claro una fila descartada", async () => {
@@ -179,6 +187,27 @@ describe("approveEmailTransaction", () => {
 
     const result = await approveEmailTransaction("pending-1");
 
-    expect(result).toEqual({ success: false, error: "Esta transacción ya se había descartado." });
+    expect(result).toEqual({
+      success: false,
+      error: "Esta transacción ya se había descartado.",
+      processed: "dismissed",
+    });
+  });
+});
+
+describe("dismissEmailTransaction", () => {
+  it("no marca como descartada una fila que ya se importó", async () => {
+    getAuthenticatedClient.mockResolvedValue({
+      supabase: makeClient(pendingRow({ status: "imported" })),
+      user: USER,
+    });
+
+    const result = await dismissEmailTransaction("pending-1");
+
+    expect(result).toEqual({
+      success: false,
+      error: "Esta transacción ya se había importado.",
+      processed: "imported",
+    });
   });
 });

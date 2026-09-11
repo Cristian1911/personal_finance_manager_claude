@@ -8,6 +8,10 @@ import {
   dismissEmailTransaction,
   type ReconciliationCandidatePreview,
 } from "@/actions/email-ingest";
+import {
+  processedQueueRowMessage,
+  type ProcessedQueueStatus,
+} from "@/lib/email-ingest/queue-status";
 
 export interface EmailQueueReconMatch {
   pendingId: string;
@@ -34,6 +38,12 @@ export interface UseEmailQueueActionsOptions {
 
 const BULK_HINT = "impórtalas una por una";
 const EMPTY_SET: ReadonlySet<string> = new Set();
+
+/**
+ * How a row left (or failed to leave) the queue: `imported` by this call,
+ * `processed` elsewhere before this call landed, or `failed`.
+ */
+type ApproveOutcome = "imported" | "processed" | "failed";
 
 /**
  * The email-queue state machine shared by every surface that lists queued
@@ -79,15 +89,31 @@ export function useEmailQueueActions({
   }, []);
 
   /**
-   * Approve one row; returns whether it left the queue. `notify` controls the
-   * per-row error toast — bulk runs report failures once, in their summary.
+   * The server says the row already left the queue (imported or dismissed
+   * elsewhere — another tab, a bulk run, a webhook). Drop it here too; with
+   * `notify` off the caller reports it in its own summary.
+   */
+  const acknowledgeProcessed = useCallback(
+    (pendingId: string, status: ProcessedQueueStatus, notify = true) => {
+      onProcessed(pendingId);
+      if (notify) {
+        afterChange?.();
+        toast.info(processedQueueRowMessage(status));
+      }
+    },
+    [onProcessed, afterChange],
+  );
+
+  /**
+   * Approve one row. `notify` controls the per-row toasts — bulk runs report
+   * failures and already-processed rows once, in their summary.
    */
   const approve = useCallback(
     async (
       pendingId: string,
       reconcileWithId?: string,
       { notify = true }: { notify?: boolean } = {},
-    ): Promise<boolean> => {
+    ): Promise<ApproveOutcome> => {
       const accountId = resolveAccountId(pendingId);
       if (optimistic) onProcessed(pendingId);
       try {
@@ -95,35 +121,31 @@ export function useEmailQueueActions({
         const result = await approveEmailTransaction(pendingId, accountId, reconcileWithId);
         if (result.success) {
           if (!optimistic) onProcessed(pendingId);
-          return true;
+          return "imported";
+        }
+        if (result.processed) {
+          // Already gone server-side: an optimistic removal stands, a
+          // confirmed surface drops the row now — never roll it back.
+          if (optimistic) {
+            if (notify) {
+              afterChange?.();
+              toast.info(processedQueueRowMessage(result.processed));
+            }
+          } else {
+            acknowledgeProcessed(pendingId, result.processed, notify);
+          }
+          return "processed";
         }
         if (optimistic) onRollback?.(pendingId);
         if (notify) toast.error(result.error ?? "Error al importar");
-        return false;
+        return "failed";
       } catch {
         if (optimistic) onRollback?.(pendingId);
         if (notify) toast.error("Error al importar. Inténtalo de nuevo.");
-        return false;
+        return "failed";
       }
     },
-    [resolveAccountId, optimistic, onProcessed, onRollback, beforeApprove],
-  );
-
-  /**
-   * The server says the row already left the queue (imported or dismissed
-   * elsewhere — another tab, a bulk run, a webhook). Drop it here too.
-   */
-  const acknowledgeProcessed = useCallback(
-    (pendingId: string, status: "imported" | "dismissed") => {
-      onProcessed(pendingId);
-      afterChange?.();
-      toast.info(
-        status === "imported"
-          ? "Esta transacción ya se había importado."
-          : "Esta transacción ya se había descartado.",
-      );
-    },
-    [onProcessed, afterChange],
+    [resolveAccountId, optimistic, onProcessed, onRollback, beforeApprove, afterChange, acknowledgeProcessed],
   );
 
   /** Import a row, stopping at the duplicate prompt when there's a candidate. */
@@ -132,25 +154,26 @@ export function useEmailQueueActions({
       if (!begin(pendingId)) return;
       startTransition(async () => {
         try {
-          const recon = await checkEmailReconciliation(pendingId, resolveAccountId(pendingId));
-          if (recon.success && recon.data?.kind === "processed") {
-            settle(pendingId);
-            acknowledgeProcessed(pendingId, recon.data.status);
-            return;
+          try {
+            const recon = await checkEmailReconciliation(pendingId, resolveAccountId(pendingId));
+            if (recon.success && recon.data?.kind === "processed") {
+              acknowledgeProcessed(pendingId, recon.data.status);
+              return;
+            }
+            if (recon.success && recon.data?.kind === "review") {
+              setReconMatch({ pendingId, candidate: recon.data.candidate });
+              return;
+            }
+          } catch {
+            // Check unavailable — import directly, the server dedups by idempotency key.
           }
-          if (recon.success && recon.data?.kind === "review") {
-            settle(pendingId);
-            setReconMatch({ pendingId, candidate: recon.data.candidate });
-            return;
+          const outcome = await approve(pendingId);
+          if (outcome === "imported") {
+            afterChange?.();
+            toast.success("Transacción importada");
           }
-        } catch {
-          // Check unavailable — import directly, the server dedups by idempotency key.
-        }
-        const ok = await approve(pendingId);
-        settle(pendingId);
-        if (ok) {
-          afterChange?.();
-          toast.success("Transacción importada");
+        } finally {
+          settle(pendingId);
         }
       });
     },
@@ -162,14 +185,17 @@ export function useEmailQueueActions({
     (reconcile: boolean) => {
       if (!reconMatch) return;
       const { pendingId, candidate } = reconMatch;
-      setReconMatch(null);
       if (!begin(pendingId)) return;
+      setReconMatch(null);
       startTransition(async () => {
-        const ok = await approve(pendingId, reconcile ? candidate.id : undefined);
-        settle(pendingId);
-        if (ok) {
-          afterChange?.();
-          toast.success(reconcile ? "Transacción reconciliada" : "Transacción importada");
+        try {
+          const outcome = await approve(pendingId, reconcile ? candidate.id : undefined);
+          if (outcome === "imported") {
+            afterChange?.();
+            toast.success(reconcile ? "Transacción reconciliada" : "Transacción importada");
+          }
+        } finally {
+          settle(pendingId);
         }
       });
     },
@@ -186,19 +212,23 @@ export function useEmailQueueActions({
       startTransition(async () => {
         try {
           const result = await dismissEmailTransaction(pendingId);
-          settle(pendingId);
           if (result.success) {
             if (!optimistic) onProcessed(pendingId);
             afterChange?.();
             toast.success("Descartada");
+          } else if (result.processed) {
+            if (!optimistic) onProcessed(pendingId);
+            afterChange?.();
+            toast.info(processedQueueRowMessage(result.processed));
           } else {
             if (optimistic) onRollback?.(pendingId);
             toast.error(result.error ?? "Error al descartar");
           }
         } catch {
-          settle(pendingId);
           if (optimistic) onRollback?.(pendingId);
           toast.error("Error al descartar. Inténtalo de nuevo.");
+        } finally {
+          settle(pendingId);
         }
       });
     },
@@ -219,41 +249,54 @@ export function useEmailQueueActions({
         let imported = 0;
         let failed = 0;
         let needsReview = 0;
-        for (const id of ids) {
-          try {
-            const recon = await checkEmailReconciliation(id, resolveAccountId(id));
-            if (recon.success && recon.data?.kind === "processed") {
-              // Gone from the queue already — nothing to import, nothing to count.
-              onProcessed(id);
+        let processed = 0;
+        try {
+          for (const id of ids) {
+            try {
+              try {
+                const recon = await checkEmailReconciliation(id, resolveAccountId(id));
+                if (recon.success && recon.data?.kind === "processed") {
+                  acknowledgeProcessed(id, recon.data.status, false);
+                  processed++;
+                  continue;
+                }
+                if (recon.success && recon.data?.kind === "review") {
+                  needsReview++;
+                  continue;
+                }
+              } catch {
+                // Same fallback as importOne — the server dedups.
+              }
+              const outcome = await approve(id, undefined, { notify: false });
+              if (outcome === "imported") imported++;
+              else if (outcome === "processed") processed++;
+              else failed++;
+            } finally {
               settle(id);
-              continue;
             }
-            if (recon.success && recon.data?.kind === "review") {
-              needsReview++;
-              settle(id);
-              continue;
-            }
-          } catch {
-            // Same fallback as importOne — the server dedups.
           }
-          if (await approve(id, undefined, { notify: false })) imported++;
-          else failed++;
-          settle(id);
+        } finally {
+          setBulkLoading(false);
         }
-        setBulkLoading(false);
         afterChange?.();
+        const alreadyGone =
+          processed > 0 ? ` · ${processed} ya no estaban en la cola` : "";
         if (failed === 0 && needsReview === 0) {
-          toast.success(`${imported} transacciones importadas`);
+          if (imported === 0 && processed > 0) {
+            toast.info(`${processed} ya no estaban en la cola`);
+          } else {
+            toast.success(`${imported} transacciones importadas${alreadyGone}`);
+          }
         } else if (needsReview > 0) {
           toast.warning(
-            `${imported} importadas · ${needsReview} con posible duplicado — ${BULK_HINT}${failed > 0 ? ` · ${failed} con error` : ""}`,
+            `${imported} importadas · ${needsReview} con posible duplicado — ${BULK_HINT}${failed > 0 ? ` · ${failed} con error` : ""}${alreadyGone}`,
           );
         } else {
-          toast.warning(`${imported} importadas, ${failed} con error`);
+          toast.warning(`${imported} importadas, ${failed} con error${alreadyGone}`);
         }
       });
     },
-    [begin, settle, resolveAccountId, onProcessed, approve, afterChange],
+    [begin, settle, resolveAccountId, acknowledgeProcessed, approve, afterChange],
   );
 
   return {
