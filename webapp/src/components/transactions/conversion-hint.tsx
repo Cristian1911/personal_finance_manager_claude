@@ -18,9 +18,25 @@ interface ConversionHintProps {
   className?: string;
 }
 
+type Rates = Partial<Record<CurrencyCode, number>>;
+
 // Rates are global (not per user) and change once a day, so one fetch per
-// source currency per page is plenty — keyed by "USD→COP,ARS".
-const rateCache = new Map<string, Partial<Record<CurrencyCode, number>>>();
+// source currency per page is plenty — keyed by "USD→COP,ARS". The promise
+// is cached (not the result) so concurrent mounts share one round-trip, and
+// an empty answer (offline, CDN down) is evicted so the next mount retries.
+const rateCache = new Map<string, Promise<Rates>>();
+
+function loadRates(cacheKey: string, currency: CurrencyCode, targets: CurrencyCode[]): Promise<Rates> {
+  const cached = rateCache.get(cacheKey);
+  if (cached) return cached;
+  const pending = getConversionRates(currency, targets).then((result) => {
+    if (Object.keys(result).length === 0) rateCache.delete(cacheKey);
+    return result;
+  });
+  pending.catch(() => rateCache.delete(cacheKey));
+  rateCache.set(cacheKey, pending);
+  return pending;
+}
 
 /**
  * "≈ $ 412.000 COP · ≈ $ 98.000 ARS" under a foreign-currency amount.
@@ -41,22 +57,13 @@ export function ConversionHint({ amount, currency, baseCurrency, className }: Co
   }, [baseCurrency, currency, deviceTimeZone]);
 
   const cacheKey = `${currency}→${targets.join(",")}`;
-  const [rates, setRates] = useState<Partial<Record<CurrencyCode, number>> | null>(
-    () => rateCache.get(cacheKey) ?? null,
-  );
+  const [rates, setRates] = useState<Rates | null>(null);
 
   useEffect(() => {
     if (targets.length === 0) return;
-    const cached = rateCache.get(cacheKey);
-    if (cached) {
-      // Cache hit from a previous mount — external store, so sync after mount.
-      setRates(cached);
-      return;
-    }
     let cancelled = false;
-    getConversionRates(currency, targets)
+    loadRates(cacheKey, currency, targets)
       .then((result) => {
-        rateCache.set(cacheKey, result);
         if (!cancelled) setRates(result);
       })
       .catch(() => {
@@ -86,7 +93,7 @@ export function ConversionHint({ amount, currency, baseCurrency, className }: Co
         "inline-flex flex-wrap items-center justify-center gap-x-1.5 text-[11px] leading-4 text-muted-foreground",
         className,
       )}
-      title="Tasa de cambio de hoy, solo referencia"
+      title="Tasa de cambio de referencia"
     >
       <ArrowLeftRight className="size-3 shrink-0 text-z-brass" aria-hidden />
       {parts.map((part, i) => (
