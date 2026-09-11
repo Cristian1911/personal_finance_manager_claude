@@ -3,7 +3,18 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { CurrencyCode } from "@/types/domain";
-import type { Database } from "@/types/database";
+import { Constants, type Database } from "@/types/database";
+
+// Runtime guard for client-supplied codes: `getExchangeRate` keys its cache on
+// its raw arguments and interpolates them into a CDN URL and a DB primary key,
+// so anything outside the enum must be rejected before it gets that far.
+const CURRENCY_CODES: ReadonlySet<string> = new Set(Constants.public.Enums.currency_code);
+// ConversionHint asks for at most 2 (profile currency + local currency).
+const MAX_CONVERSION_TARGETS = 4;
+
+function isCurrencyCode(value: unknown): value is CurrencyCode {
+  return typeof value === "string" && CURRENCY_CODES.has(value);
+}
 
 type ExchangeRateCacheRow = Database["public"]["Tables"]["exchange_rate_cache"]["Row"];
 
@@ -32,6 +43,7 @@ export async function getExchangeRate(
   cacheLife({ stale: 3600, revalidate: 3600 * 6, expire: 3600 * 24 });
 
   if (from === to) return null;
+  if (!isCurrencyCode(from) || !isCurrencyCode(to)) return null;
   const pair = `${from}_${to}`;
   const supabase = createAdminClient();
 
@@ -100,6 +112,33 @@ export async function getRatesForCurrencies(
     if (result?.rate) rates.set(currency, result.rate);
   }
 
+  return rates;
+}
+
+/**
+ * Rates from one currency to several targets, for the "≈ en COP / ARS" hint
+ * under a foreign-currency amount. Each pair is served from the daily cache;
+ * targets whose rate can't be resolved are omitted, never zero.
+ */
+export async function getConversionRates(
+  from: CurrencyCode,
+  targets: CurrencyCode[]
+): Promise<Partial<Record<CurrencyCode, number>>> {
+  // Reachable from the browser: bound and validate before fanning out.
+  if (!isCurrencyCode(from) || !Array.isArray(targets)) return {};
+  const unique = [...new Set(targets)]
+    .filter((c): c is CurrencyCode => isCurrencyCode(c) && c !== from)
+    .slice(0, MAX_CONVERSION_TARGETS);
+  if (unique.length === 0) return {};
+  const results = await Promise.all(
+    unique.map((to) => getExchangeRate(from, to).then((r) => [to, r] as const))
+  );
+  const rates: Partial<Record<CurrencyCode, number>> = {};
+  for (const [to, result] of results) {
+    if (result?.rate != null && Number.isFinite(result.rate) && result.rate > 0) {
+      rates[to] = result.rate;
+    }
+  }
   return rates;
 }
 

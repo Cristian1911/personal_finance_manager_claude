@@ -48,7 +48,10 @@ import { DestinatarioPicker } from "../../components/transactions/DestinatarioPi
 import { TagSelector } from "../../components/transactions/TagSelector";
 import { CategoryIcon } from "../../components/ui/CategoryIcon";
 import { MODAL_SCRIM_COLOR } from "../../components/ui/MobileSheet";
-import { formatCurrency, type CurrencyCode } from "@zeta/shared";
+import { buildTimeShiftHint, formatCurrency, formatDate, type CurrencyCode } from "@zeta/shared";
+import { useTravelContext } from "../../lib/travel-context";
+import { getPreferredCurrency } from "../../lib/profile";
+import { ConversionHint } from "../../components/transactions/ConversionHint";
 import {
   DEBT_PAYMENT_CATEGORY_ID,
   getTransactionTypeLabel,
@@ -70,6 +73,7 @@ type TransactionDetail = {
   direction: "INFLOW" | "OUTFLOW";
   currency_code: string;
   transaction_date: string;
+  transaction_time: string | null;
   status: string | null;
   account_id: string;
   category_id: string | null;
@@ -155,6 +159,22 @@ export default function TransactionDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
+  // Travelling: show the stored (Colombian) clock as it reads where the
+  // phone is, and the amount in the home + local currency.
+  const travel = useTravelContext();
+  const [baseCurrency, setBaseCurrency] = useState<CurrencyCode>("COP");
+  useEffect(() => {
+    let active = true;
+    getPreferredCurrency().then(
+      (value) => {
+        if (active) setBaseCurrency(value);
+      },
+      () => {}
+    );
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Data state
   const [transaction, setTransaction] = useState<TransactionDetail | null>(null);
@@ -802,6 +822,16 @@ export default function TransactionDetailScreen() {
                 (transaction.currency_code as CurrencyCode) || "COP"
               )}
             </Text>
+            {!isExcluded && (
+              <View className="mt-1.5">
+                <ConversionHint
+                  amount={Math.abs(transaction.amount)}
+                  currency={(transaction.currency_code as CurrencyCode) || "COP"}
+                  baseCurrency={baseCurrency}
+                  localCurrency={travel?.localCurrency}
+                />
+              </View>
+            )}
             {transaction.merchant_name && (
               <Text
                 className={`font-inter-medium text-base mt-2 ${
@@ -822,13 +852,38 @@ export default function TransactionDetailScreen() {
               label="Fecha"
               value={
                 transaction.transaction_date
-                  ? parseLocalDate(transaction.transaction_date).toLocaleDateString(
-                      "es-CO",
-                      { year: "numeric", month: "short", day: "numeric" }
-                    )
+                  ? [
+                      parseLocalDate(transaction.transaction_date).toLocaleDateString(
+                        "es-CO",
+                        { year: "numeric", month: "short", day: "numeric" }
+                      ),
+                      transaction.transaction_time?.slice(0, 5),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")
                   : null
               }
             />
+            {(() => {
+              // Stored clock is Colombia's; abroad, say what it reads locally.
+              const shift = travel?.isAbroad
+                ? buildTimeShiftHint({
+                    date: transaction.transaction_date,
+                    time: transaction.transaction_time,
+                    deviceTimeZone: travel.timeZone,
+                  })
+                : null;
+              if (!shift) return null;
+              const local = shift.dateShifted
+                ? `${shift.localTime} del ${formatDate(shift.localDate, "dd MMM")}`
+                : shift.localTime;
+              return (
+                <DetailRow
+                  label={`Hora en ${travel?.placeLabel ?? shift.deviceLabel}`}
+                  value={`${local} (${shift.deviceOffsetLabel}, ${shift.diffLabel})`}
+                />
+              );
+            })()}
             <DetailRow label="Cuenta" value={transaction.account_name} />
             <DetailRow
               label="Ubicacion"

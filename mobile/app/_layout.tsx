@@ -26,6 +26,7 @@ import "react-native-reanimated";
 import { AppKeyboardProvider } from "../components/common/AppKeyboardAwareScrollView";
 import { AuthProvider, useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
+import { setSyncForegrounded } from "../lib/sync/engine";
 import { getLocalProfile } from "../lib/profile";
 import { BugReportProvider, BugReportViewShot } from "../lib/bugReportMode";
 import { BugFAB } from "../components/BugFAB";
@@ -165,15 +166,50 @@ function RootLayoutNav() {
       // No local profile yet (fresh install before first sync) — fall back to
       // the network gate this once; the initial pull will populate SQLite.
       setCheckingOnboarding(true);
-      const { data } = await supabase
-        .from("profiles")
-        .select("onboarding_completed")
-        .eq("id", session.user.id)
-        .maybeSingle();
-
-      if (!mounted) return;
-      setNeedsOnboarding(!data?.onboarding_completed);
-      setCheckingOnboarding(false);
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("onboarding_completed")
+          .eq("id", session.user.id)
+          .maybeSingle();
+        if (!mounted) return;
+        if (error) throw error;
+        setNeedsOnboarding(!data?.onboarding_completed);
+      } catch (err) {
+        // Offline (or the token is expired and can't refresh yet). This used
+        // to reject inside the effect and leave the spinner up forever. Let
+        // the user into the app with whatever is local, and keep re-asking in
+        // the background so a genuinely new user still lands in onboarding
+        // once the network is back.
+        console.warn("Onboarding network gate failed; continuing locally:", err);
+        if (!mounted) return;
+        setNeedsOnboarding(false);
+        const recheck = (attempt: number) => {
+          if (!mounted || attempt > 6) return;
+          setTimeout(() => {
+            if (!mounted) return;
+            void supabase
+              .from("profiles")
+              .select("onboarding_completed")
+              .eq("id", session.user.id)
+              .maybeSingle()
+              .then(
+                ({ data, error }) => {
+                  if (!mounted) return;
+                  if (error || !data) {
+                    recheck(attempt + 1);
+                    return;
+                  }
+                  setNeedsOnboarding(!data.onboarding_completed);
+                },
+                () => recheck(attempt + 1)
+              );
+          }, Math.min(15_000 * 2 ** attempt, 5 * 60_000));
+        };
+        recheck(0);
+      } finally {
+        if (mounted) setCheckingOnboarding(false);
+      }
     }
 
     checkOnboarding();
@@ -229,21 +265,33 @@ function RootLayoutNav() {
     });
   }, [loading, session, demoMode]);
 
-  // Re-lock on background resume if configured
+  // Re-lock on background resume if configured; sync + token refresh follow
+  // the foreground state. Resume is the most likely moment connectivity
+  // changed (the user left a tunnel, landed, got back on Wi-Fi), so it runs
+  // one sync and kicks the retry loop for anything captured offline.
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
-      if (
-        appState.current.match(/inactive|background/) &&
-        nextState === "active" &&
-        session &&
-        !demoMode
-      ) {
-        isBackgroundReauthEnabled().then((enabled) => {
-          if (enabled) setBiometricLocked(true);
-        });
-        // Newly-synced occurrences (or ones that became due) are reflected on
-        // resume — reschedule is a no-op when reminders are off.
-        reschedulePaymentReminders();
+      const wasBackground = appState.current.match(/inactive|background/);
+      if (nextState === "active") {
+        // Supabase's RN guidance: only refresh tokens while in the foreground.
+        supabase.auth.startAutoRefresh();
+        // Always mirror the foreground state, even without a session: the
+        // background transition below is unconditional, and a login-screen
+        // round trip (reading an OTP) must not leave the engine stuck "in
+        // background" for the rest of the session. syncAll is a no-op without
+        // a session, so the resume sync it fires costs nothing there.
+        if (wasBackground) setSyncForegrounded(true);
+        if (wasBackground && session && !demoMode) {
+          isBackgroundReauthEnabled().then((enabled) => {
+            if (enabled) setBiometricLocked(true);
+          });
+          // Newly-synced occurrences (or ones that became due) are reflected on
+          // resume — reschedule is a no-op when reminders are off.
+          reschedulePaymentReminders();
+        }
+      } else if (nextState === "background") {
+        supabase.auth.stopAutoRefresh();
+        setSyncForegrounded(false);
       }
       appState.current = nextState;
     });

@@ -10,6 +10,9 @@ import { cn } from "@/lib/utils";
 import { toColombiaDateString } from "@/lib/utils/date";
 import { Button } from "@/components/ui/button";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
+import { usePreferredCurrency } from "@/components/providers/app-data-provider";
+import { ConversionHint } from "@/components/transactions/conversion-hint";
+import { TimeShiftHint } from "@/components/transactions/time-shift-hint";
 import {
   Collapsible,
   CollapsibleContent,
@@ -30,7 +33,14 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { X } from "lucide-react";
 import type { ActionResult } from "@/types/actions";
-import type { Account, CategoryWithChildren, Tag, Transaction, TransactionDirection } from "@/types/domain";
+import type {
+  Account,
+  CategoryWithChildren,
+  CurrencyCode,
+  Tag,
+  Transaction,
+  TransactionDirection,
+} from "@/types/domain";
 import { isDebtAccountType } from "@zeta/shared";
 import { useDebtCoverPrompt } from "@/components/recurring/debt-cover-prompt";
 
@@ -57,6 +67,11 @@ export function TransactionForm({
 }) {
   const router = useRouter();
   const debtCover = useDebtCoverPrompt();
+  const preferredCurrency = usePreferredCurrency();
+  // Mirror of the (uncontrolled) amount input for the live conversion hint.
+  const [amountDraft, setAmountDraft] = useState(
+    transaction?.amount != null ? String(transaction.amount) : ""
+  );
   const action = transaction
     ? updateTransaction.bind(null, transaction.id)
     : createTransaction;
@@ -208,6 +223,16 @@ export function TransactionForm({
               defaultValue={transaction?.amount}
               placeholder="0"
               required
+              onChange={(e) => setAmountDraft(e.target.value)}
+            />
+            <ConversionHint
+              amount={Number(amountDraft)}
+              currency={
+                (selectedAccount?.currency_code ??
+                  transaction?.currency_code ??
+                  "COP") as CurrencyCode
+              }
+              baseCurrency={preferredCurrency}
             />
           </div>
         </div>
@@ -260,6 +285,14 @@ export function TransactionForm({
             />
           </div>
         </div>
+        <TimeShiftHint
+          date={transactionDate}
+          time={transactionTime}
+          onApplyLocal={({ date, time }) => {
+            setTransactionDate(date);
+            setTransactionTime(time);
+          }}
+        />
 
         <input
           type="hidden"

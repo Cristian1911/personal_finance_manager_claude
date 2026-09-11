@@ -782,6 +782,21 @@ export const DB_MIGRATIONS: DbMigration[] = [
       `ALTER TABLE accounts ADD COLUMN mask TEXT`,
     ],
   },
+  {
+    version: 29,
+    statements: [
+      // ── fx_rate_cache: daily exchange rates for the "≈ en COP" hint ────
+      // Local-only cache (not synced; not user data, so clearDatabase leaves
+      // it alone). Mirrors the webapp's `exchange_rate_cache` shape so a
+      // foreign-currency amount can show its home/local equivalent offline
+      // once a pair has been fetched. See lib/exchange-rates.ts.
+      `CREATE TABLE IF NOT EXISTS fx_rate_cache (
+        pair TEXT PRIMARY KEY,
+        rate REAL NOT NULL,
+        fetched_at TEXT NOT NULL
+      )`,
+    ],
+  },
 ];
 
 export const LATEST_DB_VERSION =

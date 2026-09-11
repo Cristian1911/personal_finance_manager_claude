@@ -89,6 +89,7 @@ export default async function DashboardLayout({
       })
     ),
     tagGroups: tagGroupsResult.success ? tagGroupsResult.data : [],
+    preferredCurrency: profile.preferred_currency,
   };
   const attentionCount = attentionSnapshot.totalAction;
   const attentionSummary =

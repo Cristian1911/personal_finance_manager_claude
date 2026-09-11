@@ -28,7 +28,13 @@ import {
   ClassificationRow,
   ClassificationTagsRow,
 } from "@/components/transactions/classification-card";
-import { useAllTags, useDestinatarios } from "@/components/providers/app-data-provider";
+import {
+  useAllTags,
+  useDestinatarios,
+  usePreferredCurrency,
+} from "@/components/providers/app-data-provider";
+import { ConversionHint } from "@/components/transactions/conversion-hint";
+import { TimeShiftHint } from "@/components/transactions/time-shift-hint";
 import {
   Collapsible,
   CollapsibleContent,
@@ -223,6 +229,10 @@ export function MobileTransactionForm({
 
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const destinatarios = useDestinatarios();
+  const preferredCurrency = usePreferredCurrency();
+  // Mirror of the (uncontrolled) amount field, only for the live "≈ en COP"
+  // hint — the form still submits the input's own hidden value.
+  const [amountDraft, setAmountDraft] = useState("");
 
   const currencyCode = useMemo(() => {
     const account = accounts.find((a) => a.id === selectedAccountId);
@@ -471,6 +481,15 @@ export function MobileTransactionForm({
           name="amount"
           currency={currencyCode}
           autoFocus={!showTypeSelector}
+          onChange={(e) => setAmountDraft(e.target.value)}
+        />
+        {/* Foreign-currency purchase → what it costs at home (and where the
+            phone is right now). Nothing renders for a COP account. */}
+        <ConversionHint
+          amount={Number(amountDraft)}
+          currency={currencyCode}
+          baseCurrency={preferredCurrency}
+          className="-mt-3 flex w-full"
         />
 
         {/* ── DETALLES ────────────────────────────────────────── */}
@@ -509,6 +528,17 @@ export function MobileTransactionForm({
             />
           </div>
         </div>
+        {/* Travelling: the stored clock is Colombia's, the receipt's is local.
+            Show both and let the user convert what they typed. */}
+        <TimeShiftHint
+          date={transactionDate}
+          time={transactionTime}
+          onApplyLocal={({ date, time }) => {
+            setTransactionDate(date);
+            setTransactionTime(time);
+          }}
+          className="-mt-2"
+        />
 
         {/* Notas — transfers only (other modes have it under "Más opciones") */}
         {isTransferMode && (

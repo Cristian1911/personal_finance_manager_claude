@@ -4,6 +4,7 @@ import { createContext, useContext, useMemo, type ReactNode } from "react";
 import type {
   Account,
   CategoryWithChildren,
+  CurrencyCode,
   DestinatarioKind,
   Tag,
   TagGroupWithTags,
@@ -24,6 +25,8 @@ interface AppData {
   outflowCategories: CategoryWithChildren[];
   destinatarios: DestinatarioOption[];
   tagGroups: TagGroupWithTags[];
+  /** Profile currency — the target for "≈ en COP" conversion hints. */
+  preferredCurrency: CurrencyCode;
 }
 
 const AppDataContext = createContext<AppData | null>(null);
@@ -62,6 +65,10 @@ export function useDestinatarios() {
 }
 export function useTagGroups() {
   return useAppData().tagGroups;
+}
+/** Profile currency; COP outside the provider (forms rendered before login). */
+export function usePreferredCurrency(): CurrencyCode {
+  return useContext(AppDataContext)?.preferredCurrency ?? "COP";
 }
 export function useAllTags(): Tag[] {
   const { tagGroups } = useAppData();
