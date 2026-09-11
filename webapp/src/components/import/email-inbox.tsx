@@ -209,7 +209,7 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
   }, []);
 
   const {
-    busyId,
+    busyIds,
     bulkLoading,
     isPending,
     reconMatch,
@@ -279,7 +279,7 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
           size="sm"
           className={cn(BRASS_BUTTON_CLASS, "h-8 gap-1.5 rounded-lg px-3 text-xs")}
           onClick={handleBulkImport}
-          disabled={bulkLoading || importableIds.length === 0}
+          disabled={bulkLoading || busyIds.size > 0 || importableIds.length === 0}
         >
           {bulkLoading ? (
             <Loader2 className="size-3.5 animate-spin" />
@@ -310,7 +310,7 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
               const account = accountId ? accountMap.get(accountId) : undefined;
               const match = matchById.get(tx.id) ?? null;
               const unrecognized = !account && match?.status === "unrecognized";
-              const isBusy = busyId === tx.id || bulkLoading;
+              const isBusy = busyIds.has(tx.id) || bulkLoading;
               const isExpanded = expandedId === tx.id;
               const noteValue = noteDrafts[tx.id] ?? tx.notes ?? "";
 
@@ -434,7 +434,7 @@ export function EmailInbox({ transactions: initialTransactions }: EmailInboxProp
                           : undefined
                       }
                     >
-                      {busyId === tx.id ? (
+                      {busyIds.has(tx.id) ? (
                         <Loader2 className="size-3.5 animate-spin" />
                       ) : (
                         <Check className="size-3.5" />
