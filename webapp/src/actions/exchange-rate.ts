@@ -103,6 +103,26 @@ export async function getRatesForCurrencies(
   return rates;
 }
 
+/**
+ * Rates from one currency to several targets, for the "≈ en COP / ARS" hint
+ * under a foreign-currency amount. Each pair is served from the daily cache;
+ * targets whose rate can't be resolved are omitted, never zero.
+ */
+export async function getConversionRates(
+  from: CurrencyCode,
+  targets: CurrencyCode[]
+): Promise<Partial<Record<CurrencyCode, number>>> {
+  const unique = [...new Set(targets.filter((c) => c !== from))];
+  const results = await Promise.all(
+    unique.map((to) => getExchangeRate(from, to).then((r) => [to, r] as const))
+  );
+  const rates: Partial<Record<CurrencyCode, number>> = {};
+  for (const [to, result] of results) {
+    if (result?.rate && Number.isFinite(result.rate)) rates[to] = result.rate;
+  }
+  return rates;
+}
+
 function formatCached(cached: ExchangeRateCacheRow, pair: string): ExchangeRateResult {
   const rate = Number(cached.rate);
   const avg30d = cached.avg_30d ? Number(cached.avg_30d) : null;

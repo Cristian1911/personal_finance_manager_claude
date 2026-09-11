@@ -1,5 +1,5 @@
 import "react-native-url-polyfill/auto";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type Session } from "@supabase/supabase-js";
 import * as SecureStore from "expo-secure-store";
 import type { Database } from "@zeta/shared";
 
@@ -81,6 +81,47 @@ const ExpoSecureStoreAdapter = {
     await SecureStore.deleteItemAsync(key).catch(() => {});
   },
 };
+
+/**
+ * Where supabase-js persists the session (its default key shape:
+ * `sb-<project-ref>-auth-token`). Exposed so the auth provider can read the
+ * last good session straight from disk when the SDK can't hand one back —
+ * offline with an expired access token, `getSession()` tries to refresh,
+ * fails on the network and returns null, which used to bounce the user to
+ * the login screen with all their local data one tap away.
+ */
+const projectRef = (() => {
+  try {
+    return new URL(supabaseUrl ?? FALLBACK_SUPABASE_URL).hostname.split(".")[0] ?? "invalid";
+  } catch {
+    return "invalid";
+  }
+})();
+export const SUPABASE_AUTH_STORAGE_KEY = `sb-${projectRef}-auth-token`;
+
+/**
+ * The persisted session as stored by supabase-js, or null. The access token
+ * may be expired — callers treat this as "who is logged in on this device",
+ * not as a credential; the SDK refreshes it once the network is back.
+ */
+export async function readPersistedSession(): Promise<Session | null> {
+  try {
+    const raw = await ExpoSecureStoreAdapter.getItem(SUPABASE_AUTH_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<Session> | null;
+    if (
+      !parsed ||
+      typeof parsed.access_token !== "string" ||
+      typeof parsed.refresh_token !== "string" ||
+      !parsed.user?.id
+    ) {
+      return null;
+    }
+    return parsed as Session;
+  } catch {
+    return null;
+  }
+}
 
 export const supabase = createClient<Database>(
   supabaseUrl ?? FALLBACK_SUPABASE_URL,

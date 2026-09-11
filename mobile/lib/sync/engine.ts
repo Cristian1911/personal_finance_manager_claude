@@ -160,3 +160,109 @@ async function doSyncAll(): Promise<SyncResult> {
 
   return { pushed, pulled };
 }
+
+/* ─── Reconnect / retry ─────────────────────────────────────────────────── */
+//
+// There is no connectivity listener on mobile (no NetInfo dependency), so
+// "the network came back" is inferred from the moments it plausibly did:
+// the app returning to the foreground, a successful token refresh, and a
+// local write that needs to go up. Each of those calls `requestSync`, which
+// runs one sync and — while anything is still queued or the run failed —
+// retries with a growing back-off for as long as the app stays in front.
+// Nothing here blocks a tap: every call is fire-and-forget.
+
+const RETRY_DELAYS_MS = [15_000, 30_000, 60_000, 120_000, 300_000];
+const MAX_RETRIES_PER_FOREGROUND = 8;
+const LOCAL_CHANGE_DEBOUNCE_MS = 3_000;
+
+let retryTimer: ReturnType<typeof setTimeout> | null = null;
+let localChangeTimer: ReturnType<typeof setTimeout> | null = null;
+let retryAttempt = 0;
+let foregrounded = true;
+
+/** Rows in the outbox that have not reached the server yet. */
+export async function countPendingChanges(): Promise<number> {
+  try {
+    const db = await getDatabase();
+    const row = await db.getFirstAsync<{ n: number }>(
+      `SELECT COUNT(*) AS n FROM sync_queue WHERE synced_at IS NULL`
+    );
+    return row?.n ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+function clearRetryTimer(): void {
+  if (retryTimer) {
+    clearTimeout(retryTimer);
+    retryTimer = null;
+  }
+}
+
+function scheduleRetry(reason: string): void {
+  if (!foregrounded || resetInProgress) return;
+  if (retryAttempt >= MAX_RETRIES_PER_FOREGROUND) return;
+  const delay = RETRY_DELAYS_MS[Math.min(retryAttempt, RETRY_DELAYS_MS.length - 1)];
+  retryAttempt += 1;
+  clearRetryTimer();
+  retryTimer = setTimeout(() => {
+    retryTimer = null;
+    requestSync(`${reason}:retry`);
+  }, delay);
+}
+
+/**
+ * Run a sync now (single-flight via `syncAll`) and keep retrying while the
+ * outbox is non-empty or the run failed. Never throws, never awaited by UI.
+ */
+export function requestSync(reason: string): void {
+  if (resetInProgress) return;
+  clearRetryTimer();
+  syncAll()
+    .then(async () => {
+      const pending = await countPendingChanges();
+      if (pending > 0) {
+        scheduleRetry(reason);
+      } else {
+        retryAttempt = 0;
+      }
+    })
+    .catch((error) => {
+      if (__DEV__) console.warn(`[sync] ${reason} failed:`, error);
+      scheduleRetry(reason);
+    });
+}
+
+/**
+ * Called after a local write is enqueued. Debounced so a burst of writes
+ * (an import, a multi-row edit) becomes one push a few seconds later, well
+ * after the enclosing SQLite transaction has committed.
+ */
+export function scheduleLocalChangeSync(): void {
+  if (!foregrounded || resetInProgress) return;
+  if (localChangeTimer) clearTimeout(localChangeTimer);
+  localChangeTimer = setTimeout(() => {
+    localChangeTimer = null;
+    requestSync("local-change");
+  }, LOCAL_CHANGE_DEBOUNCE_MS);
+}
+
+/**
+ * Foreground/background gate. On resume: reset the back-off and sync once
+ * (the most likely moment the network changed). On background: stop timers
+ * so nothing fires while the OS has the app suspended.
+ */
+export function setSyncForegrounded(active: boolean): void {
+  foregrounded = active;
+  if (!active) {
+    clearRetryTimer();
+    if (localChangeTimer) {
+      clearTimeout(localChangeTimer);
+      localChangeTimer = null;
+    }
+    return;
+  }
+  retryAttempt = 0;
+  requestSync("resume");
+}

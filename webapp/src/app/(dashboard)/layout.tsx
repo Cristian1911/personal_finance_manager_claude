@@ -12,6 +12,7 @@ import { getCategories } from "@/actions/categories";
 import { getDestinatarios } from "@/actions/destinatarios";
 import { getTagGroups } from "@/actions/tags";
 import { AppDataProvider } from "@/components/providers/app-data-provider";
+import type { CurrencyCode } from "@/types/domain";
 import { NavFocusProvider } from "@/components/providers/nav-focus-provider";
 import { MobileTabBar } from "@/components/mobile/v2/mobile-tab-bar";
 import { MobileShellProvider } from "@/components/mobile/v2/mobile-shell-provider";
@@ -89,6 +90,7 @@ export default async function DashboardLayout({
       })
     ),
     tagGroups: tagGroupsResult.success ? tagGroupsResult.data : [],
+    preferredCurrency: (profile.preferred_currency ?? "COP") as CurrencyCode,
   };
   const attentionCount = attentionSnapshot.totalAction;
   const attentionSummary =

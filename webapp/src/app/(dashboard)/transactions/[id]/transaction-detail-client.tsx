@@ -53,6 +53,9 @@ import {
 } from "@/actions/transfers";
 import { ACCOUNT_TYPE_LABELS } from "@/lib/constants/account-types";
 import { PromoteToRecurringButton } from "@/components/transactions/promote-to-recurring-button";
+import { ConversionHint } from "@/components/transactions/conversion-hint";
+import { TimeShiftHint } from "@/components/transactions/time-shift-hint";
+import { usePreferredCurrency } from "@/components/providers/app-data-provider";
 import { TransactionFormDialog } from "@/components/transactions/transaction-form-dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -134,6 +137,7 @@ export function TransactionDetailClient({
 }: TransactionDetailClientProps) {
   const router = useRouter();
   const isInflow = tx.direction === "INFLOW";
+  const preferredCurrency = usePreferredCurrency();
 
   /* ─── Cuenta (optimistic; balance-safe change via updateTransactionAccount) ─ */
   const [optAccountId, setOptAccountId] = useState(tx.account_id);
@@ -578,6 +582,14 @@ export function TransactionDetailClient({
           {isInflow ? "+" : "-"}
           {formatCurrency(optAmount, tx.currency_code as CurrencyCode)}
         </p>
+        {/* Foreign-currency amount → home currency (+ local currency while
+            travelling). Renders nothing for a COP transaction at home. */}
+        <ConversionHint
+          amount={optAmount}
+          currency={tx.currency_code as CurrencyCode}
+          baseCurrency={preferredCurrency}
+          className="mt-1.5 flex"
+        />
 
         {/* Title (editable) */}
         {titleEditing ? (
@@ -656,6 +668,8 @@ export function TransactionDetailClient({
           </>
         )}
       </div>
+      {/* Stored clock is Colombia's; while abroad show what that reads locally. */}
+      <TimeShiftHint date={optDate} time={optTime} className="justify-center px-4 pt-1" />
       <div className="flex flex-wrap justify-center gap-2 pt-2.5">
         <button
           type="button"
@@ -1105,6 +1119,14 @@ export function TransactionDetailClient({
                 />
               </div>
             </div>
+            <TimeShiftHint
+              date={draftDate}
+              time={draftTime}
+              onApplyLocal={({ date, time }) => {
+                setDraftDate(date);
+                setDraftTime(time);
+              }}
+            />
             <p className="rounded-lg border border-z-expense/25 bg-z-expense/5 px-3 py-2 text-[11px] text-z-expense">
               Cambiar el monto recalcula los saldos de la cuenta y las métricas.
             </p>

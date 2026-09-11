@@ -26,6 +26,7 @@ import "react-native-reanimated";
 import { AppKeyboardProvider } from "../components/common/AppKeyboardAwareScrollView";
 import { AuthProvider, useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
+import { setSyncForegrounded } from "../lib/sync/engine";
 import { getLocalProfile } from "../lib/profile";
 import { BugReportProvider, BugReportViewShot } from "../lib/bugReportMode";
 import { BugFAB } from "../components/BugFAB";
@@ -165,15 +166,26 @@ function RootLayoutNav() {
       // No local profile yet (fresh install before first sync) — fall back to
       // the network gate this once; the initial pull will populate SQLite.
       setCheckingOnboarding(true);
-      const { data } = await supabase
-        .from("profiles")
-        .select("onboarding_completed")
-        .eq("id", session.user.id)
-        .maybeSingle();
-
-      if (!mounted) return;
-      setNeedsOnboarding(!data?.onboarding_completed);
-      setCheckingOnboarding(false);
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("onboarding_completed")
+          .eq("id", session.user.id)
+          .maybeSingle();
+        if (!mounted) return;
+        if (error) throw error;
+        setNeedsOnboarding(!data?.onboarding_completed);
+      } catch (err) {
+        // Offline (or the token is expired and can't refresh yet). This used
+        // to reject inside the effect and leave the spinner up forever. Let
+        // the user into the app with whatever is local; the profile row lands
+        // with the first successful sync and the re-check above converges.
+        console.warn("Onboarding network gate failed; continuing locally:", err);
+        if (!mounted) return;
+        setNeedsOnboarding(false);
+      } finally {
+        if (mounted) setCheckingOnboarding(false);
+      }
     }
 
     checkOnboarding();
@@ -229,21 +241,28 @@ function RootLayoutNav() {
     });
   }, [loading, session, demoMode]);
 
-  // Re-lock on background resume if configured
+  // Re-lock on background resume if configured; sync + token refresh follow
+  // the foreground state. Resume is the most likely moment connectivity
+  // changed (the user left a tunnel, landed, got back on Wi-Fi), so it runs
+  // one sync and kicks the retry loop for anything captured offline.
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
-      if (
-        appState.current.match(/inactive|background/) &&
-        nextState === "active" &&
-        session &&
-        !demoMode
-      ) {
-        isBackgroundReauthEnabled().then((enabled) => {
-          if (enabled) setBiometricLocked(true);
-        });
-        // Newly-synced occurrences (or ones that became due) are reflected on
-        // resume — reschedule is a no-op when reminders are off.
-        reschedulePaymentReminders();
+      const wasBackground = appState.current.match(/inactive|background/);
+      if (nextState === "active") {
+        // Supabase's RN guidance: only refresh tokens while in the foreground.
+        supabase.auth.startAutoRefresh();
+        if (wasBackground && session && !demoMode) {
+          isBackgroundReauthEnabled().then((enabled) => {
+            if (enabled) setBiometricLocked(true);
+          });
+          // Newly-synced occurrences (or ones that became due) are reflected on
+          // resume — reschedule is a no-op when reminders are off.
+          reschedulePaymentReminders();
+          setSyncForegrounded(true);
+        }
+      } else if (nextState === "background") {
+        supabase.auth.stopAutoRefresh();
+        setSyncForegrounded(false);
       }
       appState.current = nextState;
     });
