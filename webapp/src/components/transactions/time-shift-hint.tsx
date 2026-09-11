@@ -53,13 +53,13 @@ export function TimeShiftHint({ date, time, onApplyLocal, className }: TimeShift
         <span className="tabular-nums">{hint.referenceTime}</span> hora Colombia ={" "}
         <span className="tabular-nums text-z-sage-light">{local}</span> en {hint.deviceLabel}
       </span>
-      <span className="text-white/25">·</span>
+      <span className="text-z-white/15">·</span>
       <span className="tabular-nums">
         {hint.deviceOffsetLabel} ({hint.diffLabel})
       </span>
       {onApplyLocal && (
         <>
-          <span className="text-white/25">·</span>
+          <span className="text-z-white/15">·</span>
           <button
             type="button"
             onClick={applyLocal}

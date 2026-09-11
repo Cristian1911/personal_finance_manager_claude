@@ -91,7 +91,7 @@ export function ConversionHint({ amount, currency, baseCurrency, className }: Co
       <ArrowLeftRight className="size-3 shrink-0 text-z-brass" aria-hidden />
       {parts.map((part, i) => (
         <span key={targets[i]} className="tabular-nums">
-          {i > 0 && <span className="mr-1.5 text-white/25">·</span>}
+          {i > 0 && <span className="mr-1.5 text-z-white/15">·</span>}
           {part}
         </span>
       ))}
