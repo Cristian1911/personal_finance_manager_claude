@@ -2,7 +2,7 @@ import { pullAll } from "./pull";
 import { pushPendingChanges } from "./push";
 import { notifyLocalDataChanged } from "./notify";
 import { getDatabase } from "../db/database";
-import { supabase } from "../supabase";
+import { isDeadRefreshToken, supabase } from "../supabase";
 
 export type SyncStatus = "idle" | "syncing" | "error";
 
@@ -113,16 +113,16 @@ async function doSyncAll(): Promise<SyncResult> {
       error,
     } = await supabase.auth.getSession();
     if (error) {
-      const message = String(error.message ?? "");
-      if (message.toLowerCase().includes("refresh token")) {
+      // Only a token the server rejected ends the session; a refresh that
+      // failed on the network keeps it (same rule as lib/auth.tsx).
+      if (isDeadRefreshToken(error)) {
         await supabase.auth.signOut({ scope: "local" }).catch(() => {});
       }
       return { pushed: 0, pulled: {} };
     }
     session = currentSession;
   } catch (error) {
-    const message = String((error as Error)?.message ?? "");
-    if (message.toLowerCase().includes("refresh token")) {
+    if (isDeadRefreshToken(error)) {
       await supabase.auth.signOut({ scope: "local" }).catch(() => {});
     }
     return { pushed: 0, pulled: {} };
@@ -235,16 +235,55 @@ export function requestSync(reason: string): void {
 }
 
 /**
+ * Upload the outbox without pulling. Shares `syncAll`'s single-flight slot so
+ * it never overlaps a full run; if one is in flight, the coalesced rerun that
+ * `syncAll` already provides picks the new rows up instead.
+ *
+ * Push-only on purpose: a pull's apply phase runs `withTransactionAsync`
+ * per table, and expo-sqlite does not exclude other async statements on the
+ * shared connection, so a pull landing seconds after every user edit would
+ * make interleaving with the next edit's transaction routine. A push only
+ * touches the server and `sync_queue.synced_at` (single statements), which
+ * is safe to run beside a local write.
+ */
+function pushOnly(): Promise<number> {
+  if (inFlightSync) {
+    return syncAll().then((r) => r.pushed);
+  }
+  const run = (async () => {
+    if (resetInProgress) return 0;
+    const {
+      data: { session },
+    } = await supabase.auth.getSession().catch(() => ({ data: { session: null } }));
+    if (!session) return 0;
+    return pushPendingChanges({ shouldAbort: () => resetInProgress });
+  })();
+  inFlightSync = run
+    .then((pushed) => ({ pushed, pulled: {} as Record<string, number> }))
+    .finally(() => {
+      inFlightSync = null;
+    });
+  return run;
+}
+
+/**
  * Called after a local write is enqueued. Debounced so a burst of writes
  * (an import, a multi-row edit) becomes one push a few seconds later, well
- * after the enclosing SQLite transaction has committed.
+ * after the enclosing SQLite transaction has committed. Retries (with the
+ * shared back-off) while rows remain queued — that is what carries an
+ * offline capture up once the connection returns.
  */
 export function scheduleLocalChangeSync(): void {
   if (!foregrounded || resetInProgress) return;
   if (localChangeTimer) clearTimeout(localChangeTimer);
   localChangeTimer = setTimeout(() => {
     localChangeTimer = null;
-    requestSync("local-change");
+    pushOnly()
+      .then(async () => {
+        if ((await countPendingChanges()) > 0) scheduleRetry("local-change");
+        else retryAttempt = 0;
+      })
+      .catch(() => scheduleRetry("local-change"));
   }, LOCAL_CHANGE_DEBOUNCE_MS);
 }
 

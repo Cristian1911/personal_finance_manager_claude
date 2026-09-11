@@ -8,7 +8,7 @@ import {
 } from "react";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import * as SecureStore from "expo-secure-store";
-import { readPersistedSession, supabase } from "./supabase";
+import { isDeadRefreshToken, readPersistedSession, supabase } from "./supabase";
 import { disableDemoMode, isDemoModeEnabled } from "./demo-mode";
 import { clearDatabase } from "./db/database";
 import { requestSync, syncAll } from "./sync/engine";
@@ -50,21 +50,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     demoModeRef.current = demoMode;
   }, [demoMode]);
-
-  /**
-   * "Invalid Refresh Token" / "Refresh Token Not Found" — the server rejected
-   * the token, so the session is genuinely dead. Anything else (network down,
-   * DNS, timeout, 5xx) is a *retryable* failure and must not log the user out.
-   */
-  function isDeadRefreshToken(error: unknown): boolean {
-    const message = String((error as Error)?.message ?? "").toLowerCase();
-    const code = String((error as { code?: string })?.code ?? "").toLowerCase();
-    return (
-      code === "refresh_token_not_found" ||
-      code === "refresh_token_already_used" ||
-      (message.includes("refresh token") && !message.includes("fetch"))
-    );
-  }
 
   async function resolveSessionSafely(): Promise<Session | null> {
     try {

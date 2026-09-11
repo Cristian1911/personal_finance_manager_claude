@@ -178,11 +178,35 @@ function RootLayoutNav() {
       } catch (err) {
         // Offline (or the token is expired and can't refresh yet). This used
         // to reject inside the effect and leave the spinner up forever. Let
-        // the user into the app with whatever is local; the profile row lands
-        // with the first successful sync and the re-check above converges.
+        // the user into the app with whatever is local, and keep re-asking in
+        // the background so a genuinely new user still lands in onboarding
+        // once the network is back.
         console.warn("Onboarding network gate failed; continuing locally:", err);
         if (!mounted) return;
         setNeedsOnboarding(false);
+        const recheck = (attempt: number) => {
+          if (!mounted || attempt > 6) return;
+          setTimeout(() => {
+            if (!mounted) return;
+            void supabase
+              .from("profiles")
+              .select("onboarding_completed")
+              .eq("id", session.user.id)
+              .maybeSingle()
+              .then(
+                ({ data, error }) => {
+                  if (!mounted) return;
+                  if (error || !data) {
+                    recheck(attempt + 1);
+                    return;
+                  }
+                  setNeedsOnboarding(!data.onboarding_completed);
+                },
+                () => recheck(attempt + 1)
+              );
+          }, Math.min(15_000 * 2 ** attempt, 5 * 60_000));
+        };
+        recheck(0);
       } finally {
         if (mounted) setCheckingOnboarding(false);
       }
@@ -251,6 +275,12 @@ function RootLayoutNav() {
       if (nextState === "active") {
         // Supabase's RN guidance: only refresh tokens while in the foreground.
         supabase.auth.startAutoRefresh();
+        // Always mirror the foreground state, even without a session: the
+        // background transition below is unconditional, and a login-screen
+        // round trip (reading an OTP) must not leave the engine stuck "in
+        // background" for the rest of the session. syncAll is a no-op without
+        // a session, so the resume sync it fires costs nothing there.
+        if (wasBackground) setSyncForegrounded(true);
         if (wasBackground && session && !demoMode) {
           isBackgroundReauthEnabled().then((enabled) => {
             if (enabled) setBiometricLocked(true);
@@ -258,7 +288,6 @@ function RootLayoutNav() {
           // Newly-synced occurrences (or ones that became due) are reflected on
           // resume — reschedule is a no-op when reminders are off.
           reschedulePaymentReminders();
-          setSyncForegrounded(true);
         }
       } else if (nextState === "background") {
         supabase.auth.stopAutoRefresh();

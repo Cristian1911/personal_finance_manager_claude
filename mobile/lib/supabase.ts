@@ -123,6 +123,23 @@ export async function readPersistedSession(): Promise<Session | null> {
   }
 }
 
+/**
+ * "Invalid Refresh Token" / "Refresh Token Not Found" — the server rejected
+ * the token, so the session is genuinely dead and a local sign-out is right.
+ * Anything else (network down, DNS, timeout, 5xx) is retryable and must not
+ * log the user out — shared by the auth provider and the sync engine so the
+ * two never disagree on what counts as "dead".
+ */
+export function isDeadRefreshToken(error: unknown): boolean {
+  const message = String((error as Error)?.message ?? "").toLowerCase();
+  const code = String((error as { code?: string })?.code ?? "").toLowerCase();
+  return (
+    code === "refresh_token_not_found" ||
+    code === "refresh_token_already_used" ||
+    (message.includes("refresh token") && !message.includes("fetch"))
+  );
+}
+
 export const supabase = createClient<Database>(
   supabaseUrl ?? FALLBACK_SUPABASE_URL,
   supabaseKey ?? FALLBACK_SUPABASE_KEY,
