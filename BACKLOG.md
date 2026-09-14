@@ -10,12 +10,23 @@
 
 ---
 
-## Fecha en pago rápido (rama `fix/debt-payment-date`, 2026-08-21) — paridad móvil
+## Historial de migraciones desincronizado (2026-09-14)
 
-El webapp ya deja elegir la fecha al registrar un pago/ingreso (#388). Móvil quedó atrás, con un bug extra encima:
+`npx supabase migration list` muestra 11 migraciones locales sin sello remoto y 13 sellos remotos sin archivo local, emparejados casi 1:1 por fecha. **No es schema faltante, son sellos distintos**: el DDL se aplicó por el MCP/dashboard, que estampa su propio timestamp. Evidencia: `flow_class` (local `20260818220000`) y `is_ad_hoc` (local `20260806180000`) ya están en `webapp/src/types/database.ts`, regenerado desde remoto el 2026-09-01.
 
-- **(P1, bug real) `registerPayment` de móvil fecha en UTC.** `mobile/lib/repositories/accounts.ts:278` hace `now.slice(0, 10)` sobre un ISO UTC. Después de las ~19:00 COT eso registra el pago **con la fecha de mañana**, en silencio. La regla del repo es `toColombiaDateString()`; esto es más urgente que la paridad de abajo porque escribe datos incorrectos hoy.
-- **(P1, paridad) `registerPayment` de móvil no acepta `date`.** Añadir el parámetro opcional (misma forma que el webapp: validar `YYYY-MM-DD`, propagar a las dos ramas) y un selector de fecha en las dos hojas que lo llaman: `mobile/components/accounts/PaymentActionSheet.tsx` y `mobile/components/plan/PaymentSheet.tsx`. Pasar por `mobile-webapp-parity` + `mobile-sync-doctor` antes de mergear.
+Locales sin sello: `20260806{120000,130000,150000,180000,190000}`, `20260818{220000,230000}`, `20260902{120000,130000,140000,150000}`.
+
+- **Nunca correr `supabase db push` a ciegas con este historial** — re-aplicaría DDL ya presente. Precedente: `feedback_supabase_db_push_deploy_skew` (duplicó quincenas).
+- Los cuatro de `20260902*` son triggers/funciones (una cuota por mes, link del planner, carry del vínculo al reconciliar) y no se ven en los tipos generados: confirmarlos consultando `pg_trigger`/`pg_proc` antes de dar el release por limpio.
+- Luego `supabase migration repair --status applied <version>` para cada uno ya presente, y dejar el historial plano.
+
+---
+
+## Fecha en pago rápido (rama `fix/debt-payment-date`) — follow-up
+
+Shipped 2026-09-14: `registerPayment` móvil ya no fecha en UTC y acepta `date` opcional; `reconcileBalance` arreglado en **las dos plataformas** (el webapp tenía el mismo `now.slice(0, 10)`); selector de fecha en `PaymentActionSheet` y en `PaymentSheet` del plan.
+
+- **(P2) `recordRecurringOccurrencePayment` no acepta fecha de pago.** Por eso el selector del `PaymentSheet` del plan solo se muestra en la rama sin plantilla recurrente: un pago de ocurrencia se fecha por la ocurrencia, no por el usuario. Si se quiere back-dating ahí hay que decidir primero si se re-fecha la ocurrencia o solo la transacción. Spawn `recurring-doctor`.
 
 ---
 ## Viajes: hora local / conversión + offline móvil (rama `claude/zeta-timezone-currency-jgkiab`, 2026-09-11) — follow-ups

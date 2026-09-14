@@ -433,7 +433,9 @@ export async function reconcileBalance(
     Object.keys(requestedBalances).some((currency) => currency !== account.currency_code);
 
   const now = new Date().toISOString();
-  const transactionDate = now.slice(0, 10);
+  // Same trap as registerPayment: `now.slice(0, 10)` is UTC, so an adjustment
+  // made after ~19:00 COT lands on tomorrow.
+  const transactionDate = toColombiaDateString(new Date());
   const currencyDeltas: Record<string, number> = {};
 
   // Build per-currency adjustment transactions + next currency_balances map.
