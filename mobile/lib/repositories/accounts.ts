@@ -6,6 +6,7 @@ import {
   MANUAL_BALANCE_ADJUSTMENT_PREFIX,
 } from "@zeta/shared";
 import { setPdfPasswordForAccount } from "../pdf-passwords";
+import { toColombiaDateString } from "../utils/date";
 import {
   applyLocalBalanceDelta,
   buildLedgerTxPayload,
@@ -242,6 +243,8 @@ export async function deleteAccount(id: string): Promise<void> {
 
 // ─── Quick Payment ───────────────────────────────────────────────────────────
 
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 export type RegisterPaymentResult =
   | { success: true }
   | { success: false; error: string };
@@ -257,13 +260,19 @@ export type RegisterPaymentResult =
  * (asymmetric, matching the webapp exactly). The whole mutation is wrapped in
  * one withTransactionAsync so a throw rolls back the tx + both balance writes.
  *
- * Idempotency input (matches webapp): provider "MANUAL", transactionDate =
- * now.slice(0,10), amount, rawDescription = the embedded-ISO "Pago/Ingreso"
- * description (the timestamp is part of the webapp key — preserved verbatim).
+ * Idempotency input (matches webapp): provider "MANUAL", transactionDate,
+ * amount, rawDescription = the embedded-ISO "Pago/Ingreso" description (the
+ * timestamp is part of the webapp key — preserved verbatim).
  */
 export async function registerPayment(
   accountId: string,
-  input: { amount: number; sourceAccountId?: string; notes?: string }
+  input: {
+    amount: number;
+    sourceAccountId?: string;
+    notes?: string;
+    /** Calendar day of the payment (YYYY-MM-DD). Defaults to today in Colombia. */
+    date?: string;
+  }
 ): Promise<RegisterPaymentResult> {
   const db = await getDatabase();
 
@@ -276,9 +285,16 @@ export async function registerPayment(
   // fail Supabase RLS and stick in sync_queue forever.
   if (!account.user_id) return { success: false, error: "Sesión inválida" };
 
+  if (input.date !== undefined && !ISO_DATE_RE.test(input.date)) {
+    return { success: false, error: "Fecha inválida" };
+  }
+
   const isDebt = account.account_type === "CREDIT_CARD" || account.account_type === "LOAN";
   const now = new Date().toISOString();
-  const transactionDate = now.slice(0, 10);
+  // Colombia is UTC-5: slicing the ISO string books anything after ~19:00 COT
+  // on tomorrow's date. The user can back-date a payment made earlier (#388)
+  // instead of editing both legs afterwards.
+  const transactionDate = input.date ?? toColombiaDateString(new Date());
 
   let sourceAccount: LedgerAccountRow | null = null;
   if (input.sourceAccountId) {

@@ -8,14 +8,16 @@ import {
   Text,
   View,
 } from "react-native";
-import { X } from "lucide-react-native";
-import { formatCurrency, type CurrencyCode } from "@zeta/shared";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { Calendar, ChevronDown, X } from "lucide-react-native";
+import { formatCurrency, formatDate, type CurrencyCode } from "@zeta/shared";
 import type { AccountRow } from "../../lib/repositories/accounts";
 import { registerPayment } from "../../lib/repositories/accounts";
 import { isDebtAccountType, LIQUID_ACCOUNT_TYPES } from "../../lib/constants/accounts";
 import { parseFormattedAmount } from "../../lib/amount";
 import { COLORS } from "../../lib/constants/colors";
 import { BRASS_BUTTON_CLASS, PANEL_INSET_CLASS } from "../../lib/constants/styles";
+import { toColombiaDateString, toLocalDateString } from "../../lib/utils/date";
 import { MobileSheet } from "../ui/MobileSheet";
 import {
   SheetAccountPicker,
@@ -64,6 +66,8 @@ export function PaymentActionSheet({
   const [amountInput, setAmountInput] = useState("");
   const [selectedSourceId, setSelectedSourceId] = useState<string>("");
   const [showSourcePicker, setShowSourcePicker] = useState(false);
+  const [date, setDate] = useState("");
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasInitializedRef = useRef(false);
@@ -77,6 +81,9 @@ export function PaymentActionSheet({
         setAmountInput("");
         setSelectedSourceId(sourceAccounts[0]?.id ?? "");
         setShowSourcePicker(false);
+        // Record defaults follow the Colombian wall clock, not the phone's.
+        setDate(toColombiaDateString(new Date()));
+        setShowDatePicker(false);
         setSubmitting(false);
         setError(null);
         hasInitializedRef.current = true;
@@ -101,6 +108,7 @@ export function PaymentActionSheet({
       const result = await registerPayment(account.id, {
         amount: parsedAmount,
         sourceAccountId: selectedSourceId || undefined,
+        date: date || undefined,
       });
       if (!result.success) {
         setError(result.error);
@@ -112,7 +120,7 @@ export function PaymentActionSheet({
     } finally {
       setSubmitting(false);
     }
-  }, [canSubmit, account.id, parsedAmount, selectedSourceId, onSuccess]);
+  }, [canSubmit, account.id, parsedAmount, selectedSourceId, date, onSuccess]);
 
   const title = isDebt ? "Registrar pago" : "Registrar ingreso";
 
@@ -149,6 +157,47 @@ export function PaymentActionSheet({
           <SheetFieldLabel>{isDebt ? "Monto a pagar" : "Monto a registrar"}</SheetFieldLabel>
           <View className="mb-3">
             <SheetAmountInput value={amountInput} onChangeText={setAmountInput} autoFocus />
+          </View>
+
+          {/* Date — back-dating a payment used to mean editing it afterwards */}
+          <SheetFieldLabel>Fecha</SheetFieldLabel>
+          <View className="mb-3">
+            <Pressable
+              onPress={() => setShowDatePicker((v) => !v)}
+              accessibilityRole="button"
+              accessibilityLabel="Seleccionar fecha"
+              accessibilityState={{ expanded: showDatePicker }}
+              className={`${PANEL_INSET_CLASS} flex-row items-center justify-between px-4 py-3`}
+            >
+              <View className="flex-row items-center gap-2">
+                <Calendar size={16} color={COLORS.sageDark} />
+                <Text className="text-sm font-inter-medium text-foreground">
+                  {date ? formatDate(date, "dd MMM yyyy") : "—"}
+                </Text>
+              </View>
+              <ChevronDown
+                size={16}
+                color={COLORS.sageDark}
+                style={{ transform: [{ rotate: showDatePicker ? "180deg" : "0deg" }] }}
+              />
+            </Pressable>
+            {showDatePicker && date !== "" && (
+              <DateTimePicker
+                // Noon anchor: a bare YYYY-MM-DD literal parses as UTC midnight.
+                value={new Date(`${date}T12:00:00`)}
+                mode="date"
+                display={Platform.OS === "ios" ? "inline" : "default"}
+                maximumDate={new Date()}
+                themeVariant="dark"
+                accentColor={COLORS.brass}
+                onChange={(_event, selected) => {
+                  setShowDatePicker(false);
+                  // The picker renders the device calendar, so read the picked
+                  // day back in that same zone — never through Bogotá.
+                  if (selected) setDate(toLocalDateString(selected));
+                }}
+              />
+            )}
           </View>
 
           {/* Source account (debt → required) */}

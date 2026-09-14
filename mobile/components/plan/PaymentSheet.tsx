@@ -9,6 +9,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { Check, ChevronDown, X, Link2 } from "lucide-react-native";
 import {
   formatCurrency,
@@ -21,7 +22,7 @@ import { COLORS } from "../../lib/constants/colors";
 import { BRASS_BUTTON_CLASS, PANEL_INSET_CLASS } from "../../lib/constants/styles";
 import { MobileSheet } from "../ui/MobileSheet";
 import { getDatabase } from "../../lib/db/database";
-import { toLocalMonthString } from "../../lib/utils/date";
+import { toColombiaDateString, toLocalDateString, toLocalMonthString } from "../../lib/utils/date";
 import { formatAmountInput, parseFormattedAmount } from "../../lib/amount";
 import { isDebtAccountType } from "../../lib/constants/accounts";
 import { markEntryCompleted } from "../../lib/repositories/planning";
@@ -95,6 +96,8 @@ export function PaymentSheet({
   const [customAmount, setCustomAmount] = useState("");
   const [selectedSourceId, setSelectedSourceId] = useState<string>(sourceAccounts[0]?.id ?? "");
   const [showSourcePicker, setShowSourcePicker] = useState(false);
+  const [date, setDate] = useState("");
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -109,6 +112,9 @@ export function PaymentSheet({
     setCustomAmount("");
     setError(null);
     setShowSourcePicker(false);
+    // Record defaults follow the Colombian wall clock, not the phone's.
+    setDate(toColombiaDateString(new Date()));
+    setShowDatePicker(false);
 
     (async () => {
       try {
@@ -191,6 +197,7 @@ export function PaymentSheet({
     setCustomAmount("");
     setError(null);
     setShowSourcePicker(false);
+    setShowDatePicker(false);
     onClose();
   }, [onClose]);
 
@@ -327,6 +334,7 @@ export function PaymentSheet({
         const result = await registerPayment(debtAccount.id, {
           amount: resolvedAmount,
           sourceAccountId: selectedSourceId || undefined,
+          date: date || undefined,
         });
         if (!result.success) {
           setError(result.error);
@@ -347,7 +355,7 @@ export function PaymentSheet({
     } finally {
       setSubmitting(false);
     }
-  }, [canSubmit, session?.user?.id, resolvedAmount, selectedSourceId, entry, debtAccount, handleClose, onSuccess]);
+  }, [canSubmit, session?.user?.id, resolvedAmount, selectedSourceId, date, entry, debtAccount, handleClose, onSuccess]);
 
   // ── Account name lookup for candidates ──
   const allAccountMap = useMemo(() => {
@@ -511,6 +519,50 @@ export function PaymentSheet({
                         autoFocus
                       />
                     </View>
+                  )}
+
+                  {/* Date — only on the registerPayment branch. A recurring
+                      template pays its occurrence on the occurrence's own date,
+                      so a picker here would be silently ignored. */}
+                  {!entry.recurring_template_id && (
+                    <>
+                      <Text className="text-xs font-inter-semibold text-muted-foreground mb-2 mt-3 uppercase tracking-wider">
+                        Fecha
+                      </Text>
+                      <Pressable
+                        onPress={() => setShowDatePicker((v) => !v)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Seleccionar fecha"
+                        accessibilityState={{ expanded: showDatePicker }}
+                        className={`${PANEL_INSET_CLASS} flex-row items-center justify-between px-3 py-2.5 mb-1`}
+                      >
+                        <Text className="text-sm font-inter-medium text-foreground">
+                          {date ? formatDate(date, "dd MMM yyyy") : "—"}
+                        </Text>
+                        <ChevronDown
+                          size={14}
+                          color={COLORS.sageDark}
+                          style={{ transform: [{ rotate: showDatePicker ? "180deg" : "0deg" }] }}
+                        />
+                      </Pressable>
+                      {showDatePicker && date !== "" && (
+                        <DateTimePicker
+                          // Noon anchor: a bare YYYY-MM-DD parses as UTC midnight.
+                          value={new Date(`${date}T12:00:00`)}
+                          mode="date"
+                          display={Platform.OS === "ios" ? "inline" : "default"}
+                          maximumDate={new Date()}
+                          themeVariant="dark"
+                          accentColor={COLORS.brass}
+                          onChange={(_event, selected) => {
+                            setShowDatePicker(false);
+                            // The picker renders the device calendar — read the
+                            // picked day back in that same zone, not Bogotá's.
+                            if (selected) setDate(toLocalDateString(selected));
+                          }}
+                        />
+                      )}
+                    </>
                   )}
 
                   {/* Source account */}
