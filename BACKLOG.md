@@ -10,6 +10,27 @@
 
 ---
 
+## Historial de migraciones desincronizado (2026-09-14)
+
+`npx supabase migration list` muestra 11 migraciones locales sin sello remoto y 13 sellos remotos sin archivo local, emparejados casi 1:1 por fecha. **No es schema faltante, son sellos distintos**: el DDL se aplicó por el MCP/dashboard, que estampa su propio timestamp. Evidencia: `flow_class` (local `20260818220000`) y `is_ad_hoc` (local `20260806180000`) ya están en `webapp/src/types/database.ts`, regenerado desde remoto el 2026-09-01.
+
+Locales sin sello: `20260806{120000,130000,150000,180000,190000}`, `20260818{220000,230000}`, `20260902{120000,130000,140000,150000}`.
+
+- **Nunca correr `supabase db push` a ciegas con este historial** — re-aplicaría DDL ya presente. Precedente: `feedback_supabase_db_push_deploy_skew` (duplicó quincenas).
+- Los cuatro de `20260902*` son triggers/funciones (una cuota por mes, link del planner, carry del vínculo al reconciliar) y no se ven en los tipos generados: confirmarlos consultando `pg_trigger`/`pg_proc` antes de dar el release por limpio.
+- Luego `supabase migration repair --status applied <version>` para cada uno ya presente, y dejar el historial plano.
+
+---
+
+## Fecha en pago rápido (rama `fix/debt-payment-date`) — follow-up
+
+Shipped 2026-09-14: `registerPayment` móvil ya no fecha en UTC y acepta `date` opcional; `reconcileBalance` arreglado en **las dos plataformas** (el webapp tenía el mismo `now.slice(0, 10)`); selector de fecha en `PaymentActionSheet` y en `PaymentSheet` del plan.
+
+- **(P1, datos) `registerPayment` móvil con cuenta origen no hace la transferencia de dos patas.** Desde el PR #371 (2026-07-27) el webapp delega ese caso a `createTransfer`: dos filas con `transfer_group_id` compartido, categoría de transferencia/pago de deuda, y la pata de salida visible en el historial. Móvil sigue con la forma vieja — un solo INFLOW más un `UPDATE accounts SET current_balance` pelado en la cuenta origen, sin fila que explique de dónde salió la plata. La misma operación real produce filas distintas según la app, y presupuestos/Tendencias no ven la salida cuando se registró desde móvil. El selector de fecha nuevo expone más ese camino. Portar la rama a la forma de `createTransfer`. (mobile-webapp-parity, 2026-09-14)
+- **(P2) `PaymentSheet` del plan lee de Supabase al abrirse.** `mobile/components/plan/PaymentSheet.tsx:104-175` hace un `supabase.from("transactions").select(...)` bloqueante cada vez que se abre la hoja (búsqueda de candidatos), y `handleLinkTransaction` (`:205-291`) suma 4 viajes más al confirmar. Esas filas ya están en SQLite; la regla es resolver el tap en local y dejar el sync de fondo. Pre-existente. (mobile-sync-doctor, 2026-09-14)
+- **(P2) Extraer un `DateField` móvil.** El bloque "eyebrow + fila `PANEL_INSET_CLASS` + `DateTimePicker`" está duplicado en cinco sitios (`capture.tsx`, `RecurringForm.tsx` ×2, `PaymentActionSheet`, `PaymentSheet`) y hay una sexta variante divergente en `transaction/[id].tsx` (spinner dentro de su propio Modal). Esa duplicación es justo lo que dejó `display="inline"` copiado dentro de hojas con altura tope. Un `components/ui/DateField.tsx` con `context: "sheet" | "screen"`, `locale="es-CO"` y `accessibilityValue` siempre puestos lo cierra. (zetas-front-guy, 2026-09-14)
+
+---
 ## Viajes: hora local / conversión + offline móvil (rama `claude/zeta-timezone-currency-jgkiab`, 2026-09-11) — follow-ups
 
 - **(P1) Mutex entre escrituras de repositorios y la fase de aplicación del pull.** `pull.ts` documenta que `withTransactionAsync` de expo-sqlite no excluye otras sentencias asíncronas en la misma conexión. El auto-push tras cada cambio local se dejó *push-only* precisamente para no hacer común ese solape, pero el riesgo sigue existiendo entre una edición y un `syncAll` (resume, token refresh, pull-to-refresh). Añadir un lock de promesa compartido por los `withTransactionAsync` de `lib/repositories/*` y de `pull.ts`. (mobile-sync-doctor, preexistente)

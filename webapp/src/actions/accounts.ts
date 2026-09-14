@@ -442,6 +442,9 @@ export async function reconcileBalance(
     account.currency_balances !== null ||
     Object.keys(requestedBalances).some((currency) => currency !== account.currency_code);
   const now = new Date().toISOString();
+  // Same trap as registerPayment: `now.slice(0, 10)` is UTC, so an adjustment
+  // made after ~19:00 COT lands on tomorrow.
+  const adjustmentDate = toColombiaDateString(new Date());
   const adjustmentRows: Database["public"]["Tables"]["transactions"]["Insert"][] = [];
 
   for (const [currency, newBalance] of Object.entries(requestedBalances)) {
@@ -507,7 +510,7 @@ export async function reconcileBalance(
     const rawDescription = `${MANUAL_BALANCE_ADJUSTMENT_PREFIX} ${currency} (${now})`;
     const idempotencyKey = await computeIdempotencyKey({
       provider: "MANUAL",
-      transactionDate: now.slice(0, 10),
+      transactionDate: adjustmentDate,
       amount: Math.abs(delta),
       rawDescription,
     });
@@ -518,7 +521,7 @@ export async function reconcileBalance(
       amount: Math.abs(delta),
       currency_code: currency as CurrencyCode,
       direction: adjustmentDirection,
-      transaction_date: now.slice(0, 10),
+      transaction_date: adjustmentDate,
       raw_description: rawDescription,
       clean_description: MANUAL_BALANCE_ADJUSTMENT_PREFIX,
       merchant_name: null,
