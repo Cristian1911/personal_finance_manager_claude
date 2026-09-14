@@ -1,4 +1,5 @@
 import type { SQLiteDatabase } from "expo-sqlite";
+import { scheduleLocalChangeSync } from "./engine";
 
 /**
  * Enqueue an INSERT into sync_queue. Caller handles the local table INSERT.
@@ -16,6 +17,7 @@ export async function enqueueInsert(
      VALUES (?, ?, 'INSERT', ?, ?)`,
     [tableName, recordId, JSON.stringify(payload), now]
   );
+  scheduleLocalChangeSync();
 }
 
 export async function enqueueUpdate(
@@ -30,6 +32,7 @@ export async function enqueueUpdate(
      VALUES (?, ?, 'UPDATE', ?, ?)`,
     [tableName, recordId, JSON.stringify(payload), now]
   );
+  scheduleLocalChangeSync();
 }
 
 export async function enqueueDelete(
@@ -43,4 +46,5 @@ export async function enqueueDelete(
      VALUES (?, ?, 'DELETE', ?, ?)`,
     [tableName, recordId, JSON.stringify({ id: recordId }), now]
   );
+  scheduleLocalChangeSync();
 }

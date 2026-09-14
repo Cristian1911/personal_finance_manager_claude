@@ -56,10 +56,8 @@ export function QuickPaymentDialog({
   const [open, setOpen] = useState(false);
   const [amountRaw, setAmountRaw] = useState("");
   const [sourceAccountId, setSourceAccountId] = useState("");
-  // Seeded on open, not in the initializer: the clock must be read on the
-  // client only, and the dialog body never renders until it opens anyway.
-  const [date, setDate] = useState("");
   const [notes, setNotes] = useState("");
+  const [date, setDate] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -96,8 +94,9 @@ export function QuickPaymentDialog({
     if (nextOpen) {
       setAmountRaw("");
       setSourceAccountId("");
-      setDate(toColombiaDateString(new Date()));
       setNotes("");
+      // Read the clock on open, on the client — never during render.
+      setDate(toColombiaDateString(new Date()));
       setError(null);
     }
   }
@@ -109,8 +108,8 @@ export function QuickPaymentDialog({
       const result = await registerPayment(accountId, {
         amount: parsedAmount,
         sourceAccountId: sourceAccountId || undefined,
-        date: date || undefined,
         notes: notes || undefined,
+        date: date || undefined,
       });
 
       if (result.success) {
@@ -163,17 +162,6 @@ export function QuickPaymentDialog({
             />
           </div>
 
-          {/* Date */}
-          <div className="space-y-2">
-            <Label>Fecha</Label>
-            <DatePicker
-              value={date}
-              onChange={(v) => setDate(v ?? toColombiaDateString(new Date()))}
-              disabled={isPending}
-              className="w-full"
-            />
-          </div>
-
           {/* Source account */}
           {sourceAccounts.length > 0 && (
             <div className="space-y-2">
@@ -195,6 +183,17 @@ export function QuickPaymentDialog({
               </p>
             </div>
           )}
+
+          {/* Date — a payment made days ago used to require editing both legs (#388) */}
+          <div className="space-y-2">
+            <Label>Fecha</Label>
+            <DatePicker
+              value={date}
+              disabled={isPending}
+              onChange={(v) => setDate(v ?? toColombiaDateString(new Date()))}
+              placeholder="Seleccionar fecha"
+            />
+          </div>
 
           {/* Notes */}
           <div className="space-y-2">

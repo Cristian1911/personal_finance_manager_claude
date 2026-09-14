@@ -6,12 +6,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { Session } from "@supabase/supabase-js";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import * as SecureStore from "expo-secure-store";
-import { supabase } from "./supabase";
+import { isDeadRefreshToken, readPersistedSession, supabase } from "./supabase";
 import { disableDemoMode, isDemoModeEnabled } from "./demo-mode";
 import { clearDatabase } from "./db/database";
-import { syncAll } from "./sync/engine";
+import { requestSync, syncAll } from "./sync/engine";
 import { getLocalProfile } from "./profile";
 import {
   LOCATION_FEATURE_ENABLED,
@@ -54,21 +54,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function resolveSessionSafely(): Promise<Session | null> {
     try {
       const { data, error } = await supabase.auth.getSession();
-      if (error) {
-        const message = String(error.message ?? "");
-        if (message.toLowerCase().includes("refresh token")) {
-          await supabase.auth.signOut({ scope: "local" }).catch(() => {});
-          return null;
-        }
-      }
-      return data.session;
-    } catch (error) {
-      const message = String((error as Error)?.message ?? "");
-      if (message.toLowerCase().includes("refresh token")) {
+      if (data.session) return data.session;
+      if (error && isDeadRefreshToken(error)) {
         await supabase.auth.signOut({ scope: "local" }).catch(() => {});
         return null;
       }
-      return null;
+      // getSession() returned nothing but did not tell us the session is
+      // dead: offline with an expired access token. The SDK keeps the session
+      // on disk and refreshes it once the network is back, so keep the user
+      // signed in against their local SQLite instead of bouncing to login.
+      return await readPersistedSession();
+    } catch (error) {
+      if (isDeadRefreshToken(error)) {
+        await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+        return null;
+      }
+      return await readPersistedSession();
     }
   }
 
@@ -141,7 +142,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     triggerInitialSyncOnce(resolvedSession, "Initial sync failed:");
   }
 
-  async function handleAuthStateChange(nextSession: Session | null) {
+  async function handleAuthStateChange(event: AuthChangeEvent, nextSession: Session | null) {
+    // The SDK's own startup pass can report "no session" offline for the
+    // same reason getSession() does (refresh failed on the network). The
+    // initial state is decided by initializeAuthState, which already applied
+    // the persisted-session fallback — don't let this null overwrite it.
+    if (event === "INITIAL_SESSION" && !nextSession) return;
+
     if (nextSession?.user && demoModeRef.current) {
       await clearDatabase();
     }
@@ -154,6 +161,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setDemoMode(false);
     disableDemoMode().catch(() => {});
     triggerInitialSyncOnce(nextSession, "Post-auth sync failed:");
+
+    // A refreshed token is the clearest "we are back online" signal there
+    // is: flush whatever was captured offline.
+    if (event === "TOKEN_REFRESHED") requestSync("token-refreshed");
   }
 
   useEffect(() => {
@@ -161,8 +172,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
-      await handleAuthStateChange(nextSession);
+    } = supabase.auth.onAuthStateChange(async (event, nextSession) => {
+      await handleAuthStateChange(event, nextSession);
     });
 
     return () => subscription.unsubscribe();

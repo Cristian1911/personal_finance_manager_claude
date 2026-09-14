@@ -98,7 +98,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-None yet.
+- [Email ingest]: Activar la rutina "Zeta · Triage de correos no reconocidos" desde la UI de Rutinas (adjuntar conector Supabase) y construir la señal in-app (fase 2) — plan en `docs/plans/2026-09-04-email-pattern-triage-plan.md`, procedimiento en `.claude/skills/email-pattern-triage/skill.md`
 
 ### Blockers/Concerns
 

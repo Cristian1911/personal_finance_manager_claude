@@ -18,6 +18,13 @@ El webapp ya deja elegir la fecha al registrar un pago/ingreso (#388). Móvil qu
 - **(P1, paridad) `registerPayment` de móvil no acepta `date`.** Añadir el parámetro opcional (misma forma que el webapp: validar `YYYY-MM-DD`, propagar a las dos ramas) y un selector de fecha en las dos hojas que lo llaman: `mobile/components/accounts/PaymentActionSheet.tsx` y `mobile/components/plan/PaymentSheet.tsx`. Pasar por `mobile-webapp-parity` + `mobile-sync-doctor` antes de mergear.
 
 ---
+## Viajes: hora local / conversión + offline móvil (rama `claude/zeta-timezone-currency-jgkiab`, 2026-09-11) — follow-ups
+
+- **(P1) Mutex entre escrituras de repositorios y la fase de aplicación del pull.** `pull.ts` documenta que `withTransactionAsync` de expo-sqlite no excluye otras sentencias asíncronas en la misma conexión. El auto-push tras cada cambio local se dejó *push-only* precisamente para no hacer común ese solape, pero el riesgo sigue existiendo entre una edición y un `syncAll` (resume, token refresh, pull-to-refresh). Añadir un lock de promesa compartido por los `withTransactionAsync` de `lib/repositories/*` y de `pull.ts`. (mobile-sync-doctor, preexistente)
+- **(P2) Listener de conectividad real.** Hoy "volvió la red" se infiere del foreground, del `TOKEN_REFRESHED` y de reintentos con back-off (máx. 8 por sesión en primer plano). `@react-native-community/netinfo` o `expo-network` (módulo nativo → requiere build EAS nuevo) daría el disparo exacto y evitaría reintentos a ciegas.
+- **(P2) Conflictos en push: la edición local se descarta si el remoto es más nuevo** (`push.ts`, guard `lte updated_at`). Es last-write-wins silencioso: el usuario que editó offline no se entera. Como mínimo registrar el conflicto y mostrarlo (badge en Ajustes → Sincronización); ideal, fusionar por campo como hace `mergeTransactionMetadata()` en import.
+- **(P2) `getExchangeRate` cachea `null` 24 h** (`"use cache"` memoiza el fallo de la CDN). Con el hint de conversión ahora visible, una caída de la CDN oculta el hint un día. Sacar la ruta de fallo de la función cacheada o acortar `expire`.
+- **(P3) Guardar la zona horaria de captura en la transacción** (columna nueva en `transactions_enc`, proceso de 6 pasos). Hoy el detalle muestra la lectura local según *la zona actual del teléfono*, no la del lugar de la compra; con la zona guardada el hint sería exacto también semanas después del viaje.
 
 ## Audit móvil en simulador (rama `fix/mobile-audit-2026-07-28`, 2026-07-28) — follow-ups
 

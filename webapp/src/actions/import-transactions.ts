@@ -2,7 +2,8 @@
 
 import { updateTag } from "next/cache";
 import { addDays, parseISO } from "date-fns";
-import { toColombiaDateString } from "@/lib/utils/date";
+import { formatDate, toColombiaDateString } from "@/lib/utils/date";
+import { formatCurrency } from "@/lib/utils/currency";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import {
   anchorStatementBalance,
@@ -28,6 +29,7 @@ import type { Database } from "@/types/database";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { importPayloadSchema } from "@/lib/validators/import";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
+import { carryRecurringLinkToSurvivor } from "@/lib/recurring/carry-link";
 import type { ActionResult } from "@/types/actions";
 import type {
   AccountUpdateResult,
@@ -40,7 +42,10 @@ import type {
 } from "@/types/import";
 import { trackProductEvent } from "@/actions/product-events";
 import { linkTransactionToOccurrence, ensureCurrentOccurrences } from "@/actions/occurrences";
-import { syncPendingOccurrenceAmounts } from "@/lib/utils/occurrence-sync";
+import {
+  findUnlinkedCoveringDebtPayment,
+  syncPendingOccurrenceAmounts,
+} from "@/lib/utils/occurrence-sync";
 import { parseSubPayments as parseSubPaymentsShared } from "@/lib/utils/sub-payments";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
 import { runSubscriptionDetection } from "@/actions/subscriptions";
@@ -98,6 +103,14 @@ const IMPORT_DETAIL_MESSAGES = {
     `Se creo el recurrente de pago de ${accountName} (${currency}) desde el extracto.`,
   recurringTemplateUpdated: (accountName: string, currency: string) =>
     `Se actualizo el recurrente de pago de ${accountName} (${currency}) desde el extracto.`,
+  debtCoverHint: (
+    accountName: string,
+    paymentAmount: string,
+    paymentDate: string,
+    dueDate: string,
+    minimum: string,
+  ) =>
+    `${accountName}: el abono de ${paymentAmount} del ${paymentDate} podría incluir la cuota del ${dueDate} (${minimum}). Si es así, vincúlalo desde Plan.`,
   recurringTemplateSyncFailed: (
     accountName: string,
     currency: string,
@@ -238,6 +251,47 @@ function buildDebtPaymentMerchantName(accountName: string): string {
   return `Pago ${accountName}`;
 }
 
+/**
+ * After a statement sync, point out an already-recorded payment that could be
+ * carrying the cuota just scheduled (e.g. the user paid the full balance right
+ * after the cut, then imported the statement). Hint only — the payment may be
+ * a pure extra contribution, so the user links it from Plan if it applies.
+ */
+async function pushDebtCoverHint(params: {
+  supabase: SupabaseClient<Database>;
+  userId: string;
+  accountId: string;
+  accountName: string;
+  currency: string;
+  templateId: string;
+  dueDate: string;
+  expectedAmount: number;
+  details: string[];
+}): Promise<void> {
+  try {
+    const payment = await findUnlinkedCoveringDebtPayment(params.supabase, params.userId, {
+      accountId: params.accountId,
+      templateId: params.templateId,
+      dueDate: params.dueDate,
+      expectedAmount: params.expectedAmount,
+      currencyCode: params.currency,
+    });
+    if (!payment) return;
+    const hint = IMPORT_DETAIL_MESSAGES.debtCoverHint(
+      params.accountName,
+      formatCurrency(payment.amount, params.currency as CurrencyCode),
+      formatDate(payment.transaction_date),
+      formatDate(params.dueDate),
+      formatCurrency(params.expectedAmount, params.currency as CurrencyCode),
+    );
+    // One account can sync twice in a run (COP + USD statements) — say it once.
+    if (!params.details.includes(hint)) params.details.push(hint);
+  } catch (error) {
+    // Best-effort hint: never let it fail the import.
+    console.error("[importTransactions] debt cover hint failed:", error);
+  }
+}
+
 async function syncCreditCardRecurringTemplate(params: {
   supabase: SupabaseClient<Database>;
   userId: string;
@@ -322,6 +376,17 @@ async function syncCreditCardRecurringTemplate(params: {
       params.details.push(
         IMPORT_DETAIL_MESSAGES.recurringTemplateUpdated(accountName, params.meta.currency)
       );
+      await pushDebtCoverHint({
+        supabase: params.supabase,
+        userId: params.userId,
+        accountId: params.meta.accountId,
+        accountName,
+        currency: primaryCurrency,
+        templateId: params.existingTemplate.id,
+        dueDate: cc.payment_due_date,
+        expectedAmount: totalAmount,
+        details: params.details,
+      });
       return;
     }
 
@@ -352,6 +417,17 @@ async function syncCreditCardRecurringTemplate(params: {
     params.details.push(
       IMPORT_DETAIL_MESSAGES.recurringTemplateCreated(accountName, params.meta.currency)
     );
+    await pushDebtCoverHint({
+      supabase: params.supabase,
+      userId: params.userId,
+      accountId: params.meta.accountId,
+      accountName,
+      currency: primaryCurrency,
+      templateId: (data as RecurringTemplateSyncRow).id,
+      dueDate: cc.payment_due_date,
+      expectedAmount: totalAmount,
+      details: params.details,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error desconocido";
     params.details.push(
@@ -435,6 +511,17 @@ async function syncLoanRecurringTemplate(params: {
       params.details.push(
         IMPORT_DETAIL_MESSAGES.recurringTemplateUpdated(accountName, params.meta.currency)
       );
+      await pushDebtCoverHint({
+        supabase: params.supabase,
+        userId: params.userId,
+        accountId: params.meta.accountId,
+        accountName,
+        currency: primaryCurrency,
+        templateId: params.existingTemplate.id,
+        dueDate: ln.payment_due_date,
+        expectedAmount: totalAmount,
+        details: params.details,
+      });
       return;
     }
 
@@ -465,6 +552,17 @@ async function syncLoanRecurringTemplate(params: {
     params.details.push(
       IMPORT_DETAIL_MESSAGES.recurringTemplateCreated(accountName, params.meta.currency)
     );
+    await pushDebtCoverHint({
+      supabase: params.supabase,
+      userId: params.userId,
+      accountId: params.meta.accountId,
+      accountName,
+      currency: primaryCurrency,
+      templateId: (data as RecurringTemplateSyncRow).id,
+      dueDate: ln.payment_due_date,
+      expectedAmount: totalAmount,
+      details: params.details,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error desconocido";
     params.details.push(
@@ -1570,7 +1668,7 @@ export async function importTransactions(
         supabase
           .from("transactions")
           .select(
-            "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method"
+            "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method, recurrence_group_id"
           )
           .eq("user_id", user.id)
           .is("reconciled_into_transaction_id", null)
@@ -1602,6 +1700,8 @@ export async function importTransactions(
     existingId: string;
     score: number;
     merged: ReturnType<typeof mergeTransactionMetadata>;
+    /** The superseded row's recurring link, carried to the survivor. */
+    existingRecurrenceGroupId: string | null;
   };
   const mergeOps: MergeOp[] = [];
   // The old per-merge re-query filtered `reconciled_into_transaction_id IS
@@ -1684,6 +1784,7 @@ export async function importTransactions(
       existingId: existingTx.id,
       score: decision.score,
       merged,
+      existingRecurrenceGroupId: existingTx.recurrence_group_id ?? null,
     });
 
     // Copy existing transaction's tags to surviving (imported) transaction (pre-fetched)
@@ -1721,6 +1822,23 @@ export async function importTransactions(
           .eq("user_id", user.id)
           .eq("id", op.existingId),
       ]),
+    );
+    // A "Confirmar pago" or an earlier screenshot import may already have
+    // paid an occurrence with the row we just reconciled away — move that
+    // link onto the survivor so the ledger row the user sees is the linked
+    // one (and "Vincular" stops offering it as a duplicate).
+    await Promise.all(
+      chunk
+        .filter((op) => op.existingRecurrenceGroupId)
+        .map((op) =>
+          carryRecurringLinkToSurvivor({
+            supabase,
+            userId: user.id,
+            supersededId: op.existingId,
+            survivorId: op.insertedId,
+            recurrenceGroupId: op.existingRecurrenceGroupId,
+          }),
+        ),
     );
     // PostgREST builders resolve with { error } instead of rejecting — a
     // failed merge update would otherwise pass silently and leave the pair

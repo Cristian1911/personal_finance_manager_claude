@@ -23,6 +23,10 @@ import {
 } from "@/lib/validators/transaction";
 import { parseMonth, monthStartStr, monthEndStr } from "@/lib/utils/date";
 import { dedupeTransactionIds } from "@/lib/utils/tag-ids";
+import {
+  attachTagsToTransactions,
+  readTagIdsFromFormData,
+} from "@/lib/tags/attach-transaction-tags";
 import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import {
   applyAccountBalanceDelta,
@@ -913,6 +917,9 @@ export async function createTransaction(
     notes: formData.get("notes") || undefined,
     capture_input_text: formData.get("capture_input_text") || undefined,
     is_subscription: formData.get("is_subscription"),
+    // Multi-value field from the create forms — tags picked before the row
+    // exists, attached right after the insert so the detail page shows them.
+    tags: readTagIdsFromFormData(formData),
   });
 
   if (!parsed.success) {
@@ -977,6 +984,22 @@ export async function createTransaction(
     parsed.data.amount, parsed.data.direction, transactionResult.data.id,
     finalDestinatarioId,
   );
+
+  if (parsed.data.tags && parsed.data.tags.length > 0) {
+    const tagResult = await attachTagsToTransactions(
+      supabase, user.id, [transactionResult.data.id], parsed.data.tags,
+    );
+    if (tagResult.error) {
+      // The transaction is already saved and balanced; tags are an enrichment
+      // the user can redo from the detail page, so don't fail the save.
+      console.error("Failed to tag new transaction", {
+        transactionId: transactionResult.data.id,
+        error: tagResult.error,
+      });
+    }
+    if (tagResult.attached > 0) updateTag("tags");
+  }
+
   // Re-invalidate: linking may have created a debt companion leg and updated
   // the debt account's balance AFTER persistTransaction already revalidated.
   revalidateFinancialViews();
@@ -1113,10 +1136,13 @@ export async function updateTransaction(
   // `updateTransaction` reuses `transactionSchema` but does not read the
   // `is_subscription` / `destinatario_id` form fields. Strip them from the
   // spread so their Zod defaults (false / undefined) don't overwrite the
-  // existing row on every edit.
+  // existing row on every edit. `tags` is stripped too: tag membership lives
+  // in `transaction_tags`, and letting it ride along would land in the legacy
+  // `transactions.tags` column instead.
   const {
     is_subscription: _ignoredIsSubscription,
     destinatario_id: _ignoredDestinatarioId,
+    tags: _ignoredTags,
     ...updatableFields
   } = parsed.data;
 

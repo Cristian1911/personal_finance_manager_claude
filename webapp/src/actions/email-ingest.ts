@@ -2,16 +2,18 @@
 
 import { cacheTag, cacheLife, updateTag } from "next/cache";
 import { createCachedClient } from "@/lib/supabase/cached";
+import { attachTagsToTransactions } from "@/lib/tags/attach-transaction-tags";
 import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { nanoid } from "nanoid";
+import { z } from "zod";
 import {
   autoCategorize,
-  findReconciliationCandidates,
+  extractPattern,
   mergeTransactionMetadata,
   type ReconciliationCandidate,
 } from "@zeta/shared";
-import { toISODateString } from "@/lib/utils/date";
+import { uuidStr } from "@/lib/validators/shared";
 import { matchTransactionToDestinatario } from "./destinatarios";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { linkTransactionToOccurrence } from "@/actions/occurrences";
@@ -19,33 +21,43 @@ import {
   parseBancolombiaEmail,
   type ParsedEmailTransaction,
 } from "@/lib/parsers/bancolombia-email";
-import { resolveSuggestedEmailAccountId } from "@/lib/email-ingest/account-matching";
-import { accountMaskSuffixMatches } from "@/lib/utils/account-mask";
+import { resolveEmailTransactionCurrency } from "@/lib/email-ingest/currency";
+import {
+  accountCarriesEmailProduct,
+  accountFitsEmailProduct,
+  describeEmailProduct,
+  emailProductKind,
+  emailProductMaskToLearn,
+  resolveSuggestedEmailAccountId,
+} from "@/lib/email-ingest/account-matching";
+import {
+  findEmailDuplicateCandidate,
+  findTransactionByIdempotencyKey,
+} from "@/lib/email-ingest/duplicate-check";
+import { normalizeEmailTime } from "@/lib/email-ingest/time";
+import {
+  accountMaskSuffixMatches,
+  normalizeAccountMaskSuffix,
+} from "@/lib/utils/account-mask";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
+import { carryRecurringLinkToSurvivor } from "@/lib/recurring/carry-link";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
+import { accountSchema } from "@/lib/validators/account";
 import type { ActionResult } from "@/types/actions";
-import type { EmailIngestAddress, EmailIngestLog, PendingEmailTransaction, UnrecognizedEmail } from "@/types/domain";
-import type { Json } from "@/types/database";
+import type {
+  Account,
+  EmailIngestAddress,
+  EmailIngestLog,
+  PendingEmailTransaction,
+  UnrecognizedEmail,
+} from "@/types/domain";
+import type { Json, Tables } from "@/types/database";
 
 type AuthenticatedSupabase = Awaited<
   ReturnType<typeof getAuthenticatedClient>
 >["supabase"];
 
 type ReprocessResult = "imported" | "queued" | "duplicate";
-
-/**
- * Bancolombia emails carry the execution time as "HH:mm" (e.g. "11:20").
- * Postgres TIME wants "HH:mm:ss" — normalise at the write boundary so email
- * imports land with the same precision as the manual form / mobile sync.
- * Returns null for anything that isn't a well-formed time so we never write
- * garbage into the column.
- */
-function normalizeEmailTime(raw: string | null | undefined): string | null {
-  if (typeof raw !== "string") return null;
-  const match = raw.trim().match(/^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/);
-  if (!match) return null;
-  return `${match[1]}:${match[2]}:${match[3] ?? "00"}`;
-}
 
 function stripHtml(html: string): string {
   return html
@@ -85,7 +97,27 @@ async function persistParsedEmail(params: {
     rawDescription: parsed.raw_line,
   });
 
-  let suggestedAccountId = defaultAccountId ?? null;
+  // Same email already imported (redelivery, retry of a processed log): a
+  // clean skip, before any fuzzy duplicate scoring gets a chance to queue it.
+  try {
+    const existingId = await findTransactionByIdempotencyKey({
+      client: supabase,
+      userId,
+      idempotencyKey,
+    });
+    if (existingId) {
+      updateTag("email-ingest");
+      return { success: true, data: "duplicate" };
+    }
+  } catch (error) {
+    console.error("[persistParsedEmail] idempotency lookup failed:", error);
+  }
+
+  // Only an unmasked alert may fall back to the ingest default; a masked one
+  // with no matching account is a product the user hasn't registered.
+  let suggestedAccountId = normalizeAccountMaskSuffix(parsed.card_last4)
+    ? null
+    : defaultAccountId ?? null;
 
   const { data: candidateAccounts, error: accountLookupError } = await supabase
     .from("accounts")
@@ -105,9 +137,27 @@ async function persistParsedEmail(params: {
     });
   }
 
+  // Auto import never decides a possible duplicate on its own (#389): when
+  // the alert collides with an existing transaction it goes to the queue
+  // flagged with the candidate, and the user resolves it with the prompt.
+  let conflictTransactionId: string | null = null;
   if (autoImport && suggestedAccountId) {
+    try {
+      const duplicate = await findEmailDuplicateCandidate({
+        client: supabase,
+        userId,
+        accountId: suggestedAccountId,
+        parsed,
+      });
+      conflictTransactionId = duplicate?.candidate.id ?? null;
+    } catch (error) {
+      console.error("[persistParsedEmail] duplicate check failed:", error);
+    }
+  }
+
+  if (autoImport && suggestedAccountId && !conflictTransactionId) {
     const matchedAccount = candidateAccounts?.find((a) => a.id === suggestedAccountId);
-    const currencyCode = matchedAccount?.currency_code ?? parsed.currency;
+    const currencyCode = resolveEmailTransactionCurrency(parsed, matchedAccount?.currency_code);
     const matchText = parsed.merchant ?? parsed.destination ?? parsed.raw_line ?? "";
     const destMatch = await matchTransactionToDestinatario(userId, matchText, supabase);
 
@@ -203,6 +253,7 @@ async function persistParsedEmail(params: {
     raw_body: rawBody,
     status: "pending",
     suggested_account_id: suggestedAccountId,
+    conflict_transaction_id: conflictTransactionId,
   });
 
   if (queueError) {
@@ -665,13 +716,16 @@ export async function approveEmailTransaction(
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
-  // Fetch the pending transaction
+  // Fetch the pending transaction — only rows still in the queue. A row
+  // already imported or dismissed must not be replayed (bulk approve used to
+  // resubmit processed ids and ride the duplicate branch).
   const { data: pending, error: fetchError } = await supabase
     .from("pending_email_transactions")
     .select("*")
     .eq("id", pendingId)
     .eq("user_id", user.id)
-    .single();
+    .eq("status", "pending")
+    .maybeSingle();
 
   if (fetchError) return { success: false, error: fetchError.message };
   if (!pending) return { success: false, error: "Transacción pendiente no encontrada" };
@@ -681,13 +735,7 @@ export async function approveEmailTransaction(
   // Determine the target account: explicit override > suggested > ingest address default
   let accountId = overrideAccountId ?? pending.suggested_account_id;
   if (!accountId) {
-    const { data: ingestAddress } = await supabase
-      .from("email_ingest_addresses")
-      .select("account_id")
-      .eq("id", pending.email_ingest_id)
-      .eq("user_id", user.id)
-      .single();
-    accountId = ingestAddress?.account_id ?? null;
+    accountId = await resolveIngestDefaultAccountId(supabase, user.id, pending, parsed);
   }
 
   if (!accountId) {
@@ -697,7 +745,7 @@ export async function approveEmailTransaction(
   // Get the account's currency
   const { data: account, error: accountError } = await supabase
     .from("accounts")
-    .select("currency_code, account_type, debit_card_mask, current_balance")
+    .select("id, currency_code, account_type, mask, debit_card_mask, current_balance")
     .eq("id", accountId)
     .eq("user_id", user.id)
     .single();
@@ -705,23 +753,28 @@ export async function approveEmailTransaction(
   if (accountError) return { success: false, error: accountError.message };
   if (!account) return { success: false, error: "Cuenta no encontrada" };
 
-  if (
-    parsed.card_type === "T.Deb" &&
-    parsed.card_last4 &&
-    (account.account_type === "SAVINGS" || account.account_type === "CHECKING") &&
-    !accountMaskSuffixMatches(account.debit_card_mask, parsed.card_last4)
-  ) {
+  // Importing into an account teaches it the product the alert came from, so
+  // the next alert from the same card matches without asking again.
+  const learned = emailProductMaskToLearn({
+    account,
+    cardType: parsed.card_type,
+    last4: parsed.card_last4,
+    explicit: false,
+  });
+  if (learned) {
     const { error: learnMappingError } = await supabase
       .from("accounts")
-      .update({ debit_card_mask: parsed.card_last4 })
+      .update({ [learned.column]: learned.value })
       .eq("id", accountId)
       .eq("user_id", user.id);
 
     if (learnMappingError) {
       console.error(
-        "[email-ingest] failed to learn debit card mapping:",
+        "[email-ingest] failed to learn product mapping:",
         learnMappingError.message
       );
+    } else {
+      updateTag("accounts");
     }
   }
 
@@ -733,7 +786,7 @@ export async function approveEmailTransaction(
 
   let destinatarioId: string | null = null;
   let categoryId: string | null = null;
-  let categorizationSource: "SYSTEM_DEFAULT" | "USER_LEARNED" | undefined;
+  let categorizationSource: "SYSTEM_DEFAULT" | "USER_LEARNED" | "USER_OVERRIDE" | undefined;
 
   if (destMatch) {
     destinatarioId = destMatch.destinatario_id;
@@ -746,6 +799,17 @@ export async function approveEmailTransaction(
     categoryId = categoryResult?.category_id ?? null;
     if (categoryId) categorizationSource = "SYSTEM_DEFAULT";
   }
+
+  // Enrichment the user set while the row sat in the queue beats every
+  // automatic guess — it's the same authority as categorizing the
+  // transaction by hand afterwards, just earlier.
+  const userCategoryId = pending.category_id ?? null;
+  if (userCategoryId) {
+    categoryId = userCategoryId;
+    categorizationSource = "USER_OVERRIDE";
+  }
+  const userNotes = pending.notes?.trim() ? pending.notes.trim() : null;
+  const userTagIds = [...new Set(pending.tag_ids ?? [])];
 
   // Compute idempotency key (reuse the one stored on the pending row when possible)
   const idempotencyKey =
@@ -765,7 +829,7 @@ export async function approveEmailTransaction(
       user_id: user.id,
       account_id: accountId,
       amount: parsed.amount,
-      currency_code: account.currency_code,
+      currency_code: resolveEmailTransactionCurrency(parsed, account.currency_code),
       direction: parsed.direction,
       transaction_date: parsed.transaction_date,
       transaction_time: normalizeEmailTime(parsed.transaction_time),
@@ -778,6 +842,7 @@ export async function approveEmailTransaction(
       category_id: categoryId,
       categorization_source: categorizationSource,
       destinatario_id: destinatarioId,
+      notes: userNotes,
       status: "POSTED",
       ...flowClassColumns({
         direction: parsed.direction,
@@ -791,14 +856,58 @@ export async function approveEmailTransaction(
 
   if (insertError) {
     if (insertError.code === "23505") {
-      // Duplicate — still mark as imported so it doesn't linger
+      // Duplicate — the transaction already exists (same email processed
+      // twice, or auto-import raced the queue). Don't lose what the user set
+      // in the queue: carry it onto the surviving row, then retire the pending
+      // row so it doesn't linger.
+      const { data: existingTx } = await supabase
+        .from("transactions")
+        .select("id, category_id, notes")
+        .eq("user_id", user.id)
+        .eq("idempotency_key", idempotencyKey)
+        .maybeSingle();
+
+      if (existingTx) {
+        const dupUpdate: {
+          category_id?: string;
+          categorization_source?: "USER_OVERRIDE";
+          notes?: string;
+        } = {};
+        if (userCategoryId) {
+          dupUpdate.category_id = userCategoryId;
+          dupUpdate.categorization_source = "USER_OVERRIDE";
+        }
+        if (userNotes && !existingTx.notes) dupUpdate.notes = userNotes;
+        if (Object.keys(dupUpdate).length > 0) {
+          await supabase
+            .from("transactions")
+            .update(dupUpdate)
+            .eq("user_id", user.id)
+            .eq("id", existingTx.id);
+        }
+        await attachQueueTags(supabase, user.id, existingTx.id, userTagIds);
+        if (userCategoryId) {
+          await learnCategoryFromApproval({
+            supabase,
+            userId: user.id,
+            categoryId: userCategoryId,
+            merchantName,
+            cleanDescription,
+            rawDescription,
+            destinatarioId,
+          });
+        }
+      }
+
       await supabase
         .from("pending_email_transactions")
         .update({ status: "imported" })
         .eq("id", pendingId)
-        .eq("user_id", user.id);
+        .eq("user_id", user.id)
+        .eq("status", "pending");
+      revalidateFinancialViews();
       updateTag("email-ingest");
-      updateTag("dashboard:hero");
+      if (userTagIds.length > 0) updateTag("tags");
       return { success: true, data: null };
     }
     return { success: false, error: insertError.message };
@@ -810,14 +919,21 @@ export async function approveEmailTransaction(
       parsed.amount, parsed.direction, insertedTx.id,
       destinatarioId,
     );
+
+    await attachQueueTags(supabase, user.id, insertedTx.id, userTagIds);
   }
+
+  // Category that ends up on the surviving transaction. The reconcile merge
+  // below can override it when the existing row carries a user-set category
+  // with higher authority.
+  let finalCategoryId: string | null = categoryId;
 
   // Reconcile with existing manual transaction if requested
   if (reconcileWithTransactionId && insertedTx) {
     const { data: manualTx } = await supabase
       .from("transactions")
       .select(
-        "id, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method"
+        "id, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method, recurrence_group_id"
       )
       .eq("id", reconcileWithTransactionId)
       .eq("user_id", user.id)
@@ -835,10 +951,20 @@ export async function approveEmailTransaction(
         }
       );
 
+      finalCategoryId = merged.category_id ?? null;
+      const categoryCarriedFromExisting =
+        (merged.category_id ?? null) !== (insertedTx.category_id ?? null);
+
       await supabase
         .from("transactions")
         .update({
           category_id: merged.category_id ?? null,
+          // The source must travel with the category: a carried-over
+          // USER_OVERRIDE must not be relabelled as an automatic guess, and a
+          // rejected queue category must not keep claiming USER_OVERRIDE.
+          ...(categoryCarriedFromExisting
+            ? { categorization_source: manualTx.categorization_source }
+            : {}),
           notes: merged.notes ?? null,
           capture_method: merged.capture_method,
         })
@@ -850,7 +976,35 @@ export async function approveEmailTransaction(
         .update({ reconciled_into_transaction_id: insertedTx.id })
         .eq("user_id", user.id)
         .eq("id", manualTx.id);
+
+      // The manual row may already be the payment of a recurring occurrence
+      // ("Confirmar pago" before the bank email arrived). Carry that link to
+      // the surviving email row so the occurrence points at a visible tx.
+      await carryRecurringLinkToSurvivor({
+        supabase,
+        userId: user.id,
+        supersededId: manualTx.id,
+        survivorId: insertedTx.id,
+        recurrenceGroupId: manualTx.recurrence_group_id,
+      });
     }
+  }
+
+  // A category chosen in the queue teaches the same rule as categorizing the
+  // transaction afterwards would, so the next email from this merchant arrives
+  // already categorized — but only when that category actually survived the
+  // reconcile merge; teaching a rejected category would misfile every future
+  // email from the merchant.
+  if (insertedTx && userCategoryId && finalCategoryId === userCategoryId) {
+    await learnCategoryFromApproval({
+      supabase,
+      userId: user.id,
+      categoryId: userCategoryId,
+      merchantName,
+      cleanDescription,
+      rawDescription,
+      destinatarioId,
+    });
   }
 
   // Update account balance — skip when reconciling (manual tx already counted it)
@@ -876,13 +1030,422 @@ export async function approveEmailTransaction(
     .from("pending_email_transactions")
     .update({ status: "imported" })
     .eq("id", pendingId)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .eq("status", "pending");
 
   if (updateError) return { success: false, error: updateError.message };
 
   revalidateFinancialViews();
   updateTag("email-ingest");
+  if (userTagIds.length > 0) updateTag("tags");
   return { success: true, data: null };
+}
+
+/**
+ * Attach the tags picked in the queue to a transaction. `tag_ids` on the
+ * pending row has no FK, so a tag deleted between queueing and approval is
+ * dropped by the shared helper instead of failing the whole batch;
+ * already-attached pairs are ignored (PK on transaction_id + tag_id).
+ */
+async function attachQueueTags(
+  supabase: AuthenticatedSupabase,
+  userId: string,
+  transactionId: string,
+  tagIds: string[],
+): Promise<void> {
+  const result = await attachTagsToTransactions(supabase, userId, [transactionId], tagIds);
+  if (result.error) {
+    console.error("[approveEmailTransaction] tag upsert failed:", result.error);
+  }
+}
+
+async function learnCategoryFromApproval(params: {
+  supabase: AuthenticatedSupabase;
+  userId: string;
+  categoryId: string;
+  merchantName: string | null;
+  cleanDescription: string | null;
+  rawDescription: string | null;
+  destinatarioId: string | null;
+}): Promise<void> {
+  const { supabase, userId, categoryId, destinatarioId } = params;
+  const pattern = extractPattern(
+    params.merchantName,
+    params.cleanDescription,
+    params.rawDescription,
+  );
+
+  if (pattern) {
+    const { error } = await supabase.from("category_rules").upsert(
+      { user_id: userId, pattern, category_id: categoryId, match_count: 1 },
+      { onConflict: "user_id,pattern" },
+    );
+    if (error) console.error("[approveEmailTransaction] rule upsert failed:", error.message);
+  }
+
+  if (destinatarioId) {
+    await supabase
+      .from("destinatarios")
+      .update({ default_category_id: categoryId })
+      .eq("user_id", userId)
+      .eq("id", destinatarioId)
+      .is("default_category_id", null);
+    updateTag("destinatarios");
+  }
+}
+
+const pendingEnrichmentSchema = z.object({
+  categoryId: uuidStr("Categoría inválida").nullable().optional(),
+  tagIds: z.array(uuidStr("Etiqueta inválida")).max(20, "Máximo 20 etiquetas").optional(),
+  notes: z.string().trim().max(500, "La nota es muy larga").nullable().optional(),
+});
+
+export type PendingEmailEnrichment = z.infer<typeof pendingEnrichmentSchema>;
+
+/**
+ * Save category / tags / notes on a queued email transaction so they apply
+ * when it's imported. Only touches rows still `pending` — an imported or
+ * dismissed row is no longer editable.
+ */
+export async function updatePendingEmailTransaction(
+  pendingId: string,
+  patch: PendingEmailEnrichment,
+): Promise<ActionResult<null>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  if (!uuidStr().safeParse(pendingId).success) {
+    return { success: false, error: "Transacción pendiente inválida" };
+  }
+  const parsed = pendingEnrichmentSchema.safeParse(patch);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0].message };
+  }
+  const { categoryId, tagIds, notes } = parsed.data;
+
+  const update: {
+    category_id?: string | null;
+    tag_ids?: string[];
+    notes?: string | null;
+  } = {};
+
+  if (categoryId !== undefined) {
+    if (categoryId) {
+      const { data: category } = await supabase
+        .from("categories")
+        .select("id")
+        .eq("id", categoryId)
+        .or(`user_id.eq.${user.id},user_id.is.null`)
+        .maybeSingle();
+      if (!category) return { success: false, error: "Categoría no encontrada" };
+    }
+    update.category_id = categoryId;
+  }
+
+  if (tagIds !== undefined) {
+    const uniqueTagIds = [...new Set(tagIds)];
+    if (uniqueTagIds.length > 0) {
+      const { count } = await supabase
+        .from("tags")
+        .select("id", { count: "exact", head: true })
+        .in("id", uniqueTagIds)
+        .or(`user_id.eq.${user.id},user_id.is.null`);
+      if ((count ?? 0) !== uniqueTagIds.length) {
+        return { success: false, error: "Etiqueta no encontrada" };
+      }
+    }
+    update.tag_ids = uniqueTagIds;
+  }
+
+  if (notes !== undefined) {
+    update.notes = notes ? notes : null;
+  }
+
+  if (Object.keys(update).length === 0) return { success: true, data: null };
+
+  const { data: updated, error } = await supabase
+    .from("pending_email_transactions")
+    .update(update)
+    .eq("id", pendingId)
+    .eq("user_id", user.id)
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle();
+
+  if (error) return { success: false, error: error.message };
+  if (!updated) return { success: false, error: "Transacción pendiente no encontrada" };
+
+  updateTag("email-ingest");
+  return { success: true, data: null };
+}
+
+/**
+ * Ingest-address default for a queued row that carries no account. Only
+ * unmasked alerts may fall back to it: a masked alert nobody matched is a
+ * product the user hasn't registered, and quietly importing it into the
+ * default account is how a new credit card's purchases became savings
+ * spending.
+ */
+async function resolveIngestDefaultAccountId(
+  supabase: AuthenticatedSupabase,
+  userId: string,
+  pending: Pick<PendingEmailTransaction, "email_ingest_id">,
+  parsed: Pick<ParsedEmailTransaction, "card_last4">,
+): Promise<string | null> {
+  if (normalizeAccountMaskSuffix(parsed.card_last4)) return null;
+  const { data: ingestAddress } = await supabase
+    .from("email_ingest_addresses")
+    .select("account_id")
+    .eq("id", pending.email_ingest_id)
+    .eq("user_id", userId)
+    .single();
+  return ingestAddress?.account_id ?? null;
+}
+
+// ─── Unrecognized products (new cards / accounts) ────────────────────────────
+
+const emailProductSchema = z.object({
+  cardType: z.enum(["T.Deb", "T.Cred", "Cta", "producto"]),
+  last4: z
+    .string()
+    .transform((value) => normalizeAccountMaskSuffix(value) ?? "")
+    .pipe(z.string().regex(/^\d{1,4}$/, "Máscara inválida")),
+});
+
+/** The product an alert names: which kind of card/account and its last four. */
+export type EmailProductRef = z.input<typeof emailProductSchema>;
+
+const createEmailProductAccountSchema = z.object({
+  name: z.string().trim().min(1, "El nombre es requerido").max(100, "El nombre es muy largo"),
+  accountType: z.enum(["CREDIT_CARD", "SAVINGS", "CHECKING"]),
+  currencyCode: accountSchema.shape.currency_code,
+});
+
+export type CreateEmailProductAccountInput = z.input<typeof createEmailProductAccountSchema>;
+
+export type EmailProductResolution = {
+  account: Account;
+  /** Queued rows from the same product, now suggested into `account`. */
+  pendingIds: string[];
+  /** The account is in place but the queue could not be re-suggested. */
+  warning?: string;
+};
+
+const PENDING_REASSIGN_CHUNK = 100;
+
+function stripAccountSecrets(account: Tables<"accounts">): Account {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- dropped on purpose
+  const { pdf_password, ...rest } = account;
+  return rest;
+}
+
+/**
+ * Point every queued alert from this product at `accountId`, so registering
+ * a card once resolves the whole backlog and every surface (web inbox,
+ * mobile panel, attention items) sees the same suggestion after refresh.
+ */
+async function reassignPendingRowsForProduct(
+  supabase: AuthenticatedSupabase,
+  userId: string,
+  product: z.output<typeof emailProductSchema>,
+  accountId: string,
+): Promise<{ pendingIds: string[]; warning?: string }> {
+  const warning = "La cola de correos no se pudo actualizar; recarga para verla al día.";
+  const { data: rows, error } = await supabase
+    .from("pending_email_transactions")
+    .select("id, parsed_data")
+    .eq("user_id", userId)
+    .eq("status", "pending");
+  if (error) {
+    console.error("[email-ingest] pending lookup for product failed:", error.message);
+    return { pendingIds: [], warning };
+  }
+
+  const kind = emailProductKind(product.cardType);
+  const ids = (rows ?? [])
+    .filter((row) => {
+      const parsed = row.parsed_data as unknown as ParsedEmailTransaction | null;
+      return (
+        !!parsed &&
+        emailProductKind(parsed.card_type) === kind &&
+        accountMaskSuffixMatches(parsed.card_last4, product.last4)
+      );
+    })
+    .map((row) => row.id);
+
+  // Chunked: the id list travels in the PostgREST query string.
+  for (let i = 0; i < ids.length; i += PENDING_REASSIGN_CHUNK) {
+    const chunk = ids.slice(i, i + PENDING_REASSIGN_CHUNK);
+    const { error: updateError } = await supabase
+      .from("pending_email_transactions")
+      .update({ suggested_account_id: accountId })
+      .in("id", chunk)
+      .eq("user_id", userId);
+    if (updateError) {
+      console.error("[email-ingest] pending reassignment failed:", updateError.message);
+      return { pendingIds: ids.slice(0, i), warning };
+    }
+  }
+  return { pendingIds: ids };
+}
+
+function revalidateAfterProductResolution() {
+  updateTag("accounts");
+  updateTag("dashboard:accounts");
+  updateTag("dashboard:hero");
+  updateTag("debt");
+  updateTag("attention");
+  updateTag("email-ingest");
+}
+
+/**
+ * Attach the product an alert names (debit card, credit card, account
+ * number) to an existing account, and re-suggest every queued alert from
+ * it. The "esta tarjeta ya es de una cuenta que tengo" answer to the
+ * "producto no registrado" prompt.
+ */
+export async function linkEmailProductToAccount(
+  product: EmailProductRef,
+  accountId: string,
+): Promise<ActionResult<EmailProductResolution>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  if (!uuidStr().safeParse(accountId).success) {
+    return { success: false, error: "Cuenta inválida" };
+  }
+  const parsedProduct = emailProductSchema.safeParse(product);
+  if (!parsedProduct.success) {
+    return { success: false, error: parsedProduct.error.issues[0].message };
+  }
+  const ref = parsedProduct.data;
+
+  const { data: account, error: accountError } = await supabase
+    .from("accounts")
+    .select("*")
+    .eq("id", accountId)
+    .eq("user_id", user.id)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (accountError) return { success: false, error: accountError.message };
+  if (!account) return { success: false, error: "Cuenta no encontrada" };
+
+  if (!accountFitsEmailProduct(account.account_type, ref.cardType)) {
+    return {
+      success: false,
+      error: `${describeEmailProduct({ card_type: ref.cardType, card_last4: ref.last4 })} no puede asociarse a esta cuenta`,
+    };
+  }
+
+  let current: Tables<"accounts"> = account;
+  const learned = emailProductMaskToLearn({
+    account,
+    cardType: ref.cardType,
+    last4: ref.last4,
+    explicit: true,
+  });
+  // An account number never overwrites a different one (that's another
+  // account, and the mask is what PDF statements match on). Say so instead
+  // of "succeeding" with nothing learned — the next alert would just ask again.
+  if (!learned && !accountCarriesEmailProduct(account, ref.cardType, ref.last4)) {
+    const known = normalizeAccountMaskSuffix(account.mask);
+    return {
+      success: false,
+      error: `${account.name} ya tiene registrado el número *${known}. Crea una cuenta nueva para *${ref.last4}.`,
+    };
+  }
+  if (learned) {
+    const { data: updated, error: updateError } = await supabase
+      .from("accounts")
+      .update({ [learned.column]: learned.value })
+      .eq("id", accountId)
+      .eq("user_id", user.id)
+      .select("*")
+      .single();
+    if (updateError) return { success: false, error: updateError.message };
+    current = updated;
+  }
+
+  const reassigned = await reassignPendingRowsForProduct(supabase, user.id, ref, accountId);
+  revalidateAfterProductResolution();
+  return { success: true, data: { account: stripAccountSecrets(current), ...reassigned } };
+}
+
+/**
+ * Create the account for a product no account knows — a brand-new credit
+ * card, most often — with just a name and currency. Limit, cutoff, payment
+ * day and rate stay empty on purpose: the next PDF statement imported for
+ * this card fills them (`importTransactions` updates account metadata).
+ */
+export async function createAccountForEmailProduct(
+  product: EmailProductRef,
+  input: CreateEmailProductAccountInput,
+): Promise<ActionResult<EmailProductResolution>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const parsedProduct = emailProductSchema.safeParse(product);
+  if (!parsedProduct.success) {
+    return { success: false, error: parsedProduct.error.issues[0].message };
+  }
+  const parsedInput = createEmailProductAccountSchema.safeParse(input);
+  if (!parsedInput.success) {
+    return { success: false, error: parsedInput.error.issues[0].message };
+  }
+  const ref = parsedProduct.data;
+  const { name, accountType, currencyCode } = parsedInput.data;
+
+  if (!accountFitsEmailProduct(accountType, ref.cardType)) {
+    return {
+      success: false,
+      error: `${describeEmailProduct({ card_type: ref.cardType, card_last4: ref.last4 })} no corresponde a ese tipo de cuenta`,
+    };
+  }
+
+  // A retry or a second tab must not mint a twin: two accounts carrying the
+  // same mask make every later alert from it ambiguous (unsuggestable).
+  const { data: existing, error: existingError } = await supabase
+    .from("accounts")
+    .select("id, name, mask, debit_card_mask, account_type")
+    .eq("user_id", user.id)
+    .eq("is_active", true);
+  if (existingError) return { success: false, error: existingError.message };
+  const twin = (existing ?? []).find((a) =>
+    accountCarriesEmailProduct(a, ref.cardType, ref.last4),
+  );
+  if (twin) {
+    return {
+      success: false,
+      error: `${twin.name} ya tiene registrado *${ref.last4}. Asóciala en vez de crear otra.`,
+    };
+  }
+
+  const maskColumns =
+    emailProductKind(ref.cardType) === "debit_card"
+      ? { debit_card_mask: ref.last4 }
+      : { mask: ref.last4 };
+
+  const { data: created, error: insertError } = await supabase
+    .from("accounts")
+    .insert({
+      user_id: user.id,
+      name,
+      account_type: accountType,
+      institution_name: "Bancolombia",
+      bank_key: "bancolombia",
+      currency_code: currencyCode,
+      current_balance: 0,
+      show_in_dashboard: true,
+      display_order: (existing?.length ?? 0) + 1,
+      ...maskColumns,
+    })
+    .select("*")
+    .single();
+  if (insertError) return { success: false, error: insertError.message };
+
+  const reassigned = await reassignPendingRowsForProduct(supabase, user.id, ref, created.id);
+  revalidateAfterProductResolution();
+  return { success: true, data: { account: stripAccountSecrets(created), ...reassigned } };
 }
 
 export type ReconciliationCandidatePreview = {
@@ -922,75 +1485,39 @@ export async function checkEmailReconciliation(
 
   let accountId = overrideAccountId ?? pending.suggested_account_id;
   if (!accountId) {
-    const { data: ingestAddress } = await supabase
-      .from("email_ingest_addresses")
-      .select("account_id")
-      .eq("id", pending.email_ingest_id)
-      .eq("user_id", user.id)
-      .single();
-    accountId = ingestAddress?.account_id ?? null;
+    accountId = await resolveIngestDefaultAccountId(supabase, user.id, pending, parsed);
   }
 
   if (!accountId) return { success: true, data: null };
 
-  // ±3 days to match scoring tolerance in scoreReconciliationCandidate
-  const txDate = new Date(parsed.transaction_date);
-  const fromDate = new Date(txDate);
-  fromDate.setDate(fromDate.getDate() - 3);
-  const toDate = new Date(txDate);
-  toDate.setDate(toDate.getDate() + 3);
-  const from = toISODateString(fromDate);
-  const to = toISODateString(toDate);
-
-  // Fetch existing transactions that could be duplicates (any capture method)
-  const { data: candidates, error: candError } = await supabase
-    .from("transactions")
-    .select(
-      "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method"
-    )
-    .eq("account_id", accountId)
-    .eq("user_id", user.id)
-    .gte("transaction_date", from)
-    .lte("transaction_date", to)
-    .is("reconciled_into_transaction_id", null);
-
-  if (candError) return { success: false, error: candError.message };
-  if (!candidates || candidates.length === 0) return { success: true, data: null };
-
-  const importTx = {
-    account_id: accountId,
-    amount: parsed.amount,
-    direction: parsed.direction,
-    transaction_date: parsed.transaction_date,
-    raw_description: parsed.raw_line,
-  };
-
-  const result = findReconciliationCandidates(
-    importTx,
-    candidates as ReconciliationCandidate[]
-  );
-
-  if (!result.bestMatch || result.bestMatch.decision === "NO_MATCH") {
-    return { success: true, data: null };
+  let duplicate: Awaited<ReturnType<typeof findEmailDuplicateCandidate>>;
+  try {
+    duplicate = await findEmailDuplicateCandidate({
+      client: supabase,
+      userId: user.id,
+      accountId,
+      parsed,
+    });
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Error" };
   }
+  if (!duplicate) return { success: true, data: null };
 
-  const matched = candidates.find((c) => c.id === result.bestMatch!.candidateId);
-  if (!matched) return { success: true, data: null };
-
+  const { candidate, match } = duplicate;
   return {
     success: true,
     data: {
       candidate: {
-        id: matched.id,
-        raw_description: matched.raw_description,
-        merchant_name: matched.merchant_name,
-        transaction_date: matched.transaction_date,
-        amount: matched.amount,
-        direction: matched.direction,
-        category_id: matched.category_id,
-        score: result.bestMatch.score,
+        id: candidate.id,
+        raw_description: candidate.raw_description,
+        merchant_name: candidate.merchant_name,
+        transaction_date: candidate.transaction_date,
+        amount: candidate.amount,
+        direction: candidate.direction,
+        category_id: candidate.category_id,
+        score: match.score,
       },
-      decision: result.bestMatch.decision as "AUTO_MERGE" | "REVIEW",
+      decision: match.decision as "AUTO_MERGE" | "REVIEW",
     },
   };
 }

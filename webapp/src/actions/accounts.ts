@@ -598,12 +598,18 @@ const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export async function registerPayment(
   accountId: string,
-  input: { amount: number; sourceAccountId?: string; notes?: string; date?: string }
+  input: {
+    amount: number;
+    sourceAccountId?: string;
+    notes?: string;
+    /** Calendar day of the payment (YYYY-MM-DD). Defaults to today in Colombia. */
+    date?: string;
+  }
 ): Promise<ActionResult<null>> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
-  if (input.date && !ISO_DATE_RE.test(input.date)) {
+  if (input.date !== undefined && !ISO_DATE_RE.test(input.date)) {
     return { success: false, error: "Fecha inválida" };
   }
 
@@ -620,9 +626,8 @@ export async function registerPayment(
   const isDebt = isDebtAccountType(account.account_type);
   const now = new Date().toISOString();
   // Colombia is UTC-5: slicing the ISO string books anything after ~19:00 COT
-  // on tomorrow's date. `input.date` lets the user back-date a payment they
-  // made earlier — without it they had to save, then hand-edit both transfer
-  // legs on /transactions.
+  // on tomorrow's date. The user can back-date a payment made earlier (#388)
+  // instead of editing both legs afterwards.
   const transactionDate = input.date ?? toColombiaDateString(new Date());
 
   // Paying from one of your own accounts moves money between two accounts —

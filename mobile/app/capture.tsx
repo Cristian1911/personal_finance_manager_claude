@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -28,8 +28,12 @@ import {
   autoCategorize,
   CATEGORY_INGRESOS,
   CATEGORY_OTROS_INGRESOS,
+  COLOMBIA_TIMEZONE,
+  convertWallTime,
   formatCurrency,
   formatDate,
+  formatWallTime,
+  localWallTimeToColombia,
   type CurrencyCode,
   type TransactionDirection,
 } from "@zeta/shared";
@@ -51,7 +55,7 @@ import {
 } from "../lib/repositories/transactions";
 import { findAndLinkLocalOccurrence } from "../lib/repositories/recurring";
 import { trackProductEvent } from "../lib/analytics/product-events";
-import { getLocalProfile } from "../lib/profile";
+import { getLocalProfile, getPreferredCurrency } from "../lib/profile";
 import {
   LOCATION_FEATURE_ENABLED,
   captureCurrentLocation,
@@ -63,7 +67,10 @@ import {
 } from "../lib/repositories/destinatarios";
 import { DestinatarioPicker } from "../components/transactions/DestinatarioPicker";
 import { createRecurringTemplate } from "../lib/repositories/recurring";
-import { toLocalDateString } from "../lib/utils/date";
+import { toColombiaDateString, toColombiaTimeString, toLocalDateString } from "../lib/utils/date";
+import { useTravelContext } from "../lib/travel-context";
+import { ConversionHint } from "../components/transactions/ConversionHint";
+import { TimeShiftHint, type TimeEntryZone } from "../components/transactions/TimeShiftHint";
 import {
   BRASS_BUTTON_CLASS,
   PANEL_INSET_CLASS,
@@ -231,8 +238,18 @@ export default function CaptureScreen() {
   const [type, setType] = useState<TxType>("expense");
   const [accountId, setAccountId] = useState("");
   const [amountInput, setAmountInput] = useState("");
-  const [transactionDate, setTransactionDate] = useState(toLocalDateString());
-  const [transactionTime, setTransactionTime] = useState<string | null>(null);
+  // Records are stored in the Colombian clock (see lib/utils/date.ts), so the
+  // defaults are Colombia's "now" — not the phone's, which drifts abroad.
+  const [transactionDate, setTransactionDate] = useState(toColombiaDateString());
+  const [transactionTime, setTransactionTime] = useState<string | null>(toColombiaTimeString());
+  // Which clock the date picker is showing. Abroad, the receipt and the phone
+  // both read local time, so entry flips to "local" and handleSave converts
+  // to the Colombian clock on the way out. `clockTouchedRef` keeps a late
+  // travel-context resolution from stomping a time the user already set.
+  const [entryZone, setEntryZone] = useState<TimeEntryZone>("colombia");
+  const clockTouchedRef = useRef(false);
+  const travel = useTravelContext();
+  const [baseCurrency, setBaseCurrency] = useState<CurrencyCode>("COP");
   const [description, setDescription] = useState("");
   const [notes, setNotes] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
@@ -256,14 +273,17 @@ export default function CaptureScreen() {
             destinatarioRows,
             explicitDefault,
             lastUsed,
+            preferredCurrency,
           ] = await Promise.all([
             getAllAccounts(),
             getAllCategories(),
             getAllDestinatarios(),
             SecureStore.getItemAsync(EXPLICIT_DEFAULT_ACCOUNT_KEY),
             SecureStore.getItemAsync(DEFAULT_ACCOUNT_KEY),
+            getPreferredCurrency().catch(() => "COP" as CurrencyCode),
           ]);
           if (!active) return;
+          setBaseCurrency(preferredCurrency);
           setAccounts(accountRows);
           setCategories(categoryRows);
           setDestinatarios(destinatarioRows);
@@ -284,6 +304,47 @@ export default function CaptureScreen() {
       };
     }, [])
   );
+
+  // Abroad → default the picker to the phone's local clock (what the receipt
+  // shows). Runs once when the travel context resolves; a clock the user
+  // already touched is left alone.
+  useEffect(() => {
+    if (!travel?.isAbroad || !travel.timeZone || clockTouchedRef.current) return;
+    if (entryZone === "local") return;
+    const local = formatWallTime(new Date(), travel.timeZone);
+    setTransactionDate(local.date);
+    setTransactionTime(`${local.time}:00`);
+    setEntryZone("local");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [travel]);
+
+  function handleEntryZoneChange(zone: TimeEntryZone) {
+    if (zone === entryZone) return;
+    clockTouchedRef.current = true;
+    if (transactionTime && travel?.timeZone) {
+      // Keep the same instant, re-expressed in the other clock.
+      const converted = convertWallTime({
+        date: transactionDate,
+        time: transactionTime,
+        fromTimeZone: entryZone === "local" ? travel.timeZone : COLOMBIA_TIMEZONE,
+        toTimeZone: zone === "local" ? travel.timeZone : COLOMBIA_TIMEZONE,
+      });
+      if (converted) {
+        setTransactionDate(converted.date);
+        setTransactionTime(`${converted.time}:00`);
+      }
+    }
+    setEntryZone(zone);
+  }
+
+  /** The Colombian date/time that will be stored, whatever clock the picker shows. */
+  function resolveStoredClock(): { date: string; time: string | null } {
+    if (entryZone === "local" && transactionTime && travel?.timeZone) {
+      const converted = localWallTimeToColombia(transactionDate, transactionTime, travel.timeZone);
+      if (converted) return { date: converted.date, time: `${converted.time}:00` };
+    }
+    return { date: transactionDate, time: transactionTime };
+  }
 
   const selectedAccount = useMemo(
     () => accounts.find((account) => account.id === accountId) ?? null,
@@ -369,6 +430,8 @@ export default function CaptureScreen() {
     setSaving(true);
     try {
       const trimmedDescription = description.trim();
+      // Everything below persists the Colombian clock, never the picker's.
+      const { date: storedDate, time: storedTime } = resolveStoredClock();
 
       const createParams: CreateTransactionParams = {
         user_id: session.user.id,
@@ -376,8 +439,8 @@ export default function CaptureScreen() {
         amount: parsedAmount,
         currency_code: currencyCode,
         direction,
-        transaction_date: transactionDate,
-        transaction_time: transactionTime,
+        transaction_date: storedDate,
+        transaction_time: storedTime,
         description: trimmedDescription,
         merchant_name: trimmedDescription,
         raw_description: trimmedDescription,
@@ -418,8 +481,8 @@ export default function CaptureScreen() {
           await linkNearestPingToTransaction({
             userId: session.user.id,
             transactionId: newTxId,
-            date: transactionDate,
-            time: transactionTime,
+            date: storedDate,
+            time: storedTime,
           });
         }
       } catch (err) {
@@ -442,7 +505,7 @@ export default function CaptureScreen() {
           );
         } else {
           try {
-            const dayOfMonth = Number(transactionDate.slice(8, 10)) || 1;
+            const dayOfMonth = Number(storedDate.slice(8, 10)) || 1;
             await createRecurringTemplate({
               user_id: session.user.id,
               account_id: accountId,
@@ -450,7 +513,7 @@ export default function CaptureScreen() {
               currency_code: currencyCode,
               direction,
               frequency: "MONTHLY",
-              start_date: transactionDate,
+              start_date: storedDate,
               day_of_month: dayOfMonth,
               merchant_name: trimmedDescription,
               description: trimmedDescription,
@@ -555,6 +618,19 @@ export default function CaptureScreen() {
               {amountPlaceholder ? ` · ${amountPlaceholder}` : ""}
             </Text>
           )}
+          {/* Foreign-currency account → home currency, plus the currency of
+              where the phone is (a USD card used in Argentina shows COP and
+              ARS). Nothing renders for a COP account at home. */}
+          {hasValidAmount && (
+            <View className="mt-1.5">
+              <ConversionHint
+                amount={parsedAmount}
+                currency={currencyCode}
+                baseCurrency={baseCurrency}
+                localCurrency={travel?.localCurrency}
+              />
+            </View>
+          )}
         </View>
 
         {/* Description */}
@@ -639,6 +715,11 @@ export default function CaptureScreen() {
                 {transactionTime
                   ? `${formatDate(transactionDate, "dd MMM yyyy")} · ${transactionTime.slice(0, 5)}`
                   : formatDate(transactionDate, "dd MMM yyyy")}
+                {travel?.isAbroad && transactionTime
+                  ? entryZone === "local"
+                    ? " · hora local"
+                    : " · hora Colombia"
+                  : ""}
               </Text>
             </View>
             <ChevronDown
@@ -649,7 +730,8 @@ export default function CaptureScreen() {
           </Pressable>
           {showDatePicker && (
             <DateTimePicker
-              value={new Date(`${transactionDate}T${transactionTime ?? "12:00"}:00`)}
+              // Stored time is HH:mm:ss; slice to HH:mm so the literal parses.
+              value={new Date(`${transactionDate}T${transactionTime?.slice(0, 5) ?? "12:00"}:00`)}
               mode="datetime"
               display={Platform.OS === "ios" ? "inline" : "default"}
               maximumDate={new Date()}
@@ -658,6 +740,7 @@ export default function CaptureScreen() {
               onChange={(_event, selected) => {
                 setShowDatePicker(false);
                 if (selected) {
+                  clockTouchedRef.current = true;
                   setTransactionDate(toLocalDateString(selected));
                   const hh = String(selected.getHours()).padStart(2, "0");
                   const mm = String(selected.getMinutes()).padStart(2, "0");
@@ -668,6 +751,13 @@ export default function CaptureScreen() {
               }}
             />
           )}
+          <TimeShiftHint
+            travel={travel}
+            date={transactionDate}
+            time={transactionTime}
+            entryZone={entryZone}
+            onEntryZoneChange={handleEntryZoneChange}
+          />
         </View>
 
         {/* is_subscription */}

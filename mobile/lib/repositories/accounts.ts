@@ -40,6 +40,9 @@ export type AccountRow = {
   show_in_dashboard: number;
   card_brand: string | null;
   debit_card_mask: string | null;
+  /** Account/card last-4 (synced since schema v28); what PDF statements and
+   * credit-card / account-number email alerts match on. */
+  mask: string | null;
   is_payroll_deducted: number;
   created_at: string;
   updated_at: string;
