@@ -191,7 +191,9 @@ export function PaymentActionSheet({
                 // height-capped sheet and the grid pushes the CTA off-screen.
                 display={Platform.OS === "ios" ? "spinner" : "default"}
                 locale="es-CO"
-                maximumDate={new Date()}
+                // Colombia's today, not the device's: a phone in Europe is
+                // hours ahead and could otherwise date a payment in the future.
+                maximumDate={new Date(`${toColombiaDateString(new Date())}T12:00:00`)}
                 themeVariant="dark"
                 accentColor={COLORS.brass}
                 onChange={(_event, selected) => {
