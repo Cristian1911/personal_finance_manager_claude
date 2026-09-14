@@ -36,6 +36,12 @@ import {
 } from "@/lib/email-ingest/duplicate-check";
 import { normalizeEmailTime } from "@/lib/email-ingest/time";
 import {
+  processedQueueResult,
+  toProcessedQueueStatus,
+  type EmailQueueActionResult,
+  type ProcessedQueueStatus,
+} from "@/lib/email-ingest/queue-status";
+import {
   accountMaskSuffixMatches,
   normalizeAccountMaskSuffix,
 } from "@/lib/utils/account-mask";
@@ -712,23 +718,23 @@ export async function approveEmailTransaction(
   pendingId: string,
   overrideAccountId?: string,
   reconcileWithTransactionId?: string
-): Promise<ActionResult<null>> {
+): Promise<EmailQueueActionResult> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
-  // Fetch the pending transaction — only rows still in the queue. A row
-  // already imported or dismissed must not be replayed (bulk approve used to
-  // resubmit processed ids and ride the duplicate branch).
+  // Fetch the pending transaction. A row already imported or dismissed must
+  // not be replayed (bulk approve used to resubmit processed ids and ride the
+  // duplicate branch) — say which, so a stale surface can tell the user.
   const { data: pending, error: fetchError } = await supabase
     .from("pending_email_transactions")
     .select("*")
     .eq("id", pendingId)
     .eq("user_id", user.id)
-    .eq("status", "pending")
     .maybeSingle();
 
   if (fetchError) return { success: false, error: fetchError.message };
   if (!pending) return { success: false, error: "Transacción pendiente no encontrada" };
+  if (pending.status !== "pending") return processedQueueResult(pending.status);
 
   const parsed = pending.parsed_data as unknown as ParsedEmailTransaction;
 
@@ -1459,15 +1465,29 @@ export type ReconciliationCandidatePreview = {
   score: number;
 };
 
+/**
+ * What importing a queued row would run into:
+ * - `review`: an existing transaction looks like the same movement — the user
+ *   decides between merging and importing as new.
+ * - `processed`: the row is no longer pending (imported or dismissed from
+ *   another tab, a bulk run or a webhook) — nothing left to import.
+ * - `null`: import right away. This includes a transaction that already
+ *   carries the row's own idempotency key: that is this very alert already
+ *   landed (an import racing this check), never a "posible duplicado" to
+ *   decide — `approveEmailTransaction` retires the row as a certain duplicate.
+ */
+export type EmailReconciliationCheck =
+  | {
+      kind: "review";
+      candidate: ReconciliationCandidatePreview;
+      decision: "AUTO_MERGE" | "REVIEW";
+    }
+  | { kind: "processed"; status: ProcessedQueueStatus };
+
 export async function checkEmailReconciliation(
   pendingId: string,
   overrideAccountId?: string
-): Promise<
-  ActionResult<{
-    candidate: ReconciliationCandidatePreview;
-    decision: "AUTO_MERGE" | "REVIEW";
-  } | null>
-> {
+): Promise<ActionResult<EmailReconciliationCheck | null>> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
@@ -1476,10 +1496,16 @@ export async function checkEmailReconciliation(
     .select("*")
     .eq("id", pendingId)
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle();
 
   if (fetchError) return { success: false, error: fetchError.message };
-  if (!pending) return { success: false, error: "No encontrada" };
+  if (!pending) return { success: false, error: "Transacción pendiente no encontrada" };
+  if (pending.status !== "pending") {
+    return {
+      success: true,
+      data: { kind: "processed", status: toProcessedQueueStatus(pending.status) },
+    };
+  }
 
   const parsed = pending.parsed_data as unknown as ParsedEmailTransaction;
 
@@ -1492,6 +1518,17 @@ export async function checkEmailReconciliation(
 
   let duplicate: Awaited<ReturnType<typeof findEmailDuplicateCandidate>>;
   try {
+    // Exact key first, same policy as the webhook: the alert itself already
+    // imported is a silent skip, not a prompt — the fuzzy scorer would offer
+    // the row's own import as a "posible duplicado".
+    if (pending.idempotency_key) {
+      const landedId = await findTransactionByIdempotencyKey({
+        client: supabase,
+        userId: user.id,
+        idempotencyKey: pending.idempotency_key,
+      });
+      if (landedId) return { success: true, data: null };
+    }
     duplicate = await findEmailDuplicateCandidate({
       client: supabase,
       userId: user.id,
@@ -1507,6 +1544,7 @@ export async function checkEmailReconciliation(
   return {
     success: true,
     data: {
+      kind: "review",
       candidate: {
         id: candidate.id,
         raw_description: candidate.raw_description,
@@ -1524,15 +1562,29 @@ export async function checkEmailReconciliation(
 
 export async function dismissEmailTransaction(
   pendingId: string
-): Promise<ActionResult<null>> {
+): Promise<EmailQueueActionResult> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
+
+  // Same guard as approve: a stale surface must not relabel a row that
+  // already left the queue (an imported alert must not read as dismissed).
+  const { data: pending, error: fetchError } = await supabase
+    .from("pending_email_transactions")
+    .select("status")
+    .eq("id", pendingId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (fetchError) return { success: false, error: fetchError.message };
+  if (!pending) return { success: false, error: "Transacción pendiente no encontrada" };
+  if (pending.status !== "pending") return processedQueueResult(pending.status);
 
   const { error } = await supabase
     .from("pending_email_transactions")
     .update({ status: "dismissed" })
     .eq("id", pendingId)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .eq("status", "pending");
 
   if (error) return { success: false, error: error.message };
 

@@ -134,7 +134,7 @@ export function PendingEmailTransactions({
   }, []);
 
   const {
-    busyId,
+    busyIds,
     bulkLoading,
     isPending,
     reconMatch,
@@ -210,7 +210,7 @@ export function PendingEmailTransactions({
                 size="sm"
                 className={cn(CONFIRM_BUTTON_CLASS, "h-7 gap-1.5 text-xs font-medium")}
                 onClick={handleBulkApprove}
-                disabled={bulkLoading}
+                disabled={bulkLoading || busyIds.size > 0}
               >
                 {bulkLoading ? (
                   <Loader2 className="size-3.5 animate-spin" />
@@ -230,7 +230,7 @@ export function PendingEmailTransactions({
             const merchant =
               parsed.merchant ?? parsed.destination ?? "Transacción";
             const isInflow = parsed.direction === "INFLOW";
-            const isLoading = busyId === tx.id;
+            const isLoading = busyIds.has(tx.id);
             const pattern = getEmailPatternLabel(parsed.pattern_type);
             const PatternIcon = pattern.icon;
             const account = resolveAccount(tx);
