@@ -256,9 +256,16 @@ export type RegisterPaymentResult =
  * transaction, then updates the target balance (debt → clamp at 0 + recompute
  * available_balance via the shared debt payload; non-debt → +amount). When a
  * source account is given, deducts from it with OUTFLOW semantics — but the
- * source is NOT clamped and its available_balance is NOT recomputed
- * (asymmetric, matching the webapp exactly). The whole mutation is wrapped in
- * one withTransactionAsync so a throw rolls back the tx + both balance writes.
+ * source is NOT clamped and its available_balance is NOT recomputed. The whole
+ * mutation is wrapped in one withTransactionAsync so a throw rolls back the tx
+ * + both balance writes.
+ *
+ * NOT a mirror of the webapp any more when `sourceAccountId` is given: since
+ * PR #371 the webapp delegates that case to `createTransfer` (two legs sharing
+ * a transfer_group_id, transfer/debt-payment category, source leg visible in
+ * history). Mobile still writes one INFLOW + a bare balance UPDATE on the
+ * source, so the same operation produces different rows per platform. See
+ * BACKLOG "Pago con cuenta origen".
  *
  * Idempotency input (matches webapp): provider "MANUAL", transactionDate,
  * amount, rawDescription = the embedded-ISO "Pago/Ingreso" description (the

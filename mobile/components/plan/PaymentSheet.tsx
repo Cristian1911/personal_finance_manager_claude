@@ -321,6 +321,9 @@ export function PaymentSheet({
           templateId: entry.recurring_template_id,
           occurrenceId: occ?.id,
           occurrenceDate: occ?.occurrence_date ?? entry.expected_date,
+          // The occurrence keeps its scheduled date (idempotency is keyed on
+          // it); `paymentDate` only dates the transaction leg(s).
+          paymentDate: date || undefined,
           actualAmount: resolvedAmount,
           sourceAccountId: selectedSourceId || undefined,
         });
@@ -521,48 +524,48 @@ export function PaymentSheet({
                     </View>
                   )}
 
-                  {/* Date — only on the registerPayment branch. A recurring
-                      template pays its occurrence on the occurrence's own date,
-                      so a picker here would be silently ignored. */}
-                  {!entry.recurring_template_id && (
-                    <>
-                      <Text className="text-xs font-inter-semibold text-muted-foreground mb-2 mt-3 uppercase tracking-wider">
-                        Fecha
-                      </Text>
-                      <Pressable
-                        onPress={() => setShowDatePicker((v) => !v)}
-                        accessibilityRole="button"
-                        accessibilityLabel="Seleccionar fecha"
-                        accessibilityState={{ expanded: showDatePicker }}
-                        className={`${PANEL_INSET_CLASS} flex-row items-center justify-between px-3 py-2.5 mb-1`}
-                      >
-                        <Text className="text-sm font-inter-medium text-foreground">
-                          {date ? formatDate(date, "dd MMM yyyy") : "—"}
-                        </Text>
-                        <ChevronDown
-                          size={14}
-                          color={COLORS.sageDark}
-                          style={{ transform: [{ rotate: showDatePicker ? "180deg" : "0deg" }] }}
-                        />
-                      </Pressable>
-                      {showDatePicker && date !== "" && (
-                        <DateTimePicker
-                          // Noon anchor: a bare YYYY-MM-DD parses as UTC midnight.
-                          value={new Date(`${date}T12:00:00`)}
-                          mode="date"
-                          display={Platform.OS === "ios" ? "inline" : "default"}
-                          maximumDate={new Date()}
-                          themeVariant="dark"
-                          accentColor={COLORS.brass}
-                          onChange={(_event, selected) => {
-                            setShowDatePicker(false);
-                            // The picker renders the device calendar — read the
-                            // picked day back in that same zone, not Bogotá's.
-                            if (selected) setDate(toLocalDateString(selected));
-                          }}
-                        />
-                      )}
-                    </>
+                  {/* Date — both branches. `recordRecurringOccurrencePayment`
+                      takes `paymentDate` (the occurrence keeps its own date for
+                      idempotency), same as the webapp's occurrence actions. */}
+                  <Text className="text-xs font-inter-semibold text-muted-foreground mb-2 mt-3 uppercase tracking-wider">
+                    Fecha
+                  </Text>
+                  <Pressable
+                    onPress={() => setShowDatePicker((v) => !v)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Seleccionar fecha"
+                    accessibilityValue={{ text: date ? formatDate(date, "dd MMM yyyy") : "Sin fecha" }}
+                    accessibilityState={{ expanded: showDatePicker }}
+                    className={`${PANEL_INSET_CLASS} flex-row items-center justify-between px-3 py-3 mb-1`}
+                  >
+                    <Text className="text-sm font-inter-medium text-foreground">
+                      {date ? formatDate(date, "dd MMM yyyy") : "—"}
+                    </Text>
+                    <ChevronDown
+                      size={14}
+                      color={COLORS.sageDark}
+                      style={{ transform: [{ rotate: showDatePicker ? "180deg" : "0deg" }] }}
+                    />
+                  </Pressable>
+                  {showDatePicker && date !== "" && (
+                    <DateTimePicker
+                      // Noon anchor: a bare YYYY-MM-DD parses as UTC midnight.
+                      value={new Date(`${date}T12:00:00`)}
+                      mode="date"
+                      // Spinner, not the inline month grid: this lives inside a
+                      // height-capped sheet and the grid pushes the CTA away.
+                      display={Platform.OS === "ios" ? "spinner" : "default"}
+                      locale="es-CO"
+                      maximumDate={new Date()}
+                      themeVariant="dark"
+                      accentColor={COLORS.brass}
+                      onChange={(_event, selected) => {
+                        setShowDatePicker(false);
+                        // The picker renders the device calendar — read the
+                        // picked day back in that same zone, not Bogotá's.
+                        if (selected) setDate(toLocalDateString(selected));
+                      }}
+                    />
                   )}
 
                   {/* Source account */}

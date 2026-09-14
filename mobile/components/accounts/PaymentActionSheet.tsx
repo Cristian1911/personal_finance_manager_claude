@@ -166,6 +166,7 @@ export function PaymentActionSheet({
               onPress={() => setShowDatePicker((v) => !v)}
               accessibilityRole="button"
               accessibilityLabel="Seleccionar fecha"
+              accessibilityValue={{ text: date ? formatDate(date, "dd MMM yyyy") : "Sin fecha" }}
               accessibilityState={{ expanded: showDatePicker }}
               className={`${PANEL_INSET_CLASS} flex-row items-center justify-between px-4 py-3`}
             >
@@ -186,7 +187,10 @@ export function PaymentActionSheet({
                 // Noon anchor: a bare YYYY-MM-DD literal parses as UTC midnight.
                 value={new Date(`${date}T12:00:00`)}
                 mode="date"
-                display={Platform.OS === "ios" ? "inline" : "default"}
+                // Spinner, not the inline month grid: this lives inside a
+                // height-capped sheet and the grid pushes the CTA off-screen.
+                display={Platform.OS === "ios" ? "spinner" : "default"}
+                locale="es-CO"
                 maximumDate={new Date()}
                 themeVariant="dark"
                 accentColor={COLORS.brass}
