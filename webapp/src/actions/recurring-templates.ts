@@ -539,6 +539,8 @@ export async function deleteRecurringTemplate(
   updateTag("occurrences");
   updateTag("dashboard:hero");
   updateTag("attention");
+  // La suscripción vinculada cambia con el borrado; Recurrentes lee esa caché.
+  updateTag("subscriptions");
   return { success: true, data: undefined };
 }
 
