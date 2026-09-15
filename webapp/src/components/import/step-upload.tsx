@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import { NO_PASSWORD_AUTOFILL_PROPS } from "@/lib/constants/forms";
 import { cn } from "@/lib/utils";
+import { CoachMark, useCoachMarkSequence } from "@/components/guided/coach-mark";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -136,6 +137,9 @@ export function StepUpload({
   const [files, setFiles] = useState<File[]>([]);
   const [processingIndex, setProcessingIndex] = useState<number | null>(null);
   const [password, setPassword] = useState("");
+  // Guía de página: dos marcas en secuencia. Sin "1 de 2" porque la segunda
+  // solo existe en la ruta PDF (la de imágenes no tiene campo de clave).
+  const guide = useCoachMarkSequence(["import-upload", "import-password"]);
   const [passwordFromVault, setPasswordFromVault] = useState(false);
   const [savePassword, setSavePassword] = useState(false);
   const [saveAlias, setSaveAlias] = useState("");
@@ -519,6 +523,12 @@ export function StepUpload({
         <p className="text-[10px] italic text-z-sage-dark">PDF · PNG · JPG (varias imágenes)</p>
       </div>
 
+      {guide.active === "import-upload" && (
+        <CoachMark onDismiss={guide.dismiss} pointer="down">
+          Sube el PDF tal como lo manda el banco. Zeta detecta el banco; no tienes que elegirlo.
+        </CoachMark>
+      )}
+
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
@@ -627,6 +637,11 @@ export function StepUpload({
                     El PDF está protegido con contraseña. Ingrésala para procesarlo.
                   </span>
                 </div>
+              )}
+              {guide.active === "import-password" && (
+                <CoachMark onDismiss={guide.dismiss} pointer="down">
+                  Si el PDF pide clave, guárdala con un alias y no la vuelves a escribir.
+                </CoachMark>
               )}
               <div
                 className={cn(
