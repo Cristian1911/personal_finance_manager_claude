@@ -4,6 +4,8 @@ import Link from "next/link";
 import {
   Brain,
   CalendarClock,
+  CalendarRange,
+  ChevronDown,
   Contact,
   FileUp,
   Folder,
@@ -20,11 +22,17 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useNavFocus } from "@/components/providers/nav-focus-provider";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
 
 type Tile = { href: string; icon: LucideIcon; label: string };
 type Group = { title: string; tiles: Tile[] };
 
+// Los grupos siguen la historia de la app: meter el dinero, entenderlo, planificar.
 const CUENTAS_GROUP: Group = {
   title: "Cuentas y saldos",
   tiles: [
@@ -33,35 +41,20 @@ const CUENTAS_GROUP: Group = {
   ],
 };
 
-const ORGANIZAR_GROUP: Group = {
-  title: "Organizar",
+const ENTENDER_GROUP: Group = {
+  title: "Entender",
   tiles: [
-    { href: "/categorizar", icon: List, label: "Categorizar" },
-    { href: "/categories", icon: Folder, label: "Categorías" },
     { href: "/destinatarios", icon: Contact, label: "Destinatarios" },
-    { href: "/etiquetas", icon: Tag, label: "Etiquetas" },
-    { href: "/modos", icon: MapPin, label: "Modos" },
+    { href: "/tendencias", icon: TrendingUp, label: "Tendencias" },
   ],
 };
 
 const PLAN_TILE: Tile = { href: "/plan", icon: PiggyBank, label: "Plan" };
 const DEUDAS_TILE: Tile = { href: "/deudas", icon: Landmark, label: "Deudas" };
-const DEUDAS_PERSONALES_TILE: Tile = {
-  href: "/deudas-personales",
-  icon: Users,
-  label: "Deudas personales",
-};
 const RECURRENTES_TILE: Tile = {
   href: "/plan?tab=recurrentes",
   icon: CalendarClock,
   label: "Recurrentes",
-};
-const DESEOS_TILE: Tile = { href: "/deseos", icon: Heart, label: "Deseos" };
-const PUEDO_PAGAR_TILE: Tile = { href: "/puedo-pagar", icon: Brain, label: "¿Comprarlo?" };
-
-const ANALISIS_GROUP: Group = {
-  title: "Análisis",
-  tiles: [{ href: "/tendencias", icon: TrendingUp, label: "Tendencias" }],
 };
 
 const SISTEMA_GROUP: Group = {
@@ -69,46 +62,71 @@ const SISTEMA_GROUP: Group = {
   tiles: [{ href: "/settings", icon: Settings, label: "Ajustes" }],
 };
 
+// Aparcadas fuera de la nav principal (2026-09-15). Rutas y datos intactos.
+const ADVANCED_TILES: Tile[] = [
+  { href: "/categorizar", icon: List, label: "Categorizar" },
+  { href: "/categories", icon: Folder, label: "Categorías" },
+  { href: "/etiquetas", icon: Tag, label: "Etiquetas" },
+  { href: "/modos", icon: MapPin, label: "Modos" },
+  { href: "/plan?tab=periodo", icon: CalendarRange, label: "Periodo" },
+  { href: "/deseos", icon: Heart, label: "Deseos" },
+  { href: "/puedo-pagar", icon: Brain, label: "¿Comprarlo?" },
+  { href: "/deudas-personales", icon: Users, label: "Deudas personales" },
+];
+
+function TileGrid({ tiles }: { tiles: Tile[] }) {
+  return (
+    <div className="grid grid-cols-3 gap-3 lg:grid-cols-4">
+      {tiles.map(({ href, icon: Icon, label }) => (
+        <Link
+          key={href}
+          href={href}
+          className="flex flex-col items-center gap-2 rounded-2xl border border-white/6 bg-z-surface-2/80 px-3 py-4 transition-colors hover:bg-white/5"
+        >
+          <Icon className="size-5 text-muted-foreground" />
+          <span className="text-xs font-medium">{label}</span>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 export function MobileLinkGrid() {
   const focus = useNavFocus();
 
   // The active third tab lives in the bottom nav — surface the OTHER one in the grid.
-  const planificarTiles: Tile[] = [
-    focus === "DEBT" ? PLAN_TILE : DEUDAS_TILE,
-    DEUDAS_PERSONALES_TILE,
-    RECURRENTES_TILE,
-    DESEOS_TILE,
-    PUEDO_PAGAR_TILE,
-  ];
-  const planificarGroup: Group = { title: "Planificar", tiles: planificarTiles };
+  const planificarGroup: Group = {
+    title: "Planificar",
+    tiles: [RECURRENTES_TILE, focus === "DEBT" ? PLAN_TILE : DEUDAS_TILE],
+  };
 
-  const groups: Group[] = [
-    CUENTAS_GROUP,
-    ANALISIS_GROUP,
-    ORGANIZAR_GROUP,
-    planificarGroup,
-    SISTEMA_GROUP,
-  ];
+  const groups: Group[] = [CUENTAS_GROUP, ENTENDER_GROUP, planificarGroup, SISTEMA_GROUP];
 
   return (
     <div className="space-y-5">
       {groups.map((group) => (
         <section key={group.title} className="space-y-2">
           <h3 className={SECTION_EYEBROW_CLASS}>{group.title}</h3>
-          <div className="grid grid-cols-3 gap-3 lg:grid-cols-4">
-            {group.tiles.map(({ href, icon: Icon, label }) => (
-              <Link
-                key={href}
-                href={href}
-                className="flex flex-col items-center gap-2 rounded-2xl border border-white/6 bg-z-surface-2/80 px-3 py-4 transition-colors hover:bg-white/5"
-              >
-                <Icon className="size-5 text-muted-foreground" />
-                <span className="text-xs font-medium">{label}</span>
-              </Link>
-            ))}
-          </div>
+          <TileGrid tiles={group.tiles} />
         </section>
       ))}
+
+      {/* Cerrada por defecto y sin persistir; si hace falta recordar el estado, localStorage. */}
+      <Collapsible className="space-y-2 border-t border-white/6 pt-3">
+        <CollapsibleTrigger className="group flex w-full items-center justify-between gap-3 py-2 text-left">
+          <span className={SECTION_EYEBROW_CLASS}>Herramientas avanzadas</span>
+          <span className="flex items-center gap-2 text-muted-foreground">
+            <span className="text-[11px] tabular-nums">{ADVANCED_TILES.length}</span>
+            <ChevronDown
+              className="size-4 transition-transform group-data-[state=open]:rotate-180"
+              aria-hidden
+            />
+          </span>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <TileGrid tiles={ADVANCED_TILES} />
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }

@@ -7,21 +7,9 @@ interface PlanMobileZoneProps {
   month: string | undefined;
   currency: CurrencyCode;
   monthLabel: string;
-  periodoSummary: {
-    hasActive: boolean;
-    percentAssigned: number;
-    unassignedCount: number;
-  } | null;
-  wishlistCount: number;
 }
 
-export async function PlanMobileZone({
-  month,
-  currency,
-  monthLabel,
-  periodoSummary,
-  wishlistCount,
-}: PlanMobileZoneProps) {
+export async function PlanMobileZone({ month, currency, monthLabel }: PlanMobileZoneProps) {
   const [planData, timelineData] = await Promise.all([
     getPlanPageData(month, currency),
     getPlanTimelineData(month, currency),
@@ -39,8 +27,6 @@ export async function PlanMobileZone({
       monthLabel={monthLabel}
       dayOfMonth={planDayOfMonth}
       daysInMonth={planDaysInMonth}
-      periodoSummary={periodoSummary}
-      wishlistCount={wishlistCount}
     />
   );
 }

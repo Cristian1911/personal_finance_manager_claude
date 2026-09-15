@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Wallet, CalendarCheck, RefreshCw, Heart } from "lucide-react";
+import { Wallet, RefreshCw } from "lucide-react";
 import { MOBILE_EYEBROW_CLASS, PANEL_INSET_SUBTLE_CLASS } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
 import type { PlanBudgetSummary, PlanRecurringSummary } from "@/types/plan";
@@ -7,8 +7,6 @@ import type { PlanBudgetSummary, PlanRecurringSummary } from "@/types/plan";
 interface PlanDrillCardsProps {
   budget: PlanBudgetSummary;
   recurring: PlanRecurringSummary;
-  periodoSummary: { hasActive: boolean; percentAssigned: number; unassignedCount?: number } | null;
-  wishlistCount: number;
 }
 
 interface DrillChipProps {
@@ -34,29 +32,13 @@ function DrillChip({ label, href, icon: Icon, caption }: DrillChipProps) {
   );
 }
 
-export function PlanDrillCards({
-  budget,
-  recurring,
-  periodoSummary,
-  wishlistCount,
-}: PlanDrillCardsProps) {
+export function PlanDrillCards({ budget, recurring }: PlanDrillCardsProps) {
   const overLimit = budget.overLimitCount ?? 0;
   const presupuestoCaption =
     overLimit > 0 ? (
       <span className="font-semibold text-z-debt">{overLimit} sobre límite</span>
     ) : (
       "dentro del límite"
-    );
-
-  const percentAssigned = periodoSummary?.percentAssigned ?? 0;
-  const unassigned = periodoSummary?.unassignedCount ?? 0;
-  const periodoCaption =
-    percentAssigned >= 100 ? (
-      "al día"
-    ) : unassigned > 0 ? (
-      <span className="font-semibold text-z-alert">{unassigned} pendientes</span>
-    ) : (
-      `${Math.round(percentAssigned)}%`
     );
 
   const dueSoonCount = recurring.dueSoonCount;
@@ -73,8 +55,6 @@ export function PlanDrillCards({
     </>
   );
 
-  const deseosCaption = `${wishlistCount} activo${wishlistCount !== 1 ? "s" : ""}`;
-
   return (
     <div className="space-y-1.5">
       <p className={MOBILE_EYEBROW_CLASS}>Ir a</p>
@@ -86,22 +66,10 @@ export function PlanDrillCards({
           caption={presupuestoCaption}
         />
         <DrillChip
-          label="Periodo"
-          href="/plan?tab=periodo"
-          icon={CalendarCheck}
-          caption={periodoCaption}
-        />
-        <DrillChip
           label="Recurrentes"
           href="/plan?tab=recurrentes"
           icon={RefreshCw}
           caption={recurrentesCaption}
-        />
-        <DrillChip
-          label="Deseos"
-          href="/plan?tab=deseos"
-          icon={Heart}
-          caption={deseosCaption}
         />
       </div>
     </div>

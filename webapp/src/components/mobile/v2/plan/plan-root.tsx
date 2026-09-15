@@ -20,8 +20,6 @@ interface PlanRootProps {
   monthLabel: string;
   dayOfMonth: number;
   daysInMonth: number;
-  periodoSummary: { hasActive: boolean; percentAssigned: number; unassignedCount?: number } | null;
-  wishlistCount: number;
 }
 
 export function PlanRoot({
@@ -31,8 +29,6 @@ export function PlanRoot({
   monthLabel,
   dayOfMonth,
   daysInMonth,
-  periodoSummary,
-  wishlistCount,
 }: PlanRootProps) {
   const { activeZone, toggle } = useExpandableZone<string>();
   const incomes = planData.recurring.upcomingIncome;
@@ -80,13 +76,8 @@ export function PlanRoot({
         onToggle={toggle}
       />
 
-      {/* Drill cards — navigate to Presupuesto, Periodo, Recurrentes, Deseos */}
-      <PlanDrillCards
-        budget={planData.budget}
-        recurring={planData.recurring}
-        periodoSummary={periodoSummary}
-        wishlistCount={wishlistCount}
-      />
+      {/* Drill cards — navigate to Presupuesto y Recurrentes */}
+      <PlanDrillCards budget={planData.budget} recurring={planData.recurring} />
 
       {/* Scenarios — only when stable */}
       {planData.scenarios.count > 0 && (

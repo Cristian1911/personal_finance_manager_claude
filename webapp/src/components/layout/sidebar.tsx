@@ -2,12 +2,14 @@
 
 import { usePathname } from "next/navigation";
 import {
+  ADVANCED_NAV,
   BOTTOM_NAV,
   PRIMARY_NAV,
   WORKSPACE_NAV,
   type NavItem,
 } from "@/lib/constants/navigation";
 import { BrandIcon } from "@/components/app/brand-icon";
+import { AdvancedNavSection } from "./advanced-nav-section";
 import { NavItemLink } from "./nav-item-link";
 import type { AttentionSnapshot } from "@/types/attention";
 
@@ -60,6 +62,10 @@ export function Sidebar({ attentionSnapshot }: SidebarProps) {
             {WORKSPACE_NAV.map((item) => renderNavItem(item, "secondary"))}
           </nav>
         </section>
+
+        <AdvancedNavSection pathname={pathname}>
+          {ADVANCED_NAV.map((item) => renderNavItem(item, "secondary"))}
+        </AdvancedNavSection>
       </div>
 
       <div className="border-t border-sidebar-border/80 px-3 py-4">

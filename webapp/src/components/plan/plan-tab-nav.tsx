@@ -14,7 +14,13 @@ const PLAN_TABS = [
 
 export type PlanTab = (typeof PLAN_TABS)[number]["key"];
 
+// Aparcadas (2026-09-15): la ruta sigue viva por deep link, pero sin pestaña.
+// La pestaña oculta vuelve a pintarse solo mientras es la activa, para no perder el hilo.
+const HIDDEN_TABS: ReadonlySet<PlanTab> = new Set<PlanTab>(["periodo", "deseos"]);
+
 export function PlanTabNav({ activeTab, month }: { activeTab: PlanTab; month?: string | null }) {
+  const visibleTabs = PLAN_TABS.filter((tab) => !HIDDEN_TABS.has(tab.key) || tab.key === activeTab);
+
   function buildHref(tabKey: string) {
     const params = new URLSearchParams();
     if (tabKey !== "resumen") params.set("tab", tabKey);
@@ -25,7 +31,7 @@ export function PlanTabNav({ activeTab, month }: { activeTab: PlanTab; month?: s
 
   return (
     <nav className="hidden gap-1 overflow-x-auto scrollbar-none rounded-xl border border-white/6 bg-black/10 p-1 lg:flex">
-      {PLAN_TABS.map((tab) => (
+      {visibleTabs.map((tab) => (
         <Link
           key={tab.key}
           href={buildHref(tab.key)}
