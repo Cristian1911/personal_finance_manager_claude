@@ -2,6 +2,7 @@
 
 import { useReducer, useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CoachMark, useCoachMarkSequence } from "@/components/guided/coach-mark";
 import {
   type DebtAccount,
   type CashEntry,
@@ -198,6 +199,8 @@ export function ScenarioPlanner({ accounts, currency, savedScenarios, income }: 
   }, [accounts]);
 
   const [activeTab, setActiveTab] = useState("cash");
+  // Guía de página: los pasos primero, la lectura del Comparar cuando se llega.
+  const guide = useCoachMarkSequence(["planner-steps", "planner-compare"]);
   const STEPS = ["cash", "allocate", "compare", "detail"] as const;
   const stepIndex = STEPS.indexOf(activeTab as typeof STEPS[number]);
   const goNext = () => stepIndex < STEPS.length - 1 && setActiveTab(STEPS[stepIndex + 1]);
@@ -210,6 +213,12 @@ export function ScenarioPlanner({ accounts, currency, savedScenarios, income }: 
           Simula diferentes estrategias de pago para tus deudas. Define cuánto efectivo extra puedes aportar, elige una estrategia, y compara los resultados.
         </p>
       </div>
+
+      {guide.active === "planner-steps" && (
+        <CoachMark step="1 de 2" onDismiss={guide.dismiss} pointer="down">
+          Los cuatro pasos van en orden, pero puedes volver a cualquiera tocando su pestaña.
+        </CoachMark>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
@@ -241,6 +250,11 @@ export function ScenarioPlanner({ accounts, currency, savedScenarios, income }: 
         </TabsContent>
 
         <TabsContent value="compare">
+          {guide.active === "planner-compare" && (
+            <CoachMark step="2 de 2" onDismiss={guide.dismiss} pointer="down" className="mb-4">
+              Recomendado marca el plan que paga menos intereses en total. Mira también los meses: a veces vale pagar un poco más por terminar antes.
+            </CoachMark>
+          )}
           <CompareStep
             accounts={accounts}
             scenarios={state.scenarios}

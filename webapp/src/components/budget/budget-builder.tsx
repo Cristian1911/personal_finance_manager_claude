@@ -25,6 +25,7 @@ import { createCategory } from "@/actions/categories";
 import { computeCompositionDiff } from "@/lib/utils/budget-rollup";
 import { groupCategoriesByAllocationSet } from "@/lib/utils/allocation-sets";
 import { cn } from "@/lib/utils";
+import { CoachMark, useCoachMarkSequence } from "@/components/guided/coach-mark";
 import { formatCurrency } from "@/lib/utils/currency";
 import { BRASS_BUTTON_CLASS, BRASS_GHOST_BUTTON_CLASS, PANEL_INSET_CLASS, SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
 import type { CategoryBudgetData, CurrencyCode, BudgetMode } from "@/types/domain";
@@ -62,6 +63,8 @@ export function BudgetBuilder({ groups, income, currency, hasUncategorized, mode
   const initial = useMemo(() => toNumberMap(initialDraft(groups)), [groups]);
   const [draft, setDraft] = useState<Record<string, string>>(() => initialDraft(groups));
   const [openId, setOpenId] = useState<string | null>(null);
+  // Guía de página: la barra Σ primero, la fila "Agregar categoría" después.
+  const guide = useCoachMarkSequence(["budget-builder-sum", "budget-builder-add"]);
   const [saving, setSaving] = useState(false);
   const [exitConfirm, setExitConfirm] = useState(false);
   // Subcategories created inline during this session, newest appended.
@@ -275,9 +278,19 @@ export function BudgetBuilder({ groups, income, currency, hasUncategorized, mode
 
   // Progressive disclosure: one quiet row instead of the chip wall. Opens a
   // picker with the available categories (per set, or all in flat mode).
+  // The add row repeats per set; the mark rides only the first one rendered.
+  let addMarkPlaced = false;
   function renderAddRow(avail: CategoryBudgetData[], title: string) {
     if (avail.length === 0) return null;
+    const showAddMark = guide.active === "budget-builder-add" && !addMarkPlaced;
+    if (showAddMark) addMarkPlaced = true;
     return (
+      <>
+      {showAddMark && (
+        <CoachMark step="2 de 2" onDismiss={guide.dismiss} pointer="down" className="mb-2">
+          Agrega una categoría y ponle un tope. Empieza con dos o tres; puedes sumar más después.
+        </CoachMark>
+      )}
       <button
         type="button"
         onClick={() => setAddPicker({ title, categories: avail })}
@@ -291,6 +304,7 @@ export function BudgetBuilder({ groups, income, currency, hasUncategorized, mode
         </span>
         Agregar categoría
       </button>
+      </>
     );
   }
 
@@ -318,6 +332,12 @@ export function BudgetBuilder({ groups, income, currency, hasUncategorized, mode
         <p className="text-xs text-muted-foreground">
           Presupuesta <span className="text-z-income">solo lo que te importa</span> — no tienes que llenar todo.
         </p>
+
+        {guide.active === "budget-builder-sum" && (
+          <CoachMark step="1 de 2" onDismiss={guide.dismiss} pointer="down">
+            Reparte solo lo que te importa. La barra muestra cuánto llevas asignado de tu ingreso.
+          </CoachMark>
+        )}
 
         {/* Sticky progress — always visible, no scroll needed */}
         <div className="sticky top-2 z-10 space-y-2 rounded-xl border border-white/6 bg-z-surface-2/95 p-3 backdrop-blur-sm">

@@ -27,11 +27,8 @@ if (typeof window !== "undefined") {
   });
 }
 
-/**
- * Returns `{ show, dismiss }` for a coach-mark id. `show` is false until the
- * server state has loaded (no flash) and stays false once dismissed/seen.
- */
-export function useCoachMark(id: string): { show: boolean; dismiss: () => void } {
+/** Loads the shared seen-set once per page and re-renders the caller when it lands. */
+function useSeenCoachMarks(): { loaded: boolean; markSeen: (id: string) => void } {
   const [, force] = useState(0);
 
   useEffect(() => {
@@ -47,24 +44,53 @@ export function useCoachMark(id: string): { show: boolean; dismiss: () => void }
     return () => {
       active = false;
     };
-  }, [id]);
+  }, []);
 
-  const loaded = seenCache !== null;
-  const seen = seenCache?.has(id) ?? false;
-
-  function dismiss() {
+  function markSeen(id: string) {
     if (!seenCache) seenCache = new Set();
     seenCache.add(id);
     force((n) => n + 1);
     void markCoachMarkSeen(id);
   }
 
-  return { show: loaded && !seen, dismiss };
+  return { loaded: seenCache !== null, markSeen };
+}
+
+/**
+ * Returns `{ show, dismiss }` for a coach-mark id. `show` is false until the
+ * server state has loaded (no flash) and stays false once dismissed/seen.
+ */
+export function useCoachMark(id: string): { show: boolean; dismiss: () => void } {
+  const { loaded, markSeen } = useSeenCoachMarks();
+  const seen = seenCache?.has(id) ?? false;
+  return { show: loaded && !seen, dismiss: () => markSeen(id) };
+}
+
+/**
+ * Sequenced coach-marks for one dense page: `active` is the first id not yet
+ * seen, `dismiss` marks it and advances synchronously (the cache mutates before
+ * the re-render, so the next mark paints in the same pass). Each mark still
+ * renders inline next to its own anchor; if the anchor isn't on screen yet
+ * (e.g. a field that appears after an upload) nothing shows until it is.
+ */
+export function useCoachMarkSequence(
+  ids: readonly string[],
+): { active: string | null; dismiss: () => void } {
+  const { loaded, markSeen } = useSeenCoachMarks();
+  const active = loaded ? (ids.find((id) => !seenCache!.has(id)) ?? null) : null;
+  return {
+    active,
+    dismiss: () => {
+      if (active) markSeen(active);
+    },
+  };
 }
 
 export interface CoachMarkProps {
   children: React.ReactNode;
   onDismiss: () => void;
+  /** Position label for sequenced marks, e.g. "1 de 2". Rendered as a brass eyebrow. */
+  step?: string;
   /** Pointer arrow position relative to the bubble. */
   pointer?: "up" | "down" | "none";
   /** Horizontal offset of the pointer (CSS left/right value). */
@@ -79,6 +105,7 @@ export interface CoachMarkProps {
 export function CoachMark({
   children,
   onDismiss,
+  step,
   pointer = "none",
   pointerOffset = "24px",
   className,
@@ -91,6 +118,11 @@ export function CoachMark({
         className,
       )}
     >
+      {step && (
+        <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-z-brass">
+          {step}
+        </p>
+      )}
       <div className="text-[12.5px] leading-relaxed text-z-sage-light">
         {children}
       </div>
