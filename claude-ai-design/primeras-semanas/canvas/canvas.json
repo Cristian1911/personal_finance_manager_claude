@@ -1,0 +1,154 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "title": "Mapa · Día 0 a mes 3 · alcance recortado",
+      "x": 0,
+      "y": 0,
+      "w": 1600,
+      "h": 980
+    },
+    {
+      "file": "Dia0Chooser.dc.html",
+      "title": "Día 0 · ¿Cómo quieres empezar?",
+      "x": 0,
+      "y": 1100,
+      "w": 390,
+      "h": 1040
+    },
+    {
+      "file": "Dia0Import.dc.html",
+      "title": "Día 0 · Lo que encontramos",
+      "x": 470,
+      "y": 1100,
+      "w": 390,
+      "h": 1040
+    },
+    {
+      "file": "Dia1Inicio.dc.html",
+      "title": "Día 1 · Inicio honesto",
+      "x": 940,
+      "y": 1100,
+      "w": 390,
+      "h": 1040
+    },
+    {
+      "file": "Sem1Inicio.dc.html",
+      "title": "Semana 1 · Zeta notó",
+      "x": 1410,
+      "y": 1100,
+      "w": 390,
+      "h": 1040
+    },
+    {
+      "file": "Sem1Movimiento.dc.html",
+      "title": "Semana 1 · Movimiento con reveal inline",
+      "x": 0,
+      "y": 2260,
+      "w": 390,
+      "h": 1040
+    },
+    {
+      "file": "Sem2Recurrentes.dc.html",
+      "title": "Semana 2 · Recurrentes detectadas",
+      "x": 470,
+      "y": 2260,
+      "w": 390,
+      "h": 1040
+    },
+    {
+      "file": "Sem2Digest.dc.html",
+      "title": "Lunes · Tu semana en números",
+      "x": 940,
+      "y": 2260,
+      "w": 390,
+      "h": 1040
+    },
+    {
+      "file": "GuiaImport.dc.html",
+      "title": "Guía de página · Importar",
+      "x": 1410,
+      "y": 2260,
+      "w": 390,
+      "h": 1040
+    },
+    {
+      "file": "Mes1Presupuesto.dc.html",
+      "title": "Cierre mes 1 · Presupuesto",
+      "x": 0,
+      "y": 3420,
+      "w": 390,
+      "h": 1040
+    },
+    {
+      "file": "Mes2Tendencias.dc.html",
+      "title": "Mes 2 · Tendencias",
+      "x": 470,
+      "y": 3420,
+      "w": 390,
+      "h": 1040
+    },
+    {
+      "file": "Mas.dc.html",
+      "title": "Más · grilla recortada",
+      "x": 940,
+      "y": 3420,
+      "w": 390,
+      "h": 1000
+    }
+  ],
+  "annotations": [
+    {
+      "id": "nota-gate",
+      "x": 1680,
+      "y": 0,
+      "w": 300,
+      "text": "Regla: cada tick necesita su señal en los datos del usuario. Nada se dispara por calendario. Si la señal no existe, la revelación espera."
+    },
+    {
+      "id": "nota-recorte",
+      "x": 1680,
+      "y": 260,
+      "w": 300,
+      "text": "Recorte 2026-09-15: Periodo, ¿Comprarlo?, Deseos, Modos, Etiquetas, Deudas personales, Categorizar y Categorías salen de la nav principal y de las pestañas de Plan. Viven en Más → Herramientas avanzadas, colapsado. Rutas y datos intactos."
+    },
+    {
+      "id": "nota-import",
+      "x": 1880,
+      "y": 1100,
+      "w": 300,
+      "text": "Día 0 sin 'posibles recurrentes': un extracto mensual trae una sola ocurrencia por cobro. Lo único que se afirma es lo que dice el extracto: saldo y pago mínimo de la tarjeta."
+    },
+    {
+      "id": "nota-segunda",
+      "x": 1880,
+      "y": 1320,
+      "w": 300,
+      "text": "Semana 1 supone una segunda ocurrencia: un segundo extracto (agosto) o cobros capturados por correo o app. Con un solo extracto mensual, esta revelación se corre a la siguiente importación."
+    },
+    {
+      "id": "nota-guia",
+      "x": 1880,
+      "y": 2260,
+      "w": 300,
+      "text": "Guía de página: dos coach-marks por pantalla densa, secuenciados (el segundo aparece solo cuando se descarta el primero y su ancla está en pantalla), sin overlay ni portal. Importar no lleva '1 de 2' porque el campo de clave solo existe en la ruta PDF. Presupuesto · Armar y Planificador sí llevan el paso."
+    },
+    {
+      "id": "nota-mixto",
+      "x": 1410,
+      "y": 3420,
+      "w": 420,
+      "text": "Canal mixto: la tarjeta de Inicio anuncia; la pantalla del concepto repite la revelación inline con el mismo id. Descartar en cualquiera de los dos la apaga en ambos."
+    },
+    {
+      "id": "nota-mas",
+      "x": 1410,
+      "y": 3600,
+      "w": 420,
+      "text": "Más: siete tiles en cuatro grupos que siguen la historia de la app. Cuentas y saldos (Cuentas, Importar) mete el dinero; Entender (Destinatarios, Tendencias) explica a quién y cuánto; Planificar (Recurrentes, Deudas o Plan según el foco) mira adelante; Sistema (Ajustes). Herramientas avanzadas se dibuja abierta; en la app arranca cerrada y no persiste estado."
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  }
+}

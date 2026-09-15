@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Service Docs</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="_assets/vue.css">
+  <style>
+    .sidebar { width: 320px; }
+    .content { left: 320px; }
+    details { margin: 0.5em 0; }
+    details summary { cursor: pointer; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div id="app">Loading…</div>
+  <script src="_assets/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: false, theme: 'neutral' })
+    window.$docsify = {
+      name: 'Service Docs',
+      basePath: 'services/',
+      homepage: 'index.md',
+      loadSidebar: true,
+      subMaxLevel: 2,
+      auto2top: true,
+      search: { placeholder: 'Search…', depth: 3 },
+      markdown: {
+        renderer: {
+          code(code, lang) {
+            if (lang === 'mermaid') return '<div class="mermaid">' + code + '</div>'
+            return this.origin.code.apply(this, arguments)
+          }
+        }
+      },
+      plugins: [function (hook) { hook.doneEach(function () { mermaid.run() }) }]
+    }
+  </script>
+  <script src="_assets/docsify.min.js"></script>
+  <script src="_assets/search.min.js"></script>
+</body>
+</html>
