@@ -287,7 +287,7 @@ export function BudgetBuilder({ groups, income, currency, hasUncategorized, mode
     return (
       <>
       {showAddMark && (
-        <CoachMark step="2 de 2" onDismiss={guide.dismiss} pointer="down" className="mb-2">
+        <CoachMark step="2 de 2" onDismiss={guide.dismiss} pointer="down">
           Agrega una categoría y ponle un tope. Empieza con dos o tres; puedes sumar más después.
         </CoachMark>
       )}

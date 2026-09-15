@@ -630,11 +630,6 @@ export function StepUpload({
           </div>
           {!isImageFile(files[0].name) && (
             <>
-              {guide.active === "import-password" && (
-                <CoachMark onDismiss={guide.dismiss} pointer="down">
-                  Si el PDF pide clave, guárdala con un alias y no la vuelves a escribir.
-                </CoachMark>
-              )}
               {passwordRequired && (
                 <div className="flex items-start gap-2 rounded-md border border-z-alert/30 bg-z-alert/10 p-3 text-sm text-z-alert">
                   <Lock className="h-4 w-4 shrink-0 mt-0.5" />
@@ -642,6 +637,11 @@ export function StepUpload({
                     El PDF está protegido con contraseña. Ingrésala para procesarlo.
                   </span>
                 </div>
+              )}
+              {guide.active === "import-password" && (
+                <CoachMark onDismiss={guide.dismiss} pointer="down">
+                  Si el PDF pide clave, guárdala con un alias y no la vuelves a escribir.
+                </CoachMark>
               )}
               <div
                 className={cn(
