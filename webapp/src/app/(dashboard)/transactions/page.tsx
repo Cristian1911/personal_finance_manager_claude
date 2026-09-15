@@ -1,7 +1,5 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
-import Link from "next/link";
-import { ArrowRight, Brain } from "lucide-react";
 import { getTransactions, getTransferLegs, getMonthlyAggregates } from "@/actions/transactions";
 import { getUncategorizedTransactions } from "@/actions/categorize";
 import { getAccounts } from "@/actions/accounts";
@@ -26,12 +24,9 @@ import { parseMonth, formatMonthLabel } from "@/lib/utils/date";
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils";
 import {
-  BRASS_BUTTON_CLASS,
   MOBILE_TAB_BAR_CLEARANCE_CLASS,
   PAGE_STACK_CLASS,
   PANEL_INSET_CLASS,
-  PANEL_SURFACE_CLASS,
-  SECTION_EYEBROW_CLASS,
 } from "@/lib/constants/styles";
 
 export default async function TransactionsPage({
@@ -76,7 +71,7 @@ export default async function TransactionsPage({
     params.search,
     params.accountId,
     params.categoryId,
-    params.tagId,
+    params.tags,
     params.direction,
     params.dateFrom,
     params.dateTo,
@@ -219,16 +214,17 @@ export default async function TransactionsPage({
           </div>
         </PageHero>
 
+        {/* Cuando ya se filtra por "Sin categoría", la lista es la respuesta: sin tarjeta. */}
         <AttentionCard
           signals={
-            heroUncategorized > 0
+            heroUncategorized > 0 && params.categoryId !== "none"
               ? [{
                   page: "transactions",
                   key: "uncategorized_visible",
                   count: heroUncategorized,
                   label: hasActiveFilters ? "sin categoría en pantalla" : "sin categoría este mes",
                   priority: "action" as const,
-                  actionHref: "/categorizar",
+                  actionHref: "/transactions?categoryId=none",
                 }]
               : []
           }
@@ -239,39 +235,6 @@ export default async function TransactionsPage({
         </Suspense>
 
         <QuickCaptureBar accounts={accounts} categories={categories} />
-
-        <Link
-          href="/puedo-pagar"
-          className={cn(
-            PANEL_SURFACE_CLASS,
-            "flex flex-wrap items-center justify-between gap-3 p-4 transition-colors hover:bg-z-surface-2",
-          )}
-        >
-          <div className="flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-xl bg-z-brass/12 text-z-brass">
-              <Brain className="size-5" strokeWidth={2} />
-            </span>
-            <div>
-              <p className={SECTION_EYEBROW_CLASS}>Compra consciente</p>
-              <p className="mt-0.5 text-sm font-semibold text-foreground">
-                ¿Debería comprar esto?
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Evalúa impacto en liquidez, deuda y presupuesto antes de
-                decidir.
-              </p>
-            </div>
-          </div>
-          <span
-            className={cn(
-              BRASS_BUTTON_CLASS,
-              "inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-semibold",
-            )}
-          >
-            Analizar
-            <ArrowRight className="size-4" />
-          </span>
-        </Link>
 
         <PendingEmailTransactions transactions={pendingTransactions} accounts={accounts} />
 
