@@ -1,6 +1,5 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { getWishlistItemsForDashboard } from "@/actions/wishlist";
 import { MonthSelector } from "@/components/month-selector";
 import { PlanTabNav, type PlanTab } from "@/components/plan/plan-tab-nav";
 import { PlanTabPresupuesto } from "@/components/plan/tabs/plan-tab-presupuesto";
@@ -10,7 +9,6 @@ import { PlanTabDeseos } from "@/components/plan/tabs/plan-tab-deseos";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import { DesktopOnly } from "@/components/ui/responsive-render";
 import { getPreferredCurrency } from "@/actions/profile";
-import { getActivePeriod } from "@/actions/cashflow-planner";
 import { getHasSavedBudget } from "@/actions/budget";
 import { ensureCurrentOccurrences } from "@/actions/occurrences";
 import { PAGE_STACK_CLASS } from "@/lib/constants/styles";
@@ -48,29 +46,15 @@ export default async function PlanPage({
   // Shell: lightweight data for header + tab nav badges. getHasSavedBudget runs
   // in parallel here (only meaningful on the presupuesto tab) to hide the month
   // selector during first-budget setup — the wizard is not month-scoped.
-  const [, currency, wishlistSummary, activePeriodResult, hasSavedBudget] =
-    await Promise.all([
-      ensureCurrentOccurrences(),
-      getPreferredCurrency(),
-      getWishlistItemsForDashboard(),
-      getActivePeriod(),
-      activeTab === "presupuesto" ? getHasSavedBudget() : Promise.resolve(true),
-    ]);
+  const [, currency, hasSavedBudget] = await Promise.all([
+    ensureCurrentOccurrences(),
+    getPreferredCurrency(),
+    activeTab === "presupuesto" ? getHasSavedBudget() : Promise.resolve(true),
+  ]);
 
   const showMonthSelector = activeTab !== "presupuesto" || hasSavedBudget;
 
   const isResumen = activeTab === "resumen";
-
-  const activePeriod = activePeriodResult.success ? activePeriodResult.data : null;
-  const periodoSummary = activePeriod
-    ? {
-        hasActive: true,
-        percentAssigned: activePeriod.total_expenses > 0
-          ? Math.round((activePeriod.total_assigned / activePeriod.total_expenses) * 100)
-          : 0,
-        unassignedCount: activePeriod.unassigned_expenses.length,
-      }
-    : null;
 
   // Tab content for non-resumen tabs (already Suspensed)
   const tabContent = (() => {
@@ -127,8 +111,6 @@ export default async function PlanPage({
               month={month}
               currency={currency as CurrencyCode}
               monthLabel={monthLabel}
-              periodoSummary={periodoSummary}
-              wishlistCount={wishlistSummary?.totalCount ?? 0}
             />
           </Suspense>
         ) : (

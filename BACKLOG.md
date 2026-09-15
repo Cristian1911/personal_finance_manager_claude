@@ -10,6 +10,12 @@
 
 ---
 
+## `pnpm audit` con 31 high preexistentes (2026-09-15)
+
+`pnpm audit --audit-level high` en `main` (lockfile de #402) reporta 31 high, todas transitivas y ninguna introducida por el recorte de nav: `@xmldom/xmldom` ×8 y `image-size`, `browserslist`, `brace-expansion` (vía `mobile/`, cadena Expo), `nanoid` ×6 (`mobile` + `webapp`), `fast-uri` ×5 e `ip-address` (`packages/mcp-server`). Arreglar en un PR propio con `pnpm.overrides` en el `package.json` raíz y verificar que Expo prebuild y `pnpm build` sigan pasando; el bump de `@xmldom/xmldom` es major y hay que probarlo en el simulador.
+
+---
+
 ## Historial de migraciones desincronizado (2026-09-14)
 
 `npx supabase migration list` muestra 11 migraciones locales sin sello remoto y 13 sellos remotos sin archivo local, emparejados casi 1:1 por fecha. **No es schema faltante, son sellos distintos**: el DDL se aplicó por el MCP/dashboard, que estampa su propio timestamp. Evidencia: `flow_class` (local `20260818220000`) y `is_ad_hoc` (local `20260806180000`) ya están en `webapp/src/types/database.ts`, regenerado desde remoto el 2026-09-01.

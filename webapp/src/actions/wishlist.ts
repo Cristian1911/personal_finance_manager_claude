@@ -105,34 +105,6 @@ async function getWishlistItemsCached(
   return (data ?? []) as WishlistItem[];
 }
 
-async function getWishlistItemsForDashboardCached(
-  userId: string,
-  accessToken: string,
-): Promise<{ items: WishlistItem[]; totalCount: number; readyCount: number }> {
-  "use cache";
-  cacheTag("wishlist");
-  cacheLife("zeta");
-
-  const supabase = createCachedClient(accessToken);
-  const { data, error } = await supabase
-    .from("wishlist_items")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("status", "wishlist")
-    .order("last_score", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false })
-    .limit(10);
-
-  if (error) throw error;
-
-  const all = (data ?? []) as WishlistItem[];
-  const readyCount = all.filter(
-    (item) => item.last_score != null && item.last_score >= 55
-  ).length;
-
-  return { items: all.slice(0, 2), totalCount: all.length, readyCount };
-}
-
 // ─── Section 1: CRUD Queries & Mutations ─────────────────────────────────────
 
 export async function getWishlistItems(): Promise<WishlistItem[]> {
@@ -144,22 +116,6 @@ export async function getWishlistItems(): Promise<WishlistItem[]> {
   } catch (error) {
     console.error("Error fetching wishlist items:", error);
     return [];
-  }
-}
-
-export async function getWishlistItemsForDashboard(): Promise<{
-  items: WishlistItem[];
-  totalCount: number;
-  readyCount: number;
-}> {
-  const { user, accessToken } = await getAuthenticatedClient();
-  if (!user || !accessToken) return { items: [], totalCount: 0, readyCount: 0 };
-
-  try {
-    return await getWishlistItemsForDashboardCached(user.id, accessToken);
-  } catch (error) {
-    console.error("Error fetching dashboard wishlist items:", error);
-    return { items: [], totalCount: 0, readyCount: 0 };
   }
 }
 

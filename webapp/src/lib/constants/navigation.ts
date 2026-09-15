@@ -50,11 +50,16 @@ export const PRIMARY_NAV: NavItem[] = [
 ];
 
 export const WORKSPACE_NAV: NavItem[] = [
-  { title: "Categorizar", href: "/categorizar", icon: Inbox, attentionPage: "transactions" },
   { title: "Destinatarios", href: "/destinatarios", icon: Contact, attentionPage: "destinatarios" },
   { title: "Importar", href: "/import", icon: FileUp },
   { title: "Cuentas", href: "/accounts", icon: Wallet },
   { title: "Deudas", href: "/deudas", icon: Landmark },
+];
+
+/** Aparcadas fuera de la nav principal (2026-09-15): viven colapsadas bajo
+ *  "Herramientas avanzadas". Rutas y datos intactos. */
+export const ADVANCED_NAV: NavItem[] = [
+  { title: "Categorizar", href: "/categorizar", icon: Inbox, attentionPage: "transactions" },
   { title: "Deudas personales", href: "/deudas-personales", icon: Users },
   { title: "Modos", href: "/modos", icon: MapPin },
 ];

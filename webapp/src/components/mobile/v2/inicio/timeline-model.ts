@@ -119,7 +119,7 @@ export function buildTimelineItems(sources: TimelineSources): TimelineItem[] {
       title: i.name,
       subtitle: `+${formatCurrency(i.amount, currency)}`,
       isIncome: true,
-      href: "/plan?tab=periodo",
+      href: "/plan?tab=recurrentes",
     });
   }
 

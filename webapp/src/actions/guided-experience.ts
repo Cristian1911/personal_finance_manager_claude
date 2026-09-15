@@ -3,6 +3,7 @@
 import { updateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { dashboardConfigSchema } from "@/lib/validators/dashboard-config";
+import { getDefaultConfigForProfile } from "@/lib/dashboard-config-defaults";
 import { isDebtAccountType } from "@/lib/utils/account-balance";
 import type {
   AppPurpose,
@@ -148,13 +149,15 @@ async function patchGuided(
 
   const { data } = await supabase
     .from("profiles")
-    .select("dashboard_config")
+    .select("dashboard_config, app_purpose")
     .eq("id", user.id)
     .single();
 
-  const config = (data?.dashboard_config as unknown as DashboardConfig | null) ?? null;
-  // Config-less users (no onboarding config) can't persist — no-op gracefully.
-  if (!config) return { success: true };
+  // Quien saltó el onboarding tiene dashboard_config NULL: sembramos el default
+  // de su propósito para que dismiss/snooze/coach-marks sí persistan.
+  const config =
+    (data?.dashboard_config as unknown as DashboardConfig | null) ??
+    getDefaultConfigForProfile(data?.app_purpose ?? null);
 
   const nextConfig: DashboardConfig = {
     ...config,
