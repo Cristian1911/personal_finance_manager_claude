@@ -518,7 +518,8 @@ async function getTransactionsCached(
     .range(from, to);
 
   if (accountId) query = query.eq("account_id", accountId);
-  if (categoryId) query = query.eq("category_id", categoryId);
+  if (categoryId === "none") query = query.is("category_id", null);
+  else if (categoryId) query = query.eq("category_id", categoryId);
   if (destinatarioId) query = query.eq("destinatario_id", destinatarioId);
   if (direction) query = query.eq("direction", direction as "INFLOW" | "OUTFLOW");
   if (dateFrom) query = query.gte("transaction_date", dateFrom);

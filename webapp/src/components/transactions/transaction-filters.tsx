@@ -135,9 +135,10 @@ export function TransactionFilters({
               </SelectContent>
             </Select>
 
+            {/* Controlado: la AttentionCard enlaza a ?categoryId=none sin remontar este componente. */}
             {categories.length > 0 && (
               <Select
-                defaultValue={searchParams.get("categoryId") ?? "all"}
+                value={searchParams.get("categoryId") ?? "all"}
                 onValueChange={(v) => updateFilter("categoryId", v)}
               >
                 <SelectTrigger className={inputWidth}>
@@ -145,6 +146,7 @@ export function TransactionFilters({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas las categorías</SelectItem>
+                  <SelectItem value="none">Sin categoría</SelectItem>
                   {categories.map((cat) =>
                     cat.children.length > 0 ? (
                       // Parent zone → non-selectable group label, leaf children selectable

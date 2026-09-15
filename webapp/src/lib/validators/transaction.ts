@@ -85,7 +85,8 @@ export const transactionFiltersSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(20),
   accountId: uuidStr().optional(),
-  categoryId: uuidStr().optional(),
+  // "none" = solo movimientos sin categoría (category_id IS NULL)
+  categoryId: z.union([uuidStr(), z.literal("none")]).optional(),
   destinatarioId: uuidStr().optional(),
   tags: z.string().optional(), // CSV de uuids, OR
   direction: z.enum(["INFLOW", "OUTFLOW"]).optional(),
