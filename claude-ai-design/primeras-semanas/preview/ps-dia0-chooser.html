@@ -1,0 +1,79 @@
+<!doctype html>
+<!-- @dsCard group="Primeras semanas" name="Día 0 · ¿Cómo quieres empezar?" subtitle="Chooser D1 (jun-2026), reemplaza el paso de estimaciones" viewport="390x900" -->
+<html lang="es"><head><meta charset="utf-8"/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap"/>
+<link rel="stylesheet" href="../colors_and_type.css"/>
+<link rel="stylesheet" href="./ps.css"/>
+<style>
+  .opt { display: block; position: relative; padding: 18px; }
+  .opt .orow { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .opt .meta { display: flex; flex-direction: column; gap: 4px; }
+  .opt .foot { margin-top: 14px; }
+  .opt-a {
+    border-color: var(--z-border-strong);
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--z-brass) 10%, transparent), color-mix(in srgb, var(--z-brass) 2%, transparent)),
+      var(--z-surface-2);
+  }
+  .badge {
+    display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px;
+    border: 1px solid var(--z-border-strong); background: color-mix(in srgb, var(--z-brass) 10%, transparent); white-space: nowrap;
+  }
+  .brass { color: var(--z-brass); }
+</style>
+</head><body>
+<div class="ph nobar">
+
+  <div class="hdr">
+    <span class="back" aria-label="Regresar">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    </span>
+    <span class="z-eyebrow">Paso 3 de 3</span>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    <h1 class="z-h1" style="margin:0;">¿Cómo quieres empezar?</h1>
+    <p class="z-body-sm" style="margin:0;color:var(--z-sage-light);">Elige el camino más fácil para ti. Puedes cambiar o sumar después.</p>
+  </div>
+
+  <div class="stack" style="gap:12px;">
+
+    <div class="z-card-surface opt opt-a">
+      <div class="orow">
+        <div class="meta">
+          <h3 class="z-h3" style="margin:0;color:var(--z-white);">Sube tus extractos</h3>
+          <span class="z-body-sm" style="color:var(--z-sage-light);">PDF del banco o tarjeta</span>
+        </div>
+        <span class="badge z-eyebrow brass">Recomendado</span>
+      </div>
+      <div class="foot"><span class="z-eyebrow brass">Lo más completo · 1 min</span></div>
+    </div>
+
+    <div class="z-card-surface opt">
+      <div class="orow">
+        <div class="meta">
+          <h3 class="z-h3" style="margin:0;color:var(--z-white);">Crea tus cuentas y saldo</h3>
+          <span class="z-body-sm" style="color:var(--z-sage-light);">Escribe qué tienes hoy</span>
+        </div>
+      </div>
+      <div class="foot"><span class="z-eyebrow">2 min</span></div>
+    </div>
+
+    <div class="z-card-surface opt">
+      <div class="orow">
+        <div class="meta">
+          <h3 class="z-h3" style="margin:0;color:var(--z-white);">Tengo claro mi presupuesto</h3>
+          <span class="z-body-sm" style="color:var(--z-sage-light);">Arma tu plan 50/30/20</span>
+        </div>
+      </div>
+      <div class="foot"><span class="z-eyebrow">2 min</span></div>
+    </div>
+
+  </div>
+
+  <div class="mt-auto"></div>
+
+  <a class="z-btn z-btn-ghost full" href="#">No lo tengo claro, explorar primero</a>
+
+</div>
+</body></html>

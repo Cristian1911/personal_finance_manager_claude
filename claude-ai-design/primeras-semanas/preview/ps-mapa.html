@@ -1,0 +1,179 @@
+<!doctype html>
+<!-- @dsCard group="Primeras semanas" name="Mapa · Día 0 a mes 3" subtitle="El descubrimiento sigue a los datos: cada revelación con su señal. Alcance recortado a lo básico" viewport="1600x1000" -->
+<html lang="es"><head><meta charset="utf-8"/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap"/>
+<link rel="stylesheet" href="../colors_and_type.css"/>
+<link rel="stylesheet" href="./ps.css"/>
+<style>
+  .board { width: 1600px; min-height: 900px; margin: 0 auto; background: var(--z-ink); padding: 40px 48px 36px; display: flex; flex-direction: column; gap: 28px; }
+  .bhead { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; }
+  .bhead h1 { margin: 6px 0 0; font-size: 30px; font-weight: 700; letter-spacing: -0.03em; color: var(--z-white); line-height: 1.1; }
+  .bhead p { margin: 8px 0 0; font-size: 14px; color: var(--z-sage-light); max-width: 720px; line-height: 1.5; }
+  .rule { border-radius: 12px; border: 1px solid var(--z-border); background: color-mix(in srgb, var(--z-surface-2) 80%, transparent); padding: 12px 16px; font-size: 13px; color: var(--z-sage-light); display: flex; flex-direction: column; gap: 6px; min-width: 420px; max-width: 560px; }
+  .rule b { color: var(--z-white); font-weight: 600; }
+  .rule .brass { color: var(--z-brass); font-weight: 600; }
+
+  .tl { position: relative; padding-top: 22px; }
+  .tl::before { content: ""; position: absolute; left: 0; right: 0; top: 7px; height: 1px; background: var(--z-border-strong); }
+  .cols { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 20px; }
+  .col { position: relative; display: flex; flex-direction: column; gap: 10px; }
+  .col::before { content: ""; position: absolute; left: 0; top: -22px; width: 12px; height: 12px; border-radius: 999px; background: var(--z-brass); box-shadow: 0 0 0 4px color-mix(in srgb, var(--z-brass) 18%, transparent); }
+  .col .when { font-size: 10px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: var(--z-brass); }
+  .col .gate { font-size: 11px; color: var(--z-sage-dark); margin-top: -6px; margin-bottom: 4px; }
+
+  .tick { border-radius: 14px; border: 1px solid var(--z-border); background: color-mix(in srgb, var(--z-surface-2) 80%, transparent); padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; box-shadow: inset 0 1px 0 rgba(255,255,255,.03); }
+  .tick .c { font-size: 14px; font-weight: 600; color: var(--z-white); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .tick .c .st { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--z-sage-dark); white-space: nowrap; }
+  .tick .c .st.new { color: var(--z-brass); }
+  .tick .sig { font-size: 11px; color: var(--z-sage-dark); line-height: 1.45; }
+  .tick .sig b { color: var(--z-sage-light); font-weight: 500; }
+  .tick .copy { font-size: 12px; color: var(--z-sage-light); line-height: 1.45; border-top: 1px solid var(--z-border); padding-top: 6px; margin-top: 2px; }
+  .tick .copy::before { content: "Zeta notó · "; color: var(--z-brass); font-weight: 600; }
+  .tick.dim { opacity: .72; }
+  .tick.dim .copy::before { content: "Sin mockup · "; }
+
+  .chain { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: auto; }
+  .chain .node { display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--z-border-strong); background: rgba(255,255,255,.03); font-size: 12px; font-weight: 600; color: var(--z-white); white-space: nowrap; }
+  .chain .node small { font-weight: 400; color: var(--z-sage-dark); margin-left: 6px; }
+  .chain .node.end { border-color: color-mix(in srgb, var(--z-brass) 35%, transparent); color: var(--z-brass); background: color-mix(in srgb, var(--z-brass) 8%, transparent); }
+  .chain .arr { color: var(--z-sage-dark); display: inline-flex; }
+  .chain .arr svg { width: 16px; height: 16px; }
+  .chain .branch { color: var(--z-sage-dark); font-size: 12px; margin-left: 8px; }
+
+  .parked { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 16px; border-radius: 12px; border: 1px dashed var(--z-border-strong); }
+  .parked .lbl { font-size: 10px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: var(--z-sage-dark); margin-right: 6px; }
+  .parked .node { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--z-border); font-size: 12px; color: var(--z-sage-dark); white-space: nowrap; }
+  .parked .why { font-size: 11px; color: var(--z-sage-dark); margin-left: auto; max-width: 520px; line-height: 1.45; }
+  .parked .why b { color: var(--z-sage-light); font-weight: 500; }
+
+  .foot { display: flex; justify-content: space-between; gap: 24px; font-size: 11px; color: var(--z-sage-dark); }
+</style>
+</head><body>
+<div class="board">
+
+  <div class="bhead">
+    <div>
+      <span class="z-eyebrow">Primeras semanas · mapa</span>
+      <h1>El descubrimiento sigue a los datos, no al calendario</h1>
+      <p>Cada concepto se presenta en el momento en que los datos del usuario lo hacen real. Nunca se define el sustantivo primero: se muestra el efecto que ya recibió y después se nombra el lugar. Sin tour, sin modal. La misma tarjeta de Inicio que hoy es Primeros pasos pasa a decir qué notó Zeta, y cada pantalla de concepto repite la revelación inline con el mismo descarte. Menos conceptos que descubrir: el alcance queda en movimientos, cuentas, destinatarios, recurrentes, deudas y presupuesto.</p>
+    </div>
+    <div class="rule">
+      <span><b>Gramática fija</b> · <span class="brass">Zeta notó X</span> → esto desbloquea → una acción, y un descarte de un toque.</span>
+      <span><b>Gate de honestidad</b> · F1 cuenta con saldo real + (F2 ingreso o F3 movimientos del mes). Mes 1 en adelante exige F4, dos meses de historial.</span>
+      <span><b>Copy</b> · números primero, "parece" cuando la señal es probable, afirmativo cuando viene del extracto.</span>
+      <span><b>Guía de página</b> · dos coach-marks secuenciados, sin overlay, solo en Importar, Armar presupuesto y Planificador. El resto de pantallas se explica sola tras el recorte.</span>
+    </div>
+  </div>
+
+  <div class="tl">
+    <div class="cols">
+
+      <div class="col">
+        <div class="when">Día 0</div>
+        <div class="gate">Onboarding e import</div>
+        <div class="tick">
+          <div class="c">Cómo empezar <span class="st">D1 · sin código</span></div>
+          <div class="sig">Chooser reemplaza el paso de estimaciones. <b>A · extractos</b> es la única rampa tier 1.</div>
+        </div>
+        <div class="tick">
+          <div class="c">Destinatarios <span class="st">existe</span></div>
+          <div class="sig">Señal: comercios reconocidos por <b>matchDestinatario</b> en el primer import.</div>
+          <div class="copy">Reconocimos 14 comercios. Desde ahora se categorizan solos.</div>
+        </div>
+        <div class="tick">
+          <div class="c">Deudas <span class="st">existe</span></div>
+          <div class="sig">Señal: metadata del extracto de tarjeta, <b>saldo, corte y pago mínimo</b>.</div>
+          <div class="copy">Tu Visa cerró en $1.240.000. Pago mínimo $186.000 antes del 15.</div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="when">Día 1 a 7</div>
+        <div class="gate">Piso F1 + F2</div>
+        <div class="tick">
+          <div class="c">Veredicto <span class="st">existe · D6</span></div>
+          <div class="sig">Señal: ingreso confirmado + al menos un movimiento. El hero sale de <b>Sin datos aún</b>.</div>
+          <div class="copy">Tu veredicto ya es real: $96.500 disponibles hoy.</div>
+        </div>
+        <div class="tick dim">
+          <div class="c">Primeros pasos <span class="st">existe</span></div>
+          <div class="sig">Checklist sembrado por meta. Cuando termina, la tarjeta no muere: se queda con lo que Zeta notó.</div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="when">Semana 1 a 2</div>
+        <div class="gate">Segunda ocurrencia o 7 días de datos</div>
+        <div class="tick">
+          <div class="c">Recurrentes <span class="st new">nuevo detector</span></div>
+          <div class="sig">Señal: <b>2 cobros</b>, mismo destinatario o descripción, mismo día ±3 o gap 28–34 d, cualquier captura.</div>
+          <div class="copy">Netflix se cobró el 5 de ago y el 5 de sep. ¿Lo ponemos en el calendario?</div>
+        </div>
+        <div class="tick">
+          <div class="c">Digest <span class="st">existe · sin caller</span></div>
+          <div class="sig">Señal: lunes con <b>7 días</b> de movimientos. Introduce el lenguaje del veredicto.</div>
+          <div class="copy">Tu semana en números: $612.400, Restaurantes primero, 12% menos.</div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="when">Cierre mes 1</div>
+        <div class="gate">Primer mes calendario completo</div>
+        <div class="tick">
+          <div class="c">Presupuesto <span class="st">existe · cálculo</span></div>
+          <div class="sig">Señal: mes completo con movimientos. <b>fixedVsVariable</b> separa lo ya programado en Recurrentes de lo variable.</div>
+          <div class="copy">Septiembre completo: $1.670.670 fijo, $1.742.130 variable. ¿Un límite a lo variable?</div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="when">Mes 2 a 3</div>
+        <div class="gate">F4 · dos meses de historial</div>
+        <div class="tick">
+          <div class="c">Tendencias <span class="st">existe</span></div>
+          <div class="sig">Señal: <b>movers</b> con dos meses por categoría. Anomalías con tres meses.</div>
+          <div class="copy">Ya tienes dos meses. Restaurantes subió 18%, Transporte bajó 9%.</div>
+        </div>
+        <div class="tick">
+          <div class="c">Suscripciones <span class="st">panel en Recurrentes</span></div>
+          <div class="sig">Señal: <b>3 cobros</b> mensuales. Hoy solo corre tras import PDF; debe correr tras cualquier captura. Sin página propia en la nav: panel de sugerencias dentro de Recurrentes y chip por plantilla.</div>
+          <div class="copy">3 cobros mensuales parecen suscripciones: $320.670 al mes.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="chain">
+    <span class="node">Movimientos</span>
+    <span class="arr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
+    <span class="node">Destinatarios <small>reconocimiento</small></span>
+    <span class="arr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
+    <span class="node">Recurrentes <small>repetición</small></span>
+    <span class="arr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
+    <span class="node">Presupuesto <small>límites</small></span>
+    <span class="arr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
+    <span class="node end">Veredicto <small>¿voy bien?</small></span>
+    <span class="branch">Ramas: Deudas al importar una tarjeta · Tendencias y anomalías con historial</span>
+  </div>
+
+  <div class="parked">
+    <span class="lbl">Aparcado · Más → Herramientas avanzadas</span>
+    <span class="node">Periodo</span>
+    <span class="node">¿Comprarlo?</span>
+    <span class="node">Deseos</span>
+    <span class="node">Modos</span>
+    <span class="node">Etiquetas</span>
+    <span class="node">Deudas personales</span>
+    <span class="node">Categorizar</span>
+    <span class="node">Categorías</span>
+    <span class="why">Rutas y datos intactos; fuera de la nav principal, de las pestañas de Plan y de este mapa. <b>Modos</b> conserva su señal posible (5 gastos en otra moneda en 10 días) como detector futuro.</span>
+  </div>
+
+  <div class="foot">
+    <span>Una fuente, dos renderers: getDiscoveries() alimenta la tarjeta de Inicio y el reveal inline de cada concepto. Descartar en uno apaga los dos.</span>
+    <span>Persistencia en dashboard_config.guidedExperience.discoveries · sin migración · prerrequisito: seed lazy cuando el config es NULL.</span>
+  </div>
+
+</div>
+</body></html>

@@ -1,0 +1,8 @@
+- [Overview](index.md)
+- Services
+  - [mcp-server (`ai_ui_pal/mcp-server`)](ai_ui_pal-mcp-server.md)
+  - [mobile (`mobile`)](mobile.md)
+  - [mcp-server (`packages/mcp-server`)](packages-mcp-server.md)
+  - [shared (`packages/shared`)](packages-shared.md)
+  - [pdf_parser (`services/pdf_parser`)](services-pdf_parser.md)
+  - [webapp (`webapp`)](webapp.md)

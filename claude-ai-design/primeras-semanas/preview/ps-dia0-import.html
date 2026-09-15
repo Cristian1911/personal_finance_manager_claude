@@ -1,0 +1,73 @@
+<!doctype html>
+<!-- @dsCard group="Primeras semanas" name="Día 0 · Lo que encontramos" subtitle="Resultado del primer import: la primera revelación (comercios, tarjeta)" viewport="390x900" -->
+<html lang="es"><head><meta charset="utf-8"/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap"/>
+<link rel="stylesheet" href="../colors_and_type.css"/>
+<link rel="stylesheet" href="./ps.css"/>
+<style>
+  .found { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .found .z-card-stat { padding: 14px; }
+  .found .v { font-size: 26px; font-weight: 700; letter-spacing: -0.03em; color: var(--z-white); font-variant-numeric: tabular-nums; line-height: 1; }
+  .found .k { font-size: 11px; color: var(--z-sage-dark); margin-top: 6px; }
+  .found .v.brass { color: var(--z-brass); }
+</style>
+</head><body>
+<div class="ph nobar">
+
+  <div class="hdr">
+    <span class="back" aria-label="Regresar">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    </span>
+    <span class="z-eyebrow">Importar · Paso 4 de 4</span>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:6px;">
+    <h1 class="z-h1" style="margin:0;">Lo que encontramos</h1>
+    <p class="z-body-sm" style="margin:0;color:var(--z-sage-dark);">Bancolombia_sep.pdf · leído en 4 segundos</p>
+  </div>
+
+  <div class="found">
+    <div class="z-card-stat"><div class="v">184</div><div class="k">Movimientos</div></div>
+    <div class="z-card-stat"><div class="v">2</div><div class="k">Cuentas</div></div>
+    <div class="z-card-stat"><div class="v brass">14</div><div class="k">Comercios reconocidos</div></div>
+    <div class="z-card-stat"><div class="v">1</div><div class="k">Tarjeta con saldo</div></div>
+  </div>
+
+  <section class="gcard">
+    <div class="ghead">
+      <span class="icobox">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+      </span>
+      <div>
+        <div class="gtitle">Zeta notó</div>
+        <div class="gsub">Con este extracto ya pasan dos cosas</div>
+      </div>
+    </div>
+
+    <div class="noto" style="padding-top:0;border-top:0;">
+      <div class="disc">
+        <div class="dtitle">Reconocimos 14 comercios.</div>
+        <div class="dbody">Desde ahora sus movimientos se categorizan solos, también los que importes después.</div>
+        <div class="dacts">
+          <a class="z-btn z-btn-brass-ghost btn-sm" href="#">Ver cuáles</a>
+        </div>
+      </div>
+      <div class="disc">
+        <div class="dtitle">Tu Visa Bancolombia cerró en $1.240.000.</div>
+        <div class="dbody">Pago mínimo $186.000 antes del 15 de septiembre. Al importar queda en tu calendario de pagos.</div>
+        <div class="dacts">
+          <a class="z-btn z-btn-brass-ghost btn-sm" href="#">Ver plan de pago</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="mt-auto"></div>
+
+  <div class="stack" style="gap:10px;">
+    <a class="z-btn z-btn-brass full" href="#">Importar 184 movimientos</a>
+    <a class="z-btn z-btn-ghost full" href="#">Revisar antes</a>
+  </div>
+
+</div>
+</body></html>
