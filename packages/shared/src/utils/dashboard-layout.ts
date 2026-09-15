@@ -60,12 +60,11 @@ export const SYSTEM_INSIGHTS: WidgetInstance[] = [
   { id: "sys-attention", type: "attention", size: "XS" },
 ];
 
+// puedo_comprarlo salió del layout por defecto (aparcado, 2026-09-15). Quien ya
+// lo tenía lo conserva: el renderer sigue conociendo el tipo.
 export const DEFAULT_LAYOUT: DashboardLayout = {
   pulseRange: "weekly",
-  widgets: [
-    { id: "puedo_comprarlo", type: "puedo_comprarlo", size: "S" },
-    { id: "recent", type: "recent", size: "S" },
-  ],
+  widgets: [{ id: "recent", type: "recent", size: "S" }],
 };
 
 export type RowKind = "xs" | "s" | "l";

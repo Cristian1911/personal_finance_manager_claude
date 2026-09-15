@@ -20,6 +20,8 @@ interface TemplatesStripProps {
   categories: CategoryWithChildren[];
   currency: CurrencyCode;
   onMutate: () => Promise<void>;
+  /** Plantillas con una suscripción viva vinculada. */
+  subscriptionTemplateIds?: string[];
 }
 
 export function MobileRecurrentesTemplatesStrip({
@@ -28,7 +30,9 @@ export function MobileRecurrentesTemplatesStrip({
   categories,
   currency,
   onMutate,
+  subscriptionTemplateIds = [],
 }: TemplatesStripProps) {
+  const subscribed = new Set(subscriptionTemplateIds);
   const [expanded, setExpanded] = useState(false);
   const regionId = useId();
 
@@ -95,6 +99,7 @@ export function MobileRecurrentesTemplatesStrip({
                         <span>—</span>
                       )}
                       <span className="shrink-0">· {t.frequency ?? "mensual"}</span>
+                      {subscribed.has(t.id) && <span className="shrink-0">· Suscripción</span>}
                       {!t.is_active && <span className="shrink-0">· Pausada</span>}
                     </div>
                   </div>

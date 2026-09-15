@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Check, ChevronRight, ExternalLink, Tag, Repeat, Plus } from "lucide-react";
+import { Check, ExternalLink, Tag, Repeat, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Verdict, type VerdictState } from "@/components/ui/verdict";
 import { MobileRecurrentesTemplatesStrip } from "./mobile-recurrentes-templates-strip";
+import { SubscriptionSuggestions } from "@/components/subscriptions/subscription-suggestions";
 import { AccountRowIdentity } from "@/components/accounts/account-row-identity";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
@@ -44,7 +45,12 @@ import { LinkPickerSheet } from "@/components/recurring/link-picker-sheet";
 import { captureMethodLabel } from "@/lib/constants/capture-methods";
 import { toast } from "sonner";
 import type { ActionResult } from "@/types/actions";
-import type { CurrencyCode, RecurringTemplateWithRelations, Account } from "@/types/domain";
+import type {
+  CurrencyCode,
+  RecurringTemplateWithRelations,
+  Account,
+  SubscriptionWithDetails,
+} from "@/types/domain";
 
 /* ------------------------------------------------------------------ */
 /*  Props                                                              */
@@ -55,6 +61,10 @@ interface MobileRecurrentesViewProps {
   accounts: Account[];
   currency: CurrencyCode;
   initialOccurrences?: RecurringOccurrence[];
+  /** Suscripciones detectadas pendientes de confirmar (panel arriba de la lista). */
+  subscriptionSuggestions?: SubscriptionWithDetails[];
+  /** Plantillas con una suscripción viva vinculada (etiqueta en la tira). */
+  subscriptionTemplateIds?: string[];
 }
 
 /* ------------------------------------------------------------------ */
@@ -94,6 +104,8 @@ export function MobileRecurrentesView({
   accounts,
   currency,
   initialOccurrences,
+  subscriptionSuggestions = [],
+  subscriptionTemplateIds = [],
 }: MobileRecurrentesViewProps) {
   const hook = useRecurringMonth(templates, accounts, initialOccurrences);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
@@ -314,22 +326,21 @@ export function MobileRecurrentesView({
           categories={categories}
           currency={currency}
           onMutate={hook.refreshOccurrences}
+          subscriptionTemplateIds={subscriptionTemplateIds}
         />
       )}
 
-      {/* Suscripciones — grouped with the templates strip so the management
-          rows sit together, below the "am I on track?" hero. */}
+      {/* Suscripciones viven aquí: sugerencias detectadas junto a la tira de
+          plantillas. /suscripciones queda solo para gestionar las ya rastreadas. */}
       {hook.isHydrated && (
-        <Link
-          href="/suscripciones"
-          className={cn(
-            PANEL_INSET_CLASS,
-            "flex items-center justify-between px-3.5 py-3 active:bg-white/[0.03]",
-          )}
-        >
-          <span className="text-sm font-medium">Suscripciones</span>
-          <ChevronRight className="size-4 text-muted-foreground" />
-        </Link>
+        <SubscriptionSuggestions suggestions={subscriptionSuggestions} currency={currency} />
+      )}
+      {hook.isHydrated && subscriptionTemplateIds.length > 0 && (
+        <p className="text-right text-xs">
+          <Link href="/suscripciones" className="font-semibold text-z-brass">
+            Gestionar suscripciones
+          </Link>
+        </p>
       )}
 
       {/* Pending payments grouped by date */}

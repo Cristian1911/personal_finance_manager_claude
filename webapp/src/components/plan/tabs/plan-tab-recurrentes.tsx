@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
 import { getAccounts } from "@/actions/accounts";
+import { getSubscriptions } from "@/actions/subscriptions";
 import { getPreferredCurrency } from "@/actions/profile";
 import { getAttentionSnapshot } from "@/actions/attention";
 import {
@@ -12,8 +12,7 @@ import { RecurringFormDialog } from "@/components/recurring/recurring-form-dialo
 import { RecurringList } from "@/components/recurring/recurring-list";
 import { RecurringTimelineView } from "@/components/recurring/recurring-timeline-view";
 import { MobileRecurrentesView } from "@/components/mobile/v2/plan/mobile-recurrentes-view";
-import { Button } from "@/components/ui/button";
-import { GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import { SubscriptionSuggestions } from "@/components/subscriptions/subscription-suggestions";
 import { DesktopOnly } from "@/components/ui/responsive-render";
 import { SummaryCard } from "@/components/ui/summary-card";
 import { AttentionCard } from "@/components/ui/attention-card";
@@ -28,7 +27,7 @@ interface PlanTabRecurrentesProps {
 }
 
 export async function PlanTabRecurrentes({ month }: PlanTabRecurrentesProps = {}) {
-  const [templatesResult, accountsResult, categoriesResult, summary, currency, attentionSnapshot, occurrencesResult] =
+  const [templatesResult, accountsResult, categoriesResult, summary, currency, attentionSnapshot, occurrencesResult, subscriptionsResult] =
     await Promise.all([
       getRecurringTemplates(),
       getAccounts(),
@@ -37,9 +36,18 @@ export async function PlanTabRecurrentes({ month }: PlanTabRecurrentesProps = {}
       getPreferredCurrency(),
       getAttentionSnapshot(),
       getOccurrencesForMonth(month),
+      getSubscriptions(),
     ]);
 
   const templates = templatesResult.success ? templatesResult.data : [];
+  // Suscripciones viven dentro de Recurrentes: sugerencias arriba de la lista,
+  // chip en la plantilla vinculada. /suscripciones queda como página de gestión.
+  const subscriptions = subscriptionsResult.success ? subscriptionsResult.data : [];
+  const subscriptionSuggestions = subscriptions.filter((s) => s.status === "suggested");
+  const subscriptionTemplateIds = subscriptions
+    .filter((s) => s.status !== "suggested" && s.recurring_template_id)
+    .map((s) => s.recurring_template_id as string);
+  const hasTrackedSubscriptions = subscriptionTemplateIds.length > 0;
   const accounts = accountsResult.success ? accountsResult.data : [];
   const categories = categoriesResult.success ? categoriesResult.data : [];
   const initialOccurrences = occurrencesResult.success ? occurrencesResult.data : undefined;
@@ -81,6 +89,8 @@ export async function PlanTabRecurrentes({ month }: PlanTabRecurrentesProps = {}
           accounts={accounts}
           currency={currency as CurrencyCode}
           initialOccurrences={initialOccurrences}
+          subscriptionSuggestions={subscriptionSuggestions}
+          subscriptionTemplateIds={subscriptionTemplateIds}
         />
       </div>
 
@@ -106,15 +116,7 @@ export async function PlanTabRecurrentes({ month }: PlanTabRecurrentesProps = {}
               }
             />
           </div>
-          <div className="flex items-center gap-2">
-            <Button asChild variant="outline" className={GHOST_BUTTON_CLASS}>
-              <Link href="/suscripciones">
-                Suscripciones
-                <ChevronRight className="size-4" />
-              </Link>
-            </Button>
-            <RecurringFormDialog accounts={accounts} categories={categories} />
-          </div>
+          <RecurringFormDialog accounts={accounts} categories={categories} />
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
@@ -130,11 +132,28 @@ export async function PlanTabRecurrentes({ month }: PlanTabRecurrentesProps = {}
 
         <RecurringTimelineView templates={templates} accounts={accounts} />
 
+        <SubscriptionSuggestions
+          suggestions={subscriptionSuggestions}
+          currency={currency as CurrencyCode}
+        />
+
         <RecurringList
           templates={templates}
           accounts={accounts}
           categories={categories}
+          subscriptionTemplateIds={subscriptionTemplateIds}
         />
+
+        {hasTrackedSubscriptions && (
+          <p className="text-right text-xs">
+            <Link
+              href="/suscripciones"
+              className="font-semibold text-z-brass transition-colors hover:text-z-brass-hot"
+            >
+              Gestionar suscripciones
+            </Link>
+          </p>
+        )}
       </DesktopOnly>
     </div>
   );

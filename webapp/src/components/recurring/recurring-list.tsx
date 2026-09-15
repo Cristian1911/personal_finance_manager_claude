@@ -31,7 +31,6 @@ import {
   Repeat,
   Plus,
 } from "lucide-react";
-import Link from "next/link";
 import { EmptyState } from "@/components/ui/empty-state";
 import { RecurringFormDialog } from "./recurring-form-dialog";
 import { RecurringImpactDialog } from "./recurring-impact-dialog";
@@ -49,10 +48,13 @@ export function RecurringList({
   templates,
   accounts,
   categories,
+  subscriptionTemplateIds = [],
 }: {
   templates: RecurringTemplateWithRelations[];
   accounts: Account[];
   categories: CategoryWithChildren[];
+  /** Plantillas con una suscripción viva vinculada (chip "Suscripción"). */
+  subscriptionTemplateIds?: string[];
 }) {
   if (templates.length === 0) {
     return (
@@ -61,17 +63,11 @@ export function RecurringList({
         title="Registra lo que se repite"
         description="Suscripciones, arriendo, cuotas — Zeta te avisa antes de cada cobro."
         primary={{ label: "Agregar recurrente", href: "/recurrentes/new", icon: <Plus className="size-4" strokeWidth={1.5} /> }}
-        footer={
-          <Link
-            href="/suscripciones"
-            className="text-xs font-semibold text-z-brass transition-colors hover:text-z-brass-hot"
-          >
-            Ver suscripciones detectadas
-          </Link>
-        }
       />
     );
   }
+
+  const subscribed = new Set(subscriptionTemplateIds);
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -81,6 +77,7 @@ export function RecurringList({
           template={template}
           accounts={accounts}
           categories={categories}
+          isSubscription={subscribed.has(template.id)}
         />
       ))}
     </div>
@@ -91,10 +88,12 @@ function RecurringCard({
   template,
   accounts,
   categories,
+  isSubscription,
 }: {
   template: RecurringTemplateWithRelations;
   accounts: Account[];
   categories: CategoryWithChildren[];
+  isSubscription: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -230,7 +229,10 @@ function RecurringCard({
               />
             )}
           </div>
-          <Badge variant="secondary">{frequencyLabel(template.frequency)}</Badge>
+          <div className="flex items-center gap-1.5">
+            {isSubscription && <Badge variant="outline">Suscripción</Badge>}
+            <Badge variant="secondary">{frequencyLabel(template.frequency)}</Badge>
+          </div>
         </div>
 
         <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
