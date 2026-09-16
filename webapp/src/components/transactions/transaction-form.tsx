@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { toColombiaDateString } from "@/lib/utils/date";
 import { Button } from "@/components/ui/button";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
-import { usePreferredCurrency } from "@/components/providers/app-data-provider";
+import { useActiveModo, usePreferredCurrency } from "@/components/providers/app-data-provider";
 import { ConversionHint } from "@/components/transactions/conversion-hint";
 import { TimeShiftHint } from "@/components/transactions/time-shift-hint";
 import {
@@ -144,7 +144,16 @@ export function TransactionForm({
   const [categoryId, setCategoryId] = useState<string | null>(
     transaction?.category_id ?? null
   );
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  // Viaje activo: a new expense created today, inside the trip's dates, starts
+  // with the trip tag ticked (the server would attach it anyway — show it).
+  const activeModo = useActiveModo();
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>(() => {
+    if (transaction || !activeModo?.auto_tag_id) return [];
+    const today = toColombiaDateString(new Date());
+    return today >= activeModo.date_from && today <= activeModo.date_to
+      ? [activeModo.auto_tag_id]
+      : [];
+  });
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [createDestinatarioSetup, setCreateDestinatarioSetup] = useState(false);
   const [destinatarioName, setDestinatarioName] = useState(
