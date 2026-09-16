@@ -1641,6 +1641,10 @@ export type Database = {
           outstanding_amount: number
           principal_amount: number
           split_group_id: string | null
+          installment_group_id: string | null
+          installment_total: number | null
+          group_total_amount: number | null
+          interest_amount: number | null
           status: Database["public"]["Enums"]["personal_debt_status"]
           updated_at: string
           user_id: string
@@ -1659,6 +1663,10 @@ export type Database = {
           outstanding_amount: number
           principal_amount: number
           split_group_id?: string | null
+          installment_group_id?: string | null
+          installment_total?: number | null
+          group_total_amount?: number | null
+          interest_amount?: number | null
           status?: Database["public"]["Enums"]["personal_debt_status"]
           updated_at?: string
           user_id: string
@@ -1677,6 +1685,10 @@ export type Database = {
           outstanding_amount?: number
           principal_amount?: number
           split_group_id?: string | null
+          installment_group_id?: string | null
+          installment_total?: number | null
+          group_total_amount?: number | null
+          interest_amount?: number | null
           status?: Database["public"]["Enums"]["personal_debt_status"]
           updated_at?: string
           user_id?: string

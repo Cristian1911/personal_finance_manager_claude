@@ -63,15 +63,28 @@ export type SplitTxConfig = {
  * Compartido por `createSharedPayment` (modo "existing") y el batch del modo
  * compartido (`shareModoTransactions`) — una sola regla de reparto.
  */
+export type SplitTxOptions = {
+  /** Amount to split. Defaults to `tx.amount`; a purchase in cuotas passes precio + interés. */
+  total?: number;
+  /** Other rows of the same purchase (later cuotas) that carry the group too. */
+  extraTransactionIds?: string[];
+  /** Installment metadata stamped on every debt of the group. */
+  debtExtras?: Pick<PersonalDebtInsert, "installment_group_id" | "installment_total" | "group_total_amount">;
+  /** totalInterest / totalCost — each debt's interest_amount = share × ratio. */
+  interestShareRatio?: number;
+};
+
 export async function splitExistingTransaction(
   supabase: SupabaseClient<Database>,
   userId: string,
   tx: { id: string; amount: number; currency_code: string },
   config: SplitTxConfig,
+  opts: SplitTxOptions = {},
 ): Promise<
   | { ok: true; split_group_id: string; debt_ids: string[] }
   | { ok: false; error: string }
 > {
+  const targetIds = [tx.id, ...(opts.extraTransactionIds ?? []).filter((id) => id !== tx.id)];
   // Materialize any ad-hoc (typed-name) participants first — every debt needs a
   // destinatario_id. Done BEFORE the split math so a resolution failure costs
   // nothing but the hidden rows we clean up on the error paths below.
@@ -81,7 +94,7 @@ export async function splitExistingTransaction(
 
   const decimals = getCurrencyDecimals(tx.currency_code as CurrencyCode);
   const split = computeSplit({
-    total: tx.amount,
+    total: opts.total ?? tx.amount,
     method: config.method,
     participants: people.map((x) => ({
       destinatario_id: x.destinatario_id,
@@ -99,7 +112,7 @@ export async function splitExistingTransaction(
   const { error: updErr } = await supabase
     .from("transactions")
     .update({ split_group_id: splitGroupId, split_repaid_amount: 0 })
-    .eq("id", tx.id)
+    .in("id", targetIds)
     .eq("user_id", userId);
   if (updErr) {
     await cleanupAdHocDestinatarios(supabase, userId, createdIds);
@@ -124,6 +137,10 @@ export async function splitExistingTransaction(
       status: "active",
       split_group_id: splitGroupId,
       origin_transaction_id: tx.id,
+      ...(opts.debtExtras ?? {}),
+      ...(opts.interestShareRatio != null && opts.interestShareRatio > 0
+        ? { interest_amount: Math.round(share.amount * opts.interestShareRatio * 100) / 100 }
+        : {}),
     };
   });
   const { error: debtsErr } = await supabase.from("personal_debts").insert(debtsToInsert);
@@ -133,9 +150,14 @@ export async function splitExistingTransaction(
     await supabase
       .from("transactions")
       .update({ split_group_id: null, split_repaid_amount: null })
-      .eq("id", tx.id)
+      .in("id", targetIds)
       .eq("user_id", userId);
     await cleanupAdHocDestinatarios(supabase, userId, createdIds);
+    // Unique (user, installment_group_id, destinatario): a concurrent import
+    // already shared this purchase — not a failure of the ledger.
+    if (debtsErr.code === "23505" && opts.debtExtras?.installment_group_id) {
+      return { ok: false, error: "Esta compra a cuotas ya estaba repartida" };
+    }
     return { ok: false, error: "Error al crear las deudas del reparto" };
   }
 
@@ -499,6 +521,7 @@ async function getSharedPaymentGroupsCached(
       id, user_id, destinatario_id, direction, principal_amount,
       currency_code, outstanding_amount, opened_on, due_date, status,
       origin_transaction_id, notes, is_demo, created_at, updated_at, split_group_id,
+      installment_group_id, installment_total, group_total_amount, interest_amount,
       destinatario:destinatarios!personal_debts_destinatario_id_fkey ( name, default_category_id, is_ad_hoc ),
       repayments:transactions!transactions_enc_personal_debt_id_fkey ( amount, pd_role )
     `)
@@ -553,7 +576,16 @@ async function getSharedPaymentGroupsCached(
       ? txById.get(gdebts[0].origin_transaction_id)
       : undefined;
     // total = the real payment; userShare = total − Σ(owed); recovered = repaid.
-    const total = originTx?.amount != null ? Number(originTx.amount) : principalSum;
+    // A purchase shared as "compra completa" stores the amount it was split on
+    // (precio + interés estimado) on every debt: the origin tx is just one cuota.
+    const groupTotal = gdebts[0].group_total_amount;
+    const isInstallmentGroup = gdebts[0].installment_group_id != null;
+    const total =
+      groupTotal != null
+        ? Number(groupTotal)
+        : originTx?.amount != null
+          ? Number(originTx.amount)
+          : principalSum;
     // `split_repaid_amount` lives on the origin transaction, so a group with no
     // origin tx — a debt split via `splitPersonalDebt` that was never backed by
     // a recorded payment — has nowhere to store it. Derive it from the debts
@@ -565,7 +597,9 @@ async function getSharedPaymentGroupsCached(
     // the debts but holds no split_repaid_amount, and recomputeSplitRepaid's
     // writes (which target split_group_id) would silently update 0 rows — the
     // card would read "Recuperado $0" forever. Deriving in that case self-heals.
-    const recovered = originTx?.split_group_id === gid
+    // Installment groups spread split_repaid_amount across every cuota row, so
+    // the origin's value alone would under-report; derive from the debts.
+    const recovered = originTx?.split_group_id === gid && !isInstallmentGroup
       ? Number(originTx.split_repaid_amount ?? 0)
       : gdebts.reduce((s, d) => {
           const principal = Number(d.principal_amount ?? 0);
@@ -588,6 +622,13 @@ async function getSharedPaymentGroupsCached(
       // account for repayments (money comes back to the account it left from,
       // never onto a credit card).
       origin_account_id: originTx?.account_id ?? null,
+      installment_group_id: gdebts[0].installment_group_id ?? null,
+      installment_total: gdebts[0].installment_total ?? null,
+      // Each debt stores its own interest share; scale back up to the whole
+      // purchase (the user's part carries the same ratio) for the breakdown.
+      interest_total: isInstallmentGroup && principalSum > 0
+        ? Math.round(gdebts.reduce((s, d) => s + Number(d.interest_amount ?? 0), 0) * (total / principalSum) * 100) / 100
+        : null,
       debts: gdebts,
     });
   }

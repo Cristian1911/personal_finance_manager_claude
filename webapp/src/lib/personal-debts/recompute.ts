@@ -1,5 +1,6 @@
 import "server-only";
 import { computeOutstanding } from "@zeta/shared";
+import { allocateRepaidAcrossRows, type RepaidTargetRow } from "./allocate-repaid";
 
 /**
  * Debt-bookkeeping helpers shared by every mutation path that can change a
@@ -82,14 +83,34 @@ export async function recomputeSplitRepaid(
     }
   }
   repaid = Math.min(repaid, owed);
-  // The origin transaction is the only group-tagged tx without a personal_debt_id.
-  const { error } = await supabase
+  // The group-tagged txs without a personal_debt_id are the payment itself:
+  // one row for a normal shared payment, or every cuota of a purchase shared as
+  // "compra completa". Spread the repaid total across them in cuota order so no
+  // row's effective spend (amount − split_repaid_amount) goes negative.
+  const { data: rows, error: rowsErr } = await supabase
     .from("transactions")
-    .update({ split_repaid_amount: repaid })
+    .select("id, amount, installment_current, transaction_date, split_repaid_amount")
     .eq("user_id", userId)
     .eq("split_group_id", splitGroupId)
-    .is("personal_debt_id", null);
-  if (error) throw error;
+    .is("personal_debt_id", null)
+    // A duplicate cuota reconciled away by a later import must not absorb
+    // repaid capacity the visible rows need.
+    .is("reconciled_into_transaction_id", null);
+  if (rowsErr) throw rowsErr;
+  const targets = (rows ?? []) as (RepaidTargetRow & { split_repaid_amount: number | null })[];
+  const alloc = allocateRepaidAcrossRows(targets, repaid);
+  const updates = targets.filter((t) => Number(t.split_repaid_amount ?? 0) !== (alloc.get(t.id) ?? 0));
+  const results = await Promise.all(
+    updates.map((t) =>
+      supabase
+        .from("transactions")
+        .update({ split_repaid_amount: alloc.get(t.id) ?? 0 })
+        .eq("user_id", userId)
+        .eq("id", t.id),
+    ),
+  );
+  const failed = results.find((r: { error: unknown }) => r.error);
+  if (failed?.error) throw failed.error;
 }
 
 // ============================================================

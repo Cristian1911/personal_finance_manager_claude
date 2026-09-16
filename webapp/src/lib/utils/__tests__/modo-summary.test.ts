@@ -121,6 +121,44 @@ describe("filterSharedGroupsByOrigin", () => {
   });
 });
 
+describe("filterSharedGroupsByOrigin con cuotas", () => {
+  it("también empareja por split_group_id cuando el origen no está en el viaje", () => {
+    const groups = [
+      { split_group_id: "sg-cuotas", installment_group_id: "ig1", debts: [{ origin_transaction_id: "cuota1-fuera" }] },
+      { split_group_id: "sg-otro", debts: [{ origin_transaction_id: "tX" }] },
+    ] as unknown as SharedPaymentGroup[];
+    const out = filterSharedGroupsByOrigin(groups, ["cuota3"], ["sg-cuotas", null]);
+    expect(out.map((g) => g.split_group_id)).toEqual(["sg-cuotas"]);
+  });
+});
+
+describe("summarizeSpendSplit con una compra a cuotas compartida", () => {
+  it("cuenta las cuotas que están en el viaje y tu parte proporcional, no la compra entera", () => {
+    const rows: ModoTxRow[] = [
+      { id: "c1", amount: 100, direction: "OUTFLOW", transaction_date: "d", category: null, split_group_id: "sg", installment_current: 1, installment_total: 24 },
+      { id: "c2", amount: 100, direction: "OUTFLOW", transaction_date: "d", category: null, split_group_id: "sg", installment_current: 2, installment_total: 24 },
+      { id: "own", amount: 50, direction: "OUTFLOW", transaction_date: "d", category: null },
+    ];
+    // Whole purchase: total 2400 (precio + interés), user keeps half.
+    const shared = [
+      { currency: "COP", sharedTotal: 2400, userShare: 1200, owedToUser: 1200, recovered: 0, outstanding: 1200, count: 1 },
+    ];
+    const groupsBySplit = new Map([
+      ["sg", { split_group_id: "sg", total: 2400, userShare: 1200, installment_total: 24 } as unknown as SharedPaymentGroup],
+    ]);
+    const [cop] = summarizeSpendSplit(rows, shared, groupsBySplit);
+    expect(cop).toMatchObject({ spendTotal: 250, sharedTotal: 200, sharedCount: 2, ownOnlyTotal: 50, ownOnlyCount: 1, yourPart: 150, owedToUser: 1200 });
+  });
+
+  it("sin el mapa de grupos conserva el cálculo anterior", () => {
+    const rows: ModoTxRow[] = [
+      { id: "a", amount: 100, direction: "OUTFLOW", transaction_date: "d", category: null, split_group_id: "g1" },
+    ];
+    const [cop] = summarizeSpendSplit(rows, [{ currency: "COP", sharedTotal: 100, userShare: 40, owedToUser: 60, recovered: 0, outstanding: 60, count: 1 }]);
+    expect(cop.yourPart).toBe(40);
+  });
+});
+
 describe("summarizeShared", () => {
   it("agrega por moneda solo los grupos del modo", () => {
     const groups = [

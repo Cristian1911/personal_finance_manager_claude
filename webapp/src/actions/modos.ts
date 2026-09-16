@@ -9,6 +9,7 @@ import { getModoTransactionIds } from "@/lib/modos/membership";
 import {
   summarizeModo,
   filterSharedGroupsByOrigin,
+  collectSplitGroupIds,
   assignTransactionsToModos,
   isModoSpend,
   type ModoTxRow,
@@ -29,7 +30,7 @@ import {
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import type { ActionResult } from "@/types/actions";
-import type { ActiveModo, Modo, ModoParticipant, SharedPaymentGroup } from "@/types/domain";
+import type { ActiveModo, Modo, ModoParticipant, ModoWithParticipants, SharedPaymentGroup } from "@/types/domain";
 
 // Everything the detail list shows per row: merchant/description for the
 // title, account + destinatario for the meta line, split state for the
@@ -37,6 +38,7 @@ import type { ActiveModo, Modo, ModoParticipant, SharedPaymentGroup } from "@/ty
 const MODO_TX_SELECT =
   "id, amount, direction, transaction_date, transaction_time, currency_code, merchant_name, clean_description, raw_description, notes, " +
   "is_excluded, transfer_group_id, split_group_id, split_repaid_amount, personal_debt_id, capture_method, " +
+  "installment_current, installment_total, " +
   "category:categories!transactions_category_id_fkey(id, name, name_es, color), " +
   "account:accounts!transactions_account_id_fkey(id, name, color), " +
   "destinatario:destinatarios!transactions_destinatario_id_fkey(id, name), " +
@@ -106,6 +108,48 @@ async function listModosCached(userId: string, accessToken: string): Promise<Mod
     .order("date_from", { ascending: false });
   if (error) throw error;
   return data ?? [];
+}
+
+async function listModosWithParticipantsCached(
+  userId: string,
+  accessToken: string,
+): Promise<ModoWithParticipants[]> {
+  "use cache";
+  cacheTag("modos");
+  cacheLife("zeta");
+  const supabase = createCachedClient(accessToken);
+  const { data: modos, error } = await supabase
+    .from("modos")
+    .select("*")
+    .eq("user_id", userId)
+    .order("date_from", { ascending: false });
+  if (error) throw error;
+  if (!modos || modos.length === 0) return [];
+  const { data: participants, error: pErr } = await supabase
+    .from("modo_participants")
+    .select("*")
+    .eq("user_id", userId)
+    .in("modo_id", modos.map((m) => m.id))
+    .order("position", { ascending: true });
+  if (pErr) throw pErr;
+  const byModo = new Map<string, ModoParticipant[]>();
+  for (const p of participants ?? []) {
+    const arr = byModo.get(p.modo_id) ?? [];
+    arr.push(p);
+    byModo.set(p.modo_id, arr);
+  }
+  return modos.map((m) => ({ ...m, participants: byModo.get(m.id) ?? [] }));
+}
+
+/** Modos + participants in one cached read — the import review's trip picker and "Personas del viaje" preset. */
+export async function listModosWithParticipants(): Promise<ActionResult<ModoWithParticipants[]>> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
+  try {
+    return { success: true, data: await listModosWithParticipantsCached(user.id, accessToken) };
+  } catch {
+    return { success: false, error: "Error al cargar los viajes" };
+  }
 }
 
 export async function listModos(): Promise<ActionResult<Modo[]>> {
@@ -244,7 +288,7 @@ export async function getModoSummary(id: string): Promise<ActionResult<ModoDetai
   const txIds = detail.transactions.map((t) => t.id);
   const summary = summarizeModo(detail.transactions);
   const sharedGroups = groupsResult.success
-    ? filterSharedGroupsByOrigin(groupsResult.data, txIds)
+    ? filterSharedGroupsByOrigin(groupsResult.data, txIds, collectSplitGroupIds(detail.transactions))
     : [];
 
   return {

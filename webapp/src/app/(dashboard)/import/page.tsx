@@ -5,6 +5,7 @@ import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
 import { getDestinatarioRules } from "@/actions/destinatarios";
 import { getPendingEmailStatements } from "@/actions/email-pdf-ingest";
+import { listModosWithParticipants } from "@/actions/modos";
 import { suggestPdfPasswordsForAccount } from "@/actions/pdf-passwords";
 import { ImportPageClient } from "@/components/import/import-page-client";
 import { Button } from "@/components/ui/button";
@@ -14,13 +15,16 @@ import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 
 export default async function ImportPage() {
   await connection();
-  const [accountResult, categoryResult, rulesResult, pendingStatementsResult, vaultSuggestions] = await Promise.all([
+  const [accountResult, categoryResult, rulesResult, pendingStatementsResult, vaultSuggestions, modosResult] = await Promise.all([
     getAccounts(),
     getCategories(),
     getDestinatarioRules(),
     getPendingEmailStatements(),
     suggestPdfPasswordsForAccount(null, null),
+    // Trip picker + "Personas del viaje" preset in the review step.
+    listModosWithParticipants(),
   ]);
+  const modos = modosResult.success ? modosResult.data : [];
   const accounts = accountResult.success ? accountResult.data : [];
   const categories = categoryResult.success ? categoryResult.data : [];
   const destinatarioRules = rulesResult.success ? rulesResult.data : [];
@@ -116,6 +120,7 @@ export default async function ImportPage() {
         accounts={accounts}
         categories={categories}
         destinatarioRules={destinatarioRules}
+        modos={modos}
         pendingStatements={pendingStatements}
         initialVaultSuggestions={vaultSuggestions}
         mobileAboutPanel={

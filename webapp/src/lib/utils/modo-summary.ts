@@ -25,6 +25,8 @@ export type ModoTxRow = {
   split_group_id?: string | null;
   split_repaid_amount?: number | null;
   personal_debt_id?: string | null;
+  installment_current?: number | null;
+  installment_total?: number | null;
   category: { id: string; name_es: string | null; name: string; color: string | null } | null;
   account?: { id: string; name: string; color: string | null } | null;
   destinatario?: { id: string; name: string } | null;
@@ -159,14 +161,29 @@ export function summarizeModo(txs: ModoTxRow[]): ModoSummary {
   };
 }
 
+/**
+ * Groups that belong to the modo: their origin tx is in it, or (a purchase in
+ * cuotas shared as "compra completa") any cuota row in it carries the group —
+ * the trip may hold cuota 3 while the origin is cuota 1, untagged.
+ */
 export function filterSharedGroupsByOrigin(
   groups: SharedPaymentGroup[],
   txIds: string[],
+  splitGroupIds?: Iterable<string | null | undefined>,
 ): SharedPaymentGroup[] {
   const set = new Set(txIds);
-  return groups.filter((g) =>
-    g.debts.some((d) => d.origin_transaction_id != null && set.has(d.origin_transaction_id)),
+  const splits = new Set<string>();
+  for (const id of splitGroupIds ?? []) if (id) splits.add(id);
+  return groups.filter(
+    (g) =>
+      splits.has(g.split_group_id) ||
+      g.debts.some((d) => d.origin_transaction_id != null && set.has(d.origin_transaction_id)),
   );
+}
+
+/** The split_group_ids carried by a modo's rows (for filterSharedGroupsByOrigin). */
+export function collectSplitGroupIds(rows: Pick<ModoTxRow, "split_group_id">[]): string[] {
+  return [...new Set(rows.map((r) => r.split_group_id).filter((x): x is string => !!x))];
 }
 
 export type SharedTotals = {
@@ -189,9 +206,13 @@ export type SharedTotals = {
  * Per-currency roll-up of the shared payments whose origin lies in the modo.
  * Never adds COP to USD: one row per currency, biggest first.
  */
-export function summarizeShared(groups: SharedPaymentGroup[], txIds: string[]): SharedTotals[] {
+export function summarizeShared(
+  groups: SharedPaymentGroup[],
+  txIds: string[],
+  splitGroupIds?: Iterable<string | null | undefined>,
+): SharedTotals[] {
   const byCurrency = new Map<string, SharedTotals>();
-  for (const g of filterSharedGroupsByOrigin(groups, txIds)) {
+  for (const g of filterSharedGroupsByOrigin(groups, txIds, splitGroupIds)) {
     const currency = g.currency_code ?? DEFAULT_CURRENCY;
     const cur = byCurrency.get(currency) ?? {
       currency,
@@ -236,8 +257,17 @@ export type SpendSplit = {
  * the spend into "shared with someone" and "only mine", and derive what the
  * trip costs you once the others pay their part.
  */
-export function summarizeSpendSplit(spendRows: ModoTxRow[], shared: SharedTotals[]): SpendSplit[] {
+export function summarizeSpendSplit(
+  spendRows: ModoTxRow[],
+  shared: SharedTotals[],
+  groupsBySplit?: Map<string, SharedPaymentGroup>,
+): SpendSplit[] {
   const byCurrency = new Map<string, SpendSplit>();
+  // With the groups at hand, "shared" is what actually hit the trip (Σ row
+  // amounts) and your part is each row × the group's user ratio — a purchase
+  // in cuotas counts its cuotas, not the whole purchase, so own-only never
+  // goes negative. Single-row groups (amount = total) give the same numbers.
+  const rowShared = new Map<string, { sharedTotal: number; yourShare: number }>();
   for (const t of spendRows) {
     const currency = txCurrency(t);
     const cur = byCurrency.get(currency) ?? {
@@ -255,17 +285,29 @@ export function summarizeSpendSplit(spendRows: ModoTxRow[], shared: SharedTotals
     };
     cur.spendTotal += t.amount ?? 0;
     cur.spendCount += 1;
-    if (t.split_group_id) cur.sharedCount += 1;
+    if (t.split_group_id) {
+      cur.sharedCount += 1;
+      if (groupsBySplit) {
+        const g = groupsBySplit.get(t.split_group_id);
+        const amount = t.amount ?? 0;
+        const ratio = g && g.total > 0 ? g.userShare / g.total : 0;
+        const acc = rowShared.get(currency) ?? { sharedTotal: 0, yourShare: 0 };
+        acc.sharedTotal += amount;
+        acc.yourShare += amount * ratio;
+        rowShared.set(currency, acc);
+      }
+    }
     byCurrency.set(currency, cur);
   }
   for (const st of shared) {
     const cur = byCurrency.get(st.currency);
     if (!cur) continue;
-    cur.sharedTotal = st.sharedTotal;
+    const fromRows = groupsBySplit ? rowShared.get(st.currency) : undefined;
+    cur.sharedTotal = fromRows ? fromRows.sharedTotal : st.sharedTotal;
     cur.outstanding = st.outstanding;
     cur.recovered = st.recovered;
     cur.owedToUser = st.owedToUser;
-    cur.yourPart = st.userShare;
+    cur.yourPart = fromRows ? fromRows.yourShare : st.userShare;
   }
   for (const cur of byCurrency.values()) {
     cur.ownOnlyTotal = Math.max(0, cur.spendTotal - cur.sharedTotal);
@@ -304,13 +346,18 @@ export type SettleUpPerson = {
 export function settleUpByPerson(
   groups: SharedPaymentGroup[],
   txIds: string[],
+  splitGroupIds?: Iterable<string | null | undefined>,
 ): SettleUpPerson[] {
   const set = new Set(txIds);
   const byKey = new Map<string, SettleUpPerson>();
   const chosenOpenedOn = new Map<string, string>();
-  for (const g of groups) {
+  for (const g of filterSharedGroupsByOrigin(groups, txIds, splitGroupIds)) {
     for (const d of g.debts) {
-      if (d.origin_transaction_id == null || !set.has(d.origin_transaction_id)) continue;
+      const inModo =
+        (d.origin_transaction_id != null && set.has(d.origin_transaction_id)) ||
+        // Cuota rows carry the group but their origin (cuota 1) may not be tagged.
+        (g.installment_group_id != null && g.split_group_id === d.split_group_id);
+      if (!inModo) continue;
       const currency = d.currency_code ?? DEFAULT_CURRENCY;
       const key = `${d.destinatario_id}|${currency}`;
       const cur = byKey.get(key) ?? {

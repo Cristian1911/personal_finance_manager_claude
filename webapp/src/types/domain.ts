@@ -9,6 +9,8 @@ export type Transaction = Tables<"transactions">;
 export type Modo = Tables<"modos">;
 export type ModoParticipant = Tables<"modo_participants">;
 export type ModoTxReview = Tables<"modo_tx_reviews">;
+/** A modo with its split participants — what the import review needs for the "Personas del viaje" preset. */
+export type ModoWithParticipants = Modo & { participants: ModoParticipant[] };
 /** The one trip flagged `is_active` — what capture surfaces read (banner, tag preselect). */
 export type ActiveModo = Pick<
   Modo,
@@ -104,6 +106,11 @@ export type SharedPaymentGroup = {
   outstanding_total: number;
   /** Account the origin expense was paid from — default target for repayments. */
   origin_account_id: string | null;
+  /** Set when the group is a purchase in cuotas shared as "compra completa". */
+  installment_group_id: string | null;
+  installment_total: number | null;
+  /** Estimated interest of the whole purchase (installment groups only). */
+  interest_total: number | null;
   debts: PersonalDebtWithDetails[];
 };
 

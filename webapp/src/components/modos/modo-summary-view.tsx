@@ -11,6 +11,7 @@ import {
   classifyModoTx,
   describeModoTx,
   indexSharedGroups,
+  collectSplitGroupIds,
   isModoSpend,
   modoDatePosition,
   settleUpByPerson,
@@ -81,10 +82,17 @@ export function ModoSummaryView({
   // ── Derived numbers ────────────────────────────────────────────────────
   const txIds = useMemo(() => transactions.map((t) => t.id), [transactions]);
   const groupsBySplit = useMemo(() => indexSharedGroups(sharedGroups), [sharedGroups]);
-  const sharedTotals = useMemo(() => summarizeShared(sharedGroups, txIds), [sharedGroups, txIds]);
-  const people = modo.is_shared ? settleUpByPerson(sharedGroups, txIds) : [];
+  const splitGroupIds = useMemo(() => collectSplitGroupIds(transactions), [transactions]);
+  const sharedTotals = useMemo(
+    () => summarizeShared(sharedGroups, txIds, splitGroupIds),
+    [sharedGroups, txIds, splitGroupIds],
+  );
+  const people = modo.is_shared ? settleUpByPerson(sharedGroups, txIds, splitGroupIds) : [];
   const spendRows = useMemo(() => transactions.filter(isModoSpend), [transactions]);
-  const spendSplit = useMemo(() => summarizeSpendSplit(spendRows, sharedTotals), [spendRows, sharedTotals]);
+  const spendSplit = useMemo(
+    () => summarizeSpendSplit(spendRows, sharedTotals, groupsBySplit),
+    [spendRows, sharedTotals, groupsBySplit],
+  );
   const listRef = useRef<HTMLElement>(null);
   function chooseWhatToShare() {
     setFilter("unshared");
@@ -626,9 +634,14 @@ function statusChip(
   if (kind === "inflow") return { label: "Ingreso", tone: "muted" };
   if (tx.split_group_id) {
     const outstanding = group?.outstanding_total ?? 0;
+    // A purchase in cuotas shared as a whole: say so, and which cuota this is.
+    const cuota =
+      group?.installment_total && tx.installment_current != null
+        ? ` · compra completa · cuota ${tx.installment_current}/${group.installment_total}`
+        : "";
     return outstanding > 0
-      ? { label: `Compartido · te deben ${formatCurrency(outstanding, cur(group?.currency_code ?? txCurrency(tx)))}`, tone: "brass" }
-      : { label: "Compartido · saldado", tone: "income" };
+      ? { label: `Compartido${cuota} · te deben ${formatCurrency(outstanding, cur(group?.currency_code ?? txCurrency(tx)))}`, tone: "brass" }
+      : { label: `Compartido${cuota} · saldado`, tone: "income" };
   }
   return isShared ? { label: "Solo mío", tone: "muted" } : null;
 }
