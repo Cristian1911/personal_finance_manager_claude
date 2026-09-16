@@ -2,6 +2,7 @@
 
 import { updateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { getDashboardConfig } from "@/actions/dashboard-config";
 import { dashboardConfigSchema } from "@/lib/validators/dashboard-config";
 import { getDefaultConfigForProfile } from "@/lib/dashboard-config-defaults";
 import { isDebtAccountType } from "@/lib/utils/account-balance";
@@ -224,5 +225,25 @@ export async function markCoachMarkSeen(id: string): Promise<GuidedResult> {
   return patchGuided((g) => ({
     ...g,
     seenCoachMarks: Array.from(new Set([...(g.seenCoachMarks ?? []), id])),
+  }));
+}
+
+/* ─────────────────────────── Discoveries (Primeras semanas §4.2) ─────────── */
+
+/** Ids the user dismissed ("No es recurrente"). Cached read via dashboard-config. */
+export async function getDismissedDiscoveryIds(): Promise<string[]> {
+  const config = await getDashboardConfig();
+  const discoveries = config?.guidedExperience?.discoveries ?? {};
+  return Object.keys(discoveries).filter((id) => Boolean(discoveries[id]?.dismissedAt));
+}
+
+export async function dismissDiscovery(id: string): Promise<GuidedResult> {
+  if (!id || id.length > 200) return { success: false, error: "Id inválido" };
+  return patchGuided((g) => ({
+    ...g,
+    discoveries: {
+      ...g.discoveries,
+      [id]: { ...g.discoveries?.[id], dismissedAt: new Date().toISOString() },
+    },
   }));
 }

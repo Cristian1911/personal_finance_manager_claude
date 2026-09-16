@@ -11,6 +11,9 @@ import {
   getLinkedRecurringForTransaction,
   isTransactionLinkedToOccurrence,
 } from "@/actions/occurrences";
+import { getRecurringCandidateForTransaction } from "@/actions/recurring-candidates";
+import { getDismissedDiscoveryIds } from "@/actions/guided-experience";
+import { recurringDiscoveryId } from "@/components/transactions/recurring-candidate-callout";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { TransactionDetailClient } from "./transaction-detail-client";
 
@@ -30,6 +33,8 @@ export default async function TransactionDetailPage({
     getCategories(),
     getDestinatarios(),
     getAccountIdsWithPendingOccurrences(),
+    getRecurringCandidateForTransaction(id),
+    getDismissedDiscoveryIds(),
   ]);
 
   const txResult = await getTransaction(id);
@@ -37,7 +42,14 @@ export default async function TransactionDetailPage({
   const tx = txResult.data;
 
   const [
-    [accountsResult, categoriesResult, destinatariosResult, linkableAccountIds],
+    [
+      accountsResult,
+      categoriesResult,
+      destinatariosResult,
+      linkableAccountIds,
+      candidate,
+      dismissedDiscoveries,
+    ],
     initialTags,
     isLinkedToOccurrence,
     linkedRecurring,
@@ -51,6 +63,16 @@ export default async function TransactionDetailPage({
   const accounts = accountsResult.success ? accountsResult.data : [];
   const categories = categoriesResult.success ? categoriesResult.data : [];
   const destinatarios = destinatariosResult.success ? destinatariosResult.data : [];
+
+  // "Parece recurrente" only for outflows that aren't already scheduled and
+  // that the user hasn't marked "No es recurrente".
+  const recurringCandidate =
+    candidate &&
+    tx.direction === "OUTFLOW" &&
+    !isLinkedToOccurrence &&
+    !dismissedDiscoveries.includes(recurringDiscoveryId(candidate))
+      ? candidate
+      : null;
 
   const currentDestinatarioName = tx.destinatario_id
     ? destinatarios.find((d) => d.id === tx.destinatario_id)?.name ?? null
@@ -77,6 +99,7 @@ export default async function TransactionDetailPage({
         linkedRecurring={linkedRecurring}
         linkableAccountIds={linkableAccountIds}
         sharedPayment={sharedPayment}
+        recurringCandidate={recurringCandidate}
       />
     </div>
   );

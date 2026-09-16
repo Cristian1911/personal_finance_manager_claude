@@ -27,6 +27,16 @@ const guidedExperienceSchema = z.object({
     })
     .optional(),
   seenCoachMarks: z.array(z.string()).optional(),
+  discoveries: z
+    .record(
+      z.string(),
+      z.object({
+        seenAt: z.string().optional(),
+        dismissedAt: z.string().optional(),
+        actedAt: z.string().optional(),
+      }),
+    )
+    .optional(),
 });
 
 export const dashboardConfigSchema = z.object({

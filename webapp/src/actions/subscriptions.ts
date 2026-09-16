@@ -13,7 +13,7 @@ import { toColombiaDateString } from "@/lib/utils/date";
 import type { ActionResult } from "@/types/actions";
 import type { SubscriptionWithDetails } from "@/types/domain";
 import type { Database } from "@/types/database";
-import { detectSubscriptions, type DetectorTransaction } from "@zeta/shared";
+import { detectAndSuggestSubscriptions } from "@/lib/subscriptions/detect";
 
 async function getSubscriptionsCached(
   accessToken: string,
@@ -197,47 +197,16 @@ export async function getSubscriptionForTemplate(templateId: string): Promise<bo
 export async function runSubscriptionDetection(): Promise<ActionResult<{ created: number }>> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
-
-  const since = new Date();
-  since.setMonth(since.getMonth() - 12);
-
-  const { data: txs } = await supabase
-    .from("transactions")
-    .select("destinatario_id, transaction_date, amount, currency_code, direction")
-    .eq("user_id", user.id)
-    .eq("direction", "OUTFLOW")
-    .not("destinatario_id", "is", null)
-    .gte("transaction_date", toColombiaDateString(since));
-
-  // Destinatarios that already have ANY subscriptions row (any status) — never re-suggest
-  // (preserves sticky dismissal AND avoids duplicating active/cancelled ones).
-  const { data: existing } = await supabase
-    .from("subscriptions")
-    .select("destinatario_id")
-    .eq("user_id", user.id);
-  const excluded = new Set((existing ?? []).map((r) => r.destinatario_id));
-
-  const candidates = detectSubscriptions((txs ?? []) as DetectorTransaction[], excluded);
-  if (candidates.length === 0) return { success: true, data: { created: 0 } };
-
-  const rows = candidates.map((c) => ({
-    user_id: user.id,
-    destinatario_id: c.destinatario_id,
-    status: "suggested" as const,
-    estimated_amount: c.median_amount,
-    currency_code: c.currency_code,
-    detected_at: new Date().toISOString(),
-  }));
-
-  const { data: inserted, error } = await supabase
-    .from("subscriptions")
-    .insert(rows)
-    .select("id");
-  if (error && error.code !== "23505")
-    return { success: false, error: error.message };
-
-  updateTag("subscriptions");
-  return { success: true, data: { created: inserted?.length ?? 0 } };
+  try {
+    const created = await detectAndSuggestSubscriptions(supabase, user.id);
+    if (created > 0) updateTag("subscriptions");
+    return { success: true, data: { created } };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "No se pudieron detectar suscripciones",
+    };
+  }
 }
 
 export async function confirmSubscription(

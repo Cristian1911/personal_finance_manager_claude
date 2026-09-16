@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { scheduleSubscriptionDetection } from "@/lib/subscriptions/detect";
 import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import { sendMessage, verifySecretToken } from "@/lib/telegram";
 import { parseVoiceCapture } from "@/actions/voice-capture";
@@ -261,6 +263,10 @@ export async function POST(request: NextRequest) {
       await sendMessage(chatId, `Error: ${insertError.message}`);
     }
     return NextResponse.json({ ok: true });
+  }
+
+  if (direction === "OUTFLOW") {
+    scheduleSubscriptionDetection(linked.user_id, () => revalidateTag("subscriptions", "zeta"));
   }
 
   const icon = direction === "OUTFLOW" ? "📤" : "📥";

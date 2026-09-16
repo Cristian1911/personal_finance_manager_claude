@@ -28,6 +28,7 @@ import {
   readTagIdsFromFormData,
 } from "@/lib/tags/attach-transaction-tags";
 import { flowClassColumns } from "@/lib/utils/flow-class-columns";
+import { scheduleSubscriptionDetection } from "@/lib/subscriptions/detect";
 import {
   applyAccountBalanceDelta,
   reverseAccountBalanceDelta,
@@ -1005,6 +1006,10 @@ export async function createTransaction(
   // the debt account's balance AFTER persistTransaction already revalidated.
   revalidateFinancialViews();
 
+  if (parsed.data.direction === "OUTFLOW") {
+    scheduleSubscriptionDetection(user.id, () => updateTag("subscriptions"));
+  }
+
   return transactionResult;
 }
 
@@ -1066,6 +1071,10 @@ export async function createQuickCaptureTransaction(
     // Re-invalidate: linking may have created a debt companion leg and updated
     // the debt account's balance AFTER persistTransaction already revalidated.
     revalidateFinancialViews();
+
+    if (parsed.data.direction === "OUTFLOW") {
+      scheduleSubscriptionDetection(user.id, () => updateTag("subscriptions"));
+    }
   }
 
   return result;

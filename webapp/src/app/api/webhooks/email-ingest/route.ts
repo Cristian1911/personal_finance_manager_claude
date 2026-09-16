@@ -29,6 +29,7 @@ import { autoCategorize } from "@zeta/shared";
 import { matchTransactionToDestinatario } from "@/actions/destinatarios";
 import { linkTransactionToOccurrence } from "@/actions/occurrences";
 import { revalidateFinancialViewsFromWebhook } from "@/lib/cache/revalidation";
+import { scheduleSubscriptionDetection } from "@/lib/subscriptions/detect";
 import type { Json } from "@/types/database";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -982,6 +983,9 @@ async function processEmail(ctx: {
     // `revalidateFinancialViewsFromWebhook` docs for the why.
     revalidateFinancialViewsFromWebhook();
     revalidateTag("email-ingest", "zeta");
+    if (parsed.direction === "OUTFLOW") {
+      scheduleSubscriptionDetection(userId, () => revalidateTag("subscriptions", "zeta"));
+    }
 
     return NextResponse.json({ ok: true });
   }

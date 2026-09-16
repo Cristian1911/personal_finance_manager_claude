@@ -36,11 +36,20 @@ export interface FirstStepsState {
   collapsed?: boolean;
 }
 
+/** One data-driven discovery ("Zeta notó") and what the user did with it. */
+export interface DiscoveryState {
+  seenAt?: string;
+  dismissedAt?: string;
+  actedAt?: string;
+}
+
 /** Server-persisted guided-experience state, stored inside dashboard_config. */
 export interface GuidedExperienceState {
   firstSteps?: FirstStepsState;
   /** Coach-mark ids the user has dismissed with "Entendido" (guided experience · D5). */
   seenCoachMarks?: string[];
+  /** Discoveries keyed by id (`recurring:<group key>`). Primeras semanas §4.2. */
+  discoveries?: Record<string, DiscoveryState>;
 }
 
 export interface DashboardConfig {

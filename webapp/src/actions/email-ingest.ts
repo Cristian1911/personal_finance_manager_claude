@@ -5,6 +5,7 @@ import { createCachedClient } from "@/lib/supabase/cached";
 import { attachTagsToTransactions } from "@/lib/tags/attach-transaction-tags";
 import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
+import { scheduleSubscriptionDetection } from "@/lib/subscriptions/detect";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import {
@@ -248,6 +249,9 @@ async function persistParsedEmail(params: {
 
     revalidateFinancialViews();
     updateTag("email-ingest");
+    if (parsed.direction === "OUTFLOW") {
+      scheduleSubscriptionDetection(userId, () => updateTag("subscriptions"));
+    }
     return { success: true, data: "imported" };
   }
 
