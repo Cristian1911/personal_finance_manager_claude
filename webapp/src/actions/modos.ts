@@ -50,12 +50,13 @@ const MODO_TOTALS_TX_SELECT =
 // Candidate rows for "¿fue del viaje?": the classification inputs plus what
 // the tray shows. Positive allow-list on flow_class_effective (never NOT IN).
 const MODO_CANDIDATE_SELECT =
-  "id, amount, direction, transaction_date, currency_code, capture_method, flow_class_effective, " +
-  "merchant_name, clean_description, raw_description, is_excluded, is_recurring, is_subscription, " +
+  "id, amount, direction, transaction_date, transaction_time, currency_code, capture_method, flow_class_effective, " +
+  "merchant_name, clean_description, raw_description, notes, location_id, is_excluded, is_recurring, is_subscription, " +
   "recurrence_group_id, installment_group_id, transfer_group_id, personal_debt_id, " +
   "category:categories!transactions_category_id_fkey(id, name, name_es, color), " +
   "account:accounts!transactions_account_id_fkey(id, name, color, account_type), " +
-  "transaction_tags!transaction_tags_transaction_id_fkey(tag_id), " +
+  "destinatario:destinatarios!transactions_destinatario_id_fkey(id, name), " +
+  "transaction_tags!transaction_tags_transaction_id_fkey(tag:tags(id, name, color)), " +
   "occurrences:recurring_occurrences!recurring_occurrences_transaction_id_fkey(id)";
 const MODO_CANDIDATES_LIMIT = 500;
 
@@ -64,14 +65,21 @@ export type ModoCandidateRow = {
   amount: number | null;
   direction: "INFLOW" | "OUTFLOW";
   transaction_date: string;
+  transaction_time: string | null;
   currency_code: string | null;
   capture_method: Database["public"]["Enums"]["transaction_capture_method"];
   flow_class_effective: string | null;
   merchant_name: string | null;
   clean_description: string | null;
   raw_description: string | null;
+  notes: string | null;
+  /** Present when the capture carried a GPS fix — fetched lazily on expand. */
+  location_id: string | null;
   category: { id: string; name: string; name_es: string | null; color: string | null } | null;
   account: { id: string; name: string; color: string | null; account_type: string } | null;
+  destinatario: { id: string; name: string } | null;
+  /** Tags already on the row (the trip's own are never here — those rows are members). */
+  tags: Array<{ id: string; name: string; color: string | null }>;
   candidate: ModoCandidate;
 };
 
@@ -328,7 +336,7 @@ export async function listModosWithTotals(): Promise<ActionResult<ModoWithTotals
 }
 
 // ── Candidatos ("¿fue del viaje?") ───────────────────────
-type RawCandidateRow = Omit<ModoCandidateRow, "candidate"> & {
+type RawCandidateRow = Omit<ModoCandidateRow, "candidate" | "tags"> & {
   is_excluded: boolean | null;
   is_recurring: boolean | null;
   is_subscription: boolean | null;
@@ -336,7 +344,7 @@ type RawCandidateRow = Omit<ModoCandidateRow, "candidate"> & {
   installment_group_id: string | null;
   transfer_group_id: string | null;
   personal_debt_id: string | null;
-  transaction_tags: Array<{ tag_id: string }> | null;
+  transaction_tags: Array<{ tag: { id: string; name: string; color: string | null } | null }> | null;
   occurrences: Array<{ id: string }> | null;
 };
 
@@ -370,6 +378,9 @@ function classifyCandidateRows(
 ): ModoCandidateRow[] {
   const out: ModoCandidateRow[] = [];
   for (const row of rows) {
+    const tags = (row.transaction_tags ?? [])
+      .map((t) => t.tag)
+      .filter((t): t is NonNullable<typeof t> => !!t);
     const candidate = classifyModoCandidate(
       {
         id: row.id,
@@ -386,7 +397,7 @@ function classifyCandidateRows(
         transfer_group_id: row.transfer_group_id,
         personal_debt_id: row.personal_debt_id,
         linkedToOccurrence: (row.occurrences?.length ?? 0) > 0,
-        tag_ids: (row.transaction_tags ?? []).map((t) => t.tag_id),
+        tag_ids: tags.map((t) => t.id),
         reviewed: reviewed.has(row.id),
       },
       range,
@@ -397,7 +408,7 @@ function classifyCandidateRows(
     if (candidate.verdict === "skip") continue;
     const { transaction_tags: _t, occurrences: _o, ...rest } = row;
     void _t; void _o;
-    out.push({ ...rest, candidate });
+    out.push({ ...rest, tags, candidate });
   }
   return out.sort((a, b) =>
     compareModoCandidates(

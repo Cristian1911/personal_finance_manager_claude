@@ -27,11 +27,48 @@ export function ModoReview({ modo, candidates }: { modo: Modo; candidates: ModoC
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(candidates.filter((r) => r.candidate.foreignCurrency).map((r) => r.id)),
   );
+  // Explicit "No fue del viaje" per row — saved as exclusions even when the
+  // user does not discard the rest.
+  const [rejected, setRejected] = useState<Set<string>>(new Set());
   const [pending, startTransition] = useTransition();
 
+  function accept(id: string) {
+    setRejected((cur) => {
+      const n = new Set(cur);
+      n.delete(id);
+      return n;
+    });
+    setSelected((cur) => new Set(cur).add(id));
+  }
+  function reject(id: string) {
+    setSelected((cur) => {
+      const n = new Set(cur);
+      n.delete(id);
+      return n;
+    });
+    setRejected((cur) => new Set(cur).add(id));
+  }
+  function toggle(id: string) {
+    if (selected.has(id)) {
+      setSelected((cur) => {
+        const n = new Set(cur);
+        n.delete(id);
+        return n;
+      });
+    } else {
+      accept(id);
+    }
+  }
+
+  const includeIds = [...selected].filter((id) => !rejected.has(id));
+  const includeCount = includeIds.length;
+  const rejectedCount = rejected.size;
+
   function submit(discardRest: boolean) {
-    const include = [...selected];
-    const exclude = discardRest ? candidates.filter((r) => !selected.has(r.id)).map((r) => r.id) : [];
+    const include = includeIds;
+    const excludeSet = new Set(rejected);
+    if (discardRest) for (const r of candidates) if (!selected.has(r.id)) excludeSet.add(r.id);
+    const exclude = [...excludeSet].filter((id) => !include.includes(id));
     if (include.length === 0 && exclude.length === 0) return;
     startTransition(async () => {
       const res = await reviewModoCandidates(modo.id, { include, exclude });
@@ -58,8 +95,8 @@ export function ModoReview({ modo, candidates }: { modo: Modo; candidates: ModoC
           </SectionEyebrow>
           <h1 className="text-2xl font-semibold tracking-tight lg:text-3xl">¿Fueron del viaje?</h1>
           <p className="text-sm text-muted-foreground">
-            Movimientos entre {formatDate(modo.date_from, "d MMM")} y {formatDate(modo.date_to, "d MMM")} que aún
-            no llevan la etiqueta del viaje. Recurrentes, transferencias y deudas ya quedaron fuera.
+            Del {formatDate(modo.date_from, "d MMM")} al {formatDate(modo.date_to, "d MMM")}, sin la etiqueta del
+            viaje. Toca una fila para ver el detalle.
           </p>
         </div>
 
@@ -74,39 +111,48 @@ export function ModoReview({ modo, candidates }: { modo: Modo; candidates: ModoC
           <ModoCandidateList
             rows={candidates}
             selected={selected}
-            onToggle={(id) =>
-              setSelected((cur) => {
-                const n = new Set(cur);
-                if (n.has(id)) n.delete(id);
-                else n.add(id);
-                return n;
-              })
-            }
-            onToggleAll={(next) => setSelected(next ? new Set(candidates.map((r) => r.id)) : new Set())}
+            rejected={rejected}
+            onToggle={toggle}
+            onAccept={accept}
+            onReject={reject}
+            onToggleAll={(next) => {
+              if (next) {
+                setRejected(new Set());
+                setSelected(new Set(candidates.map((r) => r.id)));
+              } else {
+                setSelected(new Set());
+              }
+            }}
           />
         )}
       </div>
 
       {candidates.length > 0 && (
-        <WizardActionBar className="lg:mx-auto lg:max-w-2xl lg:px-4">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => submit(true)}
-            disabled={pending}
-            className={GHOST_BUTTON_CLASS}
-          >
-            {selected.size > 0 ? "Agregar y descartar el resto" : "Descartar todos"}
-          </Button>
-          <Button
-            type="button"
-            onClick={() => submit(false)}
-            disabled={pending || selected.size === 0}
-            className={cn(BRASS_BUTTON_CLASS, "disabled:opacity-60")}
-          >
-            <Check className="size-4" />
-            Agregar {selected.size > 0 ? selected.size : ""} al viaje
-          </Button>
+        <WizardActionBar className="flex-col items-stretch gap-2 lg:mx-auto lg:max-w-2xl lg:flex-row lg:items-center lg:px-4">
+          <p className="text-center text-xs text-muted-foreground lg:mr-auto lg:text-left">
+            {includeCount} {includeCount === 1 ? "marcado" : "marcados"}
+            {rejectedCount > 0 ? ` · ${rejectedCount} no` : ""} · de {candidates.length}
+          </p>
+          <div className="flex w-full gap-2 lg:w-auto">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => submit(true)}
+              disabled={pending}
+              className={cn(GHOST_BUTTON_CLASS, "min-w-0 flex-1 whitespace-nowrap lg:flex-none")}
+            >
+              {includeCount > 0 ? "Descartar el resto" : "Descartar todos"}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => submit(false)}
+              disabled={pending || (includeCount === 0 && rejectedCount === 0)}
+              className={cn(BRASS_BUTTON_CLASS, "min-w-0 flex-1 whitespace-nowrap disabled:opacity-60 lg:flex-none")}
+            >
+              <Check className="size-4" />
+              {includeCount > 0 ? `Agregar ${includeCount}` : rejectedCount > 0 ? `Guardar ${rejectedCount}` : "Agregar"}
+            </Button>
+          </div>
         </WizardActionBar>
       )}
     </div>
