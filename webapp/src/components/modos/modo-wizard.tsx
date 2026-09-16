@@ -168,6 +168,7 @@ export function ModoWizard({ mode, initial, initialParticipants = [], presets }:
   const [fetched, setFetched] = useState<{ key: string; rows: ModoCandidateRow[] } | null>(null);
   const [candidatesLoading, setCandidatesLoading] = useState(false);
   const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set());
+  const [rejectedCandidates, setRejectedCandidates] = useState<Set<string>>(new Set());
   const candidatesKey = `${dateFrom}|${dateTo}|${tagMode === "existing" ? existingTagIds.join(",") : ""}`;
   const requested = useRef<string>("");
   useEffect(() => {
@@ -288,7 +289,10 @@ export function ModoWizard({ mode, initial, initialParticipants = [], presets }:
       ),
     );
     if (!isEdit && selectedCandidates.size > 0) {
-      fd.set("include_tx_ids", JSON.stringify([...selectedCandidates]));
+      fd.set("include_tx_ids", JSON.stringify([...selectedCandidates].filter((id) => !rejectedCandidates.has(id))));
+    }
+    if (!isEdit && rejectedCandidates.size > 0) {
+      fd.set("exclude_tx_ids", JSON.stringify([...rejectedCandidates]));
     }
 
     startTransition(async () => {
@@ -636,22 +640,47 @@ export function ModoWizard({ mode, initial, initialParticipants = [], presets }:
                 ) : candidates && candidates.length > 0 ? (
                   <>
                     <p className="text-sm text-muted-foreground">
-                      Marca los que fueron del viaje. Los de moneda extranjera ya vienen marcados.
+                      Marca los que fueron del viaje; toca una fila para ver el detalle. Los de moneda extranjera ya vienen marcados.
                     </p>
                     <ModoCandidateList
                       rows={candidates}
                       selected={selectedCandidates}
+                      rejected={rejectedCandidates}
                       onToggle={(id) =>
                         setSelectedCandidates((cur) => {
                           const n = new Set(cur);
                           if (n.has(id)) n.delete(id);
-                          else n.add(id);
+                          else {
+                            n.add(id);
+                            setRejectedCandidates((r) => {
+                              const rr = new Set(r);
+                              rr.delete(id);
+                              return rr;
+                            });
+                          }
                           return n;
                         })
                       }
-                      onToggleAll={(next) =>
-                        setSelectedCandidates(next ? new Set(candidates.map((r) => r.id)) : new Set())
-                      }
+                      onAccept={(id) => {
+                        setRejectedCandidates((r) => {
+                          const rr = new Set(r);
+                          rr.delete(id);
+                          return rr;
+                        });
+                        setSelectedCandidates((cur) => new Set(cur).add(id));
+                      }}
+                      onReject={(id) => {
+                        setSelectedCandidates((cur) => {
+                          const n = new Set(cur);
+                          n.delete(id);
+                          return n;
+                        });
+                        setRejectedCandidates((r) => new Set(r).add(id));
+                      }}
+                      onToggleAll={(next) => {
+                        if (next) setRejectedCandidates(new Set());
+                        setSelectedCandidates(next ? new Set(candidates.map((r) => r.id)) : new Set());
+                      }}
                       limit={60}
                     />
                   </>
