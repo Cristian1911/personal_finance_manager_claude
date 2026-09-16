@@ -95,7 +95,7 @@ export function ModoSummaryView({
         <h1 className="text-2xl font-semibold tracking-tight lg:text-3xl">
           {modo.emoji ?? "📍"} {modo.name}
         </h1>
-        <p className="text-3xl font-bold tabular-nums">{formatCurrency(summary.total)}</p>
+        <p className="text-3xl font-bold tabular-nums">{formatCurrency(summary.total, summary.currency as CurrencyCode)}</p>
         <p className="text-sm text-muted-foreground">
           {summary.count} transacciones ·{" "}
           {formatDate(summary.observedFrom ?? modo.date_from, "d MMM")} –{" "}
@@ -122,7 +122,7 @@ export function ModoSummaryView({
               <span>
                 {b.name} <span className="text-muted-foreground">({b.count})</span>
               </span>
-              <span className="tabular-nums">{formatCurrency(b.total)}</span>
+              <span className="tabular-nums">{formatCurrency(b.total, b.currency as CurrencyCode)}</span>
             </div>
           ))}
         </section>
