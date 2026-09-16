@@ -26,7 +26,7 @@ import {
 import Link from "next/link";
 import { MapPin, Search, SlidersHorizontal, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { MOBILE_SHEET_SAFE_AREA_CLASS, chipToggleClass } from "@/lib/constants/styles";
+import { GHOST_BUTTON_CLASS, MOBILE_SHEET_SAFE_AREA_CLASS, chipToggleClass } from "@/lib/constants/styles";
 import { findModoForTags } from "@/lib/utils/modo-summary";
 import type { Account, CategoryWithChildren, Modo, Tag } from "@/types/domain";
 
@@ -241,7 +241,7 @@ export function TransactionFilters({
               const match = findModoForTags(modos, selectedTagIds);
               if (match) {
                 return (
-                  <Button asChild variant="outline" size="sm">
+                  <Button asChild variant="ghost" size="sm" className={GHOST_BUTTON_CLASS}>
                     <Link href={`/modos/${match.id}`}>
                       <span aria-hidden>{match.emoji ?? "📍"}</span>
                       Ver viaje · {match.name}
@@ -255,7 +255,7 @@ export function TransactionFilters({
               if (from) qs.set("dateFrom", from);
               if (to) qs.set("dateTo", to);
               return (
-                <Button asChild variant="outline" size="sm">
+                <Button asChild variant="ghost" size="sm" className={GHOST_BUTTON_CLASS}>
                   <Link href={`/modos/nuevo?${qs.toString()}`}>
                     <MapPin className="h-4 w-4 mr-1" />
                     Crear viaje con estas etiquetas

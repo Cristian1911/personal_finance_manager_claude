@@ -25,7 +25,7 @@ export function TripsCard({ trips, currency, windowFrom, windowTo }: TripsCardPr
   if (inWindow.length === 0) return null;
 
   return (
-    <div className={`mt-3 ${PANEL_SURFACE_CLASS} p-4`}>
+    <div className={cn(PANEL_SURFACE_CLASS, "mt-3 p-4")}>
       <div className="mb-1 flex items-center justify-between">
         <p className="text-sm font-semibold">¿A dónde va? · Viajes y eventos</p>
         <Link href="/modos" className="text-xs text-z-brass hover:underline">
