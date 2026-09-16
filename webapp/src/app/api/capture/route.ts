@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { scheduleSubscriptionDetection } from "@/lib/subscriptions/detect";
 import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import { authenticateCaptureToken } from "@/app/api/_shared/capture-auth";
 import { autoCategorize } from "@zeta/shared";
@@ -190,6 +192,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<CaptureRe
       { status: "error", message: insertError.message },
       { status: 500 },
     );
+  }
+
+  if (direction === "OUTFLOW" && destinatarioId) {
+    scheduleSubscriptionDetection(auth.userId, () => revalidateTag("subscriptions", "zeta"));
   }
 
   return NextResponse.json({

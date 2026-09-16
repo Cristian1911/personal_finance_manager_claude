@@ -53,6 +53,8 @@ import {
 } from "@/actions/transfers";
 import { ACCOUNT_TYPE_LABELS } from "@/lib/constants/account-types";
 import { PromoteToRecurringButton } from "@/components/transactions/promote-to-recurring-button";
+import { RecurringCandidateCallout } from "@/components/transactions/recurring-candidate-callout";
+import type { RecurringCandidate } from "@zeta/shared";
 import { ConversionHint } from "@/components/transactions/conversion-hint";
 import { TimeShiftHint } from "@/components/transactions/time-shift-hint";
 import { usePreferredCurrency } from "@/components/providers/app-data-provider";
@@ -122,6 +124,8 @@ interface TransactionDetailClientProps {
   linkableAccountIds: string[];
   /** Set when this tx is a shared-payment origin — surfaces a summary block. */
   sharedPayment: SharedPaymentGroup | null;
+  /** "Parece recurrente" — monthly-looking charges this tx belongs to (null when none). */
+  recurringCandidate: RecurringCandidate | null;
 }
 
 export function TransactionDetailClient({
@@ -134,6 +138,7 @@ export function TransactionDetailClient({
   linkedRecurring,
   linkableAccountIds,
   sharedPayment,
+  recurringCandidate,
 }: TransactionDetailClientProps) {
   const router = useRouter();
   const isInflow = tx.direction === "INFLOW";
@@ -553,6 +558,23 @@ export function TransactionDetailClient({
 
   /* ─── Render ─────────────────────────────────────────────────────── */
 
+  // Stable reference: PromoteToRecurringButton memoizes its prefill on it.
+  const promoteSource = useMemo(
+    () => ({
+      id: tx.id,
+      account_id: tx.account_id,
+      amount: tx.amount,
+      currency_code: tx.currency_code as CurrencyCode,
+      direction: tx.direction,
+      merchant_name: tx.merchant_name,
+      clean_description: tx.clean_description,
+      category_id: tx.category_id,
+      destinatario_id: tx.destinatario_id,
+      transaction_date: tx.transaction_date,
+    }),
+    [tx],
+  );
+
   return (
     <div className="space-y-0">
       {/* ── Hero (centered metadata) ─────────────────────────────────── */}
@@ -710,6 +732,24 @@ export function TransactionDetailClient({
         />
       )}
 
+      {/* ── Parece recurrente (Primeras semanas · semana 1) ───────────── */}
+      {recurringCandidate && (
+        <RecurringCandidateCallout
+          candidate={recurringCandidate}
+          transactionId={tx.id}
+          currency={tx.currency_code as CurrencyCode}
+        >
+          <PromoteToRecurringButton
+            transaction={promoteSource}
+            isLinkedToOccurrence={isLinkedToOccurrence}
+            accounts={accounts}
+            categories={categories}
+            label="Programar"
+            triggerClassName={cn(BRASS_BUTTON_CLASS, "h-8 px-3 text-xs")}
+          />
+        </RecurringCandidateCallout>
+      )}
+
       {/* ── Clasificación (actionable controls) ──────────────────────── */}
       <section className="px-4 pt-5">
         <p className={cn(SECTION_EYEBROW_CLASS, "mb-2")}>Clasificación</p>
@@ -790,24 +830,16 @@ export function TransactionDetailClient({
       <section className="px-4 pt-5">
         <p className={cn(SECTION_EYEBROW_CLASS, "mb-2")}>Acciones</p>
         <div className="grid grid-cols-2 gap-2">
-          <PromoteToRecurringButton
-            transaction={{
-              id: tx.id,
-              account_id: tx.account_id,
-              amount: tx.amount,
-              currency_code: tx.currency_code as CurrencyCode,
-              direction: tx.direction,
-              merchant_name: tx.merchant_name,
-              clean_description: tx.clean_description,
-              category_id: tx.category_id,
-              destinatario_id: tx.destinatario_id,
-              transaction_date: tx.transaction_date,
-            }}
-            isLinkedToOccurrence={isLinkedToOccurrence}
-            accounts={accounts}
-            categories={categories}
-            triggerClassName={cn(DETAIL_ACTION_CHIP_CLASS, "w-full")}
-          />
+          {/* With a candidate the callout above owns "Programar" (one dialog). */}
+          {!recurringCandidate && (
+            <PromoteToRecurringButton
+              transaction={promoteSource}
+              isLinkedToOccurrence={isLinkedToOccurrence}
+              accounts={accounts}
+              categories={categories}
+              triggerClassName={cn(DETAIL_ACTION_CHIP_CLASS, "w-full")}
+            />
+          )}
           {vincularEligible && (
             <button
               type="button"

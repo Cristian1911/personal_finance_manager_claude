@@ -48,6 +48,8 @@ type PromoteToRecurringButtonProps = {
   categories: CategoryWithChildren[];
   /** Override the trigger button style (defaults to the brass CTA). */
   triggerClassName?: string;
+  /** Trigger text (defaults to "Hacer recurrente"). */
+  label?: string;
 };
 
 function prefillFromTransaction(tx: PromoteSourceTx): Partial<RecurringTemplate> {
@@ -81,6 +83,7 @@ export function PromoteToRecurringButton({
   accounts,
   categories,
   triggerClassName,
+  label = "Hacer recurrente",
 }: PromoteToRecurringButtonProps) {
   // Auto-open when navigated here with ?promote=1 (e.g. from the Vincular
   // picker on /transactions). Only opens for unlinked tx.
@@ -151,7 +154,7 @@ export function PromoteToRecurringButton({
         onClick={() => setOpen(true)}
       >
         <CalendarClock className="size-4" aria-hidden="true" />
-        Hacer recurrente
+        {label}
       </Button>
       <RecurringFormDialog
         controlledOpen={open}
