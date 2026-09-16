@@ -1755,48 +1755,103 @@ export type Database = {
       }
       modos: {
         Row: {
+          auto_tag_id: string | null
           color: string | null
           created_at: string
           date_from: string
           date_to: string
           emoji: string | null
           id: string
+          is_active: boolean
           is_shared: boolean
           name: string
           split_method: string
           tag_ids: string[]
+          updated_at: string
           user_id: string
           user_included: boolean
         }
         Insert: {
+          auto_tag_id?: string | null
           color?: string | null
           created_at?: string
           date_from: string
           date_to: string
           emoji?: string | null
           id?: string
+          is_active?: boolean
           is_shared?: boolean
           name: string
           split_method?: string
           tag_ids?: string[]
+          updated_at?: string
           user_id: string
           user_included?: boolean
         }
         Update: {
+          auto_tag_id?: string | null
           color?: string | null
           created_at?: string
           date_from?: string
           date_to?: string
           emoji?: string | null
           id?: string
+          is_active?: boolean
           is_shared?: boolean
           name?: string
           split_method?: string
           tag_ids?: string[]
+          updated_at?: string
           user_id?: string
           user_included?: boolean
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "modos_auto_tag_id_fkey"
+            columns: ["auto_tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      modo_tx_reviews: {
+        Row: {
+          created_at: string
+          decision: string
+          id: string
+          modo_id: string
+          source: string
+          transaction_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          decision: string
+          id?: string
+          modo_id: string
+          source: string
+          transaction_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          decision?: string
+          id?: string
+          modo_id?: string
+          source?: string
+          transaction_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "modo_tx_reviews_modo_id_fkey"
+            columns: ["modo_id"]
+            isOneToOne: false
+            referencedRelation: "modos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       modo_participants: {
         Row: {

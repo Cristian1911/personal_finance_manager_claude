@@ -8,6 +8,12 @@ export type Account = Omit<AccountRow, "pdf_password">;
 export type Transaction = Tables<"transactions">;
 export type Modo = Tables<"modos">;
 export type ModoParticipant = Tables<"modo_participants">;
+export type ModoTxReview = Tables<"modo_tx_reviews">;
+/** The one trip flagged `is_active` — what capture surfaces read (banner, tag preselect). */
+export type ActiveModo = Pick<
+  Modo,
+  "id" | "name" | "emoji" | "color" | "auto_tag_id" | "date_from" | "date_to"
+>;
 
 /** Approximate location captured by mobile and linked to a transaction. */
 export interface TransactionLocation {

@@ -13,12 +13,14 @@ const CATEGORY_ICONS = [
 interface IconPickerProps {
   value: string;
   onValueChange: (icon: string) => void;
+  /** Alternative emoji set (e.g. trips/events); defaults to the category set. */
+  icons?: readonly string[];
 }
 
-export function IconPicker({ value, onValueChange }: IconPickerProps) {
+export function IconPicker({ value, onValueChange, icons = CATEGORY_ICONS }: IconPickerProps) {
   return (
     <div className="grid grid-cols-7 gap-1">
-      {CATEGORY_ICONS.map((icon) => (
+      {icons.map((icon) => (
         <button
           key={icon}
           type="button"

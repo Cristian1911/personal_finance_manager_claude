@@ -77,10 +77,13 @@ const FOCUS_MODE_PATHS: ReadonlyArray<string> = [
   "/deudas/planificador",
   "/presupuesto/armar",
   "/deudas-personales/pago-compartido/nuevo",
+  "/modos/nuevo",
 ] as const;
 
 const FOCUS_MODE_PATH_REGEXES: ReadonlyArray<RegExp> = [
   /^\/recurrentes\/[^/]+\/edit$/,
+  /^\/modos\/[^/]+\/edit$/,
+  /^\/modos\/[^/]+\/revisar$/,
 ] as const;
 
 export function isFocusModePath(pathname: string): boolean {

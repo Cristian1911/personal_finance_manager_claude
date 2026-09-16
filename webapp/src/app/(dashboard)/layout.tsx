@@ -11,6 +11,8 @@ import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
 import { getDestinatarios } from "@/actions/destinatarios";
 import { getTagGroups } from "@/actions/tags";
+import { getActiveModo } from "@/actions/modos";
+import { ActiveModoBanner } from "@/components/modos/active-modo-banner";
 import { AppDataProvider } from "@/components/providers/app-data-provider";
 import { NavFocusProvider } from "@/components/providers/nav-focus-provider";
 import { MobileTabBar } from "@/components/mobile/v2/mobile-tab-bar";
@@ -51,6 +53,7 @@ export default async function DashboardLayout({
     outflowCategoriesResult,
     destinatariosResult,
     tagGroupsResult,
+    activeModo,
   ] = await Promise.all([
     getProfile(),
     getAttentionSnapshot(),
@@ -59,6 +62,7 @@ export default async function DashboardLayout({
     getCategories("OUTFLOW"),
     getDestinatarios(),
     getTagGroups(),
+    getActiveModo(),
   ]);
 
   const profile = profileResult.success ? profileResult.data : null;
@@ -90,6 +94,7 @@ export default async function DashboardLayout({
     ),
     tagGroups: tagGroupsResult.success ? tagGroupsResult.data : [],
     preferredCurrency: profile.preferred_currency,
+    activeModo,
   };
   const attentionCount = attentionSnapshot.totalAction;
   const attentionSummary =
@@ -127,6 +132,7 @@ export default async function DashboardLayout({
                   ) : user.is_anonymous ? (
                     <GuestBanner />
                   ) : null}
+                  <ActiveModoBanner />
                   <PageTransition>
                     {children}
                   </PageTransition>

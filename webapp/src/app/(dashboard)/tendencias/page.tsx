@@ -13,6 +13,7 @@ import {
   topRecipients,
 } from "@zeta/shared";
 import { getTendenciasDataset, type TendenciasDataset } from "@/actions/analytics";
+import { listModosWithTotals } from "@/actions/modos";
 import { formatCurrency } from "@/lib/utils/currency";
 import type { CurrencyCode } from "@/types/domain";
 import { type AnalyticsRange, rangeToWindow } from "@/lib/analytics/range";
@@ -36,7 +37,10 @@ export default async function TendenciasPage({
   const sp = await searchParams;
   const range = (sp.range as AnalyticsRange) ?? "6M";
   const currency = (sp.currency as CurrencyCode) ?? "COP";
-  const ds = await getTendenciasDataset(range, currency);
+  const [ds, tripsResult] = await Promise.all([
+    getTendenciasDataset(range, currency),
+    listModosWithTotals(),
+  ]);
   const config = buildConfig(ds);
   const { rows } = ds;
   // Same deterministic window the dataset used — feeds DrilldownTransactions.
@@ -65,6 +69,7 @@ export default async function TendenciasPage({
       fixedVariable: fixedVsVariable(rows, config),
       categoryHierarchy: ds.categoryHierarchy,
       recipientsFull: allRecipients(rows, config),
+      trips: tripsResult.success ? tripsResult.data : [],
     },
     ahorro: { savings, cashflow, adherence: budgetAdherenceSeries(rows, config, cats) },
     cambios: {

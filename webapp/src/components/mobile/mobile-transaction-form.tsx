@@ -29,6 +29,7 @@ import {
   ClassificationTagsRow,
 } from "@/components/transactions/classification-card";
 import {
+  useActiveModo,
   useAllTags,
   useDestinatarios,
   usePreferredCurrency,
@@ -76,6 +77,8 @@ interface MobileTransactionFormProps {
   isTransfer?: boolean;
   /** Preselects an account — used when arriving from a specific account's page. */
   defaultAccountId?: string;
+  /** Tags ticked from the start — e.g. the trip's tag when arriving from a viaje. */
+  defaultTagIds?: string[];
   onSuccess?: () => void;
 }
 
@@ -118,6 +121,7 @@ export function MobileTransactionForm({
   defaultDirection,
   isTransfer,
   defaultAccountId,
+  defaultTagIds,
   onSuccess,
 }: MobileTransactionFormProps) {
   // Determine initial transaction type from props (backward compat)
@@ -291,8 +295,28 @@ export function MobileTransactionForm({
 
   // Tags are picked before the row exists; they travel as `tag_ids` hidden
   // inputs and the server attaches them right after the insert.
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>(defaultTagIds ?? []);
   const allTags = useAllTags();
+  // Viaje activo: an expense dated inside the trip gets its tag ticked up front,
+  // so the user sees (and can untick) what the server would attach anyway.
+  const activeModo = useActiveModo();
+  const activeTripTagId =
+    activeModo?.auto_tag_id &&
+    transactionType === "expense" &&
+    transactionDate &&
+    transactionDate >= activeModo.date_from &&
+    transactionDate <= activeModo.date_to
+      ? activeModo.auto_tag_id
+      : null;
+  const [tripTagSeeded, setTripTagSeeded] = useState(false);
+  useEffect(() => {
+    if (tripTagSeeded || !activeTripTagId) return;
+    // Seeded once, after the mount-only date effect resolves "today"; the user
+    // can still untick it and it will not come back.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTripTagSeeded(true);
+    setSelectedTagIds((prev) => (prev.includes(activeTripTagId) ? prev : [activeTripTagId, ...prev]));
+  }, [activeTripTagId, tripTagSeeded]);
   const selectedTags = useMemo(() => {
     const selected = new Set(selectedTagIds);
     return allTags.filter((t) => selected.has(t.id));

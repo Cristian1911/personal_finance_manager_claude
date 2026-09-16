@@ -13,7 +13,12 @@ const TYPE_MAP: Record<string, { direction: TransactionDirection; isTransfer?: b
   transfer: { direction: "OUTFLOW", isTransfer: true },
 };
 
-export function NewTransactionPageContent() {
+export function NewTransactionPageContent({
+  presetTagIds,
+}: {
+  /** Resolved server-side from `?modo=<id>` (the trip's own tag). */
+  presetTagIds?: string[];
+} = {}) {
   const accounts = useAccounts();
   const categories = useCategories();
   const router = useRouter();
@@ -23,6 +28,9 @@ export function NewTransactionPageContent() {
   const preset = typeParam ? TYPE_MAP[typeParam] : undefined;
   // Deep link from a specific account ("Agregar movimiento" on /accounts/[id]).
   const accountParam = searchParams.get("account") ?? undefined;
+  // `?tags=a,b` (deep link from a tag filter) + the trip tag resolved by the page.
+  const tagsParam = (searchParams.get("tags") ?? "").split(",").filter(Boolean);
+  const defaultTagIds = [...new Set([...(presetTagIds ?? []), ...tagsParam])];
 
   // Issue #387: re-entering /transactions/new from the FAB right after a save
   // showed the previous description/category/notes. The client Router Cache
@@ -49,6 +57,7 @@ export function NewTransactionPageContent() {
       defaultDirection={preset?.direction}
       isTransfer={preset?.isTransfer}
       defaultAccountId={accountParam}
+      defaultTagIds={defaultTagIds.length > 0 ? defaultTagIds : undefined}
       onSuccess={handleSuccess}
     />
   );

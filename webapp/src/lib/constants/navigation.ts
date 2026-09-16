@@ -54,6 +54,8 @@ export const WORKSPACE_NAV: NavItem[] = [
   { title: "Importar", href: "/import", icon: FileUp },
   { title: "Cuentas", href: "/accounts", icon: Wallet },
   { title: "Deudas", href: "/deudas", icon: Landmark },
+  // Ruta /modos; el nombre visible es la historia del usuario (2026-09-16).
+  { title: "Viajes y eventos", href: "/modos", icon: MapPin },
 ];
 
 /** Aparcadas fuera de la nav principal (2026-09-15): viven colapsadas bajo
@@ -61,7 +63,6 @@ export const WORKSPACE_NAV: NavItem[] = [
 export const ADVANCED_NAV: NavItem[] = [
   { title: "Categorizar", href: "/categorizar", icon: Inbox, attentionPage: "transactions" },
   { title: "Deudas personales", href: "/deudas-personales", icon: Users },
-  { title: "Modos", href: "/modos", icon: MapPin },
 ];
 
 export const BOTTOM_NAV: NavItem[] = [

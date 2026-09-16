@@ -3,6 +3,7 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 import type {
   Account,
+  ActiveModo,
   CategoryWithChildren,
   CurrencyCode,
   DestinatarioKind,
@@ -27,6 +28,8 @@ interface AppData {
   tagGroups: TagGroupWithTags[];
   /** Profile currency — the target for "≈ en COP" conversion hints. */
   preferredCurrency: CurrencyCode;
+  /** The trip flagged active, if any — drives the banner and tag preselection. */
+  activeModo?: ActiveModo | null;
 }
 
 const AppDataContext = createContext<AppData | null>(null);
@@ -69,6 +72,10 @@ export function useTagGroups() {
 /** Profile currency; COP outside the provider (forms rendered before login). */
 export function usePreferredCurrency(): CurrencyCode {
   return useContext(AppDataContext)?.preferredCurrency ?? "COP";
+}
+/** Active viaje/evento; null outside the provider or when none is active. */
+export function useActiveModo(): ActiveModo | null {
+  return useContext(AppDataContext)?.activeModo ?? null;
 }
 export function useAllTags(): Tag[] {
   const { tagGroups } = useAppData();

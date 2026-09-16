@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
 
@@ -13,12 +14,14 @@ const ZONE_COLORS = [
 interface ColorPickerProps {
   value: string;
   onValueChange: (color: string) => void;
+  /** Alternative swatch set; defaults to the zone palette. */
+  colors?: readonly string[];
 }
 
-export function ColorPicker({ value, onValueChange }: ColorPickerProps) {
+export function ColorPicker({ value, onValueChange, colors = ZONE_COLORS }: ColorPickerProps) {
   return (
     <div className="grid grid-cols-8 gap-1.5">
-      {ZONE_COLORS.map((color) => (
+      {colors.map((color) => (
         <button
           key={color}
           type="button"
@@ -29,7 +32,9 @@ export function ColorPicker({ value, onValueChange }: ColorPickerProps) {
           )}
           style={{
             backgroundColor: color,
-            ...(value === color ? { ringColor: color } : {}),
+            // Tailwind's ring reads this variable; a plain `ringColor` key is
+            // not a CSS property and React drops it silently.
+            ...(value === color ? ({ "--tw-ring-color": color } as CSSProperties) : {}),
           }}
         >
           {value === color && <Check className="h-3.5 w-3.5 text-white" />}

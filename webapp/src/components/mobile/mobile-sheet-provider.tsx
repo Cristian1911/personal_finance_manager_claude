@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useMemo, useCallback, useRef } fro
 import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { CalendarPlus, Landmark } from "lucide-react";
+import { CalendarPlus, Landmark, MapPin, Receipt } from "lucide-react";
 import {
   Drawer,
   DrawerContent,
@@ -45,6 +45,8 @@ interface MobileSheetProviderProps {
   children: React.ReactNode;
 }
 
+const MODO_DETAIL_RE = /^\/modos\/([0-9a-f-]{36})$/i;
+
 function getContextActions(pathname: string): ContextAction[] {
   // startsWith: no sub-routes for recurrentes
   // exact match: avoid showing on /accounts/[id] detail pages
@@ -53,6 +55,24 @@ function getContextActions(pathname: string): ContextAction[] {
   }
   if (pathname === "/accounts") {
     return [{ id: "new-account", label: "Nueva cuenta", icon: Landmark, bg: "bg-cyan-500" }];
+  }
+  // Viajes y eventos: the list offers a new trip; a trip's detail offers a
+  // new expense already tagged with it. Both navigate (href) — the wizard and
+  // the form are full-screen focus-mode routes, not sheets.
+  if (pathname === "/modos") {
+    return [{ id: "new-modo", label: "Nuevo viaje o evento", icon: MapPin, bg: "bg-z-brass", href: "/modos/nuevo" }];
+  }
+  const detail = MODO_DETAIL_RE.exec(pathname);
+  if (detail) {
+    return [
+      {
+        id: "add-to-modo",
+        label: "Agregar gasto a este viaje",
+        icon: Receipt,
+        bg: "bg-z-brass",
+        href: `/transactions/new?modo=${detail[1]}`,
+      },
+    ];
   }
   return [];
 }

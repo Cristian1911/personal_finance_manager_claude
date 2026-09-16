@@ -51,7 +51,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { LinkPickerSheet, type LinkCandidate } from "@/components/recurring/link-picker-sheet";
 import { CreatePersonalDebtSheet } from "@/components/personas/create-personal-debt-sheet";
-import { useAccounts, useDestinatarios } from "@/components/providers/app-data-provider";
+import { useAccounts, useActiveModo, useDestinatarios } from "@/components/providers/app-data-provider";
+import { bulkTagTransactions } from "@/actions/tags";
+import { removeFromModo } from "@/actions/modos";
 import {
   categorizeTransaction,
   assignDestinatario,
@@ -217,12 +219,42 @@ export interface TransactionQuickActionsProps {
 export function TransactionQuickActions({
   transaction: tx,
   categories,
+  tags,
   onCategorized,
 }: TransactionQuickActionsProps) {
   const router = useRouter();
   const destinatarios = useDestinatarios();
   const accounts = useAccounts();
+  const activeModo = useActiveModo();
   const [, startTransition] = useTransition();
+
+  // Viaje activo: one tap to put an expense in (or take it out of) the trip,
+  // instead of drawer → Etiquetas → drawer. Optimistic; the server upsert is
+  // idempotent so a double tap is harmless.
+  const tripTagId = activeModo?.auto_tag_id ?? null;
+  const [inTrip, setInTrip] = useState(
+    () => !!tripTagId && !!tags?.some((t) => t.id === tripTagId),
+  );
+  const [tripPending, startTripTransition] = useTransition();
+  const canToggleTrip =
+    !!activeModo && !!tripTagId && tx.direction === "OUTFLOW" && !tx.transfer_group_id && !tx.personal_debt_id;
+  function toggleTrip() {
+    if (!activeModo || !tripTagId) return;
+    const next = !inTrip;
+    setInTrip(next);
+    startTripTransition(async () => {
+      const res = next
+        ? await bulkTagTransactions(tripTagId, [tx.id])
+        : await removeFromModo(activeModo.id, [tx.id]);
+      if (!res.success) {
+        setInTrip(!next);
+        toast.error(res.error);
+        return;
+      }
+      toast.success(next ? `Agregado a ${activeModo.name}` : `Quitado de ${activeModo.name}`);
+      router.refresh();
+    });
+  }
 
   // Optimistic local state mirrors the row's category/destinatario/excluded.
   const [localCategory, setLocalCategory] = useState(tx.category);
@@ -708,6 +740,34 @@ export function TransactionQuickActions({
                 {formatCurrency(tx.amount, tx.currency_code as CurrencyCode)}
               </span>
             </div>
+
+            {/* Viaje activo — un toque para meter o sacar el gasto del viaje */}
+            {canToggleTrip && activeModo && (
+              <div className="px-1 pt-3">
+                <button
+                  type="button"
+                  onClick={toggleTrip}
+                  disabled={tripPending}
+                  aria-pressed={inTrip}
+                  className={cn(
+                    "flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-sm transition-colors disabled:opacity-60",
+                    inTrip
+                      ? "border-z-brass/30 bg-z-brass/12 text-z-brass"
+                      : "border-white/6 bg-white/[0.03] text-foreground hover:bg-white/5",
+                  )}
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span aria-hidden>{activeModo.emoji ?? "📍"}</span>
+                    <span className="truncate">
+                      {inTrip ? `Del viaje · ${activeModo.name}` : `Agregar a ${activeModo.name}`}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {inTrip ? "Quitar" : "Viaje activo"}
+                  </span>
+                </button>
+              </div>
+            )}
 
             {/* Etiquetas */}
             <div className="px-1 py-3">

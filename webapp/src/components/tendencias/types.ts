@@ -12,6 +12,7 @@ import type {
   Verdict,
 } from "@zeta/shared";
 import type { CurrencyCode } from "@/types/domain";
+import type { ModoWithTotals } from "@/actions/modos";
 
 export interface GastosData {
   /** Top-20 by spend — feeds the existing trend/sparkline rows. */
@@ -23,6 +24,8 @@ export interface GastosData {
   categoryHierarchy: CategoryHierarchyNode[];
   /** Full ranked recipient list (capped at 150) for the interactive accordion + search. */
   recipientsFull: RecipientRank[];
+  /** Viajes y eventos with totals — the card filters to the active window. */
+  trips: ModoWithTotals[];
 }
 
 export interface AhorroData {

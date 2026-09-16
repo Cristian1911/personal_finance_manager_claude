@@ -11,7 +11,7 @@ vi.mock("next/cache", () => ({
   unstable_cacheTag: vi.fn(), unstable_cacheLife: vi.fn(),
 }));
 
-import { getModoTransactionIds } from "@/actions/modos";
+import { getModoTransactionIds } from "@/lib/modos/membership";
 
 // Query builder mock: transaction_tags(.in tag) -> rows; transactions(.in id .gte .lte) -> rows
 function makeClient() {

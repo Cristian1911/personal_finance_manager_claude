@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { summarizeModo, filterSharedGroupsByOrigin, settleUpByPerson } from "@/lib/utils/modo-summary";
+import {
+  summarizeModo,
+  filterSharedGroupsByOrigin,
+  settleUpByPerson,
+  summarizeShared,
+  isModoSpend,
+  classifyModoTx,
+  describeModoTx,
+  assignTransactionsToModos,
+  findModoForTags,
+  modoOverlapsWindow,
+  isModoOngoing,
+} from "@/lib/utils/modo-summary";
 import type { ModoTxRow } from "@/lib/utils/modo-summary";
 import type { SharedPaymentGroup } from "@/types/domain";
 
@@ -17,6 +29,8 @@ describe("summarizeModo", () => {
     const s = summarizeModo(txs);
     expect(s.total).toBe(350);
     expect(s.count).toBe(3);
+    expect(s.currency).toBe("COP");
+    expect(s.totals).toEqual([{ currency: "COP", total: 350, count: 3 }]);
   });
   it("calcula rango observado (min/max) sobre OUTFLOW", () => {
     const s = summarizeModo(txs);
@@ -32,7 +46,65 @@ describe("summarizeModo", () => {
   });
   it("maneja lista vacía", () => {
     const s = summarizeModo([]);
-    expect(s).toEqual({ total: 0, count: 0, observedFrom: null, observedTo: null, byCategory: [] });
+    expect(s).toEqual({
+      currency: "COP",
+      total: 0,
+      count: 0,
+      totals: [],
+      observedFrom: null,
+      observedTo: null,
+      byCategory: [],
+    });
+  });
+  it("no mezcla monedas: totales por moneda, la principal es la de más filas", () => {
+    const multi: ModoTxRow[] = [
+      { id: "a", amount: 10, direction: "OUTFLOW", transaction_date: "2026-07-01", currency_code: "USD", category: cat("c1", "Comida") },
+      { id: "b", amount: 20, direction: "OUTFLOW", transaction_date: "2026-07-02", currency_code: "USD", category: cat("c2", "Hotel") },
+      { id: "c", amount: 90000, direction: "OUTFLOW", transaction_date: "2026-07-02", currency_code: "COP", category: cat("c1", "Comida") },
+    ];
+    const s = summarizeModo(multi);
+    expect(s.currency).toBe("USD");
+    expect(s.total).toBe(30);
+    expect(s.count).toBe(3);
+    expect(s.totals).toEqual([
+      { currency: "USD", total: 30, count: 2 },
+      { currency: "COP", total: 90000, count: 1 },
+    ]);
+    expect(s.byCategory.map((b) => [b.currency, b.name, b.total])).toEqual([
+      ["USD", "Hotel", 20],
+      ["USD", "Comida", 10],
+      ["COP", "Comida", 90000],
+    ]);
+  });
+  it("excluye transferencias, excluidas y movimientos de deuda personal", () => {
+    const rows: ModoTxRow[] = [
+      { id: "a", amount: 10, direction: "OUTFLOW", transaction_date: "2026-07-01", category: null, transfer_group_id: "tg" },
+      { id: "b", amount: 20, direction: "OUTFLOW", transaction_date: "2026-07-01", category: null, is_excluded: true },
+      { id: "c", amount: 30, direction: "OUTFLOW", transaction_date: "2026-07-01", category: null, personal_debt_id: "pd" },
+      { id: "d", amount: 40, direction: "OUTFLOW", transaction_date: "2026-07-01", category: null, split_group_id: "sg" },
+    ];
+    expect(rows.map(isModoSpend)).toEqual([false, false, false, true]);
+    const s = summarizeModo(rows);
+    expect(s.total).toBe(40);
+    expect(s.count).toBe(1);
+  });
+});
+
+describe("classifyModoTx / describeModoTx", () => {
+  it("clasifica por prioridad transferencia > persona > excluido > ingreso > gasto", () => {
+    expect(classifyModoTx({ id: "1", amount: 1, direction: "OUTFLOW", transaction_date: "d", category: null, transfer_group_id: "x" })).toBe("transfer");
+    expect(classifyModoTx({ id: "1", amount: 1, direction: "INFLOW", transaction_date: "d", category: null, personal_debt_id: "x" })).toBe("person");
+    expect(classifyModoTx({ id: "1", amount: 1, direction: "OUTFLOW", transaction_date: "d", category: null, is_excluded: true })).toBe("excluded");
+    expect(classifyModoTx({ id: "1", amount: 1, direction: "INFLOW", transaction_date: "d", category: null })).toBe("inflow");
+    expect(classifyModoTx({ id: "1", amount: 1, direction: "OUTFLOW", transaction_date: "d", category: null })).toBe("spend");
+  });
+  it("titula con comercio, luego descripción, luego categoría", () => {
+    const base: ModoTxRow = { id: "1", amount: 1, direction: "OUTFLOW", transaction_date: "d", category: cat("c", "Comida") };
+    expect(describeModoTx({ ...base, merchant_name: "Café Tortoni", raw_description: "CAFE TORT" })).toBe("Café Tortoni");
+    expect(describeModoTx({ ...base, clean_description: "Cena", raw_description: "CENA 123" })).toBe("Cena");
+    expect(describeModoTx({ ...base, raw_description: "  CENA 123 " })).toBe("CENA 123");
+    expect(describeModoTx(base)).toBe("Comida");
+    expect(describeModoTx({ ...base, category: null })).toBe("Movimiento");
   });
 });
 
@@ -44,6 +116,22 @@ describe("filterSharedGroupsByOrigin", () => {
     ] as unknown as import("@/types/domain").SharedPaymentGroup[];
     const out = filterSharedGroupsByOrigin(groups, ["t1", "t2"]);
     expect(out.map((g) => g.split_group_id)).toEqual(["g1"]);
+  });
+});
+
+describe("summarizeShared", () => {
+  it("agrega por moneda solo los grupos del modo", () => {
+    const groups = [
+      { split_group_id: "g1", currency_code: "COP", total: 100, userShare: 50, recovered: 20, outstanding_total: 30, debts: [{ origin_transaction_id: "t1" }] },
+      { split_group_id: "g2", currency_code: "COP", total: 60, userShare: 30, recovered: 0, outstanding_total: 30, debts: [{ origin_transaction_id: "t2" }] },
+      { split_group_id: "g3", currency_code: "USD", total: 10, userShare: 5, recovered: 5, outstanding_total: 0, debts: [{ origin_transaction_id: "t3" }] },
+      { split_group_id: "g4", currency_code: "COP", total: 999, userShare: 1, recovered: 0, outstanding_total: 998, debts: [{ origin_transaction_id: "fuera" }] },
+    ] as unknown as SharedPaymentGroup[];
+    const res = summarizeShared(groups, ["t1", "t2", "t3"]);
+    expect(res).toEqual([
+      { currency: "COP", sharedTotal: 160, userShare: 80, owedToUser: 80, recovered: 20, outstanding: 60, count: 2 },
+      { currency: "USD", sharedTotal: 10, userShare: 5, owedToUser: 5, recovered: 5, outstanding: 0, count: 1 },
+    ]);
   });
 });
 
@@ -107,5 +195,58 @@ describe("settleUpByPerson", () => {
     expect(res[0].outstanding).toBe(140);
     expect(res[0].oldestActiveDebtId).toBe("dOld");
     expect(res[0].oldestActiveDebtOutstanding).toBe(40);
+  });
+});
+
+describe("assignTransactionsToModos", () => {
+  const modos = [
+    { id: "m1", date_from: "2026-07-01", date_to: "2026-07-05", tag_ids: ["tagA"] },
+    { id: "m2", date_from: "2026-07-03", date_to: "2026-07-10", tag_ids: ["tagA", "tagB"] },
+    { id: "m3", date_from: "2026-07-01", date_to: "2026-07-10", tag_ids: [] },
+  ];
+  const tagRows = [
+    { transaction_id: "t1", tag_id: "tagA" },
+    { transaction_id: "t2", tag_id: "tagB" },
+    { transaction_id: "t3", tag_id: "tagA" },
+    { transaction_id: "t3", tag_id: "tagB" },
+  ];
+  const rows = [
+    { id: "t1", transaction_date: "2026-07-02" },
+    { id: "t2", transaction_date: "2026-07-04" },
+    { id: "t3", transaction_date: "2026-07-09" },
+    { id: "t4", transaction_date: "2026-07-04" }, // sin etiqueta
+  ];
+  it("aplica tags OR y rango de fechas por modo, sin duplicar", () => {
+    const out = assignTransactionsToModos(modos, tagRows, rows);
+    expect(out.get("m1")!.map((t) => t.id)).toEqual(["t1"]);
+    expect(out.get("m2")!.map((t) => t.id)).toEqual(["t2", "t3"]);
+    expect(out.get("m3")).toEqual([]);
+  });
+});
+
+describe("findModoForTags", () => {
+  const modos = [
+    { id: "old", tag_ids: ["a"], date_from: "2026-01-01" },
+    { id: "new", tag_ids: ["a"], date_from: "2026-06-01" },
+    { id: "both", tag_ids: ["a", "b"], date_from: "2025-01-01" },
+  ];
+  it("prefiere el mayor solape y, en empate, el más reciente", () => {
+    expect(findModoForTags(modos, ["a", "b"])?.id).toBe("both");
+    expect(findModoForTags(modos, ["a"])?.id).toBe("new");
+    expect(findModoForTags(modos, ["zzz"])).toBeNull();
+    expect(findModoForTags(modos, [])).toBeNull();
+  });
+});
+
+describe("rangos", () => {
+  it("modoOverlapsWindow es inclusivo en ambos extremos", () => {
+    const m = { date_from: "2026-07-01", date_to: "2026-07-05" };
+    expect(modoOverlapsWindow(m, "2026-07-05", "2026-08-01")).toBe(true);
+    expect(modoOverlapsWindow(m, "2026-06-01", "2026-07-01")).toBe(true);
+    expect(modoOverlapsWindow(m, "2026-07-06", "2026-08-01")).toBe(false);
+  });
+  it("isModoOngoing compara contra hoy", () => {
+    expect(isModoOngoing({ date_to: "2026-07-05" }, "2026-07-05")).toBe(true);
+    expect(isModoOngoing({ date_to: "2026-07-05" }, "2026-07-06")).toBe(false);
   });
 });

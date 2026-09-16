@@ -8,13 +8,25 @@ import { cn } from "@/lib/utils";
 import { MOBILE_SHEET_SAFE_AREA_CLASS } from "@/lib/constants/styles";
 import { CoachMark, useCoachMark } from "@/components/guided/coach-mark";
 
-export type FabAction = "voice" | "screenshot" | "quick-capture" | "new-recurring" | "new-account";
+export type FabAction =
+  | "voice"
+  | "screenshot"
+  | "quick-capture"
+  | "new-recurring"
+  | "new-account"
+  | "new-modo"
+  | "add-to-modo";
 
 export interface ContextAction {
   id: FabAction;
   label: string;
   icon: typeof Plus;
   bg: string;
+  /**
+   * Navigation action: instead of opening a sheet, close the menu and go here
+   * (same path as "Nueva transacción"). Never reaches `onAction`.
+   */
+  href?: string;
 }
 
 interface FabMenuProps {
@@ -65,10 +77,15 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
     };
   }, [open, onOpenChange]);
 
-  // Prefetch the transaction page when the menu opens
+  // Prefetch the transaction page (and any navigation-type context action)
+  // when the menu opens
   useEffect(() => {
-    if (open) router.prefetch("/transactions/new");
-  }, [open, router]);
+    if (!open) return;
+    router.prefetch("/transactions/new");
+    for (const action of contextActions ?? []) {
+      if (action.href) router.prefetch(action.href);
+    }
+  }, [open, router, contextActions]);
 
   const handleAction = useCallback(
     (action: FabAction) => {
@@ -78,11 +95,18 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
     [onAction, onOpenChange],
   );
 
-  const handleNewTransaction = useCallback(() => {
-    closedViaBackRef.current = true;
-    onOpenChange(false);
-    router.replace("/transactions/new");
-  }, [onOpenChange, router]);
+  // `replace`, not `push`: opening the menu pushed a `{fabMenu:true}` history
+  // entry; pushing again would leave a phantom entry for the back button.
+  const handleNavigate = useCallback(
+    (href: string) => {
+      closedViaBackRef.current = true;
+      onOpenChange(false);
+      router.replace(href);
+    },
+    [onOpenChange, router],
+  );
+
+  const handleNewTransaction = useCallback(() => handleNavigate("/transactions/new"), [handleNavigate]);
 
   return (
     <div className="lg:hidden">
@@ -203,7 +227,7 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
                       <button
                         key={action.id}
                         type="button"
-                        onClick={() => handleAction(action.id)}
+                        onClick={() => (action.href ? handleNavigate(action.href) : handleAction(action.id))}
                         className={cn(
                           "flex w-full items-center gap-3 rounded-lg px-3 py-3",
                           "transition-colors active:bg-accent",

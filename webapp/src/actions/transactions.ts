@@ -27,6 +27,7 @@ import {
   attachTagsToTransactions,
   readTagIdsFromFormData,
 } from "@/lib/tags/attach-transaction-tags";
+import { applyActiveModoTag } from "@/lib/modos/active-modo-tag";
 import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import { scheduleSubscriptionDetection } from "@/lib/subscriptions/detect";
 import {
@@ -1002,6 +1003,14 @@ export async function createTransaction(
     if (tagResult.attached > 0) updateTag("tags");
   }
 
+  // Viaje activo: a manual capture inside the trip's dates gets its tag. After
+  // the occurrence link so a recurring charge paid mid-trip stays out.
+  const modoTag = await applyActiveModoTag(supabase, user.id, transactionResult.data);
+  if (modoTag.tagged) {
+    updateTag("tags");
+    updateTag("modos");
+  }
+
   // Re-invalidate: linking may have created a debt companion leg and updated
   // the debt account's balance AFTER persistTransaction already revalidated.
   revalidateFinancialViews();
@@ -1070,6 +1079,12 @@ export async function createQuickCaptureTransaction(
       parsed.data.amount, parsed.data.direction, result.data.id,
       destinatarioId,
     );
+    // Viaje activo: quick/voice captures inside the trip's dates get its tag.
+    const modoTag = await applyActiveModoTag(supabase, user.id, result.data);
+    if (modoTag.tagged) {
+      updateTag("tags");
+      updateTag("modos");
+    }
     // Re-invalidate: linking may have created a debt companion leg and updated
     // the debt account's balance AFTER persistTransaction already revalidated.
     revalidateFinancialViews();

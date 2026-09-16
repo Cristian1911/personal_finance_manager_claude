@@ -5,6 +5,7 @@ import { getUncategorizedTransactions } from "@/actions/categorize";
 import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
 import { getAllTags } from "@/actions/tags";
+import { listModos } from "@/actions/modos";
 import { getPendingEmailTransactions } from "@/actions/email-ingest";
 import { AttentionCard } from "@/components/ui/attention-card";
 import { HeroAccentPill, HeroPill, PageHero } from "@/components/ui/page-hero";
@@ -50,6 +51,7 @@ export default async function TransactionsPage({
     pendingEmailResult,
     monthlyAggregatesResult,
     uncategorizedTxs,
+    modosResult,
   ] = await Promise.all([
     getTransactions(params),
     getAccounts(),
@@ -58,7 +60,9 @@ export default async function TransactionsPage({
     getPendingEmailTransactions(),
     getMonthlyAggregates(params.month, params.accountId, summaryCurrency),
     getUncategorizedTransactions(),
+    listModos(),
   ]);
+  const modos = modosResult.success ? modosResult.data : [];
 
   const pendingTransactions = pendingEmailResult.success ? pendingEmailResult.data : [];
 
@@ -149,6 +153,7 @@ export default async function TransactionsPage({
           categories={categories}
           accounts={accounts}
           tags={allTags}
+          modos={modos}
           count={monthlyAggregates.count}
           totalInflow={monthlyAggregates.totalInflow}
           totalOutflow={monthlyAggregates.totalOutflow}
@@ -231,7 +236,7 @@ export default async function TransactionsPage({
         />
 
         <Suspense>
-          <TransactionFilters accounts={accounts} tags={allTags} categories={categories} />
+          <TransactionFilters accounts={accounts} tags={allTags} categories={categories} modos={modos} />
         </Suspense>
 
         <QuickCaptureBar accounts={accounts} categories={categories} />

@@ -15,12 +15,13 @@ import { MovimientosTransactionRow } from "./movimientos-transaction-row";
 import { getAccountIdsWithPendingOccurrences } from "@/actions/occurrences";
 import { getTransactions } from "@/actions/transactions";
 import type {
-  TransactionWithAccount,
-  PendingEmailTransaction,
-  CategoryWithChildren,
   Account,
-  Tag,
+  CategoryWithChildren,
   CurrencyCode,
+  Modo,
+  PendingEmailTransaction,
+  Tag,
+  TransactionWithAccount,
   TransferLegSummary,
 } from "@/types/domain";
 import { isDebtAccountType } from "@zeta/shared";
@@ -34,6 +35,8 @@ interface MovimientosRootProps {
   categories: CategoryWithChildren[];
   accounts: Account[];
   tags: Tag[];
+  /** Saved viajes/eventos for the tag-filter shortcut. */
+  modos?: Modo[];
   count: number;
   totalInflow: number;
   totalOutflow: number;
@@ -55,6 +58,7 @@ export function MovimientosRoot({
   categories,
   accounts,
   tags,
+  modos,
   count,
   totalInflow,
   totalOutflow,
@@ -212,6 +216,7 @@ export function MovimientosRoot({
         accounts={accounts}
         tags={tags}
         categories={categories}
+        modos={modos}
       />
 
       {/* Feed — date-grouped transaction rows */}
