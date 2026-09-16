@@ -54,6 +54,7 @@ Every transaction has a `capture_method` indicating how it was created. These fo
 - **Balance updates**: Tier 1 with statement metadata sets balance directly. Tier 2/3 use `applyAccountBalanceDelta()` per-transaction.
 - **Idempotency**: Same `computeIdempotencyKey()` for all sources — `SHA256(provider|providerTransactionId|date|amount|description|installment)`. DB unique constraint catches duplicates (`error.code === "23505"` → skip).
 - **New capture methods**: Add to `CAPTURE_TIER` in `capture-hierarchy.ts` + DB enum migration. Spawn `import-flow-doctor` for review.
+- **Viaje activo (modos)**: tier 3 captures inside the active trip's dates get its tag automatically (`applyActiveModoTag`, after `linkTransactionToOccurrence`); tier 1/2 go to the trip's review tray. Rule in `@zeta/shared` → `modo-candidates.ts` (never transfers, personal-debt legs, recurring/subscriptions, instalments, excluded, non-spend flow classes).
 
 ## Agents
 
