@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronRight, ExternalLink, MoreHorizontal, Plus, Users } from "lucide-react";
@@ -15,6 +15,7 @@ import {
   modoDatePosition,
   settleUpByPerson,
   summarizeShared,
+  summarizeSpendSplit,
   txCurrency,
   type ModoTxRow,
 } from "@/lib/utils/modo-summary";
@@ -49,8 +50,8 @@ import type { CurrencyCode, SharedPaymentGroup } from "@/types/domain";
 type Filter = "all" | "unshared" | "shared" | "other";
 const FILTERS: { id: Filter; label: string }[] = [
   { id: "all", label: "Todos" },
-  { id: "unshared", label: "Sin repartir" },
-  { id: "shared", label: "Repartidos" },
+  { id: "unshared", label: "Solo míos" },
+  { id: "shared", label: "Compartidos" },
   { id: "other", label: "Otros" },
 ];
 
@@ -84,6 +85,12 @@ export function ModoSummaryView({
   const sharedTotals = useMemo(() => summarizeShared(sharedGroups, txIds), [sharedGroups, txIds]);
   const people = modo.is_shared ? settleUpByPerson(sharedGroups, txIds) : [];
   const spendRows = useMemo(() => transactions.filter(isModoSpend), [transactions]);
+  const spendSplit = useMemo(() => summarizeSpendSplit(spendRows, sharedTotals), [spendRows, sharedTotals]);
+  const listRef = useRef<HTMLElement>(null);
+  function chooseWhatToShare() {
+    setFilter("unshared");
+    listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
   const sharedRows = spendRows.filter((t) => !!t.split_group_id);
   const unsharedIds = spendRows.filter((t) => !t.split_group_id).map((t) => t.id);
   const modoTagIds = new Set(modo.tag_ids);
@@ -239,40 +246,61 @@ export function ModoSummaryView({
 
         {modo.is_shared ? (
           <div className="space-y-3">
-            {sharedTotals.length === 0 ? (
-              <div className={cn(PANEL_INSET_CLASS, "flex flex-wrap items-center justify-between gap-3 p-3")}>
-                <p className="text-sm text-muted-foreground">Ningún gasto repartido todavía.</p>
-                {unsharedIds.length > 0 && (
-                  <Button size="sm" onClick={() => share(unsharedIds)} disabled={pending} className={BRASS_BUTTON_CLASS}>
-                    Repartir los {unsharedIds.length}
-                  </Button>
-                )}
-              </div>
+            {spendSplit.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Cuando haya gastos, aquí verás cuánto es tuyo y cuánto te deben.</p>
             ) : (
-              sharedTotals.map((st) => (
-                <div key={st.currency} className="space-y-2">
-                  {sharedTotals.length > 1 && <p className="text-xs text-muted-foreground">{st.currency}</p>}
+              spendSplit.map((sp) => (
+                <div key={sp.currency} className="space-y-2">
+                  {spendSplit.length > 1 && <p className="text-xs text-muted-foreground">{sp.currency}</p>}
                   <div className="grid grid-cols-3 gap-2">
-                    <CompactMetricBox label="Tu parte" value={<span className="tabular-nums">{formatCurrency(st.userShare, cur(st.currency))}</span>} />
+                    <CompactMetricBox
+                      label="Tu parte"
+                      value={<span className="tabular-nums">{formatCurrency(sp.yourPart, cur(sp.currency))}</span>}
+                      context={
+                        sp.sharedCount > 0
+                          ? `${formatCurrency(sp.ownOnlyTotal, cur(sp.currency))} solo tuyos`
+                          : "nada compartido aún"
+                      }
+                    />
                     <CompactMetricBox
                       label="Te deben"
-                      value={<span className={cn("tabular-nums", st.outstanding > 0 ? "text-z-brass" : "text-z-income")}>{formatCurrency(st.outstanding, cur(st.currency))}</span>}
-                      context={st.outstanding > 0 ? "pendiente" : "todo saldado"}
+                      value={
+                        <span className={cn("tabular-nums", sp.outstanding > 0 ? "text-z-brass" : "text-z-income")}>
+                          {formatCurrency(sp.outstanding, cur(sp.currency))}
+                        </span>
+                      }
+                      context={sp.sharedCount === 0 ? "—" : sp.outstanding > 0 ? "pendiente" : "todo saldado"}
                     />
-                    <CompactMetricBox label="Recuperado" value={<span className="tabular-nums">{formatCurrency(st.recovered, cur(st.currency))}</span>} context={`de ${formatCurrency(st.owedToUser, cur(st.currency))}`} />
+                    <CompactMetricBox
+                      label="Recuperado"
+                      value={<span className="tabular-nums">{formatCurrency(sp.recovered, cur(sp.currency))}</span>}
+                      context={sp.sharedCount > 0 ? `de ${formatCurrency(sp.owedToUser, cur(sp.currency))}` : "—"}
+                    />
                   </div>
                 </div>
               ))
             )}
-            {sharedTotals.length > 0 && (
+            {spendRows.length > 0 && (
               <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
                 <span className="text-muted-foreground">
-                  {sharedRows.length} de {spendRows.length} gastos repartidos
+                  {sharedRows.length} {sharedRows.length === 1 ? "compartido" : "compartidos"} · {unsharedIds.length}{" "}
+                  {unsharedIds.length === 1 ? "solo mío" : "solo míos"}
                 </span>
                 {unsharedIds.length > 0 && (
-                  <Button size="sm" onClick={() => share(unsharedIds)} disabled={pending} className={BRASS_BUTTON_CLASS}>
-                    Repartir los {unsharedIds.length} pendientes
-                  </Button>
+                  <span className="flex flex-wrap gap-2">
+                    <Button variant="ghost" size="sm" onClick={chooseWhatToShare} className={GHOST_BUTTON_CLASS}>
+                      Elegir qué repartir
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => share(unsharedIds)}
+                      disabled={pending}
+                      className={BRASS_GHOST_BUTTON_CLASS}
+                    >
+                      Repartir todos los pendientes
+                    </Button>
+                  </span>
                 )}
               </div>
             )}
@@ -390,7 +418,7 @@ export function ModoSummaryView({
       )}
 
       {/* Gastos */}
-      <section className="space-y-3">
+      <section ref={listRef} className="scroll-mt-16 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <SectionEyebrow>Movimientos del viaje</SectionEyebrow>
           {modo.is_shared && (
@@ -513,10 +541,10 @@ function statusChip(
   if (tx.split_group_id) {
     const outstanding = group?.outstanding_total ?? 0;
     return outstanding > 0
-      ? { label: `Repartido · te deben ${formatCurrency(outstanding, cur(group?.currency_code ?? txCurrency(tx)))}`, tone: "brass" }
-      : { label: "Repartido · saldado", tone: "income" };
+      ? { label: `Compartido · te deben ${formatCurrency(outstanding, cur(group?.currency_code ?? txCurrency(tx)))}`, tone: "brass" }
+      : { label: "Compartido · saldado", tone: "income" };
   }
-  return isShared ? { label: "Sin repartir", tone: "muted" } : null;
+  return isShared ? { label: "Solo mío", tone: "muted" } : null;
 }
 
 function ModoTxItem({
@@ -589,7 +617,25 @@ function ModoTxItem({
           {kind === "inflow" ? "+" : ""}
           {formatCurrency(tx.amount ?? 0, cur(txCurrency(tx)))}
         </span>
-        {chip && (
+        {chip && isShared && kind === "spend" ? (
+          // One tap decides whether THIS expense is shared with the trip's
+          // people or stays yours — not every buy on a trip is a shared one.
+          <button
+            type="button"
+            onClick={tx.split_group_id ? onUnshare : onShare}
+            disabled={pending}
+            aria-pressed={!!tx.split_group_id}
+            aria-label={tx.split_group_id ? "Compartido · tocar para dejarlo solo mío" : "Solo mío · tocar para compartirlo"}
+            className={cn(
+              "max-w-[46vw] truncate rounded-full border px-1.5 py-0.5 text-[10px] transition-colors disabled:opacity-60 lg:max-w-none",
+              chip.tone === "brass" && "border-z-brass/30 bg-z-brass/10 text-z-brass hover:bg-z-brass/20",
+              chip.tone === "income" && "border-z-income/30 bg-z-income/10 text-z-income hover:bg-z-income/20",
+              chip.tone === "muted" && "border-white/10 text-muted-foreground hover:border-z-brass/30 hover:text-z-brass",
+            )}
+          >
+            {chip.label}
+          </button>
+        ) : chip && (
           <span
             className={cn(
               "max-w-[46vw] truncate rounded-full border px-1.5 py-0.5 text-[10px] lg:max-w-none",

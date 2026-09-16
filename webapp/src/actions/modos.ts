@@ -294,6 +294,8 @@ async function listModosWithTotalsCached(
         .select(MODO_TOTALS_TX_SELECT)
         .eq("user_id", userId)
         .in("id", candidateIds)
+        // Same rule as getModoTransactionIds: reconciled duplicates are gone.
+        .is("reconciled_into_transaction_id", null)
     : { data: [] as unknown[] };
   const byModo = assignTransactionsToModos(modos, tagRows ?? [], (txs ?? []) as unknown as ModoTxRow[]);
 

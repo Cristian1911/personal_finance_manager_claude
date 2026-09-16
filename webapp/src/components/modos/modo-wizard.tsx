@@ -480,7 +480,8 @@ export function ModoWizard({ mode, initial, initialParticipants = [], presets, o
               <span>
                 <span className="block font-medium">Comparto los gastos</span>
                 <span className="block text-sm text-muted-foreground">
-                  Cada pago se reparte y Zeta lleva la cuenta de lo que te deben.
+                  Después eliges qué gastos se reparten; los demás quedan como tuyos. Zeta lleva la cuenta de lo que
+                  te deben.
                 </span>
               </span>
               <Switch checked={isShared} onCheckedChange={setIsShared} aria-label="Comparto los gastos" />
