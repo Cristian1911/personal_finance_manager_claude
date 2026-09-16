@@ -576,7 +576,8 @@ export function ModoWizard({ mode, initial, initialParticipants = [], presets, o
             <div className="space-y-2">
               <Label>Etiqueta del viaje</Label>
               <p className="text-sm text-muted-foreground">
-                Todo lo que lleve esta etiqueta entre {dateFrom || "…"} y {dateTo || "…"} cuenta como gasto del viaje.
+                Todo lo que lleve esta etiqueta cuenta como gasto del viaje, también lo pagado antes o después de
+                las fechas (vuelos, hotel). Las fechas solo deciden qué se etiqueta solo y qué te propongo revisar.
               </p>
               <div className="flex flex-wrap gap-1.5">
                 <button

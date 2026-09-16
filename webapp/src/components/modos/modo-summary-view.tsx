@@ -12,6 +12,7 @@ import {
   describeModoTx,
   indexSharedGroups,
   isModoSpend,
+  modoDatePosition,
   settleUpByPerson,
   summarizeShared,
   txCurrency,
@@ -67,7 +68,8 @@ export function ModoSummaryView({
   const router = useRouter();
   const destinatarios = useDestinatarios();
   const allTags = useAllTags();
-  const applyHref = `/transactions?tags=${modo.tag_ids.join(",")}&dateFrom=${modo.date_from}&dateTo=${modo.date_to}`;
+  // No date bounds: a tagged row outside the trip's dates is still the trip's.
+  const applyHref = `/transactions?tags=${modo.tag_ids.join(",")}`;
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<Filter>("all");
@@ -437,6 +439,7 @@ export function ModoSummaryView({
                     <ModoTxItem
                       key={t.id}
                       tx={t}
+                      datePosition={modoDatePosition(t.transaction_date, modo)}
                       isShared={modo.is_shared}
                       selected={selected.has(t.id)}
                       onToggle={() => toggle(t.id)}
@@ -518,6 +521,7 @@ function statusChip(
 
 function ModoTxItem({
   tx,
+  datePosition,
   isShared,
   selected,
   onToggle,
@@ -530,6 +534,7 @@ function ModoTxItem({
   onRemove,
 }: {
   tx: ModoTxRow;
+  datePosition: "before" | "during" | "after";
   isShared: boolean;
   selected: boolean;
   onToggle: () => void;
@@ -561,8 +566,13 @@ function ModoTxItem({
       <Link href={`/transactions/${tx.id}`} className="min-w-0 flex-1">
         <span className="block truncate text-sm">{describeModoTx(tx)}</span>
         <span className="block truncate text-xs text-muted-foreground">{meta.join(" · ") || "Sin cuenta"}</span>
-        {(extraTags.length > 0 || reviewSource === "auto") && (
+        {(extraTags.length > 0 || reviewSource === "auto" || datePosition !== "during") && (
           <span className="mt-1 flex flex-wrap items-center gap-1">
+            {datePosition !== "during" && (
+              <span className="rounded-full border border-white/6 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                {datePosition === "before" ? "Antes del viaje" : "Después del viaje"}
+              </span>
+            )}
             {reviewSource === "auto" && (
               <span className="rounded-full border border-z-brass/30 bg-z-brass/10 px-1.5 py-0.5 text-[10px] text-z-brass">
                 Auto ✈️
