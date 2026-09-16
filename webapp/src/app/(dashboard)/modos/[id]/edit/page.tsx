@@ -2,7 +2,7 @@ import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import { getModoWithParticipants } from "@/actions/modos";
 import { getDestinatarios } from "@/actions/destinatarios";
-import { ModoWizard } from "@/components/modos/modo-wizard";
+import { ModoWizardHost } from "@/components/modos/modo-wizard-host";
 
 export default async function EditModoPage({
   params,
@@ -21,7 +21,7 @@ export default async function EditModoPage({
     (destinatarios.success ? destinatarios.data : []).map((d) => [d.id, d.name]),
   );
   return (
-    <ModoWizard
+    <ModoWizardHost
       mode="edit"
       initial={result.data.modo}
       initialParticipants={result.data.participants.map((p) => ({

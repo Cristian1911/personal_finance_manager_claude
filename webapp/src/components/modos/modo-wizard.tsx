@@ -102,6 +102,10 @@ export interface ModoWizardProps {
   initial?: Modo;
   initialParticipants?: (ModoParticipant & { name?: string })[];
   presets?: { name?: string; tagIds?: string[]; dateFrom?: string; dateTo?: string; step?: number };
+  /** Called right before navigating away after a successful save. */
+  onDone?: () => void;
+  /** Called right before navigating away when the user abandons the wizard. */
+  onLeave?: () => void;
 }
 
 /**
@@ -110,7 +114,7 @@ export interface ModoWizardProps {
  * guard on "Salir", a pinned action bar, and — on create — the range's
  * candidate transactions so the trip starts populated instead of empty.
  */
-export function ModoWizard({ mode, initial, initialParticipants = [], presets }: ModoWizardProps) {
+export function ModoWizard({ mode, initial, initialParticipants = [], presets, onDone, onLeave }: ModoWizardProps) {
   const router = useRouter();
   const allTags = useAllTags();
   const isEdit = mode === "edit";
@@ -209,8 +213,12 @@ export function ModoWizard({ mode, initial, initialParticipants = [], presets }:
     return () => window.removeEventListener("beforeunload", handler);
   }, [dirty]);
   const backHref = isEdit && initial ? `/modos/${initial.id}` : "/modos";
+  // `replace`, never `push`: a wizard — finished or abandoned — must not stay
+  // in the history, or the phone's back button lands on it again with its
+  // React state restored from the Router Cache (see #387).
   function leave() {
-    router.push(backHref);
+    onLeave?.();
+    router.replace(backHref);
   }
   function handleBack() {
     if (dirty && !pending) setConfirmOpen(true);
@@ -301,14 +309,15 @@ export function ModoWizard({ mode, initial, initialParticipants = [], presets }:
         setError(res.error);
         return;
       }
+      onDone?.();
       if (isEdit && initial) {
         toast.success("Viaje actualizado");
-        router.push(`/modos/${initial.id}`);
+        router.replace(`/modos/${initial.id}`);
         router.refresh();
       } else if (res.data) {
         const n = selectedCandidates.size;
         toast.success(n > 0 ? `Viaje creado con ${n} ${n === 1 ? "gasto" : "gastos"}` : "Viaje creado");
-        router.push(`/modos/${res.data.id}`);
+        router.replace(`/modos/${res.data.id}`);
       }
     });
   }
