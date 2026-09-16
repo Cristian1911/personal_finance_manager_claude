@@ -5,6 +5,7 @@ import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { modoSchema, type ModoInput } from "@/lib/validators/modo";
 import { dedupeTransactionIds } from "@/lib/utils/tag-ids";
+import { getModoTransactionIds } from "@/lib/modos/membership";
 import {
   summarizeModo,
   filterSharedGroupsByOrigin,
@@ -84,33 +85,6 @@ export type ModoWithTotals = Modo & {
   pendingReviewCount: number;
 };
 
-// ── Membership (single source of truth) ──────────────────
-export async function getModoTransactionIds(
-  modo: Pick<Modo, "date_from" | "date_to" | "tag_ids">,
-  userId: string,
-  accessToken: string,
-): Promise<string[]> {
-  if (!modo.tag_ids || modo.tag_ids.length === 0) return [];
-  const supabase = createCachedClient(accessToken);
-
-  const { data: tagged } = await supabase
-    .from("transaction_tags")
-    .select("transaction_id")
-    .eq("user_id", userId)
-    .in("tag_id", modo.tag_ids);
-  const candidateIds = dedupeTransactionIds(tagged ?? []);
-  if (candidateIds.length === 0) return [];
-
-  const { data: rows } = await supabase
-    .from("transactions")
-    .select("id")
-    .eq("user_id", userId)
-    .in("id", candidateIds)
-    .gte("transaction_date", modo.date_from)
-    .lte("transaction_date", modo.date_to);
-  return (rows ?? []).map((r) => r.id);
-}
-
 // ── Reads ────────────────────────────────────────────────
 async function listModosCached(userId: string, accessToken: string): Promise<Modo[]> {
   "use cache";
@@ -136,13 +110,52 @@ export async function listModos(): Promise<ActionResult<Modo[]>> {
   }
 }
 
+async function getModoCached(id: string, userId: string, accessToken: string): Promise<Modo | null> {
+  "use cache";
+  cacheTag("modos");
+  cacheLife("zeta");
+  const supabase = createCachedClient(accessToken);
+  const { data } = await supabase
+    .from("modos").select("*").eq("id", id).eq("user_id", userId).maybeSingle();
+  return data ?? null;
+}
+
 export async function getModo(id: string): Promise<ActionResult<Modo>> {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
-  const { data, error } = await supabase
-    .from("modos").select("*").eq("id", id).eq("user_id", user.id).single();
-  if (error || !data) return { success: false, error: "Modo no encontrado" };
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
+  if (!UUID_RE.test(id)) return { success: false, error: "Viaje no encontrado" };
+  const data = await getModoCached(id, user.id, accessToken);
+  if (!data) return { success: false, error: "Viaje no encontrado" };
   return { success: true, data };
+}
+
+async function getModoParticipantsCached(
+  modoId: string,
+  userId: string,
+  accessToken: string,
+): Promise<ModoParticipant[]> {
+  "use cache";
+  cacheTag("modos");
+  cacheLife("zeta");
+  const supabase = createCachedClient(accessToken);
+  const { data } = await supabase
+    .from("modo_participants").select("*").eq("modo_id", modoId).eq("user_id", userId).order("position");
+  return data ?? [];
+}
+
+/** What the edit wizard needs and nothing more (no membership, no candidates). */
+export async function getModoWithParticipants(
+  id: string,
+): Promise<ActionResult<{ modo: Modo; participants: ModoParticipant[] }>> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
+  if (!UUID_RE.test(id)) return { success: false, error: "Viaje no encontrado" };
+  const [modo, participants] = await Promise.all([
+    getModoCached(id, user.id, accessToken),
+    getModoParticipantsCached(id, user.id, accessToken),
+  ]);
+  if (!modo) return { success: false, error: "Viaje no encontrado" };
+  return { success: true, data: { modo, participants } };
 }
 
 export type ModoDetail = {
@@ -201,10 +214,22 @@ export async function getModoSummary(id: string): Promise<ActionResult<ModoDetai
 
   // The shared groups depend only on the user and cannot live inside the
   // cached detail (their wrapper re-auths) — run them in parallel instead.
-  const [detail, groupsResult, homeCurrency] = await Promise.all([
-    getModoDetailCached(accessToken, user.id, id),
+  // The bare modo row comes first (tiny, cached) so the candidates scan can
+  // start alongside the membership chain instead of waiting behind it.
+  const [modoRow, groupsResult, homeCurrency] = await Promise.all([
+    getModoCached(id, user.id, accessToken),
     getSharedPaymentGroups(),
     getPreferredCurrency(),
+  ]);
+  if (!modoRow) return { success: false, error: "Viaje no encontrado" };
+
+  const [detail, candidates] = await Promise.all([
+    getModoDetailCached(accessToken, user.id, id),
+    getModoCandidatesCached(
+      accessToken, user.id,
+      { date_from: modoRow.date_from, date_to: modoRow.date_to, tag_ids: modoRow.tag_ids },
+      id, homeCurrency,
+    ),
   ]);
   if (!detail) return { success: false, error: "Viaje no encontrado" };
 
@@ -213,11 +238,6 @@ export async function getModoSummary(id: string): Promise<ActionResult<ModoDetai
   const sharedGroups = groupsResult.success
     ? filterSharedGroupsByOrigin(groupsResult.data, txIds)
     : [];
-  const candidates = await getModoCandidatesCached(
-    accessToken, user.id,
-    { date_from: detail.modo.date_from, date_to: detail.modo.date_to, tag_ids: detail.modo.tag_ids },
-    id, homeCurrency,
-  );
 
   return {
     success: true,
@@ -269,12 +289,11 @@ async function listModosWithTotalsCached(
     : { data: [] as unknown[] };
   const byModo = assignTransactionsToModos(modos, tagRows ?? [], (txs ?? []) as unknown as ModoTxRow[]);
 
-  // "Por revisar" across every trip in one pass: candidates over the union of
-  // ranges, then classified per trip in memory.
-  const minFrom = modos.reduce((m, x) => (x.date_from < m ? x.date_from : m), modos[0].date_from);
-  const maxTo = modos.reduce((m, x) => (x.date_to > m ? x.date_to : m), modos[0].date_to);
-  const [{ data: candidateRows }, { data: reviewRows }] = await Promise.all([
-    fetchCandidateRows(supabase, userId, minFrom, maxTo),
+  // "Por revisar" per trip: one bounded range scan per modo (a user has a
+  // handful of trips, not hundreds), so an old trip's count is never starved
+  // by a newer trip eating a shared row cap.
+  const [candidatesPerModo, { data: reviewRows }] = await Promise.all([
+    Promise.all(modos.map((m) => fetchCandidateRows(supabase, userId, m.date_from, m.date_to))),
     supabase.from("modo_tx_reviews").select("modo_id, transaction_id").eq("user_id", userId),
   ]);
   const reviewedByModo = new Map<string, Set<string>>();
@@ -284,10 +303,10 @@ async function listModosWithTotalsCached(
     reviewedByModo.set(r.modo_id, set);
   }
 
-  return modos.map((modo) => {
+  return modos.map((modo, i) => {
     const rows = byModo.get(modo.id) ?? [];
     const reviewed = reviewedByModo.get(modo.id) ?? new Set<string>();
-    const pending = classifyCandidateRows(candidateRows ?? [], modo, reviewed, homeCurrency).length;
+    const pending = classifyCandidateRows(candidatesPerModo[i].data ?? [], modo, reviewed, homeCurrency).length;
     return {
       ...modo,
       summary: summarizeModo(rows),
@@ -454,7 +473,18 @@ async function applyModoReview(
   source: "suggested" | "manual",
 ): Promise<{ ok: true; included: number; excluded: number } | { ok: false; error: string }> {
   const include = [...new Set(decisions.include.filter((id) => UUID_RE.test(id)))];
-  const exclude = [...new Set(decisions.exclude.filter((id) => UUID_RE.test(id) && !include.includes(id)))];
+  let exclude = [...new Set(decisions.exclude.filter((id) => UUID_RE.test(id) && !include.includes(id)))];
+  // `include` is ownership-checked by attachTagsToTransactions; give the
+  // excluded ids the same defense-in-depth before they land in modo_tx_reviews.
+  if (exclude.length > 0) {
+    const { data: owned } = await supabase
+      .from("transactions")
+      .select("id")
+      .eq("user_id", userId)
+      .in("id", exclude);
+    const ownedIds = new Set((owned ?? []).map((r) => r.id));
+    exclude = exclude.filter((id) => ownedIds.has(id));
+  }
   const tagId = modo.auto_tag_id ?? modo.tag_ids[0] ?? null;
   if (include.length > 0 && !tagId) {
     return { ok: false, error: "Este viaje no tiene etiqueta para marcar movimientos" };
@@ -490,9 +520,9 @@ export async function reviewModoCandidates(
   const res = await applyModoReview(supabase, user.id, modo, decisions, "suggested");
   if (!res.ok) return { success: false, error: res.error };
 
-  revalidateFinancialViews();
-  expireTag("modos");
-  expireTag("tags");
+  // Tag-only write: no amount, balance or debt moved. Only the caches keyed on
+  // transactions/tags/modos need to expire, not the whole financial sweep.
+  expireModoTagCaches();
   return { success: true, data: { included: res.included, excluded: res.excluded } };
 }
 
@@ -525,9 +555,7 @@ export async function removeFromModo(
   const res = await applyModoReview(supabase, user.id, modo, { include: [], exclude: ids }, "manual");
   if (!res.ok) return { success: false, error: res.error };
 
-  revalidateFinancialViews();
-  expireTag("modos");
-  expireTag("tags");
+  expireModoTagCaches();
   return { success: true, data: { removed: ids.length } };
 }
 
@@ -597,7 +625,10 @@ export async function createModo(formData: FormData): Promise<ActionResult<{ id:
     .from("modos")
     .insert({ ...modoRow, tag_ids: tagIds, auto_tag_id: autoTagId, user_id: user.id })
     .select("id").single();
-  if (error || !data) return { success: false, error: error?.message ?? "Error al crear el viaje" };
+  if (error || !data) {
+    console.error("createModo insert failed", error);
+    return { success: false, error: "Error al crear el viaje" };
+  }
 
   if (modoRow.is_shared && participants.length > 0) {
     const { error: partErr } = await supabase.from("modo_participants").insert(
@@ -609,12 +640,20 @@ export async function createModo(formData: FormData): Promise<ActionResult<{ id:
         position: i,
       })),
     );
-    if (partErr) return { success: false, error: "Error al guardar las personas del viaje" };
+    if (partErr) {
+      // No orphan trips: undo the insert so the user does not find a half-made
+      // trip in the list after an error.
+      await supabase.from("modos").delete().eq("id", data.id).eq("user_id", user.id);
+      return { success: false, error: "Error al guardar las personas del viaje" };
+    }
   }
 
   if (is_active) {
     const act = await activateModoRow(supabase, user.id, data.id);
-    if (!act.ok) return { success: false, error: act.error };
+    if (!act.ok) {
+      await supabase.from("modos").delete().eq("id", data.id).eq("user_id", user.id);
+      return { success: false, error: act.error };
+    }
   }
 
   // Wizard step 3: the candidates the user ticked get tagged in the same go.
@@ -633,10 +672,19 @@ export async function createModo(formData: FormData): Promise<ActionResult<{ id:
     else includedAny = review.included > 0;
   }
 
-  if (includedAny) revalidateFinancialViews();
-  expireTag("modos");
-  if (tagCreated || includedAny) expireTag("tags");
+  if (includedAny) expireModoTagCaches();
+  else {
+    expireTag("modos");
+    if (tagCreated) expireTag("tags");
+  }
   return { success: true, data: { id: data.id } };
+}
+
+/** Caches a tag attach/detach can change: the modo reads plus transaction lists. */
+function expireModoTagCaches() {
+  expireTag("transactions");
+  expireTag("tags");
+  expireTag("modos");
 }
 
 /** JSON array of uuids in a FormData field; junk is dropped, never fatal. */
@@ -652,6 +700,7 @@ function readIdListField(formData: FormData, key: string): string[] {
 export async function updateModo(id: string, formData: FormData): Promise<ActionResult<null>> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
+  if (!UUID_RE.test(id)) return { success: false, error: "Viaje no encontrado" };
   const parsed = parseModoForm(formData);
   if (!parsed.success) return { success: false, error: parsed.error };
 
@@ -663,9 +712,18 @@ export async function updateModo(id: string, formData: FormData): Promise<Action
   const tagIds = modoRow.auto_tag_id && !modoRow.tag_ids.includes(modoRow.auto_tag_id)
     ? [modoRow.auto_tag_id, ...modoRow.tag_ids]
     : modoRow.tag_ids;
-  const { error } = await supabase
-    .from("modos").update({ ...modoRow, tag_ids: tagIds }).eq("id", id).eq("user_id", user.id);
-  if (error) return { success: false, error: error.message };
+  const { data: updated, error } = await supabase
+    .from("modos")
+    .update({ ...modoRow, tag_ids: tagIds })
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .select("id")
+    .maybeSingle();
+  if (error) {
+    console.error("updateModo failed", error);
+    return { success: false, error: "Error al guardar el viaje" };
+  }
+  if (!updated) return { success: false, error: "Viaje no encontrado" };
 
   // Reemplazar participantes (N ≈ 1–3; delete-all + re-insert en vez de diff fino).
   const { error: delErr } = await supabase
@@ -700,6 +758,15 @@ async function activateModoRow(
   userId: string,
   modoId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  // Check-first: a zero-row update is not an error in PostgREST, so without
+  // this a foreign or deleted id would silently end the current trip.
+  const { data: owned } = await supabase
+    .from("modos")
+    .select("id")
+    .eq("id", modoId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!owned) return { ok: false, error: "Viaje no encontrado" };
   const { error: clearErr } = await supabase
     .from("modos")
     .update({ is_active: false })
@@ -725,6 +792,7 @@ async function activateModoRow(
 export async function setActiveModo(id: string | null): Promise<ActionResult<null>> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
+  if (id !== null && !UUID_RE.test(id)) return { success: false, error: "Viaje no encontrado" };
   if (id === null) {
     const { error } = await supabase
       .from("modos")
@@ -774,9 +842,14 @@ export async function getActiveModo(): Promise<ActiveModo | null> {
 export async function deleteModo(id: string): Promise<ActionResult<null>> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
-  const { error } = await supabase
-    .from("modos").delete().eq("id", id).eq("user_id", user.id);
-  if (error) return { success: false, error: error.message };
+  if (!UUID_RE.test(id)) return { success: false, error: "Viaje no encontrado" };
+  const { data: deleted, error } = await supabase
+    .from("modos").delete().eq("id", id).eq("user_id", user.id).select("id").maybeSingle();
+  if (error) {
+    console.error("deleteModo failed", error);
+    return { success: false, error: "Error al eliminar el viaje" };
+  }
+  if (!deleted) return { success: false, error: "Viaje no encontrado" };
 
   expireTag("modos");
   return { success: true, data: null };
@@ -793,6 +866,7 @@ export async function shareModoTransactions(
 > {
   const { supabase, user, accessToken } = await getAuthenticatedClient();
   if (!user || !accessToken) return { success: false, error: "No autenticado" };
+  if (!UUID_RE.test(modoId)) return { success: false, error: "Viaje no encontrado" };
 
   const { data: modo, error: modoErr } = await supabase
     .from("modos").select("*").eq("id", modoId).eq("user_id", user.id).single();
@@ -857,6 +931,7 @@ export async function unshareModoTransactions(
 ): Promise<ActionResult<{ unshared: number }>> {
   const { supabase, user, accessToken } = await getAuthenticatedClient();
   if (!user || !accessToken) return { success: false, error: "No autenticado" };
+  if (!UUID_RE.test(modoId)) return { success: false, error: "Viaje no encontrado" };
 
   const { data: modo, error: modoErr } = await supabase
     .from("modos").select("*").eq("id", modoId).eq("user_id", user.id).single();

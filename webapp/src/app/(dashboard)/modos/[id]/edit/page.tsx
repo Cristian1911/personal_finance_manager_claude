@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
-import { getModoSummary } from "@/actions/modos";
+import { getModoWithParticipants } from "@/actions/modos";
 import { getDestinatarios } from "@/actions/destinatarios";
 import { ModoWizard } from "@/components/modos/modo-wizard";
 
@@ -13,7 +13,7 @@ export default async function EditModoPage({
 }) {
   await connection();
   const [{ id }, sp] = await Promise.all([params, searchParams]);
-  const [result, destinatarios] = await Promise.all([getModoSummary(id), getDestinatarios()]);
+  const [result, destinatarios] = await Promise.all([getModoWithParticipants(id), getDestinatarios()]);
   if (!result.success) notFound();
   // Names for the participant pickers: ad-hoc people are hidden from the
   // provider's list, so fall back to a neutral label rather than blank.
