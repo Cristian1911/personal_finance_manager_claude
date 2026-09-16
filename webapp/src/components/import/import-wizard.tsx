@@ -426,6 +426,7 @@ export function ImportWizard({
         {step === "results" && importResult && !isLoanOnly && (
           <StepResults
             result={importResult}
+            accounts={accountsList}
             currency={(parseResult?.statements[0]?.currency ?? "COP") as CurrencyCode}
             onReset={handleReset}
             emailStatementId={activeEmailStatementIdRef.current}
