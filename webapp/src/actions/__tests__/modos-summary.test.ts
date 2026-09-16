@@ -13,7 +13,8 @@ vi.mock("next/cache", () => ({
 
 import { getModoTransactionIds } from "@/lib/modos/membership";
 
-// Query builder mock: transaction_tags(.in tag) -> rows; transactions(.in id) -> rows
+// Query builder mock: transaction_tags(.in tag) -> rows; transactions(.in id .is reconciled null) -> rows
+const isCalls: Array<[string, unknown]> = [];
 function makeClient() {
   return {
     from(table: string) {
@@ -30,11 +31,17 @@ function makeClient() {
           }),
         };
       }
-      // transactions: both tagged rows exist and belong to the user
+      // transactions: both tagged rows exist, belong to the user and were not
+      // reconciled away by an import
       return {
         select: () => ({
           eq: () => ({
-            in: () => Promise.resolve({ data: [{ id: "t1" }, { id: "t2" }] }),
+            in: () => ({
+              is: (col: string, val: unknown) => {
+                isCalls.push([col, val]);
+                return Promise.resolve({ data: [{ id: "t1" }, { id: "t2" }] });
+              },
+            }),
           }),
         }),
       };
@@ -48,8 +55,15 @@ beforeEach(() => {
 
 describe("getModoTransactionIds", () => {
   it("la etiqueta manda: tags OR, deduplicado, sin filtrar por fechas", async () => {
+    isCalls.length = 0;
     const ids = await getModoTransactionIds({ tag_ids: ["tagA", "tagB"] }, "user-1", "token");
     expect(ids).toEqual(["t1", "t2"]);
+  });
+
+  it("deja fuera los duplicados que una importación reconcilió", async () => {
+    isCalls.length = 0;
+    await getModoTransactionIds({ tag_ids: ["tagA"] }, "user-1", "token");
+    expect(isCalls).toEqual([["reconciled_into_transaction_id", null]]);
   });
 
   it("devuelve [] si el modo no tiene tags", async () => {

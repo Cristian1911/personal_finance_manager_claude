@@ -26,11 +26,15 @@ export async function getModoTransactionIds(
   const candidateIds = dedupeTransactionIds(tagged ?? []);
   if (candidateIds.length === 0) return [];
 
-  // Re-check against the transactions view (ownership + still exists).
+  // Re-check against the transactions view: ownership, still exists, and not
+  // a row a statement import reconciled away — that duplicate keeps its tag
+  // rows but Movimientos and the detail page hide it, so the trip must too
+  // (otherwise the spend counts twice and its link 404s).
   const { data: rows } = await supabase
     .from("transactions")
     .select("id")
     .eq("user_id", userId)
-    .in("id", candidateIds);
+    .in("id", candidateIds)
+    .is("reconciled_into_transaction_id", null);
   return (rows ?? []).map((r) => r.id);
 }

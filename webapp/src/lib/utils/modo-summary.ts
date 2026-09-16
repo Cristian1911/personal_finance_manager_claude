@@ -210,6 +210,68 @@ export function summarizeShared(groups: SharedPaymentGroup[], txIds: string[]): 
   return [...byCurrency.values()].sort((a, b) => b.count - a.count || b.sharedTotal - a.sharedTotal);
 }
 
+export type SpendSplit = {
+  currency: string;
+  /** All trip spend in this currency. */
+  spendTotal: number;
+  spendCount: number;
+  /** The part that was split with someone (full amounts). */
+  sharedTotal: number;
+  sharedCount: number;
+  /** Spend the user kept for themself (not split). */
+  ownOnlyTotal: number;
+  ownOnlyCount: number;
+  /** What the trip really cost the user: own-only + their share of the shared. */
+  yourPart: number;
+  outstanding: number;
+  recovered: number;
+  owedToUser: number;
+};
+
+/**
+ * A trip is rarely all-shared: some buys are just yours. Per currency, split
+ * the spend into "shared with someone" and "only mine", and derive what the
+ * trip costs you once the others pay their part.
+ */
+export function summarizeSpendSplit(spendRows: ModoTxRow[], shared: SharedTotals[]): SpendSplit[] {
+  const byCurrency = new Map<string, SpendSplit>();
+  for (const t of spendRows) {
+    const currency = txCurrency(t);
+    const cur = byCurrency.get(currency) ?? {
+      currency,
+      spendTotal: 0,
+      spendCount: 0,
+      sharedTotal: 0,
+      sharedCount: 0,
+      ownOnlyTotal: 0,
+      ownOnlyCount: 0,
+      yourPart: 0,
+      outstanding: 0,
+      recovered: 0,
+      owedToUser: 0,
+    };
+    cur.spendTotal += t.amount ?? 0;
+    cur.spendCount += 1;
+    if (t.split_group_id) cur.sharedCount += 1;
+    byCurrency.set(currency, cur);
+  }
+  for (const st of shared) {
+    const cur = byCurrency.get(st.currency);
+    if (!cur) continue;
+    cur.sharedTotal = st.sharedTotal;
+    cur.outstanding = st.outstanding;
+    cur.recovered = st.recovered;
+    cur.owedToUser = st.owedToUser;
+    cur.yourPart = st.userShare;
+  }
+  for (const cur of byCurrency.values()) {
+    cur.ownOnlyTotal = Math.max(0, cur.spendTotal - cur.sharedTotal);
+    cur.ownOnlyCount = Math.max(0, cur.spendCount - cur.sharedCount);
+    cur.yourPart += cur.ownOnlyTotal;
+  }
+  return [...byCurrency.values()].sort((a, b) => b.spendCount - a.spendCount || b.spendTotal - a.spendTotal);
+}
+
 /** Lookup of a modo's shared groups by the `split_group_id` its origin tx carries. */
 export function indexSharedGroups(groups: SharedPaymentGroup[]): Map<string, SharedPaymentGroup> {
   return new Map(groups.map((g) => [g.split_group_id, g]));

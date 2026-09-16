@@ -4,6 +4,7 @@ import {
   filterSharedGroupsByOrigin,
   settleUpByPerson,
   summarizeShared,
+  summarizeSpendSplit,
   isModoSpend,
   classifyModoTx,
   describeModoTx,
@@ -133,6 +134,26 @@ describe("summarizeShared", () => {
       { currency: "COP", sharedTotal: 160, userShare: 80, owedToUser: 80, recovered: 20, outstanding: 60, count: 2 },
       { currency: "USD", sharedTotal: 10, userShare: 5, owedToUser: 5, recovered: 5, outstanding: 0, count: 1 },
     ]);
+  });
+});
+
+describe("summarizeSpendSplit", () => {
+  it("separa lo compartido de lo solo mío y calcula tu parte real", () => {
+    const rows: ModoTxRow[] = [
+      { id: "a", amount: 100, direction: "OUTFLOW", transaction_date: "d", category: null, split_group_id: "g1" },
+      { id: "b", amount: 60, direction: "OUTFLOW", transaction_date: "d", category: null, split_group_id: "g2" },
+      { id: "c", amount: 40, direction: "OUTFLOW", transaction_date: "d", category: null },
+      { id: "usd", amount: 10, direction: "OUTFLOW", transaction_date: "d", category: null, currency_code: "USD" },
+    ];
+    const shared = [
+      { currency: "COP", sharedTotal: 160, userShare: 80, owedToUser: 80, recovered: 20, outstanding: 60, count: 2 },
+    ];
+    const res = summarizeSpendSplit(rows, shared);
+    expect(res).toHaveLength(2);
+    const cop = res.find((r) => r.currency === "COP")!;
+    expect(cop).toMatchObject({ spendTotal: 200, spendCount: 3, sharedTotal: 160, sharedCount: 2, ownOnlyTotal: 40, ownOnlyCount: 1, yourPart: 120, outstanding: 60 });
+    const usd = res.find((r) => r.currency === "USD")!;
+    expect(usd).toMatchObject({ spendTotal: 10, sharedCount: 0, ownOnlyTotal: 10, yourPart: 10, outstanding: 0 });
   });
 });
 
