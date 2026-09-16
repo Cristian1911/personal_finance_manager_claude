@@ -46,6 +46,7 @@ const ENTENDER_GROUP: Group = {
   tiles: [
     { href: "/destinatarios", icon: Contact, label: "Destinatarios" },
     { href: "/tendencias", icon: TrendingUp, label: "Tendencias" },
+    { href: "/modos", icon: MapPin, label: "Viajes y eventos" },
   ],
 };
 
@@ -63,11 +64,11 @@ const SISTEMA_GROUP: Group = {
 };
 
 // Aparcadas fuera de la nav principal (2026-09-15). Rutas y datos intactos.
+// "Viajes y eventos" (/modos) salió de aquí a Entender el 2026-09-16.
 const ADVANCED_TILES: Tile[] = [
   { href: "/categorizar", icon: List, label: "Categorizar" },
   { href: "/categories", icon: Folder, label: "Categorías" },
   { href: "/etiquetas", icon: Tag, label: "Etiquetas" },
-  { href: "/modos", icon: MapPin, label: "Modos" },
   { href: "/plan?tab=periodo", icon: CalendarRange, label: "Periodo" },
   { href: "/deseos", icon: Heart, label: "Deseos" },
   { href: "/puedo-pagar", icon: Brain, label: "¿Comprarlo?" },
