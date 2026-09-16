@@ -5,31 +5,33 @@ import { format } from "date-fns";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { chipToggleClass } from "@/lib/constants/styles";
-import type { Modo } from "@/types/domain";
+import { isModoOngoing } from "@/lib/utils/modo-summary";
+import type { ModoWithTotals } from "@/actions/modos";
 import { ModoCard } from "./modo-card";
 
-type Segment = "todos" | "activos" | "pasados";
+type Segment = "todos" | "en_curso" | "pasados";
 
 const SEGMENTS: { key: Segment; label: string }[] = [
   { key: "todos", label: "Todos" },
-  { key: "activos", label: "Activos" },
+  { key: "en_curso", label: "En curso" },
   { key: "pasados", label: "Pasados" },
 ];
 
-export function ModosList({ modos }: { modos: Modo[] }) {
+export function ModosList({ modos }: { modos: ModoWithTotals[] }) {
   const [query, setQuery] = useState("");
   const [segment, setSegment] = useState<Segment>("todos");
   // Local date for comparing against date_to strings — both "YYYY-MM-DD".
   // format() uses local time; toISOString() would shift to UTC and mis-bucket
-  // Activos/Pasados near midnight in Colombia (UTC-5).
+  // near midnight in Colombia (UTC-5).
   const today = format(new Date(), "yyyy-MM-dd");
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return modos.filter((m) => {
       if (q && !m.name.toLowerCase().includes(q)) return false;
-      if (segment === "activos" && m.date_to < today) return false;
-      if (segment === "pasados" && m.date_to >= today) return false;
+      const ongoing = isModoOngoing(m, today);
+      if (segment === "en_curso" && !ongoing) return false;
+      if (segment === "pasados" && ongoing) return false;
       return true;
     });
   }, [modos, query, segment, today]);
@@ -39,7 +41,7 @@ export function ModosList({ modos }: { modos: Modo[] }) {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Buscar modo por nombre..."
+          placeholder="Buscar viaje o evento..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="pl-9"
@@ -61,7 +63,7 @@ export function ModosList({ modos }: { modos: Modo[] }) {
       </div>
 
       {filtered.length === 0 ? (
-        <p className="text-muted-foreground">Ningún modo coincide con el filtro.</p>
+        <p className="text-muted-foreground">Ningún viaje coincide con el filtro.</p>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {filtered.map((m) => (
