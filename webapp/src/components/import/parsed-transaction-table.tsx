@@ -14,9 +14,13 @@ import {
 } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
-import { UserPlus, UserRound } from "lucide-react";
-import type { CurrencyCode, CategoryWithChildren } from "@/types/domain";
+import { SlidersHorizontal, StickyNote, Tag, UserPlus, UserRound, Users } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { RowEnrichmentPanel } from "./row-enrichment-panel";
+import { cn } from "@/lib/utils";
+import type { CurrencyCode, CategoryWithChildren, ModoWithParticipants } from "@/types/domain";
 import type { ParsedTransaction } from "@/types/import";
+import type { RowEnrichment } from "@/lib/import/review-enrichment";
 
 interface Props {
   transactions: ParsedTransaction[];
@@ -38,6 +42,54 @@ interface Props {
   destinatarioMap?: Map<string, { id: string; name: string }>;
   /** Open the seeded create form for a parsed row. */
   onCreateDestinatario?: (txIdx: number) => void;
+  /** Per-row review decisions (viaje, compartido, etiquetas, nota), keyed `${stmtIdx}-${txIdx}`. */
+  enrichmentMap?: Map<string, RowEnrichment>;
+  /** Keys whose trip is the active-trip default rather than a pick. */
+  defaultModoKeys?: ReadonlySet<string>;
+  modos?: ModoWithParticipants[];
+  onEnrichmentChange?: (txIdx: number, patch: Partial<RowEnrichment>) => void;
+  onOpenShare?: (txIdx: number) => void;
+  /** Rows to render (triage chip); omitted = all. */
+  visibleIndices?: ReadonlySet<number>;
+}
+
+/** Compact marks for what a row will get at import: trip emoji, people, tags, note. */
+function EnrichmentBadges({ value, modos }: { value: RowEnrichment | undefined; modos: ModoWithParticipants[] }) {
+  if (!value) return null;
+  const modo = value.modoId ? modos.find((m) => m.id === value.modoId) : null;
+  const marks: React.ReactNode[] = [];
+  if (modo) {
+    marks.push(
+      <span key="modo" className="inline-flex items-center gap-0.5 rounded-full bg-z-brass/12 px-1.5 py-0 text-[10px] font-medium text-z-brass" title={modo.name}>
+        {modo.emoji ?? "✈️"} {modo.name}
+      </span>,
+    );
+  }
+  if (value.share && value.share.participants.length > 0) {
+    marks.push(
+      <span key="share" className="inline-flex items-center gap-0.5 text-[10px] text-z-brass" title="Compartido">
+        <Users className="size-3" />
+        {value.share.participants.length}
+      </span>,
+    );
+  }
+  if (value.tagIds.length > 0) {
+    marks.push(
+      <span key="tags" className="inline-flex items-center gap-0.5 text-[10px]" title="Etiquetas">
+        <Tag className="size-3" />
+        {value.tagIds.length}
+      </span>,
+    );
+  }
+  if (value.notes.trim()) {
+    marks.push(
+      <span key="note" className="inline-flex items-center text-[10px]" title="Nota">
+        <StickyNote className="size-3" />
+      </span>,
+    );
+  }
+  if (marks.length === 0) return null;
+  return <span className="inline-flex flex-wrap items-center gap-1.5">{marks}</span>;
 }
 
 /** A row's assigned-destinatario chip, or a "create" button when unassigned. */
@@ -104,6 +156,12 @@ function MobileList({
   suggestedKeys,
   destinatarioMap,
   onCreateDestinatario,
+  enrichmentMap,
+  defaultModoKeys,
+  modos,
+  onEnrichmentChange,
+  onOpenShare,
+  visibleIndices,
 }: Props) {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const allSelected =
@@ -113,6 +171,9 @@ function MobileList({
     categories && categoryMap && stmtIdx !== undefined && onCategoryChange;
   const showDestinatarios =
     destinatarioMap && stmtIdx !== undefined && onCreateDestinatario;
+  const showEnrichment =
+    enrichmentMap && stmtIdx !== undefined && onEnrichmentChange && onOpenShare;
+  const visibleCount = visibleIndices ? visibleIndices.size : transactions.length;
 
   return (
     <div className="rounded-md border sm:hidden">
@@ -124,14 +185,21 @@ function MobileList({
           aria-label="Seleccionar todas"
         />
         <span className="text-xs text-muted-foreground">
-          {selected.size} de {transactions.length} seleccionadas
+          {visibleIndices && visibleCount !== transactions.length
+            ? `${visibleCount} visibles · ${selected.size} de ${transactions.length} seleccionadas`
+            : `${selected.size} de ${transactions.length} seleccionadas`}
         </span>
       </div>
 
       {/* Transaction rows */}
       <div className="divide-y">
+        {visibleIndices && visibleCount === 0 && (
+          <p className="px-3 py-4 text-center text-xs text-muted-foreground">Nada con este filtro.</p>
+        )}
         {transactions.map((tx, i) => {
+          if (visibleIndices && !visibleIndices.has(i)) return null;
           const isSelected = selected.has(i);
+          const enrichment = showEnrichment ? enrichmentMap.get(`${stmtIdx}-${i}`) : undefined;
           const isExpanded = expandedIdx === i;
           const catId = showCategories
             ? categoryMap.get(`${stmtIdx}-${i}`) ?? null
@@ -204,6 +272,11 @@ function MobileList({
                       </>
                     )}
                   </div>
+                  {enrichment && (
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      <EnrichmentBadges value={enrichment} modos={modos ?? []} />
+                    </div>
+                  )}
                 </button>
               </div>
 
@@ -246,6 +319,17 @@ function MobileList({
                       />
                     </div>
                   )}
+                  {showEnrichment && enrichment && (
+                    <RowEnrichmentPanel
+                      className="mt-3 border-t border-white/6 pt-3"
+                      value={enrichment}
+                      isDefaultModo={defaultModoKeys?.has(`${stmtIdx}-${i}`) ?? false}
+                      direction={tx.direction}
+                      modos={modos ?? []}
+                      onChange={(patch) => onEnrichmentChange(i, patch)}
+                      onOpenShare={() => onOpenShare(i)}
+                    />
+                  )}
                 </div>
               )}
             </div>
@@ -269,6 +353,12 @@ function DesktopTable({
   suggestedKeys,
   destinatarioMap,
   onCreateDestinatario,
+  enrichmentMap,
+  defaultModoKeys,
+  modos,
+  onEnrichmentChange,
+  onOpenShare,
+  visibleIndices,
 }: Props) {
   const allSelected =
     transactions.length > 0 && selected.size === transactions.length;
@@ -277,6 +367,8 @@ function DesktopTable({
     categories && categoryMap && stmtIdx !== undefined && onCategoryChange;
   const showDestinatarios =
     destinatarioMap && stmtIdx !== undefined && onCreateDestinatario;
+  const showEnrichment =
+    enrichmentMap && stmtIdx !== undefined && onEnrichmentChange && onOpenShare;
 
   return (
     <div className="hidden sm:block rounded-md border overflow-x-auto">
@@ -297,13 +389,23 @@ function DesktopTable({
             <TableHead>Tipo</TableHead>
             <TableHead>Cuotas</TableHead>
             <TableHead className="text-right">Monto</TableHead>
+            {showEnrichment && <TableHead className="w-10">Más</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
+          {visibleIndices && visibleIndices.size === 0 && (
+            <TableRow>
+              <TableCell colSpan={9} className="py-6 text-center text-xs text-muted-foreground">
+                Nada con este filtro.
+              </TableCell>
+            </TableRow>
+          )}
           {transactions.map((tx, i) => {
+            if (visibleIndices && !visibleIndices.has(i)) return null;
             const catId = showCategories
               ? categoryMap.get(`${stmtIdx}-${i}`) ?? null
               : null;
+            const enrichment = showEnrichment ? enrichmentMap.get(`${stmtIdx}-${i}`) : undefined;
 
             return (
               <TableRow
@@ -383,6 +485,37 @@ function DesktopTable({
                       </p>
                     )}
                 </TableCell>
+                {showEnrichment && enrichment && (
+                  <TableCell>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label={`Más opciones para ${tx.description}`}
+                          className={cn(
+                            "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs transition-colors",
+                            enrichment.modoId || enrichment.share || enrichment.tagIds.length || enrichment.notes
+                              ? "border-z-brass/20 bg-z-brass/8 text-z-brass"
+                              : "border-white/6 text-muted-foreground hover:bg-white/[0.04]",
+                          )}
+                        >
+                          <SlidersHorizontal className="size-3.5" />
+                          <EnrichmentBadges value={enrichment} modos={modos ?? []} />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent align="end" className="w-[360px]">
+                        <RowEnrichmentPanel
+                          value={enrichment}
+                          isDefaultModo={defaultModoKeys?.has(`${stmtIdx}-${i}`) ?? false}
+                          direction={tx.direction}
+                          modos={modos ?? []}
+                          onChange={(patch) => onEnrichmentChange(i, patch)}
+                          onOpenShare={() => onOpenShare(i)}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </TableCell>
+                )}
               </TableRow>
             );
           })}

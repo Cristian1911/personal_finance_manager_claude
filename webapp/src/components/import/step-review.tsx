@@ -28,11 +28,24 @@ import { ParsedTransactionTable } from "./parsed-transaction-table";
 import { AccountAssignControl } from "./account-assign-control";
 import { WizardActionBar } from "./wizard-action-bar";
 import { DestinatarioCreateDialog } from "@/components/destinatarios/destinatario-create-form";
-import { useCategories } from "@/components/providers/app-data-provider";
+import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
+import { TagZonePicker } from "@/components/tags/tag-zone-picker";
+import { ImportSharePicker, type SharePreviewRow } from "./import-share-picker";
+import { useActiveModo, useCategories } from "@/components/providers/app-data-provider";
 import { computeInstallmentGroupId } from "@/lib/utils/idempotency";
 import { trackClientEvent } from "@/lib/utils/analytics";
 import { cn } from "@/lib/utils";
-import type { Account, CurrencyCode, CategoryWithChildren } from "@/types/domain";
+import { GHOST_BUTTON_CLASS, PANEL_INSET_CLASS, chipToggleClass } from "@/lib/constants/styles";
+import {
+  EMPTY_ENRICHMENT,
+  REVIEW_FILTER_LABELS,
+  effectiveEnrichment,
+  matchesReviewFilter,
+  type ReviewFilter,
+  type RowEnrichment,
+  type RowShare,
+} from "@/lib/import/review-enrichment";
+import type { Account, CurrencyCode, CategoryWithChildren, ModoWithParticipants } from "@/types/domain";
 import type {
   ParseResponse,
   ReconciliationPreviewResult,
@@ -53,6 +66,8 @@ type Props = {
   accounts: Account[];
   mappings: StatementAccountMapping[];
   destinatarioRules: DestinatarioRule[];
+  /** Trips for the per-row picker and the "Personas del viaje" share preset. */
+  modos?: ModoWithParticipants[];
   onMappingsChange: (mappings: StatementAccountMapping[]) => void;
   onContinue: (payload: ContinuePayload) => void;
   onBack: () => void;
@@ -65,6 +80,7 @@ export function StepReview({
   accounts,
   mappings,
   destinatarioRules,
+  modos = [],
   onMappingsChange,
   onContinue,
   onBack,
@@ -99,6 +115,15 @@ export function StepReview({
     stmtIdx: number;
     txIdx: number;
   } | null>(null);
+
+  // ── Per-row decisions: viaje, compartido con…, etiquetas, nota ──
+  // Explicit picks only; everything else is derived (active-trip default).
+  const activeModo = useActiveModo();
+  const [enrichments, setEnrichments] = useState<Map<string, RowEnrichment>>(new Map());
+  const [reviewFilter, setReviewFilter] = useState<ReviewFilter>("all");
+  const [shareTarget, setShareTarget] = useState<{ stmtIdx: number; txIdx: number } | "bulk" | null>(null);
+  const [bulkTagIds, setBulkTagIds] = useState<string[]>([]);
+  const [bulkModo, setBulkModo] = useState("");
 
   const { destMap, catMap } = useMemo(() => {
     const prepared = prepareDestinatarioRules(destinatarioRules);
@@ -176,6 +201,105 @@ export function StepReview({
   function handleCategoryChange(stmtIdx: number, txIdx: number, categoryId: string | null) {
     setCatOverrides((prev) => new Map(prev).set(`${stmtIdx}-${txIdx}`, categoryId));
   }
+
+  // What every row will get at import: explicit decision, or the active-trip
+  // default for spend inside the trip's dates (never cuotas — same rule as the tray).
+  const { effectiveMap, defaultModoKeys } = useMemo(() => {
+    const map = new Map<string, RowEnrichment>();
+    const defaults = new Set<string>();
+    parseResult.statements.forEach((stmt, stmtIdx) => {
+      stmt.transactions.forEach((tx, txIdx) => {
+        const key = `${stmtIdx}-${txIdx}`;
+        const explicit = enrichments.get(key);
+        const value = effectiveEnrichment(
+          explicit,
+          { date: tx.date, direction: tx.direction, installment_current: tx.installment_current },
+          activeModo,
+        );
+        map.set(key, value);
+        if (!explicit && value.modoId) defaults.add(key);
+      });
+    });
+    return { effectiveMap: map, defaultModoKeys: defaults };
+  }, [parseResult, enrichments, activeModo]);
+
+  // Triage chips: which rows each filter shows, and how many.
+  const { visibleByStmt, filterCounts } = useMemo(() => {
+    const visible = new Map<number, Set<number>>();
+    const counts: Record<ReviewFilter, number> = { all: 0, uncategorized: 0, installments: 0, newMerchants: 0, trip: 0 };
+    parseResult.statements.forEach((stmt, stmtIdx) => {
+      const set = new Set<number>();
+      stmt.transactions.forEach((tx, txIdx) => {
+        const key = `${stmtIdx}-${txIdx}`;
+        const facts = {
+          hasCategory: !!displayCatMap.get(key),
+          isInstallment: tx.installment_current != null,
+          hasDestinatario: mergedDestMap.has(key),
+          modoId: effectiveMap.get(key)?.modoId ?? null,
+        };
+        (Object.keys(counts) as ReviewFilter[]).forEach((f) => {
+          if (matchesReviewFilter(f, facts)) counts[f] += 1;
+        });
+        if (matchesReviewFilter(reviewFilter, facts)) set.add(txIdx);
+      });
+      visible.set(stmtIdx, set);
+    });
+    return { visibleByStmt: visible, filterCounts: counts };
+  }, [parseResult, displayCatMap, mergedDestMap, effectiveMap, reviewFilter]);
+
+  function patchEnrichment(stmtIdx: number, txIdx: number, patch: Partial<RowEnrichment>) {
+    const key = `${stmtIdx}-${txIdx}`;
+    setEnrichments((prev) => {
+      const base = prev.get(key) ?? effectiveMap.get(key) ?? EMPTY_ENRICHMENT;
+      return new Map(prev).set(key, { ...base, ...patch });
+    });
+  }
+
+  // Bulk actions touch only rows that are visible under the current chip AND
+  // checked for import — the checkbox keeps its single meaning ("importar").
+  function bulkTargets(): { stmtIdx: number; txIdx: number }[] {
+    const out: { stmtIdx: number; txIdx: number }[] = [];
+    parseResult.statements.forEach((_, stmtIdx) => {
+      const sel = selections.get(stmtIdx) ?? new Set<number>();
+      const vis = visibleByStmt.get(stmtIdx) ?? new Set<number>();
+      for (const txIdx of sel) if (vis.has(txIdx)) out.push({ stmtIdx, txIdx });
+    });
+    return out;
+  }
+  const bulkCount = bulkTargets().length;
+
+  function applyBulkEnrichment(patch: Partial<RowEnrichment> | ((current: RowEnrichment) => Partial<RowEnrichment>)) {
+    const targets = bulkTargets();
+    setEnrichments((prev) => {
+      const next = new Map(prev);
+      for (const { stmtIdx, txIdx } of targets) {
+        const key = `${stmtIdx}-${txIdx}`;
+        const base = prev.get(key) ?? effectiveMap.get(key) ?? EMPTY_ENRICHMENT;
+        const p = typeof patch === "function" ? patch(base) : patch;
+        next.set(key, { ...base, ...p });
+      }
+      return next;
+    });
+  }
+
+  function applyBulkCategory(categoryId: string | null) {
+    const targets = bulkTargets();
+    setCatOverrides((prev) => {
+      const next = new Map(prev);
+      for (const { stmtIdx, txIdx } of targets) next.set(`${stmtIdx}-${txIdx}`, categoryId);
+      return next;
+    });
+  }
+
+  function handleShareChange(share: RowShare | null) {
+    if (shareTarget === "bulk") {
+      applyBulkEnrichment({ share });
+    } else if (shareTarget) {
+      patchEnrichment(shareTarget.stmtIdx, shareTarget.txIdx, { share });
+    }
+  }
+
+  const totalRows = parseResult.statements.reduce((n, s) => n + s.transactions.length, 0);
 
   function openDestDialog(stmtIdx: number, txIdx: number) {
     setDestDialogTarget({ stmtIdx, txIdx });
@@ -361,6 +485,21 @@ export function StepReview({
         categorizationConfidence = suggestion.confidence;
       }
 
+      const enrichment = effectiveMap.get(key) ?? EMPTY_ENRICHMENT;
+      const share =
+        enrichment.share && enrichment.share.participants.length > 0 && row.tx.direction === "OUTFLOW"
+          ? {
+              method: enrichment.share.method,
+              userIncluded: enrichment.share.userIncluded,
+              participants: enrichment.share.participants.map((p) => ({
+                destinatario_id: p.destinatario_id,
+                ...(p.value != null ? { value: p.value } : {}),
+              })),
+              ea_rate_percent: row.stmt.credit_card_metadata?.interest_rate ?? null,
+            }
+          : null;
+      const notes = enrichment.notes.trim();
+
       return {
         import_key: `${row.stmtIdx}:${row.txIdx}`,
         account_id: row.accountId,
@@ -378,6 +517,10 @@ export function StepReview({
         original_amount: row.tx.original_amount,
         destinatario_id: destinatarioId,
         merchant_name: merchantName,
+        ...(notes ? { notes } : {}),
+        ...(enrichment.tagIds.length > 0 ? { tag_ids: enrichment.tagIds } : {}),
+        ...(enrichment.modoId && row.tx.direction === "OUTFLOW" ? { modo_id: enrichment.modoId } : {}),
+        ...(share ? { share } : {}),
       };
     });
   }
@@ -427,6 +570,7 @@ export function StepReview({
         entry_point: "cta",
         success: true,
         metadata: {
+          enriched_rows: transactions.filter((t) => t.modo_id || t.share || (t.tag_ids?.length ?? 0) > 0 || t.notes).length,
           matches_auto: preview.autoMerge.length,
           matches_review: preview.review.length,
           matches_rejected: 0,
@@ -453,6 +597,91 @@ export function StepReview({
 
   return (
     <div className="space-y-6">
+      {totalRows > 0 && (
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar movimientos">
+            {(Object.keys(REVIEW_FILTER_LABELS) as ReviewFilter[]).map((f) => (
+              <button
+                key={f}
+                type="button"
+                aria-pressed={reviewFilter === f}
+                className={chipToggleClass(reviewFilter === f)}
+                onClick={() => setReviewFilter(f)}
+              >
+                {REVIEW_FILTER_LABELS[f]} · {filterCounts[f]}
+              </button>
+            ))}
+          </div>
+          <div className={cn(PANEL_INSET_CLASS, "flex flex-wrap items-center gap-2 p-2")}>
+            <span className="px-1 text-xs text-muted-foreground">
+              Aplicar a {bulkCount} {reviewFilter === "all" ? "marcadas" : "visibles marcadas"}:
+            </span>
+            {modos.length > 0 && (
+              <Select
+                value={bulkModo}
+                onValueChange={(v) => {
+                  applyBulkEnrichment({ modoId: v === "__none__" ? null : v });
+                  setBulkModo("");
+                }}
+              >
+                <SelectTrigger className="h-8 w-auto text-xs" aria-label="Asignar viaje" disabled={bulkCount === 0}>
+                  <SelectValue placeholder="Viaje" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Sin viaje</SelectItem>
+                  {modos.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.emoji ? `${m.emoji} ` : ""}
+                      {m.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={cn(GHOST_BUTTON_CLASS, "h-8 text-xs")}
+              disabled={bulkCount === 0}
+              onClick={() => setShareTarget("bulk")}
+            >
+              Compartir con…
+            </Button>
+            <TagZonePicker
+              selectedTagIds={bulkTagIds}
+              onSelectedTagIdsChange={setBulkTagIds}
+              placeholder="Etiquetar"
+              triggerClassName="h-8 w-auto text-xs"
+            />
+            {bulkTagIds.length > 0 && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className={cn(GHOST_BUTTON_CLASS, "h-8 text-xs")}
+                disabled={bulkCount === 0}
+                onClick={() => {
+                  applyBulkEnrichment((cur) => ({ tagIds: [...new Set([...cur.tagIds, ...bulkTagIds])] }));
+                  setBulkTagIds([]);
+                }}
+              >
+                Aplicar {bulkTagIds.length === 1 ? "etiqueta" : "etiquetas"}
+              </Button>
+            )}
+            <CategoryZonePicker
+              variant="popover"
+              categories={categories}
+              value={null}
+              onValueChange={applyBulkCategory}
+              direction="OUTFLOW"
+              placeholder="Categoría"
+              triggerClassName="h-8 w-auto text-xs"
+            />
+          </div>
+        </div>
+      )}
+
       {allCreditCard ? (
         <MultiCreditCardGroup
           statements={parseResult.statements}
@@ -478,6 +707,12 @@ export function StepReview({
           categoryMap={displayCatMap}
           onCategoryChange={handleCategoryChange}
           suggestedKeys={suggestedKeys}
+          enrichmentMap={effectiveMap}
+          defaultModoKeys={defaultModoKeys}
+          modos={modos}
+          onEnrichmentChange={patchEnrichment}
+          onOpenShare={(stmtIdx, txIdx) => setShareTarget({ stmtIdx, txIdx })}
+          visibleByStmt={visibleByStmt}
         />
       ) : (
         parseResult.statements.map((stmt, idx) => {
@@ -532,6 +767,12 @@ export function StepReview({
                 handleCategoryChange(idx, txIdx, categoryId)
               }
               suggestedKeys={suggestedKeys}
+              enrichmentMap={effectiveMap}
+              defaultModoKeys={defaultModoKeys}
+              modos={modos}
+              onEnrichmentChange={(txIdx, patch) => patchEnrichment(idx, txIdx, patch)}
+              onOpenShare={(txIdx) => setShareTarget({ stmtIdx: idx, txIdx })}
+              visibleIndices={visibleByStmt.get(idx)}
             />
           );
         })
@@ -562,6 +803,51 @@ export function StepReview({
               currencyCode={stmt.currency as CurrencyCode}
               onCreated={handleDestinatarioCreated}
               onCancel={() => setDestDialogTarget(null)}
+            />
+          );
+        })()}
+
+      {shareTarget &&
+        (() => {
+          if (shareTarget === "bulk") {
+            return (
+              <ImportSharePicker
+                key="bulk"
+                open
+                onOpenChange={(o) => {
+                  if (!o) setShareTarget(null);
+                }}
+                value={null}
+                onChange={handleShareChange}
+                bulkCount={bulkCount}
+              />
+            );
+          }
+          const stmt = parseResult.statements[shareTarget.stmtIdx];
+          const tx = stmt?.transactions[shareTarget.txIdx];
+          if (!tx) return null;
+          const key = `${shareTarget.stmtIdx}-${shareTarget.txIdx}`;
+          const current = effectiveMap.get(key) ?? EMPTY_ENRICHMENT;
+          const row: SharePreviewRow = {
+            description: tx.description,
+            amount: tx.amount,
+            currency: stmt.currency,
+            installment_current: tx.installment_current,
+            installment_total: tx.installment_total,
+            original_amount: tx.original_amount,
+            ea_rate_percent: stmt.credit_card_metadata?.interest_rate ?? null,
+          };
+          return (
+            <ImportSharePicker
+              key={key}
+              open
+              onOpenChange={(o) => {
+                if (!o) setShareTarget(null);
+              }}
+              value={current.share}
+              onChange={handleShareChange}
+              modo={current.modoId ? (modos.find((m) => m.id === current.modoId) ?? null) : null}
+              row={row}
             />
           );
         })()}
@@ -661,6 +947,12 @@ function StatementBlock({
   categoryMap,
   onCategoryChange,
   suggestedKeys,
+  enrichmentMap,
+  defaultModoKeys,
+  modos,
+  onEnrichmentChange,
+  onOpenShare,
+  visibleIndices,
 }: {
   stmt: ParseResponse["statements"][number];
   accounts: Account[];
@@ -686,6 +978,12 @@ function StatementBlock({
   categoryMap: Map<string, string | null>;
   onCategoryChange: (txIdx: number, categoryId: string | null) => void;
   suggestedKeys: ReadonlySet<string>;
+  enrichmentMap: Map<string, RowEnrichment>;
+  defaultModoKeys: ReadonlySet<string>;
+  modos: ModoWithParticipants[];
+  onEnrichmentChange: (txIdx: number, patch: Partial<RowEnrichment>) => void;
+  onOpenShare: (txIdx: number) => void;
+  visibleIndices?: ReadonlySet<number>;
 }) {
   return (
     <div className="space-y-3">
@@ -765,6 +1063,12 @@ function StatementBlock({
             categoryMap={categoryMap}
             onCategoryChange={onCategoryChange}
             suggestedKeys={suggestedKeys}
+            enrichmentMap={enrichmentMap}
+            defaultModoKeys={defaultModoKeys}
+            modos={modos}
+            onEnrichmentChange={onEnrichmentChange}
+            onOpenShare={onOpenShare}
+            visibleIndices={visibleIndices}
           />
         )}
       </div>
@@ -792,6 +1096,12 @@ function MultiCreditCardGroup({
   categoryMap,
   onCategoryChange,
   suggestedKeys,
+  enrichmentMap,
+  defaultModoKeys,
+  modos,
+  onEnrichmentChange,
+  onOpenShare,
+  visibleByStmt,
 }: {
   statements: ParseResponse["statements"];
   mappings: StatementAccountMapping[];
@@ -812,6 +1122,12 @@ function MultiCreditCardGroup({
   categoryMap: Map<string, string | null>;
   onCategoryChange: (stmtIdx: number, txIdx: number, categoryId: string | null) => void;
   suggestedKeys: ReadonlySet<string>;
+  enrichmentMap: Map<string, RowEnrichment>;
+  defaultModoKeys: ReadonlySet<string>;
+  modos: ModoWithParticipants[];
+  onEnrichmentChange: (stmtIdx: number, txIdx: number, patch: Partial<RowEnrichment>) => void;
+  onOpenShare: (stmtIdx: number, txIdx: number) => void;
+  visibleByStmt: Map<number, Set<number>>;
 }) {
   const firstMapping = mappings[0];
   const accountId = firstMapping?.accountId ?? "";
@@ -905,6 +1221,12 @@ function MultiCreditCardGroup({
                     categoryMap={categoryMap}
                     onCategoryChange={(txIdx, categoryId) => onCategoryChange(idx, txIdx, categoryId)}
                     suggestedKeys={suggestedKeys}
+                    enrichmentMap={enrichmentMap}
+                    defaultModoKeys={defaultModoKeys}
+                    modos={modos}
+                    onEnrichmentChange={(txIdx, patch) => onEnrichmentChange(idx, txIdx, patch)}
+                    onOpenShare={(txIdx) => onOpenShare(idx, txIdx)}
+                    visibleIndices={visibleByStmt.get(idx)}
                   />
                 </div>
               )}

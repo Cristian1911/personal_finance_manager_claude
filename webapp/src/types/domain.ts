@@ -9,6 +9,8 @@ export type Transaction = Tables<"transactions">;
 export type Modo = Tables<"modos">;
 export type ModoParticipant = Tables<"modo_participants">;
 export type ModoTxReview = Tables<"modo_tx_reviews">;
+/** A modo with its split participants — what the import review needs for the "Personas del viaje" preset. */
+export type ModoWithParticipants = Modo & { participants: ModoParticipant[] };
 /** The one trip flagged `is_active` — what capture surfaces read (banner, tag preselect). */
 export type ActiveModo = Pick<
   Modo,

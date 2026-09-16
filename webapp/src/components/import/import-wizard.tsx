@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Check } from "lucide-react";
 import { markEmailPdfStatementImported } from "@/actions/email-pdf-ingest";
-import type { Account, CategoryWithChildren, CurrencyCode } from "@/types/domain";
+import type { Account, CategoryWithChildren, CurrencyCode, ModoWithParticipants } from "@/types/domain";
 import type { DestinatarioRule } from "@zeta/shared";
 import type { PdfPasswordSuggestion } from "@/actions/pdf-passwords";
 import type {
@@ -61,6 +61,7 @@ export function ImportWizard({
   accounts,
   categories: _categories,
   destinatarioRules,
+  modos = [],
   initialFile,
   initialVaultSuggestions,
   initialParseResult,
@@ -72,6 +73,7 @@ export function ImportWizard({
   accounts: Account[];
   categories: CategoryWithChildren[];
   destinatarioRules: DestinatarioRule[];
+  modos?: ModoWithParticipants[];
   initialFile?: File | null;
   initialVaultSuggestions?: PdfPasswordSuggestion[];
   initialParseResult?: ParseResponse | null;
@@ -396,6 +398,7 @@ export function ImportWizard({
             accounts={accountsList}
             mappings={mappings}
             destinatarioRules={destinatarioRules}
+            modos={modos}
             onMappingsChange={setMappings}
             onContinue={handleReviewContinue}
             onBack={() => setStep("upload")}

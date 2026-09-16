@@ -6,7 +6,7 @@ import { ImportWizard } from "@/components/import/import-wizard";
 import { getPendingScreenshotFile } from "@/components/mobile/mobile-sheet-provider";
 import { PendingEmailStatements } from "@/components/import/pending-email-statements";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
-import type { Account, CategoryWithChildren, PendingEmailStatement } from "@/types/domain";
+import type { Account, CategoryWithChildren, ModoWithParticipants, PendingEmailStatement } from "@/types/domain";
 import type { DestinatarioRule } from "@zeta/shared";
 import type { ParsedStatement, ParseResponse } from "@/types/import";
 import type { PdfPasswordSuggestion } from "@/actions/pdf-passwords";
@@ -15,6 +15,7 @@ interface Props {
   accounts: Account[];
   categories: CategoryWithChildren[];
   destinatarioRules: DestinatarioRule[];
+  modos?: ModoWithParticipants[];
   pendingStatements: PendingEmailStatement[];
   initialVaultSuggestions?: PdfPasswordSuggestion[];
   mobileAboutPanel?: React.ReactNode;
@@ -24,6 +25,7 @@ export function ImportPageClient({
   accounts,
   categories,
   destinatarioRules,
+  modos = [],
   pendingStatements: initialPending,
   initialVaultSuggestions,
   mobileAboutPanel,
@@ -122,6 +124,7 @@ export function ImportPageClient({
           accounts={accounts}
           categories={categories}
           destinatarioRules={destinatarioRules}
+          modos={modos}
           initialFile={screenshotEntry?.file ?? null}
           initialParseResult={selectedParseResult}
           pendingEmailStatementId={selectedId}
