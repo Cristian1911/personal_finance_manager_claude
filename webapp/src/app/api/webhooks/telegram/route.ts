@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { applyActiveModoTag } from "@/lib/modos/active-modo-tag";
 import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import { sendMessage, verifySecretToken } from "@/lib/telegram";
 import { parseVoiceCapture } from "@/actions/voice-capture";
@@ -251,7 +253,7 @@ export async function POST(request: NextRequest) {
         description: merchant_name ?? description ?? capture_input_text,
       }),
     })
-    .select("id, amount, direction, merchant_name, transaction_date")
+    .select("id, amount, direction, merchant_name, transaction_date, capture_method, flow_class, currency_code")
     .single();
 
   if (insertError) {
@@ -263,12 +265,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
+  // Viaje activo: a Telegram capture inside the trip's dates gets its tag.
+  // Route handler → revalidateTag (SWR), never updateTag.
+  const modoTag = await applyActiveModoTag(admin, linked.user_id, tx);
+  if (modoTag.tagged) {
+    revalidateTag("tags", "zeta");
+    revalidateTag("modos", "zeta");
+  }
+
   const icon = direction === "OUTFLOW" ? "📤" : "📥";
   const label = direction === "OUTFLOW" ? "Gasto" : "Ingreso";
 
   await sendMessage(
     chatId,
-    `✅ <b>Registrado</b>\n\n${icon} ${label}: <b>${formatCurrency(amount, currencyCode)}</b>\n📝 ${description}\n📅 ${transaction_date}`,
+    `✅ <b>Registrado</b>\n\n${icon} ${label}: <b>${formatCurrency(amount, currencyCode)}</b>\n📝 ${description}\n📅 ${transaction_date}${modoTag.tagged ? "\n✈️ Agregado al viaje activo" : ""}`,
   );
 
   return NextResponse.json({ ok: true });

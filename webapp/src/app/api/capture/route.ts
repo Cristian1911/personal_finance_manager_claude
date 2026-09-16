@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { applyActiveModoTag } from "@/lib/modos/active-modo-tag";
 import { scheduleSubscriptionDetection } from "@/lib/subscriptions/detect";
 import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import { authenticateCaptureToken } from "@/app/api/_shared/capture-auth";
@@ -178,7 +179,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CaptureRe
         description: merchant_name ?? description ?? capture_input_text,
       }),
     })
-    .select("id, amount, direction, merchant_name, category_id, account_id, transaction_date")
+    .select("id, amount, direction, merchant_name, category_id, account_id, transaction_date, capture_method, flow_class, currency_code")
     .single();
 
   if (insertError) {
@@ -196,6 +197,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<CaptureRe
 
   if (direction === "OUTFLOW" && destinatarioId) {
     scheduleSubscriptionDetection(auth.userId, () => revalidateTag("subscriptions", "zeta"));
+  }
+
+  // Viaje activo: a capture inside the trip's dates gets its tag (route
+  // handler → revalidateTag, never updateTag).
+  const modoTag = await applyActiveModoTag(admin, auth.userId, tx);
+  if (modoTag.tagged) {
+    revalidateTag("tags", "zeta");
+    revalidateTag("modos", "zeta");
   }
 
   return NextResponse.json({
