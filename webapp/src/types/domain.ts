@@ -104,6 +104,11 @@ export type SharedPaymentGroup = {
   outstanding_total: number;
   /** Account the origin expense was paid from — default target for repayments. */
   origin_account_id: string | null;
+  /** Set when the group is a purchase in cuotas shared as "compra completa". */
+  installment_group_id: string | null;
+  installment_total: number | null;
+  /** Σ participants' estimated interest (installment groups only). */
+  interest_total: number | null;
   debts: PersonalDebtWithDetails[];
 };
 

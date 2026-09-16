@@ -499,6 +499,7 @@ async function getSharedPaymentGroupsCached(
       id, user_id, destinatario_id, direction, principal_amount,
       currency_code, outstanding_amount, opened_on, due_date, status,
       origin_transaction_id, notes, is_demo, created_at, updated_at, split_group_id,
+      installment_group_id, installment_total, group_total_amount, interest_amount,
       destinatario:destinatarios!personal_debts_destinatario_id_fkey ( name, default_category_id, is_ad_hoc ),
       repayments:transactions!transactions_enc_personal_debt_id_fkey ( amount, pd_role )
     `)
@@ -553,7 +554,16 @@ async function getSharedPaymentGroupsCached(
       ? txById.get(gdebts[0].origin_transaction_id)
       : undefined;
     // total = the real payment; userShare = total − Σ(owed); recovered = repaid.
-    const total = originTx?.amount != null ? Number(originTx.amount) : principalSum;
+    // A purchase shared as "compra completa" stores the amount it was split on
+    // (precio + interés estimado) on every debt: the origin tx is just one cuota.
+    const groupTotal = gdebts[0].group_total_amount;
+    const isInstallmentGroup = gdebts[0].installment_group_id != null;
+    const total =
+      groupTotal != null
+        ? Number(groupTotal)
+        : originTx?.amount != null
+          ? Number(originTx.amount)
+          : principalSum;
     // `split_repaid_amount` lives on the origin transaction, so a group with no
     // origin tx — a debt split via `splitPersonalDebt` that was never backed by
     // a recorded payment — has nowhere to store it. Derive it from the debts
@@ -565,7 +575,9 @@ async function getSharedPaymentGroupsCached(
     // the debts but holds no split_repaid_amount, and recomputeSplitRepaid's
     // writes (which target split_group_id) would silently update 0 rows — the
     // card would read "Recuperado $0" forever. Deriving in that case self-heals.
-    const recovered = originTx?.split_group_id === gid
+    // Installment groups spread split_repaid_amount across every cuota row, so
+    // the origin's value alone would under-report; derive from the debts.
+    const recovered = originTx?.split_group_id === gid && !isInstallmentGroup
       ? Number(originTx.split_repaid_amount ?? 0)
       : gdebts.reduce((s, d) => {
           const principal = Number(d.principal_amount ?? 0);
@@ -588,6 +600,11 @@ async function getSharedPaymentGroupsCached(
       // account for repayments (money comes back to the account it left from,
       // never onto a credit card).
       origin_account_id: originTx?.account_id ?? null,
+      installment_group_id: gdebts[0].installment_group_id ?? null,
+      installment_total: gdebts[0].installment_total ?? null,
+      interest_total: isInstallmentGroup
+        ? gdebts.reduce((s, d) => s + Number(d.interest_amount ?? 0), 0)
+        : null,
       debts: gdebts,
     });
   }
