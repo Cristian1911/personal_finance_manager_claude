@@ -11,6 +11,12 @@ export const modoSchema = z
     date_from: dateStr,
     date_to: dateStr,
     tag_ids: z.array(uuidStr("Etiqueta inválida")).default([]),
+    /** Etiqueta que el viaje activo adjunta a las capturas manuales. */
+    auto_tag_id: uuidStr("Etiqueta inválida").nullable().optional(),
+    /** Crear una etiqueta con el nombre del viaje cuando no se eligió ninguna. */
+    create_tag: z.boolean().default(true),
+    /** "Estoy en este viaje ahora": se aplica vía setActiveModo, nunca en el update. */
+    is_active: z.boolean().default(false),
     is_shared: z.boolean().default(false),
     split_method: z.enum(["equal", "percent"]).default("equal"),
     user_included: z.boolean().default(true),

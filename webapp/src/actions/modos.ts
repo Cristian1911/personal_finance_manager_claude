@@ -13,8 +13,9 @@ import {
 } from "@/lib/utils/modo-summary";
 import { getSharedPaymentGroups, splitExistingTransaction } from "@/actions/shared-payments";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
+import { ensureModoTag } from "@/lib/modos/ensure-modo-tag";
 import type { ActionResult } from "@/types/actions";
-import type { Modo, ModoParticipant, SharedPaymentGroup } from "@/types/domain";
+import type { ActiveModo, Modo, ModoParticipant, SharedPaymentGroup } from "@/types/domain";
 
 const MODO_TX_SELECT =
   "id, amount, direction, transaction_date, category:categories!transactions_category_id_fkey(id, name, name_es, color)";
@@ -140,6 +141,9 @@ function parseModoForm(formData: FormData): ParsedForm {
     date_from: formData.get("date_from"),
     date_to: formData.get("date_to"),
     tag_ids: tagIds,
+    auto_tag_id: formData.get("auto_tag_id") || null,
+    create_tag: formData.get("create_tag") !== "false",
+    is_active: formData.get("is_active") === "true",
     is_shared: formData.get("is_shared") === "true",
     split_method: formData.get("split_method") || "equal",
     user_included: formData.get("user_included") !== "false",
@@ -155,12 +159,30 @@ export async function createModo(formData: FormData): Promise<ActionResult<{ id:
   const parsed = parseModoForm(formData);
   if (!parsed.success) return { success: false, error: parsed.error };
 
-  const { participants, ...modoRow } = parsed.data;
+  // Every non-column field is peeled off here: the rest is spread straight
+  // into the insert and PostgREST rejects unknown columns with a 400.
+  const { participants, create_tag, is_active, ...modoRow } = parsed.data;
+
+  // The trip's own tag: what the active trip attaches to manual captures. An
+  // existing tag chosen in the wizard wins; otherwise one named after the trip
+  // is found-or-created (reusing a same-slug tag such as #Argentina).
+  let autoTagId = modoRow.auto_tag_id ?? null;
+  let tagCreated = false;
+  if (!autoTagId && (create_tag || modoRow.tag_ids.length === 0)) {
+    const tag = await ensureModoTag(supabase, user.id, { name: modoRow.name, color: modoRow.color });
+    if (!tag.ok) return { success: false, error: tag.error };
+    autoTagId = tag.tagId;
+    tagCreated = tag.created;
+  }
+  const tagIds = autoTagId && !modoRow.tag_ids.includes(autoTagId)
+    ? [autoTagId, ...modoRow.tag_ids]
+    : modoRow.tag_ids;
+
   const { data, error } = await supabase
     .from("modos")
-    .insert({ ...modoRow, user_id: user.id })
+    .insert({ ...modoRow, tag_ids: tagIds, auto_tag_id: autoTagId, user_id: user.id })
     .select("id").single();
-  if (error || !data) return { success: false, error: error?.message ?? "Error al crear el modo" };
+  if (error || !data) return { success: false, error: error?.message ?? "Error al crear el viaje" };
 
   if (modoRow.is_shared && participants.length > 0) {
     const { error: partErr } = await supabase.from("modo_participants").insert(
@@ -172,10 +194,16 @@ export async function createModo(formData: FormData): Promise<ActionResult<{ id:
         position: i,
       })),
     );
-    if (partErr) return { success: false, error: "Error al guardar las personas del modo" };
+    if (partErr) return { success: false, error: "Error al guardar las personas del viaje" };
+  }
+
+  if (is_active) {
+    const act = await activateModoRow(supabase, user.id, data.id);
+    if (!act.ok) return { success: false, error: act.error };
   }
 
   expireTag("modos");
+  if (tagCreated) expireTag("tags");
   return { success: true, data: { id: data.id } };
 }
 
@@ -185,9 +213,16 @@ export async function updateModo(id: string, formData: FormData): Promise<Action
   const parsed = parseModoForm(formData);
   if (!parsed.success) return { success: false, error: parsed.error };
 
-  const { participants, ...modoRow } = parsed.data;
+  // `is_active` is deliberately NOT written here — an edit must never switch
+  // the active trip off; that lives in setActiveModo. `create_tag` is a wizard
+  // hint with no column behind it.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { participants, create_tag: _createTag, is_active: _isActive, ...modoRow } = parsed.data;
+  const tagIds = modoRow.auto_tag_id && !modoRow.tag_ids.includes(modoRow.auto_tag_id)
+    ? [modoRow.auto_tag_id, ...modoRow.tag_ids]
+    : modoRow.tag_ids;
   const { error } = await supabase
-    .from("modos").update(modoRow).eq("id", id).eq("user_id", user.id);
+    .from("modos").update({ ...modoRow, tag_ids: tagIds }).eq("id", id).eq("user_id", user.id);
   if (error) return { success: false, error: error.message };
 
   // Reemplazar participantes (N ≈ 1–3; delete-all + re-insert en vez de diff fino).
@@ -204,11 +239,94 @@ export async function updateModo(id: string, formData: FormData): Promise<Action
         position: i,
       })),
     );
-    if (partErr) return { success: false, error: "Error al guardar las personas del modo" };
+    if (partErr) return { success: false, error: "Error al guardar las personas del viaje" };
   }
 
   expireTag("modos");
   return { success: true, data: null };
+}
+
+// ── Viaje activo ─────────────────────────────────────────
+/**
+ * Two statements, in this order: clear the current active trip, then set the
+ * new one. PostgREST gives no transaction, so a lost race between two tabs
+ * ends either with zero active trips (benign) or a 23505 on the partial unique
+ * index `modos_one_active_per_user`, which is surfaced as a retryable message.
+ */
+async function activateModoRow(
+  supabase: Awaited<ReturnType<typeof getAuthenticatedClient>>["supabase"],
+  userId: string,
+  modoId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error: clearErr } = await supabase
+    .from("modos")
+    .update({ is_active: false })
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .neq("id", modoId);
+  if (clearErr) return { ok: false, error: "No se pudo desactivar el viaje anterior" };
+  const { error } = await supabase
+    .from("modos")
+    .update({ is_active: true })
+    .eq("id", modoId)
+    .eq("user_id", userId);
+  if (error) {
+    if (error.code === "23505") {
+      return { ok: false, error: "Ya hay otro viaje activo, inténtalo de nuevo" };
+    }
+    return { ok: false, error: "No se pudo activar el viaje" };
+  }
+  return { ok: true };
+}
+
+/** Marks `id` as the one active trip (or clears it with `null`). */
+export async function setActiveModo(id: string | null): Promise<ActionResult<null>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+  if (id === null) {
+    const { error } = await supabase
+      .from("modos")
+      .update({ is_active: false })
+      .eq("user_id", user.id)
+      .eq("is_active", true);
+    if (error) return { success: false, error: "No se pudo terminar el viaje" };
+  } else {
+    const res = await activateModoRow(supabase, user.id, id);
+    if (!res.ok) return { success: false, error: res.error };
+  }
+  expireTag("modos");
+  return { success: true, data: null };
+}
+
+const ACTIVE_MODO_SELECT = "id, name, emoji, color, auto_tag_id, date_from, date_to";
+
+/**
+ * Tiny, `modos`-tagged only: nothing here derives from transactions, so a
+ * capture never expires it and the banner/form preselection stay cheap.
+ */
+async function getActiveModoCached(userId: string, accessToken: string): Promise<ActiveModo | null> {
+  "use cache";
+  cacheTag("modos");
+  cacheLife("zeta");
+  const supabase = createCachedClient(accessToken);
+  const { data } = await supabase
+    .from("modos")
+    .select(ACTIVE_MODO_SELECT)
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .limit(1)
+    .maybeSingle();
+  return (data as ActiveModo | null) ?? null;
+}
+
+export async function getActiveModo(): Promise<ActiveModo | null> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return null;
+  try {
+    return await getActiveModoCached(user.id, accessToken);
+  } catch {
+    return null;
+  }
 }
 
 export async function deleteModo(id: string): Promise<ActionResult<null>> {

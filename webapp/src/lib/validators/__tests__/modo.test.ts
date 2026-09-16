@@ -26,6 +26,24 @@ describe("modoSchema", () => {
     expect(modoSchema.safeParse({ ...base, tag_ids: [] }).success).toBe(true);
   });
 
+  it("viaje activo: defaults y campos de etiqueta", () => {
+    const r = modoSchema.safeParse(base);
+    expect(r.success).toBe(true);
+    if (!r.success) return;
+    expect(r.data.is_active).toBe(false);
+    expect(r.data.create_tag).toBe(true);
+    expect(r.data.auto_tag_id).toBeUndefined();
+    const withTag = modoSchema.safeParse({
+      ...base,
+      is_active: true,
+      create_tag: false,
+      auto_tag_id: "00000000-0000-0000-0000-0000000000a1",
+    });
+    expect(withTag.success).toBe(true);
+    expect(modoSchema.safeParse({ ...base, auto_tag_id: "nope" }).success).toBe(false);
+    expect(modoSchema.safeParse({ ...base, auto_tag_id: null }).success).toBe(true);
+  });
+
   it("acepta un modo compartido con participantes", () => {
     const r = modoSchema.safeParse({
       ...base,
