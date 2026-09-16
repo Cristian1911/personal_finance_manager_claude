@@ -15,23 +15,23 @@ const trip: ActiveModo = {
 
 describe("defaultModoFor", () => {
   it("files spend inside the trip dates", () => {
-    expect(defaultModoFor({ date: "2026-07-15", direction: "OUTFLOW", installment_current: null }, trip)).toBe("m1");
+    expect(defaultModoFor({ date: "2026-07-15", direction: "OUTFLOW", installment_total: 1 }, trip)).toBe("m1");
   });
   it("leaves out inflows, cuotas and rows outside the range", () => {
-    expect(defaultModoFor({ date: "2026-07-15", direction: "INFLOW", installment_current: null }, trip)).toBeNull();
-    expect(defaultModoFor({ date: "2026-07-15", direction: "OUTFLOW", installment_current: 3 }, trip)).toBeNull();
-    expect(defaultModoFor({ date: "2026-07-25", direction: "OUTFLOW", installment_current: null }, trip)).toBeNull();
-    expect(defaultModoFor({ date: "2026-07-15", direction: "OUTFLOW", installment_current: null }, null)).toBeNull();
+    expect(defaultModoFor({ date: "2026-07-15", direction: "INFLOW", installment_total: 1 }, trip)).toBeNull();
+    expect(defaultModoFor({ date: "2026-07-15", direction: "OUTFLOW", installment_total: 24 }, trip)).toBeNull();
+    expect(defaultModoFor({ date: "2026-07-25", direction: "OUTFLOW", installment_total: 1 }, trip)).toBeNull();
+    expect(defaultModoFor({ date: "2026-07-15", direction: "OUTFLOW", installment_total: 1 }, null)).toBeNull();
   });
 });
 
 describe("effectiveEnrichment", () => {
   it("returns the explicit decision untouched, even a cleared trip", () => {
     const explicit = { ...EMPTY_ENRICHMENT, modoId: null, notes: "x" };
-    expect(effectiveEnrichment(explicit, { date: "2026-07-15", direction: "OUTFLOW", installment_current: null }, trip)).toBe(explicit);
+    expect(effectiveEnrichment(explicit, { date: "2026-07-15", direction: "OUTFLOW", installment_total: 1 }, trip)).toBe(explicit);
   });
   it("fills only the trip default otherwise", () => {
-    const e = effectiveEnrichment(undefined, { date: "2026-07-15", direction: "OUTFLOW", installment_current: null }, trip);
+    const e = effectiveEnrichment(undefined, { date: "2026-07-15", direction: "OUTFLOW", installment_total: 1 }, trip);
     expect(e).toEqual({ modoId: "m1", tagIds: [], notes: "", share: null });
   });
 });

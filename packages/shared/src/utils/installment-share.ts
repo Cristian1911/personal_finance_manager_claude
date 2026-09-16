@@ -50,6 +50,19 @@ export function estimateInstallmentPlan(params: {
       interestKnown: false,
     };
   }
+  // A single "cuota" (parsers stamp 1/1 on every one-time card purchase) has
+  // no financing period: the price is the cost, no interest to estimate.
+  if (n === 1) {
+    return {
+      principal,
+      installmentTotal: 1,
+      monthlyRate: 0,
+      monthlyPayment: roundTo(principal, decimals),
+      totalInterest: 0,
+      totalCost: principal,
+      interestKnown: true,
+    };
+  }
   const ea = params.eaRatePercent;
   if (ea == null || !Number.isFinite(ea) || ea <= 0) {
     return {
@@ -75,6 +88,11 @@ export function estimateInstallmentPlan(params: {
     totalCost,
     interestKnown: true,
   };
+}
+
+/** Parsers stamp 1/1 on every one-time card purchase; only N > 1 is a real cuotas plan. */
+export function isInstallmentPurchase(row: { installment_total?: number | null }): boolean {
+  return row.installment_total != null && row.installment_total > 1;
 }
 
 export type InstallmentShareBreakdown = {

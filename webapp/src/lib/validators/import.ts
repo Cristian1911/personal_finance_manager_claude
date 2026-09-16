@@ -12,7 +12,11 @@ export const importShareConfigSchema = z.object({
       })
     )
     .min(1, "Elige al menos una persona")
-    .max(12, "Máximo 12 personas"),
+    .max(12, "Máximo 12 personas")
+    .refine(
+      (ps) => new Set(ps.map((p) => p.destinatario_id)).size === ps.length,
+      "No repitas a la misma persona"
+    ),
   ea_rate_percent: z.number().min(0).max(200).optional().nullable(),
 });
 

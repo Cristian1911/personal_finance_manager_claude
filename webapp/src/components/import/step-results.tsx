@@ -108,7 +108,10 @@ export function StepResults({
         : `${result.imported} ${result.imported === 1 ? "movimiento importado" : "movimientos importados"}`;
 
   const uncategorizedSuffix =
-    (result.uncategorizedCount ?? 0) > 0 ? ` · ${result.uncategorizedCount} sin categoría` : "";
+    ((result.uncategorizedCount ?? 0) > 0 ? ` · ${result.uncategorizedCount} sin categoría` : "") +
+    ((result.enrichmentErrors ?? 0) > 0
+      ? ` · ${result.enrichmentErrors} ${result.enrichmentErrors === 1 ? "reparto con aviso" : "repartos con aviso"}`
+      : "");
   const subline = allDuplicates
     ? "Nada nuevo entró. Descartamos la entrada porque ya estaba cubierta."
     : result.errors > 0
@@ -231,7 +234,12 @@ export function StepResults({
                 ))}
               </ul>
               {uncategorizedScopes.length > 3 && (
-                <button type="button" className={INLINE_EXPAND_TOGGLE_CLASS} onClick={() => setShowAllScopes((v) => !v)}>
+                <button
+                  type="button"
+                  className={INLINE_EXPAND_TOGGLE_CLASS}
+                  aria-expanded={showAllScopes}
+                  onClick={() => setShowAllScopes((v) => !v)}
+                >
                   {showAllScopes ? "Ver menos" : `y ${uncategorizedScopes.length - 3} más`}
                   <ChevronDown className={cn("size-3.5 transition-transform", showAllScopes && "rotate-180")} />
                 </button>

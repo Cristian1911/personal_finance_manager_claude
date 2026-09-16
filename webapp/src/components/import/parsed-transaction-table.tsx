@@ -18,6 +18,7 @@ import { SlidersHorizontal, StickyNote, Tag, UserPlus, UserRound, Users } from "
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { RowEnrichmentPanel } from "./row-enrichment-panel";
 import { cn } from "@/lib/utils";
+import { BRASS_GHOST_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import type { CurrencyCode, CategoryWithChildren, ModoWithParticipants } from "@/types/domain";
 import type { ParsedTransaction } from "@/types/import";
 import type { RowEnrichment } from "@/lib/import/review-enrichment";
@@ -90,6 +91,62 @@ function EnrichmentBadges({ value, modos }: { value: RowEnrichment | undefined; 
   }
   if (marks.length === 0) return null;
   return <span className="inline-flex flex-wrap items-center gap-1.5">{marks}</span>;
+}
+
+/**
+ * Desktop "Más" cell: the enrichment panel in a popover. Controlled so the
+ * popover closes before "Compartir con…" opens the share sheet — otherwise the
+ * popover tier (above modal by design) would float over the sheet.
+ */
+function DesktopMoreCell({
+  description,
+  direction,
+  enrichment,
+  isDefaultModo,
+  modos,
+  onChange,
+  onOpenShare,
+}: {
+  description: string;
+  direction: "INFLOW" | "OUTFLOW";
+  enrichment: RowEnrichment;
+  isDefaultModo: boolean;
+  modos: ModoWithParticipants[];
+  onChange: (patch: Partial<RowEnrichment>) => void;
+  onOpenShare: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const active = !!(enrichment.modoId || enrichment.share || enrichment.tagIds.length || enrichment.notes.trim());
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Más opciones para ${description}`}
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs transition-colors",
+            active ? BRASS_GHOST_BUTTON_CLASS : GHOST_BUTTON_CLASS,
+          )}
+        >
+          <SlidersHorizontal className="size-3.5" />
+          <EnrichmentBadges value={enrichment} modos={modos} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-[360px]">
+        <RowEnrichmentPanel
+          value={enrichment}
+          isDefaultModo={isDefaultModo}
+          direction={direction}
+          modos={modos}
+          onChange={onChange}
+          onOpenShare={() => {
+            setOpen(false);
+            onOpenShare();
+          }}
+        />
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 /** A row's assigned-destinatario chip, or a "create" button when unassigned. */
@@ -395,7 +452,10 @@ function DesktopTable({
         <TableBody>
           {visibleIndices && visibleIndices.size === 0 && (
             <TableRow>
-              <TableCell colSpan={9} className="py-6 text-center text-xs text-muted-foreground">
+              <TableCell
+                colSpan={5 + (showCategories ? 1 : 0) + (showDestinatarios ? 1 : 0) + (showEnrichment ? 1 : 0)}
+                className="py-6 text-center text-xs text-muted-foreground"
+              >
                 Nada con este filtro.
               </TableCell>
             </TableRow>
@@ -487,33 +547,15 @@ function DesktopTable({
                 </TableCell>
                 {showEnrichment && enrichment && (
                   <TableCell>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button
-                          type="button"
-                          aria-label={`Más opciones para ${tx.description}`}
-                          className={cn(
-                            "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs transition-colors",
-                            enrichment.modoId || enrichment.share || enrichment.tagIds.length || enrichment.notes
-                              ? "border-z-brass/20 bg-z-brass/8 text-z-brass"
-                              : "border-white/6 text-muted-foreground hover:bg-white/[0.04]",
-                          )}
-                        >
-                          <SlidersHorizontal className="size-3.5" />
-                          <EnrichmentBadges value={enrichment} modos={modos ?? []} />
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent align="end" className="w-[360px]">
-                        <RowEnrichmentPanel
-                          value={enrichment}
-                          isDefaultModo={defaultModoKeys?.has(`${stmtIdx}-${i}`) ?? false}
-                          direction={tx.direction}
-                          modos={modos ?? []}
-                          onChange={(patch) => onEnrichmentChange(i, patch)}
-                          onOpenShare={() => onOpenShare(i)}
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <DesktopMoreCell
+                      description={tx.description}
+                      direction={tx.direction}
+                      enrichment={enrichment}
+                      isDefaultModo={defaultModoKeys?.has(`${stmtIdx}-${i}`) ?? false}
+                      modos={modos ?? []}
+                      onChange={(patch) => onEnrichmentChange(i, patch)}
+                      onOpenShare={() => onOpenShare(i)}
+                    />
                   </TableCell>
                 )}
               </TableRow>

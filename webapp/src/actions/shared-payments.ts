@@ -153,6 +153,11 @@ export async function splitExistingTransaction(
       .in("id", targetIds)
       .eq("user_id", userId);
     await cleanupAdHocDestinatarios(supabase, userId, createdIds);
+    // Unique (user, installment_group_id, destinatario): a concurrent import
+    // already shared this purchase — not a failure of the ledger.
+    if (debtsErr.code === "23505" && opts.debtExtras?.installment_group_id) {
+      return { ok: false, error: "Esta compra a cuotas ya estaba repartida" };
+    }
     return { ok: false, error: "Error al crear las deudas del reparto" };
   }
 

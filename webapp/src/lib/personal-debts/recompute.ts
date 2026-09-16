@@ -92,7 +92,10 @@ export async function recomputeSplitRepaid(
     .select("id, amount, installment_current, transaction_date, split_repaid_amount")
     .eq("user_id", userId)
     .eq("split_group_id", splitGroupId)
-    .is("personal_debt_id", null);
+    .is("personal_debt_id", null)
+    // A duplicate cuota reconciled away by a later import must not absorb
+    // repaid capacity the visible rows need.
+    .is("reconciled_into_transaction_id", null);
   if (rowsErr) throw rowsErr;
   const targets = (rows ?? []) as (RepaidTargetRow & { split_repaid_amount: number | null })[];
   const alloc = allocateRepaidAcrossRows(targets, repaid);

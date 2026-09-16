@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Plus, X } from "lucide-react";
-import { computeSplit, estimateInstallmentPlan, getCurrencyDecimals } from "@zeta/shared";
+import { computeSplit, estimateInstallmentPlan, getCurrencyDecimals, isInstallmentPurchase } from "@zeta/shared";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -96,7 +96,7 @@ export function ImportSharePicker({ open, onOpenChange, value, onChange, modo, r
 
   const currency = (row?.currency ?? "COP") as CurrencyCode;
   const decimals = getCurrencyDecimals(currency);
-  const isInstallment = !!row && row.installment_current != null;
+  const isInstallment = !!row && isInstallmentPurchase(row);
   const plan = useMemo(() => {
     if (!row || !isInstallment) return null;
     const n = row.installment_total ?? 1;

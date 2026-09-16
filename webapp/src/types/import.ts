@@ -151,7 +151,6 @@ export type ImportResult = {
   leftAsSeparate: number;
   adjustmentsExcluded?: number;
   accountUpdates?: AccountUpdateResult[];
-  createdTransactionIds?: string[];
   skippedRows?: ImportSkippedRow[];
   skippedRowsTruncated?: boolean;
   uncategorizedCount?: number;
@@ -159,6 +158,8 @@ export type ImportResult = {
   sharedCount?: number;
   /** Cuota rows attached to an already-shared purchase (no new debts). */
   installmentLinkedCount?: number;
+  /** Enrichments (repartos) that failed after the rows were already in the ledger. */
+  enrichmentErrors?: number;
   modoAssignments?: ImportModoAssignment[];
   scopes?: ImportScope[];
 };

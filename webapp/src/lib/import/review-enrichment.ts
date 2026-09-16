@@ -27,14 +27,15 @@ export const EMPTY_ENRICHMENT: RowEnrichment = { modoId: null, tagIds: [], notes
 export type EnrichmentRowInput = {
   date: string;
   direction: "INFLOW" | "OUTFLOW";
-  installment_current: number | null | undefined;
+  /** Parsers stamp 1/1 on one-time card purchases; only N > 1 is a cuotas plan. */
+  installment_total: number | null | undefined;
 };
 
-/** The active trip is only a default for spend inside its dates; cuotas are never auto-filed (same rule as the tray). */
+/** The active trip is only a default for spend inside its dates; cuotas (N > 1) are never auto-filed (same rule as the tray). */
 export function defaultModoFor(row: EnrichmentRowInput, activeModo: ActiveModo | null | undefined): string | null {
   if (!activeModo) return null;
   if (row.direction !== "OUTFLOW") return null;
-  if (row.installment_current != null) return null;
+  if (row.installment_total != null && row.installment_total > 1) return null;
   if (row.date < activeModo.date_from || row.date > activeModo.date_to) return null;
   return activeModo.id;
 }

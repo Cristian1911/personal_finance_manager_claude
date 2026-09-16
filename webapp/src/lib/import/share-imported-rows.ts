@@ -4,7 +4,13 @@ import type { Database } from "@/types/database";
 import type { ImportShareConfig } from "@/types/import";
 import { splitExistingTransaction } from "@/actions/shared-payments";
 import { recomputeSplitRepaid } from "@/lib/personal-debts/recompute";
-import { estimateInstallmentPlan, getCurrencyDecimals, type CurrencyCode } from "@zeta/shared";
+import {
+  estimateInstallmentPlan,
+  getCurrencyDecimals,
+  isInstallmentPurchase,
+  type CurrencyCode,
+  type InstallmentPlan,
+} from "@zeta/shared";
 
 /**
  * "Compartido con…" decided in the import review step, applied AFTER the rows
@@ -70,10 +76,13 @@ export async function shareImportedRows(
   const result: ShareImportedRowsResult = { sharedCount: 0, installmentLinkedCount: 0, errors: [], notes: [] };
   if (rows.length === 0) return result;
 
-  const plain = rows.filter((r) => !r.installment_group_id);
+  // Parsers stamp 1/1 on every one-time card purchase: only a real N > 1 plan
+  // takes the whole-purchase path; 1/1 rows are ordinary splits on their amount.
+  const isCuotas = (r: ShareRowInput) => !!r.installment_group_id && isInstallmentPurchase(r);
+  const plain = rows.filter((r) => !isCuotas(r));
   const byGroup = new Map<string, ShareRowInput[]>();
   for (const r of rows) {
-    if (!r.installment_group_id) continue;
+    if (!isCuotas(r) || !r.installment_group_id) continue;
     const arr = byGroup.get(r.installment_group_id) ?? [];
     arr.push(r);
     byGroup.set(r.installment_group_id, arr);
@@ -101,20 +110,27 @@ export async function shareImportedRows(
 
   // ── Cuotas: one lookup for every purchase already shared by this user. ──
   const groupKeys = [...byGroup.keys()];
-  const { data: existing, error: existingErr } = await supabase
-    .from("personal_debts")
-    .select("installment_group_id, split_group_id")
-    .eq("user_id", userId)
-    .in("installment_group_id", groupKeys)
-    .not("split_group_id", "is", null);
-  if (existingErr) {
-    result.errors.push(`Reparto de cuotas: no se pudo verificar compras ya compartidas (${existingErr.message})`);
-    return result;
-  }
+  const existingResults = await Promise.all(
+    chunk(groupKeys, 100).map((keys) =>
+      supabase
+        .from("personal_debts")
+        .select("installment_group_id, split_group_id")
+        .eq("user_id", userId)
+        .in("installment_group_id", keys)
+        .not("split_group_id", "is", null),
+    ),
+  );
   const existingByGroup = new Map<string, string>();
-  for (const d of existing ?? []) {
-    if (d.installment_group_id && d.split_group_id && !existingByGroup.has(d.installment_group_id)) {
-      existingByGroup.set(d.installment_group_id, d.split_group_id);
+  for (const { data: existing, error: existingErr } of existingResults) {
+    if (existingErr) {
+      console.error("[shareImportedRows] existing-group lookup failed:", existingErr.message);
+      result.errors.push("Reparto de cuotas: no se pudo verificar qué compras ya estaban compartidas.");
+      return result;
+    }
+    for (const d of existing ?? []) {
+      if (d.installment_group_id && d.split_group_id && !existingByGroup.has(d.installment_group_id)) {
+        existingByGroup.set(d.installment_group_id, d.split_group_id);
+      }
     }
   }
 
@@ -125,6 +141,18 @@ export async function shareImportedRows(
     const anchor = sorted[0];
     const ids = sorted.map((r) => r.transactionId);
     const existingSplit = existingByGroup.get(groupId);
+    // One purchase, one split: if two cuotas of it carry different people or
+    // percentages, the lowest cuota wins and the user is told.
+    const anchorConfig = JSON.stringify({ m: anchor.share.method, u: anchor.share.userIncluded, p: anchor.share.participants });
+    if (
+      sorted.some(
+        (r) => JSON.stringify({ m: r.share.method, u: r.share.userIncluded, p: r.share.participants }) !== anchorConfig,
+      )
+    ) {
+      result.notes.push(
+        `Reparto: ${anchor.raw_description}: se usó el reparto de la cuota ${anchor.installment_current ?? 1} para toda la compra.`,
+      );
+    }
 
     if (existingSplit) {
       // Purchase already shared: these cuotas join the group, no new debts.
@@ -134,35 +162,44 @@ export async function shareImportedRows(
         .eq("user_id", userId)
         .in("id", ids);
       if (error) {
-        result.errors.push(`Reparto: ${anchor.raw_description}: no se pudo vincular la cuota (${error.message})`);
+        console.error("[shareImportedRows] link cuota failed:", error.message);
+        result.errors.push(`Reparto: ${anchor.raw_description}: no se pudo vincular la cuota a la compra compartida.`);
         continue;
       }
       try {
         await recomputeSplitRepaid(supabase, userId, existingSplit);
       } catch (e) {
-        result.errors.push(
-          `Reparto: ${anchor.raw_description}: cuota vinculada, pero no se recalculó lo devuelto (${e instanceof Error ? e.message : "error"})`,
-        );
+        console.error("[shareImportedRows] recompute failed:", e);
+        result.errors.push(`Reparto: ${anchor.raw_description}: cuota vinculada, pero no se recalculó lo devuelto.`);
       }
       result.installmentLinkedCount += ids.length;
       continue;
     }
 
     const n = anchor.installment_total ?? sorted.length;
-    const principal = anchor.original_amount ?? anchor.amount * n;
     const decimals = getCurrencyDecimals(anchor.currency_code as CurrencyCode);
-    const plan = estimateInstallmentPlan({
-      principal,
-      installmentTotal: n,
-      eaRatePercent: anchor.share.ea_rate_percent ?? null,
-      decimals,
-    });
-    if (plan.totalCost <= 0) {
-      result.errors.push(`Reparto: ${anchor.raw_description}: no se pudo calcular el total de la compra a cuotas`);
-      continue;
+    // With the purchase price we estimate the interest on top. Without it the
+    // only figure is the cuota, which already carries that month's interest:
+    // cuota × N is the total, never a principal to add interest to again.
+    let plan: InstallmentPlan;
+    if (anchor.original_amount != null && anchor.original_amount > 0) {
+      plan = estimateInstallmentPlan({
+        principal: anchor.original_amount,
+        installmentTotal: n,
+        eaRatePercent: anchor.share.ea_rate_percent ?? null,
+        decimals,
+      });
+      if (!plan.interestKnown) {
+        result.notes.push(`Cuota sin tasa: ${anchor.raw_description} — se repartió sin interés estimado.`);
+      }
+    } else {
+      const total = Math.round(anchor.amount * n * 100) / 100;
+      plan = { principal: total, installmentTotal: n, monthlyRate: 0, monthlyPayment: anchor.amount, totalInterest: 0, totalCost: total, interestKnown: false };
+      result.notes.push(`Cuota sin precio: ${anchor.raw_description} — se repartió cuota × ${n}, sin interés aparte.`);
     }
-    if (!plan.interestKnown) {
-      result.notes.push(`Cuota sin tasa: ${anchor.raw_description} — se repartió sin interés estimado.`);
+    if (plan.totalCost <= 0) {
+      result.errors.push(`Reparto: ${anchor.raw_description}: no se pudo calcular el total de la compra a cuotas.`);
+      continue;
     }
     const res = await splitExistingTransaction(
       supabase,

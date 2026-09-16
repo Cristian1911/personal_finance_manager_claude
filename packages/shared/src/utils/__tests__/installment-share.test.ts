@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { estimateInstallmentPlan, describeInstallmentShare } from "../installment-share";
+import { estimateInstallmentPlan, describeInstallmentShare, isInstallmentPurchase } from "../installment-share";
 import { monthlyRateFromEA } from "../debt";
 
 describe("estimateInstallmentPlan", () => {
@@ -29,10 +29,18 @@ describe("estimateInstallmentPlan", () => {
     expect(plan.monthlyPayment).toBeGreaterThan(50_000);
   });
 
-  it("charges exactly one month of interest for a single cuota", () => {
+  it("treats a single cuota (one-time purchase) as price only, no interest", () => {
     const plan = estimateInstallmentPlan({ principal: 1000, installmentTotal: 1, eaRatePercent: 26, decimals: 2 });
-    const i = monthlyRateFromEA(26);
-    expect(plan.totalCost).toBeCloseTo(1000 * (1 + i), 2);
+    expect(plan.totalCost).toBe(1000);
+    expect(plan.totalInterest).toBe(0);
+    expect(plan.monthlyPayment).toBe(1000);
+    expect(plan.interestKnown).toBe(true);
+  });
+
+  it("isInstallmentPurchase only for N > 1", () => {
+    expect(isInstallmentPurchase({ installment_total: 1 })).toBe(false);
+    expect(isInstallmentPurchase({ installment_total: null })).toBe(false);
+    expect(isInstallmentPurchase({ installment_total: 24 })).toBe(true);
   });
 
   it("returns zeros for invalid inputs", () => {

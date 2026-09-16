@@ -213,7 +213,7 @@ export function StepReview({
         const explicit = enrichments.get(key);
         const value = effectiveEnrichment(
           explicit,
-          { date: tx.date, direction: tx.direction, installment_current: tx.installment_current },
+          { date: tx.date, direction: tx.direction, installment_total: tx.installment_total },
           activeModo,
         );
         map.set(key, value);
@@ -233,7 +233,7 @@ export function StepReview({
         const key = `${stmtIdx}-${txIdx}`;
         const facts = {
           hasCategory: !!displayCatMap.get(key),
-          isInstallment: tx.installment_current != null,
+          isInstallment: tx.installment_total != null && tx.installment_total > 1,
           hasDestinatario: mergedDestMap.has(key),
           modoId: effectiveMap.get(key)?.modoId ?? null,
         };

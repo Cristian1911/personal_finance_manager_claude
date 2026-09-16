@@ -2112,6 +2112,7 @@ export async function importTransactions(
   const enrichedRows = toInsert.filter(({ key }) => insertedByKey.has(key));
   let sharedCount = 0;
   let installmentLinkedCount = 0;
+  let enrichmentErrors = 0;
   const modoAssignments: ImportModoAssignment[] = [];
   if (enrichedRows.length > 0) {
     const freeTagIds = new Set<string>();
@@ -2129,7 +2130,8 @@ export async function importTransactions(
         .in("id", [...freeTagIds])
         .or(`user_id.eq.${user.id},user_id.is.null`);
       if (tagLookupErr) {
-        details.push(`Etiquetas: no se pudieron verificar (${tagLookupErr.message})`);
+        console.error("[importTransactions] tag lookup failed:", tagLookupErr.message);
+        details.push("Etiquetas: no se pudieron verificar; las filas quedaron sin etiquetas libres.");
       } else {
         const allowed = new Set((allowedTags ?? []).map((t) => t.id));
         for (const { tx, key } of enrichedRows) {
@@ -2148,29 +2150,41 @@ export async function importTransactions(
         .eq("user_id", user.id)
         .in("id", [...modoIds]);
       if (modoErr) {
-        details.push(`Viajes: no se pudieron verificar (${modoErr.message})`);
+        console.error("[importTransactions] modo lookup failed:", modoErr.message);
+        details.push("Viajes: no se pudieron verificar; las filas no se agregaron al viaje.");
       } else {
         const modoById = new Map((modoRows ?? []).map((m) => [m.id, m]));
         const countByModo = new Map<string, number>();
         const reviewRows: { modo_id: string; user_id: string; transaction_id: string; decision: string; source: string }[] = [];
+        const taglessModos = new Set<string>();
         for (const { tx, key } of enrichedRows) {
-          if (!tx.modo_id) continue;
+          if (!tx.modo_id || tx.direction !== "OUTFLOW") continue;
           const modo = modoById.get(tx.modo_id);
           if (!modo) continue;
           const tagId = modo.auto_tag_id ?? modo.tag_ids?.[0] ?? null;
-          if (!tagId) continue;
+          if (!tagId) {
+            // Membership is tag-driven: without a tag the row can't join the trip.
+            taglessModos.add(modo.name);
+            continue;
+          }
           const insertedId = insertedByKey.get(key)!.id;
           pendingTagInserts.push({ transaction_id: insertedId, tag_id: tagId, user_id: user.id });
           reviewRows.push({ modo_id: modo.id, user_id: user.id, transaction_id: insertedId, decision: "included", source: "manual" });
           countByModo.set(modo.id, (countByModo.get(modo.id) ?? 0) + 1);
         }
         const missing = [...modoIds].filter((id) => !modoById.has(id));
-        if (missing.length > 0) details.push("Viaje no encontrado: algunas filas no se etiquetaron.");
+        if (missing.length > 0) details.push("Viaje no encontrado: algunas filas no se agregaron al viaje.");
+        if (taglessModos.size > 0) {
+          details.push(`Viaje sin etiqueta (${[...taglessModos].join(", ")}): esas filas no se agregaron al viaje.`);
+        }
         if (reviewRows.length > 0) {
           const { error: reviewErr } = await supabase
             .from("modo_tx_reviews")
             .upsert(reviewRows, { onConflict: "modo_id,transaction_id" });
-          if (reviewErr) details.push(`Viajes: revisión no guardada (${reviewErr.message})`);
+          if (reviewErr) {
+            console.error("[importTransactions] modo review upsert failed:", reviewErr.message);
+            details.push("Viajes: las filas se etiquetaron, pero no quedó registrada la revisión.");
+          }
         }
         for (const [modoId, count] of countByModo) {
           const modo = modoById.get(modoId)!;
@@ -2199,7 +2213,8 @@ export async function importTransactions(
       const shareRes = await shareImportedRows(supabase, user.id, shareInputs);
       sharedCount = shareRes.sharedCount;
       installmentLinkedCount = shareRes.installmentLinkedCount;
-      errors += shareRes.errors.length;
+      // A failed split is not a failed import — the rows are in the ledger.
+      enrichmentErrors += shareRes.errors.length;
       details.push(...shareRes.errors, ...shareRes.notes);
     }
   }
@@ -2224,12 +2239,10 @@ export async function importTransactions(
 
   // Result metadata for the actionable "Listo" screen.
   const mergedCategoryByInsertedId = new Map(mergeOps.map((op) => [op.insertedId, op.merged.category_id ?? null]));
-  const createdTransactionIds: string[] = [];
   let uncategorizedCount = 0;
   const scopeMap = new Map<string, ImportScope>();
   for (const { tx, key } of enrichedRows) {
     const inserted = insertedByKey.get(key)!;
-    createdTransactionIds.push(inserted.id);
     const categoryId = mergedCategoryByInsertedId.has(inserted.id)
       ? mergedCategoryByInsertedId.get(inserted.id)
       : inserted.category_id;
@@ -2275,6 +2288,7 @@ export async function importTransactions(
         modo_assigned: modoAssignments.reduce((s, m) => s + m.count, 0),
         tagged: pendingTagInserts.length,
         uncategorized: uncategorizedCount,
+        enrichment_errors: enrichmentErrors,
       },
     }),
   ];
@@ -2338,12 +2352,12 @@ export async function importTransactions(
       leftAsSeparate,
       adjustmentsExcluded,
       accountUpdates,
-      createdTransactionIds,
       skippedRows,
       skippedRowsTruncated,
       uncategorizedCount,
       sharedCount,
       installmentLinkedCount,
+      enrichmentErrors,
       modoAssignments,
       scopes,
     },
