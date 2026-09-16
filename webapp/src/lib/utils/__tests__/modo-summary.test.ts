@@ -160,10 +160,10 @@ describe("summarizeSpendSplit", () => {
 describe("settleUpByPerson", () => {
   const groups = [
     { split_group_id: "g1", debts: [
-      { destinatario_id: "p1", destinatario_name: "Estefa", principal_amount: 100, outstanding_amount: 60, status: "active", origin_transaction_id: "tx1", id: "d1" },
+      { destinatario_id: "p1", destinatario_name: "Estefa", principal_amount: 100, outstanding_amount: 60, total_repaid: 40, status: "active", origin_transaction_id: "tx1", id: "d1" },
     ] },
     { split_group_id: "g2", debts: [
-      { destinatario_id: "p1", destinatario_name: "Estefa", principal_amount: 50, outstanding_amount: 0, status: "paid", origin_transaction_id: "tx2", id: "d2" },
+      { destinatario_id: "p1", destinatario_name: "Estefa", principal_amount: 50, outstanding_amount: 0, status: "settled", origin_transaction_id: "tx2", id: "d2" },
     ] },
     { split_group_id: "g3", debts: [
       { destinatario_id: "p2", destinatario_name: "Ana", principal_amount: 30, outstanding_amount: 30, status: "active", origin_transaction_id: "txZ", id: "d3" },
@@ -176,6 +176,9 @@ describe("settleUpByPerson", () => {
     expect(res[0].destinatarioId).toBe("p1");
     expect(res[0].principal).toBe(150);
     expect(res[0].outstanding).toBe(60);
+    expect(res[0].count).toBe(2);
+    // 40 abonados de la activa + 50 de la saldada
+    expect(res[0].repaid).toBe(90);
     expect(res[0].oldestActiveDebtId).toBe("d1");
     // tope del abono = saldo de ESA deuda, no el agregado (evita sobre-abono)
     expect(res[0].oldestActiveDebtOutstanding).toBe(60);

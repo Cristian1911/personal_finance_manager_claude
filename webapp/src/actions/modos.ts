@@ -35,7 +35,7 @@ import type { ActiveModo, Modo, ModoParticipant, SharedPaymentGroup } from "@/ty
 // title, account + destinatario for the meta line, split state for the
 // "Repartido" chip, tags to show the ones that are not the trip's own.
 const MODO_TX_SELECT =
-  "id, amount, direction, transaction_date, currency_code, merchant_name, clean_description, raw_description, " +
+  "id, amount, direction, transaction_date, transaction_time, currency_code, merchant_name, clean_description, raw_description, notes, " +
   "is_excluded, transfer_group_id, split_group_id, split_repaid_amount, personal_debt_id, capture_method, " +
   "category:categories!transactions_category_id_fkey(id, name, name_es, color), " +
   "account:accounts!transactions_account_id_fkey(id, name, color), " +
