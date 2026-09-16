@@ -202,10 +202,8 @@ export async function runSubscriptionDetection(): Promise<ActionResult<{ created
     if (created > 0) updateTag("subscriptions");
     return { success: true, data: { created } };
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "No se pudieron detectar suscripciones",
-    };
+    console.error("runSubscriptionDetection failed", error);
+    return { success: false, error: "No se pudieron detectar suscripciones" };
   }
 }
 

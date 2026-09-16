@@ -16,9 +16,10 @@ const LOOKBACK_DAYS = 100;
 /**
  * Recurring-charge candidates for the "Parece recurrente" discovery
  * (Primeras semanas, spec §4.3). Runs the shared detector over the user's
- * recent OUTFLOW rows. Must stay on the authenticated cached client: the
- * description fallback reads `clean_description`, which is encrypted and
- * comes back NULL through the admin client.
+ * recent OUTFLOW rows and drops groups that are already scheduled. Must stay
+ * on the authenticated cached client: the description fallback reads
+ * `clean_description`, which is encrypted and comes back NULL through the
+ * admin client.
  */
 async function getRecurringCandidatesCached(
   userId: string,
@@ -36,13 +37,14 @@ async function getRecurringCandidatesCached(
     supabase
       .from("transactions")
       .select(
-        "id, destinatario_id, clean_description, transaction_date, amount, currency_code, direction, flow_class_effective",
+        "id, destinatario_id, clean_description, transaction_date, amount, currency_code, direction, flow_class_effective, recurrence_group_id",
       )
       .eq("user_id", userId)
       .eq("direction", "OUTFLOW")
       .eq("is_excluded", false)
       .is("reconciled_into_transaction_id", null)
-      .is("recurrence_group_id", null)
+      // Cuotas of one purchase look monthly and stable but are not a recurrente.
+      .is("installment_group_id", null)
       .gte("transaction_date", toColombiaDateString(since)),
     supabase
       .from("recurring_transaction_templates")
@@ -53,11 +55,15 @@ async function getRecurringCandidatesCached(
   ]);
   if (error) throw error;
 
-  // ponytail: a destinatario with an active template is already scheduled.
-  // Description-keyed groups can't be matched to templates without comparing
-  // merchant names, so they only drop once one of their rows gets linked
-  // (recurrence_group_id). Upgrade to a name match if a stale chip shows up.
-  const scheduled = new Set((templates ?? []).map((t) => t.destinatario_id));
+  // Two "already scheduled" signals, checked on the whole group so siblings of
+  // a promoted charge drop with it: (1) a destinatario with an active template,
+  // (2) any member linked to an occurrence (`recurrence_group_id`, stamped by
+  // Programar and by every auto-link path). Linked rows stay in the detector
+  // input on purpose — that is what makes their group form and then drop whole.
+  // ponytail: templates created from scratch for a destinatario-less merchant
+  // are not matched by name; the chip drops once a charge gets linked.
+  const scheduledDestinatarios = new Set((templates ?? []).map((t) => t.destinatario_id));
+  const linkedTxIds = new Set((txs ?? []).filter((t) => t.recurrence_group_id).map((t) => t.id));
 
   const rows: RecurringCandidateTransaction[] = (txs ?? []).map((t) => ({
     id: t.id,
@@ -71,7 +77,9 @@ async function getRecurringCandidatesCached(
   }));
 
   return detectRecurringCandidates(rows).filter(
-    (c) => !c.destinatario_id || !scheduled.has(c.destinatario_id),
+    (c) =>
+      !(c.destinatario_id && scheduledDestinatarios.has(c.destinatario_id)) &&
+      !c.transaction_ids.some((id) => linkedTxIds.has(id)),
   );
 }
 

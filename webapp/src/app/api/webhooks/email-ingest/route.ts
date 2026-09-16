@@ -983,7 +983,7 @@ async function processEmail(ctx: {
     // `revalidateFinancialViewsFromWebhook` docs for the why.
     revalidateFinancialViewsFromWebhook();
     revalidateTag("email-ingest", "zeta");
-    if (parsed.direction === "OUTFLOW") {
+    if (parsed.direction === "OUTFLOW" && destinatarioId) {
       scheduleSubscriptionDetection(userId, () => revalidateTag("subscriptions", "zeta"));
     }
 

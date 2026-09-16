@@ -51,9 +51,16 @@ export async function detectAndSuggestSubscriptions(
     detected_at: new Date().toISOString(),
   }));
 
-  const { data: inserted, error } = await client.from("subscriptions").insert(rows).select("id");
-  if (error && error.code !== "23505") throw new Error(error.message);
-  return inserted?.length ?? 0;
+  // One row per statement: the partial unique index (user_id, destinatario_id)
+  // WHERE status = 'suggested' would abort a bulk insert on the first duplicate
+  // and silently drop every other new candidate. Counts are small.
+  let created = 0;
+  for (const row of rows) {
+    const { error } = await client.from("subscriptions").insert(row);
+    if (!error) created += 1;
+    else if (error.code !== "23505") throw new Error(error.message);
+  }
+  return created;
 }
 
 /**
@@ -70,12 +77,18 @@ export async function detectAndSuggestSubscriptions(
  * through `userId`.
  */
 export function scheduleSubscriptionDetection(userId: string, invalidate: () => void): void {
-  after(async () => {
-    try {
-      const created = await detectAndSuggestSubscriptions(createAdminClient(), userId);
-      if (created > 0) invalidate();
-    } catch (error) {
-      console.error("[subscriptions] background detection failed", error);
-    }
-  });
+  try {
+    after(async () => {
+      try {
+        const created = await detectAndSuggestSubscriptions(createAdminClient(), userId);
+        if (created > 0) invalidate();
+      } catch (error) {
+        console.error("[subscriptions] background detection failed", error);
+      }
+    });
+  } catch (error) {
+    // `after()` throws synchronously when the runtime has no waitUntil; a
+    // persisted capture must never turn into a failed action because of it.
+    console.error("[subscriptions] could not schedule detection", error);
+  }
 }

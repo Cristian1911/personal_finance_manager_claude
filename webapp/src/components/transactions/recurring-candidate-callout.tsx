@@ -11,12 +11,8 @@ import { dismissDiscovery } from "@/actions/guided-experience";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GHOST_BUTTON_CLASS, PANEL_INSET_CLASS } from "@/lib/constants/styles";
+import { recurringDiscoveryId } from "@/lib/recurring/discovery-id";
 import type { CurrencyCode } from "@/types/domain";
-
-/** Discovery id shared with the Inicio card (slice 6) and `DiscoveryInline` (slice 7). */
-export function recurringDiscoveryId(candidate: RecurringCandidate): string {
-  return `recurring:${candidate.key}`;
-}
 
 type Props = {
   candidate: RecurringCandidate;
@@ -60,18 +56,24 @@ export function RecurringCandidateCallout({ candidate, transactionId, currency, 
 
   return (
     <section className="px-4 pt-5">
-      <div className={cn(PANEL_INSET_CLASS, "border-z-brass/20 bg-z-brass/8 p-4")}>
-        <Badge variant="outline" className="border-z-brass/30 bg-z-brass/10 text-z-brass">
+      <div className={cn(PANEL_INSET_CLASS, "border-z-brass/20 bg-z-brass/8 px-3.5 py-3")}>
+        <Badge variant="outline" className="border-z-brass/30 bg-z-brass/12 text-z-brass">
           <CalendarClock aria-hidden="true" />
           Parece recurrente
         </Badge>
         <p className="mt-2 text-[13px] leading-relaxed text-z-sage-light">
-          También se cobró {datesText} por {amountText}. Si lo programas, Zeta lo espera cada mes
-          y te avisa antes.
+          También se cobró {datesText} por <span className="tabular-nums">{amountText}</span>. Si
+          lo programas, Zeta lo espera cada mes y te avisa antes.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           {children}
-          <Button type="button" variant="outline" className={GHOST_BUTTON_CLASS} onClick={handleDismiss}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className={cn(GHOST_BUTTON_CLASS, "text-xs")}
+            onClick={handleDismiss}
+          >
             No es recurrente
           </Button>
         </div>

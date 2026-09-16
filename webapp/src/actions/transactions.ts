@@ -1006,7 +1006,9 @@ export async function createTransaction(
   // the debt account's balance AFTER persistTransaction already revalidated.
   revalidateFinancialViews();
 
-  if (parsed.data.direction === "OUTFLOW") {
+  // The subscription detector groups by destinatario; a row without one can't
+  // change any group, so don't spend the background run on it.
+  if (parsed.data.direction === "OUTFLOW" && finalDestinatarioId) {
     scheduleSubscriptionDetection(user.id, () => updateTag("subscriptions"));
   }
 
@@ -1072,7 +1074,7 @@ export async function createQuickCaptureTransaction(
     // the debt account's balance AFTER persistTransaction already revalidated.
     revalidateFinancialViews();
 
-    if (parsed.data.direction === "OUTFLOW") {
+    if (parsed.data.direction === "OUTFLOW" && destinatarioId) {
       scheduleSubscriptionDetection(user.id, () => updateTag("subscriptions"));
     }
   }

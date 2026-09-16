@@ -558,18 +558,22 @@ export function TransactionDetailClient({
 
   /* ─── Render ─────────────────────────────────────────────────────── */
 
-  const promoteSource = {
-    id: tx.id,
-    account_id: tx.account_id,
-    amount: tx.amount,
-    currency_code: tx.currency_code as CurrencyCode,
-    direction: tx.direction,
-    merchant_name: tx.merchant_name,
-    clean_description: tx.clean_description,
-    category_id: tx.category_id,
-    destinatario_id: tx.destinatario_id,
-    transaction_date: tx.transaction_date,
-  };
+  // Stable reference: PromoteToRecurringButton memoizes its prefill on it.
+  const promoteSource = useMemo(
+    () => ({
+      id: tx.id,
+      account_id: tx.account_id,
+      amount: tx.amount,
+      currency_code: tx.currency_code as CurrencyCode,
+      direction: tx.direction,
+      merchant_name: tx.merchant_name,
+      clean_description: tx.clean_description,
+      category_id: tx.category_id,
+      destinatario_id: tx.destinatario_id,
+      transaction_date: tx.transaction_date,
+    }),
+    [tx],
+  );
 
   return (
     <div className="space-y-0">
@@ -741,6 +745,7 @@ export function TransactionDetailClient({
             accounts={accounts}
             categories={categories}
             label="Programar"
+            triggerClassName={cn(BRASS_BUTTON_CLASS, "h-8 px-3 text-xs")}
           />
         </RecurringCandidateCallout>
       )}

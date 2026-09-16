@@ -3,6 +3,7 @@
 import { updateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { getDashboardConfig } from "@/actions/dashboard-config";
+import { DISCOVERY_ID_PATTERN } from "@/lib/recurring/discovery-id";
 import { dashboardConfigSchema } from "@/lib/validators/dashboard-config";
 import { getDefaultConfigForProfile } from "@/lib/dashboard-config-defaults";
 import { isDebtAccountType } from "@/lib/utils/account-balance";
@@ -237,13 +238,22 @@ export async function getDismissedDiscoveryIds(): Promise<string[]> {
   return Object.keys(discoveries).filter((id) => Boolean(discoveries[id]?.dismissedAt));
 }
 
+const MAX_DISCOVERIES = 300;
+
 export async function dismissDiscovery(id: string): Promise<GuidedResult> {
-  if (!id || id.length > 200) return { success: false, error: "Id inválido" };
-  return patchGuided((g) => ({
-    ...g,
-    discoveries: {
-      ...g.discoveries,
-      [id]: { ...g.discoveries?.[id], dismissedAt: new Date().toISOString() },
-    },
-  }));
+  if (id.length > 200 || !DISCOVERY_ID_PATTERN.test(id)) {
+    return { success: false, error: "Id inválido" };
+  }
+  return patchGuided((g) => {
+    const current = g.discoveries ?? {};
+    // Client-callable and append-only: cap the JSONB so it can't grow unbounded.
+    if (!(id in current) && Object.keys(current).length >= MAX_DISCOVERIES) return g;
+    return {
+      ...g,
+      discoveries: {
+        ...current,
+        [id]: { ...current[id], dismissedAt: new Date().toISOString() },
+      },
+    };
+  });
 }

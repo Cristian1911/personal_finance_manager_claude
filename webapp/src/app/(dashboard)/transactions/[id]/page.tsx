@@ -13,7 +13,7 @@ import {
 } from "@/actions/occurrences";
 import { getRecurringCandidateForTransaction } from "@/actions/recurring-candidates";
 import { getDismissedDiscoveryIds } from "@/actions/guided-experience";
-import { recurringDiscoveryId } from "@/components/transactions/recurring-candidate-callout";
+import { recurringDiscoveryId } from "@/lib/recurring/discovery-id";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { TransactionDetailClient } from "./transaction-detail-client";
 

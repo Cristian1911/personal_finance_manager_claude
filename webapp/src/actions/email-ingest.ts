@@ -249,7 +249,7 @@ async function persistParsedEmail(params: {
 
     revalidateFinancialViews();
     updateTag("email-ingest");
-    if (parsed.direction === "OUTFLOW") {
+    if (parsed.direction === "OUTFLOW" && destinatarioId) {
       scheduleSubscriptionDetection(userId, () => updateTag("subscriptions"));
     }
     return { success: true, data: "imported" };

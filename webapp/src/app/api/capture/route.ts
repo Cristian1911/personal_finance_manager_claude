@@ -194,7 +194,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CaptureRe
     );
   }
 
-  if (direction === "OUTFLOW") {
+  if (direction === "OUTFLOW" && destinatarioId) {
     scheduleSubscriptionDetection(auth.userId, () => revalidateTag("subscriptions", "zeta"));
   }
 
