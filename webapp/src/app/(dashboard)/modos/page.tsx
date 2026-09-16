@@ -1,7 +1,8 @@
 import { MapPin } from "lucide-react";
 import { listModos } from "@/actions/modos";
 import { ModosList } from "@/components/modos/modos-list";
-import { ModoFormDialog } from "@/components/modos/modo-form-dialog";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
 
@@ -13,13 +14,9 @@ export default async function ModosPage() {
     <div className="mx-auto max-w-3xl space-y-4 p-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight lg:text-3xl">Modos</h1>
-        <ModoFormDialog
-          trigger={
-            <button type="button" className={BRASS_BUTTON_CLASS}>
-              Nuevo modo
-            </button>
-          }
-        />
+        <Button asChild className={BRASS_BUTTON_CLASS}>
+          <Link href="/modos/nuevo">Nuevo viaje</Link>
+        </Button>
       </div>
       {modos.length === 0 ? (
         <EmptyState

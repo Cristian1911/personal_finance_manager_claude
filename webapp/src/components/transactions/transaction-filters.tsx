@@ -23,21 +23,25 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Bookmark, Search, SlidersHorizontal, X } from "lucide-react";
+import Link from "next/link";
+import { MapPin, Search, SlidersHorizontal, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MOBILE_SHEET_SAFE_AREA_CLASS, chipToggleClass } from "@/lib/constants/styles";
-import { ModoFormDialog } from "@/components/modos/modo-form-dialog";
-import type { Account, CategoryWithChildren, Tag } from "@/types/domain";
+import { findModoForTags } from "@/lib/utils/modo-summary";
+import type { Account, CategoryWithChildren, Modo, Tag } from "@/types/domain";
 
 export function TransactionFilters({
   accounts,
   tags = [],
   categories = [],
+  modos = [],
   embedded = false,
 }: {
   accounts: Account[];
   tags?: Tag[];
   categories?: CategoryWithChildren[];
+  /** Saved viajes/eventos — a tag filter that matches one links to it. */
+  modos?: Modo[];
   embedded?: boolean;
 }) {
   const router = useRouter();
@@ -227,22 +231,36 @@ export function TransactionFilters({
             )}
 
             {(() => {
+              // A tag filter IS a trip's membership rule. If a saved viaje
+              // already covers these tags, go there; otherwise offer to make one
+              // with the filter as its preset.
               const selectedTagIds = (searchParams.get("tags") ?? "")
                 .split(",")
                 .filter(Boolean);
               if (selectedTagIds.length === 0) return null;
+              const match = findModoForTags(modos, selectedTagIds);
+              if (match) {
+                return (
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={`/modos/${match.id}`}>
+                      <span aria-hidden>{match.emoji ?? "📍"}</span>
+                      Ver viaje · {match.name}
+                    </Link>
+                  </Button>
+                );
+              }
+              const qs = new URLSearchParams({ tags: selectedTagIds.join(",") });
+              const from = searchParams.get("dateFrom");
+              const to = searchParams.get("dateTo");
+              if (from) qs.set("dateFrom", from);
+              if (to) qs.set("dateTo", to);
               return (
-                <ModoFormDialog
-                  presetTagIds={selectedTagIds}
-                  presetDateFrom={searchParams.get("dateFrom") ?? undefined}
-                  presetDateTo={searchParams.get("dateTo") ?? undefined}
-                  trigger={
-                    <Button variant="outline" size="sm">
-                      <Bookmark className="h-4 w-4 mr-1" />
-                      Guardar como Modo
-                    </Button>
-                  }
-                />
+                <Button asChild variant="outline" size="sm">
+                  <Link href={`/modos/nuevo?${qs.toString()}`}>
+                    <MapPin className="h-4 w-4 mr-1" />
+                    Crear viaje con estas etiquetas
+                  </Link>
+                </Button>
               );
             })()}
 
