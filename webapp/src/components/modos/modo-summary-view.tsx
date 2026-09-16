@@ -30,12 +30,12 @@ import { Expand } from "@/components/mobile/v2/expand";
 import { RecordRepaymentDialog } from "@/components/personas/record-repayment-dialog";
 import { ModoActions } from "@/components/modos/modo-actions";
 import { TxDetailGrid } from "@/components/modos/modo-tx-detail-grid";
+import { PersonAvatar } from "@/components/personas/person-avatar";
 import { useAllTags, useDestinatarios } from "@/components/providers/app-data-provider";
 import {
   BRASS_BUTTON_CLASS,
   BRASS_GHOST_BUTTON_CLASS,
   GHOST_BUTTON_CLASS,
-  ICON_TRIGGER_CLASS,
   PANEL_INSET_CLASS,
   PANEL_SURFACE_CLASS,
   ROW_EXPAND_TRIGGER_CLASS,
@@ -575,17 +575,6 @@ function SplitPanel({ split: sp, showCurrency }: { split: SpendSplit; showCurren
 }
 
 // ── Personas ─────────────────────────────────────────────────────────────
-function PersonAvatar({ name }: { name: string }) {
-  return (
-    <span
-      className="flex size-9 shrink-0 items-center justify-center rounded-full bg-z-brass/15 text-sm font-semibold text-z-brass"
-      aria-hidden
-    >
-      {name.trim().charAt(0).toUpperCase() || "?"}
-    </span>
-  );
-}
-
 function PersonCard({ person: p, onRepay }: { person: SettleUpPerson; onRepay?: () => void }) {
   const c = cur(p.currency);
   const owes = p.outstanding > 0;
@@ -745,7 +734,7 @@ function ModoTxItem({
               className={cn(
                 "max-w-full truncate rounded-full border px-2 py-0.5 text-[10px] transition-colors disabled:opacity-60",
                 CHIP_TONE[chip.tone],
-                chip.tone === "muted" && "border-white/10 hover:border-z-brass/30 hover:text-z-brass",
+                chip.tone === "muted" && "hover:border-z-brass/30 hover:text-z-brass",
               )}
             >
               {chip.label}
@@ -812,7 +801,7 @@ function ModoTxItem({
               </Button>
               <Link
                 href={`/transactions/${tx.id}`}
-                className={cn(ICON_TRIGGER_CLASS, "ml-auto inline-flex items-center gap-1 px-2 py-1 text-xs text-z-brass hover:underline")}
+                className="ml-auto inline-flex items-center gap-1 text-xs text-z-brass hover:underline"
               >
                 Ver movimiento <ExternalLink className="size-3" />
               </Link>
