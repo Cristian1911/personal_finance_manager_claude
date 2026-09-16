@@ -13,7 +13,7 @@ vi.mock("next/cache", () => ({
 
 import { getModoTransactionIds } from "@/lib/modos/membership";
 
-// Query builder mock: transaction_tags(.in tag) -> rows; transactions(.in id .gte .lte) -> rows
+// Query builder mock: transaction_tags(.in tag) -> rows; transactions(.in id) -> rows
 function makeClient() {
   return {
     from(table: string) {
@@ -30,15 +30,11 @@ function makeClient() {
           }),
         };
       }
-      // transactions: only t1 falls inside [2026-07-01, 2026-07-05]
+      // transactions: both tagged rows exist and belong to the user
       return {
         select: () => ({
           eq: () => ({
-            in: () => ({
-              gte: () => ({
-                lte: () => Promise.resolve({ data: [{ id: "t1" }] }),
-              }),
-            }),
+            in: () => Promise.resolve({ data: [{ id: "t1" }, { id: "t2" }] }),
           }),
         }),
       };
@@ -51,21 +47,13 @@ beforeEach(() => {
 });
 
 describe("getModoTransactionIds", () => {
-  it("intersecta tags (OR, deduplicado) con el rango de fechas", async () => {
-    const ids = await getModoTransactionIds(
-      { date_from: "2026-07-01", date_to: "2026-07-05", tag_ids: ["tagA", "tagB"] },
-      "user-1",
-      "token",
-    );
-    expect(ids).toEqual(["t1"]);
+  it("la etiqueta manda: tags OR, deduplicado, sin filtrar por fechas", async () => {
+    const ids = await getModoTransactionIds({ tag_ids: ["tagA", "tagB"] }, "user-1", "token");
+    expect(ids).toEqual(["t1", "t2"]);
   });
 
   it("devuelve [] si el modo no tiene tags", async () => {
-    const ids = await getModoTransactionIds(
-      { date_from: "2026-07-01", date_to: "2026-07-05", tag_ids: [] },
-      "user-1",
-      "token",
-    );
+    const ids = await getModoTransactionIds({ tag_ids: [] }, "user-1", "token");
     expect(ids).toEqual([]);
   });
 });

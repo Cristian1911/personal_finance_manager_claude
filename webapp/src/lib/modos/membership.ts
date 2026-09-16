@@ -4,12 +4,14 @@ import type { Modo } from "@/types/domain";
 
 /**
  * Membership rule of a viaje/evento — the single source of truth: a
- * transaction belongs to the modo when it carries ANY of its tags AND its
- * date falls inside the range. Lives outside the `"use server"` module so
- * it is never published as a callable endpoint that takes its own identity.
+ * transaction belongs to the modo when it carries ANY of its tags, whatever
+ * its date. The date range gates only what the trip does on its own (auto-tag
+ * while active, propose untagged candidates) — flights bought months before
+ * and tagged by hand are the trip's spend too. Lives outside the `"use server"`
+ * module so it is never published as an endpoint that takes its own identity.
  */
 export async function getModoTransactionIds(
-  modo: Pick<Modo, "date_from" | "date_to" | "tag_ids">,
+  modo: Pick<Modo, "tag_ids">,
   userId: string,
   accessToken: string,
 ): Promise<string[]> {
@@ -24,12 +26,11 @@ export async function getModoTransactionIds(
   const candidateIds = dedupeTransactionIds(tagged ?? []);
   if (candidateIds.length === 0) return [];
 
+  // Re-check against the transactions view (ownership + still exists).
   const { data: rows } = await supabase
     .from("transactions")
     .select("id")
     .eq("user_id", userId)
-    .in("id", candidateIds)
-    .gte("transaction_date", modo.date_from)
-    .lte("transaction_date", modo.date_to);
+    .in("id", candidateIds);
   return (rows ?? []).map((r) => r.id);
 }

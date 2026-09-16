@@ -10,6 +10,7 @@ import {
   assignTransactionsToModos,
   findModoForTags,
   modoOverlapsWindow,
+  modoDatePosition,
   isModoOngoing,
 } from "@/lib/utils/modo-summary";
 import type { ModoTxRow } from "@/lib/utils/modo-summary";
@@ -216,10 +217,10 @@ describe("assignTransactionsToModos", () => {
     { id: "t3", transaction_date: "2026-07-09" },
     { id: "t4", transaction_date: "2026-07-04" }, // sin etiqueta
   ];
-  it("aplica tags OR y rango de fechas por modo, sin duplicar", () => {
+  it("aplica tags OR por modo sin mirar la fecha (un vuelo pagado antes cuenta), sin duplicar", () => {
     const out = assignTransactionsToModos(modos, tagRows, rows);
-    expect(out.get("m1")!.map((t) => t.id)).toEqual(["t1"]);
-    expect(out.get("m2")!.map((t) => t.id)).toEqual(["t2", "t3"]);
+    expect(out.get("m1")!.map((t) => t.id)).toEqual(["t1", "t3"]);
+    expect(out.get("m2")!.map((t) => t.id)).toEqual(["t1", "t2", "t3"]);
     expect(out.get("m3")).toEqual([]);
   });
 });
@@ -244,6 +245,12 @@ describe("rangos", () => {
     expect(modoOverlapsWindow(m, "2026-07-05", "2026-08-01")).toBe(true);
     expect(modoOverlapsWindow(m, "2026-06-01", "2026-07-01")).toBe(true);
     expect(modoOverlapsWindow(m, "2026-07-06", "2026-08-01")).toBe(false);
+  });
+  it("modoDatePosition ubica una fila respecto a las fechas del viaje", () => {
+    const m = { date_from: "2026-07-01", date_to: "2026-07-05" };
+    expect(modoDatePosition("2026-05-20", m)).toBe("before");
+    expect(modoDatePosition("2026-07-03", m)).toBe("during");
+    expect(modoDatePosition("2026-07-09", m)).toBe("after");
   });
   it("isModoOngoing compara contra hoy", () => {
     expect(isModoOngoing({ date_to: "2026-07-05" }, "2026-07-05")).toBe(true);

@@ -275,14 +275,15 @@ export function settleUpByPerson(
 
 // ── Membership without a round-trip per modo ─────────────────────────────
 
-export type ModoMembership = Pick<Modo, "id" | "date_from" | "date_to" | "tag_ids">;
+export type ModoMembership = Pick<Modo, "id" | "tag_ids">;
 
 /**
- * Same rule as `getModoTransactionIds` (any of the modo's tags AND inside the
- * date range), applied in memory to one batch of tag rows + transactions so a
- * list of modos costs two queries, not two per modo.
+ * Same rule as `getModoTransactionIds` (any of the modo's tags, whatever the
+ * date — the range only gates auto-tagging and candidates), applied in memory
+ * to one batch of tag rows + transactions so a list of modos costs two
+ * queries, not two per modo.
  */
-export function assignTransactionsToModos<T extends Pick<ModoTxRow, "id" | "transaction_date">>(
+export function assignTransactionsToModos<T extends Pick<ModoTxRow, "id">>(
   modos: ModoMembership[],
   tagRows: Array<{ transaction_id: string; tag_id: string }>,
   txs: T[],
@@ -298,7 +299,6 @@ export function assignTransactionsToModos<T extends Pick<ModoTxRow, "id" | "tran
     const members: T[] = [];
     if (modo.tag_ids && modo.tag_ids.length > 0) {
       for (const tx of txs) {
-        if (tx.transaction_date < modo.date_from || tx.transaction_date > modo.date_to) continue;
         const txTags = tagsByTx.get(tx.id);
         if (!txTags) continue;
         if (modo.tag_ids.some((id) => txTags.has(id))) members.push(tx);
@@ -333,6 +333,16 @@ export function findModoForTags<M extends Pick<Modo, "id" | "tag_ids" | "date_fr
     }
   }
   return best?.modo ?? null;
+}
+
+/** Where a member row sits relative to the trip's dates (tagged rows outside the range still count). */
+export function modoDatePosition(
+  date: string,
+  modo: Pick<Modo, "date_from" | "date_to">,
+): "before" | "during" | "after" {
+  if (date < modo.date_from) return "before";
+  if (date > modo.date_to) return "after";
+  return "during";
 }
 
 /** True when the modo's range covers today (or is still ahead). Not the `is_active` flag. */
