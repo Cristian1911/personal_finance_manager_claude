@@ -31,9 +31,13 @@ import { importPayloadSchema } from "@/lib/validators/import";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { carryRecurringLinkToSurvivor } from "@/lib/recurring/carry-link";
 import type { ActionResult } from "@/types/actions";
+import { shareImportedRows, type ShareRowInput } from "@/lib/import/share-imported-rows";
 import type {
   AccountUpdateResult,
+  ImportModoAssignment,
   ImportResult,
+  ImportScope,
+  ImportSkippedRow,
   ReconciliationDecisionInput,
   ReconciliationPreviewItem,
   ReconciliationPreviewResult,
@@ -1438,6 +1442,26 @@ export async function importTransactions(
   const details: string[] = [];
   const balanceDeltaTxs: TransactionToImport[] = [];
   const pendingTagInserts: { transaction_id: string; tag_id: string; user_id: string }[] = [];
+  // What was skipped and why — the results screen lists it so a duplicate is a
+  // link to the row already in the ledger, not an anonymous count.
+  const SKIPPED_ROWS_CAP = 200;
+  const skippedRows: ImportSkippedRow[] = [];
+  let skippedRowsTruncated = false;
+  function recordSkipped(tx: TransactionToImport, reason: ImportSkippedRow["reason"], existingTransactionId?: string) {
+    skipped++;
+    if (skippedRows.length >= SKIPPED_ROWS_CAP) {
+      skippedRowsTruncated = true;
+      return;
+    }
+    skippedRows.push({
+      raw_description: tx.raw_description,
+      transaction_date: tx.transaction_date,
+      amount: tx.amount,
+      currency_code: tx.currency_code,
+      reason,
+      ...(existingTransactionId ? { existingTransactionId } : {}),
+    });
+  }
 
   type InsertedRow = {
     id: string;
@@ -1565,12 +1589,13 @@ export async function importTransactions(
   // existing idempotency keys up front, then batch-insert only the new rows.
   const uniqueKeys = [...new Set(idempotencyKeys)];
   const existingKeys = new Set<string>();
+  const existingIdByKey = new Map<string, string>();
   // Independent reads — run the chunk lookups concurrently to cut latency.
   const existingKeyResults = await Promise.all(
     chunkArray(uniqueKeys, 100).map((chunk) =>
       supabase
         .from("transactions")
-        .select("idempotency_key")
+        .select("idempotency_key, id")
         .eq("user_id", user.id)
         .in("idempotency_key", chunk),
     ),
@@ -1583,7 +1608,10 @@ export async function importTransactions(
       continue;
     }
     for (const row of existingRows ?? []) {
-      if (row.idempotency_key) existingKeys.add(row.idempotency_key);
+      if (row.idempotency_key) {
+        existingKeys.add(row.idempotency_key);
+        if (!existingIdByKey.has(row.idempotency_key)) existingIdByKey.set(row.idempotency_key, row.id);
+      }
     }
   }
 
@@ -1593,8 +1621,12 @@ export async function importTransactions(
   const toInsert: PreparedInsert[] = [];
   transactions.forEach((tx, index) => {
     const key = idempotencyKeys[index];
-    if (existingKeys.has(key) || seenKeys.has(key)) {
-      skipped++;
+    if (existingKeys.has(key)) {
+      recordSkipped(tx, "already_imported", existingIdByKey.get(key));
+      return;
+    }
+    if (seenKeys.has(key)) {
+      recordSkipped(tx, "duplicate_in_batch");
       return;
     }
     seenKeys.add(key);
@@ -1621,7 +1653,7 @@ export async function importTransactions(
           .single();
         if (singleErr) {
           if (singleErr.code === "23505") {
-            skipped++;
+            recordSkipped(tx, "insert_conflict");
           } else {
             errors++;
             details.push(`${tx.raw_description}: ${singleErr.message}`);
@@ -1661,6 +1693,9 @@ export async function importTransactions(
   // failed chunk must not misclassify legitimately-absent candidates from
   // the chunks that succeeded.
   const failedCandidateIds = new Set<string>();
+  // Candidates that are already a shared payment: merging an imported row into
+  // one must not split it a second time (its debts would be orphaned).
+  const alreadySharedCandidateIds = new Set<string>();
   if (candidateIds.length > 0) {
     const candidateChunks = chunkArray([...new Set(candidateIds)], 100);
     const candidateResults = await Promise.all(
@@ -1668,7 +1703,7 @@ export async function importTransactions(
         supabase
           .from("transactions")
           .select(
-            "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method, recurrence_group_id"
+            "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method, recurrence_group_id, split_group_id"
           )
           .eq("user_id", user.id)
           .is("reconciled_into_transaction_id", null)
@@ -1686,6 +1721,7 @@ export async function importTransactions(
       }
       for (const row of candidateRows ?? []) {
         decisionCandidateMap.set(row.id, row as ReconciliationCandidate);
+        if (row.split_group_id) alreadySharedCandidateIds.add(row.id);
       }
     });
   }
@@ -1709,6 +1745,7 @@ export async function importTransactions(
   // back null for the next one. The batched snapshot is taken once, so that
   // guard must be replayed locally: a candidate can be claimed exactly once.
   const claimedCandidateIds = new Set<string>();
+  const shareDroppedKeys = new Set<string>();
 
   for (const { tx, key, index } of toInsert) {
     const insertedTx = insertedByKey.get(key);
@@ -1779,6 +1816,10 @@ export async function importTransactions(
     });
 
     claimedCandidateIds.add(existingTx.id);
+    if (tx.share && alreadySharedCandidateIds.has(existingTx.id)) {
+      shareDroppedKeys.add(key);
+      details.push(`${tx.raw_description}: ya era un pago compartido; no se repartió de nuevo.`);
+    }
     mergeOps.push({
       insertedId: insertedTx.id,
       existingId: existingTx.id,
@@ -2065,6 +2106,104 @@ export async function importTransactions(
     }
   }
 
+  // ── 9. Review-step enrichments: free tags, trip/event, "compartido con…".
+  //    Runs after merges (the survivor id is final) and after balances (a
+  //    split never moves money). Tag rows join the single upsert below. ──
+  const enrichedRows = toInsert.filter(({ key }) => insertedByKey.has(key));
+  let sharedCount = 0;
+  let installmentLinkedCount = 0;
+  const modoAssignments: ImportModoAssignment[] = [];
+  if (enrichedRows.length > 0) {
+    const freeTagIds = new Set<string>();
+    const modoIds = new Set<string>();
+    for (const { tx } of enrichedRows) {
+      for (const id of tx.tag_ids ?? []) freeTagIds.add(id);
+      if (tx.modo_id) modoIds.add(tx.modo_id);
+    }
+
+    if (freeTagIds.size > 0) {
+      // Only the user's own tags (or system tags), mirroring attachTagsToTransactions.
+      const { data: allowedTags, error: tagLookupErr } = await supabase
+        .from("tags")
+        .select("id")
+        .in("id", [...freeTagIds])
+        .or(`user_id.eq.${user.id},user_id.is.null`);
+      if (tagLookupErr) {
+        details.push(`Etiquetas: no se pudieron verificar (${tagLookupErr.message})`);
+      } else {
+        const allowed = new Set((allowedTags ?? []).map((t) => t.id));
+        for (const { tx, key } of enrichedRows) {
+          const insertedId = insertedByKey.get(key)!.id;
+          for (const tag_id of tx.tag_ids ?? []) {
+            if (allowed.has(tag_id)) pendingTagInserts.push({ transaction_id: insertedId, tag_id, user_id: user.id });
+          }
+        }
+      }
+    }
+
+    if (modoIds.size > 0) {
+      const { data: modoRows, error: modoErr } = await supabase
+        .from("modos")
+        .select("id, name, emoji, auto_tag_id, tag_ids")
+        .eq("user_id", user.id)
+        .in("id", [...modoIds]);
+      if (modoErr) {
+        details.push(`Viajes: no se pudieron verificar (${modoErr.message})`);
+      } else {
+        const modoById = new Map((modoRows ?? []).map((m) => [m.id, m]));
+        const countByModo = new Map<string, number>();
+        const reviewRows: { modo_id: string; user_id: string; transaction_id: string; decision: string; source: string }[] = [];
+        for (const { tx, key } of enrichedRows) {
+          if (!tx.modo_id) continue;
+          const modo = modoById.get(tx.modo_id);
+          if (!modo) continue;
+          const tagId = modo.auto_tag_id ?? modo.tag_ids?.[0] ?? null;
+          if (!tagId) continue;
+          const insertedId = insertedByKey.get(key)!.id;
+          pendingTagInserts.push({ transaction_id: insertedId, tag_id: tagId, user_id: user.id });
+          reviewRows.push({ modo_id: modo.id, user_id: user.id, transaction_id: insertedId, decision: "included", source: "manual" });
+          countByModo.set(modo.id, (countByModo.get(modo.id) ?? 0) + 1);
+        }
+        const missing = [...modoIds].filter((id) => !modoById.has(id));
+        if (missing.length > 0) details.push("Viaje no encontrado: algunas filas no se etiquetaron.");
+        if (reviewRows.length > 0) {
+          const { error: reviewErr } = await supabase
+            .from("modo_tx_reviews")
+            .upsert(reviewRows, { onConflict: "modo_id,transaction_id" });
+          if (reviewErr) details.push(`Viajes: revisión no guardada (${reviewErr.message})`);
+        }
+        for (const [modoId, count] of countByModo) {
+          const modo = modoById.get(modoId)!;
+          modoAssignments.push({ modoId, name: modo.name, emoji: modo.emoji ?? null, count });
+        }
+      }
+    }
+
+    const shareInputs: ShareRowInput[] = [];
+    for (const { tx, key } of enrichedRows) {
+      if (!tx.share || tx.direction !== "OUTFLOW" || shareDroppedKeys.has(key)) continue;
+      shareInputs.push({
+        transactionId: insertedByKey.get(key)!.id,
+        amount: tx.amount,
+        currency_code: tx.currency_code,
+        transaction_date: tx.transaction_date,
+        raw_description: tx.raw_description,
+        installment_group_id: tx.installment_group_id ?? null,
+        installment_current: tx.installment_current ?? null,
+        installment_total: tx.installment_total ?? null,
+        original_amount: tx.original_amount ?? null,
+        share: tx.share,
+      });
+    }
+    if (shareInputs.length > 0) {
+      const shareRes = await shareImportedRows(supabase, user.id, shareInputs);
+      sharedCount = shareRes.sharedCount;
+      installmentLinkedCount = shareRes.installmentLinkedCount;
+      errors += shareRes.errors.length;
+      details.push(...shareRes.errors, ...shareRes.notes);
+    }
+  }
+
   // Batch-insert all accumulated transaction tags
   if (pendingTagInserts.length > 0) {
     const { error: tagError } = await supabase
@@ -2083,10 +2222,36 @@ export async function importTransactions(
     // detection is best-effort; never fail the import on it
   }
 
+  // Result metadata for the actionable "Listo" screen.
+  const mergedCategoryByInsertedId = new Map(mergeOps.map((op) => [op.insertedId, op.merged.category_id ?? null]));
+  const createdTransactionIds: string[] = [];
+  let uncategorizedCount = 0;
+  const scopeMap = new Map<string, ImportScope>();
+  for (const { tx, key } of enrichedRows) {
+    const inserted = insertedByKey.get(key)!;
+    createdTransactionIds.push(inserted.id);
+    const categoryId = mergedCategoryByInsertedId.has(inserted.id)
+      ? mergedCategoryByInsertedId.get(inserted.id)
+      : inserted.category_id;
+    const uncategorized = tx.direction === "OUTFLOW" && !categoryId;
+    if (uncategorized) uncategorizedCount++;
+    const month = tx.transaction_date.slice(0, 7);
+    const scopeKey = `${tx.account_id}|${month}`;
+    const scope = scopeMap.get(scopeKey) ?? { accountId: tx.account_id, month, imported: 0, uncategorized: 0 };
+    scope.imported++;
+    if (uncategorized) scope.uncategorized++;
+    scopeMap.set(scopeKey, scope);
+  }
+  const scopes = [...scopeMap.values()].sort((a, b) => b.imported - a.imported);
+
   revalidateFinancialViews();
   updateTag("snapshots");
   updateTag("impact");
   updateTag("tags");
+  if (modoAssignments.length > 0 || sharedCount > 0 || installmentLinkedCount > 0) {
+    // Trip totals/detail cache on `modos`; a split changes what a trip owes.
+    updateTag("modos");
+  }
 
   // Analytics events are independent — fire them concurrently.
   const productEvents: Promise<unknown>[] = [
@@ -2105,6 +2270,11 @@ export async function importTransactions(
         leftAsSeparate,
         account_updates: accountUpdates.length,
         statement_meta_count: normalizedStatementMeta?.length ?? 0,
+        shared: sharedCount,
+        installment_linked: installmentLinkedCount,
+        modo_assigned: modoAssignments.reduce((s, m) => s + m.count, 0),
+        tagged: pendingTagInserts.length,
+        uncategorized: uncategorizedCount,
       },
     }),
   ];
@@ -2168,6 +2338,14 @@ export async function importTransactions(
       leftAsSeparate,
       adjustmentsExcluded,
       accountUpdates,
+      createdTransactionIds,
+      skippedRows,
+      skippedRowsTruncated,
+      uncategorizedCount,
+      sharedCount,
+      installmentLinkedCount,
+      modoAssignments,
+      scopes,
     },
   };
 }

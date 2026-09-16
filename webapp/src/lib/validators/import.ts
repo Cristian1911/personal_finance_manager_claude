@@ -1,6 +1,21 @@
 import { z } from "zod";
 import { uuidStr } from "./shared";
 
+export const importShareConfigSchema = z.object({
+  method: z.enum(["equal", "percent"]),
+  userIncluded: z.boolean(),
+  participants: z
+    .array(
+      z.object({
+        destinatario_id: uuidStr("Persona inválida"),
+        value: z.number().min(0).max(100).optional(),
+      })
+    )
+    .min(1, "Elige al menos una persona")
+    .max(12, "Máximo 12 personas"),
+  ea_rate_percent: z.number().min(0).max(200).optional().nullable(),
+});
+
 export const transactionToImportSchema = z.object({
   import_key: z.string().optional(),
   account_id: uuidStr("Cuenta inválida"),
@@ -25,6 +40,12 @@ export const transactionToImportSchema = z.object({
     uuidStr().optional().nullable()
   ),
   merchant_name: z.string().optional().nullable(),
+  tag_ids: z.array(uuidStr("Etiqueta inválida")).max(20).optional(),
+  modo_id: z.preprocess(
+    (val) => (val === "" || val === null ? undefined : val),
+    uuidStr("Viaje inválido").optional().nullable()
+  ),
+  share: importShareConfigSchema.optional().nullable(),
 });
 
 export const reconciliationDecisionSchema = z.object({

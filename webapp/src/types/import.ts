@@ -75,6 +75,20 @@ export type StatementAccountMapping = {
   primaryCurrency?: string; // user's choice when multiple currencies map to same account
 };
 
+/**
+ * "Compartido con…" decided per row in the review step. Non-installment rows
+ * are split on their amount; a purchase in cuotas is split ONCE as the whole
+ * purchase (precio + interés estimado from `ea_rate_percent`).
+ */
+export type ImportShareConfig = {
+  method: "equal" | "percent";
+  userIncluded: boolean;
+  /** `value` = percentage when method is "percent". */
+  participants: { destinatario_id: string; value?: number }[];
+  /** Statement credit-card EA rate (%); null → interest 0 + "tasa no disponible". */
+  ea_rate_percent?: number | null;
+};
+
 export type TransactionToImport = {
   import_key?: string;
   account_id: string;
@@ -93,6 +107,38 @@ export type TransactionToImport = {
   notes?: string | null;
   destinatario_id?: string | null;
   merchant_name?: string | null;
+  /** Free tags chosen in the review step (attached after insert). */
+  tag_ids?: string[];
+  /** Trip/event to file the row under (its tag is attached + review recorded). */
+  modo_id?: string | null;
+  share?: ImportShareConfig | null;
+};
+
+export type ImportSkippedReason = "already_imported" | "duplicate_in_batch" | "insert_conflict";
+
+export type ImportSkippedRow = {
+  raw_description: string;
+  transaction_date: string;
+  amount: number;
+  currency_code: string;
+  reason: ImportSkippedReason;
+  /** The row already in the ledger, when known (already_imported). */
+  existingTransactionId?: string;
+};
+
+/** One (account, month) bucket the import touched — for deep links. */
+export type ImportScope = {
+  accountId: string;
+  month: string; // YYYY-MM
+  imported: number;
+  uncategorized: number;
+};
+
+export type ImportModoAssignment = {
+  modoId: string;
+  name: string;
+  emoji: string | null;
+  count: number;
 };
 
 export type ImportResult = {
@@ -105,6 +151,16 @@ export type ImportResult = {
   leftAsSeparate: number;
   adjustmentsExcluded?: number;
   accountUpdates?: AccountUpdateResult[];
+  createdTransactionIds?: string[];
+  skippedRows?: ImportSkippedRow[];
+  skippedRowsTruncated?: boolean;
+  uncategorizedCount?: number;
+  /** New shared-payment groups created at import. */
+  sharedCount?: number;
+  /** Cuota rows attached to an already-shared purchase (no new debts). */
+  installmentLinkedCount?: number;
+  modoAssignments?: ImportModoAssignment[];
+  scopes?: ImportScope[];
 };
 
 export type ReconciliationDecisionInput = {

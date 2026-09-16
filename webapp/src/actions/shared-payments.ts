@@ -63,15 +63,28 @@ export type SplitTxConfig = {
  * Compartido por `createSharedPayment` (modo "existing") y el batch del modo
  * compartido (`shareModoTransactions`) — una sola regla de reparto.
  */
+export type SplitTxOptions = {
+  /** Amount to split. Defaults to `tx.amount`; a purchase in cuotas passes precio + interés. */
+  total?: number;
+  /** Other rows of the same purchase (later cuotas) that carry the group too. */
+  extraTransactionIds?: string[];
+  /** Installment metadata stamped on every debt of the group. */
+  debtExtras?: Pick<PersonalDebtInsert, "installment_group_id" | "installment_total" | "group_total_amount">;
+  /** totalInterest / totalCost — each debt's interest_amount = share × ratio. */
+  interestShareRatio?: number;
+};
+
 export async function splitExistingTransaction(
   supabase: SupabaseClient<Database>,
   userId: string,
   tx: { id: string; amount: number; currency_code: string },
   config: SplitTxConfig,
+  opts: SplitTxOptions = {},
 ): Promise<
   | { ok: true; split_group_id: string; debt_ids: string[] }
   | { ok: false; error: string }
 > {
+  const targetIds = [tx.id, ...(opts.extraTransactionIds ?? []).filter((id) => id !== tx.id)];
   // Materialize any ad-hoc (typed-name) participants first — every debt needs a
   // destinatario_id. Done BEFORE the split math so a resolution failure costs
   // nothing but the hidden rows we clean up on the error paths below.
@@ -81,7 +94,7 @@ export async function splitExistingTransaction(
 
   const decimals = getCurrencyDecimals(tx.currency_code as CurrencyCode);
   const split = computeSplit({
-    total: tx.amount,
+    total: opts.total ?? tx.amount,
     method: config.method,
     participants: people.map((x) => ({
       destinatario_id: x.destinatario_id,
@@ -99,7 +112,7 @@ export async function splitExistingTransaction(
   const { error: updErr } = await supabase
     .from("transactions")
     .update({ split_group_id: splitGroupId, split_repaid_amount: 0 })
-    .eq("id", tx.id)
+    .in("id", targetIds)
     .eq("user_id", userId);
   if (updErr) {
     await cleanupAdHocDestinatarios(supabase, userId, createdIds);
@@ -124,6 +137,10 @@ export async function splitExistingTransaction(
       status: "active",
       split_group_id: splitGroupId,
       origin_transaction_id: tx.id,
+      ...(opts.debtExtras ?? {}),
+      ...(opts.interestShareRatio != null && opts.interestShareRatio > 0
+        ? { interest_amount: Math.round(share.amount * opts.interestShareRatio * 100) / 100 }
+        : {}),
     };
   });
   const { error: debtsErr } = await supabase.from("personal_debts").insert(debtsToInsert);
@@ -133,7 +150,7 @@ export async function splitExistingTransaction(
     await supabase
       .from("transactions")
       .update({ split_group_id: null, split_repaid_amount: null })
-      .eq("id", tx.id)
+      .in("id", targetIds)
       .eq("user_id", userId);
     await cleanupAdHocDestinatarios(supabase, userId, createdIds);
     return { ok: false, error: "Error al crear las deudas del reparto" };
