@@ -619,8 +619,10 @@ async function getSharedPaymentGroupsCached(
       origin_account_id: originTx?.account_id ?? null,
       installment_group_id: gdebts[0].installment_group_id ?? null,
       installment_total: gdebts[0].installment_total ?? null,
-      interest_total: isInstallmentGroup
-        ? gdebts.reduce((s, d) => s + Number(d.interest_amount ?? 0), 0)
+      // Each debt stores its own interest share; scale back up to the whole
+      // purchase (the user's part carries the same ratio) for the breakdown.
+      interest_total: isInstallmentGroup && principalSum > 0
+        ? Math.round(gdebts.reduce((s, d) => s + Number(d.interest_amount ?? 0), 0) * (total / principalSum) * 100) / 100
         : null,
       debts: gdebts,
     });

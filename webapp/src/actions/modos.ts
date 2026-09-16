@@ -9,6 +9,7 @@ import { getModoTransactionIds } from "@/lib/modos/membership";
 import {
   summarizeModo,
   filterSharedGroupsByOrigin,
+  collectSplitGroupIds,
   assignTransactionsToModos,
   isModoSpend,
   type ModoTxRow,
@@ -37,6 +38,7 @@ import type { ActiveModo, Modo, ModoParticipant, SharedPaymentGroup } from "@/ty
 const MODO_TX_SELECT =
   "id, amount, direction, transaction_date, transaction_time, currency_code, merchant_name, clean_description, raw_description, notes, " +
   "is_excluded, transfer_group_id, split_group_id, split_repaid_amount, personal_debt_id, capture_method, " +
+  "installment_current, installment_total, " +
   "category:categories!transactions_category_id_fkey(id, name, name_es, color), " +
   "account:accounts!transactions_account_id_fkey(id, name, color), " +
   "destinatario:destinatarios!transactions_destinatario_id_fkey(id, name), " +
@@ -244,7 +246,7 @@ export async function getModoSummary(id: string): Promise<ActionResult<ModoDetai
   const txIds = detail.transactions.map((t) => t.id);
   const summary = summarizeModo(detail.transactions);
   const sharedGroups = groupsResult.success
-    ? filterSharedGroupsByOrigin(groupsResult.data, txIds)
+    ? filterSharedGroupsByOrigin(groupsResult.data, txIds, collectSplitGroupIds(detail.transactions))
     : [];
 
   return {

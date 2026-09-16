@@ -119,6 +119,28 @@ export function SharedPaymentCard({ group, currency }: SharedPaymentCardProps) {
         </div>
       </div>
 
+      {/* A purchase in cuotas shared as a whole: say what the total is made of
+          and what each person would pay per month if they repay in cuotas. */}
+      {group.installment_total != null && group.installment_total > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Compra en {group.installment_total} cuotas
+          {group.interest_total != null && group.interest_total > 0 ? (
+            <>
+              {" "}· precio{" "}
+              <span className="tabular-nums text-z-sage-light">
+                {formatCurrency(Math.max(0, group.total - group.interest_total), currency)}
+              </span>
+              {" "}+ interés estimado{" "}
+              <span className="tabular-nums text-z-sage-light">
+                {formatCurrency(group.interest_total, currency)}
+              </span>
+            </>
+          ) : (
+            " · sin interés estimado"
+          )}
+        </p>
+      )}
+
       {/* Recovered progress */}
       <p className="text-xs text-muted-foreground">
         Recuperado{" "}
@@ -159,6 +181,11 @@ export function SharedPaymentCard({ group, currency }: SharedPaymentCardProps) {
                 )}
               >
                 {formatCurrency(d.outstanding_amount, d.currency_code as CurrencyCode)}
+                {group.installment_total != null && group.installment_total > 0 && isActive && (
+                  <span className="text-muted-foreground">
+                    {" "}· {formatCurrency(d.principal_amount / group.installment_total, d.currency_code as CurrencyCode)}/cuota
+                  </span>
+                )}
               </span>
               <div className="flex shrink-0 items-center gap-1">
                 {isActive ? (

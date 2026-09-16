@@ -107,7 +107,7 @@ export type SharedPaymentGroup = {
   /** Set when the group is a purchase in cuotas shared as "compra completa". */
   installment_group_id: string | null;
   installment_total: number | null;
-  /** Σ participants' estimated interest (installment groups only). */
+  /** Estimated interest of the whole purchase (installment groups only). */
   interest_total: number | null;
   debts: PersonalDebtWithDetails[];
 };
