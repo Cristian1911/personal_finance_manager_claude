@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { PersonAvatar } from "@/components/personas/person-avatar";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -60,7 +61,6 @@ export function PersonaCard({ persona, currency }: PersonaCardProps) {
   const [pending, startTransition] = useTransition();
 
   const code = (persona.currency_code ?? currency) as CurrencyCode;
-  const initial = persona.destinatario_name?.trim().charAt(0).toUpperCase() || "?";
   const isBorrowed = persona.direction === "borrowed";
   const isActive = persona.status === "active";
   const progress =
@@ -96,9 +96,7 @@ export function PersonaCard({ persona, currency }: PersonaCardProps) {
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center gap-3 px-4 py-3 text-left"
       >
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-z-brass/15 text-sm font-semibold text-z-brass">
-          {initial}
-        </span>
+        <PersonAvatar name={persona.destinatario_name ?? ""} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="truncate text-sm font-medium">{persona.destinatario_name}</span>

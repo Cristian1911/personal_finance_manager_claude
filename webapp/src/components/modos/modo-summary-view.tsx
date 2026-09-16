@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronRight, ExternalLink, MoreHorizontal, Plus, Users } from "lucide-react";
+import { ChevronDown, ChevronRight, ExternalLink, Plus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
@@ -18,30 +18,27 @@ import {
   summarizeSpendSplit,
   txCurrency,
   type ModoTxRow,
+  type SettleUpPerson,
+  type SpendSplit,
 } from "@/lib/utils/modo-summary";
 import { removeFromModo, shareModoTransactions, unshareModoTransactions, type ModoDetail } from "@/actions/modos";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CompactMetricBox } from "@/components/ui/stat-card";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import { TagChip } from "@/components/tags/tag-chip";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Expand } from "@/components/mobile/v2/expand";
 import { RecordRepaymentDialog } from "@/components/personas/record-repayment-dialog";
 import { ModoActions } from "@/components/modos/modo-actions";
+import { TxDetailGrid } from "@/components/modos/modo-tx-detail-grid";
+import { PersonAvatar } from "@/components/personas/person-avatar";
 import { useAllTags, useDestinatarios } from "@/components/providers/app-data-provider";
 import {
   BRASS_BUTTON_CLASS,
   BRASS_GHOST_BUTTON_CLASS,
   GHOST_BUTTON_CLASS,
-  ICON_TRIGGER_CLASS,
   PANEL_INSET_CLASS,
   PANEL_SURFACE_CLASS,
+  ROW_EXPAND_TRIGGER_CLASS,
   chipToggleClass,
 } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
@@ -56,6 +53,8 @@ const FILTERS: { id: Filter; label: string }[] = [
 ];
 
 const cur = (c: string) => c as CurrencyCode;
+/** Nested guide line for expanded bodies (same as the tray and tendencias). */
+const NEST_GUIDE_CLASS = "ml-2 border-l border-white/6 pl-3";
 
 export function ModoSummaryView({
   modo,
@@ -100,6 +99,7 @@ export function ModoSummaryView({
   const emptyMembers = modo.is_shared ? participants.filter((mp) => !withDebts.has(mp.destinatario_id)) : [];
   const otherTotals = summary.totals.slice(1);
   const multiCurrency = summary.totals.length > 1;
+  const anyShared = sharedRows.length > 0;
 
   // Category share bars are per currency; the max is taken within each.
   const categoryMax = useMemo(() => {
@@ -151,7 +151,7 @@ export function ModoSummaryView({
     run(async () => {
       const r = await shareModoTransactions(modo.id, ids);
       if (!r.success) return { ok: false, message: r.error };
-      const parts = [`${r.data.shared} ${r.data.shared === 1 ? "repartido" : "repartidos"}`];
+      const parts = [`${r.data.shared} ${r.data.shared === 1 ? "compartido" : "compartidos"}`];
       if (r.data.skipped.length) parts.push(`${r.data.skipped.length} ya estaban`);
       if (r.data.failed.length) parts.push(`${r.data.failed.length} con error`);
       return { ok: true, message: parts.join(" · ") };
@@ -159,7 +159,7 @@ export function ModoSummaryView({
   const unshare = (ids: string[]) =>
     run(async () => {
       const r = await unshareModoTransactions(modo.id, ids);
-      return r.success ? { ok: true, message: `${r.data.unshared} sin repartir` } : { ok: false, message: r.error };
+      return r.success ? { ok: true, message: `${r.data.unshared} ahora solo ${r.data.unshared === 1 ? "tuyo" : "tuyos"}` } : { ok: false, message: r.error };
     });
   const remove = (ids: string[]) =>
     run(async () => {
@@ -195,8 +195,7 @@ export function ModoSummaryView({
           {actions}
         </div>
       </div>
-      {/* Mobile header actions live in the page's MobileHeader; keep the
-          title line here so the emoji/name/tags read the same on both. */}
+      {/* Mobile title line — the header's back button lives in the page's MobileHeader. */}
       <div className="flex items-start justify-between gap-3 lg:hidden">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight">
@@ -248,70 +247,44 @@ export function ModoSummaryView({
           <div className="space-y-3">
             {spendSplit.length === 0 ? (
               <p className="text-sm text-muted-foreground">Cuando haya gastos, aquí verás cuánto es tuyo y cuánto te deben.</p>
+            ) : !anyShared ? (
+              <div className={cn(PANEL_INSET_CLASS, "px-3 py-2.5 text-sm text-muted-foreground")}>
+                Por ahora todo es tuyo: ningún gasto está compartido.
+              </div>
             ) : (
-              spendSplit.map((sp) => (
-                <div key={sp.currency} className="space-y-2">
-                  {spendSplit.length > 1 && <p className="text-xs text-muted-foreground">{sp.currency}</p>}
-                  <div className="grid grid-cols-3 gap-2">
-                    <CompactMetricBox
-                      label="Tu parte"
-                      value={<span className="tabular-nums">{formatCurrency(sp.yourPart, cur(sp.currency))}</span>}
-                      context={
-                        sp.sharedCount > 0
-                          ? `${formatCurrency(sp.ownOnlyTotal, cur(sp.currency))} solo tuyos`
-                          : "nada compartido aún"
-                      }
-                    />
-                    <CompactMetricBox
-                      label="Te deben"
-                      value={
-                        <span className={cn("tabular-nums", sp.outstanding > 0 ? "text-z-brass" : "text-z-income")}>
-                          {formatCurrency(sp.outstanding, cur(sp.currency))}
-                        </span>
-                      }
-                      context={sp.sharedCount === 0 ? "—" : sp.outstanding > 0 ? "pendiente" : "todo saldado"}
-                    />
-                    <CompactMetricBox
-                      label="Recuperado"
-                      value={<span className="tabular-nums">{formatCurrency(sp.recovered, cur(sp.currency))}</span>}
-                      context={sp.sharedCount > 0 ? `de ${formatCurrency(sp.owedToUser, cur(sp.currency))}` : "—"}
-                    />
-                  </div>
-                </div>
-              ))
+              spendSplit.map((sp) => <SplitPanel key={sp.currency} split={sp} showCurrency={spendSplit.length > 1} />)
             )}
             {spendRows.length > 0 && (
-              <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-                <span className="text-muted-foreground">
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
                   {sharedRows.length} {sharedRows.length === 1 ? "compartido" : "compartidos"} · {unsharedIds.length}{" "}
                   {unsharedIds.length === 1 ? "solo mío" : "solo míos"}
-                </span>
+                </p>
                 {unsharedIds.length > 0 && (
-                  <span className="flex flex-wrap gap-2">
-                    <Button variant="ghost" size="sm" onClick={chooseWhatToShare} className={GHOST_BUTTON_CLASS}>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Button variant="ghost" onClick={chooseWhatToShare} className={cn(GHOST_BUTTON_CLASS, "w-full sm:w-auto")}>
                       Elegir qué repartir
                     </Button>
                     <Button
                       variant="ghost"
-                      size="sm"
                       onClick={() => share(unsharedIds)}
                       disabled={pending}
-                      className={BRASS_GHOST_BUTTON_CLASS}
+                      className={cn(BRASS_GHOST_BUTTON_CLASS, "w-full sm:w-auto")}
                     >
                       Repartir todos los pendientes
                     </Button>
-                  </span>
+                  </div>
                 )}
               </div>
             )}
           </div>
         ) : (
-          <div className={cn(PANEL_INSET_CLASS, "flex flex-wrap items-center justify-between gap-3 p-3")}>
+          <div className={cn(PANEL_INSET_CLASS, "flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between")}>
             <p className="text-sm text-muted-foreground">
               <Users className="mr-1.5 inline size-4 text-z-brass" />
-              ¿Lo compartiste con alguien? Reparte estos gastos y lleva la cuenta de lo que te deben.
+              ¿Lo compartiste con alguien? Reparte los gastos que quieras y lleva la cuenta de lo que te deben.
             </p>
-            <Button asChild variant="ghost" size="sm" className={BRASS_GHOST_BUTTON_CLASS}>
+            <Button asChild variant="ghost" size="sm" className={cn(BRASS_GHOST_BUTTON_CLASS, "w-full sm:w-auto")}>
               <Link href={`/modos/${modo.id}/edit?step=2`}>Repartir con alguien</Link>
             </Button>
           </div>
@@ -335,55 +308,46 @@ export function ModoSummaryView({
         </Link>
       )}
 
-      {/* Saldo por persona */}
+      {/* Personas del viaje */}
       {modo.is_shared && (people.length > 0 || emptyMembers.length > 0) && (
         <section className="space-y-2">
-          <SectionEyebrow>Saldo por persona</SectionEyebrow>
-          {people.map((p) => (
-            <div
-              key={`${p.destinatarioId}|${p.currency}`}
-              className={cn(PANEL_INSET_CLASS, "flex items-center justify-between gap-3 px-3 py-2.5 text-sm")}
-            >
-              <div className="min-w-0">
-                <p className="truncate font-medium">{p.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  le corresponde {formatCurrency(p.principal, cur(p.currency))}
-                </p>
+          <div className="flex items-center gap-2">
+            <SectionEyebrow>Personas del viaje</SectionEyebrow>
+            <span className="rounded-full border border-white/6 px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
+              {people.length + emptyMembers.length}
+            </span>
+          </div>
+          <div className="grid gap-2 lg:grid-cols-2">
+            {people.map((p) => (
+              <PersonCard
+                key={`${p.destinatarioId}|${p.currency}`}
+                person={p}
+                onRepay={
+                  p.oldestActiveDebtId && p.oldestActiveDebtOutstanding > 0
+                    ? () =>
+                        setRepayFor({
+                          debtId: p.oldestActiveDebtId!,
+                          name: p.name,
+                          outstanding: p.oldestActiveDebtOutstanding,
+                          currency: cur(p.currency),
+                          accountId:
+                            sharedGroups.find((g) => g.debts.some((d) => d.id === p.oldestActiveDebtId))
+                              ?.origin_account_id ?? null,
+                        })
+                    : undefined
+                }
+              />
+            ))}
+            {emptyMembers.map((mp) => (
+              <div key={mp.id} className={cn(PANEL_INSET_CLASS, "flex items-center gap-3 p-3")}>
+                <PersonAvatar name={nameById.get(mp.destinatario_id) ?? "Persona"} />
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{nameById.get(mp.destinatario_id) ?? "Persona"}</p>
+                  <p className="text-xs text-muted-foreground">Sin gastos compartidos aún</p>
+                </div>
               </div>
-              <div className="flex shrink-0 items-center gap-3">
-                <span className={cn("tabular-nums", p.outstanding > 0 ? "text-z-brass" : "text-z-income")}>
-                  {p.outstanding > 0 ? `debe ${formatCurrency(p.outstanding, cur(p.currency))}` : "al día"}
-                </span>
-                {p.oldestActiveDebtId && p.oldestActiveDebtOutstanding > 0 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className={GHOST_BUTTON_CLASS}
-                    onClick={() =>
-                      setRepayFor({
-                        debtId: p.oldestActiveDebtId!,
-                        name: p.name,
-                        outstanding: p.oldestActiveDebtOutstanding,
-                        currency: cur(p.currency),
-                        accountId:
-                          sharedGroups.find((g) => g.debts.some((d) => d.id === p.oldestActiveDebtId))
-                            ?.origin_account_id ?? null,
-                      })
-                    }
-                  >
-                    Registrar abono
-                  </Button>
-                )}
-              </div>
-            </div>
-          ))}
-          {emptyMembers.map((mp) => (
-            <div key={mp.id} className={cn(PANEL_INSET_CLASS, "flex items-center justify-between px-3 py-2.5 text-sm")}>
-              <span>{nameById.get(mp.destinatario_id) ?? "Persona"}</span>
-              <span className="text-muted-foreground">Sin gastos repartidos aún</span>
-            </div>
-          ))}
+            ))}
+          </div>
         </section>
       )}
 
@@ -417,7 +381,7 @@ export function ModoSummaryView({
         </section>
       )}
 
-      {/* Gastos */}
+      {/* Movimientos */}
       <section ref={listRef} className="scroll-mt-16 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <SectionEyebrow>Movimientos del viaje</SectionEyebrow>
@@ -441,8 +405,7 @@ export function ModoSummaryView({
         {transactions.length === 0 ? (
           <div className={cn(PANEL_INSET_CLASS, "space-y-3 p-4 text-sm text-muted-foreground")}>
             <p>
-              Todavía no hay movimientos con {modoTags.length === 1 ? "la etiqueta" : "las etiquetas"} del viaje en
-              estas fechas.
+              Todavía no hay movimientos con {modoTags.length === 1 ? "la etiqueta" : "las etiquetas"} del viaje.
             </p>
             <div className="flex flex-wrap gap-2">
               <Button asChild size="sm" className={BRASS_BUTTON_CLASS}>
@@ -462,7 +425,7 @@ export function ModoSummaryView({
             {byDay.map(([day, rows]) => (
               <div key={day} className="space-y-1">
                 <p className="px-1 text-xs font-medium text-muted-foreground">{formatDate(day, "EEEE d MMM")}</p>
-                <div className={cn(PANEL_INSET_CLASS, "divide-y divide-white/6")}>
+                <ul className={cn(PANEL_INSET_CLASS, "divide-y divide-white/6")}>
                   {rows.map((t) => (
                     <ModoTxItem
                       key={t.id}
@@ -480,7 +443,7 @@ export function ModoSummaryView({
                       onRemove={() => remove([t.id])}
                     />
                   ))}
-                </div>
+                </ul>
               </div>
             ))}
           </div>
@@ -496,10 +459,10 @@ export function ModoSummaryView({
           {modo.is_shared && (
             <>
               <Button size="sm" onClick={() => share([...selected])} disabled={pending} className={cn(BRASS_BUTTON_CLASS, "disabled:opacity-60")}>
-                Repartir
+                Compartir
               </Button>
               <Button variant="ghost" size="sm" onClick={() => unshare([...selected])} disabled={pending} className={GHOST_BUTTON_CLASS}>
-                Quitar reparto
+                Solo míos
               </Button>
             </>
           )}
@@ -527,7 +490,130 @@ export function ModoSummaryView({
   );
 }
 
-// ── Row ──────────────────────────────────────────────────────────────────
+// ── Reparto (hero) ────────────────────────────────────────────────────────
+function SplitRow({
+  label,
+  value,
+  hint,
+  tone,
+  big,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  tone?: "brass" | "income";
+  big?: boolean;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3 px-3 py-2.5">
+      <div className="min-w-0">
+        <p className={cn("text-sm", big ? "font-medium" : "text-muted-foreground")}>{label}</p>
+        {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
+      </div>
+      <p
+        className={cn(
+          "shrink-0 tabular-nums",
+          big ? "text-xl font-semibold" : "text-sm",
+          tone === "brass" && "text-z-brass",
+          tone === "income" && "text-z-income",
+        )}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function ProgressBar({ value, max, tone = "income" }: { value: number; max: number; tone?: "income" | "brass" }) {
+  const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
+  return (
+    <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/6" aria-hidden>
+      <div className={cn("h-full rounded-full", tone === "income" ? "bg-z-income" : "bg-z-brass")} style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
+/** One currency's split: what the trip costs you, what comes back. Rows, never side-by-side boxes. */
+function SplitPanel({ split: sp, showCurrency }: { split: SpendSplit; showCurrency: boolean }) {
+  const c = cur(sp.currency);
+  if (sp.sharedCount === 0) {
+    return (
+      <div className={cn(PANEL_INSET_CLASS, "flex items-center justify-between gap-3 px-3 py-2.5 text-sm")}>
+        <span className="text-muted-foreground">{showCurrency ? `${sp.currency} · ` : ""}todo tuyo</span>
+        <span className="tabular-nums">{formatCurrency(sp.spendTotal, c)}</span>
+      </div>
+    );
+  }
+  const shareOfShared = Math.max(0, sp.yourPart - sp.ownOnlyTotal);
+  return (
+    <div className={cn(PANEL_INSET_CLASS, "divide-y divide-white/6")}>
+      {showCurrency && (
+        <p className="px-3 pt-2.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">{sp.currency}</p>
+      )}
+      <SplitRow
+        big
+        label="Tu parte"
+        value={formatCurrency(sp.yourPart, c)}
+        hint={`${formatCurrency(sp.ownOnlyTotal, c)} solo tuyos + ${formatCurrency(shareOfShared, c)} de lo compartido`}
+      />
+      <SplitRow
+        label="Te deben"
+        value={sp.outstanding > 0 ? formatCurrency(sp.outstanding, c) : "Al día"}
+        tone={sp.outstanding > 0 ? "brass" : "income"}
+      />
+      <div className="space-y-1.5 px-3 py-2.5">
+        <div className="flex items-center justify-between gap-3 text-sm">
+          <span className="text-muted-foreground">Recuperado</span>
+          <span className="tabular-nums">
+            {formatCurrency(sp.recovered, c)} <span className="text-muted-foreground">de {formatCurrency(sp.owedToUser, c)}</span>
+          </span>
+        </div>
+        <ProgressBar value={sp.recovered} max={sp.owedToUser} />
+      </div>
+    </div>
+  );
+}
+
+// ── Personas ─────────────────────────────────────────────────────────────
+function PersonCard({ person: p, onRepay }: { person: SettleUpPerson; onRepay?: () => void }) {
+  const c = cur(p.currency);
+  const owes = p.outstanding > 0;
+  return (
+    <div className={cn(PANEL_INSET_CLASS, "space-y-3 p-3")}>
+      <div className="flex items-center gap-3">
+        <PersonAvatar name={p.name} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-medium">{p.name}</p>
+          <p className="text-xs text-muted-foreground">
+            {p.count} {p.count === 1 ? "gasto compartido" : "gastos compartidos"} · le corresponde {formatCurrency(p.principal, c)}
+          </p>
+        </div>
+      </div>
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-sm text-muted-foreground">{owes ? "Debe" : "Saldo"}</span>
+        <span className={cn("text-xl font-semibold tabular-nums", owes ? "text-z-brass" : "text-z-income")}>
+          {owes ? formatCurrency(p.outstanding, c) : "Al día"}
+        </span>
+      </div>
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+          <span>Ha pagado</span>
+          <span className="tabular-nums">
+            {formatCurrency(p.repaid, c)} de {formatCurrency(p.principal, c)}
+          </span>
+        </div>
+        <ProgressBar value={p.repaid} max={p.principal} />
+      </div>
+      {onRepay && (
+        <Button type="button" variant="ghost" onClick={onRepay} className={cn(GHOST_BUTTON_CLASS, "w-full sm:w-auto")}>
+          Registrar abono
+        </Button>
+      )}
+    </div>
+  );
+}
+
+// ── Fila ──────────────────────────────────────────────────────────────────
 function statusChip(
   tx: ModoTxRow,
   isShared: boolean,
@@ -546,6 +632,12 @@ function statusChip(
   }
   return isShared ? { label: "Solo mío", tone: "muted" } : null;
 }
+
+const CHIP_TONE: Record<"brass" | "income" | "muted", string> = {
+  brass: "border-z-brass/30 bg-z-brass/10 text-z-brass",
+  income: "border-z-income/30 bg-z-income/10 text-z-income",
+  muted: "border-white/6 text-muted-foreground",
+};
 
 function ModoTxItem({
   tx,
@@ -574,103 +666,149 @@ function ModoTxItem({
   onUnshare: () => void;
   onRemove: () => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const [everOpened, setEverOpened] = useState(false);
   const kind = classifyModoTx(tx);
   const selectable = kind === "spend";
   const chip = statusChip(tx, isShared, group);
-  const extraTags = (tx.transaction_tags ?? [])
-    .map((tt) => tt.tag)
-    .filter((t): t is NonNullable<typeof t> => !!t && !modoTagIds.has(t.id));
-  const meta = [tx.account?.name, tx.category?.name_es ?? tx.category?.name, tx.destinatario?.name].filter(Boolean);
-  const amountClass =
-    kind === "inflow" ? "text-z-income" : kind === "spend" ? "text-foreground" : "text-muted-foreground";
+  const shareToggle = isShared && kind === "spend";
+  const title = describeModoTx(tx);
+  const allTags = (tx.transaction_tags ?? []).map((tt) => tt.tag).filter((t): t is NonNullable<typeof t> => !!t);
+  const extraTags = allTags.filter((t) => !modoTagIds.has(t.id));
+  const meta = [tx.account?.name, tx.category?.name_es ?? tx.category?.name].filter(Boolean);
+  const amountClass = kind === "inflow" ? "text-z-income" : kind === "spend" ? "text-foreground" : "text-muted-foreground";
+  const currency = txCurrency(tx);
+  function toggleOpen() {
+    setOpen((o) => !o);
+    setEverOpened(true);
+  }
 
   return (
-    <div className="flex items-center gap-3 px-3 py-2.5">
-      {selectable ? (
-        <Checkbox checked={selected} onCheckedChange={onToggle} aria-label={`Seleccionar ${describeModoTx(tx)}`} />
-      ) : (
-        <span className="size-4 shrink-0" aria-hidden />
-      )}
-      <Link href={`/transactions/${tx.id}`} className="min-w-0 flex-1">
-        <span className="block truncate text-sm">{describeModoTx(tx)}</span>
-        <span className="block truncate text-xs text-muted-foreground">{meta.join(" · ") || "Sin cuenta"}</span>
-        {(extraTags.length > 0 || reviewSource === "auto" || datePosition !== "during") && (
-          <span className="mt-1 flex flex-wrap items-center gap-1">
-            {datePosition !== "during" && (
-              <span className="rounded-full border border-white/6 px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                {datePosition === "before" ? "Antes del viaje" : "Después del viaje"}
+    <li>
+      <div className="flex items-center gap-3 px-3">
+        {selectable ? (
+          <Checkbox checked={selected} onCheckedChange={onToggle} aria-label={`Seleccionar ${title}`} />
+        ) : (
+          <span className="size-4 shrink-0" aria-hidden />
+        )}
+        {/* Tapping the row opens its detail here — nothing leaves the page. */}
+        <button type="button" onClick={toggleOpen} aria-expanded={open} className={cn(ROW_EXPAND_TRIGGER_CLASS, "min-w-0 flex-1")}>
+          <span className="min-w-0 flex-1">
+            <span className={cn("block text-sm", open ? "whitespace-normal break-words" : "truncate")}>{title}</span>
+            <span className="block truncate text-xs text-muted-foreground">{meta.join(" · ") || "Sin cuenta"}</span>
+            {(extraTags.length > 0 || reviewSource === "auto" || datePosition !== "during") && (
+              <span className="mt-1 flex flex-wrap items-center gap-1">
+                {datePosition !== "during" && (
+                  <span className="rounded-full border border-white/6 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                    {datePosition === "before" ? "Antes del viaje" : "Después del viaje"}
+                  </span>
+                )}
+                {reviewSource === "auto" && (
+                  <span className="rounded-full border border-z-brass/30 bg-z-brass/10 px-1.5 py-0.5 text-[10px] text-z-brass">
+                    Auto ✈️
+                  </span>
+                )}
+                {extraTags.map((t) => (
+                  <TagChip key={t.id} tag={t} size="sm" />
+                ))}
               </span>
             )}
-            {reviewSource === "auto" && (
-              <span className="rounded-full border border-z-brass/30 bg-z-brass/10 px-1.5 py-0.5 text-[10px] text-z-brass">
-                Auto ✈️
-              </span>
-            )}
-            {extraTags.map((t) => (
-              <TagChip key={t.id} tag={t} size="sm" />
-            ))}
           </span>
-        )}
-      </Link>
-      <div className="flex shrink-0 flex-col items-end gap-1">
-        <span className={cn("text-sm tabular-nums", amountClass)}>
-          {kind === "inflow" ? "+" : ""}
-          {formatCurrency(tx.amount ?? 0, cur(txCurrency(tx)))}
-        </span>
-        {chip && isShared && kind === "spend" ? (
-          // One tap decides whether THIS expense is shared with the trip's
-          // people or stays yours — not every buy on a trip is a shared one.
-          <button
-            type="button"
-            onClick={tx.split_group_id ? onUnshare : onShare}
-            disabled={pending}
-            aria-pressed={!!tx.split_group_id}
-            aria-label={tx.split_group_id ? "Compartido · tocar para dejarlo solo mío" : "Solo mío · tocar para compartirlo"}
-            className={cn(
-              "max-w-[46vw] truncate rounded-full border px-1.5 py-0.5 text-[10px] transition-colors disabled:opacity-60 lg:max-w-none",
-              chip.tone === "brass" && "border-z-brass/30 bg-z-brass/10 text-z-brass hover:bg-z-brass/20",
-              chip.tone === "income" && "border-z-income/30 bg-z-income/10 text-z-income hover:bg-z-income/20",
-              chip.tone === "muted" && "border-white/10 text-muted-foreground hover:border-z-brass/30 hover:text-z-brass",
-            )}
-          >
-            {chip.label}
-          </button>
-        ) : chip && (
-          <span
-            className={cn(
-              "max-w-[46vw] truncate rounded-full border px-1.5 py-0.5 text-[10px] lg:max-w-none",
-              chip.tone === "brass" && "border-z-brass/30 bg-z-brass/10 text-z-brass",
-              chip.tone === "income" && "border-z-income/30 bg-z-income/10 text-z-income",
-              chip.tone === "muted" && "border-white/6 text-muted-foreground",
-            )}
-          >
-            {chip.label}
+          <span className={cn("shrink-0 text-sm tabular-nums", amountClass)}>
+            {kind === "inflow" ? "+" : ""}
+            {formatCurrency(tx.amount ?? 0, cur(currency))}
           </span>
-        )}
+          <ChevronDown className={cn("size-4 shrink-0 text-z-sage-dark transition-transform", open && "rotate-180")} />
+        </button>
       </div>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button type="button" aria-label="Acciones del movimiento" className={cn(ICON_TRIGGER_CLASS, "shrink-0 p-1.5")} disabled={pending}>
-            <MoreHorizontal className="size-4" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem asChild>
-            <Link href={`/transactions/${tx.id}`}>Ver movimiento</Link>
-          </DropdownMenuItem>
-          {isShared && kind === "spend" && (
-            tx.split_group_id ? (
-              <DropdownMenuItem onSelect={onUnshare}>Quitar reparto</DropdownMenuItem>
-            ) : (
-              <DropdownMenuItem onSelect={onShare}>Repartir</DropdownMenuItem>
-            )
+      {/* Share state sits under the row, outside the expand trigger: one tap flips it. */}
+      {chip && (
+        <div className="flex justify-end px-3 pb-2">
+          {shareToggle ? (
+            <button
+              type="button"
+              onClick={tx.split_group_id ? onUnshare : onShare}
+              disabled={pending}
+              aria-pressed={!!tx.split_group_id}
+              aria-label={tx.split_group_id ? "Compartido · tocar para dejarlo solo mío" : "Solo mío · tocar para compartirlo"}
+              className={cn(
+                "max-w-full truncate rounded-full border px-2 py-0.5 text-[10px] transition-colors disabled:opacity-60",
+                CHIP_TONE[chip.tone],
+                chip.tone === "muted" && "hover:border-z-brass/30 hover:text-z-brass",
+              )}
+            >
+              {chip.label}
+            </button>
+          ) : (
+            <span className={cn("max-w-full truncate rounded-full border px-2 py-0.5 text-[10px]", CHIP_TONE[chip.tone])}>{chip.label}</span>
           )}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive" onSelect={onRemove}>
-            No fue del viaje
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+        </div>
+      )}
+
+      <Expand open={open}>
+        {everOpened && (
+          <div className={cn(NEST_GUIDE_CLASS, "mx-3 mb-3 space-y-3")}>
+            <TxDetailGrid
+              title={title}
+              raw_description={tx.raw_description}
+              transaction_date={tx.transaction_date}
+              transaction_time={tx.transaction_time}
+              currency={currency}
+              account={tx.account}
+              category={tx.category}
+              destinatario={tx.destinatario}
+              capture_method={tx.capture_method}
+              notes={tx.notes}
+              tags={extraTags}
+            />
+            {group && group.debts.length > 0 && (
+              <div className={cn(PANEL_INSET_CLASS, "divide-y divide-white/6")}>
+                <p className="px-3 pt-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">Reparto</p>
+                <div className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                  <span className="text-muted-foreground">Tu parte</span>
+                  <span className="tabular-nums">{formatCurrency(group.userShare, cur(group.currency_code))}</span>
+                </div>
+                {group.debts.map((d) => (
+                  <div key={d.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                    <span className="min-w-0 truncate">{d.destinatario_name}</span>
+                    <span className="shrink-0 tabular-nums">
+                      {formatCurrency(d.principal_amount, cur(d.currency_code ?? group.currency_code))}
+                      <span className={cn("ml-1.5 text-xs", d.status === "active" && d.outstanding_amount > 0 ? "text-z-brass" : "text-z-income")}>
+                        {d.status === "active" && d.outstanding_amount > 0
+                          ? `debe ${formatCurrency(d.outstanding_amount, cur(d.currency_code ?? group.currency_code))}`
+                          : "al día"}
+                      </span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex flex-wrap items-center gap-2">
+              {shareToggle && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={tx.split_group_id ? onUnshare : onShare}
+                  disabled={pending}
+                  className={tx.split_group_id ? GHOST_BUTTON_CLASS : BRASS_GHOST_BUTTON_CLASS}
+                >
+                  {tx.split_group_id ? "Dejar solo mío" : "Compartir"}
+                </Button>
+              )}
+              <Button type="button" variant="ghost" size="sm" onClick={onRemove} disabled={pending} className={GHOST_BUTTON_CLASS}>
+                No fue del viaje
+              </Button>
+              <Link
+                href={`/transactions/${tx.id}`}
+                className="ml-auto inline-flex items-center gap-1 text-xs text-z-brass hover:underline"
+              >
+                Ver movimiento <ExternalLink className="size-3" />
+              </Link>
+            </div>
+          </div>
+        )}
+      </Expand>
+    </li>
   );
 }

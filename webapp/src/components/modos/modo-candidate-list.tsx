@@ -5,13 +5,11 @@ import Link from "next/link";
 import { Check, ChevronDown, ExternalLink, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { TagChip } from "@/components/tags/tag-chip";
 import { Expand } from "@/components/mobile/v2/expand";
-import { DetailCell } from "@/components/mobile/v2/deudas/detail-cell";
+import { TxDetailGrid } from "@/components/modos/modo-tx-detail-grid";
 import { getTransactionLocation } from "@/actions/transactions";
 import { formatCurrency } from "@/lib/utils/currency";
-import { formatDate, formatDateTime } from "@/lib/utils/date";
-import { captureMethodLabel } from "@/lib/constants/capture-methods";
+import { formatDate } from "@/lib/utils/date";
 import { cn } from "@/lib/utils";
 import {
   BRASS_GHOST_BUTTON_CLASS,
@@ -133,7 +131,6 @@ function CandidateItem({
   const reason = reasonLabel(row);
   const currency = (row.currency_code ?? "COP") as CurrencyCode;
   const time = row.transaction_time?.slice(0, 5) ?? null;
-  const rawDiffers = !!row.raw_description?.trim() && row.raw_description.trim() !== title;
 
   return (
     <li className={cn(isRejected && "opacity-60")}>
@@ -181,40 +178,19 @@ function CandidateItem({
       <Expand open={open}>
         {everOpened && (
           <div className={cn(NEST_GUIDE_CLASS, "mx-3 mb-3 space-y-3")}>
-            {rawDiffers && (
-              <p className="break-words text-xs text-muted-foreground">
-                <span className="text-z-sage-dark">Descripción original: </span>
-                {row.raw_description}
-              </p>
-            )}
-            <div className="grid grid-cols-2 gap-2">
-              <DetailCell label="Fecha y hora">
-                <span className="font-medium">{formatDateTime(row.transaction_date, row.transaction_time, "d MMM · HH:mm")}</span>
-              </DetailCell>
-              <DetailCell label="Cuenta">
-                <span className="font-medium">{row.account?.name ?? "—"}</span>
-              </DetailCell>
-              <DetailCell label="Categoría">
-                <span className="font-medium">{row.category?.name_es ?? row.category?.name ?? "Sin categoría"}</span>
-              </DetailCell>
-              <DetailCell label="Destinatario">
-                <span className="font-medium">{row.destinatario?.name ?? "—"}</span>
-              </DetailCell>
-              <DetailCell label="Origen">
-                <span className="font-medium">{captureMethodLabel(row.capture_method)}</span>
-              </DetailCell>
-              <DetailCell label="Moneda">
-                <span className="font-medium">{currency}</span>
-              </DetailCell>
-            </div>
-            {row.notes && <p className="text-xs text-muted-foreground">Notas: {row.notes}</p>}
-            {row.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {row.tags.map((t) => (
-                  <TagChip key={t.id} tag={t} size="sm" />
-                ))}
-              </div>
-            )}
+            <TxDetailGrid
+              title={title}
+              raw_description={row.raw_description}
+              transaction_date={row.transaction_date}
+              transaction_time={row.transaction_time}
+              currency={currency}
+              account={row.account}
+              category={row.category}
+              destinatario={row.destinatario}
+              capture_method={row.capture_method}
+              notes={row.notes}
+              tags={row.tags}
+            />
             {row.location_id && <LocationLine locationId={row.location_id} />}
             <div className="flex flex-wrap items-center gap-2">
               {onAccept && (

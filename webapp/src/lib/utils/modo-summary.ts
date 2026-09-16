@@ -17,6 +17,9 @@ export type ModoTxRow = {
   merchant_name?: string | null;
   clean_description?: string | null;
   raw_description?: string | null;
+  transaction_time?: string | null;
+  notes?: string | null;
+  capture_method?: string | null;
   is_excluded?: boolean | null;
   transfer_group_id?: string | null;
   split_group_id?: string | null;
@@ -283,6 +286,10 @@ export type SettleUpPerson = {
   currency: string;
   principal: number;
   outstanding: number;
+  /** Gastos compartidos con esta persona dentro del viaje. */
+  count: number;
+  /** Lo que ya devolvió (saldada cuenta completa; activa lo abonado, con tope). */
+  repaid: number;
   /** Deuda activa objetivo del abono (la más antigua por opened_on). */
   oldestActiveDebtId: string | null;
   /** Saldo de ESA deuda — tope del abono; nunca el agregado (evita sobre-abono). */
@@ -312,10 +319,17 @@ export function settleUpByPerson(
         currency,
         principal: 0,
         outstanding: 0,
+        count: 0,
+        repaid: 0,
         oldestActiveDebtId: null,
         oldestActiveDebtOutstanding: 0,
       };
       cur.principal += d.principal_amount;
+      cur.count += 1;
+      cur.repaid +=
+        d.status === "settled"
+          ? d.principal_amount
+          : Math.min(d.total_repaid ?? 0, d.principal_amount);
       if (d.status === "active") {
         cur.outstanding += d.outstanding_amount;
         const prevOpened = chosenOpenedOn.get(key);
