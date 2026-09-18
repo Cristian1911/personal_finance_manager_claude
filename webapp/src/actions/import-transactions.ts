@@ -1731,7 +1731,7 @@ export async function importTransactions(
         supabase
           .from("transactions")
           .select(
-            "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method, recurrence_group_id, split_group_id"
+            "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method, recurrence_group_id, split_group_id, installment_current, installment_total, original_amount, installment_group_id"
           )
           .eq("user_id", user.id)
           .is("reconciled_into_transaction_id", null)
@@ -1766,7 +1766,31 @@ export async function importTransactions(
     merged: ReturnType<typeof mergeTransactionMetadata>;
     /** The superseded row's recurring link, carried to the survivor. */
     existingRecurrenceGroupId: string | null;
+    /** Cuota fields the survivor lacks but the superseded row had. */
+    cuotaCarry: CuotaCarry | null;
   };
+  type CuotaCarry = {
+    installment_current: number | null;
+    installment_total: number | null;
+    original_amount: number | null;
+    installment_group_id: string | null;
+  };
+  // Cuotas travel with the movement, not with the source: when a row that
+  // lacks them (an OCR screenshot, a manual entry) absorbs a row that had
+  // them (an earlier statement import), the survivor keeps the cuotas.
+  function cuotaCarryFrom(
+    survivor: Pick<TransactionToImport, "installment_total" | "original_amount">,
+    superseded: Partial<CuotaCarry>,
+  ): CuotaCarry | null {
+    if (survivor.installment_total != null || survivor.original_amount != null) return null;
+    if (superseded.installment_total == null && superseded.original_amount == null) return null;
+    return {
+      installment_current: superseded.installment_current ?? null,
+      installment_total: superseded.installment_total ?? null,
+      original_amount: superseded.original_amount ?? null,
+      installment_group_id: superseded.installment_group_id ?? null,
+    };
+  }
   const mergeOps: MergeOp[] = [];
   // The old per-merge re-query filtered `reconciled_into_transaction_id IS
   // NULL`, so a candidate claimed by an earlier merge in the same run came
@@ -1857,6 +1881,7 @@ export async function importTransactions(
       score: decision.score,
       merged,
       existingRecurrenceGroupId: existingTx.recurrence_group_id ?? null,
+      cuotaCarry: cuotaCarryFrom(tx, existingTx as Partial<CuotaCarry>),
     });
 
     // Copy existing transaction's tags to surviving (imported) transaction (pre-fetched)
@@ -1882,6 +1907,7 @@ export async function importTransactions(
             category_id: op.merged.category_id ?? null,
             notes: op.merged.notes ?? null,
             capture_method: op.merged.capture_method,
+            ...(op.cuotaCarry ?? {}),
           })
           .eq("user_id", user.id)
           .eq("id", op.insertedId),

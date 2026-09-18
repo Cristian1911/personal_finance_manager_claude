@@ -12,7 +12,6 @@ import {
   autoCategorize,
   extractPattern,
   mergeTransactionMetadata,
-  type ReconciliationCandidate,
 } from "@zeta/shared";
 import { uuidStr } from "@/lib/validators/shared";
 import { matchTransactionToDestinatario } from "./destinatarios";
@@ -945,7 +944,7 @@ export async function approveEmailTransaction(
     const { data: manualTx } = await supabase
       .from("transactions")
       .select(
-        "id, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method, recurrence_group_id"
+        "id, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method, recurrence_group_id, installment_current, installment_total, original_amount, installment_group_id"
       )
       .eq("id", reconcileWithTransactionId)
       .eq("user_id", user.id)
@@ -954,7 +953,12 @@ export async function approveEmailTransaction(
 
     if (manualTx) {
       const merged = mergeTransactionMetadata(
-        manualTx as ReconciliationCandidate,
+        {
+          category_id: manualTx.category_id,
+          categorization_source: manualTx.categorization_source,
+          notes: manualTx.notes,
+          capture_method: manualTx.capture_method,
+        },
         {
           category_id: insertedTx.category_id,
           categorization_source: insertedTx.categorization_source,
@@ -979,6 +983,17 @@ export async function approveEmailTransaction(
             : {}),
           notes: merged.notes ?? null,
           capture_method: merged.capture_method,
+          // An alert never carries cuotas; the row it absorbs (a statement
+          // cuota row, a manual entry with cuotas) may — keep them on the
+          // survivor so the movement still reads "Cuota 1/36 · compra total".
+          ...(manualTx.installment_total != null || manualTx.original_amount != null
+            ? {
+                installment_current: manualTx.installment_current,
+                installment_total: manualTx.installment_total,
+                original_amount: manualTx.original_amount,
+                installment_group_id: manualTx.installment_group_id,
+              }
+            : {}),
         })
         .eq("user_id", user.id)
         .eq("id", insertedTx.id);

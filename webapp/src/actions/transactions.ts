@@ -5,6 +5,7 @@ import { createCachedClient } from "@/lib/supabase/cached";
 import {
   autoCategorize,
   computeIdempotencyKey,
+  computeInstallmentGroupId,
   computeMonthlyAggregates,
   type MonthlyAggregatesResult,
   isDebtAccountType,
@@ -46,6 +47,17 @@ import type {
   TransferLegSummary,
 } from "@/types/domain";
 
+/**
+ * Optional numeric form field: absent → undefined (leave stored value alone),
+ * present but empty → null (clear), otherwise the raw string for Zod to parse.
+ */
+function readOptionalFormNumber(formData: FormData, name: string): string | null | undefined {
+  const value = formData.get(name);
+  if (value === null) return undefined;
+  const text = String(value).trim();
+  return text === "" ? null : text;
+}
+
 type PersistTransactionParams = {
   userId: string;
   account_id: string;
@@ -63,7 +75,31 @@ type PersistTransactionParams = {
   capture_input_text?: string | null;
   is_subscription?: boolean;
   location_id?: string | null;
+  /** Cuotas (optional): position, count and full purchase price. */
+  installment_current?: number | null;
+  installment_total?: number | null;
+  original_amount?: number | null;
 };
+
+/**
+ * Group id for a purchase in cuotas, so a manual cuota row joins the same
+ * group a later statement import (and the shared-payment flow) would key on.
+ * Null when the movement is not in cuotas.
+ */
+async function resolveInstallmentGroupId(params: {
+  accountId: string;
+  description: string | null | undefined;
+  installmentTotal: number | null | undefined;
+  originalAmount: number | null | undefined;
+  amount: number;
+}): Promise<string | null> {
+  if (params.installmentTotal == null || params.installmentTotal <= 1) return null;
+  return computeInstallmentGroupId({
+    accountId: params.accountId,
+    rawDescription: params.description ?? "",
+    amount: params.originalAmount ?? params.amount,
+  });
+}
 
 type BalanceAccountRow = {
   id: string;
@@ -428,6 +464,16 @@ async function persistTransaction(
       categorization_source: params.category_id ? "USER_CREATED" : "SYSTEM_DEFAULT",
       is_subscription: params.is_subscription ?? false,
       location_id: params.location_id ?? null,
+      installment_current: params.installment_current ?? null,
+      installment_total: params.installment_total ?? null,
+      original_amount: params.original_amount ?? null,
+      installment_group_id: await resolveInstallmentGroupId({
+        accountId: params.account_id,
+        description: params.merchant_name ?? params.raw_description,
+        installmentTotal: params.installment_total,
+        originalAmount: params.original_amount,
+        amount: params.amount,
+      }),
       ...flowClassColumns({
         direction: params.direction,
         accountType: accountTypeRes.data?.account_type,
@@ -920,6 +966,9 @@ export async function createTransaction(
     notes: formData.get("notes") || undefined,
     capture_input_text: formData.get("capture_input_text") || undefined,
     is_subscription: formData.get("is_subscription"),
+    installment_current: readOptionalFormNumber(formData, "installment_current"),
+    installment_total: readOptionalFormNumber(formData, "installment_total"),
+    original_amount: readOptionalFormNumber(formData, "original_amount"),
     // Multi-value field from the create forms — tags picked before the row
     // exists, attached right after the insert so the detail page shows them.
     tags: readTagIdsFromFormData(formData),
@@ -1117,6 +1166,9 @@ export async function updateTransaction(
     category_id: formData.get("category_id") || undefined,
     notes: formData.get("notes") || undefined,
     capture_input_text: formData.get("capture_input_text") || undefined,
+    installment_current: readOptionalFormNumber(formData, "installment_current"),
+    installment_total: readOptionalFormNumber(formData, "installment_total"),
+    original_amount: readOptionalFormNumber(formData, "original_amount"),
   });
 
   if (!parsed.success) {
@@ -1126,7 +1178,7 @@ export async function updateTransaction(
   const { data: existing, error: existingError } = await supabase
     .from("transactions")
     .select(
-      "account_id, amount, direction, currency_code, is_excluded, category_id, personal_debt_id, pd_role",
+      "account_id, amount, direction, currency_code, is_excluded, category_id, personal_debt_id, pd_role, installment_total, installment_group_id",
     )
     .eq("user_id", user.id)
     .eq("id", id)
@@ -1190,10 +1242,31 @@ export async function updateTransaction(
     .eq("user_id", user.id)
     .maybeSingle();
 
+  // Cuotas: a row that becomes (or stays) a purchase in cuotas keeps its group
+  // id, or gets one; a row whose cuotas were cleared leaves the group.
+  const nextInstallmentTotal =
+    parsed.data.installment_total === undefined
+      ? existing.installment_total
+      : parsed.data.installment_total;
+  const installmentGroupId =
+    nextInstallmentTotal != null && nextInstallmentTotal > 1
+      ? existing.installment_group_id ??
+        (await resolveInstallmentGroupId({
+          accountId: parsed.data.account_id,
+          description: parsed.data.merchant_name ?? parsed.data.raw_description,
+          installmentTotal: nextInstallmentTotal,
+          originalAmount: parsed.data.original_amount,
+          amount: parsed.data.amount,
+        }))
+      : parsed.data.installment_total === null
+        ? null
+        : undefined;
+
   const { data, error } = await supabase
     .from("transactions")
     .update({
       ...updatableFields,
+      ...(installmentGroupId !== undefined ? { installment_group_id: installmentGroupId } : {}),
       clean_description: parsed.data.merchant_name || parsed.data.raw_description || null,
       ...(categoryChanged ? { categorization_source: "USER_OVERRIDE" as const } : {}),
       ...flowClassColumns({

@@ -319,6 +319,11 @@ function TransactionRow({
           {!transfer && (tx.direction === "INFLOW" ? "+" : "-")}
           {formatCurrency(tx.amount, tx.currency_code)}
         </span>
+        {tx.installment_total != null && tx.installment_total > 1 && (
+          <span className="block text-[11px] text-muted-foreground tabular-nums">
+            Cuota {tx.installment_current ?? "?"}/{tx.installment_total}
+          </span>
+        )}
       </TableCell>
       <TableCell>
         <div className="flex items-center justify-end gap-0.5">

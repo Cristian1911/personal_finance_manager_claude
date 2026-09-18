@@ -6,7 +6,17 @@ const formBoolean = z.preprocess(
   z.boolean().default(false)
 );
 
-export const transactionSchema = z.object({
+/** Form number that may be absent (undefined), cleared ("" → null) or set. */
+const optionalPositiveInt = z.preprocess(
+  (val) => (val === "" || val === null ? null : val === undefined ? undefined : Number(val)),
+  z.number().int().positive("Las cuotas deben ser un entero mayor a 0").optional().nullable()
+);
+const optionalPositiveNumber = z.preprocess(
+  (val) => (val === "" || val === null ? null : val === undefined ? undefined : Number(val)),
+  z.number().positive("El precio total debe ser mayor a 0").optional().nullable()
+);
+
+const transactionObjectSchema = z.object({
   account_id: uuidStr("Cuenta inválida"),
   amount: z.coerce.number().positive("El monto debe ser mayor a 0"),
   currency_code: z.enum(["COP", "BRL", "MXN", "USD", "EUR", "PEN", "CLP", "ARS"]),
@@ -36,6 +46,14 @@ export const transactionSchema = z.object({
   ),
   notes: z.string().optional(),
   capture_input_text: z.string().optional(),
+  // Cuotas — optional on every credit-card movement. A statement row carries
+  // them (amount = cuota, original_amount = precio total); an alert email or
+  // a quick capture usually does not, so nothing here is required. An absent
+  // field (`undefined`) leaves the stored value alone; an empty field
+  // (`null`) clears it.
+  installment_current: optionalPositiveInt,
+  installment_total: optionalPositiveInt,
+  original_amount: optionalPositiveNumber,
   // Enrichment only: a malformed id is dropped, never a reason to lose the
   // transaction the user just typed.
   tags: z.preprocess(
@@ -47,6 +65,14 @@ export const transactionSchema = z.object({
   ),
   is_subscription: formBoolean,
 });
+
+export const transactionSchema = transactionObjectSchema.refine(
+  (data) =>
+    data.installment_current == null ||
+    data.installment_total == null ||
+    data.installment_current <= data.installment_total,
+  { message: "La cuota actual no puede ser mayor al número de cuotas", path: ["installment_current"] }
+);
 
 export type TransactionFormData = z.infer<typeof transactionSchema>;
 
@@ -73,7 +99,7 @@ export const transactionCreateOptionsSchema = z.object({
 
 export type TransactionCreateOptions = z.infer<typeof transactionCreateOptionsSchema>;
 
-export const quickCapturePreviewSchema = transactionSchema.extend({
+export const quickCapturePreviewSchema = transactionObjectSchema.extend({
   raw_description: z.string().min(1, "La captura original es requerida"),
   merchant_name: z.string().min(1, "La descripción es requerida"),
   capture_input_text: z.string().min(1, "La frase original es requerida"),

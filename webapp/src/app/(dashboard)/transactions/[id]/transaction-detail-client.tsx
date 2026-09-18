@@ -612,6 +612,18 @@ export function TransactionDetailClient({
           baseCurrency={preferredCurrency}
           className="mt-1.5 flex"
         />
+        {/* Cuotas: a card statement bills a purchase as N rows — the amount
+            above is this cuota, the purchase itself is the full price. */}
+        {(tx.installment_total != null || tx.original_amount != null) && (
+          <p className="mt-1.5 text-xs text-z-sage-dark tabular-nums">
+            {tx.installment_total != null
+              ? `Cuota ${tx.installment_current ?? "?"}/${tx.installment_total}`
+              : "Cuota"}
+            {tx.original_amount != null && tx.original_amount !== optAmount
+              ? ` · Compra total ${formatCurrency(tx.original_amount, tx.currency_code as CurrencyCode)}`
+              : ""}
+          </p>
+        )}
 
         {/* Title (editable) */}
         {titleEditing ? (
