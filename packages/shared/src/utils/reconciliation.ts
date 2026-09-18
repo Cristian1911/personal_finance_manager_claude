@@ -24,6 +24,12 @@ export type ReconciliationCandidate = {
   transaction_time?: string | null;
   /** Parser alert family (e.g. email `pattern_type`) persisted with the row. */
   source_pattern?: string | null;
+  /** Full purchase price when `amount` is one cuota of a purchase in cuotas. */
+  original_amount?: number | null;
+  /** 1-based cuota index when the row is one cuota of a purchase in cuotas. */
+  installment_current?: number | null;
+  /** ISO 4217 code of `amount`; rows that carry it never match across currencies. */
+  currency_code?: string | null;
 };
 
 export type ImportTransactionForReconciliation = {
@@ -37,7 +43,57 @@ export type ImportTransactionForReconciliation = {
   capture_method?: TransactionCaptureMethod | null;
   transaction_time?: string | null;
   source_pattern?: string | null;
+  original_amount?: number | null;
+  installment_current?: number | null;
+  currency_code?: string | null;
 };
+
+type AmountSide = {
+  amount: number;
+  original_amount?: number | null;
+  installment_current?: number | null;
+};
+
+/**
+ * Every figure a row can legitimately be compared on.
+ *
+ * A purchase in cuotas is ONE purchase event that the bank later bills as N
+ * rows. The statement row for cuota 1/N carries the cuota as `amount` and the
+ * full price as `original_amount`, while the alert email (and any manual
+ * entry) recorded the full price at purchase time — so a USD41,99 Nintendo
+ * purchase billed 1/36 arrives from the PDF as amount 1.17 / original 41.99
+ * and from the email as amount 41.99. Comparing `amount` alone made every
+ * such pair look like two different movements (Sep-2026 Mastercard import:
+ * 26 "new" rows, 1 duplicate). Only the first cuota is the purchase event;
+ * cuotas 2..N are billing rows and compare on the cuota alone.
+ */
+function comparableAmounts(side: AmountSide): number[] {
+  const amounts = [side.amount];
+  const isPurchaseEvent = side.installment_current == null || side.installment_current === 1;
+  if (
+    isPurchaseEvent &&
+    side.original_amount != null &&
+    side.original_amount > 0 &&
+    side.original_amount !== side.amount
+  ) {
+    amounts.push(side.original_amount);
+  }
+  return amounts;
+}
+
+/** Smallest relative difference across the comparable figures of both rows. */
+function bestAmountPctDiff(a: AmountSide, b: AmountSide): number {
+  let best = Infinity;
+  for (const x of comparableAmounts(a)) {
+    for (const y of comparableAmounts(b)) {
+      const max = Math.max(x, y);
+      const diff = Math.abs(x - y);
+      const pct = max > 0 ? diff / max : diff > 0 ? 1 : 0;
+      if (pct < best) best = pct;
+    }
+  }
+  return best;
+}
 
 /**
  * What kind of movement an alert family describes. Two rows whose families
@@ -119,6 +175,21 @@ function extractRefTokens(normalized: string): Set<string> {
   return new Set(normalized.match(/\b\d{6,}\b/g) ?? []);
 }
 
+/**
+ * Bank alert templates cut the merchant name at a fixed width (Bancolombia:
+ * 20 characters — "MERPAGO*SANTAMONICAF", "Nintendo CB170939294"), while the
+ * statement prints it whole ("MERPAGO*SANTAMONICAFO", "Nintendo
+ * CB1709392947"). The cut lands mid-token, so the truncated token is a prefix
+ * of the full one. Short prefixes are too ambiguous to count ("la" vs "las").
+ */
+const MIN_PREFIX_TOKEN_LENGTH = 5;
+
+function tokensMatch(a: string, b: string): boolean {
+  if (a === b) return true;
+  const [short, long] = a.length <= b.length ? [a, b] : [b, a];
+  return short.length >= MIN_PREFIX_TOKEN_LENGTH && long.startsWith(short);
+}
+
 function tokenSimilarity(a: string, b: string): number {
   if (!a || !b) return 0;
   if (a === b) return 1;
@@ -127,7 +198,16 @@ function tokenSimilarity(a: string, b: string): number {
   if (aTokens.size === 0 || bTokens.size === 0) return 0;
   let overlap = 0;
   for (const token of aTokens) {
-    if (bTokens.has(token)) overlap++;
+    if (bTokens.has(token)) {
+      overlap++;
+      continue;
+    }
+    for (const other of bTokens) {
+      if (tokensMatch(token, other)) {
+        overlap++;
+        break;
+      }
+    }
   }
   // Containment-based: if the shorter side is fully present in the longer
   // side, similarity = 1. Cross-source pairs (e.g. terse PDF "AMAZON.COM"
@@ -143,12 +223,21 @@ export function scoreReconciliationCandidate(
   if (candidate.reconciled_into_transaction_id) return null;
   if (candidate.account_id !== importTx.account_id) return null;
   if (candidate.direction !== importTx.direction) return null;
+  // A Bancolombia card statement carries a COP section and a USD section for
+  // the same account; USD1,17 and COP1.170 are never the same movement.
+  if (
+    candidate.currency_code &&
+    importTx.currency_code &&
+    candidate.currency_code !== importTx.currency_code
+  ) {
+    return null;
+  }
 
-  // Amount tolerance: percentage-based (up to 5% of the larger amount)
+  // Amount tolerance: percentage-based (up to 5% of the larger amount), taken
+  // over every comparable figure of both rows (cuota AND full price for the
+  // first cuota of a purchase in cuotas — see `comparableAmounts`).
   // Handles: cents in email vs rounded manual (0.03 on 3.8M), lazy manual rounding (~2000 COP)
-  const maxAmount = Math.max(candidate.amount, importTx.amount);
-  const amountDiff = Math.abs(candidate.amount - importTx.amount);
-  const amountPctDiff = maxAmount > 0 ? amountDiff / maxAmount : amountDiff > 0 ? 1 : 0;
+  const amountPctDiff = bestAmountPctDiff(importTx, candidate);
   if (amountPctDiff > 0.05) return null;
 
   const daysDiff = Math.abs(

@@ -155,6 +155,8 @@ async function persistParsedEmail(params: {
         userId,
         accountId: suggestedAccountId,
         parsed,
+        accountCurrency:
+          candidateAccounts?.find((a) => a.id === suggestedAccountId)?.currency_code ?? null,
       });
       conflictTransactionId = duplicate?.candidate.id ?? null;
     } catch (error) {

@@ -178,6 +178,10 @@ export type ReconciliationPreviewCandidate = {
   merchant_name: string | null;
   transaction_date: string;
   amount: number;
+  /** Full purchase price when the existing row is one cuota of a purchase in cuotas. */
+  original_amount: number | null;
+  installment_current: number | null;
+  installment_total: number | null;
   category_id: string | null;
   notes: string | null;
   score: number;

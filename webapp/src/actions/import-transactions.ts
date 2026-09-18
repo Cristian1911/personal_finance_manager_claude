@@ -27,7 +27,8 @@ import type { TransactionCaptureMethod } from "@/types/domain";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import { importPayloadSchema } from "@/lib/validators/import";
+import { z } from "zod";
+import { importPayloadSchema, transactionToImportSchema } from "@/lib/validators/import";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { carryRecurringLinkToSurvivor } from "@/lib/recurring/carry-link";
 import type { ActionResult } from "@/types/actions";
@@ -596,10 +597,14 @@ async function fetchReconciliationCandidates(
     addDays(parseISO(dateValues[dateValues.length - 1] + "T12:00:00"), 3),
   );
 
+  // currency_code / original_amount / installment_current feed the scorer:
+  // a card statement bills a USD purchase in cuotas as amount = cuota with
+  // the full price in original_amount, while the alert email stored the full
+  // price — without them every such pair imports as a second copy.
   const { data, error } = await supabase
     .from("transactions")
     .select(
-      "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method"
+      "id, user_id, account_id, amount, currency_code, original_amount, installment_current, installment_total, direction, transaction_date, transaction_time, source_pattern, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method"
     )
     .eq("user_id", userId)
     .in("account_id", accountIds)
@@ -788,6 +793,14 @@ const PREVIEW_CAPTURE_METHODS = new Set<TransactionCaptureMethod>([
   "OCR_SINGLE",
 ]);
 
+const previewItemsSchema = z.array(
+  z.object({
+    statementIndex: z.number().int().min(0),
+    transactionIndex: z.number().int().min(0),
+    importedTransaction: transactionToImportSchema,
+  }),
+);
+
 export async function previewImportReconciliation(
   captureMethod: TransactionCaptureMethod,
   items: Array<{
@@ -798,6 +811,16 @@ export async function previewImportReconciliation(
 ): Promise<ReconciliationPreviewResult> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { autoMerge: [], review: [], unmatched: [] };
+
+  // Client-provided rows drive the scorer's hard filters (currency, amount,
+  // original_amount) — validate them with the same schema the import itself
+  // applies, so a malformed payload cannot silently suppress every duplicate.
+  const parsedItems = previewItemsSchema.safeParse(items);
+  if (!parsedItems.success) {
+    console.error("previewImportReconciliation: invalid payload", parsedItems.error.issues[0]?.message);
+    return { autoMerge: [], review: [], unmatched: [] };
+  }
+  items = parsedItems.data;
 
   // Client-provided — clamp to the import-wizard surface. OCR screenshots
   // are tier 2 and must NOT inherit the tier-1-only REVIEW floor; anything
@@ -853,6 +876,11 @@ export async function previewImportReconciliation(
         merchant_name: candidate.merchant_name ?? null,
         transaction_date: candidate.transaction_date,
         amount: candidate.amount,
+        original_amount: candidate.original_amount ?? null,
+        installment_current: candidate.installment_current ?? null,
+        installment_total:
+          (candidate as ReconciliationCandidate & { installment_total?: number | null })
+            .installment_total ?? null,
         category_id: candidate.category_id ?? null,
         notes: candidate.notes ?? null,
         score: best.score,
@@ -1807,7 +1835,10 @@ export async function importTransactions(
     }
 
     // Reconciled: existing tx already applied its balance delta, so do NOT
-    // add to balanceDeltaTxs to avoid double-counting.
+    // add to balanceDeltaTxs to avoid double-counting. When the pair is a
+    // full-price alert row vs a cuota-1 statement row the two deltas differ,
+    // but a statement with balance metadata overwrites the balance outright
+    // below (accountsWithMetaBalance), so the difference never persists.
     const merged = mergeTransactionMetadata(existingTx, {
       category_id: insertedTx.category_id,
       categorization_source: insertedTx.categorization_source ?? undefined,

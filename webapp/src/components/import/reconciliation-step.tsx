@@ -31,6 +31,56 @@ import type {
 type ReviewChoice = "MERGE" | "KEEP_BOTH";
 type PanelKey = "unmatched" | "merchants" | "duplicates" | "review" | null;
 
+type CuotaFigures = {
+  amount: number;
+  original_amount?: number | null;
+  installment_current?: number | null;
+  installment_total?: number | null;
+};
+
+/**
+ * The figures a row can be compared on — mirrors `comparableAmounts` in the
+ * shared scorer: the cuota, plus the full price on the first cuota of a
+ * purchase in cuotas.
+ */
+function comparableFigures(row: CuotaFigures): number[] {
+  const first = row.installment_current == null || row.installment_current === 1;
+  return first && row.original_amount != null && row.original_amount !== row.amount
+    ? [row.amount, row.original_amount]
+    : [row.amount];
+}
+
+/** The figure of `row` closest to any figure of `other` — the one the scorer matched on. */
+function matchedFigure(row: CuotaFigures, other: CuotaFigures): number {
+  const others = comparableFigures(other);
+  let best = row.amount;
+  let bestDiff = Infinity;
+  for (const figure of comparableFigures(row)) {
+    for (const candidate of others) {
+      const diff = Math.abs(figure - candidate) / Math.max(figure, candidate, 1);
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        best = figure;
+      }
+    }
+  }
+  return best;
+}
+
+function CuotaLine({ row, shown, currency }: { row: CuotaFigures; shown: number; currency: CurrencyCode }) {
+  if (row.original_amount == null || row.original_amount === row.amount) return null;
+  const cuota = row.installment_current != null
+    ? `Cuota ${row.installment_current}${row.installment_total ? `/${row.installment_total}` : ""}`
+    : "Cuota";
+  return (
+    <p className="text-xs text-z-sage-dark tabular-nums">
+      {shown === row.original_amount
+        ? `${cuota} · ${formatCurrency(row.amount, currency)}`
+        : `Compra total · ${formatCurrency(row.original_amount, currency)}`}
+    </p>
+  );
+}
+
 function PairCard({
   item,
   currency,
@@ -40,6 +90,11 @@ function PairCard({
 }) {
   const imported = item.importedTransaction;
   const candidate = item.candidate;
+  // Bold the figures the scorer actually compared: a statement cuota row
+  // matched to an alert email shows the full price on both sides; a cuota
+  // row matched to a manually entered cuota shows the cuota on both sides.
+  const importedShown = matchedFigure(imported, candidate);
+  const candidateShown = matchedFigure(candidate, imported);
   return (
     <div className="rounded-xl border border-white/6 bg-z-surface-2/60 p-3">
       <div className="flex items-start justify-between gap-3">
@@ -56,13 +111,14 @@ function PairCard({
             </p>
             <p
               className={cn(
-                "text-sm font-semibold",
+                "text-sm font-semibold tabular-nums",
                 imported.direction === "INFLOW" ? "text-z-income" : "text-z-debt",
               )}
             >
               {imported.direction === "OUTFLOW" ? "−" : "+"}
-              {formatCurrency(imported.amount, currency)}
+              {formatCurrency(importedShown, currency)}
             </p>
+            <CuotaLine row={imported} shown={importedShown} currency={currency} />
           </div>
           <div className="space-y-1">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
@@ -74,9 +130,10 @@ function PairCard({
             <p className="text-xs text-z-sage-dark">
               {formatDate(candidate.transaction_date)}
             </p>
-            <p className="text-sm font-semibold text-z-sage-light">
-              {formatCurrency(candidate.amount, currency)}
+            <p className="text-sm font-semibold tabular-nums text-z-sage-light">
+              {formatCurrency(candidateShown, currency)}
             </p>
+            <CuotaLine row={candidate} shown={candidateShown} currency={currency} />
           </div>
         </div>
         <Badge variant="outline" className="ml-2 shrink-0 text-xs">

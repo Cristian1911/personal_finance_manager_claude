@@ -852,6 +852,8 @@ async function processEmail(ctx: {
         userId,
         accountId: suggestedAccountId,
         parsed,
+        accountCurrency:
+          candidateAccounts?.find((a) => a.id === suggestedAccountId)?.currency_code ?? null,
       });
       conflictTransactionId = duplicate?.candidate.id ?? null;
       if (conflictTransactionId) {
