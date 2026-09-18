@@ -310,7 +310,7 @@ export function TransactionForm({
             "Precio total". */}
         {isCreditCardAccount && (
           <div className="space-y-2">
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="installment_total">Cuotas (opcional)</Label>
                 <Input
@@ -337,7 +337,7 @@ export function TransactionForm({
                   defaultValue={transaction?.installment_current ?? ""}
                 />
               </div>
-              <div className="col-span-2 space-y-2 sm:col-span-1">
+              <div className="space-y-2">
                 <Label htmlFor="original_amount">Precio total de la compra</Label>
                 <CurrencyInput
                   id="original_amount"

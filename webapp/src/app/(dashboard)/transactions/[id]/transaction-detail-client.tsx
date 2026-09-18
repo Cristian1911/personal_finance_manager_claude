@@ -614,9 +614,10 @@ export function TransactionDetailClient({
         />
         {/* Cuotas: a card statement bills a purchase as N rows — the amount
             above is this cuota, the purchase itself is the full price. */}
-        {(tx.installment_total != null || tx.original_amount != null) && (
-          <p className="mt-1.5 text-xs text-z-sage-dark tabular-nums">
-            {tx.installment_total != null
+        {((tx.installment_total != null && tx.installment_total > 1) ||
+          (tx.original_amount != null && tx.original_amount !== optAmount)) && (
+          <p className="mt-1.5 text-xs text-muted-foreground tabular-nums">
+            {tx.installment_total != null && tx.installment_total > 1
               ? `Cuota ${tx.installment_current ?? "?"}/${tx.installment_total}`
               : "Cuota"}
             {tx.original_amount != null && tx.original_amount !== optAmount
