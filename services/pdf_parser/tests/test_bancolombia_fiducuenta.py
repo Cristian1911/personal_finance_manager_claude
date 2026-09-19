@@ -10,7 +10,12 @@ import os
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from parsers.bancolombia_fiducuenta import parse_fiducuenta, _parse_colombian_number, _parse_date_yyyymmdd
+from parsers.bancolombia_fiducuenta import (
+    TRANSACTION_RE,
+    parse_fiducuenta,
+    _parse_colombian_number,
+    _parse_date_yyyymmdd,
+)
 from models import TransactionDirection, StatementType
 
 
@@ -26,6 +31,18 @@ def test_parse_colombian_number():
     assert _parse_colombian_number("") == 0.0
     assert _parse_colombian_number("-") == 0.0
     print("✓ Colombian number parsing tests passed")
+
+
+def test_transaction_line_keeps_accented_descriptions():
+    """A mid-period top-up prints as "ADICIÓN"; the accent must not drop the row."""
+    for line in (
+        "20260826 APERTURA 5.000.000,00 104,15170655 5.000.000,00",
+        "20260910 ADICIÓN 1.000.000,00 20,79000000 6.007.204,08",
+        "20260915 RETIRO 500.000,00 10,39000000 5.507.204,08",
+    ):
+        m = TRANSACTION_RE.match(line)
+        assert m is not None, line
+    assert TRANSACTION_RE.match("20260910 ADICIÓN 1.000.000,00 20,79000000 6.007.204,08").group(2) == "ADICIÓN"
 
 
 def test_parse_date_yyyymmdd():

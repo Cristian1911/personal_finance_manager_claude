@@ -1337,8 +1337,11 @@ async function processStatementMeta(params: {
       const inv = meta.investmentMetadata;
       const balance = inv.new_balance ?? meta.summary?.final_balance ?? null;
       if (balance != null) accountUpdate.current_balance = balance;
-      // Reported annualized: it is the rate the account projects with.
-      if (inv.period_return_pct != null) accountUpdate.expected_return_rate = inv.period_return_pct;
+      // Reported annualized: it is the rate the account projects with. The
+      // column is constrained to 0..100; a loss period stays out of it.
+      if (inv.period_return_pct != null && inv.period_return_pct >= 0 && inv.period_return_pct <= 100) {
+        accountUpdate.expected_return_rate = inv.period_return_pct;
+      }
       if (inv.maturity_date) accountUpdate.maturity_date = inv.maturity_date;
     } else if (
       !meta.creditCardMetadata &&
@@ -2221,10 +2224,12 @@ export async function importTransactions(
         currency_code: tx.currency_code,
         transaction_date: tx.transaction_date,
         raw_description: tx.raw_description,
+        merchant_name: tx.merchant_name ?? null,
+        category_id: inserted.category_id ?? null,
       });
     }
     if (transferLegs.length > 0) {
-      const pairing = await pairInvestmentTransfers(supabase, user.id, transferLegs);
+      const pairing = await pairInvestmentTransfers(supabase, user.id, transferLegs, investmentAccountIds);
       if (pairing.paired > 0) {
         details.push(
           pairing.paired === 1

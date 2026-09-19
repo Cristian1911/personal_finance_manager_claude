@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { TRANSFER_CATEGORY_ID, getDebtPaymentCategoryId, isDebtAccountType } from "@zeta/shared";
 import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import type { Database } from "@/types/database";
 
@@ -10,8 +11,9 @@ import type { Database } from "@/types/database";
  * classifier sees the savings leg as spend and the fund leg as income — the
  * same money counted twice. Pair the legs at import instead: same amount and
  * currency, opposite direction, another own account, within three days,
- * neither leg already linked. Exactly one candidate, or nothing happens (an
- * ambiguous pair is left for the manual "Vincular" flow).
+ * neither leg already linked, and one of the two accounts is the fund.
+ * Exactly one candidate, or nothing happens (an ambiguous pair is left for
+ * the manual "Vincular" flow).
  */
 export type InvestmentTransferLeg = {
   id: string;
@@ -21,12 +23,16 @@ export type InvestmentTransferLeg = {
   currency_code: string;
   transaction_date: string;
   raw_description: string;
+  merchant_name?: string | null;
+  category_id?: string | null;
 };
 
 const FUND_SIDE_RE = /^(APERTURA|ADICI[OÓ]N|CONSIGNACI[OÓ]N|RETIRO|CANCELACI[OÓ]N)\b/i;
 // Statements truncate: the savings side prints "TRASLADO DE FONDO DE INVERS".
 const OTHER_SIDE_RE = /FONDO DE INVERS|FIDUCUENTA|FIDUCIARIA/i;
 const WINDOW_DAYS = 3;
+/** Fetch one more than we can accept so a full page reads as "ambiguous". */
+const CANDIDATE_PAGE = 6;
 
 export function isInvestmentTransferLeg(
   description: string,
@@ -42,10 +48,19 @@ function shiftIsoDate(isoDate: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** Category a transfer leg carries when it has none: a debt-account inflow pays the debt. */
+function transferLegCategoryId(direction: string, accountType: string | null | undefined): string {
+  return direction === "INFLOW" && accountType && isDebtAccountType(accountType)
+    ? getDebtPaymentCategoryId(accountType)
+    : TRANSFER_CATEGORY_ID;
+}
+
 export async function pairInvestmentTransfers(
   supabase: SupabaseClient<Database>,
   userId: string,
   legs: InvestmentTransferLeg[],
+  /** Accounts the current import treats as funds (their statements carried investment metadata). */
+  investmentAccountIds: ReadonlySet<string> = new Set(),
 ): Promise<{ paired: number; errors: string[] }> {
   const result = { paired: 0, errors: [] as string[] };
   if (legs.length === 0) return result;
@@ -59,6 +74,8 @@ export async function pairInvestmentTransfers(
     return result;
   }
   const accountById = new Map((accounts ?? []).map((a) => [a.id, a]));
+  const isFund = (accountId: string) =>
+    accountById.get(accountId)?.account_type === "INVESTMENT" || investmentAccountIds.has(accountId);
   const claimed = new Set<string>();
 
   for (const leg of legs) {
@@ -80,14 +97,18 @@ export async function pairInvestmentTransfers(
       .is("personal_debt_id", null)
       .is("split_group_id", null)
       .eq("is_excluded", false)
-      .limit(5);
+      .limit(CANDIDATE_PAGE);
     if (error) {
       result.errors.push(error.message);
       continue;
     }
+    if ((candidates ?? []).length >= CANDIDATE_PAGE) continue; // too many to judge
     const eligible = (candidates ?? []).filter((c) => {
       const other = accountById.get(c.account_id);
-      return other != null && other.is_demo === legAccount.is_demo && !claimed.has(c.id);
+      if (!other || other.is_demo !== legAccount.is_demo || claimed.has(c.id)) return false;
+      // One side must be the fund; "FIDUCIARIA" in an unrelated description
+      // must never neutralize two ordinary rows.
+      return isFund(leg.account_id) || isFund(c.account_id);
     });
     if (eligible.length !== 1) continue;
     const counterpart = eligible[0];
@@ -103,44 +124,74 @@ export async function pairInvestmentTransfers(
       .is("transfer_group_id", null)
       .select("id");
     if (tagError || tagged?.length !== 2) {
-      await supabase
+      const { error: rollbackError } = await supabase
         .from("transactions")
         .update({ transfer_group_id: null, updated_at: now })
         .eq("user_id", userId)
         .eq("transfer_group_id", transferGroupId);
+      if (rollbackError) {
+        console.error("[pairInvestmentTransfers] rollback failed — half-tagged pair", {
+          transferGroupId,
+          legId: leg.id,
+          counterpartId: counterpart.id,
+          rollbackError,
+        });
+      }
       if (tagError) result.errors.push(tagError.message);
       continue;
     }
-    // Re-derive the verdict on both legs now that the link exists: the
-    // classifier returns SELF_TRANSFER for a linked pair.
-    await Promise.all([
-      supabase
-        .from("transactions")
-        .update(
-          flowClassColumns({
+
+    // Re-derive the verdict on both legs now that the link exists (the
+    // classifier returns SELF_TRANSFER / DEBT_PAYMENT for a linked pair) and
+    // give an uncategorized leg the transfer category, as the manual link does.
+    const updates = [
+      {
+        id: leg.id,
+        columns: {
+          ...flowClassColumns({
             direction: leg.direction,
             accountType: legAccount.account_type,
-            description: leg.raw_description,
+            description: leg.merchant_name ?? leg.raw_description,
             transferGroupId,
-            matchedAccountType: counterpartAccount.account_type,
+            counterpartAccountType: counterpartAccount.account_type,
           }),
-        )
-        .eq("user_id", userId)
-        .eq("id", leg.id),
-      supabase
-        .from("transactions")
-        .update(
-          flowClassColumns({
+          ...(leg.category_id
+            ? {}
+            : {
+                category_id: transferLegCategoryId(leg.direction, legAccount.account_type),
+                categorization_source: "SYSTEM_DEFAULT" as const,
+              }),
+          updated_at: now,
+        },
+      },
+      {
+        id: counterpart.id,
+        columns: {
+          ...flowClassColumns({
             direction: counterpart.direction,
             accountType: counterpartAccount.account_type,
             description: counterpart.merchant_name ?? counterpart.raw_description ?? null,
             transferGroupId,
-            matchedAccountType: legAccount.account_type,
+            counterpartAccountType: legAccount.account_type,
           }),
-        )
-        .eq("user_id", userId)
-        .eq("id", counterpart.id),
-    ]);
+          ...(counterpart.category_id
+            ? {}
+            : {
+                category_id: transferLegCategoryId(counterpart.direction, counterpartAccount.account_type),
+                categorization_source: "SYSTEM_DEFAULT" as const,
+              }),
+          updated_at: now,
+        },
+      },
+    ];
+    const outcomes = await Promise.all(
+      updates.map((u) =>
+        supabase.from("transactions").update(u.columns).eq("user_id", userId).eq("id", u.id),
+      ),
+    );
+    for (const { error: updateError } of outcomes) {
+      if (updateError) result.errors.push(`flow_class: ${updateError.message}`);
+    }
     claimed.add(leg.id);
     claimed.add(counterpart.id);
     result.paired++;

@@ -70,7 +70,7 @@ class InvestmentMetadata(BaseModel):
     fund_name: str | None = None  # e.g. "FIDUCUENTA"
     investment_account_number: str | None = None  # account number
     unit_value_end: float | None = None  # unit value at period end
-    period_return_pct: float | None = None  # net return for the period
+    period_return_pct: float | None = None  # net return the fund reports for the period, annualized (E.A. %)
     fee_pct_annual: float | None = None  # annual management fee
     previous_balance: float | None = None  # opening balance
     additions: float | None = None  # total additions during period

@@ -32,8 +32,9 @@ ANNUAL_FEE_RE = re.compile(r"SOBRE VALOR DE LA CARTERA\s+([\d.,]+)\s*%\s*ANUAL")
 
 # Transaction line pattern: date (YYYYMMDD), description, then numbers
 # E.g. "20260826 APERTURA 5.000.000,00 104,15170655 5.000.000,00"
+# The description keeps its accents ("ADICIÓN"), so the class must include them.
 TRANSACTION_RE = re.compile(
-    r"^(\d{8})\s+([A-Z\s]+?)\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)\s*$"
+    r"^(\d{8})\s+([A-ZÁÉÍÓÚÑ\s]+?)\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)\s*$"
 )
 
 # Summary section patterns - look for header lines

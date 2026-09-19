@@ -108,7 +108,7 @@ const investmentMetadataSchema = z.object({
   withholding: z.number().nullable(),
   new_balance: z.number().nullable(),
   units_end: z.number().nullable(),
-  maturity_date: z.string().nullable(),
+  maturity_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha de vencimiento inválida").nullable(),
 });
 
 const statementMetaSchema = z.object({
