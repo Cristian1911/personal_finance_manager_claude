@@ -22,7 +22,7 @@ import { StepResults } from "./step-results";
 import { LoanStepReview } from "./loan-step-review";
 import { LoanStepResults } from "./loan-step-results";
 import { trackClientEvent } from "@/lib/utils/analytics";
-import { accountMaskSuffixMatches, normalizeAccountMaskSuffix } from "@/lib/utils/account-mask";
+import { matchStatementToAccount } from "@/lib/import/statement-preview";
 import { useHideTabBar } from "@/components/mobile/v2/tab-bar-visibility-provider";
 import { cn } from "@/lib/utils";
 
@@ -158,32 +158,7 @@ export function ImportWizard({
         return existing;
       }
 
-      let matched: Account | undefined;
-      if (stmt.statement_type === "credit_card" && stmt.card_last_four) {
-        matched = accts.find(
-          (a) =>
-            a.account_type === "CREDIT_CARD" &&
-            accountMaskSuffixMatches(a.mask, stmt.card_last_four),
-        );
-      } else if (stmt.statement_type === "savings" && stmt.account_number) {
-        const last4 = normalizeAccountMaskSuffix(stmt.account_number);
-        matched = accts.find(
-          (a) => a.account_type === "SAVINGS" && accountMaskSuffixMatches(a.mask, last4),
-        );
-      } else if (stmt.statement_type === "loan" && stmt.account_number) {
-        const last4 = normalizeAccountMaskSuffix(stmt.account_number);
-        matched = accts.find(
-          (a) => a.account_type === "LOAN" && accountMaskSuffixMatches(a.mask, last4),
-        );
-      } else if (stmt.statement_type === "investment") {
-        const number = stmt.account_number ?? stmt.investment_metadata?.investment_account_number ?? null;
-        const last4 = normalizeAccountMaskSuffix(number);
-        if (last4) {
-          matched = accts.find(
-            (a) => a.account_type === "INVESTMENT" && accountMaskSuffixMatches(a.mask, last4),
-          );
-        }
-      }
+      const matched = matchStatementToAccount(stmt, accts);
 
       return {
         statementIndex: idx,

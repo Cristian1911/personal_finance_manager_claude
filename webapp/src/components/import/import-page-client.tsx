@@ -143,6 +143,7 @@ export function ImportPageClient({
           <PendingEmailStatements
             key={selectedId ?? "none"}
             statements={visiblePending}
+            accounts={accounts}
             onReviewStatement={handleReviewStatement}
             vaultSuggestions={initialVaultSuggestions}
           />
