@@ -1,34 +1,36 @@
 import { connection } from "next/server";
-import { getPersonalDebts, getPersonalDebtsOverview } from "@/actions/personal-debts";
-import { getSharedPaymentGroups } from "@/actions/shared-payments";
+import { getPersonalDebtsByPerson } from "@/actions/personal-debts";
+import { overviewFromHierarchy } from "@/lib/personal-debts/hierarchy";
 import { getPreferredCurrency } from "@/actions/profile";
 import { PersonasRoot } from "@/components/personas/personas-root";
-import { MOBILE_TAB_BAR_CLEARANCE_CLASS } from "@/lib/constants/styles";
+import { NewDebtMenu } from "@/components/personas/new-debt-menu";
+import { MobileHeader } from "@/components/mobile/v2/mobile-header";
+import { PageHeaderRow } from "@/components/ui/page-header-row";
+import { MOBILE_TAB_BAR_CLEARANCE_CLASS, PAGE_STACK_CLASS } from "@/lib/constants/styles";
+import { cn } from "@/lib/utils";
 
 export default async function PersonasPage() {
   await connection();
-  const [debtsRes, overviewRes, sharedRes, currency] = await Promise.all([
-    getPersonalDebts(),
-    getPersonalDebtsOverview(),
-    getSharedPaymentGroups(),
-    getPreferredCurrency(),
-  ]);
-  const debts = debtsRes.success ? debtsRes.data : [];
-  const overview = overviewRes.success
-    ? overviewRes.data
-    : { iOwe: { totals: [], byPerson: [] }, owedToMe: { totals: [], byPerson: [] }, overdue: [] };
-  const sharedGroups = sharedRes.success ? sharedRes.data : [];
+  const currency = await getPreferredCurrency();
+  const peopleRes = await getPersonalDebtsByPerson(currency);
+  const people = peopleRes.success ? peopleRes.data : [];
+  const overview = overviewFromHierarchy(people);
+
   return (
-    <div className={`space-y-6 ${MOBILE_TAB_BAR_CLEARANCE_CLASS}`}>
-      <h1 className="text-2xl font-semibold tracking-tight text-z-sage-light lg:text-3xl">
-        Deudas personales
-      </h1>
-      <PersonasRoot
-        debts={debts}
-        overview={overview}
-        currency={currency}
-        sharedGroups={sharedGroups}
+    <div className={cn(PAGE_STACK_CLASS, MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
+      <MobileHeader
+        variant="main"
+        title="Deudas personales"
+        action={<NewDebtMenu currency={currency} compact />}
       />
+      <PageHeaderRow
+        title="Deudas personales"
+        subtitle="Quién te debe y a quién le debes, por persona y por viaje."
+        actions={<NewDebtMenu currency={currency} />}
+      />
+      <div className="mx-auto w-full max-w-3xl">
+        <PersonasRoot people={people} overview={overview} currency={currency} />
+      </div>
     </div>
   );
 }

@@ -83,9 +83,8 @@ export function RecordRepaymentDialog({
   // Prefer the origin account; else the first non-debt account (never default a
   // received payment onto a credit card); else whatever exists.
   const preferredAccountId = useMemo(() => {
-    if (defaultAccountId && accounts.some((a) => a.id === defaultAccountId)) {
-      return defaultAccountId;
-    }
+    const origin = defaultAccountId ? accounts.find((a) => a.id === defaultAccountId) : undefined;
+    if (origin && !isDebtAccountType(origin.account_type)) return origin.id;
     const nonDebt = accounts.find((a) => !isDebtAccountType(a.account_type));
     return nonDebt?.id ?? accounts[0]?.id ?? "";
   }, [defaultAccountId, accounts]);
@@ -102,7 +101,7 @@ export function RecordRepaymentDialog({
   const [loadingCandidates, setLoadingCandidates] = useState(false);
 
   // Reset form + cached candidates whenever the dialog closes, so reopening it
-  // always starts clean. Otherwise (the dialog stays mounted in persona-card)
+  // always starts clean. Otherwise (when a caller keeps the dialog mounted)
   // stale candidates / amounts leak across opens.
   useEffect(() => {
     if (open) return;

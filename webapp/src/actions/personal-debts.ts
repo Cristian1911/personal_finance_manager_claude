@@ -1,4 +1,5 @@
 "use server";
+import { z } from "zod";
 import { cacheTag, cacheLife, updateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
@@ -23,12 +24,20 @@ import {
 } from "@/lib/personal-debts/ad-hoc";
 import { SPLIT_ERROR_MESSAGES } from "@/lib/personal-debts/split-errors";
 import {
+  allocatePaymentAcrossDebts,
+  buildPersonHierarchy,
+  type DebtOriginTx,
+  type HierarchyModo,
+  type PersonDebtSummary,
+} from "@/lib/personal-debts/hierarchy";
+import {
   computeSplit,
   getCurrencyDecimals,
   inferPersonalDebtRole,
   isPersonalDebtOverdue,
 } from "@zeta/shared";
 import { toColombiaDateString } from "@/lib/utils/date";
+import { formatCurrency } from "@/lib/utils/currency";
 import type { ActionResult } from "@/types/actions";
 import type { Database } from "@/types/database";
 import type {
@@ -46,6 +55,9 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // repayment INFLOWs so returned loans are categorized, not counted as salary.
 const LOAN_REPAYMENT_CATEGORY_ID = "c0000001-0008-4000-8000-000000000005";
 
+/** Max ids per `.in()` filter (PostgREST puts them on the URL). */
+const ORIGIN_ID_CHUNK = 150;
+
 // ============================================================
 // Cached read
 // ============================================================
@@ -58,11 +70,10 @@ async function getPersonalDebtsCached(
   cacheLife("zeta");
   const supabase = createCachedClient(accessToken);
 
-  // split_group_id MUST be selected: personas-root filters `!d.split_group_id`
-  // to keep shared-payment debts out of the standalone Debo / Me deben lists
-  // (they render as grouped SharedPaymentCards instead). Omitting it makes that
-  // filter a silent no-op, so every per-transaction shared debt leaks into the
-  // flat lists — one card per shared expense.
+  // Flat list used by the transaction quick actions and the /deudas overview.
+  // The Deudas personales page reads getPersonalDebtsByPerson instead.
+  // split_group_id MUST stay selected: callers tell shared-payment debts apart
+  // from standalone ones by it.
   const { data, error } = await supabase
     .from("personal_debts")
     .select(`
@@ -82,7 +93,9 @@ async function getPersonalDebtsCached(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return data.map((row: any) => {
     const repayments: number[] = (row.repayments ?? [])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .filter((t: any) => t.pd_role === "repayment")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .map((t: any) => t.amount as number);
     const total_repaid = repayments.reduce((s: number, n: number) => s + n, 0);
     return {
@@ -104,6 +117,116 @@ export async function getPersonalDebts(): Promise<ActionResult<PersonalDebtWithD
     return { success: true, data };
   } catch {
     return { success: false, error: "Error al cargar las personas" };
+  }
+}
+
+// ============================================================
+// Persona → viaje → deudas (the Deudas personales page)
+// ============================================================
+async function getPersonalDebtsByPersonCached(
+  accessToken: string,
+  userId: string,
+  primaryCurrency: string,
+): Promise<PersonDebtSummary[]> {
+  "use cache";
+  // Grouping depends on the origin transactions' tags and on the viajes those
+  // tags belong to, so a retag or a trip rename must drop this too.
+  cacheTag("personal-debts");
+  cacheTag("modos");
+  cacheTag("tags");
+  cacheTag("transactions");
+  cacheLife("zeta");
+  const supabase = createCachedClient(accessToken);
+
+  const { data, error } = await supabase
+    .from("personal_debts")
+    .select(`
+      id, user_id, destinatario_id, direction, principal_amount,
+      currency_code, outstanding_amount, opened_on, due_date, status,
+      origin_transaction_id, split_group_id, notes, is_demo, created_at, updated_at,
+      installment_group_id, installment_total, group_total_amount, interest_amount,
+      destinatario:destinatarios!personal_debts_destinatario_id_fkey ( name, default_category_id, is_ad_hoc ),
+      repayments:transactions!transactions_enc_personal_debt_id_fkey ( amount, pd_role )
+    `)
+    .eq("user_id", userId);
+  if (error) throw error;
+  if (!data || data.length === 0) return [];
+
+  const today = toColombiaDateString(new Date());
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const debts: PersonalDebtWithDetails[] = data.map((row: any) => {
+    const total_repaid = (row.repayments ?? [])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .filter((t: any) => t.pd_role === "repayment")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .reduce((s: number, t: any) => s + Number(t.amount ?? 0), 0);
+    return {
+      ...row,
+      destinatario_name: row.destinatario?.name ?? "—",
+      destinatario_default_category_id: row.destinatario?.default_category_id ?? null,
+      destinatario_is_ad_hoc: !!row.destinatario?.is_ad_hoc,
+      total_repaid,
+      is_overdue: isPersonalDebtOverdue(row.due_date, row.status, today),
+    };
+  });
+
+  const originIds = [
+    ...new Set(debts.map((d) => d.origin_transaction_id).filter((x): x is string => !!x)),
+  ];
+  // `.in()` goes on the GET URL: chunk it so a long history of shared
+  // expenses never pushes the request past proxy limits.
+  const chunks: string[][] = [];
+  for (let i = 0; i < originIds.length; i += ORIGIN_ID_CHUNK) {
+    chunks.push(originIds.slice(i, i + ORIGIN_ID_CHUNK));
+  }
+  const [originTxs, tagRows, { data: modos, error: modosErr }] = await Promise.all([
+    Promise.all(
+      chunks.map(async (ids) => {
+        const { data, error: e } = await supabase
+          .from("transactions")
+          .select(
+            "id, amount, transaction_date, merchant_name, clean_description, raw_description, account_id, split_group_id, installment_current, installment_total",
+          )
+          .eq("user_id", userId)
+          .in("id", ids);
+        if (e) throw e;
+        return (data ?? []) as DebtOriginTx[];
+      }),
+    ).then((xs) => xs.flat()),
+    Promise.all(
+      chunks.map(async (ids) => {
+        const { data, error: e } = await supabase
+          .from("transaction_tags")
+          .select("transaction_id, tag_id")
+          .eq("user_id", userId)
+          .in("transaction_id", ids);
+        if (e) throw e;
+        return data ?? [];
+      }),
+    ).then((xs) => xs.flat()),
+    supabase
+      .from("modos")
+      .select("id, name, emoji, color, tag_ids, date_from, date_to")
+      .eq("user_id", userId),
+  ]);
+  if (modosErr) throw modosErr;
+
+  return buildPersonHierarchy(
+    { debts, originTxs, tagRows, modos: (modos ?? []) as HierarchyModo[] },
+    primaryCurrency,
+  );
+}
+
+export async function getPersonalDebtsByPerson(
+  primaryCurrency: string,
+): Promise<ActionResult<PersonDebtSummary[]>> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
+  try {
+    const data = await getPersonalDebtsByPersonCached(accessToken, user.id, primaryCurrency);
+    return { success: true, data };
+  } catch {
+    return { success: false, error: "Error al cargar las deudas personales" };
   }
 }
 
@@ -965,8 +1088,6 @@ export async function recordRepayment(
     .single();
   if (debtErr || !debt) return { success: false, error: "Deuda no encontrada" };
 
-  // A repayment moves the opposite way to the origin: borrowed -> OUTFLOW, lent -> INFLOW.
-  const direction: "INFLOW" | "OUTFLOW" = debt.direction === "borrowed" ? "OUTFLOW" : "INFLOW";
   const rawDescription = r.notes ?? "Abono persona";
 
   const idempotencyKey = await computeIdempotencyKey({
@@ -982,53 +1103,24 @@ export async function recordRepayment(
 
   const { data: inserted, error: insErr } = await supabase
     .from("transactions")
-    .insert({
-      user_id: user.id,
-      account_id: r.account_id,
-      amount: r.amount,
-      direction,
-      // personal_debts.currency_code is plain text; the transactions insert
-      // wants the currency_code enum. The stored values are always valid codes.
-      currency_code: debt.currency_code as Database["public"]["Enums"]["currency_code"],
-      transaction_date: r.transaction_date,
-      raw_description: rawDescription,
-      // An ad-hoc person is hidden from AppDataProvider, so stamping their id
-      // here would leave the transaction pointing at a destinatario the edit
-      // form's picker can't resolve (renders blank, and a save would clear it)
-      // and would surface the throwaway name in per-destinatario analytics. The
-      // repayment is still tied to the person through personal_debt_id.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      destinatario_id: (debt as any).destinatario?.is_ad_hoc ? null : debt.destinatario_id,
-      provider: "MANUAL",
-      capture_method: "MANUAL_FORM",
-      idempotency_key: idempotencyKey,
-      personal_debt_id: personalDebtId,
-      pd_role: "repayment",
-      // A repaid `lent` debt is money coming back from a loan — tag it with the
-      // dedicated income subcategory so it doesn't land uncategorized (nor get
-      // mistaken for salary/bonus). Borrowed repayments are OUTFLOWs (you paying
-      // back) and get no income category.
-      category_id: debt.direction === "lent" ? LOAN_REPAYMENT_CATEGORY_ID : null,
-      // Settling a debt with a person is neither consumption nor earnings, so
-      // both legs are neutral — this is one of the four surfaces that counted a
-      // repayment received as income.
-      //
-      // Set literally rather than through classifyFlow: the counterparty is a
-      // person, not an account, so no account_type carries the fact. An INFLOW
-      // to a CHECKING account is INCOME by every structural rule the classifier
-      // has, and it would be wrong here.
-      //
-      // Known asymmetry, left as-is deliberately: the ORIGINAL outflow when the
-      // money was lent is still classified as SPEND. Netting that out is a
-      // separate decision about what a receivable is worth, not part of wiring
-      // the write paths.
-      flow_class: direction === "OUTFLOW" ? "DEBT_PAYMENT" : "DEBT_CREDIT",
-      // NULL version — see the note on FLOW_CLASS_RULES_VERSION. The classifier
-      // would call an INFLOW to a CHECKING account INCOME, so a version-keyed
-      // backfill would undo exactly the fix this site makes.
-      flow_class_version: null,
-      source_pattern: null,
-    })
+    .insert(
+      buildRepaymentRow({
+        userId: user.id,
+        accountId: r.account_id,
+        amount: r.amount,
+        transactionDate: r.transaction_date,
+        rawDescription,
+        idempotencyKey,
+        debt: {
+          id: personalDebtId,
+          direction: debt.direction,
+          currency_code: debt.currency_code,
+          destinatario_id: debt.destinatario_id,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          is_ad_hoc: !!(debt as any).destinatario?.is_ad_hoc,
+        },
+      }),
+    )
     .select("id, account_id, amount, direction, is_excluded")
     .single();
   if (insErr || !inserted) {
@@ -1107,4 +1199,296 @@ export async function recordRepayment(
   revalidateFinancialViews();
   updateTag("personal-debts");
   return { success: true, data: undefined };
+}
+
+// ============================================================
+// Repayment row — one shape for the single and the grouped abono.
+// ============================================================
+type RepaymentRowInput = {
+  userId: string;
+  accountId: string;
+  amount: number;
+  transactionDate: string;
+  rawDescription: string;
+  idempotencyKey: string;
+  debt: {
+    id: string;
+    direction: PersonalDebtDirection;
+    currency_code: string;
+    destinatario_id: string;
+    is_ad_hoc: boolean;
+  };
+};
+
+function buildRepaymentRow(
+  input: RepaymentRowInput,
+): Database["public"]["Tables"]["transactions"]["Insert"] {
+  const { debt } = input;
+  // A repayment moves the opposite way to the origin: borrowed -> OUTFLOW, lent -> INFLOW.
+  const direction: "INFLOW" | "OUTFLOW" = debt.direction === "borrowed" ? "OUTFLOW" : "INFLOW";
+  return {
+    user_id: input.userId,
+    account_id: input.accountId,
+    amount: input.amount,
+    direction,
+    // personal_debts.currency_code is plain text; the transactions insert
+    // wants the currency_code enum. The stored values are always valid codes.
+    currency_code: debt.currency_code as Database["public"]["Enums"]["currency_code"],
+    transaction_date: input.transactionDate,
+    raw_description: input.rawDescription,
+    // An ad-hoc person is hidden from AppDataProvider, so stamping their id
+    // here would leave the transaction pointing at a destinatario the edit
+    // form's picker can't resolve (renders blank, and a save would clear it)
+    // and would surface the throwaway name in per-destinatario analytics. The
+    // repayment is still tied to the person through personal_debt_id.
+    destinatario_id: debt.is_ad_hoc ? null : debt.destinatario_id,
+    provider: "MANUAL",
+    capture_method: "MANUAL_FORM",
+    idempotency_key: input.idempotencyKey,
+    personal_debt_id: debt.id,
+    pd_role: "repayment",
+    // A repaid `lent` debt is money coming back from a loan — tag it with the
+    // dedicated income subcategory so it doesn't land uncategorized (nor get
+    // mistaken for salary/bonus). Borrowed repayments are OUTFLOWs (you paying
+    // back) and get no income category.
+    category_id: debt.direction === "lent" ? LOAN_REPAYMENT_CATEGORY_ID : null,
+    // Settling a debt with a person is neither consumption nor earnings, so
+    // both legs are neutral — this is one of the four surfaces that counted a
+    // repayment received as income.
+    //
+    // Set literally rather than through classifyFlow: the counterparty is a
+    // person, not an account, so no account_type carries the fact. An INFLOW
+    // to a CHECKING account is INCOME by every structural rule the classifier
+    // has, and it would be wrong here.
+    //
+    // Known asymmetry, left as-is deliberately: the ORIGINAL outflow when the
+    // money was lent is still classified as SPEND. Netting that out is a
+    // separate decision about what a receivable is worth, not part of wiring
+    // the write paths.
+    flow_class: direction === "OUTFLOW" ? "DEBT_PAYMENT" : "DEBT_CREDIT",
+    // NULL version — see the note on FLOW_CLASS_RULES_VERSION. The classifier
+    // would call an INFLOW to a CHECKING account INCOME, so a version-keyed
+    // backfill would undo exactly the fix this site makes.
+    flow_class_version: null,
+    source_pattern: null,
+  };
+}
+
+// ============================================================
+// Grouped repayment: ONE payment from a person against several of their
+// debts (a whole viaje, or everything they owe). The schema ties a
+// transaction to exactly one debt, so the amount is spread oldest-first and
+// one repayment row lands per debt it reaches — same rows, same balance
+// effect, same recompute as N single abonos, in one confirmation.
+// ============================================================
+const groupedRepaymentIdsSchema = z
+  .array(personalDebtIdSchema)
+  .min(1, "Elige al menos una deuda")
+  .max(200, "Son demasiadas deudas para un solo abono");
+
+export async function recordGroupedRepayment(
+  debtIds: string[],
+  formData: FormData,
+): Promise<ActionResult<{ transactions: number; skipped: number }>> {
+  const idsParsed = groupedRepaymentIdsSchema.safeParse(debtIds);
+  if (!idsParsed.success) return { success: false, error: idsParsed.error.issues[0].message };
+  const ids = [...new Set(idsParsed.data)];
+
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const parsed = recordRepaymentSchema.safeParse({
+    amount: formData.get("amount"),
+    transaction_date: formData.get("transaction_date"),
+    account_id: formData.get("account_id"),
+    notes: formData.get("notes") || undefined,
+  });
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
+  const r = parsed.data;
+
+  const { data: debts, error: debtsErr } = await supabase
+    .from("personal_debts")
+    .select(
+      "id, direction, status, principal_amount, outstanding_amount, currency_code, destinatario_id, split_group_id, opened_on, created_at, destinatario:destinatarios!personal_debts_destinatario_id_fkey ( name, is_ad_hoc )",
+    )
+    .eq("user_id", user.id)
+    .in("id", ids);
+  if (debtsErr || !debts || debts.length !== ids.length) {
+    return { success: false, error: "Alguna de las deudas no existe" };
+  }
+  const active = debts.filter((d) => d.status === "active");
+  if (active.length === 0) return { success: false, error: "No hay deudas activas para abonar" };
+  if (active.length !== debts.length) {
+    return { success: false, error: "Alguna de las deudas ya no está activa. Recarga la página." };
+  }
+  const first = active[0];
+  if (active.some((d) => d.direction !== first.direction)) {
+    return { success: false, error: "No se puede mezclar lo que debes con lo que te deben en un solo abono" };
+  }
+  if (active.some((d) => d.currency_code !== first.currency_code)) {
+    return { success: false, error: "Todas las deudas del abono deben estar en la misma moneda" };
+  }
+  if (active.some((d) => d.destinatario_id !== first.destinatario_id)) {
+    return { success: false, error: "Un abono agrupado es con una sola persona" };
+  }
+
+  const decimals = getCurrencyDecimals(first.currency_code as CurrencyCode);
+  const { allocations, unallocated } = allocatePaymentAcrossDebts(
+    active.map((d) => ({
+      id: d.id,
+      outstanding_amount: Number(d.outstanding_amount),
+      opened_on: d.opened_on,
+      created_at: d.created_at,
+    })),
+    r.amount,
+    decimals,
+  );
+  if (unallocated > 0) {
+    const pending = active.reduce((s, d) => s + Number(d.outstanding_amount), 0);
+    return {
+      success: false,
+      error: `El abono supera lo pendiente (${formatCurrency(pending, first.currency_code as CurrencyCode)})`,
+    };
+  }
+  if (allocations.length === 0) return { success: false, error: "No hay saldo pendiente que abonar" };
+
+  // Validation only — the balance is re-read right before it is written, so
+  // the N inserts below never widen the window for clobbering a concurrent
+  // change to the account.
+  const { data: acct, error: acctErr } = await supabase
+    .from("accounts")
+    .select("id, account_type")
+    .eq("id", r.account_id)
+    .eq("user_id", user.id)
+    .single();
+  if (acctErr || !acct || acct.account_type == null) {
+    return { success: false, error: "Cuenta no encontrada para aplicar balance" };
+  }
+
+  const byId = new Map(active.map((d) => [d.id, d]));
+  const direction: "INFLOW" | "OUTFLOW" = first.direction === "borrowed" ? "OUTFLOW" : "INFLOW";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const personName = ((first as any).destinatario?.name as string | undefined) ?? "persona";
+  const rawDescription = r.notes ?? `Abono ${personName}`;
+
+  // Rows go in one at a time so a failure leaves a known prefix inserted; the
+  // balance moves by exactly what landed, and a retry skips the rows already
+  // there (idempotency key per debt + amount + date).
+  let insertedTotal = 0;
+  let inserted = 0;
+  let skipped = 0;
+  let failure: string | null = null;
+  for (const a of allocations) {
+    const debt = byId.get(a.id)!;
+    try {
+      const idempotencyKey = await computeIdempotencyKey({
+        provider: "MANUAL",
+        providerTransactionId: `personal-debt:${a.id}`,
+        transactionDate: r.transaction_date,
+        amount: a.amount,
+        rawDescription,
+      });
+      const { data: row, error: insErr } = await supabase
+        .from("transactions")
+        .insert(
+          buildRepaymentRow({
+            userId: user.id,
+            accountId: r.account_id,
+            amount: a.amount,
+            transactionDate: r.transaction_date,
+            rawDescription,
+            idempotencyKey,
+            debt: {
+              id: a.id,
+              direction: debt.direction,
+              currency_code: debt.currency_code,
+              destinatario_id: debt.destinatario_id,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              is_ad_hoc: !!(debt as any).destinatario?.is_ad_hoc,
+            },
+          }),
+        )
+        .select("id, is_excluded")
+        .single();
+      if (insErr || !row) {
+        if (insErr?.code === "23505") {
+          skipped += 1;
+          continue;
+        }
+        failure = "Error al registrar el abono";
+        break;
+      }
+      inserted += 1;
+      if (!row.is_excluded) insertedTotal += a.amount;
+    } catch (e) {
+      // A thrown error (network, not a PostgREST one) must not escape: rows
+      // already inserted still need their balance, recompute and invalidation.
+      console.error("recordGroupedRepayment insert threw:", e);
+      failure = "Error al registrar el abono";
+      break;
+    }
+  }
+
+  // Every allocation already existed: a double-submit, same as the single path.
+  if (inserted === 0 && skipped > 0) {
+    return { success: false, error: "Este abono ya existe (duplicado)" };
+  }
+
+  // Balance: one delta for everything that landed in THIS call (same helper as
+  // the single path), computed from a balance read right before the write.
+  if (insertedTotal > 0) {
+    const { data: fresh, error: freshErr } = await supabase
+      .from("accounts")
+      .select("current_balance")
+      .eq("id", r.account_id)
+      .eq("user_id", user.id)
+      .single();
+    if (freshErr || !fresh) {
+      failure = failure ?? "Error al actualizar el saldo de la cuenta";
+    } else {
+      const nextBalance = applyAccountBalanceDelta({
+        currentBalance: fresh.current_balance ?? 0,
+        accountType: acct.account_type,
+        direction,
+        amount: insertedTotal,
+      });
+      const { error: balErr } = await supabase
+        .from("accounts")
+        .update({ current_balance: nextBalance })
+        .eq("id", r.account_id)
+        .eq("user_id", user.id);
+      if (balErr) {
+        failure = failure
+          ? `${failure}. Además no se pudo actualizar el saldo de la cuenta`
+          : "Abono registrado, pero no se pudo actualizar el saldo de la cuenta";
+      }
+    }
+  }
+
+  // Rows and balance are committed: recompute every touched debt and split
+  // group even on a partial failure, then invalidate no matter what.
+  try {
+    const touched = allocations.slice(0, inserted + skipped);
+    for (const a of touched) {
+      const debt = byId.get(a.id)!;
+      await recomputeOutstanding(supabase, user.id, a.id, Number(debt.principal_amount));
+    }
+    const groupIds = [...new Set(touched.map((a) => byId.get(a.id)!.split_group_id).filter((x): x is string => !!x))];
+    for (const gid of groupIds) {
+      await recomputeSplitRepaid(supabase, user.id, gid);
+    }
+  } catch (e) {
+    revalidateFinancialViews();
+    updateTag("personal-debts");
+    const detail = e instanceof Error ? e.message : String(e);
+    return {
+      success: false,
+      error: `Abono registrado, pero no se pudo recalcular la deuda: ${detail}`,
+    };
+  }
+
+  revalidateFinancialViews();
+  updateTag("personal-debts");
+  if (failure) return { success: false, error: failure };
+  return { success: true, data: { transactions: inserted, skipped } };
 }
