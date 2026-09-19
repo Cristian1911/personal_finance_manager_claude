@@ -9,6 +9,7 @@ from models import ParsedStatement
 from parsers.bancolombia_savings import parse_savings
 from parsers.bancolombia_credit_card import parse_credit_card
 from parsers.bancolombia_loan import parse_loan
+from parsers.bancolombia_fiducuenta import parse_fiducuenta
 from parsers.nu_credit_card import parse_nu_credit_card
 from parsers.lulo_loan import parse_lulo_loan
 from parsers.bogota_savings import parse_bogota_savings
@@ -33,6 +34,18 @@ from parsers.nu_savings import parse_nu_savings
 # ---------------------------------------------------------------------------
 
 DETECTORS: list[dict] = [
+    # -- Bancolombia Fiducuenta (Investment Fund) --
+    {
+        "name": "bancolombia_fiducuenta",
+        "signals": [
+            (5, lambda t: "FONDO DE INVERSIÓN COLECTIVA" in t),
+            (5, lambda t: "FIDUCUENTA" in t),
+            (5, lambda t: "FIDUCIARIA BANCOLOMBIA" in t),
+            (4, lambda t: "Cuenta de Inversión" in t),
+            (4, lambda t: "Valor Unidad al Final" in t),
+        ],
+        "parse": lambda path, pw: [parse_fiducuenta(path, password=pw)],
+    },
     # -- Bancolombia Savings --
     {
         "name": "bancolombia_savings",
@@ -267,7 +280,7 @@ def detect_and_parse(pdf_path: str, password: str | None = None) -> list[ParsedS
             scored.append((score, detector))
 
     SUPPORTED = (
-        "Bancolombia (ahorros, crédito, préstamo), NU Colombia (ahorros, crédito), Lulo Bank, "
+        "Bancolombia (ahorros, crédito, préstamo, fiducuenta), NU Colombia (ahorros, crédito), Lulo Bank, "
         "Banco de Bogotá, Banco Popular, Davivienda (ahorros, préstamo), "
         "Falabella, Cooperativa Confiar, Nequi."
     )

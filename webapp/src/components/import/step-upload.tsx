@@ -90,6 +90,7 @@ function mergeImageResponses(responses: ParseResponse[]): ParseResponse {
       existing.summary = existing.summary ?? statement.summary;
       existing.credit_card_metadata = existing.credit_card_metadata ?? statement.credit_card_metadata;
       existing.loan_metadata = existing.loan_metadata ?? statement.loan_metadata;
+      existing.investment_metadata = existing.investment_metadata ?? statement.investment_metadata ?? null;
     }
   }
 
@@ -375,7 +376,7 @@ export function StepUpload({
         0
       );
       const hasMetadata = parsed.statements.some(
-        (s) => s.credit_card_metadata || s.loan_metadata || s.summary
+        (s) => s.credit_card_metadata || s.loan_metadata || s.investment_metadata || s.summary
       );
       if (totalTx === 0 && !hasMetadata) {
         void trackClientEvent({

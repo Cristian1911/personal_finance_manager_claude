@@ -50,9 +50,27 @@ export type LoanMetadata = {
   last_payment_date: string | null;
 };
 
+/** Fondo de inversión colectiva (e.g. Fiducuenta): the period's figures. */
+export type InvestmentMetadata = {
+  fund_name: string | null;
+  investment_account_number: string | null;
+  unit_value_end: number | null;
+  /** Annualized net return the fund reports for the period, in %. */
+  period_return_pct: number | null;
+  fee_pct_annual: number | null;
+  previous_balance: number | null;
+  additions: number | null;
+  withdrawals: number | null;
+  net_returns: number | null;
+  withholding: number | null;
+  new_balance: number | null;
+  units_end: number | null;
+  maturity_date: string | null;
+};
+
 export type ParsedStatement = {
   bank: string;
-  statement_type: "savings" | "credit_card" | "loan";
+  statement_type: "savings" | "credit_card" | "loan" | "investment";
   account_number: string | null;
   card_last_four: string | null;
   period_from: string | null;
@@ -61,6 +79,7 @@ export type ParsedStatement = {
   summary: StatementSummary | null;
   credit_card_metadata: CreditCardMetadata | null;
   loan_metadata: LoanMetadata | null;
+  investment_metadata?: InvestmentMetadata | null;
   transactions: ParsedTransaction[];
 };
 
@@ -217,6 +236,7 @@ export type StatementMetaForImport = {
   summary: StatementSummary | null;
   creditCardMetadata: CreditCardMetadata | null;
   loanMetadata: LoanMetadata | null;
+  investmentMetadata?: InvestmentMetadata | null;
   periodFrom: string | null;
   periodTo: string | null;
   currency: string;

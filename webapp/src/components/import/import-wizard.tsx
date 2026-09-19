@@ -175,6 +175,14 @@ export function ImportWizard({
         matched = accts.find(
           (a) => a.account_type === "LOAN" && accountMaskSuffixMatches(a.mask, last4),
         );
+      } else if (stmt.statement_type === "investment") {
+        const number = stmt.account_number ?? stmt.investment_metadata?.investment_account_number ?? null;
+        const last4 = normalizeAccountMaskSuffix(number);
+        if (last4) {
+          matched = accts.find(
+            (a) => a.account_type === "INVESTMENT" && accountMaskSuffixMatches(a.mask, last4),
+          );
+        }
       }
 
       return {

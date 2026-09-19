@@ -15,11 +15,15 @@ import { normalizeAccountMaskSuffix } from "@/lib/utils/account-mask";
 
 function deriveDefaults(stmt: ParsedStatement): AccountFormDefaults {
   const bank = stmt.bank.charAt(0).toUpperCase() + stmt.bank.slice(1);
-  const mask = stmt.card_last_four ?? normalizeAccountMaskSuffix(stmt.account_number);
+  const mask =
+    stmt.card_last_four ??
+    normalizeAccountMaskSuffix(
+      stmt.account_number ?? stmt.investment_metadata?.investment_account_number ?? null,
+    );
 
   let name: string;
   let accountType: string;
-  let defaults: AccountFormDefaults = {
+  const defaults: AccountFormDefaults = {
     institution_name: bank,
     mask: mask ?? undefined,
     color: "#6366f1",
@@ -72,6 +76,25 @@ function deriveDefaults(stmt: ParsedStatement): AccountFormDefaults {
         const disbDate = new Date(meta.disbursement_date);
         defaults.loan_start_month = disbDate.getUTCMonth() + 1;
         defaults.loan_start_year = disbDate.getUTCFullYear();
+      }
+    }
+  } else if (stmt.statement_type === "investment") {
+    accountType = "INVESTMENT";
+    const meta = stmt.investment_metadata;
+    const fund = meta?.fund_name ? meta.fund_name.charAt(0) + meta.fund_name.slice(1).toLowerCase() : "Inversión";
+    name = `${bank} ${fund}${mask ? ` ****${mask}` : ""}`;
+    if (meta) {
+      if (meta.new_balance != null) defaults.current_balance = meta.new_balance;
+      // The fund reports its period return annualized — that is the account's expected rate.
+      if (meta.period_return_pct != null) defaults.expected_return_rate = meta.period_return_pct;
+      // First statement of a new fund: the opening additions are the initial investment.
+      if (meta.additions != null && (meta.previous_balance ?? 0) === 0) {
+        defaults.initial_investment = meta.additions;
+      }
+      if (meta.maturity_date) {
+        const maturity = new Date(`${meta.maturity_date}T12:00:00`);
+        defaults.maturity_month = maturity.getUTCMonth() + 1;
+        defaults.maturity_year = maturity.getUTCFullYear();
       }
     }
   } else {

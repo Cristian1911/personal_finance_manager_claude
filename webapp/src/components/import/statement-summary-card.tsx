@@ -16,6 +16,7 @@ const STATEMENT_TYPE_LABELS: Record<string, string> = {
   savings: "Ahorros",
   credit_card: "Tarjeta de crédito",
   loan: "Préstamo",
+  investment: "Fondo de inversión",
 };
 
 export function StatementSummaryCard({
@@ -66,7 +67,7 @@ export function StatementSummaryCard({
             null and final_balance just duplicates Saldo capital, so the
             transactional summary block is empty noise. The loan_metadata grid
             below carries the real figures. */}
-        {statement.statement_type !== "loan" && statement.summary && (
+        {statement.statement_type !== "loan" && statement.statement_type !== "investment" && statement.summary && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
             <div>
               <p className="text-muted-foreground text-xs">Saldo anterior</p>
@@ -203,6 +204,74 @@ export function StatementSummaryCard({
                 <p className="text-muted-foreground text-xs">Cuotas en mora</p>
                 <p className={`font-medium ${statement.loan_metadata.installments_in_default > 0 ? "text-z-debt" : "text-z-income"}`}>
                   {statement.loan_metadata.installments_in_default}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+        {statement.investment_metadata && (
+          // Investment funds are figure-first like loans: the period grid
+          // replaces the transactional summary block.
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+            {statement.investment_metadata.fund_name && (
+              <div>
+                <p className="text-muted-foreground text-xs">Fondo</p>
+                <p className="font-medium">{statement.investment_metadata.fund_name}</p>
+              </div>
+            )}
+            {statement.investment_metadata.new_balance != null && (
+              <div>
+                <p className="text-muted-foreground text-xs">Saldo nuevo</p>
+                <p className="font-medium text-z-income">{fmt(statement.investment_metadata.new_balance)}</p>
+              </div>
+            )}
+            {statement.investment_metadata.previous_balance != null && (
+              <div>
+                <p className="text-muted-foreground text-xs">Saldo anterior</p>
+                <p className="font-medium">{fmt(statement.investment_metadata.previous_balance)}</p>
+              </div>
+            )}
+            {statement.investment_metadata.additions != null && (
+              <div>
+                <p className="text-muted-foreground text-xs">Aportes</p>
+                <p className="font-medium text-z-income">{fmt(statement.investment_metadata.additions)}</p>
+              </div>
+            )}
+            {statement.investment_metadata.withdrawals != null && (
+              <div>
+                <p className="text-muted-foreground text-xs">Retiros</p>
+                <p className="font-medium text-z-debt">{fmt(statement.investment_metadata.withdrawals)}</p>
+              </div>
+            )}
+            {statement.investment_metadata.net_returns != null && (
+              <div>
+                <p className="text-muted-foreground text-xs">Rendimientos netos</p>
+                <p className="font-medium text-z-income">{fmt(statement.investment_metadata.net_returns)}</p>
+              </div>
+            )}
+            {statement.investment_metadata.withholding != null && statement.investment_metadata.withholding > 0 && (
+              <div>
+                <p className="text-muted-foreground text-xs">Retención</p>
+                <p className="font-medium text-z-debt">{fmt(statement.investment_metadata.withholding)}</p>
+              </div>
+            )}
+            {statement.investment_metadata.period_return_pct != null && (
+              <div>
+                <p className="text-muted-foreground text-xs">Rentabilidad neta E.A.</p>
+                <p className="font-medium">{statement.investment_metadata.period_return_pct}%</p>
+              </div>
+            )}
+            {statement.investment_metadata.fee_pct_annual != null && (
+              <div>
+                <p className="text-muted-foreground text-xs">Comisión anual</p>
+                <p className="font-medium">{statement.investment_metadata.fee_pct_annual}%</p>
+              </div>
+            )}
+            {statement.investment_metadata.units_end != null && (
+              <div>
+                <p className="text-muted-foreground text-xs">Unidades</p>
+                <p className="font-medium tabular-nums">
+                  {statement.investment_metadata.units_end.toLocaleString("es-CO", { maximumFractionDigits: 4 })}
                 </p>
               </div>
             )}

@@ -6,6 +6,11 @@ import { formatDate, toColombiaDateString } from "@/lib/utils/date";
 import { formatCurrency } from "@/lib/utils/currency";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { fetchStatementTrayRows, type StatementTrayPeriod } from "@/lib/import/statement-tray";
+import {
+  isInvestmentTransferLeg,
+  pairInvestmentTransfers,
+  type InvestmentTransferLeg,
+} from "@/lib/import/pair-investment-transfers";
 import { getIsDemoFilter } from "@/lib/demo-filter";
 import {
   anchorStatementBalance,
@@ -1043,10 +1048,14 @@ async function processStatementMeta(params: {
       account_id: meta.accountId,
       period_from: meta.periodFrom,
       period_to: meta.periodTo,
-      previous_balance: meta.summary?.previous_balance ?? null,
-      total_credits: meta.summary?.total_credits ?? null,
-      total_debits: meta.summary?.total_debits ?? null,
-      final_balance: meta.summary?.final_balance ?? null,
+      // An investment statement maps its figures onto the shared balance
+      // columns (previous / credits = aportes / debits = retiros / final = nuevo
+      // saldo) so month-to-month diffs work without a dedicated column set.
+      previous_balance:
+        meta.investmentMetadata?.previous_balance ?? meta.summary?.previous_balance ?? null,
+      total_credits: meta.investmentMetadata?.additions ?? meta.summary?.total_credits ?? null,
+      total_debits: meta.investmentMetadata?.withdrawals ?? meta.summary?.total_debits ?? null,
+      final_balance: meta.investmentMetadata?.new_balance ?? meta.summary?.final_balance ?? null,
       purchases_and_charges: meta.summary?.purchases_and_charges ?? null,
       interest_charged: meta.summary?.interest_charged ?? null,
       credit_limit: meta.creditCardMetadata?.credit_limit ?? null,
@@ -1115,7 +1124,10 @@ async function processStatementMeta(params: {
     // adjustment after the cutoff, their balance wins and stays untouched.
     let savingsAnchor: AnchoredBalanceResult | null = null;
     const isSavingsStatement =
-      !meta.creditCardMetadata && !meta.loanMetadata && meta.summary?.final_balance != null;
+      !meta.creditCardMetadata &&
+      !meta.loanMetadata &&
+      !meta.investmentMetadata &&
+      meta.summary?.final_balance != null;
     if (isSavingsStatement) {
       const finalBalance = meta.summary!.final_balance!;
       const accountLabel = account?.name ?? meta.accountId;
@@ -1256,6 +1268,10 @@ async function processStatementMeta(params: {
       currencyEntry.current_balance = ln.remaining_balance ?? null;
       currencyEntry.interest_rate = normalizedLoanInterestRate;
       currencyEntry.total_payment_due = ln.total_payment_due ?? null;
+    } else if (meta.investmentMetadata) {
+      // The fund's "nuevo saldo" already includes the period's net returns.
+      currencyEntry.current_balance =
+        meta.investmentMetadata.new_balance ?? meta.summary?.final_balance ?? null;
     } else if (meta.summary?.final_balance != null) {
       if (savingsAnchor?.keepExisting) {
         // Preserve whatever balance the account already shows for this
@@ -1317,9 +1333,17 @@ async function processStatementMeta(params: {
       }
       const loanMonthly = ln.minimum_payment ?? ln.total_payment_due;
       if (loanMonthly != null) accountUpdate.monthly_payment = loanMonthly;
+    } else if (meta.investmentMetadata && isPrimaryCurrency) {
+      const inv = meta.investmentMetadata;
+      const balance = inv.new_balance ?? meta.summary?.final_balance ?? null;
+      if (balance != null) accountUpdate.current_balance = balance;
+      // Reported annualized: it is the rate the account projects with.
+      if (inv.period_return_pct != null) accountUpdate.expected_return_rate = inv.period_return_pct;
+      if (inv.maturity_date) accountUpdate.maturity_date = inv.maturity_date;
     } else if (
       !meta.creditCardMetadata &&
       !meta.loanMetadata &&
+      !meta.investmentMetadata &&
       meta.summary?.final_balance != null &&
       isPrimaryCurrency &&
       !savingsAnchor?.keepExisting
@@ -1419,6 +1443,7 @@ export async function importTransactions(
       ...meta,
       creditCardMetadata: meta.creditCardMetadata ?? null,
       loanMetadata: meta.loanMetadata ?? null,
+      investmentMetadata: meta.investmentMetadata ?? null,
       sourceFilename: meta.sourceFilename,
     })
   );
@@ -2074,7 +2099,12 @@ export async function importTransactions(
     const accountsWithMetaBalance = new Set<string>();
     if (isBankVerifiedCapture(captureMethod)) {
       for (const meta of normalizedStatementMeta ?? []) {
-        if (meta.creditCardMetadata || meta.loanMetadata || meta.summary?.final_balance != null) {
+        if (
+          meta.creditCardMetadata ||
+          meta.loanMetadata ||
+          meta.investmentMetadata ||
+          meta.summary?.final_balance != null
+        ) {
           accountsWithMetaBalance.add(meta.accountId);
         }
       }
@@ -2168,6 +2198,42 @@ export async function importTransactions(
         if (updateError) {
           console.error("Failed to update balance for account", account.id, updateError.message);
         }
+      }
+    }
+  }
+
+  // ── 8b. Fondo de inversión: link the fund leg with its savings leg so the
+  //    money is a transfer, not spend on one side and income on the other. ──
+  {
+    const investmentAccountIds = new Set(
+      (normalizedStatementMeta ?? []).filter((m) => m.investmentMetadata).map((m) => m.accountId),
+    );
+    const transferLegs: InvestmentTransferLeg[] = [];
+    for (const { tx, key } of toInsert) {
+      const inserted = insertedByKey.get(key);
+      if (!inserted) continue;
+      if (!isInvestmentTransferLeg(tx.raw_description, investmentAccountIds.has(tx.account_id))) continue;
+      transferLegs.push({
+        id: inserted.id,
+        account_id: tx.account_id,
+        direction: tx.direction,
+        amount: tx.amount,
+        currency_code: tx.currency_code,
+        transaction_date: tx.transaction_date,
+        raw_description: tx.raw_description,
+      });
+    }
+    if (transferLegs.length > 0) {
+      const pairing = await pairInvestmentTransfers(supabase, user.id, transferLegs);
+      if (pairing.paired > 0) {
+        details.push(
+          pairing.paired === 1
+            ? "1 traslado al fondo de inversión quedó vinculado como transferencia."
+            : `${pairing.paired} traslados al fondo de inversión quedaron vinculados como transferencia.`,
+        );
+      }
+      for (const message of pairing.errors) {
+        console.error("[importTransactions] investment transfer pairing:", message);
       }
     }
   }
