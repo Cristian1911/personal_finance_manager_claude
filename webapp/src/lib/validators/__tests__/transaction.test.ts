@@ -57,6 +57,29 @@ describe("transactionSchema — cuotas (optional on credit-card movements)", () 
     expect(parsed.error.issues[0].message).toMatch(/cuota actual/i);
   });
 
+  it("rejects a cuota position without a count", () => {
+    expect(transactionSchema.safeParse({ ...BASE, installment_current: "2" }).success).toBe(false);
+  });
+
+  it("reports non-numeric cuotas in Spanish", () => {
+    const parsed = transactionSchema.safeParse({ ...BASE, installment_total: "abc" });
+    expect(parsed.success).toBe(false);
+    if (parsed.success) return;
+    expect(parsed.error.issues[0].message).toBe("Las cuotas deben ser un entero mayor a 0");
+  });
+
+  it("applies the cuota rule to quick capture too", () => {
+    const parsed = quickCapturePreviewSchema.safeParse({
+      ...BASE,
+      raw_description: "compra",
+      merchant_name: "Nintendo",
+      capture_input_text: "41.99 nintendo",
+      installment_current: "5",
+      installment_total: "3",
+    });
+    expect(parsed.success).toBe(false);
+  });
+
   it("rejects non-integer or non-positive cuotas", () => {
     expect(transactionSchema.safeParse({ ...BASE, installment_total: "2.5" }).success).toBe(false);
     expect(transactionSchema.safeParse({ ...BASE, installment_total: "0" }).success).toBe(false);

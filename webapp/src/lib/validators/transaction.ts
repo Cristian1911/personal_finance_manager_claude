@@ -9,12 +9,30 @@ const formBoolean = z.preprocess(
 /** Form number that may be absent (undefined), cleared ("" → null) or set. */
 const optionalPositiveInt = z.preprocess(
   (val) => (val === "" || val === null ? null : val === undefined ? undefined : Number(val)),
-  z.number().int().positive("Las cuotas deben ser un entero mayor a 0").optional().nullable()
+  z
+    .number({ error: "Las cuotas deben ser un entero mayor a 0" })
+    .int("Las cuotas deben ser un entero mayor a 0")
+    .positive("Las cuotas deben ser un entero mayor a 0")
+    .optional()
+    .nullable()
 );
 const optionalPositiveNumber = z.preprocess(
   (val) => (val === "" || val === null ? null : val === undefined ? undefined : Number(val)),
-  z.number().positive("El precio total debe ser mayor a 0").optional().nullable()
+  z
+    .number({ error: "El precio total debe ser mayor a 0" })
+    .positive("El precio total debe ser mayor a 0")
+    .optional()
+    .nullable()
 );
+
+/** A cuota position needs a count, and never exceeds it. */
+const CUOTAS_RULE = {
+  check: (data: { installment_current?: number | null; installment_total?: number | null }) =>
+    data.installment_current == null ||
+    (data.installment_total != null && data.installment_current <= data.installment_total),
+  message: "La cuota actual necesita el número de cuotas y no puede superarlo",
+  path: ["installment_current"],
+} as const;
 
 const transactionObjectSchema = z.object({
   account_id: uuidStr("Cuenta inválida"),
@@ -66,13 +84,10 @@ const transactionObjectSchema = z.object({
   is_subscription: formBoolean,
 });
 
-export const transactionSchema = transactionObjectSchema.refine(
-  (data) =>
-    data.installment_current == null ||
-    data.installment_total == null ||
-    data.installment_current <= data.installment_total,
-  { message: "La cuota actual no puede ser mayor al número de cuotas", path: ["installment_current"] }
-);
+export const transactionSchema = transactionObjectSchema.refine(CUOTAS_RULE.check, {
+  message: CUOTAS_RULE.message,
+  path: [...CUOTAS_RULE.path],
+});
 
 export type TransactionFormData = z.infer<typeof transactionSchema>;
 
@@ -99,11 +114,13 @@ export const transactionCreateOptionsSchema = z.object({
 
 export type TransactionCreateOptions = z.infer<typeof transactionCreateOptionsSchema>;
 
-export const quickCapturePreviewSchema = transactionObjectSchema.extend({
-  raw_description: z.string().min(1, "La captura original es requerida"),
-  merchant_name: z.string().min(1, "La descripción es requerida"),
-  capture_input_text: z.string().min(1, "La frase original es requerida"),
-});
+export const quickCapturePreviewSchema = transactionObjectSchema
+  .extend({
+    raw_description: z.string().min(1, "La captura original es requerida"),
+    merchant_name: z.string().min(1, "La descripción es requerida"),
+    capture_input_text: z.string().min(1, "La frase original es requerida"),
+  })
+  .refine(CUOTAS_RULE.check, { message: CUOTAS_RULE.message, path: [...CUOTAS_RULE.path] });
 
 export type QuickCapturePreviewFormData = z.infer<typeof quickCapturePreviewSchema>;
 

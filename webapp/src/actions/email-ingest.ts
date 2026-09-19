@@ -22,6 +22,12 @@ import {
   type ParsedEmailTransaction,
 } from "@/lib/parsers/bancolombia-email";
 import { resolveEmailTransactionCurrency } from "@/lib/email-ingest/currency";
+
+/** Two rows describe the same cuota when their amounts agree within 1%. */
+function sameCuotaAmount(a: number, b: number): boolean {
+  const max = Math.max(Math.abs(a), Math.abs(b));
+  return max === 0 ? true : Math.abs(a - b) / max <= 0.01;
+}
 import {
   accountCarriesEmailProduct,
   accountFitsEmailProduct,
@@ -944,7 +950,7 @@ export async function approveEmailTransaction(
     const { data: manualTx } = await supabase
       .from("transactions")
       .select(
-        "id, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method, recurrence_group_id, installment_current, installment_total, original_amount, installment_group_id"
+        "id, amount, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method, recurrence_group_id, installment_current, installment_total, original_amount, installment_group_id"
       )
       .eq("id", reconcileWithTransactionId)
       .eq("user_id", user.id)
@@ -986,7 +992,12 @@ export async function approveEmailTransaction(
           // An alert never carries cuotas; the row it absorbs (a statement
           // cuota row, a manual entry with cuotas) may — keep them on the
           // survivor so the movement still reads "Cuota 1/36 · compra total".
-          ...(manualTx.installment_total != null || manualTx.original_amount != null
+          // Only when both rows are the same cuota: a full-price alert
+          // reconciled against a cuota-1 statement row must not become a
+          // "Cuota 1/36" whose amount is the whole purchase (double count,
+          // and a wrong member of the installment group).
+          ...(sameCuotaAmount(parsed.amount, manualTx.amount) &&
+          (manualTx.installment_total != null || manualTx.original_amount != null)
             ? {
                 installment_current: manualTx.installment_current,
                 installment_total: manualTx.installment_total,

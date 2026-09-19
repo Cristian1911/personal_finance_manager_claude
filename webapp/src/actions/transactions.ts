@@ -82,9 +82,11 @@ type PersistTransactionParams = {
 };
 
 /**
- * Group id for a purchase in cuotas, so a manual cuota row joins the same
- * group a later statement import (and the shared-payment flow) would key on.
- * Null when the movement is not in cuotas.
+ * Group id for a manual purchase in cuotas (the shared-payment flow keys its
+ * debts on it). Hashed from the merchant name the user typed, so manual cuota
+ * rows group with each other; a statement import hashes the bank's raw
+ * description and lands in its own group, and reconciliation (not this key)
+ * is what pairs the two. Null when the movement is not in cuotas.
  */
 async function resolveInstallmentGroupId(params: {
   accountId: string;
@@ -432,6 +434,9 @@ async function persistTransaction(
       transactionDate: params.transaction_date,
       amount: params.amount,
       rawDescription: params.raw_description ?? params.merchant_name ?? "",
+      // Cuota 1 and cuota 2 of one purchase share date-less fields; the
+      // position keeps a backfill from tripping the unique key.
+      installmentCurrent: params.installment_current ?? null,
     }),
     supabase
       .from("accounts")
@@ -1178,7 +1183,7 @@ export async function updateTransaction(
   const { data: existing, error: existingError } = await supabase
     .from("transactions")
     .select(
-      "account_id, amount, direction, currency_code, is_excluded, category_id, personal_debt_id, pd_role, installment_total, installment_group_id",
+      "account_id, amount, direction, currency_code, is_excluded, category_id, personal_debt_id, pd_role, installment_total, installment_current, original_amount, installment_group_id",
     )
     .eq("user_id", user.id)
     .eq("id", id)
@@ -1243,30 +1248,43 @@ export async function updateTransaction(
     .maybeSingle();
 
   // Cuotas: a row that becomes (or stays) a purchase in cuotas keeps its group
-  // id, or gets one; a row whose cuotas were cleared leaves the group.
+  // id, or gets one; a row whose cuotas were cleared (or dropped to a single
+  // cuota) leaves the group. Absent form fields mean "as stored", so the
+  // stored values are the fallback, never the cuota amount.
   const nextInstallmentTotal =
     parsed.data.installment_total === undefined
       ? existing.installment_total
       : parsed.data.installment_total;
-  const installmentGroupId =
-    nextInstallmentTotal != null && nextInstallmentTotal > 1
-      ? existing.installment_group_id ??
-        (await resolveInstallmentGroupId({
-          accountId: parsed.data.account_id,
-          description: parsed.data.merchant_name ?? parsed.data.raw_description,
-          installmentTotal: nextInstallmentTotal,
-          originalAmount: parsed.data.original_amount,
-          amount: parsed.data.amount,
-        }))
-      : parsed.data.installment_total === null
-        ? null
-        : undefined;
+  const nextOriginalAmount =
+    parsed.data.original_amount === undefined ? existing.original_amount : parsed.data.original_amount;
+  const inCuotas = nextInstallmentTotal != null && nextInstallmentTotal > 1;
+  const installmentGroupId = inCuotas
+    ? existing.installment_group_id ??
+      (await resolveInstallmentGroupId({
+        accountId: parsed.data.account_id,
+        description: parsed.data.merchant_name ?? parsed.data.raw_description,
+        installmentTotal: nextInstallmentTotal,
+        originalAmount: nextOriginalAmount,
+        amount: parsed.data.amount,
+      }))
+    : null;
+  // Cuotas only exist on a card: moving the row to any other account drops
+  // them (the form cannot edit them there, and the group id is per account).
+  const leavesCard = nextAccount != null && nextAccount.account_type !== "CREDIT_CARD";
+  const cuotaColumns = leavesCard
+    ? {
+        installment_current: null,
+        installment_total: null,
+        original_amount: null,
+        installment_group_id: null,
+      }
+    : { installment_group_id: installmentGroupId };
 
   const { data, error } = await supabase
     .from("transactions")
     .update({
       ...updatableFields,
-      ...(installmentGroupId !== undefined ? { installment_group_id: installmentGroupId } : {}),
+      ...cuotaColumns,
       clean_description: parsed.data.merchant_name || parsed.data.raw_description || null,
       ...(categoryChanged ? { categorization_source: "USER_OVERRIDE" as const } : {}),
       ...flowClassColumns({
@@ -1383,7 +1401,7 @@ export async function updateTransactionAccount(
   // crafted accountId could move the transaction onto another user's account.
   const { data: targetAccount } = await supabase
     .from("accounts")
-    .select("id, currency_code")
+    .select("id, currency_code, account_type")
     .eq("id", accountId)
     .eq("user_id", user.id)
     .single();
@@ -1401,7 +1419,18 @@ export async function updateTransactionAccount(
 
   const { error: updateError } = await supabase
     .from("transactions")
-    .update({ account_id: accountId })
+    .update({
+      account_id: accountId,
+      // Cuotas belong to a card purchase and their group id is per account.
+      ...(targetAccount.account_type !== "CREDIT_CARD"
+        ? {
+            installment_current: null,
+            installment_total: null,
+            original_amount: null,
+            installment_group_id: null,
+          }
+        : {}),
+    })
     .eq("user_id", user.id)
     .eq("id", transactionId);
 

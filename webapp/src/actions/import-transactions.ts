@@ -1777,13 +1777,20 @@ export async function importTransactions(
   };
   // Cuotas travel with the movement, not with the source: when a row that
   // lacks them (an OCR screenshot, a manual entry) absorbs a row that had
-  // them (an earlier statement import), the survivor keeps the cuotas.
+  // them (an earlier statement import), the survivor keeps the cuotas — but
+  // only when both rows are the same cuota. A full-price row that absorbed a
+  // cuota-1 row must not be relabelled "Cuota 1/N" with the whole purchase
+  // as its amount, nor join the installment group with that amount.
   function cuotaCarryFrom(
-    survivor: Pick<TransactionToImport, "installment_total" | "original_amount">,
-    superseded: Partial<CuotaCarry>,
+    survivor: Pick<TransactionToImport, "amount" | "installment_total" | "original_amount">,
+    superseded: Partial<CuotaCarry> & { amount?: number },
   ): CuotaCarry | null {
     if (survivor.installment_total != null || survivor.original_amount != null) return null;
     if (superseded.installment_total == null && superseded.original_amount == null) return null;
+    if (superseded.amount != null) {
+      const max = Math.max(survivor.amount, superseded.amount);
+      if (max > 0 && Math.abs(survivor.amount - superseded.amount) / max > 0.01) return null;
+    }
     return {
       installment_current: superseded.installment_current ?? null,
       installment_total: superseded.installment_total ?? null,
@@ -1881,7 +1888,7 @@ export async function importTransactions(
       score: decision.score,
       merged,
       existingRecurrenceGroupId: existingTx.recurrence_group_id ?? null,
-      cuotaCarry: cuotaCarryFrom(tx, existingTx as Partial<CuotaCarry>),
+      cuotaCarry: cuotaCarryFrom(tx, existingTx as Partial<CuotaCarry> & { amount?: number }),
     });
 
     // Copy existing transaction's tags to surviving (imported) transaction (pre-fetched)
