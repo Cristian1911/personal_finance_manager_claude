@@ -12,6 +12,8 @@ import {
   RefreshCw,
   Clock,
   KeyRound,
+  ArrowRight,
+  CircleDashed,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,9 +32,17 @@ import {
   retryPdfParsing,
 } from "@/actions/email-pdf-ingest";
 import type { PdfPasswordSuggestion } from "@/actions/pdf-passwords";
-import type { PendingEmailStatement } from "@/types/domain";
+import type { Account, PendingEmailStatement } from "@/types/domain";
 import { formatRelativeDate } from "@/lib/utils/date";
 import { cn } from "@/lib/utils";
+import { AccountIcon } from "@/components/accounts/account-icon";
+import { AccountRowIdentity } from "@/components/accounts/account-row-identity";
+import {
+  describeParsedStatement,
+  describeStatementFilename,
+  parsedDataToStatements,
+  type StatementPreview,
+} from "@/lib/import/statement-preview";
 
 // ── Status helpers ───────────────────────────────────────────────────────────
 
@@ -77,16 +87,73 @@ function formatFileSize(bytes: number | null): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function pluralize(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
+/**
+ * Headline for a queued PDF. Parsed → what the parser detected ("Bancolombia
+ * · Tarjeta ****5747"); multi-statement PDFs that all describe the same
+ * product (COP + USD of one card) collapse to that product, otherwise the
+ * bank + count. Unparsed → whatever the Bancolombia filename encodes, and
+ * only as a last resort the raw filename.
+ */
+function statementHeadline(
+  previews: StatementPreview[],
+  filenamePreview: ReturnType<typeof describeStatementFilename>,
+  filename: string | null,
+): string {
+  if (previews.length > 0) {
+    const first = previews[0];
+    const sameProduct = previews.every(
+      (p) =>
+        p.bankLabel === first.bankLabel &&
+        p.typeLabel === first.typeLabel &&
+        p.mask === first.mask,
+    );
+    if (sameProduct) {
+      return `${first.bankLabel} · ${first.typeLabel}${first.mask ? ` ****${first.mask}` : ""}`;
+    }
+    const sameBank = previews.every((p) => p.bankLabel === first.bankLabel);
+    return `${sameBank ? first.bankLabel : "Varios bancos"} · ${pluralize(previews.length, "extracto", "extractos")}`;
+  }
+  if (filenamePreview) {
+    return `${filenamePreview.productLabel} ****${filenamePreview.mask}`;
+  }
+  return filename ?? "extracto.pdf";
+}
+
+/** "→ Cuenta" line: the account the wizard will pre-select, or a nudge when none matched. */
+function AccountTarget({ account, unmatchedLabel }: { account: Account | null; unmatchedLabel: string }) {
+  if (account) {
+    return (
+      <span className="flex min-w-0 items-center gap-1.5 text-xs text-z-income">
+        <ArrowRight className="size-3 shrink-0" aria-hidden />
+        <AccountRowIdentity account={account} density="compact" className="text-z-white" />
+      </span>
+    );
+  }
+  return (
+    <span className="flex items-center gap-1.5 text-xs text-amber-400">
+      <CircleDashed className="size-3 shrink-0" aria-hidden />
+      {unmatchedLabel}
+    </span>
+  );
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 
 interface PendingEmailStatementsProps {
   statements: PendingEmailStatement[];
+  /** User's accounts — used to show which one each statement will land in. */
+  accounts?: Account[];
   onReviewStatement?: (statement: PendingEmailStatement) => void;
   vaultSuggestions?: PdfPasswordSuggestion[];
 }
 
 export function PendingEmailStatements({
   statements: initialStatements,
+  accounts = [],
   onReviewStatement,
   vaultSuggestions = [],
 }: PendingEmailStatementsProps) {
@@ -243,27 +310,101 @@ export function PendingEmailStatements({
             const config = STATUS_MAP[stmt.status] ?? STATUS_MAP.pending;
             const StatusIcon = config.icon;
             const isLoading = isPending && activeId === stmt.id;
-            const statementsCount =
-              stmt.status === "parsed" && Array.isArray(stmt.parsed_data)
-                ? (stmt.parsed_data as unknown[]).length
-                : null;
+            const parsedStatements =
+              stmt.status === "parsed" ? parsedDataToStatements(stmt.parsed_data) : [];
+            const previews = parsedStatements.map((ps) => describeParsedStatement(ps, accounts));
+            const statementsCount = stmt.status === "parsed" ? parsedStatements.length : null;
+            const filenamePreview =
+              previews.length === 0 ? describeStatementFilename(stmt.original_filename, accounts) : null;
+            const headline = statementHeadline(previews, filenamePreview, stmt.original_filename);
+            const showFilenameInMeta = headline !== (stmt.original_filename ?? "extracto.pdf");
+            const lead = previews[0] ?? null;
 
             return (
               <div key={stmt.id} className="px-6 py-4 space-y-3">
                 <div className="flex items-start gap-3">
                   <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/5">
-                    <FileText className="size-4 text-muted-foreground" />
+                    {lead ? (
+                      <AccountIcon
+                        bank_key={lead.account?.bank_key ?? lead.bankKey}
+                        account_type={lead.account?.account_type ?? lead.accountType}
+                        color={lead.account?.color}
+                        size="sm"
+                      />
+                    ) : filenamePreview?.account ? (
+                      // Dimmed: the PDF isn't parsed yet, so the logo is a
+                      // filename-based guess, not a confirmed match.
+                      <AccountIcon
+                        bank_key={filenamePreview.account.bank_key}
+                        account_type={filenamePreview.account.account_type}
+                        color={filenamePreview.account.color}
+                        size="sm"
+                        className="opacity-50"
+                      />
+                    ) : (
+                      <FileText className="size-4 text-muted-foreground" />
+                    )}
                   </div>
 
-                  {/* Filename + meta share a row with the status pill on wide
-                      screens; on mobile the pill drops below so the filename
-                      isn't crushed to "Ex..." by the pill's intrinsic width. */}
+                  {/* Headline + meta share a row with the status pill on wide
+                      screens; on mobile the pill drops below so the headline
+                      isn't crushed by the pill's intrinsic width. */}
                   <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">
-                        {stmt.original_filename ?? "extracto.pdf"}
-                      </p>
+                    <div className="min-w-0 space-y-1">
+                      <p className="truncate text-sm font-medium text-z-white">{headline}</p>
+
+                      {/* One line per detected statement: period · movimientos · moneda → cuenta. */}
+                      {previews.length > 0 && (
+                        <ul className="space-y-1">
+                          {previews.map((p, i) => (
+                            <li key={i} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                              <span className="flex flex-wrap items-center gap-x-2 text-muted-foreground">
+                                {previews.length > 1 && (
+                                  <span className="whitespace-nowrap text-z-sage-light">
+                                    {p.typeLabel}
+                                    {p.mask ? ` ****${p.mask}` : ""}
+                                  </span>
+                                )}
+                                {p.periodLabel && (
+                                  <span className="whitespace-nowrap capitalize">{p.periodLabel}</span>
+                                )}
+                                {p.accountType !== "LOAN" && (
+                                  <span className="whitespace-nowrap">
+                                    {pluralize(p.transactionCount, "movimiento", "movimientos")}
+                                  </span>
+                                )}
+                                <span className="whitespace-nowrap">{p.currency}</span>
+                              </span>
+                              <AccountTarget account={p.account} unmatchedLabel="Sin cuenta vinculada" />
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+
+                      {/* Not parsed yet: what the filename tells us. */}
+                      {previews.length === 0 && filenamePreview && (
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                          {filenamePreview.periodLabel && (
+                            <span className="whitespace-nowrap capitalize text-muted-foreground">
+                              {filenamePreview.periodLabel}
+                            </span>
+                          )}
+                          <AccountTarget
+                            account={filenamePreview.account}
+                            unmatchedLabel="Cuenta por confirmar"
+                          />
+                        </div>
+                      )}
+
                       <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                        {showFilenameInMeta && (
+                          <>
+                            <span className="min-w-0 max-w-full truncate" title={stmt.original_filename ?? undefined}>
+                              {stmt.original_filename ?? "extracto.pdf"}
+                            </span>
+                            <span>·</span>
+                          </>
+                        )}
                         <span className="whitespace-nowrap">
                           {formatRelativeDate(stmt.created_at)}
                         </span>
@@ -297,9 +438,9 @@ export function PendingEmailStatements({
                         )}
                       />
                       <span className="truncate">{config.label}</span>
-                      {statementsCount != null && (
+                      {statementsCount != null && statementsCount > 1 && (
                         <span className="whitespace-nowrap text-muted-foreground">
-                          · {statementsCount} {statementsCount === 1 ? "extracto" : "extractos"}
+                          · {pluralize(statementsCount, "extracto", "extractos")}
                         </span>
                       )}
                     </div>
