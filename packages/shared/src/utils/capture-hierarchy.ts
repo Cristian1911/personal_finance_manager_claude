@@ -18,6 +18,13 @@ export function getCaptureTier(method: TransactionCaptureMethod): CaptureTier {
   return CAPTURE_TIER[method];
 }
 
+/** Every capture method of one tier — derived, so a new method is never missed. */
+export function captureMethodsOfTier(tier: CaptureTier): TransactionCaptureMethod[] {
+  return (Object.keys(CAPTURE_TIER) as TransactionCaptureMethod[]).filter(
+    (method) => CAPTURE_TIER[method] === tier,
+  );
+}
+
 /**
  * Only tier-1 (bank-verified statement) sources may set account balances,
  * credit limits and statement snapshots directly. Lower tiers update balances

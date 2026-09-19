@@ -5,14 +5,21 @@ import {
   type ReconciliationMatch,
 } from "@zeta/shared";
 import { toISODateString } from "@/lib/utils/date";
+import { resolveEmailTransactionCurrency } from "@/lib/email-ingest/currency";
 import type { ParsedEmailTransaction } from "@/lib/parsers/bancolombia-email";
 import type { Database } from "@/types/database";
+
+type CurrencyCode = Database["public"]["Enums"]["currency_code"];
 
 export type EmailDuplicateCandidateRow = {
   id: string;
   user_id: string;
   account_id: string;
   amount: number;
+  currency_code: CurrencyCode;
+  /** Full purchase price when the row is one cuota of a statement purchase. */
+  original_amount: number | null;
+  installment_current: number | null;
   direction: "INFLOW" | "OUTFLOW";
   transaction_date: string;
   transaction_time: string | null;
@@ -71,8 +78,18 @@ export async function findEmailDuplicateCandidate(params: {
   userId: string;
   accountId: string;
   parsed: ParsedEmailTransaction;
+  /**
+   * Currency of the matched account. When known, the alert's movement is
+   * compared in the currency it would be stored with (see
+   * `resolveEmailTransactionCurrency`), so a USD purchase never pairs with a
+   * COP row of the same figure on a multi-currency card. Omit to skip the
+   * currency guard.
+   */
+  accountCurrency?: CurrencyCode | null;
 }): Promise<EmailDuplicateResult | null> {
-  const { client, userId, accountId, parsed } = params;
+  const { client, userId, accountId, parsed, accountCurrency } = params;
+  const currencyCode =
+    accountCurrency === undefined ? undefined : resolveEmailTransactionCurrency(parsed, accountCurrency);
 
   const txDate = new Date(`${parsed.transaction_date}T12:00:00`);
   const fromDate = new Date(txDate);
@@ -85,7 +102,7 @@ export async function findEmailDuplicateCandidate(params: {
   const { data: candidates, error } = await client
     .from("transactions")
     .select(
-      "id, user_id, account_id, amount, direction, transaction_date, transaction_time, source_pattern, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method",
+      "id, user_id, account_id, amount, currency_code, original_amount, installment_current, direction, transaction_date, transaction_time, source_pattern, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method",
     )
     .eq("account_id", accountId)
     .eq("user_id", userId)
@@ -100,6 +117,7 @@ export async function findEmailDuplicateCandidate(params: {
     {
       account_id: accountId,
       amount: parsed.amount,
+      currency_code: currencyCode,
       direction: parsed.direction,
       transaction_date: parsed.transaction_date,
       transaction_time: parsed.transaction_time,

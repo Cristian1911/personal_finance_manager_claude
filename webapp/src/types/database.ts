@@ -2752,6 +2752,35 @@ export type Database = {
           },
         ]
       }
+      statement_tray_dismissals: {
+        Row: {
+          created_at: string
+          id: string
+          transaction_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          transaction_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          transaction_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statement_tray_dismissals_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: true
+            referencedRelation: "transactions_enc"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       statement_snapshots: {
         Row: {
           account_id: string

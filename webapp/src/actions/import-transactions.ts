@@ -5,6 +5,13 @@ import { addDays, parseISO } from "date-fns";
 import { formatDate, toColombiaDateString } from "@/lib/utils/date";
 import { formatCurrency } from "@/lib/utils/currency";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
+import { fetchStatementTrayRows, type StatementTrayPeriod } from "@/lib/import/statement-tray";
+import {
+  isInvestmentTransferLeg,
+  pairInvestmentTransfers,
+  type InvestmentTransferLeg,
+} from "@/lib/import/pair-investment-transfers";
+import { getIsDemoFilter } from "@/lib/demo-filter";
 import {
   anchorStatementBalance,
   assignStatementOccurrenceIndexes,
@@ -27,7 +34,8 @@ import type { TransactionCaptureMethod } from "@/types/domain";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import { importPayloadSchema } from "@/lib/validators/import";
+import { z } from "zod";
+import { importPayloadSchema, transactionToImportSchema } from "@/lib/validators/import";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { carryRecurringLinkToSurvivor } from "@/lib/recurring/carry-link";
 import type { ActionResult } from "@/types/actions";
@@ -596,10 +604,14 @@ async function fetchReconciliationCandidates(
     addDays(parseISO(dateValues[dateValues.length - 1] + "T12:00:00"), 3),
   );
 
+  // currency_code / original_amount / installment_current feed the scorer:
+  // a card statement bills a USD purchase in cuotas as amount = cuota with
+  // the full price in original_amount, while the alert email stored the full
+  // price — without them every such pair imports as a second copy.
   const { data, error } = await supabase
     .from("transactions")
     .select(
-      "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method"
+      "id, user_id, account_id, amount, currency_code, original_amount, installment_current, installment_total, direction, transaction_date, transaction_time, source_pattern, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method"
     )
     .eq("user_id", userId)
     .in("account_id", accountIds)
@@ -788,6 +800,14 @@ const PREVIEW_CAPTURE_METHODS = new Set<TransactionCaptureMethod>([
   "OCR_SINGLE",
 ]);
 
+const previewItemsSchema = z.array(
+  z.object({
+    statementIndex: z.number().int().min(0),
+    transactionIndex: z.number().int().min(0),
+    importedTransaction: transactionToImportSchema,
+  }),
+);
+
 export async function previewImportReconciliation(
   captureMethod: TransactionCaptureMethod,
   items: Array<{
@@ -798,6 +818,16 @@ export async function previewImportReconciliation(
 ): Promise<ReconciliationPreviewResult> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { autoMerge: [], review: [], unmatched: [] };
+
+  // Client-provided rows drive the scorer's hard filters (currency, amount,
+  // original_amount) — validate them with the same schema the import itself
+  // applies, so a malformed payload cannot silently suppress every duplicate.
+  const parsedItems = previewItemsSchema.safeParse(items);
+  if (!parsedItems.success) {
+    console.error("previewImportReconciliation: invalid payload", parsedItems.error.issues[0]?.message);
+    return { autoMerge: [], review: [], unmatched: [] };
+  }
+  items = parsedItems.data;
 
   // Client-provided — clamp to the import-wizard surface. OCR screenshots
   // are tier 2 and must NOT inherit the tier-1-only REVIEW floor; anything
@@ -853,6 +883,11 @@ export async function previewImportReconciliation(
         merchant_name: candidate.merchant_name ?? null,
         transaction_date: candidate.transaction_date,
         amount: candidate.amount,
+        original_amount: candidate.original_amount ?? null,
+        installment_current: candidate.installment_current ?? null,
+        installment_total:
+          (candidate as ReconciliationCandidate & { installment_total?: number | null })
+            .installment_total ?? null,
         category_id: candidate.category_id ?? null,
         notes: candidate.notes ?? null,
         score: best.score,
@@ -1013,10 +1048,14 @@ async function processStatementMeta(params: {
       account_id: meta.accountId,
       period_from: meta.periodFrom,
       period_to: meta.periodTo,
-      previous_balance: meta.summary?.previous_balance ?? null,
-      total_credits: meta.summary?.total_credits ?? null,
-      total_debits: meta.summary?.total_debits ?? null,
-      final_balance: meta.summary?.final_balance ?? null,
+      // An investment statement maps its figures onto the shared balance
+      // columns (previous / credits = aportes / debits = retiros / final = nuevo
+      // saldo) so month-to-month diffs work without a dedicated column set.
+      previous_balance:
+        meta.investmentMetadata?.previous_balance ?? meta.summary?.previous_balance ?? null,
+      total_credits: meta.investmentMetadata?.additions ?? meta.summary?.total_credits ?? null,
+      total_debits: meta.investmentMetadata?.withdrawals ?? meta.summary?.total_debits ?? null,
+      final_balance: meta.investmentMetadata?.new_balance ?? meta.summary?.final_balance ?? null,
       purchases_and_charges: meta.summary?.purchases_and_charges ?? null,
       interest_charged: meta.summary?.interest_charged ?? null,
       credit_limit: meta.creditCardMetadata?.credit_limit ?? null,
@@ -1085,7 +1124,10 @@ async function processStatementMeta(params: {
     // adjustment after the cutoff, their balance wins and stays untouched.
     let savingsAnchor: AnchoredBalanceResult | null = null;
     const isSavingsStatement =
-      !meta.creditCardMetadata && !meta.loanMetadata && meta.summary?.final_balance != null;
+      !meta.creditCardMetadata &&
+      !meta.loanMetadata &&
+      !meta.investmentMetadata &&
+      meta.summary?.final_balance != null;
     if (isSavingsStatement) {
       const finalBalance = meta.summary!.final_balance!;
       const accountLabel = account?.name ?? meta.accountId;
@@ -1226,6 +1268,10 @@ async function processStatementMeta(params: {
       currencyEntry.current_balance = ln.remaining_balance ?? null;
       currencyEntry.interest_rate = normalizedLoanInterestRate;
       currencyEntry.total_payment_due = ln.total_payment_due ?? null;
+    } else if (meta.investmentMetadata) {
+      // The fund's "nuevo saldo" already includes the period's net returns.
+      currencyEntry.current_balance =
+        meta.investmentMetadata.new_balance ?? meta.summary?.final_balance ?? null;
     } else if (meta.summary?.final_balance != null) {
       if (savingsAnchor?.keepExisting) {
         // Preserve whatever balance the account already shows for this
@@ -1287,9 +1333,20 @@ async function processStatementMeta(params: {
       }
       const loanMonthly = ln.minimum_payment ?? ln.total_payment_due;
       if (loanMonthly != null) accountUpdate.monthly_payment = loanMonthly;
+    } else if (meta.investmentMetadata && isPrimaryCurrency) {
+      const inv = meta.investmentMetadata;
+      const balance = inv.new_balance ?? meta.summary?.final_balance ?? null;
+      if (balance != null) accountUpdate.current_balance = balance;
+      // Reported annualized: it is the rate the account projects with. The
+      // column is constrained to 0..100; a loss period stays out of it.
+      if (inv.period_return_pct != null && inv.period_return_pct >= 0 && inv.period_return_pct <= 100) {
+        accountUpdate.expected_return_rate = inv.period_return_pct;
+      }
+      if (inv.maturity_date) accountUpdate.maturity_date = inv.maturity_date;
     } else if (
       !meta.creditCardMetadata &&
       !meta.loanMetadata &&
+      !meta.investmentMetadata &&
       meta.summary?.final_balance != null &&
       isPrimaryCurrency &&
       !savingsAnchor?.keepExisting
@@ -1389,6 +1446,7 @@ export async function importTransactions(
       ...meta,
       creditCardMetadata: meta.creditCardMetadata ?? null,
       loanMetadata: meta.loanMetadata ?? null,
+      investmentMetadata: meta.investmentMetadata ?? null,
       sourceFilename: meta.sourceFilename,
     })
   );
@@ -1703,7 +1761,7 @@ export async function importTransactions(
         supabase
           .from("transactions")
           .select(
-            "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method, recurrence_group_id, split_group_id"
+            "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method, recurrence_group_id, split_group_id, installment_current, installment_total, original_amount, installment_group_id"
           )
           .eq("user_id", user.id)
           .is("reconciled_into_transaction_id", null)
@@ -1738,7 +1796,38 @@ export async function importTransactions(
     merged: ReturnType<typeof mergeTransactionMetadata>;
     /** The superseded row's recurring link, carried to the survivor. */
     existingRecurrenceGroupId: string | null;
+    /** Cuota fields the survivor lacks but the superseded row had. */
+    cuotaCarry: CuotaCarry | null;
   };
+  type CuotaCarry = {
+    installment_current: number | null;
+    installment_total: number | null;
+    original_amount: number | null;
+    installment_group_id: string | null;
+  };
+  // Cuotas travel with the movement, not with the source: when a row that
+  // lacks them (an OCR screenshot, a manual entry) absorbs a row that had
+  // them (an earlier statement import), the survivor keeps the cuotas — but
+  // only when both rows are the same cuota. A full-price row that absorbed a
+  // cuota-1 row must not be relabelled "Cuota 1/N" with the whole purchase
+  // as its amount, nor join the installment group with that amount.
+  function cuotaCarryFrom(
+    survivor: Pick<TransactionToImport, "amount" | "installment_total" | "original_amount">,
+    superseded: Partial<CuotaCarry> & { amount?: number },
+  ): CuotaCarry | null {
+    if (survivor.installment_total != null || survivor.original_amount != null) return null;
+    if (superseded.installment_total == null && superseded.original_amount == null) return null;
+    if (superseded.amount != null) {
+      const max = Math.max(survivor.amount, superseded.amount);
+      if (max > 0 && Math.abs(survivor.amount - superseded.amount) / max > 0.01) return null;
+    }
+    return {
+      installment_current: superseded.installment_current ?? null,
+      installment_total: superseded.installment_total ?? null,
+      original_amount: superseded.original_amount ?? null,
+      installment_group_id: superseded.installment_group_id ?? null,
+    };
+  }
   const mergeOps: MergeOp[] = [];
   // The old per-merge re-query filtered `reconciled_into_transaction_id IS
   // NULL`, so a candidate claimed by an earlier merge in the same run came
@@ -1807,7 +1896,10 @@ export async function importTransactions(
     }
 
     // Reconciled: existing tx already applied its balance delta, so do NOT
-    // add to balanceDeltaTxs to avoid double-counting.
+    // add to balanceDeltaTxs to avoid double-counting. When the pair is a
+    // full-price alert row vs a cuota-1 statement row the two deltas differ,
+    // but a statement with balance metadata overwrites the balance outright
+    // below (accountsWithMetaBalance), so the difference never persists.
     const merged = mergeTransactionMetadata(existingTx, {
       category_id: insertedTx.category_id,
       categorization_source: insertedTx.categorization_source ?? undefined,
@@ -1826,6 +1918,7 @@ export async function importTransactions(
       score: decision.score,
       merged,
       existingRecurrenceGroupId: existingTx.recurrence_group_id ?? null,
+      cuotaCarry: cuotaCarryFrom(tx, existingTx as Partial<CuotaCarry> & { amount?: number }),
     });
 
     // Copy existing transaction's tags to surviving (imported) transaction (pre-fetched)
@@ -1851,6 +1944,7 @@ export async function importTransactions(
             category_id: op.merged.category_id ?? null,
             notes: op.merged.notes ?? null,
             capture_method: op.merged.capture_method,
+            ...(op.cuotaCarry ?? {}),
           })
           .eq("user_id", user.id)
           .eq("id", op.insertedId),
@@ -2008,7 +2102,12 @@ export async function importTransactions(
     const accountsWithMetaBalance = new Set<string>();
     if (isBankVerifiedCapture(captureMethod)) {
       for (const meta of normalizedStatementMeta ?? []) {
-        if (meta.creditCardMetadata || meta.loanMetadata || meta.summary?.final_balance != null) {
+        if (
+          meta.creditCardMetadata ||
+          meta.loanMetadata ||
+          meta.investmentMetadata ||
+          meta.summary?.final_balance != null
+        ) {
           accountsWithMetaBalance.add(meta.accountId);
         }
       }
@@ -2102,6 +2201,44 @@ export async function importTransactions(
         if (updateError) {
           console.error("Failed to update balance for account", account.id, updateError.message);
         }
+      }
+    }
+  }
+
+  // ── 8b. Fondo de inversión: link the fund leg with its savings leg so the
+  //    money is a transfer, not spend on one side and income on the other. ──
+  {
+    const investmentAccountIds = new Set(
+      (normalizedStatementMeta ?? []).filter((m) => m.investmentMetadata).map((m) => m.accountId),
+    );
+    const transferLegs: InvestmentTransferLeg[] = [];
+    for (const { tx, key } of toInsert) {
+      const inserted = insertedByKey.get(key);
+      if (!inserted) continue;
+      if (!isInvestmentTransferLeg(tx.raw_description, investmentAccountIds.has(tx.account_id))) continue;
+      transferLegs.push({
+        id: inserted.id,
+        account_id: tx.account_id,
+        direction: tx.direction,
+        amount: tx.amount,
+        currency_code: tx.currency_code,
+        transaction_date: tx.transaction_date,
+        raw_description: tx.raw_description,
+        merchant_name: tx.merchant_name ?? null,
+        category_id: inserted.category_id ?? null,
+      });
+    }
+    if (transferLegs.length > 0) {
+      const pairing = await pairInvestmentTransfers(supabase, user.id, transferLegs, investmentAccountIds);
+      if (pairing.paired > 0) {
+        details.push(
+          pairing.paired === 1
+            ? "1 traslado al fondo de inversión quedó vinculado como transferencia."
+            : `${pairing.paired} traslados al fondo de inversión quedaron vinculados como transferencia.`,
+        );
+      }
+      for (const message of pairing.errors) {
+        console.error("[importTransactions] investment transfer pairing:", message);
       }
     }
   }
@@ -2340,6 +2477,29 @@ export async function importTransactions(
 
   await Promise.all(productEvents);
 
+  // Bandeja: alert/screenshot rows on the imported cards, inside a statement
+  // period, that no statement row absorbed. Informational — the tray on the
+  // import page is where the user deletes or keeps them.
+  let statementTrayCount = 0;
+  try {
+    const importedPeriods: StatementTrayPeriod[] = (normalizedStatementMeta ?? []).flatMap((meta) =>
+      meta.periodFrom && meta.periodTo
+        ? [{ accountId: meta.accountId, currencyCode: meta.currency, periodFrom: meta.periodFrom, periodTo: meta.periodTo }]
+        : [],
+    );
+    if (importedPeriods.length > 0) {
+      const { rows: trayRows } = await fetchStatementTrayRows(supabase, user.id, {
+        isDemo: await getIsDemoFilter(user.id),
+        accountIds: [...new Set(importedPeriods.map((p) => p.accountId))],
+        periods: importedPeriods,
+      });
+      statementTrayCount = trayRows.length;
+    }
+  } catch (trayError) {
+    console.error("[importTransactions] statement tray count failed:", trayError);
+  }
+  updateTag("statement-tray");
+
   return {
     success: true,
     data: {
@@ -2360,6 +2520,7 @@ export async function importTransactions(
       enrichmentErrors,
       modoAssignments,
       scopes,
+      statementTrayCount,
     },
   };
 }

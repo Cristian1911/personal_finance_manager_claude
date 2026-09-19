@@ -19,6 +19,8 @@ interface Props {
   pendingStatements: PendingEmailStatement[];
   initialVaultSuggestions?: PdfPasswordSuggestion[];
   mobileAboutPanel?: React.ReactNode;
+  /** Bandeja "sin respaldo en el extracto" (server-rendered, streamed). */
+  statementTray?: React.ReactNode;
 }
 
 export function ImportPageClient({
@@ -29,6 +31,7 @@ export function ImportPageClient({
   pendingStatements: initialPending,
   initialVaultSuggestions,
   mobileAboutPanel,
+  statementTray,
 }: Props) {
   const [pendingStatements, setPendingStatements] = useState(initialPending);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -143,6 +146,7 @@ export function ImportPageClient({
             onReviewStatement={handleReviewStatement}
             vaultSuggestions={initialVaultSuggestions}
           />
+          {statementTray}
           {mobileAboutPanel}
         </>
       )}

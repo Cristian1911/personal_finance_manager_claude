@@ -95,12 +95,29 @@ const loanMetadataSchema = z.object({
   last_payment_date: z.string().nullable(),
 });
 
+const investmentMetadataSchema = z.object({
+  fund_name: z.string().nullable(),
+  investment_account_number: z.string().nullable(),
+  unit_value_end: z.number().nullable(),
+  period_return_pct: z.number().nullable(),
+  fee_pct_annual: z.number().nullable(),
+  previous_balance: z.number().nullable(),
+  additions: z.number().nullable(),
+  withdrawals: z.number().nullable(),
+  net_returns: z.number().nullable(),
+  withholding: z.number().nullable(),
+  new_balance: z.number().nullable(),
+  units_end: z.number().nullable(),
+  maturity_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha de vencimiento inválida").nullable(),
+});
+
 const statementMetaSchema = z.object({
   accountId: uuidStr("Cuenta inválida"),
   statementIndex: z.number().int().min(0),
   summary: statementSummarySchema.nullable(),
   creditCardMetadata: creditCardMetadataSchema.nullable(),
   loanMetadata: loanMetadataSchema.nullable().optional(),
+  investmentMetadata: investmentMetadataSchema.nullable().optional(),
   periodFrom: z.string().nullable(),
   periodTo: z.string().nullable(),
   currency: z.string(),

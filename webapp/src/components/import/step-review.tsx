@@ -536,6 +536,7 @@ export function StepReview({
         summary: stmt.summary,
         creditCardMetadata: stmt.credit_card_metadata,
         loanMetadata: stmt.loan_metadata,
+        investmentMetadata: stmt.investment_metadata ?? null,
         periodFrom: stmt.period_from,
         periodTo: stmt.period_to,
         currency: stmt.currency,
@@ -721,6 +722,7 @@ export function StepReview({
           const isCreditCard =
             stmt.statement_type === "credit_card" && stmt.credit_card_metadata != null;
           const isLoan = stmt.statement_type === "loan" && stmt.loan_metadata != null;
+          const isInvestment = stmt.statement_type === "investment" && stmt.investment_metadata != null;
 
           let showCurrencySelector = false;
           if (accountId && !renderedCurrencySelector.has(accountId)) {
@@ -747,6 +749,7 @@ export function StepReview({
               onCreateAccount={() => openCreateDialog(idx)}
               isCreditCard={isCreditCard}
               isLoan={isLoan}
+              isInvestment={isInvestment}
               selections={selections.get(idx) ?? new Set()}
               onToggleTransaction={(txIdx) => toggleTransaction(idx, txIdx)}
               onToggleAll={() => toggleAllForStatement(idx)}
@@ -931,6 +934,7 @@ function StatementBlock({
   onCreateAccount,
   isCreditCard,
   isLoan,
+  isInvestment,
   selections,
   onToggleTransaction,
   onToggleAll,
@@ -962,6 +966,7 @@ function StatementBlock({
   onCreateAccount: () => void;
   isCreditCard: boolean;
   isLoan: boolean;
+  isInvestment: boolean;
   selections: Set<number>;
   onToggleTransaction: (txIdx: number) => void;
   onToggleAll: () => void;
@@ -1009,7 +1014,7 @@ function StatementBlock({
             currency={stmt.currency as CurrencyCode}
           />
         </>
-      ) : isLoan ? (
+      ) : isLoan || isInvestment ? (
         <StatementSummaryCard statement={stmt} />
       ) : stmt.summary != null || stmt.transactions.length > 0 ? (
         <>

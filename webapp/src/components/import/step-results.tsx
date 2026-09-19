@@ -27,6 +27,7 @@ import {
 import { WizardActionBar } from "./wizard-action-bar";
 import { DiffRow } from "./snapshot-diff-row";
 import { cn } from "@/lib/utils";
+import { isDebtAccountType } from "@/lib/utils/account-balance";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate, formatMonthLabel } from "@/lib/utils/date";
 import type { ImportResult, ImportScope, ImportSkippedReason } from "@/types/import";
@@ -36,6 +37,13 @@ const SKIPPED_REASON_LABELS: Record<ImportSkippedReason, string> = {
   already_imported: "Ya estaba en tu historial",
   duplicate_in_batch: "Repetida en el extracto",
   insert_conflict: "Ya existía (conflicto)",
+};
+
+/** A fund statement maps its figures onto the shared balance columns; show them by their own names. */
+const INVESTMENT_DIFF_LABELS: Record<string, string> = {
+  "Saldo final": "Saldo nuevo",
+  "Total abonos": "Aportes",
+  "Total cargos": "Retiros",
 };
 
 function monthLabel(month: string): string {
@@ -327,6 +335,16 @@ export function StepResults({
         </section>
       )}
 
+      {result.statementTrayCount != null && result.statementTrayCount > 0 && (
+        <div className="rounded-2xl border border-z-alert/20 bg-z-alert/8 p-3 text-sm text-z-alert">
+          {result.statementTrayCount === 1
+            ? "1 movimiento que llegó por correo o pantallazo no aparece en el extracto."
+            : `${result.statementTrayCount} movimientos que llegaron por correo o pantallazo no aparecen en el extracto.`}{" "}
+          Al cerrar esta importación los encuentras en la bandeja «Sin respaldo en el extracto» para
+          eliminarlos o conservarlos.
+        </div>
+      )}
+
       {result.adjustmentsExcluded != null && result.adjustmentsExcluded > 0 && (
         <div className="rounded-2xl border border-z-alert/20 bg-z-alert/8 p-3 text-sm text-z-alert">
           Se excluyeron {result.adjustmentsExcluded} ajuste(s) manual(es) de saldo que
@@ -374,9 +392,20 @@ export function StepResults({
                   <p className="text-xs text-z-sage-dark">Sin cambios respecto al anterior.</p>
                 ) : (
                   <div className="space-y-0.5">
-                    {update.diffs.map((diff) => (
-                      <DiffRow key={diff.field} diff={diff} currency={currency} />
-                    ))}
+                    {update.diffs.map((diff) => {
+                      const accountType = accounts.find((a) => a.id === update.accountId)?.account_type;
+                      const isInvestment = accountType === "INVESTMENT";
+                      return (
+                        <DiffRow
+                          key={diff.field}
+                          diff={diff}
+                          currency={currency}
+                          // Debt balances shrinking is good; savings and fund balances growing is good.
+                          growthIsGood={accountType != null && !isDebtAccountType(accountType)}
+                          label={isInvestment ? INVESTMENT_DIFF_LABELS[diff.field] : undefined}
+                        />
+                      );
+                    })}
                   </div>
                 )}
               </div>

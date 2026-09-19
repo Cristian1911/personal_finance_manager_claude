@@ -40,6 +40,7 @@ from parsers import detect_and_parse
 from parsers.bancolombia_credit_card import parse_credit_card as parse_bancolombia_cc
 from parsers.bancolombia_loan import parse_loan as parse_bancolombia_loan
 from parsers.bancolombia_savings import parse_savings as parse_bancolombia_savings
+from parsers.bancolombia_fiducuenta import parse_fiducuenta as parse_bancolombia_fiducuenta
 from parsers.bogota_credit_card import parse_bogota_credit_card
 from parsers.bogota_loan import parse_bogota_loan
 from parsers.bogota_savings import parse_bogota_savings
@@ -56,6 +57,7 @@ PARSERS = {
     "bancolombia_savings": parse_bancolombia_savings,
     "bancolombia_credit_card": parse_bancolombia_cc,
     "bancolombia_loan": parse_bancolombia_loan,
+    "bancolombia_fiducuenta": parse_bancolombia_fiducuenta,
     "bogota_savings": parse_bogota_savings,
     "bogota_credit_card": parse_bogota_credit_card,
     "bogota_loan": parse_bogota_loan,
@@ -222,6 +224,24 @@ def show_statement_debug(statement: ParsedStatement, index: int = 0) -> None:
         print_debug("Installments in Default", ln.installments_in_default, indent=1)
         print_debug("Statement Cut Date", ln.statement_cut_date, indent=1)
         print_debug("Last Payment Date", ln.last_payment_date, indent=1)
+
+    # Investment metadata
+    if statement.investment_metadata:
+        print_section("INVESTMENT METADATA")
+        im = statement.investment_metadata
+        print_debug("Fund Name", im.fund_name, indent=1)
+        print_debug("Investment Account Number", im.investment_account_number, indent=1)
+        print_debug("Unit Value End", im.unit_value_end, indent=1)
+        print_debug("Period Return %", im.period_return_pct, indent=1)
+        print_debug("Annual Fee %", im.fee_pct_annual, indent=1)
+        print_debug("Previous Balance", im.previous_balance, indent=1)
+        print_debug("Additions", im.additions, indent=1)
+        print_debug("Withdrawals", im.withdrawals, indent=1)
+        print_debug("Net Returns", im.net_returns, indent=1)
+        print_debug("Withholding", im.withholding, indent=1)
+        print_debug("New Balance", im.new_balance, indent=1)
+        print_debug("Units End", im.units_end, indent=1)
+        print_debug("Maturity Date", im.maturity_date, indent=1)
     
     # Transactions
     print_section(f"TRANSACTIONS ({len(statement.transactions)} total)")
@@ -311,6 +331,7 @@ Available parsers:
   bancolombia_savings     Bancolombia savings account
   bancolombia_credit_card Bancolombia credit card
   bancolombia_loan        Bancolombia loan/credit line
+  bancolombia_fiducuenta  Bancolombia Fiducuenta (investment fund)
   bogota_savings          Banco de Bogotá savings
   bogota_credit_card      Banco de Bogotá credit card
   bogota_loan             Banco de Bogotá loan

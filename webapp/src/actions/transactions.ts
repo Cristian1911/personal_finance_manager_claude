@@ -5,6 +5,7 @@ import { createCachedClient } from "@/lib/supabase/cached";
 import {
   autoCategorize,
   computeIdempotencyKey,
+  computeInstallmentGroupId,
   computeMonthlyAggregates,
   type MonthlyAggregatesResult,
   isDebtAccountType,
@@ -46,6 +47,17 @@ import type {
   TransferLegSummary,
 } from "@/types/domain";
 
+/**
+ * Optional numeric form field: absent → undefined (leave stored value alone),
+ * present but empty → null (clear), otherwise the raw string for Zod to parse.
+ */
+function readOptionalFormNumber(formData: FormData, name: string): string | null | undefined {
+  const value = formData.get(name);
+  if (value === null) return undefined;
+  const text = String(value).trim();
+  return text === "" ? null : text;
+}
+
 type PersistTransactionParams = {
   userId: string;
   account_id: string;
@@ -63,7 +75,33 @@ type PersistTransactionParams = {
   capture_input_text?: string | null;
   is_subscription?: boolean;
   location_id?: string | null;
+  /** Cuotas (optional): position, count and full purchase price. */
+  installment_current?: number | null;
+  installment_total?: number | null;
+  original_amount?: number | null;
 };
+
+/**
+ * Group id for a manual purchase in cuotas (the shared-payment flow keys its
+ * debts on it). Hashed from the merchant name the user typed, so manual cuota
+ * rows group with each other; a statement import hashes the bank's raw
+ * description and lands in its own group, and reconciliation (not this key)
+ * is what pairs the two. Null when the movement is not in cuotas.
+ */
+async function resolveInstallmentGroupId(params: {
+  accountId: string;
+  description: string | null | undefined;
+  installmentTotal: number | null | undefined;
+  originalAmount: number | null | undefined;
+  amount: number;
+}): Promise<string | null> {
+  if (params.installmentTotal == null || params.installmentTotal <= 1) return null;
+  return computeInstallmentGroupId({
+    accountId: params.accountId,
+    rawDescription: params.description ?? "",
+    amount: params.originalAmount ?? params.amount,
+  });
+}
 
 type BalanceAccountRow = {
   id: string;
@@ -396,6 +434,9 @@ async function persistTransaction(
       transactionDate: params.transaction_date,
       amount: params.amount,
       rawDescription: params.raw_description ?? params.merchant_name ?? "",
+      // Cuota 1 and cuota 2 of one purchase share date-less fields; the
+      // position keeps a backfill from tripping the unique key.
+      installmentCurrent: params.installment_current ?? null,
     }),
     supabase
       .from("accounts")
@@ -428,6 +469,16 @@ async function persistTransaction(
       categorization_source: params.category_id ? "USER_CREATED" : "SYSTEM_DEFAULT",
       is_subscription: params.is_subscription ?? false,
       location_id: params.location_id ?? null,
+      installment_current: params.installment_current ?? null,
+      installment_total: params.installment_total ?? null,
+      original_amount: params.original_amount ?? null,
+      installment_group_id: await resolveInstallmentGroupId({
+        accountId: params.account_id,
+        description: params.merchant_name ?? params.raw_description,
+        installmentTotal: params.installment_total,
+        originalAmount: params.original_amount,
+        amount: params.amount,
+      }),
       ...flowClassColumns({
         direction: params.direction,
         accountType: accountTypeRes.data?.account_type,
@@ -920,6 +971,9 @@ export async function createTransaction(
     notes: formData.get("notes") || undefined,
     capture_input_text: formData.get("capture_input_text") || undefined,
     is_subscription: formData.get("is_subscription"),
+    installment_current: readOptionalFormNumber(formData, "installment_current"),
+    installment_total: readOptionalFormNumber(formData, "installment_total"),
+    original_amount: readOptionalFormNumber(formData, "original_amount"),
     // Multi-value field from the create forms — tags picked before the row
     // exists, attached right after the insert so the detail page shows them.
     tags: readTagIdsFromFormData(formData),
@@ -1117,6 +1171,9 @@ export async function updateTransaction(
     category_id: formData.get("category_id") || undefined,
     notes: formData.get("notes") || undefined,
     capture_input_text: formData.get("capture_input_text") || undefined,
+    installment_current: readOptionalFormNumber(formData, "installment_current"),
+    installment_total: readOptionalFormNumber(formData, "installment_total"),
+    original_amount: readOptionalFormNumber(formData, "original_amount"),
   });
 
   if (!parsed.success) {
@@ -1126,7 +1183,7 @@ export async function updateTransaction(
   const { data: existing, error: existingError } = await supabase
     .from("transactions")
     .select(
-      "account_id, amount, direction, currency_code, is_excluded, category_id, personal_debt_id, pd_role",
+      "account_id, amount, direction, currency_code, is_excluded, category_id, personal_debt_id, pd_role, installment_total, installment_current, original_amount, installment_group_id",
     )
     .eq("user_id", user.id)
     .eq("id", id)
@@ -1190,10 +1247,44 @@ export async function updateTransaction(
     .eq("user_id", user.id)
     .maybeSingle();
 
+  // Cuotas: a row that becomes (or stays) a purchase in cuotas keeps its group
+  // id, or gets one; a row whose cuotas were cleared (or dropped to a single
+  // cuota) leaves the group. Absent form fields mean "as stored", so the
+  // stored values are the fallback, never the cuota amount.
+  const nextInstallmentTotal =
+    parsed.data.installment_total === undefined
+      ? existing.installment_total
+      : parsed.data.installment_total;
+  const nextOriginalAmount =
+    parsed.data.original_amount === undefined ? existing.original_amount : parsed.data.original_amount;
+  const inCuotas = nextInstallmentTotal != null && nextInstallmentTotal > 1;
+  const installmentGroupId = inCuotas
+    ? existing.installment_group_id ??
+      (await resolveInstallmentGroupId({
+        accountId: parsed.data.account_id,
+        description: parsed.data.merchant_name ?? parsed.data.raw_description,
+        installmentTotal: nextInstallmentTotal,
+        originalAmount: nextOriginalAmount,
+        amount: parsed.data.amount,
+      }))
+    : null;
+  // Cuotas only exist on a card: moving the row to any other account drops
+  // them (the form cannot edit them there, and the group id is per account).
+  const leavesCard = nextAccount != null && nextAccount.account_type !== "CREDIT_CARD";
+  const cuotaColumns = leavesCard
+    ? {
+        installment_current: null,
+        installment_total: null,
+        original_amount: null,
+        installment_group_id: null,
+      }
+    : { installment_group_id: installmentGroupId };
+
   const { data, error } = await supabase
     .from("transactions")
     .update({
       ...updatableFields,
+      ...cuotaColumns,
       clean_description: parsed.data.merchant_name || parsed.data.raw_description || null,
       ...(categoryChanged ? { categorization_source: "USER_OVERRIDE" as const } : {}),
       ...flowClassColumns({
@@ -1310,7 +1401,7 @@ export async function updateTransactionAccount(
   // crafted accountId could move the transaction onto another user's account.
   const { data: targetAccount } = await supabase
     .from("accounts")
-    .select("id, currency_code")
+    .select("id, currency_code, account_type")
     .eq("id", accountId)
     .eq("user_id", user.id)
     .single();
@@ -1328,7 +1419,18 @@ export async function updateTransactionAccount(
 
   const { error: updateError } = await supabase
     .from("transactions")
-    .update({ account_id: accountId })
+    .update({
+      account_id: accountId,
+      // Cuotas belong to a card purchase and their group id is per account.
+      ...(targetAccount.account_type !== "CREDIT_CARD"
+        ? {
+            installment_current: null,
+            installment_total: null,
+            original_amount: null,
+            installment_group_id: null,
+          }
+        : {}),
+    })
     .eq("user_id", user.id)
     .eq("id", transactionId);
 

@@ -10,6 +10,7 @@ class StatementType(str, Enum):
     SAVINGS = "savings"
     CREDIT_CARD = "credit_card"
     LOAN = "loan"
+    INVESTMENT = "investment"
 
 
 class TransactionDirection(str, Enum):
@@ -65,6 +66,22 @@ class LoanMetadata(BaseModel):
     last_payment_date: date | None = None  # last payment made
 
 
+class InvestmentMetadata(BaseModel):
+    fund_name: str | None = None  # e.g. "FIDUCUENTA"
+    investment_account_number: str | None = None  # account number
+    unit_value_end: float | None = None  # unit value at period end
+    period_return_pct: float | None = None  # net return the fund reports for the period, annualized (E.A. %)
+    fee_pct_annual: float | None = None  # annual management fee
+    previous_balance: float | None = None  # opening balance
+    additions: float | None = None  # total additions during period
+    withdrawals: float | None = None  # total withdrawals during period
+    net_returns: float | None = None  # net returns (intereses netos)
+    withholding: float | None = None  # withholding tax (retención)
+    new_balance: float | None = None  # closing balance
+    units_end: float | None = None  # number of units at period end
+    maturity_date: date | None = None  # optional maturity date
+
+
 class ParsedStatement(BaseModel):
     bank: str = "bancolombia"
     statement_type: StatementType
@@ -76,4 +93,5 @@ class ParsedStatement(BaseModel):
     summary: StatementSummary | None = None
     credit_card_metadata: CreditCardMetadata | None = None
     loan_metadata: LoanMetadata | None = None
+    investment_metadata: InvestmentMetadata | None = None
     transactions: list[ParsedTransaction]

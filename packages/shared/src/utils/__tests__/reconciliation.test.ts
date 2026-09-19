@@ -351,3 +351,240 @@ describe("findReconciliationCandidates — floored REVIEW must not be shadowed",
     expect(result.bestMatch!.decision).toBe("REVIEW");
   });
 });
+
+describe("scoreReconciliationCandidate — purchases in cuotas (statement cuota vs alert full price)", () => {
+  // Sep-2026 Bancolombia Mastercard: every USD purchase is billed 1/36. The
+  // statement row carries the cuota as amount and the full price as
+  // original_amount; the alert email stored the full price. 26 such pairs
+  // imported as "new" because only `amount` was compared.
+  const PDF_CUOTA_1 = {
+    account_id: "acc-1",
+    amount: 1.17,
+    original_amount: 41.99,
+    installment_current: 1,
+    currency_code: "USD",
+    direction: "OUTFLOW" as const,
+    transaction_date: "2026-09-14",
+    raw_description: "Nintendo CB1709392947",
+    capture_method: "PDF_IMPORT" as const,
+  };
+  const EMAIL_FULL = makeCandidate({
+    amount: 41.99,
+    currency_code: "USD",
+    transaction_date: "2026-09-14",
+    raw_description:
+      "Compraste USD41,99 en Nintendo CB1709392947 con tu T.Cred *7706, el 14/09/2026 a las 16:10",
+    merchant_name: "Nintendo CB1709392947",
+    clean_description: "Nintendo CB1709392947",
+    capture_method: "EMAIL_IMPORT",
+  });
+
+  it("auto-merges the first cuota of a statement purchase with its alert email", () => {
+    const match = scoreReconciliationCandidate(PDF_CUOTA_1, EMAIL_FULL);
+    expect(match).not.toBeNull();
+    expect(match!.decision).toBe("AUTO_MERGE");
+  });
+
+  it("matches in the other direction: an alert arriving after the statement row", () => {
+    const emailImport = {
+      account_id: "acc-1",
+      amount: 41.99,
+      currency_code: "USD",
+      direction: "OUTFLOW" as const,
+      transaction_date: "2026-09-14",
+      raw_description:
+        "Compraste USD41,99 en Nintendo CB1709392947 con tu T.Cred *7706, el 14/09/2026 a las 16:10",
+      capture_method: "EMAIL_IMPORT" as const,
+    };
+    const pdfRow = makeCandidate({
+      amount: 1.17,
+      original_amount: 41.99,
+      installment_current: 1,
+      currency_code: "USD",
+      transaction_date: "2026-09-14",
+      raw_description: "Nintendo CB1709392947",
+      capture_method: "PDF_IMPORT",
+    });
+    const match = scoreReconciliationCandidate(emailImport, pdfRow);
+    expect(match).not.toBeNull();
+    expect(match!.decision).toBe("AUTO_MERGE");
+  });
+
+  it("keeps the 1/1 single-payment behaviour (amount equals full price)", () => {
+    const single = { ...PDF_CUOTA_1, amount: 41.99, installment_current: 1, original_amount: 41.99 };
+    const match = scoreReconciliationCandidate(single, EMAIL_FULL);
+    expect(match).not.toBeNull();
+    expect(match!.decision).toBe("AUTO_MERGE");
+  });
+
+  it("does NOT compare later cuotas on the full price — they are billing rows, not the purchase", () => {
+    const cuota2 = { ...PDF_CUOTA_1, installment_current: 2, transaction_date: "2026-10-14" };
+    const manualFullPrice = makeCandidate({
+      amount: 41.99,
+      currency_code: "USD",
+      transaction_date: "2026-10-14",
+      raw_description: "Nintendo",
+      capture_method: "MANUAL_FORM",
+    });
+    expect(scoreReconciliationCandidate(cuota2, manualFullPrice)).toBeNull();
+  });
+
+  it("still matches a later cuota on the cuota amount itself", () => {
+    const cuota2 = { ...PDF_CUOTA_1, installment_current: 2, transaction_date: "2026-10-14" };
+    const priorCuotaRow = makeCandidate({
+      amount: 1.17,
+      currency_code: "USD",
+      transaction_date: "2026-10-14",
+      raw_description: "Nintendo CB1709392947",
+      capture_method: "MANUAL_FORM",
+    });
+    const match = scoreReconciliationCandidate(cuota2, priorCuotaRow);
+    expect(match).not.toBeNull();
+  });
+
+  it("never matches across currencies on the same card", () => {
+    // COP section row that happens to equal a USD alert's figure.
+    const copRow = { ...PDF_CUOTA_1, amount: 41.99, original_amount: null, currency_code: "COP" };
+    expect(scoreReconciliationCandidate(copRow, EMAIL_FULL)).toBeNull();
+  });
+
+  it("ignores the currency guard when one side does not carry a currency", () => {
+    const legacy = makeCandidate({ ...EMAIL_FULL, currency_code: null });
+    expect(scoreReconciliationCandidate(PDF_CUOTA_1, legacy)).not.toBeNull();
+  });
+
+  it("auto-merges when the alert email truncated the merchant name at 20 chars", () => {
+    // Bancolombia alerts cut the merchant: "MERPAGO*SANTAMONICAF" (email) vs
+    // "MERPAGO*SANTAMONICAFO" (statement). Same amount, same day — the cut
+    // token must not demote a certain duplicate to "Ambiguos".
+    const pdf = {
+      ...PDF_CUOTA_1,
+      amount: 0.69,
+      original_amount: 24.83,
+      transaction_date: "2026-09-13",
+      raw_description: "MERPAGO*SANTAMONICAFO",
+    };
+    const email = makeCandidate({
+      amount: 24.83,
+      currency_code: "USD",
+      transaction_date: "2026-09-13",
+      raw_description:
+        "Compraste USD24,83 en MERPAGO*SANTAMONICAF con tu T.Cred *7706, el 13/09/2026 a las 02:36",
+      merchant_name: "MERPAGO*SANTAMONICAF",
+      clean_description: "MERPAGO*SANTAMONICAF",
+      capture_method: "EMAIL_IMPORT",
+    });
+    const match = scoreReconciliationCandidate(pdf, email);
+    expect(match).not.toBeNull();
+    expect(match!.textSimilarity).toBe(1);
+    expect(match!.decision).toBe("AUTO_MERGE");
+  });
+
+  it("does not treat short token prefixes as the same word", () => {
+    const pdf = { ...PDF_CUOTA_1, raw_description: "LAS PALMAS" };
+    const email = makeCandidate({
+      amount: 41.99,
+      currency_code: "USD",
+      transaction_date: "2026-09-14",
+      raw_description: "LA CASA",
+      merchant_name: "LA CASA",
+      clean_description: "LA CASA",
+      capture_method: "MANUAL_FORM",
+    });
+    const match = scoreReconciliationCandidate(pdf, email);
+    expect(match).not.toBeNull();
+    expect(match!.textSimilarity).toBe(0);
+  });
+
+  it("never merges cuota N+1 of a purchase into cuota N (same date, amount and text)", () => {
+    // Bancolombia VISA Aug-2026: "AVANCE SUCURSAL VIRTUAL" 2/24 printed with
+    // the July purchase date auto-merged into the 1/24 row from July.
+    const cuota2 = {
+      account_id: "acc-1",
+      amount: 83333.33,
+      original_amount: 2000000,
+      installment_current: 2,
+      currency_code: "COP",
+      direction: "OUTFLOW" as const,
+      transaction_date: "2026-07-01",
+      raw_description: "AVANCE SUCURSAL VIRTUAL",
+      capture_method: "PDF_IMPORT" as const,
+    };
+    const cuota1 = makeCandidate({
+      amount: 83333.33,
+      original_amount: 2000000,
+      installment_current: 1,
+      currency_code: "COP",
+      transaction_date: "2026-07-01",
+      raw_description: "AVANCE SUCURSAL VIRTUAL",
+      capture_method: "EMAIL_PDF_IMPORT",
+    });
+    expect(scoreReconciliationCandidate(cuota2, cuota1)).toBeNull();
+    // The same cuota re-imported (idempotency aside) still matches itself.
+    expect(scoreReconciliationCandidate({ ...cuota2, installment_current: 1 }, cuota1)).not.toBeNull();
+  });
+
+});
+
+describe("scoreReconciliationCandidate — statement vs bank alert, same day and amount", () => {
+  const STATEMENT_TRANSFER = {
+    account_id: "acc-1",
+    amount: 500000,
+    direction: "OUTFLOW" as const,
+    transaction_date: "2026-08-18",
+    raw_description: "TRANSFERENCIA CTA SUC VIRTUAL",
+    capture_method: "PDF_IMPORT" as const,
+  };
+  const alert = (overrides: Partial<ReconciliationCandidate> = {}) =>
+    makeCandidate({
+      amount: 500000,
+      transaction_date: "2026-08-18",
+      raw_description: "Transferiste $500,000 desde tu cuenta *4398 a la cuenta *31091585050 el 18/08/2026 a las 10:02",
+      merchant_name: "31091585050",
+      clean_description: "31091585050",
+      capture_method: "EMAIL_IMPORT",
+      ...overrides,
+    });
+
+  it("auto-merges a template-labelled statement row with its alert (text similarity ~0)", () => {
+    const match = scoreReconciliationCandidate(STATEMENT_TRANSFER, alert());
+    expect(match).not.toBeNull();
+    expect(match!.decision).toBe("AUTO_MERGE");
+  });
+
+  it("auto-merges an international purchase whose alert quoted a slightly different FX amount", () => {
+    const match = scoreReconciliationCandidate(
+      { ...STATEMENT_TRANSFER, amount: 178714.37, raw_description: "COMPRA INTL TARGET T 2786" },
+      alert({ amount: 177901.75, raw_description: "Compraste USD44,50 en TARGET T-2786", merchant_name: "TARGET T-2786", clean_description: "TARGET T-2786" }),
+    );
+    expect(match).not.toBeNull();
+    expect(match!.decision).toBe("AUTO_MERGE");
+  });
+
+  it("never auto-merges when the alert is a day off or the amount drifts past 1%", () => {
+    expect(scoreReconciliationCandidate(STATEMENT_TRANSFER, alert({ transaction_date: "2026-08-19" }))!.decision).toBe("REVIEW");
+    // 2% off: no amount bonus, no text — below the REVIEW threshold entirely.
+    expect(scoreReconciliationCandidate(STATEMENT_TRANSFER, alert({ amount: 490000 }))!.decision).toBe("NO_MATCH");
+  });
+
+  it("does not apply between two alerts or against a manual entry", () => {
+    const manual = alert({ capture_method: "MANUAL_FORM", raw_description: "Envío a Juan", merchant_name: "Juan", clean_description: "Juan" });
+    expect(scoreReconciliationCandidate(STATEMENT_TRANSFER, manual)!.decision).toBe("REVIEW");
+    const emailImport = { ...STATEMENT_TRANSFER, capture_method: "EMAIL_IMPORT" as const, raw_description: "Transferiste $500,000 a la cuenta *99999999999" };
+    const other = alert({ merchant_name: "99999999999", clean_description: "99999999999", raw_description: "Transferiste $500,000 desde tu cuenta *4398 a la cuenta *99999999999 el 18/08/2026 a las 10:02" });
+    const m = scoreReconciliationCandidate(emailImport, other);
+    expect(m === null || m.decision !== "AUTO_MERGE" || m.textSimilarity >= 0.5).toBe(true);
+  });
+
+  it("still demotes two same-day same-amount alerts to REVIEW (runner-up guard)", () => {
+    const result = findReconciliationCandidates(
+      { ...STATEMENT_TRANSFER, amount: 37700, direction: "INFLOW", transaction_date: "2026-08-06", raw_description: "TRANSF DE JUAN PABLO" },
+      [
+        alert({ id: "a", amount: 37700, direction: "INFLOW", transaction_date: "2026-08-06", raw_description: "Recibiste una transferencia de JUAN PABLO HERRERA", merchant_name: "JUAN PABLO HERRERA", clean_description: "JUAN PABLO HERRERA" }),
+        alert({ id: "b", amount: 37700, direction: "INFLOW", transaction_date: "2026-08-06", raw_description: "Recibiste una transferencia de JHON ALEXANDER", merchant_name: "JHON ALEXANDER", clean_description: "JHON ALEXANDER" }),
+      ],
+    );
+    expect(result.bestMatch!.candidateId).toBe("a");
+    expect(result.bestMatch!.decision).toBe("AUTO_MERGE");
+  });
+});

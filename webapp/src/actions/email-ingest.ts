@@ -12,7 +12,6 @@ import {
   autoCategorize,
   extractPattern,
   mergeTransactionMetadata,
-  type ReconciliationCandidate,
 } from "@zeta/shared";
 import { uuidStr } from "@/lib/validators/shared";
 import { matchTransactionToDestinatario } from "./destinatarios";
@@ -23,6 +22,12 @@ import {
   type ParsedEmailTransaction,
 } from "@/lib/parsers/bancolombia-email";
 import { resolveEmailTransactionCurrency } from "@/lib/email-ingest/currency";
+
+/** Two rows describe the same cuota when their amounts agree within 1%. */
+function sameCuotaAmount(a: number, b: number): boolean {
+  const max = Math.max(Math.abs(a), Math.abs(b));
+  return max === 0 ? true : Math.abs(a - b) / max <= 0.01;
+}
 import {
   accountCarriesEmailProduct,
   accountFitsEmailProduct,
@@ -155,6 +160,8 @@ async function persistParsedEmail(params: {
         userId,
         accountId: suggestedAccountId,
         parsed,
+        accountCurrency:
+          candidateAccounts?.find((a) => a.id === suggestedAccountId)?.currency_code ?? null,
       });
       conflictTransactionId = duplicate?.candidate.id ?? null;
     } catch (error) {
@@ -943,7 +950,7 @@ export async function approveEmailTransaction(
     const { data: manualTx } = await supabase
       .from("transactions")
       .select(
-        "id, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method, recurrence_group_id"
+        "id, amount, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method, recurrence_group_id, installment_current, installment_total, original_amount, installment_group_id"
       )
       .eq("id", reconcileWithTransactionId)
       .eq("user_id", user.id)
@@ -952,7 +959,12 @@ export async function approveEmailTransaction(
 
     if (manualTx) {
       const merged = mergeTransactionMetadata(
-        manualTx as ReconciliationCandidate,
+        {
+          category_id: manualTx.category_id,
+          categorization_source: manualTx.categorization_source,
+          notes: manualTx.notes,
+          capture_method: manualTx.capture_method,
+        },
         {
           category_id: insertedTx.category_id,
           categorization_source: insertedTx.categorization_source,
@@ -977,6 +989,22 @@ export async function approveEmailTransaction(
             : {}),
           notes: merged.notes ?? null,
           capture_method: merged.capture_method,
+          // An alert never carries cuotas; the row it absorbs (a statement
+          // cuota row, a manual entry with cuotas) may — keep them on the
+          // survivor so the movement still reads "Cuota 1/36 · compra total".
+          // Only when both rows are the same cuota: a full-price alert
+          // reconciled against a cuota-1 statement row must not become a
+          // "Cuota 1/36" whose amount is the whole purchase (double count,
+          // and a wrong member of the installment group).
+          ...(sameCuotaAmount(parsed.amount, manualTx.amount) &&
+          (manualTx.installment_total != null || manualTx.original_amount != null)
+            ? {
+                installment_current: manualTx.installment_current,
+                installment_total: manualTx.installment_total,
+                original_amount: manualTx.original_amount,
+                installment_group_id: manualTx.installment_group_id,
+              }
+            : {}),
         })
         .eq("user_id", user.id)
         .eq("id", insertedTx.id);

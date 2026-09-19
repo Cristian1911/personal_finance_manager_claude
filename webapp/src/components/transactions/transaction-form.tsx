@@ -170,6 +170,7 @@ export function TransactionForm({
     accounts.find((account) => account.id === selectedAccountId) ?? defaultAccount;
   const isDebtAccount =
     isDebtAccountType(selectedAccount?.account_type ?? "");
+  const isCreditCardAccount = selectedAccount?.account_type === "CREDIT_CARD";
   const allowRelatedSetup = !transaction;
 
   function handleCreateDestinatarioSetup(checked: boolean) {
@@ -302,6 +303,55 @@ export function TransactionForm({
             setTransactionTime(time);
           }}
         />
+
+        {/* Cuotas — only a card movement can be one cuota of a purchase. All
+            optional: alert emails and quick captures never carry them, a
+            statement row does. Monto stays the cuota; the full price goes in
+            "Precio total". */}
+        {isCreditCardAccount && (
+          <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="installment_total">Cuotas (opcional)</Label>
+                <Input
+                  id="installment_total"
+                  name="installment_total"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  step={1}
+                  placeholder="1"
+                  defaultValue={transaction?.installment_total ?? ""}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="installment_current">Cuota actual</Label>
+                <Input
+                  id="installment_current"
+                  name="installment_current"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  step={1}
+                  placeholder="1"
+                  defaultValue={transaction?.installment_current ?? ""}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="original_amount">Precio total de la compra</Label>
+                <CurrencyInput
+                  id="original_amount"
+                  name="original_amount"
+                  defaultValue={transaction?.original_amount ?? undefined}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Si la compra es a cuotas, el monto es el valor de la cuota y aquí va el precio total.
+            </p>
+          </div>
+        )}
 
         <input
           type="hidden"

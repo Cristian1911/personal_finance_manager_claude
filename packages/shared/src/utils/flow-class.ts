@@ -155,7 +155,7 @@ const RE_CASH_WITHDRAWAL = /retiro\s+(cajero|atm|corresponsal)/;
 // "cuota de manejo" but never the bare "cuota manejo" the banks actually print.
 // The group makes "de" optional as a unit.
 const RE_BANK_FEE =
-  /impto\s+gobierno|4x1000|cuota\s+(de\s+)?manejo|comision|comision\s+avance|interes(es)?\s+corriente|interes(es)?\s+mora|cobro\s+transf|ajuste\s+interes/;
+  /impto\s+gobierno|4x1000|cuota\s+(de\s+)?manejo|comision|comision\s+avance|interes(es)?\s+corriente|interes(es)?\s+mora|cobro\s+transf|ajuste\s+interes|retencion\s+en\s+la\s+fuente/;
 
 /**
  * Transfer-ish wording. In rules version 2 this is a CORROBORATING signal only:
