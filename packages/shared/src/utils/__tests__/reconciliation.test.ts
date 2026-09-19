@@ -495,4 +495,32 @@ describe("scoreReconciliationCandidate — purchases in cuotas (statement cuota 
     expect(match).not.toBeNull();
     expect(match!.textSimilarity).toBe(0);
   });
+
+  it("never merges cuota N+1 of a purchase into cuota N (same date, amount and text)", () => {
+    // Bancolombia VISA Aug-2026: "AVANCE SUCURSAL VIRTUAL" 2/24 printed with
+    // the July purchase date auto-merged into the 1/24 row from July.
+    const cuota2 = {
+      account_id: "acc-1",
+      amount: 83333.33,
+      original_amount: 2000000,
+      installment_current: 2,
+      currency_code: "COP",
+      direction: "OUTFLOW" as const,
+      transaction_date: "2026-07-01",
+      raw_description: "AVANCE SUCURSAL VIRTUAL",
+      capture_method: "PDF_IMPORT" as const,
+    };
+    const cuota1 = makeCandidate({
+      amount: 83333.33,
+      original_amount: 2000000,
+      installment_current: 1,
+      currency_code: "COP",
+      transaction_date: "2026-07-01",
+      raw_description: "AVANCE SUCURSAL VIRTUAL",
+      capture_method: "EMAIL_PDF_IMPORT",
+    });
+    expect(scoreReconciliationCandidate(cuota2, cuota1)).toBeNull();
+    // The same cuota re-imported (idempotency aside) still matches itself.
+    expect(scoreReconciliationCandidate({ ...cuota2, installment_current: 1 }, cuota1)).not.toBeNull();
+  });
 });

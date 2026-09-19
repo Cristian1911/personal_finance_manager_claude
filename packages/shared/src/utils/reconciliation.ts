@@ -233,6 +233,18 @@ export function scoreReconciliationCandidate(
     return null;
   }
 
+  // Two cuotas of one purchase are two movements. Bancolombia prints every
+  // cuota with the purchase date, so cuota 2/24 in the next statement looks
+  // exactly like cuota 1/24 (same date, amount, text) and would auto-merge
+  // into it, dropping one cuota per month from the ledger.
+  if (
+    importTx.installment_current != null &&
+    candidate.installment_current != null &&
+    importTx.installment_current !== candidate.installment_current
+  ) {
+    return null;
+  }
+
   // Amount tolerance: percentage-based (up to 5% of the larger amount), taken
   // over every comparable figure of both rows (cuota AND full price for the
   // first cuota of a purchase in cuotas — see `comparableAmounts`).
