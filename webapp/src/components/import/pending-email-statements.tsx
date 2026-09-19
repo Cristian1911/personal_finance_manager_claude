@@ -332,11 +332,14 @@ export function PendingEmailStatements({
                         size="sm"
                       />
                     ) : filenamePreview?.account ? (
+                      // Dimmed: the PDF isn't parsed yet, so the logo is a
+                      // filename-based guess, not a confirmed match.
                       <AccountIcon
                         bank_key={filenamePreview.account.bank_key}
                         account_type={filenamePreview.account.account_type}
                         color={filenamePreview.account.color}
                         size="sm"
+                        className="opacity-50"
                       />
                     ) : (
                       <FileText className="size-4 text-muted-foreground" />
