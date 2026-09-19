@@ -7,7 +7,12 @@ import { Inbox, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { resolveStatementTray, type StatementTrayRow } from "@/actions/statement-tray";
-import { GHOST_BUTTON_CLASS, PANEL_INSET_CLASS, SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
+import {
+  DESTRUCTIVE_GHOST_BUTTON_CLASS,
+  GHOST_BUTTON_CLASS,
+  PANEL_INSET_CLASS,
+  SECTION_EYEBROW_CLASS,
+} from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
@@ -77,9 +82,9 @@ export function StatementTrayPanel({ rows }: { rows: StatementTrayRow[] }) {
             <div className="flex shrink-0 items-center gap-1">
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                className="h-8 px-2 text-xs text-muted-foreground"
+                className={cn(GHOST_BUTTON_CLASS, "h-8 px-2 text-xs")}
                 disabled={pending}
                 onClick={() => resolve({ keepIds: [row.id] })}
               >
@@ -89,10 +94,10 @@ export function StatementTrayPanel({ rows }: { rows: StatementTrayRow[] }) {
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-8 px-2 text-xs text-z-debt"
+                className={cn(DESTRUCTIVE_GHOST_BUTTON_CLASS, "h-8 px-2 text-xs")}
                 disabled={pending}
                 onClick={() => resolve({ deleteIds: [row.id] })}
-                aria-label={`Eliminar ${row.description}`}
+                aria-label={`Eliminar ${row.description || "movimiento sin descripción"}`}
               >
                 <Trash2 className="size-3.5" />
                 Eliminar

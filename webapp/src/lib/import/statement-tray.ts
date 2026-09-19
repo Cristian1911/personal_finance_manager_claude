@@ -13,7 +13,18 @@ import type { Database } from "@/types/database";
  * `statement_tray_dismissals`.
  *
  * Manual entries (tier 3) are left alone: they are the user's own decision.
+ * Only OUTFLOW rows qualify (holds are purchases; a card payment that failed
+ * to reconcile is an abono problem, not a hold). A row dated within the last
+ * days of a period is skipped unless the FOLLOWING statement is imported too:
+ * the bank may post it on the next statement, so it is not missing yet.
  */
+export const STATEMENT_TRAY_CUTOFF_GRACE_DAYS = 3;
+
+function shiftIsoDate(isoDate: string, days: number): string {
+  const d = new Date(`${isoDate}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
 export const STATEMENT_TRAY_CAPTURE_METHODS = ["EMAIL_IMPORT", "OCR_BATCH", "OCR_SINGLE"] as const;
 
 export type StatementTrayRow = {
@@ -71,6 +82,15 @@ export async function fetchStatementTrayRows(
 
   const from = periods.reduce((min, p) => (p.period_from < min ? p.period_from : min), periods[0].period_from);
   const to = periods.reduce((max, p) => (p.period_to > max ? p.period_to : max), periods[0].period_to);
+  // Last day of each period the tray may judge: the full period when the next
+  // statement is already imported, otherwise the period minus the grace days.
+  const effectiveTo = new Map<SnapshotPeriod, string>();
+  for (const p of periods) {
+    const hasFollowing = periods.some(
+      (q) => q !== p && q.account_id === p.account_id && q.currency_code === p.currency_code && q.period_from >= p.period_to,
+    );
+    effectiveTo.set(p, hasFollowing ? p.period_to : shiftIsoDate(p.period_to, -STATEMENT_TRAY_CUTOFF_GRACE_DAYS));
+  }
 
   const [{ data: rows, error: rowsError }, { data: dismissals, error: dismissalsError }] = await Promise.all([
     supabase
@@ -81,6 +101,7 @@ export async function fetchStatementTrayRows(
       .eq("user_id", userId)
       .in("account_id", cardIds)
       .in("capture_method", [...STATEMENT_TRAY_CAPTURE_METHODS])
+      .eq("direction", "OUTFLOW")
       .is("reconciled_into_transaction_id", null)
       .is("transfer_group_id", null)
       .eq("is_excluded", false)
@@ -104,7 +125,7 @@ export async function fetchStatementTrayRows(
         p.account_id === row.account_id &&
         p.currency_code === row.currency_code &&
         row.transaction_date >= p.period_from &&
-        row.transaction_date <= p.period_to,
+        row.transaction_date <= (effectiveTo.get(p) ?? p.period_to),
     );
     if (!period) continue;
     out.push({
