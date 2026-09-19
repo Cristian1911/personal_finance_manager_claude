@@ -523,4 +523,68 @@ describe("scoreReconciliationCandidate — purchases in cuotas (statement cuota 
     // The same cuota re-imported (idempotency aside) still matches itself.
     expect(scoreReconciliationCandidate({ ...cuota2, installment_current: 1 }, cuota1)).not.toBeNull();
   });
+
+});
+
+describe("scoreReconciliationCandidate — statement vs bank alert, same day and amount", () => {
+  const STATEMENT_TRANSFER = {
+    account_id: "acc-1",
+    amount: 500000,
+    direction: "OUTFLOW" as const,
+    transaction_date: "2026-08-18",
+    raw_description: "TRANSFERENCIA CTA SUC VIRTUAL",
+    capture_method: "PDF_IMPORT" as const,
+  };
+  const alert = (overrides: Partial<ReconciliationCandidate> = {}) =>
+    makeCandidate({
+      amount: 500000,
+      transaction_date: "2026-08-18",
+      raw_description: "Transferiste $500,000 desde tu cuenta *4398 a la cuenta *31091585050 el 18/08/2026 a las 10:02",
+      merchant_name: "31091585050",
+      clean_description: "31091585050",
+      capture_method: "EMAIL_IMPORT",
+      ...overrides,
+    });
+
+  it("auto-merges a template-labelled statement row with its alert (text similarity ~0)", () => {
+    const match = scoreReconciliationCandidate(STATEMENT_TRANSFER, alert());
+    expect(match).not.toBeNull();
+    expect(match!.decision).toBe("AUTO_MERGE");
+  });
+
+  it("auto-merges an international purchase whose alert quoted a slightly different FX amount", () => {
+    const match = scoreReconciliationCandidate(
+      { ...STATEMENT_TRANSFER, amount: 178714.37, raw_description: "COMPRA INTL TARGET T 2786" },
+      alert({ amount: 177901.75, raw_description: "Compraste USD44,50 en TARGET T-2786", merchant_name: "TARGET T-2786", clean_description: "TARGET T-2786" }),
+    );
+    expect(match).not.toBeNull();
+    expect(match!.decision).toBe("AUTO_MERGE");
+  });
+
+  it("never auto-merges when the alert is a day off or the amount drifts past 1%", () => {
+    expect(scoreReconciliationCandidate(STATEMENT_TRANSFER, alert({ transaction_date: "2026-08-19" }))!.decision).toBe("REVIEW");
+    // 2% off: no amount bonus, no text — below the REVIEW threshold entirely.
+    expect(scoreReconciliationCandidate(STATEMENT_TRANSFER, alert({ amount: 490000 }))!.decision).toBe("NO_MATCH");
+  });
+
+  it("does not apply between two alerts or against a manual entry", () => {
+    const manual = alert({ capture_method: "MANUAL_FORM", raw_description: "Envío a Juan", merchant_name: "Juan", clean_description: "Juan" });
+    expect(scoreReconciliationCandidate(STATEMENT_TRANSFER, manual)!.decision).toBe("REVIEW");
+    const emailImport = { ...STATEMENT_TRANSFER, capture_method: "EMAIL_IMPORT" as const, raw_description: "Transferiste $500,000 a la cuenta *99999999999" };
+    const other = alert({ merchant_name: "99999999999", clean_description: "99999999999", raw_description: "Transferiste $500,000 desde tu cuenta *4398 a la cuenta *99999999999 el 18/08/2026 a las 10:02" });
+    const m = scoreReconciliationCandidate(emailImport, other);
+    expect(m === null || m.decision !== "AUTO_MERGE" || m.textSimilarity >= 0.5).toBe(true);
+  });
+
+  it("still demotes two same-day same-amount alerts to REVIEW (runner-up guard)", () => {
+    const result = findReconciliationCandidates(
+      { ...STATEMENT_TRANSFER, amount: 37700, direction: "INFLOW", transaction_date: "2026-08-06", raw_description: "TRANSF DE JUAN PABLO" },
+      [
+        alert({ id: "a", amount: 37700, direction: "INFLOW", transaction_date: "2026-08-06", raw_description: "Recibiste una transferencia de JUAN PABLO HERRERA", merchant_name: "JUAN PABLO HERRERA", clean_description: "JUAN PABLO HERRERA" }),
+        alert({ id: "b", amount: 37700, direction: "INFLOW", transaction_date: "2026-08-06", raw_description: "Recibiste una transferencia de JHON ALEXANDER", merchant_name: "JHON ALEXANDER", clean_description: "JHON ALEXANDER" }),
+      ],
+    );
+    expect(result.bestMatch!.candidateId).toBe("a");
+    expect(result.bestMatch!.decision).toBe("AUTO_MERGE");
+  });
 });

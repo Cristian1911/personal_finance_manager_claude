@@ -340,6 +340,29 @@ export function scoreReconciliationCandidate(
   if (score >= 0.9) decision = "AUTO_MERGE";
   else if (score >= 0.75) decision = "REVIEW";
 
+  // A bank statement and the bank's own alert describe the same ledger. The
+  // statement labels most movements with a template ("TRANSFERENCIA CTA SUC
+  // VIRTUAL", "PAGO QR …", "TRANSFERENCIAS A NEQUI") while the alert names
+  // the counterparty, so text similarity is structurally ~0 and every such
+  // pair landed on exactly 0.75 (REVIEW): the Aug-2026 savings statement
+  // produced 92 "ambiguos" out of 202 rows. Same day and the same amount
+  // (within 1% — international purchases post at a slightly different FX
+  // rate than the alert quoted) is conclusive between these two sources.
+  // Genuinely ambiguous pairs (two same-day same-amount candidates) are still
+  // demoted to REVIEW by the runner-up check in findReconciliationCandidates.
+  if (
+    decision === "REVIEW" &&
+    importTx.capture_method != null &&
+    candidate.capture_method != null &&
+    isBankVerifiedCapture(importTx.capture_method) &&
+    getCaptureTier(candidate.capture_method) === 2 &&
+    daysDiff === 0 &&
+    amountPctDiff <= 0.01 &&
+    !refConflict
+  ) {
+    decision = "AUTO_MERGE";
+  }
+
   // User-entered candidates near a bank-verified import's amount on the same
   // or adjacent day are the "manual estimate" class: the user typed an
   // approximate figure (e.g. a loan prepayment entered as 1,651,641 that the
