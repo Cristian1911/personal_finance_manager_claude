@@ -222,37 +222,37 @@ export function StatementSummaryCard({
             {statement.investment_metadata.new_balance != null && (
               <div>
                 <p className="text-muted-foreground text-xs">Saldo nuevo</p>
-                <p className="font-medium text-z-income">{fmt(statement.investment_metadata.new_balance)}</p>
+                <p className="font-medium text-z-income tabular-nums">{fmt(statement.investment_metadata.new_balance)}</p>
               </div>
             )}
             {statement.investment_metadata.previous_balance != null && (
               <div>
                 <p className="text-muted-foreground text-xs">Saldo anterior</p>
-                <p className="font-medium">{fmt(statement.investment_metadata.previous_balance)}</p>
+                <p className="font-medium tabular-nums">{fmt(statement.investment_metadata.previous_balance)}</p>
               </div>
             )}
             {statement.investment_metadata.additions != null && (
               <div>
                 <p className="text-muted-foreground text-xs">Aportes</p>
-                <p className="font-medium text-z-income">{fmt(statement.investment_metadata.additions)}</p>
+                <p className="font-medium text-z-income tabular-nums">{fmt(statement.investment_metadata.additions)}</p>
               </div>
             )}
             {statement.investment_metadata.withdrawals != null && (
               <div>
                 <p className="text-muted-foreground text-xs">Retiros</p>
-                <p className="font-medium text-z-debt">{fmt(statement.investment_metadata.withdrawals)}</p>
+                <p className="font-medium text-z-debt tabular-nums">{fmt(statement.investment_metadata.withdrawals)}</p>
               </div>
             )}
             {statement.investment_metadata.net_returns != null && (
               <div>
                 <p className="text-muted-foreground text-xs">Rendimientos netos</p>
-                <p className="font-medium text-z-income">{fmt(statement.investment_metadata.net_returns)}</p>
+                <p className="font-medium text-z-income tabular-nums">{fmt(statement.investment_metadata.net_returns)}</p>
               </div>
             )}
-            {statement.investment_metadata.withholding != null && statement.investment_metadata.withholding > 0 && (
+            {statement.investment_metadata.withholding != null && (
               <div>
                 <p className="text-muted-foreground text-xs">Retención</p>
-                <p className="font-medium text-z-debt">{fmt(statement.investment_metadata.withholding)}</p>
+                <p className="font-medium text-z-debt tabular-nums">{fmt(statement.investment_metadata.withholding)}</p>
               </div>
             )}
             {statement.investment_metadata.period_return_pct != null && (

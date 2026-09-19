@@ -81,7 +81,9 @@ function deriveDefaults(stmt: ParsedStatement): AccountFormDefaults {
   } else if (stmt.statement_type === "investment") {
     accountType = "INVESTMENT";
     const meta = stmt.investment_metadata;
-    const fund = meta?.fund_name ? meta.fund_name.charAt(0) + meta.fund_name.slice(1).toLowerCase() : "Inversión";
+    const fund = meta?.fund_name
+      ? meta.fund_name.charAt(0).toUpperCase() + meta.fund_name.slice(1).toLowerCase()
+      : "Inversión";
     name = `${bank} ${fund}${mask ? ` ****${mask}` : ""}`;
     if (meta) {
       if (meta.new_balance != null) defaults.current_balance = meta.new_balance;
