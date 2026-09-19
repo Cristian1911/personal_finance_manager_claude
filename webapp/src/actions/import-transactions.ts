@@ -5,7 +5,8 @@ import { addDays, parseISO } from "date-fns";
 import { formatDate, toColombiaDateString } from "@/lib/utils/date";
 import { formatCurrency } from "@/lib/utils/currency";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
-import { fetchStatementTrayRows } from "@/lib/import/statement-tray";
+import { fetchStatementTrayRows, type StatementTrayPeriod } from "@/lib/import/statement-tray";
+import { getIsDemoFilter } from "@/lib/demo-filter";
 import {
   anchorStatementBalance,
   assignStatementOccurrenceIndexes,
@@ -2410,10 +2411,19 @@ export async function importTransactions(
   // import page is where the user deletes or keeps them.
   let statementTrayCount = 0;
   try {
-    const trayRows = await fetchStatementTrayRows(supabase, user.id, {
-      accountIds: [...new Set(transactions.map((tx) => tx.account_id))],
-    });
-    statementTrayCount = trayRows.length;
+    const importedPeriods: StatementTrayPeriod[] = (normalizedStatementMeta ?? []).flatMap((meta) =>
+      meta.periodFrom && meta.periodTo
+        ? [{ accountId: meta.accountId, currencyCode: meta.currency, periodFrom: meta.periodFrom, periodTo: meta.periodTo }]
+        : [],
+    );
+    if (importedPeriods.length > 0) {
+      const { rows: trayRows } = await fetchStatementTrayRows(supabase, user.id, {
+        isDemo: await getIsDemoFilter(user.id),
+        accountIds: [...new Set(importedPeriods.map((p) => p.accountId))],
+        periods: importedPeriods,
+      });
+      statementTrayCount = trayRows.length;
+    }
   } catch (trayError) {
     console.error("[importTransactions] statement tray count failed:", trayError);
   }

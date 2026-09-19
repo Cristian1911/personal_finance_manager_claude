@@ -6,8 +6,20 @@ import Link from "next/link";
 import { Inbox, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { resolveStatementTray, type StatementTrayRow } from "@/actions/statement-tray";
 import {
+  BRASS_BUTTON_CLASS,
   DESTRUCTIVE_GHOST_BUTTON_CLASS,
   GHOST_BUTTON_CLASS,
   PANEL_INSET_CLASS,
@@ -30,7 +42,7 @@ const SOURCE_LABELS: Record<string, string> = {
  * that no statement row backed. Usually card-validation holds the bank
  * withdrew. Delete them, or keep them and the tray stops asking.
  */
-export function StatementTrayPanel({ rows }: { rows: StatementTrayRow[] }) {
+export function StatementTrayPanel({ rows, truncated = false }: { rows: StatementTrayRow[]; truncated?: boolean }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [hidden, setHidden] = useState<Set<string>>(new Set());
@@ -107,19 +119,44 @@ export function StatementTrayPanel({ rows }: { rows: StatementTrayRow[] }) {
         ))}
       </ul>
 
+      {truncated && (
+        <p className="text-xs text-muted-foreground">Hay más movimientos; resuelve estos y vuelve a cargar.</p>
+      )}
+
       {visible.length > 1 && (
         <div className="flex justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className={cn(GHOST_BUTTON_CLASS, "h-8 text-xs")}
-            disabled={pending}
-            onClick={() => resolve({ deleteIds: visible.map((r) => r.id) })}
-          >
-            <Trash2 className="size-3.5" />
-            Eliminar todos ({visible.length})
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={cn(GHOST_BUTTON_CLASS, "h-8 text-xs")}
+                disabled={pending}
+              >
+                <Trash2 className="size-3.5" />
+                Eliminar todos ({visible.length})
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>¿Eliminar {visible.length} movimientos?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Se borran del historial. Si alguno sí es un gasto real, usa «Conservar» en esa fila
+                  antes de eliminar el resto.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className={GHOST_BUTTON_CLASS}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  className={BRASS_BUTTON_CLASS}
+                  onClick={() => resolve({ deleteIds: visible.map((r) => r.id) })}
+                >
+                  Eliminar todos
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       )}
     </section>
