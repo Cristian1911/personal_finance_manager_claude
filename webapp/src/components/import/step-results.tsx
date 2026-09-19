@@ -327,6 +327,16 @@ export function StepResults({
         </section>
       )}
 
+      {result.statementTrayCount != null && result.statementTrayCount > 0 && (
+        <div className="rounded-2xl border border-z-alert/20 bg-z-alert/8 p-3 text-sm text-z-alert">
+          {result.statementTrayCount === 1
+            ? "1 movimiento que llegó por correo o pantallazo no aparece en el extracto."
+            : `${result.statementTrayCount} movimientos que llegaron por correo o pantallazo no aparecen en el extracto.`}{" "}
+          Al cerrar esta importación los encuentras en la bandeja «Sin respaldo en el extracto» para
+          eliminarlos o conservarlos.
+        </div>
+      )}
+
       {result.adjustmentsExcluded != null && result.adjustmentsExcluded > 0 && (
         <div className="rounded-2xl border border-z-alert/20 bg-z-alert/8 p-3 text-sm text-z-alert">
           Se excluyeron {result.adjustmentsExcluded} ajuste(s) manual(es) de saldo que

@@ -162,6 +162,11 @@ export type ImportResult = {
   enrichmentErrors?: number;
   modoAssignments?: ImportModoAssignment[];
   scopes?: ImportScope[];
+  /**
+   * Card movements from alerts/screenshots inside the imported periods that
+   * no statement row backed — the "sin respaldo en el extracto" tray.
+   */
+  statementTrayCount?: number;
 };
 
 export type ReconciliationDecisionInput = {

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { connection } from "next/server";
 import Link from "next/link";
 import { ArrowRight, ChevronDown, Files, ShieldCheck, Sparkles } from "lucide-react";
@@ -8,6 +9,7 @@ import { getPendingEmailStatements } from "@/actions/email-pdf-ingest";
 import { listModosWithParticipants } from "@/actions/modos";
 import { suggestPdfPasswordsForAccount } from "@/actions/pdf-passwords";
 import { ImportPageClient } from "@/components/import/import-page-client";
+import { StatementTraySection } from "@/components/import/statement-tray-section";
 import { Button } from "@/components/ui/button";
 import { PageHero, HeroPill, HeroAccentPill } from "@/components/ui/page-hero";
 import { StatCard } from "@/components/ui/stat-card";
@@ -123,6 +125,13 @@ export default async function ImportPage() {
         modos={modos}
         pendingStatements={pendingStatements}
         initialVaultSuggestions={vaultSuggestions}
+        statementTray={
+          // Non-critical: streams in after the wizard. Keyed for the same
+          // reason as the about panel below.
+          <Suspense key="statement-tray" fallback={null}>
+            <StatementTraySection />
+          </Suspense>
+        }
         mobileAboutPanel={
           // Keyed because this element is created here but rendered as a
           // sibling in an array inside ImportPageClient (next to the keyed

@@ -5,6 +5,7 @@ import { addDays, parseISO } from "date-fns";
 import { formatDate, toColombiaDateString } from "@/lib/utils/date";
 import { formatCurrency } from "@/lib/utils/currency";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
+import { fetchStatementTrayRows } from "@/lib/import/statement-tray";
 import {
   anchorStatementBalance,
   assignStatementOccurrenceIndexes,
@@ -2404,6 +2405,20 @@ export async function importTransactions(
 
   await Promise.all(productEvents);
 
+  // Bandeja: alert/screenshot rows on the imported cards, inside a statement
+  // period, that no statement row absorbed. Informational — the tray on the
+  // import page is where the user deletes or keeps them.
+  let statementTrayCount = 0;
+  try {
+    const trayRows = await fetchStatementTrayRows(supabase, user.id, {
+      accountIds: [...new Set(transactions.map((tx) => tx.account_id))],
+    });
+    statementTrayCount = trayRows.length;
+  } catch (trayError) {
+    console.error("[importTransactions] statement tray count failed:", trayError);
+  }
+  updateTag("statement-tray");
+
   return {
     success: true,
     data: {
@@ -2424,6 +2439,7 @@ export async function importTransactions(
       enrichmentErrors,
       modoAssignments,
       scopes,
+      statementTrayCount,
     },
   };
 }
