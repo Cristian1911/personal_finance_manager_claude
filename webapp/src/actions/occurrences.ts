@@ -86,6 +86,24 @@ function createAmountConverter(fromCurrency: string | null | undefined) {
 }
 
 /**
+ * Manual-link rule for a charge that moved cards: the transaction carries the
+ * template's destinatario (same merchant, same direction) but lives on another
+ * account — e.g. a subscription tracked on one card that this month billed a
+ * new card. A human confirms these in the Vincular sheets; auto-link stays
+ * same-account only.
+ */
+function isDestinatarioAnchoredMatch(
+  template: { destinatario_id?: string | null; direction: string },
+  tx: { destinatario_id: string | null; direction: string },
+): boolean {
+  return (
+    !!template.destinatario_id &&
+    tx.destinatario_id === template.destinatario_id &&
+    tx.direction === template.direction
+  );
+}
+
+/**
  * Detection patterns of the given destinatarios, keyed by destinatario id.
  * Lets the pickers recognise a transaction the matcher never assigned
  * (e.g. "ANTHROPIC* CLAUDE SUB" against a template anchored to a
@@ -1581,7 +1599,7 @@ export async function linkExistingTransactionToOccurrence(
     .from("recurring_occurrences")
     .select(`id, template_id, occurrence_date,
       template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(
-        account_id, direction, frequency, category_id, transfer_source_account_id,
+        account_id, direction, frequency, category_id, transfer_source_account_id, destinatario_id,
         account:accounts!recurring_transaction_templates_account_id_fkey(account_type)
       )`)
     .eq("id", occurrenceId)
@@ -1593,13 +1611,17 @@ export async function linkExistingTransactionToOccurrence(
     return { success: false, error: "Ocurrencia no encontrada o ya no está pendiente" };
   }
 
-  const template = occurrence.template as (TemplateWithAccount & { frequency: string; category_id: string | null }) | null;
+  const template = occurrence.template as (TemplateWithAccount & {
+    frequency: string;
+    category_id: string | null;
+    destinatario_id: string | null;
+  }) | null;
   if (!template) return { success: false, error: "Plantilla no encontrada" };
 
   // Fetch transaction — must exist and match account + direction
   const { data: tx, error: txErr } = await supabase
     .from("transactions")
-    .select("id, account_id, direction, category_id")
+    .select("id, account_id, direction, category_id, destinatario_id")
     .eq("id", transactionId)
     .eq("user_id", user.id)
     .single();
@@ -1611,7 +1633,9 @@ export async function linkExistingTransactionToOccurrence(
   const directMatch = tx.account_id === template.account_id && tx.direction === template.direction;
   const crossAccountDebt = isCrossAccountDebtPayment(template, tx.direction as "INFLOW" | "OUTFLOW", tx.account_id);
 
-  if (!directMatch && !crossAccountDebt) {
+  const anchoredElsewhere = isDestinatarioAnchoredMatch(template, tx);
+
+  if (!directMatch && !crossAccountDebt && !anchoredElsewhere) {
     return { success: false, error: "La transacción no coincide con la cuenta o dirección de la plantilla" };
   }
 
@@ -1743,6 +1767,11 @@ export async function getCandidateTransactionsForOccurrence(
     query = query.or(
       `and(account_id.eq.${template.account_id},direction.eq.INFLOW),and(account_id.eq.${template.transfer_source_account_id},direction.eq.OUTFLOW)`
     );
+  } else if (template.destinatario_id) {
+    // Same merchant on another card counts too (see isDestinatarioAnchoredMatch).
+    query = query
+      .eq("direction", template.direction)
+      .or(`account_id.eq.${template.account_id},destinatario_id.eq.${template.destinatario_id}`);
   } else {
     query = query.eq("account_id", template.account_id).eq("direction", template.direction);
   }
@@ -1892,6 +1921,14 @@ export async function getCandidateOccurrencesForTransaction(
     const t = o.template as TemplateWithAccount | null;
     if (!t) return false;
     if (t.account_id === tx.account_id && t.direction === tx.direction) return true;
+    if (
+      isDestinatarioAnchoredMatch(
+        t as TemplateWithAccount & { destinatario_id: string | null },
+        tx,
+      )
+    ) {
+      return true;
+    }
     return isCrossAccountDebtPayment(t, tx.direction as "INFLOW" | "OUTFLOW", tx.account_id);
   });
 
