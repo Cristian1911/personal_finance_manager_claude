@@ -77,6 +77,7 @@ import {
 import {
   getPersonalDebtsByPerson,
   linkTransactionToPersonDebts,
+  linkTransactionToPersonGeneralDebt,
   linkTransactionToPersonalDebt,
   unlinkTransactionFromPersonalDebt,
 } from "@/actions/personal-debts";
@@ -529,6 +530,26 @@ export function TransactionQuickActions({
       return;
     }
     setPersonaPickerOpen(false);
+    if (selection.kind === "general") {
+      startLinkTransition(async () => {
+        try {
+          const result = await linkTransactionToPersonGeneralDebt(selection.destinatarioId, tx.id);
+          if (result.success) {
+            toast.success(
+              selection.direction === "borrowed"
+                ? `Sumado a lo que le debes a ${selection.name}`
+                : `Sumado a lo que ${selection.name} te debe`,
+            );
+            router.refresh();
+          } else {
+            toast.error(result.error ?? "No se pudo vincular");
+          }
+        } catch {
+          toast.error("No se pudo vincular");
+        }
+      });
+      return;
+    }
     startLinkTransition(async () => {
       try {
         const result = await linkTransactionToPersonDebts(selection.debtIds, tx.id);

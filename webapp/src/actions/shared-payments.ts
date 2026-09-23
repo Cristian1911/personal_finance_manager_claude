@@ -1,6 +1,7 @@
 "use server";
 import { cacheTag, cacheLife, updateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { sharedGroupsHaveSplitRepayments, SPLIT_REPAYMENT_BLOCK_MESSAGE } from "@/lib/personal-debts/recompute";
 import { flowClassColumns } from "@/lib/utils/flow-class-columns";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
@@ -442,6 +443,14 @@ export async function deleteSharedPayment(
   if (!UUID_RE.test(splitGroupId)) return { success: false, error: "ID inválido" };
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
+
+  try {
+    if (await sharedGroupsHaveSplitRepayments(supabase, user.id, [splitGroupId])) {
+      return { success: false, error: SPLIT_REPAYMENT_BLOCK_MESSAGE };
+    }
+  } catch {
+    return { success: false, error: "Error al eliminar el pago compartido" };
+  }
 
   // Legacy cleanup: old per-participant legs carried split_group_id + a
   // personal_debt_id. The new-model origin tx has personal_debt_id null, so this

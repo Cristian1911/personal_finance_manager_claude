@@ -132,7 +132,37 @@ describe("buildLinkOptions", () => {
       debt({ destinatario_id: JUAN, principal_amount: 9, outstanding_amount: 9, currency_code: "USD" }),
     ];
     const out = buildLinkOptions(people(debts), { amount: 10, currency_code: "COP", direction: "OUTFLOW" });
-    expect(out).toEqual([]);
+    // Still offered (for the deuda general), but with no particular debt.
+    expect(out.map((p) => [p.name, p.sections.length, p.scopes.length])).toEqual([
+      ["Estefa", 0, 0],
+      ["Juan", 0, 0],
+    ]);
+  });
+
+  it("offers the deuda general for a new loan, created on first use", () => {
+    // Money IN from Estefa is her lending to you: you owe her.
+    const loanIn = { amount: 100, currency_code: "COP", direction: "INFLOW" as const };
+    const [fresh] = buildLinkOptions(people(trip(1)), loanIn);
+    expect(fresh.general).toEqual({ direction: "borrowed", outstanding: null });
+
+    const general = debt({
+      destinatario_id: ESTEFA,
+      direction: "borrowed",
+      principal_amount: 300,
+      outstanding_amount: 250,
+      is_general: true,
+      notes: "Deuda general",
+    } as Partial<PersonalDebtWithDetails> & { destinatario_id: string });
+    const [withGeneral] = buildLinkOptions(people([...trip(1), general]), loanIn);
+    expect(withGeneral.general).toEqual({ direction: "borrowed", outstanding: 250 });
+    // The general debt isn't repeated as a particular "suma a la deuda" target…
+    expect(withGeneral.sections.flatMap((s) => s.debts).some((d) => d.item.is_general)).toBe(false);
+
+    // …but an abono (money OUT to her) can go to it like any other debt.
+    const [paying] = buildLinkOptions(people([general]), { amount: 50, currency_code: "COP", direction: "OUTFLOW" });
+    expect(paying.general.direction).toBe("lent");
+    expect(paying.sections[0].debts.map((d) => [d.role, d.item.is_general])).toEqual([["repayment", true]]);
+    expect(describeDebtItem(paying.sections[0].debts[0].item)).toBe("Deuda general");
   });
 
   it("puts people you can abonar to first", () => {

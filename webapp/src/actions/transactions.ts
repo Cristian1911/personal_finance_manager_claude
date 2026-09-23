@@ -37,7 +37,8 @@ import {
 } from "@/lib/utils/account-balance";
 import {
   detachTransactionFromDebt,
-  readAllocatedDebtIds,
+  readAllocations,
+  type DebtAllocationShare,
   recomputeDebtAfterTxAmountChange,
 } from "@/lib/personal-debts/recompute";
 import type { ActionResult, PaginatedResult } from "@/types/actions";
@@ -1372,8 +1373,8 @@ async function rejectAmountEditOnSplitRepayment(
   if (!existing.personal_debt_id || existing.pd_role !== "repayment") return null;
   if (Number(existing.amount) === Number(nextAmount)) return null;
   try {
-    const debts = await readAllocatedDebtIds(supabase, userId, transactionId);
-    if (debts.length === 0) return null;
+    const shares = await readAllocations(supabase, userId, transactionId);
+    if (shares.length === 0) return null;
   } catch {
     return "No se pudo verificar la deuda vinculada. Intenta de nuevo.";
   }
@@ -1684,10 +1685,10 @@ export async function deleteTransaction(id: string): Promise<ActionResult> {
 
   // A repayment split across several debts loses its allocation rows with
   // the delete (cascade) — read which debts they were first.
-  let allocatedDebtIds: string[] = [];
+  let allocations: DebtAllocationShare[] = [];
   if (existing.personal_debt_id && existing.pd_role === "repayment") {
     try {
-      allocatedDebtIds = await readAllocatedDebtIds(supabase, user.id, id);
+      allocations = await readAllocations(supabase, user.id, id);
     } catch {
       return { success: false, error: "No se pudo leer la deuda vinculada. Intenta de nuevo." };
     }
@@ -1727,7 +1728,7 @@ export async function deleteTransaction(id: string): Promise<ActionResult> {
         amount: existing.amount,
         personal_debt_id: existing.personal_debt_id,
         pd_role: existing.pd_role as "origin" | "repayment" | null,
-        allocatedDebtIds,
+        allocations,
       });
     } catch (e) {
       // The delete is already committed — invalidate so the UI reflects it,

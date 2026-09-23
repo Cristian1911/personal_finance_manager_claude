@@ -16,6 +16,11 @@
 --
 -- Plain table (sin PII: ids + montos). Mobile no la sincroniza: lee
 -- outstanding_amount, que el servidor mantiene.
+--
+-- personal_debts.is_general: la "deuda general" con una persona (una por
+-- persona, dirección y moneda) — donde se SUMAN los préstamos sueltos que no
+-- pertenecen a un viaje ni a una deuda concreta ("vincular a la persona en
+-- general" de un movimiento que es un préstamo nuevo).
 -- ============================================================================
 
 BEGIN;
@@ -44,16 +49,39 @@ CREATE INDEX IF NOT EXISTS idx_personal_debt_allocations_debt
 ALTER TABLE public.personal_debt_allocations ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "personal_debt_allocations_select" ON public.personal_debt_allocations FOR SELECT
   USING ((select auth.uid()) = user_id);
+-- FK checks ignore RLS: also require that the movement and the debt are the
+-- caller's own, so no row can point at someone else's data.
 CREATE POLICY "personal_debt_allocations_insert" ON public.personal_debt_allocations FOR INSERT
-  WITH CHECK ((select auth.uid()) = user_id);
+  WITH CHECK (
+    (select auth.uid()) = user_id
+    AND EXISTS (SELECT 1 FROM public.transactions_enc t
+                WHERE t.id = transaction_id AND t.user_id = (select auth.uid()))
+    AND EXISTS (SELECT 1 FROM public.personal_debts d
+                WHERE d.id = personal_debt_id AND d.user_id = (select auth.uid()))
+  );
 CREATE POLICY "personal_debt_allocations_update" ON public.personal_debt_allocations FOR UPDATE
   USING ((select auth.uid()) = user_id)
-  WITH CHECK ((select auth.uid()) = user_id);
+  WITH CHECK (
+    (select auth.uid()) = user_id
+    AND EXISTS (SELECT 1 FROM public.transactions_enc t
+                WHERE t.id = transaction_id AND t.user_id = (select auth.uid()))
+    AND EXISTS (SELECT 1 FROM public.personal_debts d
+                WHERE d.id = personal_debt_id AND d.user_id = (select auth.uid()))
+  );
 CREATE POLICY "personal_debt_allocations_delete" ON public.personal_debt_allocations FOR DELETE
   USING ((select auth.uid()) = user_id);
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.personal_debt_allocations TO authenticated;
 GRANT ALL ON public.personal_debt_allocations TO postgres, service_role;
+
+-- Deuda general por persona: a lo sumo una viva por (persona, dirección, moneda).
+ALTER TABLE public.personal_debts
+  ADD COLUMN IF NOT EXISTS is_general boolean NOT NULL DEFAULT false;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_personal_debts_general
+  ON public.personal_debts (user_id, destinatario_id, direction, currency_code)
+  WHERE is_general AND status <> 'cancelled';
+COMMENT ON COLUMN public.personal_debts.is_general IS
+  'Deuda general con la persona: acumula préstamos sueltos vinculados "a la persona en general". Una viva por persona, dirección y moneda.';
 
 -- Abonado por deuda. security_invoker: RLS de transactions_enc y de la tabla
 -- de repartos aplica al usuario que consulta. Solo columnas en claro.

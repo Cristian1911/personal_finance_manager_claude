@@ -18,7 +18,8 @@ import {
   recomputeSplitRepaid,
   recomputeDebts,
   detachTransactionFromDebt,
-  readAllocatedDebtIds,
+  readAllocations,
+  type DebtAllocationShare,
 } from "@/lib/personal-debts/recompute";
 import {
   resolveSplitParticipants,
@@ -86,7 +87,7 @@ async function getPersonalDebtsByPersonCached(
         id, user_id, destinatario_id, direction, principal_amount,
         currency_code, outstanding_amount, opened_on, due_date, status,
         origin_transaction_id, split_group_id, notes, is_demo, created_at, updated_at,
-        installment_group_id, installment_total, group_total_amount, interest_amount,
+        installment_group_id, installment_total, group_total_amount, interest_amount, is_general,
         destinatario:destinatarios!personal_debts_destinatario_id_fkey ( name, default_category_id, is_ad_hoc )
       `)
       .eq("user_id", userId),
@@ -926,10 +927,10 @@ export async function unlinkTransactionFromPersonalDebt(
 
   // An abono split across several debts: remember which ones before the
   // unlink so every one of them is recomputed, not just the anchor.
-  let allocatedDebtIds: string[] = [];
+  let allocations: DebtAllocationShare[] = [];
   if (tx.pd_role === "repayment") {
     try {
-      allocatedDebtIds = await readAllocatedDebtIds(supabase, user.id, transactionId);
+      allocations = await readAllocations(supabase, user.id, transactionId);
     } catch {
       return { success: false, error: "Error al desvincular la transacción" };
     }
@@ -950,7 +951,7 @@ export async function unlinkTransactionFromPersonalDebt(
       amount: tx.amount,
       personal_debt_id: debtId,
       pd_role: tx.pd_role as "origin" | "repayment" | null,
-      allocatedDebtIds,
+      allocations,
     });
   } catch (e) {
     revalidateFinancialViews();
@@ -1543,11 +1544,16 @@ export async function linkTransactionToPersonDebts(
     .is("personal_debt_id", null)
     .select("id");
   if (updErr || !linked || linked.length === 0) {
+    // Only OUR rows: a concurrent split that won keeps its shares.
     await supabase
       .from("personal_debt_allocations")
       .delete()
       .eq("user_id", user.id)
-      .eq("transaction_id", transactionId);
+      .eq("transaction_id", transactionId)
+      .in(
+        "personal_debt_id",
+        allocations.map((a) => a.id),
+      );
     return {
       success: false,
       error: updErr ? "Error al vincular la transacción" : "Esta transacción ya está vinculada a una persona.",
@@ -1570,4 +1576,118 @@ export async function linkTransactionToPersonDebts(
   revalidateFinancialViews();
   updateTag("personal-debts");
   return { success: true, data: { debts: allocations.length } };
+}
+
+// ============================================================
+// Préstamo nuevo "a la persona en general": suma el movimiento a la deuda
+// general con esa persona (una por persona, dirección y moneda; se crea con
+// este movimiento como origen si no existe). Is the origin-side twin of the
+// split abono: a loan that belongs to no viaje and to no particular debt.
+// ============================================================
+export async function linkTransactionToPersonGeneralDebt(
+  destinatarioId: string,
+  transactionId: string,
+): Promise<ActionResult<{ debtId: string; created: boolean }>> {
+  if (!UUID_RE.test(destinatarioId) || !UUID_RE.test(transactionId)) {
+    return { success: false, error: "ID inválido" };
+  }
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { data: tx, error: txErr } = await supabase
+    .from("transactions")
+    .select(
+      "id, direction, amount, currency_code, transaction_date, personal_debt_id, split_group_id, transfer_group_id, reconciled_into_transaction_id",
+    )
+    .eq("id", transactionId)
+    .eq("user_id", user.id)
+    .single();
+  if (txErr || !tx) return { success: false, error: "Transacción no encontrada" };
+  if (tx.personal_debt_id) {
+    return { success: false, error: "Esta transacción ya está vinculada a una persona." };
+  }
+  if (tx.split_group_id) {
+    return { success: false, error: "Esta transacción pertenece a un pago compartido." };
+  }
+  if (tx.transfer_group_id) {
+    return { success: false, error: "Esta transacción es una transferencia entre tus cuentas." };
+  }
+  if (tx.reconciled_into_transaction_id) {
+    return { success: false, error: "Esta transacción fue conciliada con otro movimiento." };
+  }
+
+  const { data: person, error: personErr } = await supabase
+    .from("destinatarios")
+    .select("id")
+    .eq("id", destinatarioId)
+    .eq("user_id", user.id)
+    .single();
+  if (personErr || !person) return { success: false, error: "Persona no encontrada" };
+
+  // The movement is the loan: money in means they lent you (you owe them),
+  // money out means you lent them.
+  const direction: PersonalDebtDirection = tx.direction === "INFLOW" ? "borrowed" : "lent";
+  const currency = tx.currency_code ?? "COP";
+
+  const findGeneral = () =>
+    supabase
+      .from("personal_debts")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("destinatario_id", destinatarioId)
+      .eq("direction", direction)
+      .eq("currency_code", currency)
+      .eq("is_general", true)
+      .neq("status", "cancelled")
+      .maybeSingle();
+
+  const { data: existing, error: findErr } = await findGeneral();
+  if (findErr) return { success: false, error: "Error al buscar la deuda general" };
+
+  // Existing general debt: an additional origin raises its principal (and
+  // reopens it if it was settled) — the regular link already does that.
+  if (existing) {
+    const res = await linkTransactionToPersonalDebt(existing.id, transactionId);
+    return res.success ? { success: true, data: { debtId: existing.id, created: false } } : res;
+  }
+
+  const amount = Number(tx.amount ?? 0);
+  const { data: created, error: insErr } = await supabase
+    .from("personal_debts")
+    .insert({
+      user_id: user.id,
+      destinatario_id: destinatarioId,
+      direction,
+      principal_amount: amount,
+      outstanding_amount: amount,
+      currency_code: currency,
+      opened_on: tx.transaction_date,
+      status: "active",
+      notes: "Deuda general",
+      is_general: true,
+    })
+    .select("id")
+    .single();
+  if (insErr || !created) {
+    // Lost a race to create it: link to the one that won.
+    if (insErr?.code === "23505") {
+      const { data: winner } = await findGeneral();
+      if (winner) {
+        const res = await linkTransactionToPersonalDebt(winner.id, transactionId);
+        return res.success ? { success: true, data: { debtId: winner.id, created: false } } : res;
+      }
+    }
+    return { success: false, error: "Error al crear la deuda general" };
+  }
+
+  // Canonical origin of a fresh debt: documents the principal just entered.
+  const res = await linkTransactionToPersonalDebt(created.id, transactionId);
+  if (!res.success) {
+    // Don't leave an empty general debt behind a failed link.
+    await supabase.from("personal_debts").delete().eq("id", created.id).eq("user_id", user.id);
+    revalidateFinancialViews();
+    updateTag("personal-debts");
+    return res;
+  }
+  return { success: true, data: { debtId: created.id, created: true } };
 }

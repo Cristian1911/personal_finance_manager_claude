@@ -10,7 +10,11 @@ import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { isDebtAccountType, reverseAccountBalanceDelta } from "@/lib/utils/account-balance";
-import { detachTransactionFromDebt, readAllocatedDebtIds } from "@/lib/personal-debts/recompute";
+import {
+  detachTransactionFromDebt,
+  readAllocations,
+  type DebtAllocationShare,
+} from "@/lib/personal-debts/recompute";
 import { applyDebtPaymentToBalances } from "@/lib/debt/payoff";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import {
@@ -927,11 +931,11 @@ export async function revertOccurrence(
 
         // Split repayments lose their allocation rows with the delete
         // (cascade) — read which debts they covered first.
-        const allocatedByTx = new Map<string, string[]>();
+        const allocatedByTx = new Map<string, DebtAllocationShare[]>();
         try {
           for (const tx of groupTxs ?? []) {
             if (tx.personal_debt_id && tx.pd_role === "repayment") {
-              allocatedByTx.set(tx.id, await readAllocatedDebtIds(supabase, user.id, tx.id));
+              allocatedByTx.set(tx.id, await readAllocations(supabase, user.id, tx.id));
             }
           }
         } catch {
@@ -960,7 +964,7 @@ export async function revertOccurrence(
               amount: tx.amount,
               personal_debt_id: tx.personal_debt_id,
               pd_role: tx.pd_role as "origin" | "repayment" | null,
-              allocatedDebtIds: allocatedByTx.get(tx.id) ?? [],
+              allocations: allocatedByTx.get(tx.id) ?? [],
             });
           } catch (e) {
             revalidateFinancialViews();

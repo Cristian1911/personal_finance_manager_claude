@@ -10,11 +10,13 @@ import type {
  * the picker and the tests share one rule.
  *
  * Only abonos spread (person / viaje scope): a movement going the debt's own
- * way is a new loan and joins exactly one debt.
+ * way is a new loan and joins exactly one debt — a particular one, or the
+ * person's deuda general.
  */
 
 /** What a debt was for: the origin movement, else its note, else a default. */
 export function describeDebtItem(item: PersonDebtItem, hideNote?: string | null): string {
+  if (item.is_general) return "Deuda general";
   const o = item.origin;
   const fromTx = o?.merchant_name || o?.clean_description || o?.raw_description;
   if (fromTx) return fromTx;
@@ -56,9 +58,21 @@ export type LinkDebtSection = {
   debts: LinkDebtOption[];
 };
 
+/**
+ * "Sumar a la deuda general": the movement as a NEW loan with the person,
+ * added to their one general debt (created on first use). Direction follows
+ * the movement: money in → you owe them; money out → they owe you.
+ */
+export type LinkGeneralOption = {
+  direction: "lent" | "borrowed";
+  /** Open balance of the existing general debt; null when it will be created. */
+  outstanding: number | null;
+};
+
 export type LinkPersonOption = {
   destinatario_id: string;
   name: string;
+  general: LinkGeneralOption;
   /** Pending you could abonar with this movement (same currency + direction). */
   pending: number;
   /** "persona" first (when ≥2 debts), then each viaje with ≥2 debts. */
@@ -71,6 +85,8 @@ function debtOption(item: PersonDebtItem, tx: LinkTx): LinkDebtOption | null {
   const role = inferPersonalDebtRole(item.direction, tx.direction);
   // A shared-payment debt's origin is the split transaction itself.
   if (role === "origin" && item.split_group_id) return null;
+  // Adding a loan to the general debt is its own option (LinkGeneralOption).
+  if (role === "origin" && item.is_general) return null;
   return { id: item.id, item, role, shared: !!item.split_group_id };
 }
 
@@ -108,7 +124,18 @@ export function buildLinkOptions(people: PersonDebtSummary[], tx: LinkTx): LinkP
     if (loose.length > 0) {
       sections.push({ key: "sueltas", title: sections.length > 0 ? "Otras deudas" : "Deudas", emoji: null, debts: loose });
     }
-    if (sections.length === 0) continue;
+    const generalDirection: "lent" | "borrowed" = tx.direction === "INFLOW" ? "borrowed" : "lent";
+    const generalDebt = [...p.loose, ...p.settled].find(
+      (i) =>
+        i.is_general &&
+        i.status !== "cancelled" &&
+        i.direction === generalDirection &&
+        i.currency_code === tx.currency_code,
+    );
+    const general: LinkGeneralOption = {
+      direction: generalDirection,
+      outstanding: generalDebt ? Number(generalDebt.outstanding_amount) : null,
+    };
 
     const all = sections.flatMap((s) => s.debts);
     const personScope = scopeOf(`persona|${p.destinatario_id}`, "persona", p.name, null, all, tx);
@@ -119,11 +146,13 @@ export function buildLinkOptions(people: PersonDebtSummary[], tx: LinkTx): LinkP
     out.push({
       destinatario_id: p.destinatario_id,
       name: p.name,
+      general,
       pending: repayable(all).reduce((s, o) => s + Number(o.item.outstanding_amount), 0),
       scopes: personScope ? [personScope, ...trips] : trips,
       sections,
     });
   }
-  // People you can abonar to first, biggest pending first; then the rest.
+  // Every person is offered (a new loan can go to anyone's general debt);
+  // people you can abonar to come first, biggest pending first.
   return out.sort((a, b) => b.pending - a.pending || a.name.localeCompare(b.name, "es"));
 }

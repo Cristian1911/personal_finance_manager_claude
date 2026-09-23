@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { ChevronLeft, ChevronRight, Link2, MapPin, UserPlus, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Link2, MapPin, Plus, UserPlus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -30,7 +30,8 @@ import type { CurrencyCode } from "@/types/domain";
 
 export type PersonDebtLinkSelection =
   | { kind: "debt"; id: string }
-  | { kind: "scope"; debtIds: string[]; label: string };
+  | { kind: "scope"; debtIds: string[]; label: string }
+  | { kind: "general"; destinatarioId: string; name: string; direction: "lent" | "borrowed" };
 
 interface PersonDebtLinkSheetProps {
   open: boolean;
@@ -51,7 +52,8 @@ function roleLabel(o: LinkDebtOption): string {
 
 /**
  * "Vincular a persona": pick the person first, then abonar to everything
- * pending with them, to one viaje, or to one debt in particular. Mirrors the
+ * pending with them or to one viaje (split, oldest first), add it as a new
+ * loan to their deuda general, or pick one debt in particular. Mirrors the
  * persona → viaje → deudas hierarchy of Deudas personales.
  */
 export function PersonDebtLinkSheet({
@@ -85,8 +87,18 @@ export function PersonDebtLinkSheet({
     (p) => !search || p.name.toLowerCase().includes(search.toLowerCase()),
   );
 
+  const generalKey = person ? `general|${person.destinatario_id}` : null;
+
   function selection(): PersonDebtLinkSelection | null {
     if (!person || !selected) return null;
+    if (selected === generalKey) {
+      return {
+        kind: "general",
+        destinatarioId: person.destinatario_id,
+        name: person.name,
+        direction: person.general.direction,
+      };
+    }
     const scope = person.scopes.find((s) => s.key === selected);
     if (scope) {
       const label = scope.kind === "persona" ? `todo con ${person.name}` : scope.label;
@@ -146,7 +158,7 @@ export function PersonDebtLinkSheet({
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium">{p.name}</span>
                         <span className="block truncate text-xs text-muted-foreground">
-                          {count} {count === 1 ? "deuda" : "deudas"}
+                          {count === 0 ? "Sin deudas activas" : `${count} ${count === 1 ? "deuda" : "deudas"}`}
                           {p.pending > 0 &&
                             ` · ${tx.direction === "INFLOW" ? "te debe" : "le debes"} ${formatCurrency(p.pending, code)}`}
                         </span>
@@ -208,9 +220,32 @@ export function PersonDebtLinkSheet({
                 </>
               )}
 
+              {/* A new loan with this person, added to their deuda general. */}
               <p className={cn(SECTION_EYEBROW_CLASS, "mb-1", person.scopes.length > 0 && "mt-4")}>
-                Una deuda en particular
+                Préstamo nuevo
               </p>
+              <div role="radiogroup" aria-label="Préstamo nuevo">
+                <OptionRow
+                  selected={selected === generalKey}
+                  onSelect={() => setSelected(generalKey)}
+                  icon={<Plus className="size-4 text-z-brass" aria-hidden />}
+                  title={
+                    person.general.direction === "borrowed"
+                      ? `Sumar a lo que le debes a ${person.name}`
+                      : `Sumar a lo que ${person.name} te debe`
+                  }
+                  meta={
+                    person.general.outstanding === null
+                      ? "Crea su deuda general con este movimiento"
+                      : `Deuda general · hoy ${formatCurrency(person.general.outstanding, code)}`
+                  }
+                  amount={`+${formatCurrency(tx.amount, code)}`}
+                />
+              </div>
+
+              {person.sections.length > 0 && (
+                <p className={cn(SECTION_EYEBROW_CLASS, "mb-1 mt-4")}>Una deuda en particular</p>
+              )}
               <div className="space-y-3" role="radiogroup" aria-label="Una deuda en particular">
                 {person.sections.map((sec) => (
                   <div key={sec.key}>
@@ -248,7 +283,13 @@ export function PersonDebtLinkSheet({
               className={cn(BRASS_BUTTON_CLASS, "w-full")}
             >
               <Link2 className="mr-2 size-4" />
-              {isPending ? "Vinculando..." : current?.kind === "scope" ? "Vincular y repartir" : "Vincular"}
+              {isPending
+                ? "Vinculando..."
+                : current?.kind === "scope"
+                  ? "Vincular y repartir"
+                  : current?.kind === "general"
+                    ? "Sumar a la deuda general"
+                    : "Vincular"}
             </Button>
           </DrawerFooter>
         )}
