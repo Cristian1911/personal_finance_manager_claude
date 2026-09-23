@@ -15,8 +15,10 @@ import { MonthSelector } from "@/components/month-selector";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { DeudasLensRoot } from "@/components/mobile/v2/deudas/deudas-lens-root";
 import { getDebtFreeCountdown } from "@/actions/debt-countdown";
-import { getPersonalDebtsOverview } from "@/actions/personal-debts";
-import type { PersonalDebtsOverview } from "@/actions/personal-debts";
+import { getPersonalDebtsByPerson } from "@/actions/personal-debts";
+import { overviewFromHierarchy, type HierarchyOverview } from "@/lib/personal-debts/hierarchy";
+import { rollupPeople, type PersonRollup } from "@/lib/personal-debts/person-rollup";
+import { PersonDebtRollupList } from "@/components/personas/person-debt-rollup-list";
 import { summaryCurrencies, totalForCurrency } from "@/lib/personal-debts/totals";
 import { formatCurrency } from "@/lib/utils/currency";
 import { PageHeaderRow } from "@/components/ui/page-header-row";
@@ -78,7 +80,7 @@ async function MobileDebtSection({
     currency !== "USD" ? getExchangeRate("USD", currency) : Promise.resolve(null),
     isCurrentMonth ? getDebtTrend(currency) : Promise.resolve(null),
     getDebtFreeCountdown(currency),
-    getPersonalDebtsOverview(),
+    getPersonalDebtsByPerson(currency),
   ]);
   const sourceAccounts = sourceAccountsResult.success ? sourceAccountsResult.data : [];
   const usdToCopRate = usdRateResult?.rate ?? null;
@@ -110,24 +112,22 @@ async function MobileDebtSection({
 
   const stats = computeDebtStats(overview.accounts);
 
+  // One row per person (viajes and loose debts inside), never one per debt.
   const personasSummary = personasResult.success
-    ? {
-        activeCount:
-          personasResult.data.iOwe.byPerson.length +
-          personasResult.data.owedToMe.byPerson.length,
-        // This card renders a single currency, so show that currency's totals
-        // rather than a cross-currency sum.
-        iOweTotal: totalForCurrency(personasResult.data.iOwe.totals, currency),
-        owedToMeTotal: totalForCurrency(personasResult.data.owedToMe.totals, currency),
-        owedToMe: personasResult.data.owedToMe.byPerson.map((p) => ({
-          name: p.destinatario_name,
-          amount: p.amount,
-        })),
-        iOwe: personasResult.data.iOwe.byPerson.map((p) => ({
-          name: p.destinatario_name,
-          amount: p.amount,
-        })),
-      }
+    ? (() => {
+        const people = personasResult.data;
+        const personOverview = overviewFromHierarchy(people);
+        const rollup = rollupPeople(people, currency);
+        return {
+          peopleCount: rollup.length,
+          activeCount: rollup.reduce((n, p) => n + p.activeCount, 0),
+          // This card renders a single currency, so show that currency's
+          // totals rather than a cross-currency sum.
+          iOweTotal: totalForCurrency(personOverview.iOwe.totals, currency),
+          owedToMeTotal: totalForCurrency(personOverview.owedToMe.totals, currency),
+          people: rollup,
+        };
+      })()
     : null;
 
   const secondaryCurrencies = overview.debtByCurrency.filter(
@@ -177,7 +177,7 @@ async function DesktopDebtSection({
       getEstimatedIncome(currency, month),
       getExchangeRate("USD" as CurrencyCode, currency).catch(() => null),
       getNonDebtAccounts(),
-      getPersonalDebtsOverview(),
+      getPersonalDebtsByPerson(currency),
     ]);
   const sourceAccounts = sourceAccountsResult.success ? sourceAccountsResult.data : [];
 
@@ -186,7 +186,11 @@ async function DesktopDebtSection({
   // Rendered before the bank-debt empty state so a user whose only debts are
   // personal still sees them here.
   const personasPanel = personasResult.success ? (
-    <PersonalDebtsPanel overview={personasResult.data} currency={currency} />
+    <PersonalDebtsPanel
+      overview={overviewFromHierarchy(personasResult.data)}
+      people={rollupPeople(personasResult.data, currency)}
+      currency={currency}
+    />
   ) : null;
 
   if (overview.accounts.length === 0) {
@@ -300,9 +304,11 @@ async function DesktopDebtSection({
  */
 function PersonalDebtsPanel({
   overview,
+  people,
   currency,
 }: {
-  overview: PersonalDebtsOverview;
+  overview: HierarchyOverview;
+  people: PersonRollup[];
   currency: CurrencyCode;
 }) {
   const rows = summaryCurrencies(overview.iOwe.totals, overview.owedToMe.totals, currency)
@@ -350,6 +356,11 @@ function PersonalDebtsPanel({
             </div>
           </div>
         ))}
+        {people.length > 0 && (
+          <div className="border-t border-white/6 pt-3">
+            <PersonDebtRollupList people={people} limit={6} />
+          </div>
+        )}
       </div>
     </div>
   );

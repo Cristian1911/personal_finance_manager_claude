@@ -16,6 +16,7 @@ import type { CurrencyCode } from "@/types/domain";
 import type { DebtStats, DebtOverview, MonthlyBreakdown } from "@zeta/shared";
 import type { DebtTrendData, ArchivedObligation } from "@/actions/debt";
 import type { DebtCountdownData } from "@/actions/debt-countdown";
+import type { PersonRollup } from "@/lib/personal-debts/person-rollup";
 
 const LENSES = [
   { id: "carga", label: "Carga" },
@@ -28,12 +29,14 @@ export type DeudasLens = (typeof LENSES)[number]["id"];
 const STORAGE_KEY = "zeta:deudas-lens";
 
 export interface PersonasSummary {
+  /** People with an open balance. */
+  peopleCount: number;
+  /** Active debts across those people. */
   activeCount: number;
   iOweTotal: number;
   owedToMeTotal: number;
-  /** Per-person detail for the expandable card (E1). */
-  owedToMe: { name: string; amount: number }[];
-  iOwe: { name: string; amount: number }[];
+  /** One row per person with their viajes / loose debts inside (E1). */
+  people: PersonRollup[];
 }
 
 export interface ExchangeRateInfo {

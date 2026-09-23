@@ -70,8 +70,8 @@ async function getPersonalDebtsCached(
   cacheLife("zeta");
   const supabase = createCachedClient(accessToken);
 
-  // Flat list used by the transaction quick actions and the /deudas overview.
-  // The Deudas personales page reads getPersonalDebtsByPerson instead.
+  // Flat list used by the transaction quick actions (pick one debt to link).
+  // Summaries (/deudas, Deudas personales) read getPersonalDebtsByPerson.
   // split_group_id MUST stay selected: callers tell shared-payment debts apart
   // from standalone ones by it.
   const { data, error } = await supabase
@@ -237,63 +237,6 @@ export async function getPersonalDebtsByPerson(
 export interface PersonalDebtCurrencyTotal {
   currency_code: string;
   total: number;
-}
-
-export interface PersonalDebtsOverview {
-  iOwe: {
-    totals: PersonalDebtCurrencyTotal[];
-    byPerson: { destinatario_name: string; amount: number; currency_code: string }[];
-  };
-  owedToMe: {
-    totals: PersonalDebtCurrencyTotal[];
-    byPerson: { destinatario_name: string; amount: number; currency_code: string }[];
-  };
-  overdue: {
-    destinatario_name: string;
-    amount: number;
-    currency_code: string;
-    due_date: string;
-  }[];
-}
-
-export async function getPersonalDebtsOverview(): Promise<ActionResult<PersonalDebtsOverview>> {
-  const res = await getPersonalDebts();
-  if (!res.success) return res;
-  const active = res.data.filter((d) => d.status === "active");
-  const iOwe = active.filter((d) => d.direction === "borrowed");
-  const owedToMe = active.filter((d) => d.direction === "lent");
-  // Group by currency instead of one flat sum: adding a USD loan to a COP one
-  // and printing the result as COP is a made-up number.
-  const totalsByCurrency = (xs: PersonalDebtWithDetails[]) => {
-    const byCode = new Map<string, number>();
-    for (const d of xs) {
-      byCode.set(d.currency_code, (byCode.get(d.currency_code) ?? 0) + d.outstanding_amount);
-    }
-    return [...byCode.entries()]
-      .map(([currency_code, total]) => ({ currency_code, total }))
-      .sort((a, b) => a.currency_code.localeCompare(b.currency_code));
-  };
-  return {
-    success: true,
-    data: {
-      iOwe: {
-        totals: totalsByCurrency(iOwe),
-        byPerson: iOwe.map((d) => ({ destinatario_name: d.destinatario_name, amount: d.outstanding_amount, currency_code: d.currency_code })),
-      },
-      owedToMe: {
-        totals: totalsByCurrency(owedToMe),
-        byPerson: owedToMe.map((d) => ({ destinatario_name: d.destinatario_name, amount: d.outstanding_amount, currency_code: d.currency_code })),
-      },
-      overdue: active
-        .filter((d) => d.is_overdue)
-        .map((d) => ({
-          destinatario_name: d.destinatario_name,
-          amount: d.outstanding_amount,
-          currency_code: d.currency_code,
-          due_date: d.due_date!,
-        })),
-    },
-  };
 }
 
 // ============================================================
