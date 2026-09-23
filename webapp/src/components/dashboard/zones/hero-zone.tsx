@@ -14,6 +14,8 @@ import {
 } from "@/components/dashboard/accounts-overview";
 import { WidgetSlot } from "@/components/dashboard/widget-slot";
 import { PlanTeaserCard } from "@/components/dashboard/plan-teaser-card";
+import { FxRateSection } from "@/components/dashboard/fx-rate-section";
+import { Suspense } from "react";
 import type { CurrencyCode } from "@/types/domain";
 
 interface HeroZoneProps {
@@ -83,6 +85,9 @@ export async function HeroZone({ month, currency, monthLabel }: HeroZoneProps) {
             <HybridHero data={ritmoResult.data} primaryAccount={primaryAccount} />
           )}
           <DebtFreeBanner data={debtCountdownData} />
+          <Suspense fallback={null}>
+            <FxRateSection currency={currency} />
+          </Suspense>
         </div>
         <AttentionCard signals={attentionSnapshot.signals} className="h-fit" />
       </div>

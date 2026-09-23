@@ -13,6 +13,7 @@ import { isDebtAccountType, reverseAccountBalanceDelta } from "@/lib/utils/accou
 import { detachTransactionFromDebt } from "@/lib/personal-debts/recompute";
 import { applyDebtPaymentToBalances } from "@/lib/debt/payoff";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
+import { getExchangeRate } from "@/actions/exchange-rate";
 import {
   calendarDayDiff,
   getDebtPaymentCategoryId,
@@ -55,6 +56,33 @@ function computeMatchScore(
     amount: candidateAmount,
     identity,
   });
+}
+
+/**
+ * Converts a transaction amount into each template currency the matcher
+ * meets, memoizing one rate per target within the call. A USD charge on a
+ * COP-billed card ("ANTHROPIC* CLAUDE SUB", US$100) must be compared with a
+ * COP template at the day's rate — raw "100 vs 333.493" never matches.
+ * Returns null when the rate can't be resolved: the caller then treats the
+ * pair as a non-match instead of comparing across currencies.
+ */
+function createAmountConverter(fromCurrency: string | null | undefined) {
+  const rates = new Map<string, Promise<number | null>>();
+  return async (
+    amount: number,
+    toCurrency: string | null | undefined,
+  ): Promise<number | null> => {
+    if (!fromCurrency || !toCurrency || fromCurrency === toCurrency) return amount;
+    let rate = rates.get(toCurrency);
+    if (!rate) {
+      rate = getExchangeRate(fromCurrency as CurrencyCode, toCurrency as CurrencyCode)
+        .then((r) => (r && Number.isFinite(r.rate) && r.rate > 0 ? r.rate : null))
+        .catch(() => null);
+      rates.set(toCurrency, rate);
+    }
+    const resolved = await rate;
+    return resolved == null ? null : amount * resolved;
+  };
 }
 
 /**
@@ -1025,6 +1053,9 @@ export async function revertOccurrence(
  * Find a pending occurrence that matches the given account, date, direction,
  * and amount (within ±1% tolerance). Used by transaction creation paths to
  * auto-link a new transaction to its materialized occurrence.
+ * `currencyCode` is the transaction's currency: when it differs from the
+ * template's, the amount is converted at the cached daily rate before the
+ * tolerance check. Omitted → assumed to be the template's currency.
  * Returns the occurrence ID or null if none found.
  */
 export async function findMatchingOccurrence(
@@ -1033,6 +1064,7 @@ export async function findMatchingOccurrence(
   amount: number,
   direction: "INFLOW" | "OUTFLOW",
   destinatarioId: string | null = null,
+  currencyCode: string | null = null,
 ): Promise<string | null> {
   // Direct query — not cached. This runs on mutation paths (tx creation)
   // where fresh data is required to avoid double-linking in batch imports.
@@ -1046,6 +1078,15 @@ export async function findMatchingOccurrence(
   const rangeEnd = toColombiaDateString(
     addDays(baseDateObj, OCCURRENCE_AUTO_LINK_DAY_WINDOW),
   );
+  const convert = createAmountConverter(currencyCode);
+  const amountMatches = async (
+    expectedAmount: number,
+    templateCurrency: string | null | undefined,
+    anchored: boolean,
+  ): Promise<boolean> => {
+    const converted = await convert(amount, templateCurrency);
+    return converted != null && occurrenceAmountMatches(expectedAmount, converted, anchored);
+  };
 
   // Primary pass: if the transaction has a destinatario, try to match an
   // occurrence whose template is anchored to the same destinatario + account
@@ -1064,7 +1105,7 @@ export async function findMatchingOccurrence(
       .select(
         `id, occurrence_date, expected_amount,
          template:recurring_transaction_templates!recurring_occurrences_template_id_fkey!inner(
-           account_id, destinatario_id, direction, is_active
+           account_id, destinatario_id, direction, is_active, currency_code
          )`
       )
       .eq("user_id", user.id)
@@ -1083,9 +1124,13 @@ export async function findMatchingOccurrence(
       console.error("[findMatchingOccurrence] anchored query failed", anchoredError);
     }
 
-    const anchoredWithinTolerance = (anchored ?? []).filter((row) =>
-      occurrenceAmountMatches(row.expected_amount, amount, true),
+    const anchoredRows = anchored ?? [];
+    const anchoredHits = await Promise.all(
+      anchoredRows.map((row) =>
+        amountMatches(row.expected_amount, row.template?.currency_code, true),
+      ),
     );
+    const anchoredWithinTolerance = anchoredRows.filter((_, i) => anchoredHits[i]);
 
     if (anchoredWithinTolerance.length > 0) {
       // parseISO both sides for timezone consistency — baseDateObj was parsed
@@ -1109,7 +1154,7 @@ export async function findMatchingOccurrence(
     .select(
       `id, expected_amount,
        template:recurring_transaction_templates!recurring_occurrences_template_id_fkey!inner(
-         account_id, direction, is_active
+         account_id, direction, is_active, currency_code
        )`
     )
     .eq("user_id", user.id)
@@ -1122,9 +1167,12 @@ export async function findMatchingOccurrence(
 
   if (error || !data) return null;
 
-  const match = data.find((row) =>
-    occurrenceAmountMatches(row.expected_amount, amount, false),
+  const directHits = await Promise.all(
+    data.map((row) =>
+      amountMatches(row.expected_amount, row.template?.currency_code, false),
+    ),
   );
+  const match = data.find((_, i) => directHits[i]);
   if (match) return match.id;
 
   // Secondary query: cross-account debt payment matching.
@@ -1136,7 +1184,7 @@ export async function findMatchingOccurrence(
       .select(
         `id, expected_amount,
          template:recurring_transaction_templates!recurring_occurrences_template_id_fkey!inner(
-           account_id, transfer_source_account_id, direction, is_active,
+           account_id, transfer_source_account_id, direction, is_active, currency_code,
            account:accounts!recurring_transaction_templates_account_id_fkey(account_type)
          )`
       )
@@ -1149,10 +1197,15 @@ export async function findMatchingOccurrence(
       .lte("occurrence_date", rangeEnd);
 
     if (!crossErr && crossData) {
-      const crossMatch = crossData.find((row) => {
+      const crossHits = await Promise.all(
+        crossData.map((row) =>
+          amountMatches(row.expected_amount, row.template?.currency_code, false),
+        ),
+      );
+      const crossMatch = crossData.find((row, i) => {
         const t = row.template as TemplateWithAccount | null;
         return (
-          occurrenceAmountMatches(row.expected_amount, amount, false) &&
+          crossHits[i] &&
           t != null && isCrossAccountDebtPayment(t, direction, accountId)
         );
       });
@@ -1180,7 +1233,7 @@ export async function linkTransactionToOccurrence(
   direction: "INFLOW" | "OUTFLOW",
   transactionId: string,
   destinatarioId: string | null = null,
-  options: { skipDebtCompanionLeg?: boolean } = {},
+  options: { skipDebtCompanionLeg?: boolean; currencyCode?: string | null } = {},
 ): Promise<void> {
   const matchId = await findMatchingOccurrence(
     accountId,
@@ -1188,6 +1241,7 @@ export async function linkTransactionToOccurrence(
     amount,
     direction,
     destinatarioId,
+    options.currencyCode ?? null,
   );
   if (matchId) {
     await markOccurrencePaid(matchId, transactionId);
@@ -1203,6 +1257,7 @@ export async function linkTransactionToOccurrence(
         transactionDate,
         amount,
         direction,
+        currencyCode: options.currencyCode ?? null,
       });
     }
     return;
@@ -1214,6 +1269,7 @@ export async function linkTransactionToOccurrence(
     amount,
     direction,
     transactionId,
+    options.currencyCode ?? null,
   );
 }
 
@@ -1232,6 +1288,7 @@ async function ensureDebtCompanionLeg(params: {
   transactionDate: string;
   amount: number;
   direction: "INFLOW" | "OUTFLOW";
+  currencyCode?: string | null;
 }): Promise<void> {
   if (params.direction !== "OUTFLOW" || params.amount <= 0) return;
 
@@ -1260,6 +1317,9 @@ async function ensureDebtCompanionLeg(params: {
       category_id: string | null;
     } | null;
     if (!template || template.account_id === params.sourceAccountId) return;
+    // The companion leg books `amount` in the template's currency; a payment
+    // in another currency would land on the debt with the wrong magnitude.
+    if (params.currencyCode && params.currencyCode !== template.currency_code) return;
 
     const [{ data: debtAccount }, { data: sourceAccount }, { data: sourceTx }] =
       await Promise.all([
@@ -1362,6 +1422,7 @@ async function swapPhantomOccurrenceIfMatched(
   amount: number,
   direction: "INFLOW" | "OUTFLOW",
   newTransactionId: string,
+  currencyCode: string | null = null,
 ): Promise<void> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return;
@@ -1379,7 +1440,7 @@ async function swapPhantomOccurrenceIfMatched(
     .select(
       `id, transaction_id, expected_amount,
        template:recurring_transaction_templates!recurring_occurrences_template_id_fkey!inner(
-         account_id, direction, is_active
+         account_id, direction, is_active, currency_code
        )`,
     )
     .eq("user_id", user.id)
@@ -1396,6 +1457,8 @@ async function swapPhantomOccurrenceIfMatched(
   const match = candidates.find(
     (row) =>
       row.transaction_id != null &&
+      // The swap deletes the phantom tx — never on a cross-currency guess.
+      (!currencyCode || row.template?.currency_code === currencyCode) &&
       occurrenceAmountMatches(row.expected_amount, amount, false),
   );
   if (!match || !match.transaction_id) return;
@@ -1642,7 +1705,7 @@ export async function getCandidateTransactionsForOccurrence(
     .select(`id, occurrence_date, expected_amount,
       template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(
         account_id, direction, transfer_source_account_id, destinatario_id,
-        merchant_name, description,
+        merchant_name, description, currency_code,
         account:accounts!recurring_transaction_templates_account_id_fkey(account_type)
       )`)
     .eq("id", occurrenceId)
@@ -1659,6 +1722,7 @@ export async function getCandidateTransactionsForOccurrence(
         destinatario_id: string | null;
         merchant_name: string | null;
         description: string | null;
+        currency_code: string;
       })
     | null;
   if (!template) return { success: false, error: "Plantilla no encontrada" };
@@ -1709,7 +1773,22 @@ export async function getCandidateTransactionsForOccurrence(
     ? rulesByDestinatario.get(template.destinatario_id)
     : undefined;
 
-  const candidates: CandidateTransaction[] = (data ?? []).map((tx) => {
+  // Rank in the template's currency: a USD charge on a COP-billed card is
+  // scored by its converted amount (see createAmountConverter).
+  const rows = data ?? [];
+  const convertersByCurrency = new Map<string, ReturnType<typeof createAmountConverter>>();
+  const comparableAmounts = await Promise.all(
+    rows.map((tx) => {
+      let convert = convertersByCurrency.get(tx.currency_code);
+      if (!convert) {
+        convert = createAmountConverter(tx.currency_code);
+        convertersByCurrency.set(tx.currency_code, convert);
+      }
+      return convert(tx.amount, template.currency_code);
+    }),
+  );
+
+  const candidates: CandidateTransaction[] = rows.map((tx, i) => {
     const description =
       tx.clean_description ?? tx.merchant_name ?? tx.raw_description ?? "Sin descripción";
     // Match against every text the row carries: the raw bank descriptor is
@@ -1728,7 +1807,9 @@ export async function getCandidateTransactionsForOccurrence(
       destinatario_id: tx.destinatario_id,
       matchScore: computeMatchScore(
         tx.transaction_date,
-        tx.amount,
+        // Unresolvable rate → no amount signal (0) rather than a raw
+        // cross-currency comparison.
+        comparableAmounts[i] ?? 0,
         occurrence.occurrence_date,
         occurrence.expected_amount,
         occurrenceIdentityScore({
@@ -1776,7 +1857,7 @@ export async function getCandidateOccurrencesForTransaction(
 
   const { data: tx, error: txErr } = await supabase
     .from("transactions")
-    .select("id, account_id, direction, transaction_date, amount, destinatario_id, raw_description, merchant_name, clean_description")
+    .select("id, account_id, direction, transaction_date, amount, currency_code, destinatario_id, raw_description, merchant_name, clean_description")
     .eq("id", transactionId)
     .eq("user_id", user.id)
     .single();
@@ -1836,7 +1917,15 @@ export async function getCandidateOccurrencesForTransaction(
   const identityTexts = [tx.raw_description, tx.merchant_name, tx.clean_description]
     .filter((t): t is string => !!t);
 
-  const candidates: CandidateOccurrence[] = filtered.map((o) => {
+  // Score in each template's currency (USD charge vs COP template).
+  const convert = createAmountConverter(tx.currency_code);
+  const comparableAmounts = await Promise.all(
+    filtered.map((o) =>
+      convert(tx.amount, (o.template as CandidateTemplate | null)?.currency_code),
+    ),
+  );
+
+  const candidates: CandidateOccurrence[] = filtered.map((o, i) => {
     const t = o.template as CandidateTemplate;
     return {
       id: o.id,
@@ -1848,7 +1937,7 @@ export async function getCandidateOccurrencesForTransaction(
       destinatarioId: t.destinatario_id,
       matchScore: computeMatchScore(
         tx.transaction_date,
-        tx.amount,
+        comparableAmounts[i] ?? 0,
         o.occurrence_date,
         o.expected_amount,
         occurrenceIdentityScore({

@@ -949,6 +949,7 @@ async function processEmail(ctx: {
         parsed.direction,
         insertedTx.id,
         destinatarioId,
+        { currencyCode },
       );
     }
 

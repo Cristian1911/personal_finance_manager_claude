@@ -59,6 +59,7 @@ type TxRow = {
   id: string;
   account_id: string;
   amount: number;
+  currency_code: string;
   direction: string;
   transaction_date: string;
   destinatario_id?: string | null;
@@ -132,6 +133,7 @@ describe("createRecurringTemplateFromTransaction", () => {
       id: VALID_TX,
       account_id: VALID_ACCT,
       amount: 50000,
+      currency_code: "COP",
       direction: "OUTFLOW",
       transaction_date: "2026-04-17",
     };
@@ -159,6 +161,7 @@ describe("createRecurringTemplateFromTransaction", () => {
       "OUTFLOW",
       VALID_TX,
       null,
+      { currencyCode: "COP" },
     );
     expect(revalidateFinancialViews).toHaveBeenCalledOnce();
   });
@@ -168,6 +171,7 @@ describe("createRecurringTemplateFromTransaction", () => {
       id: VALID_TX,
       account_id: VALID_ACCT,
       amount: 50000,
+      currency_code: "COP",
       direction: "OUTFLOW",
       transaction_date: "2026-04-17",
     };
@@ -194,6 +198,7 @@ describe("createRecurringTemplateFromTransaction", () => {
       id: VALID_TX,
       account_id: VALID_CARD,
       amount: 50000,
+      currency_code: "COP",
       direction: "INFLOW",
       transaction_date: "2026-04-17",
     };
@@ -226,6 +231,7 @@ describe("createRecurringTemplateFromTransaction", () => {
       id: VALID_TX,
       account_id: VALID_CARD,
       amount: 71306,
+      currency_code: "COP",
       direction: "OUTFLOW",
       transaction_date: "2026-04-17",
     };
@@ -256,6 +262,7 @@ describe("createRecurringTemplateFromTransaction", () => {
       "OUTFLOW",
       VALID_TX,
       null,
+      { currencyCode: "COP" },
     );
   });
 
@@ -283,6 +290,7 @@ describe("createRecurringTemplateFromTransaction", () => {
       id: VALID_TX,
       account_id: VALID_CARD,
       amount: 200000,
+      currency_code: "COP",
       direction: "INFLOW",
       transaction_date: "2026-04-17",
     };
@@ -314,6 +322,7 @@ describe("createRecurringTemplateFromTransaction", () => {
       "INFLOW",
       VALID_TX,
       null,
+      { currencyCode: "COP" },
     );
   });
 });

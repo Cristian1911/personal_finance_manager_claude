@@ -233,6 +233,7 @@ async function persistParsedEmail(params: {
         suggestedAccountId, parsed.transaction_date,
         parsed.amount, parsed.direction, insertedTxAuto.id,
         destinatarioId,
+        { currencyCode },
       );
     }
 
@@ -840,13 +841,14 @@ export async function approveEmailTransaction(
 
   const cleanDescription = merchantName ?? rawDescription;
 
+  const txCurrencyCode = resolveEmailTransactionCurrency(parsed, account.currency_code);
   const { data: insertedTx, error: insertError } = await supabase
     .from("transactions")
     .insert({
       user_id: user.id,
       account_id: accountId,
       amount: parsed.amount,
-      currency_code: resolveEmailTransactionCurrency(parsed, account.currency_code),
+      currency_code: txCurrencyCode,
       direction: parsed.direction,
       transaction_date: parsed.transaction_date,
       transaction_time: normalizeEmailTime(parsed.transaction_time),
@@ -935,6 +937,7 @@ export async function approveEmailTransaction(
       accountId, parsed.transaction_date,
       parsed.amount, parsed.direction, insertedTx.id,
       destinatarioId,
+      { currencyCode: txCurrencyCode },
     );
 
     await attachQueueTags(supabase, user.id, insertedTx.id, userTagIds);

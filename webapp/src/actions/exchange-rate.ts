@@ -4,6 +4,8 @@ import { cacheLife, cacheTag } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { CurrencyCode } from "@/types/domain";
 import { Constants, type Database } from "@/types/database";
+import { toColombiaDateString } from "@/lib/utils/date";
+import { addDays } from "date-fns";
 
 // Runtime guard for client-supplied codes: `getExchangeRate` keys its cache on
 // its raw arguments and interpolates them into a CDN URL and a DB primary key,
@@ -29,6 +31,17 @@ export interface ExchangeRateResult {
 // fawazahmed0/exchange-api — static JSON on CDN, no key, 200+ currencies including COP
 const FAWAZ_BASE = "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+// Rolling window behind "tasa baja": avg_30d is the mean of the daily rates
+// kept in rates_30d. Fewer points than this and the average isn't trusted.
+const HISTORY_DAYS = 30;
+const MIN_POINTS_FOR_AVG = 7;
+// getExchangeRate only appends today's point (it sits on mutation paths —
+// occurrence matching — so it must stay one request). getExchangeRateTrend
+// backfills the missing days from the CDN's dated snapshots for the
+// dashboard/deudas signal, off the hot path.
+const FETCH_TIMEOUT_MS = 5_000;
+
+type RatePoint = { date: string; rate: number };
 
 /**
  * Get the exchange rate for a currency pair (e.g., USD → COP).
@@ -67,26 +80,131 @@ export async function getExchangeRate(
   const fromLower = from.toLowerCase();
   const toLower = to.toLowerCase();
   try {
-    const res = await fetch(`${FAWAZ_BASE}/${fromLower}/${toLower}.json`);
-    if (!res.ok) return cached ? formatCached(cached, pair) : null;
+    const rate = await fetchRate(`${FAWAZ_BASE}/${fromLower}/${toLower}.json`, toLower);
+    if (rate == null) return cached ? formatCached(cached, pair) : null;
 
-    const data = await res.json();
-    const rate = data?.[toLower];
-    if (!rate || typeof rate !== "number") return cached ? formatCached(cached, pair) : null;
-
-    // Cache write — await to ensure it completes before serverless context exits
-    await supabase.from("exchange_rate_cache").upsert({
-      pair,
-      rate,
-      rates_30d: [],
-      avg_30d: null,
-      fetched_at: new Date().toISOString(),
-    });
-
-    return { rate, avg30d: null, percentVsAvg: null, fetchedAt: new Date().toISOString(), pair };
+    const today = toColombiaDateString(new Date());
+    const history = withPoint(parseHistory(cached?.rates_30d, today), today, rate);
+    return await saveHistory(pair, rate, history, new Date().toISOString());
   } catch (error) {
     console.error("Error fetching exchange rate:", error);
     return cached ? formatCached(cached, pair) : null;
+  }
+}
+
+async function fetchRate(url: string, toLower: string): Promise<number | null> {
+  const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+  if (!res.ok) return null;
+  const data = await res.json();
+  const rate = data?.[toLower];
+  return typeof rate === "number" && Number.isFinite(rate) && rate > 0 ? rate : null;
+}
+
+/** Stored points inside the window, excluding today (re-added fresh). */
+function parseHistory(raw: unknown, today: string): RatePoint[] {
+  if (!Array.isArray(raw)) return [];
+  const cutoff = toColombiaDateString(addDays(new Date(`${today}T12:00:00`), -HISTORY_DAYS));
+  return raw.filter(
+    (p): p is RatePoint =>
+      !!p &&
+      typeof p === "object" &&
+      typeof (p as RatePoint).date === "string" &&
+      typeof (p as RatePoint).rate === "number" &&
+      (p as RatePoint).rate > 0 &&
+      (p as RatePoint).date > cutoff &&
+      (p as RatePoint).date < today,
+  );
+}
+
+function withPoint(history: RatePoint[], date: string, rate: number): RatePoint[] {
+  return [...history.filter((p) => p.date !== date), { date, rate }].sort((a, b) =>
+    a.date.localeCompare(b.date),
+  );
+}
+
+async function saveHistory(
+  pair: string,
+  rate: number,
+  history: RatePoint[],
+  fetchedAt: string,
+): Promise<ExchangeRateResult> {
+  const avg30d =
+    history.length >= MIN_POINTS_FOR_AVG
+      ? history.reduce((sum, p) => sum + p.rate, 0) / history.length
+      : null;
+  // Cache write — await to ensure it completes before serverless context exits
+  await createAdminClient().from("exchange_rate_cache").upsert({
+    pair,
+    rate,
+    rates_30d: history,
+    avg_30d: avg30d,
+    fetched_at: fetchedAt,
+  });
+  return {
+    rate,
+    avg30d,
+    percentVsAvg: avg30d ? ((rate - avg30d) / avg30d) * 100 : null,
+    fetchedAt,
+    pair,
+  };
+}
+
+/**
+ * Rate plus a trustworthy 30-day average, for the "tasa baja" signal
+ * (dashboard strip, /deudas nudge). When the stored window is short of
+ * MIN_POINTS_FOR_AVG, fills every missing day from the CDN's dated
+ * snapshots (daily, so the mean isn't skewed toward recent days). Render
+ * paths only, behind Suspense — never call this from a mutation path.
+ */
+export async function getExchangeRateTrend(
+  from: CurrencyCode,
+  to: CurrencyCode
+): Promise<ExchangeRateResult | null> {
+  "use cache";
+  cacheTag("exchange-rates", `exchange-rate-trend:${from}_${to}`);
+  cacheLife({ stale: 3600, revalidate: 3600 * 6, expire: 3600 * 24 });
+
+  const current = await getExchangeRate(from, to);
+  if (!current || current.avg30d != null) return current;
+
+  try {
+    const { data: cached } = await createAdminClient()
+      .from("exchange_rate_cache")
+      .select("*")
+      .eq("pair", current.pair)
+      .single();
+    const today = toColombiaDateString(new Date());
+    const byDate = new Map(
+      parseHistory(cached?.rates_30d, today).map((p) => [p.date, p.rate]),
+    );
+    const base = new Date(`${today}T12:00:00`);
+    const missing: string[] = [];
+    for (let d = 1; d < HISTORY_DAYS; d++) {
+      const date = toColombiaDateString(addDays(base, -d));
+      if (!byDate.has(date)) missing.push(date);
+    }
+    const fromLower = from.toLowerCase();
+    const toLower = to.toLowerCase();
+    const fetched = await Promise.all(
+      missing.map((date) =>
+        fetchRate(
+          `https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@${date}/v1/currencies/${fromLower}/${toLower}.json`,
+          toLower,
+        )
+          .then((rate) => [date, rate] as const)
+          .catch(() => [date, null] as const),
+      ),
+    );
+    for (const [date, rate] of fetched) if (rate != null) byDate.set(date, rate);
+    const history = withPoint(
+      [...byDate.entries()].map(([date, rate]) => ({ date, rate })),
+      today,
+      current.rate,
+    );
+    return await saveHistory(current.pair, current.rate, history, current.fetchedAt);
+  } catch (error) {
+    console.error("Error backfilling exchange rate history:", error);
+    return current;
   }
 }
 
