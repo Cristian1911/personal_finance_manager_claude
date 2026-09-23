@@ -10,6 +10,7 @@ import type { RecentTransaction } from "@/actions/transactions";
 import { Suspense } from "react";
 import { HybridHero } from "@/components/dashboard/hybrid-hero";
 import { PrimerosPasos } from "@/components/dashboard/primeros-pasos";
+import { FxRateSection } from "@/components/dashboard/fx-rate-section";
 import { InicioRoot } from "@/components/mobile/v2/inicio/inicio-root";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { toColombiaDateString } from "@/lib/utils/date";
@@ -155,6 +156,9 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
           <HybridHero data={ritmoResult.data} primaryAccount={primaryAccount} />
         </div>
       )}
+      <Suspense fallback={null}>
+        <FxRateSection currency={currency} className="mb-4" />
+      </Suspense>
       <Suspense fallback={null}>
         <div className="mb-4 empty:hidden">
           <PrimerosPasos />

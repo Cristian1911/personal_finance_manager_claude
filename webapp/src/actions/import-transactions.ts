@@ -680,6 +680,7 @@ type OccurrenceGateCandidate = {
   destinatarioId: string | null;
   occurrenceDate: string;
   expectedAmount: number;
+  currencyCode: string;
 };
 
 /**
@@ -706,7 +707,8 @@ async function fetchOccurrenceGateCandidates(
     .select(
       `occurrence_date, expected_amount, status,
        template:recurring_transaction_templates!recurring_occurrences_template_id_fkey!inner(
-         account_id, transfer_source_account_id, direction, is_active, destinatario_id
+         account_id, transfer_source_account_id, direction, is_active, destinatario_id,
+         currency_code
        )`,
     )
     .eq("user_id", userId)
@@ -727,6 +729,7 @@ async function fetchOccurrenceGateCandidates(
       direction: "INFLOW" | "OUTFLOW";
       is_active: boolean;
       destinatario_id: string | null;
+      currency_code: string;
     } | null }).template;
     if (!template || template.is_active === false) continue;
     candidates.push({
@@ -736,6 +739,7 @@ async function fetchOccurrenceGateCandidates(
       destinatarioId: template.destinatario_id,
       occurrenceDate: row.occurrence_date,
       expectedAmount: row.expected_amount,
+      currencyCode: template.currency_code,
     });
   }
   return candidates;
@@ -772,6 +776,14 @@ function hasPlausibleOccurrence(
 
     const directMatch =
       occ.accountId === tx.account_id && occ.direction === tx.direction;
+    // A foreign-currency row (USD charge on a COP card) can't be compared
+    // here without a rate; only the destinatario anchor makes it plausible,
+    // and the authoritative matcher converts before checking the amount.
+    const sameCurrency = !tx.currency_code || tx.currency_code === occ.currencyCode;
+    if (directMatch && !sameCurrency) {
+      if (!!tx.destinatario_id && tx.destinatario_id === occ.destinatarioId) return true;
+      continue;
+    }
     if (directMatch) {
       if (occurrenceAmountMatches(occ.expectedAmount, tx.amount, false)) return true;
       const anchored =
@@ -786,7 +798,7 @@ function hasPlausibleOccurrence(
       tx.direction === "OUTFLOW" &&
       occ.direction === "INFLOW" &&
       occ.transferSourceAccountId === tx.account_id;
-    if (crossMatch && occurrenceAmountMatches(occ.expectedAmount, tx.amount, false)) {
+    if (crossMatch && sameCurrency && occurrenceAmountMatches(occ.expectedAmount, tx.amount, false)) {
       return true;
     }
   }
@@ -1856,7 +1868,7 @@ export async function importTransactions(
         // Statement imports carry the debt-account side themselves (the card
         // statement's own abono row) — synthesizing a companion INFLOW here
         // would duplicate it when both statements are imported.
-        { skipDebtCompanionLeg: true },
+        { skipDebtCompanionLeg: true, currencyCode: tx.currency_code },
       );
     }
 

@@ -1,13 +1,15 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-const { getAuthenticatedClient } = vi.hoisted(() => ({
+const { getAuthenticatedClient, getExchangeRate } = vi.hoisted(() => ({
   getAuthenticatedClient: vi.fn(),
+  getExchangeRate: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/supabase/auth", () => ({ getAuthenticatedClient }));
 vi.mock("@/lib/supabase/cached", () => ({ createCachedClient: vi.fn() }));
 vi.mock("@/lib/cache/revalidation", () => ({ revalidateFinancialViews: vi.fn() }));
+vi.mock("@/actions/exchange-rate", () => ({ getExchangeRate }));
 vi.mock("next/cache", () => ({
   updateTag: vi.fn(),
   cacheTag: vi.fn(),
@@ -30,6 +32,7 @@ type OccurrenceRow = {
     destinatario_id?: string | null;
     direction: "INFLOW" | "OUTFLOW";
     is_active: boolean;
+    currency_code?: string;
     transfer_source_account_id?: string | null;
     account?: { account_type: string };
   };
@@ -194,5 +197,65 @@ describe("findMatchingOccurrence", () => {
     );
 
     expect(match).toBe(OCCURRENCE);
+  });
+
+  describe("foreign-currency charges", () => {
+    // Claude Max: COP template (333,493) anchored to the destinatario, charged
+    // as US$100 on a COP-billed card. Raw 100 vs 333,493 never matched.
+    const claudeRow: OccurrenceRow = {
+      id: OCCURRENCE,
+      occurrence_date: "2026-09-06",
+      expected_amount: 333_493,
+      template: {
+        account_id: ACCOUNT,
+        destinatario_id: DESTINATARIO,
+        direction: "OUTFLOW",
+        is_active: true,
+        currency_code: "COP",
+      },
+    };
+
+    it("converts the amount to the template currency before matching", async () => {
+      getExchangeRate.mockResolvedValue({ rate: 3_669.63 });
+      getAuthenticatedClient.mockResolvedValue({
+        user: USER,
+        supabase: buildSupabase({ anchoredRows: [claudeRow] }),
+      });
+
+      const match = await findMatchingOccurrence(
+        ACCOUNT, "2026-09-07", 100, "OUTFLOW", DESTINATARIO, "USD",
+      );
+
+      expect(getExchangeRate).toHaveBeenCalledWith("USD", "COP");
+      expect(match).toBe(OCCURRENCE);
+    });
+
+    it("does not compare raw amounts when the rate is unavailable", async () => {
+      getExchangeRate.mockResolvedValue(null);
+      getAuthenticatedClient.mockResolvedValue({
+        user: USER,
+        supabase: buildSupabase({ anchoredRows: [claudeRow], amountRows: [] }),
+      });
+
+      const match = await findMatchingOccurrence(
+        ACCOUNT, "2026-09-07", 100, "OUTFLOW", DESTINATARIO, "USD",
+      );
+
+      expect(match).toBeNull();
+    });
+
+    it("skips the rate lookup when currencies agree", async () => {
+      getAuthenticatedClient.mockResolvedValue({
+        user: USER,
+        supabase: buildSupabase({ anchoredRows: [claudeRow] }),
+      });
+
+      const match = await findMatchingOccurrence(
+        ACCOUNT, "2026-09-07", 340_000, "OUTFLOW", DESTINATARIO, "COP",
+      );
+
+      expect(getExchangeRate).not.toHaveBeenCalled();
+      expect(match).toBe(OCCURRENCE);
+    });
   });
 });

@@ -1040,6 +1040,7 @@ export async function createTransaction(
     parsed.data.account_id, parsed.data.transaction_date,
     parsed.data.amount, parsed.data.direction, transactionResult.data.id,
     finalDestinatarioId,
+    { currencyCode: parsed.data.currency_code },
   );
 
   if (parsed.data.tags && parsed.data.tags.length > 0) {
@@ -1132,6 +1133,7 @@ export async function createQuickCaptureTransaction(
       parsed.data.account_id, parsed.data.transaction_date,
       parsed.data.amount, parsed.data.direction, result.data.id,
       destinatarioId,
+      { currencyCode: parsed.data.currency_code },
     );
     // Viaje activo: quick/voice captures inside the trip's dates get its tag.
     const modoTag = await applyActiveModoTag(supabase, user.id, result.data);

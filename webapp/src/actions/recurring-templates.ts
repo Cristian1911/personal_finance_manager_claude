@@ -378,7 +378,7 @@ export async function createRecurringTemplateFromTransaction(
   const [txRes, linkRes] = await Promise.all([
     supabase
       .from("transactions")
-      .select("id, account_id, amount, direction, transaction_date, destinatario_id")
+      .select("id, account_id, amount, currency_code, direction, transaction_date, destinatario_id")
       .eq("id", transactionId)
       .eq("user_id", user.id)
       .maybeSingle(),
@@ -421,6 +421,7 @@ export async function createRecurringTemplateFromTransaction(
     tx.direction,
     tx.id,
     result.data.destinatario_id ?? null,
+    { currencyCode: tx.currency_code },
   );
 
   revalidateFinancialViews();
