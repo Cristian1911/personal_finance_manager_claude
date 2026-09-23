@@ -46,11 +46,12 @@ export async function recomputeSplitRepaid(
   );
   let repaid = 0;
   if (ids.length > 0) {
+    // The view counts a movement split across several debts by its share
+    // here, not by its full amount on the anchor debt.
     const { data: reps, error: repsErr } = await supabase
-      .from("transactions")
+      .from("personal_debt_repayment_amounts")
       .select("personal_debt_id, amount")
       .eq("user_id", userId)
-      .eq("pd_role", "repayment")
       .in("personal_debt_id", ids);
     // A failed fetch must abort: treating it as "no repayments" would write
     // split_repaid_amount = 0 and erase what participants already paid back.
@@ -124,12 +125,13 @@ export async function recomputeOutstanding(
   principal: number,
   options?: { allowReopen?: boolean },
 ): Promise<void> {
+  // personal_debt_repayment_amounts = linked repayments + this debt's share of
+  // movements split across several of the person's debts.
   const { data: repayments, error: repaymentsErr } = await supabase
-    .from("transactions")
+    .from("personal_debt_repayment_amounts")
     .select("amount")
     .eq("user_id", userId)
-    .eq("personal_debt_id", personalDebtId)
-    .eq("pd_role", "repayment");
+    .eq("personal_debt_id", personalDebtId);
   // Never fall back to "no repayments" on a failed fetch — that would write
   // outstanding = principal and un-settle a debt the user already paid off.
   if (repaymentsErr) throw repaymentsErr;
@@ -162,13 +164,99 @@ export interface DetachedDebtTx {
   amount: number | null;
   personal_debt_id: string;
   pd_role: "origin" | "repayment" | null;
+  /**
+   * This movement's shares when it was split across several debts
+   * (personal_debt_allocations), read BEFORE the unlink/delete — a deleted
+   * transaction cascades its allocation rows away, so they can't be read
+   * afterwards.
+   */
+  allocations?: DebtAllocationShare[];
+}
+
+export type DebtAllocationShare = { personal_debt_id: string; amount: number };
+
+/**
+ * A movement's shares across a person's debts ("abono a la persona en
+ * general"); empty for a movement linked to a single debt. Callers read it
+ * before mutating.
+ */
+export async function readAllocations(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  userId: string,
+  transactionId: string,
+): Promise<DebtAllocationShare[]> {
+  const { data, error } = await supabase
+    .from("personal_debt_allocations")
+    .select("personal_debt_id, amount")
+    .eq("user_id", userId)
+    .eq("transaction_id", transactionId);
+  if (error) throw error;
+  return ((data ?? []) as { personal_debt_id: string; amount: number }[]).map((r) => ({
+    personal_debt_id: r.personal_debt_id,
+    amount: Number(r.amount),
+  }));
+}
+
+/**
+ * Recompute outstanding (and the split group's repaid) for each debt.
+ *
+ * `removed` = shares just taken off each debt (an unlinked/deleted split
+ * abono). A debt that is `settled` only because those payments covered it
+ * reopens; one the user settled by hand ("Saldar", repaid < principal even
+ * with the removed share) stays settled.
+ */
+export async function recomputeDebts(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  userId: string,
+  debtIds: string[],
+  removed?: Map<string, number>,
+): Promise<void> {
+  const ids = [...new Set(debtIds)];
+  if (ids.length === 0) return;
+  const { data: debts, error } = await supabase
+    .from("personal_debts")
+    .select("id, principal_amount, split_group_id, status")
+    .eq("user_id", userId)
+    .in("id", ids);
+  if (error) throw error;
+  const rows = (debts ?? []) as {
+    id: string;
+    principal_amount: number;
+    split_group_id: string | null;
+    status: string;
+  }[];
+  for (const d of rows) {
+    const principal = Number(d.principal_amount);
+    let allowReopen = false;
+    const gone = removed?.get(d.id) ?? 0;
+    if (d.status === "settled" && gone > 0) {
+      const { data: reps, error: repsErr } = await supabase
+        .from("personal_debt_repayment_amounts")
+        .select("amount")
+        .eq("user_id", userId)
+        .eq("personal_debt_id", d.id);
+      if (repsErr) throw repsErr;
+      const repaidNow = ((reps ?? []) as { amount: number | null }[]).reduce(
+        (sum, r) => sum + Number(r.amount ?? 0),
+        0,
+      );
+      allowReopen = repaidNow + gone >= principal - 1e-6;
+    }
+    await recomputeOutstanding(supabase, userId, d.id, principal, { allowReopen });
+  }
+  const groups = [...new Set(rows.map((d) => d.split_group_id).filter((x): x is string => !!x))];
+  for (const g of groups) {
+    await recomputeSplitRepaid(supabase, userId, g);
+  }
 }
 
 // ============================================================
 // Debt bookkeeping after a linked transaction stops counting — because it was
 // unlinked (personal_debt_id cleared) or deleted outright. MUST run after the
 // row no longer matches the pd_role='repayment' queries, or the recompute
-// would still count it.
+// would still count it (the repayment view only counts linked movements).
 //   - additional origin (not the canonical pointer): its amount was summed
 //     into principal when linked, so shrink it back symmetrically.
 //   - canonical origin: clear the pointer (principal documents itself).
@@ -211,6 +299,21 @@ export async function detachTransactionFromDebt(
       .eq("id", debtId)
       .eq("user_id", userId);
     if (originErr) throw new Error("Error al desvincular el origen");
+  } else if (tx.allocations && tx.allocations.length > 0) {
+    // A movement split across several debts: drop its shares (a no-op when
+    // the delete already cascaded them) and recompute every debt it touched,
+    // reopening the ones only these shares had paid off.
+    const { error: delErr } = await supabase
+      .from("personal_debt_allocations")
+      .delete()
+      .eq("user_id", userId)
+      .eq("transaction_id", tx.id);
+    if (delErr) throw new Error("Error al quitar el reparto del abono");
+    const removed = new Map<string, number>();
+    for (const a of tx.allocations) {
+      removed.set(a.personal_debt_id, (removed.get(a.personal_debt_id) ?? 0) + a.amount);
+    }
+    await recomputeDebts(supabase, userId, [debtId, ...removed.keys()], removed);
   } else {
     await recomputeOutstanding(supabase, userId, debtId, debt.principal_amount);
     if (debt.split_group_id) {
@@ -263,3 +366,36 @@ export async function recomputeDebtAfterTxAmountChange(
     await recomputeSplitRepaid(supabase, userId, debt.split_group_id);
   }
 }
+
+/**
+ * True when any debt of these shared payments received a share of an abono
+ * split across several debts. Deleting such debts would drop the share (and,
+ * for the anchor, unlink the movement) so the money would count nowhere —
+ * callers refuse and ask the user to unlink that abono first.
+ */
+export async function sharedGroupsHaveSplitRepayments(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  userId: string,
+  splitGroupIds: string[],
+): Promise<boolean> {
+  if (splitGroupIds.length === 0) return false;
+  const { data: debts, error } = await supabase
+    .from("personal_debts")
+    .select("id")
+    .eq("user_id", userId)
+    .in("split_group_id", splitGroupIds);
+  if (error) throw error;
+  const ids = ((debts ?? []) as { id: string }[]).map((d) => d.id);
+  if (ids.length === 0) return false;
+  const { count, error: cntErr } = await supabase
+    .from("personal_debt_allocations")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .in("personal_debt_id", ids);
+  if (cntErr) throw cntErr;
+  return (count ?? 0) > 0;
+}
+
+export const SPLIT_REPAYMENT_BLOCK_MESSAGE =
+  "Un abono repartido entre varias deudas incluye este pago compartido. Desvincula ese abono primero.";

@@ -35,6 +35,7 @@ import {
 import { deleteSharedPayment } from "@/actions/shared-payments";
 import { RecordRepaymentDialog } from "./record-repayment-dialog";
 import { EditPersonalDebtSheet } from "./edit-personal-debt-sheet";
+import { describeDebtItem } from "@/lib/personal-debts/link-options";
 import type { PersonDebtItem } from "@/lib/personal-debts/hierarchy";
 import type { CurrencyCode } from "@/types/domain";
 
@@ -57,15 +58,6 @@ interface DebtRowProps {
   muted?: boolean;
 }
 
-function describeItem(item: PersonDebtItem, hideNote?: string | null): string {
-  const o = item.origin;
-  const fromTx = o?.merchant_name || o?.clean_description || o?.raw_description;
-  if (fromTx) return fromTx;
-  const note = item.notes?.trim();
-  if (note && note.toLowerCase() !== hideNote?.trim().toLowerCase()) return note;
-  return item.direction === "borrowed" ? "Préstamo recibido" : "Préstamo";
-}
-
 export function DebtRow({ item, currency, hideNote, defaultAccountId, muted }: DebtRowProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -80,7 +72,7 @@ export function DebtRow({ item, currency, hideNote, defaultAccountId, muted }: D
   const isActive = item.status === "active";
   const isShared = !!item.split_group_id;
   const when = item.origin?.transaction_date ?? item.opened_on;
-  const title = describeItem(item, hideNote);
+  const title = describeDebtItem(item, hideNote);
   const repaid = Number(item.total_repaid ?? 0);
   const partiallyPaid = isActive && repaid > 0;
   const note = item.notes?.trim();

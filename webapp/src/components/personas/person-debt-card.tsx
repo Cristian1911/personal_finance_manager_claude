@@ -20,6 +20,7 @@ import { PersonAvatar } from "./person-avatar";
 import { DebtGroupSection } from "./debt-group-section";
 import { DebtRow } from "./debt-row";
 import { RecordGroupedRepaymentDialog } from "./record-grouped-repayment-dialog";
+import { BALANCE_TONE_CLASS as TONE_CLASS, balanceLine } from "@/lib/personal-debts/person-rollup";
 import type { PersonCurrencyTotals, PersonDebtSummary } from "@/lib/personal-debts/hierarchy";
 import type { CurrencyCode } from "@/types/domain";
 
@@ -28,24 +29,6 @@ interface PersonDebtCardProps {
   currency: CurrencyCode;
   defaultOpen: boolean;
 }
-
-function balanceLine(t: PersonCurrencyTotals): { label: string; amount: number; tone: "lent" | "borrowed" | "even" } {
-  if (t.owedToMe > 0 && t.iOwe > 0) {
-    const net = t.owedToMe - t.iOwe;
-    return net >= 0
-      ? { label: "Te debe (neto)", amount: net, tone: "lent" }
-      : { label: "Le debes (neto)", amount: -net, tone: "borrowed" };
-  }
-  if (t.owedToMe > 0) return { label: "Te debe", amount: t.owedToMe, tone: "lent" };
-  if (t.iOwe > 0) return { label: "Le debes", amount: t.iOwe, tone: "borrowed" };
-  return { label: "Al día", amount: 0, tone: "even" };
-}
-
-const TONE_CLASS = {
-  lent: "text-z-brass",
-  borrowed: "text-z-debt",
-  even: "text-z-income",
-} as const;
 
 /**
  * Level 1 of the hierarchy: the person. Header = who and how much is
@@ -86,7 +69,10 @@ export function PersonDebtCard({ person, currency, defaultOpen }: PersonDebtCard
     !!primaryRepay && primaryRepay.ids.length > 1 && primaryRepay.outstanding > 0 && !(primary!.owedToMe > 0 && primary!.iOwe > 0);
 
   return (
-    <section className={cn(PANEL_SURFACE_SUBTLE_CLASS, "overflow-hidden")}>
+    <section
+      id={`persona-${person.destinatario_id}`}
+      className={cn(PANEL_SURFACE_SUBTLE_CLASS, "scroll-mt-20 overflow-hidden")}
+    >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

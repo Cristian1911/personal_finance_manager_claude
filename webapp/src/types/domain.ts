@@ -71,7 +71,7 @@ export type PersonalDebtStatus = Enums<"personal_debt_status">;
 export type PdRole = Enums<"pd_role">;
 export type DestinatarioKind = Enums<"destinatario_kind">;
 
-/** Flattened shape returned by getPersonalDebtsCached (FK-joined destinatario). */
+/** Flattened debt row (FK-joined destinatario) read by getPersonalDebtsByPerson. */
 export type PersonalDebtWithDetails = PersonalDebt & {
   destinatario_name: string;
   destinatario_default_category_id: string | null;

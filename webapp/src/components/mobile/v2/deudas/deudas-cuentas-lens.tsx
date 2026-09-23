@@ -22,6 +22,7 @@ import { BankBadge } from "@/components/debt/bank-badge";
 import { EntityRow } from "@/components/ui/entity-row";
 import type { RowGauge } from "@/lib/utils/entity-row-model";
 import { ExchangeRateNudge } from "@/components/debt/exchange-rate-nudge";
+import { PersonDebtRollupList } from "@/components/personas/person-debt-rollup-list";
 import type { CurrencyCode } from "@/types/domain";
 import type { DebtAccount, DebtOverview, DebtStats } from "@zeta/shared";
 import type { PersonasSummary, ExchangeRateInfo } from "./deudas-lens-root";
@@ -219,10 +220,7 @@ function PersonasCard({
   currency: CurrencyCode;
 }) {
   const [open, setOpen] = useState(false);
-  const avatarNames = [
-    ...summary.owedToMe.map((p) => p.name),
-    ...summary.iOwe.map((p) => p.name),
-  ].slice(0, 3);
+  const avatarNames = summary.people.map((p) => p.name).slice(0, 3);
 
   return (
     <div className={cn(PANEL_INSET_CLASS, open && "border-z-brass/30")}>
@@ -244,6 +242,7 @@ function PersonasCard({
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-z-sage-light">Deudas con personas</p>
           <p className="mt-0.5 text-[10px] text-muted-foreground">
+            {summary.peopleCount} persona{summary.peopleCount !== 1 ? "s" : ""} ·{" "}
             {summary.activeCount} activa{summary.activeCount !== 1 ? "s" : ""}
           </p>
         </div>
@@ -271,34 +270,7 @@ function PersonasCard({
       </button>
       <Expand open={open}>
         <div className="space-y-1.5 px-3.5 pb-3.5">
-          {summary.owedToMe.map((p, i) => (
-            <div
-              key={`otm-${i}`}
-              className="flex items-center gap-2.5 rounded-xl border border-white/6 bg-[#111] px-3 py-2"
-            >
-              <PersonAvatar name={p.name} className="size-6 border-0 text-[9px]" />
-              <span className="min-w-0 flex-1 truncate text-xs text-z-sage-light">
-                {p.name} te debe
-              </span>
-              <span className="text-xs font-semibold tabular-nums text-z-income">
-                {formatCurrency(p.amount, currency)}
-              </span>
-            </div>
-          ))}
-          {summary.iOwe.map((p, i) => (
-            <div
-              key={`io-${i}`}
-              className="flex items-center gap-2.5 rounded-xl border border-white/6 bg-[#111] px-3 py-2"
-            >
-              <PersonAvatar name={p.name} className="size-6 border-0 text-[9px]" />
-              <span className="min-w-0 flex-1 truncate text-xs text-z-sage-light">
-                Le debes a {p.name}
-              </span>
-              <span className="text-xs font-semibold tabular-nums text-z-debt">
-                {formatCurrency(p.amount, currency)}
-              </span>
-            </div>
-          ))}
+          <PersonDebtRollupList people={summary.people} limit={6} />
           <Link
             href="/deudas-personales"
             className={cn(

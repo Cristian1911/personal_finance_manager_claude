@@ -9,8 +9,13 @@ import { PageHeaderRow } from "@/components/ui/page-header-row";
 import { MOBILE_TAB_BAR_CLEARANCE_CLASS, PAGE_STACK_CLASS } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
 
-export default async function PersonasPage() {
+export default async function PersonasPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ persona?: string }>;
+}) {
   await connection();
+  const { persona } = await searchParams;
   const currency = await getPreferredCurrency();
   const peopleRes = await getPersonalDebtsByPerson(currency);
   const people = peopleRes.success ? peopleRes.data : [];
@@ -29,7 +34,7 @@ export default async function PersonasPage() {
         actions={<NewDebtMenu currency={currency} />}
       />
       <div className="mx-auto w-full max-w-3xl">
-        <PersonasRoot people={people} overview={overview} currency={currency} />
+        <PersonasRoot people={people} overview={overview} currency={currency} focusId={persona ?? null} />
       </div>
     </div>
   );

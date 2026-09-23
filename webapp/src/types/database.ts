@@ -1626,6 +1626,33 @@ export type Database = {
           },
         ]
       }
+      personal_debt_allocations: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          personal_debt_id: string
+          transaction_id: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          personal_debt_id: string
+          transaction_id: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          personal_debt_id?: string
+          transaction_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       personal_debts: {
         Row: {
           created_at: string
@@ -1645,6 +1672,7 @@ export type Database = {
           installment_total: number | null
           group_total_amount: number | null
           interest_amount: number | null
+          is_general: boolean
           status: Database["public"]["Enums"]["personal_debt_status"]
           updated_at: string
           user_id: string
@@ -1667,6 +1695,7 @@ export type Database = {
           installment_total?: number | null
           group_total_amount?: number | null
           interest_amount?: number | null
+          is_general?: boolean
           status?: Database["public"]["Enums"]["personal_debt_status"]
           updated_at?: string
           user_id: string
@@ -1689,6 +1718,7 @@ export type Database = {
           installment_total?: number | null
           group_total_amount?: number | null
           interest_amount?: number | null
+          is_general?: boolean
           status?: Database["public"]["Enums"]["personal_debt_status"]
           updated_at?: string
           user_id?: string
@@ -3987,7 +4017,16 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      /** Abonado por deuda: movimiento completo o su parte repartida. */
+      personal_debt_repayment_amounts: {
+        Row: {
+          amount: number | null
+          personal_debt_id: string | null
+          transaction_id: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       reset_user_data: {
