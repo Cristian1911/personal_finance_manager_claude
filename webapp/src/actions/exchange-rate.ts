@@ -35,10 +35,10 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 // kept in rates_30d. Fewer points than this and the average isn't trusted.
 const HISTORY_DAYS = 30;
 const MIN_POINTS_FOR_AVG = 7;
-// A pair with thinner history backfills from the CDN's dated snapshots once;
-// after that each daily refresh appends a single point.
-const BACKFILL_BELOW_POINTS = 10;
-const BACKFILL_STEP_DAYS = 3;
+// getExchangeRate only appends today's point (it sits on mutation paths —
+// occurrence matching — so it must stay one request). getExchangeRateTrend
+// backfills the missing days from the CDN's dated snapshots for the
+// dashboard/deudas signal, off the hot path.
 const FETCH_TIMEOUT_MS = 5_000;
 
 type RatePoint = { date: string; rate: number };
@@ -84,35 +84,8 @@ export async function getExchangeRate(
     if (rate == null) return cached ? formatCached(cached, pair) : null;
 
     const today = toColombiaDateString(new Date());
-    const history = await buildHistory(
-      parseHistory(cached?.rates_30d, today),
-      today,
-      rate,
-      fromLower,
-      toLower,
-    );
-    const avg30d =
-      history.length >= MIN_POINTS_FOR_AVG
-        ? history.reduce((sum, p) => sum + p.rate, 0) / history.length
-        : null;
-    const fetchedAt = new Date().toISOString();
-
-    // Cache write — await to ensure it completes before serverless context exits
-    await supabase.from("exchange_rate_cache").upsert({
-      pair,
-      rate,
-      rates_30d: history,
-      avg_30d: avg30d,
-      fetched_at: fetchedAt,
-    });
-
-    return {
-      rate,
-      avg30d,
-      percentVsAvg: avg30d ? ((rate - avg30d) / avg30d) * 100 : null,
-      fetchedAt,
-      pair,
-    };
+    const history = withPoint(parseHistory(cached?.rates_30d, today), today, rate);
+    return await saveHistory(pair, rate, history, new Date().toISOString());
   } catch (error) {
     console.error("Error fetching exchange rate:", error);
     return cached ? formatCached(cached, pair) : null;
@@ -143,26 +116,75 @@ function parseHistory(raw: unknown, today: string): RatePoint[] {
   );
 }
 
+function withPoint(history: RatePoint[], date: string, rate: number): RatePoint[] {
+  return [...history.filter((p) => p.date !== date), { date, rate }].sort((a, b) =>
+    a.date.localeCompare(b.date),
+  );
+}
+
+async function saveHistory(
+  pair: string,
+  rate: number,
+  history: RatePoint[],
+  fetchedAt: string,
+): Promise<ExchangeRateResult> {
+  const avg30d =
+    history.length >= MIN_POINTS_FOR_AVG
+      ? history.reduce((sum, p) => sum + p.rate, 0) / history.length
+      : null;
+  // Cache write — await to ensure it completes before serverless context exits
+  await createAdminClient().from("exchange_rate_cache").upsert({
+    pair,
+    rate,
+    rates_30d: history,
+    avg_30d: avg30d,
+    fetched_at: fetchedAt,
+  });
+  return {
+    rate,
+    avg30d,
+    percentVsAvg: avg30d ? ((rate - avg30d) / avg30d) * 100 : null,
+    fetchedAt,
+    pair,
+  };
+}
+
 /**
- * Today's point plus the stored window; when the window is thin, fills it
- * from the CDN's dated snapshots (every BACKFILL_STEP_DAYS days — enough for
- * a stable mean, ~10 requests once per pair). Failed days are just skipped.
+ * Rate plus a trustworthy 30-day average, for the "tasa baja" signal
+ * (dashboard strip, /deudas nudge). When the stored window is short of
+ * MIN_POINTS_FOR_AVG, fills every missing day from the CDN's dated
+ * snapshots (daily, so the mean isn't skewed toward recent days). Render
+ * paths only, behind Suspense — never call this from a mutation path.
  */
-async function buildHistory(
-  stored: RatePoint[],
-  today: string,
-  todayRate: number,
-  fromLower: string,
-  toLower: string,
-): Promise<RatePoint[]> {
-  const byDate = new Map(stored.map((p) => [p.date, p.rate]));
-  if (byDate.size < BACKFILL_BELOW_POINTS) {
+export async function getExchangeRateTrend(
+  from: CurrencyCode,
+  to: CurrencyCode
+): Promise<ExchangeRateResult | null> {
+  "use cache";
+  cacheTag("exchange-rates", `exchange-rate-trend:${from}_${to}`);
+  cacheLife({ stale: 3600, revalidate: 3600 * 6, expire: 3600 * 24 });
+
+  const current = await getExchangeRate(from, to);
+  if (!current || current.avg30d != null) return current;
+
+  try {
+    const { data: cached } = await createAdminClient()
+      .from("exchange_rate_cache")
+      .select("*")
+      .eq("pair", current.pair)
+      .single();
+    const today = toColombiaDateString(new Date());
+    const byDate = new Map(
+      parseHistory(cached?.rates_30d, today).map((p) => [p.date, p.rate]),
+    );
     const base = new Date(`${today}T12:00:00`);
     const missing: string[] = [];
-    for (let d = BACKFILL_STEP_DAYS; d < HISTORY_DAYS; d += BACKFILL_STEP_DAYS) {
+    for (let d = 1; d < HISTORY_DAYS; d++) {
       const date = toColombiaDateString(addDays(base, -d));
       if (!byDate.has(date)) missing.push(date);
     }
+    const fromLower = from.toLowerCase();
+    const toLower = to.toLowerCase();
     const fetched = await Promise.all(
       missing.map((date) =>
         fetchRate(
@@ -174,11 +196,16 @@ async function buildHistory(
       ),
     );
     for (const [date, rate] of fetched) if (rate != null) byDate.set(date, rate);
+    const history = withPoint(
+      [...byDate.entries()].map(([date, rate]) => ({ date, rate })),
+      today,
+      current.rate,
+    );
+    return await saveHistory(current.pair, current.rate, history, current.fetchedAt);
+  } catch (error) {
+    console.error("Error backfilling exchange rate history:", error);
+    return current;
   }
-  byDate.set(today, todayRate);
-  return [...byDate.entries()]
-    .map(([date, rate]) => ({ date, rate }))
-    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 /**

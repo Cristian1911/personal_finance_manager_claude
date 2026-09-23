@@ -1,5 +1,5 @@
 import "server-only";
-import { getExchangeRate } from "@/actions/exchange-rate";
+import { getExchangeRateTrend } from "@/actions/exchange-rate";
 import { isDebtAccountType } from "@/lib/utils/account-balance";
 import { getTrackedCurrencyBalances } from "@/lib/utils/currency-balances";
 import type { Account, CurrencyCode } from "@/types/domain";
@@ -46,7 +46,7 @@ export async function getForeignDebtFxSignal(
   const [from, foreignDebt] = [...debtByCurrency.entries()].reduce((best, entry) =>
     entry[1] > best[1] ? entry : best,
   );
-  const result = await getExchangeRate(from, baseCurrency).catch(() => null);
+  const result = await getExchangeRateTrend(from, baseCurrency).catch(() => null);
   if (!result || !(result.rate > 0)) return null;
 
   return {

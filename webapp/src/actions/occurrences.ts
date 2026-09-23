@@ -1269,6 +1269,7 @@ export async function linkTransactionToOccurrence(
     amount,
     direction,
     transactionId,
+    options.currencyCode ?? null,
   );
 }
 
@@ -1421,6 +1422,7 @@ async function swapPhantomOccurrenceIfMatched(
   amount: number,
   direction: "INFLOW" | "OUTFLOW",
   newTransactionId: string,
+  currencyCode: string | null = null,
 ): Promise<void> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return;
@@ -1438,7 +1440,7 @@ async function swapPhantomOccurrenceIfMatched(
     .select(
       `id, transaction_id, expected_amount,
        template:recurring_transaction_templates!recurring_occurrences_template_id_fkey!inner(
-         account_id, direction, is_active
+         account_id, direction, is_active, currency_code
        )`,
     )
     .eq("user_id", user.id)
@@ -1455,6 +1457,8 @@ async function swapPhantomOccurrenceIfMatched(
   const match = candidates.find(
     (row) =>
       row.transaction_id != null &&
+      // The swap deletes the phantom tx — never on a cross-currency guess.
+      (!currencyCode || row.template?.currency_code === currencyCode) &&
       occurrenceAmountMatches(row.expected_amount, amount, false),
   );
   if (!match || !match.transaction_id) return;

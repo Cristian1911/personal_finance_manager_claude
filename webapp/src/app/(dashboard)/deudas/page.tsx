@@ -35,7 +35,7 @@ import { getRecentImpactEvents } from "@/actions/impact-events";
 import { AccountImpactTimeline } from "@/components/impact/account-impact-timeline";
 import { AccountsSection } from "@/components/accounts/accounts-section";
 import { computeDebtStats, getCurrentSalaryBreakdown, getMinPayment } from "@zeta/shared";
-import { getExchangeRate } from "@/actions/exchange-rate";
+import { getExchangeRateTrend } from "@/actions/exchange-rate";
 import { ExchangeRateNudge } from "@/components/debt/exchange-rate-nudge";
 import { toColombiaDateString } from "@/lib/utils/date";
 import {
@@ -75,7 +75,7 @@ async function MobileDebtSection({
     getDebtOverview(currency, month),
     getEstimatedIncome(currency, month),
     getNonDebtAccounts(),
-    currency !== "USD" ? getExchangeRate("USD", currency) : Promise.resolve(null),
+    currency !== "USD" ? getExchangeRateTrend("USD", currency) : Promise.resolve(null),
     isCurrentMonth ? getDebtTrend(currency) : Promise.resolve(null),
     getDebtFreeCountdown(currency),
     getPersonalDebtsOverview(),
@@ -175,7 +175,7 @@ async function DesktopDebtSection({
     await Promise.all([
       getDebtOverview(currency, month),
       getEstimatedIncome(currency, month),
-      getExchangeRate("USD" as CurrencyCode, currency).catch(() => null),
+      getExchangeRateTrend("USD" as CurrencyCode, currency).catch(() => null),
       getNonDebtAccounts(),
       getPersonalDebtsOverview(),
     ]);

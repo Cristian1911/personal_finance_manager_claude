@@ -45,27 +45,27 @@ export function FxRateStrip({
     <Link
       href="/deudas"
       className={cn(
-        "flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors",
+        "flex items-center gap-3 rounded-2xl border border-white/6 p-4 transition-colors",
         isCheap
-          ? "border-z-income/30 bg-z-income/10 hover:bg-z-income/15"
-          : "border-white/6 bg-z-surface-2 hover:bg-z-surface-3",
+          ? "bg-z-income/10 hover:bg-z-income/15"
+          : "bg-z-surface-2/80 hover:bg-z-surface-3",
         className,
       )}
     >
       <Icon
         className={cn(
           "size-5 shrink-0",
-          isCheap ? "text-z-income" : isExpensive ? "text-z-expense" : "text-muted-foreground",
+          isCheap ? "text-z-income" : isExpensive ? "text-z-expense" : "text-z-sage-dark",
         )}
         aria-hidden="true"
       />
       <div className="min-w-0 flex-1">
-        <p className={cn("text-sm font-medium", isCheap ? "text-z-income" : "text-foreground")}>
+        <p className={cn("text-sm font-medium tabular-nums", isCheap ? "text-z-income" : "text-z-white")}>
           {title}
         </p>
-        <p className="mt-0.5 text-xs text-muted-foreground">{detail}</p>
+        <p className="mt-0.5 text-xs tabular-nums text-z-sage-dark">{detail}</p>
       </div>
-      <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <ChevronRight className="size-4 shrink-0 text-z-sage-dark" aria-hidden="true" />
     </Link>
   );
 }
