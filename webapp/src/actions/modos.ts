@@ -2,6 +2,7 @@
 
 import { cacheTag, cacheLife, updateTag as expireTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { sharedGroupsHaveSplitRepayments, SPLIT_REPAYMENT_BLOCK_MESSAGE } from "@/lib/personal-debts/recompute";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { modoSchema, type ModoInput } from "@/lib/validators/modo";
 import { dedupeTransactionIds } from "@/lib/utils/tag-ids";
@@ -1009,6 +1010,14 @@ export async function unshareModoTransactions(
     ...new Set((txs ?? []).map((t) => t.split_group_id).filter((x): x is string => !!x)),
   ];
   if (groupIds.length === 0) return { success: true, data: { unshared: 0 } };
+
+  try {
+    if (await sharedGroupsHaveSplitRepayments(supabase, user.id, groupIds)) {
+      return { success: false, error: SPLIT_REPAYMENT_BLOCK_MESSAGE };
+    }
+  } catch {
+    return { success: false, error: "Error al quitar los pagos compartidos" };
+  }
 
   // Mismo efecto que deleteSharedPayment, batcheado por los grupos del modo.
   // ponytail: no borra los abonos (pd_role='repayment', sin split_group_id) —

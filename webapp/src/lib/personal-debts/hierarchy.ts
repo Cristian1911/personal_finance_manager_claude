@@ -205,7 +205,11 @@ export function buildPersonHierarchy(
       tot.repaid += repaidFor(d);
     }
 
-    const modo = resolveDebtModo(
+    // The deuda general collects loose loans by definition — never a viaje,
+    // even when one of its loans happened during a trip.
+    const modo = d.is_general
+      ? null
+      : resolveDebtModo(
       d,
       origin ? tagsByTx.get(origin.id) ?? null : null,
       origin?.transaction_date ?? null,

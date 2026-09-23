@@ -16,6 +16,8 @@ interface PersonasRootProps {
   people: PersonDebtSummary[];
   overview: HierarchyOverview;
   currency: CurrencyCode;
+  /** Person to open on arrival (deep link from the /deudas summary). */
+  focusId?: string | null;
 }
 
 /**
@@ -23,7 +25,7 @@ interface PersonasRootProps {
  * every expense a row you can open. The three totals on top answer "¿cómo
  * voy?" before any card is opened.
  */
-export function PersonasRoot({ people, overview, currency }: PersonasRootProps) {
+export function PersonasRoot({ people, overview, currency, focusId = null }: PersonasRootProps) {
   const currencyRows = summaryCurrencies(overview.iOwe.totals, overview.owedToMe.totals, currency).map((code) => {
     const owe = totalForCurrency(overview.iOwe.totals, code);
     const owed = totalForCurrency(overview.owedToMe.totals, code);
@@ -97,8 +99,9 @@ export function PersonasRoot({ people, overview, currency }: PersonasRootProps) 
             person={p}
             currency={currency}
             // Open the people with something pending (up to three) so the
-            // page lands on the answer; the rest are one tap away.
-            defaultOpen={p.activeCount > 0 && i < 3}
+            // page lands on the answer; the rest are one tap away. A deep
+            // link from /deudas opens that person too.
+            defaultOpen={p.destinatario_id === focusId || (p.activeCount > 0 && i < 3)}
           />
         ))}
       </div>

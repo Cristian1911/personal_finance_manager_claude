@@ -197,3 +197,27 @@ describe("allocatePaymentAcrossDebts", () => {
     expect(allocations).toEqual([{ id: "a", amount: 12.41 }, { id: "b", amount: 2.59 }]);
   });
 });
+
+describe("deuda general", () => {
+  it("stays loose even when a loan happened during a viaje", () => {
+    const out = buildPersonHierarchy(
+      {
+        debts: [
+          debt({
+            destinatario_id: ESTEFA,
+            direction: "borrowed",
+            origin_transaction_id: "tx-g",
+            notes: "Deuda general",
+            is_general: true,
+          } as Partial<PersonalDebtWithDetails> & { destinatario_id: string }),
+        ],
+        originTxs: [origin("tx-g", "2026-09-01", 100, { split_group_id: null })],
+        tagRows: [{ transaction_id: "tx-g", tag_id: TAG_AR }],
+        modos: [argentina],
+      },
+      "COP",
+    );
+    expect(out[0].groups).toHaveLength(0);
+    expect(out[0].loose).toHaveLength(1);
+  });
+});

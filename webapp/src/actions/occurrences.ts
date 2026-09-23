@@ -10,7 +10,11 @@ import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { isDebtAccountType, reverseAccountBalanceDelta } from "@/lib/utils/account-balance";
-import { detachTransactionFromDebt } from "@/lib/personal-debts/recompute";
+import {
+  detachTransactionFromDebt,
+  readAllocations,
+  type DebtAllocationShare,
+} from "@/lib/personal-debts/recompute";
 import { applyDebtPaymentToBalances } from "@/lib/debt/payoff";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { getExchangeRate } from "@/actions/exchange-rate";
@@ -953,6 +957,19 @@ export async function revertOccurrence(
           return { success: false, error: `Error al revertir saldo: ${balanceError.error.message}` };
         }
 
+        // Split repayments lose their allocation rows with the delete
+        // (cascade) — read which debts they covered first.
+        const allocatedByTx = new Map<string, DebtAllocationShare[]>();
+        try {
+          for (const tx of groupTxs ?? []) {
+            if (tx.personal_debt_id && tx.pd_role === "repayment") {
+              allocatedByTx.set(tx.id, await readAllocations(supabase, user.id, tx.id));
+            }
+          }
+        } catch {
+          return { success: false, error: "No se pudo leer la deuda vinculada. Intenta de nuevo." };
+        }
+
         const { error: deleteError } = await supabase
           .from("transactions")
           .delete()
@@ -975,6 +992,7 @@ export async function revertOccurrence(
               amount: tx.amount,
               personal_debt_id: tx.personal_debt_id,
               pd_role: tx.pd_role as "origin" | "repayment" | null,
+              allocations: allocatedByTx.get(tx.id) ?? [],
             });
           } catch (e) {
             revalidateFinancialViews();
