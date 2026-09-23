@@ -1626,6 +1626,45 @@ export type Database = {
           },
         ]
       }
+      personal_debt_allocations: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          personal_debt_id: string
+          transaction_id: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          personal_debt_id: string
+          transaction_id: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          personal_debt_id?: string
+          transaction_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      /** VIEW: abonado por deuda (movimiento completo o su parte repartida). Read-only. */
+      personal_debt_repayment_amounts: {
+        Row: {
+          amount: number
+          personal_debt_id: string
+          transaction_id: string
+          user_id: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       personal_debts: {
         Row: {
           created_at: string

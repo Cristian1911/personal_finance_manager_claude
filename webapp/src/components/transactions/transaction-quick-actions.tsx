@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -15,7 +15,6 @@ import {
   Pencil,
   Banknote,
   Repeat,
-  UserPlus,
   UserRound,
   Receipt,
   MoreHorizontal,
@@ -76,11 +75,16 @@ import {
   type LinkedRecurringInfo,
 } from "@/actions/occurrences";
 import {
-  getPersonalDebts,
+  getPersonalDebtsByPerson,
+  linkTransactionToPersonDebts,
   linkTransactionToPersonalDebt,
   unlinkTransactionFromPersonalDebt,
 } from "@/actions/personal-debts";
-import { inferPersonalDebtRole } from "@zeta/shared";
+import {
+  PersonDebtLinkSheet,
+  type PersonDebtLinkSelection,
+} from "@/components/personas/person-debt-link-sheet";
+import type { PersonDebtSummary } from "@/lib/personal-debts/hierarchy";
 import type { CategoryWithChildren, CurrencyCode } from "@/types/domain";
 
 /** Trio action button (Categoría · Destinatario · Más) — ghost, equal thirds. */
@@ -275,7 +279,7 @@ export function TransactionQuickActions({
   const [confirmUnlinkTransferOpen, setConfirmUnlinkTransferOpen] = useState(false);
   const [counterpartPickerOpen, setCounterpartPickerOpen] = useState(false);
   const [transferLoading, setTransferLoading] = useState(false);
-  const [personaCandidates, setPersonaCandidates] = useState<LinkCandidate[]>([]);
+  const [personaPeople, setPersonaPeople] = useState<PersonDebtSummary[] | null>(null);
   const [personaCreateOpen, setPersonaCreateOpen] = useState(false);
   // Actions for an already-linked transaction. Until this existed a mis-tap on
   // "Vincular a deuda personal" was permanent — no surface called
@@ -338,6 +342,16 @@ export function TransactionQuickActions({
 
   const description =
     tx.merchant_name || tx.clean_description || tx.raw_description || "Sin descripción";
+
+  // Stable identity: the persona picker memoizes its options on it.
+  const personaLinkTx = useMemo(
+    () => ({
+      amount: Number(tx.amount),
+      currency_code: tx.currency_code,
+      direction: tx.direction as "INFLOW" | "OUTFLOW",
+    }),
+    [tx.amount, tx.currency_code, tx.direction],
+  );
 
   const debtCounterparty =
     localDestinatario &&
@@ -489,57 +503,49 @@ export function TransactionQuickActions({
 
   function handleOpenPersonaPicker() {
     setMoreOpen(false);
+    setPersonaPeople(null);
     setPersonaPickerOpen(true);
-    getPersonalDebts()
+    // Fetched on interaction only: the persona → viaje → deudas hierarchy
+    // (cached server-side) is what the picker groups by.
+    getPersonalDebtsByPerson(tx.currency_code)
       .then((result) => {
         if (!result.success) {
           toast.error(result.error ?? "Error al buscar personas");
           setPersonaPickerOpen(false);
           return;
         }
-        const candidates: LinkCandidate[] = result.data
-          // Cross-currency links corrupt the debt's principal/outstanding math
-          // and are rejected server-side — don't offer them.
-          .filter((d) => d.status === "active" && d.currency_code === tx.currency_code)
-          .map((d) => ({
-            debt: d,
-            // origin = same direction as the loan itself (new money moving the
-            // debt's way). With no origin yet it documents the existing
-            // principal; with one already, it SUMS as an additional loan.
-            // Anything else is an abono.
-            isOrigin: inferPersonalDebtRole(d.direction, tx.direction) === "origin",
-          }))
-          // A shared-payment debt's origin is the split transaction itself —
-          // an origin-role link would be rejected by the action, so don't
-          // offer those debts when this tx would land as origin.
-          .filter(({ debt, isOrigin }) => !(debt.split_group_id && isOrigin))
-          .map(({ debt: d, isOrigin }) => ({
-            id: d.id,
-            label: d.destinatario_name,
-            // Distinguish debts that belong to a shared payment from standalone
-            // ones: linking here also updates the shared payment's recovered/spend.
-            sublabel: d.split_group_id
-              ? d.notes || "Parte de un pago compartido"
-              : `${d.direction === "borrowed" ? "Le debes" : "Te debe"} · ${
-                  isOrigin
-                    ? d.origin_transaction_id
-                      ? "suma a la deuda"
-                      : "será el origen"
-                    : "abono"
-                }`,
-            badge: d.split_group_id ? "Pago compartido" : undefined,
-            amount: d.outstanding_amount,
-            currencyCode: d.currency_code,
-            direction: d.direction === "borrowed" ? ("OUTFLOW" as const) : ("INFLOW" as const),
-            matchScore: 0,
-          }));
-        setPersonaCandidates(candidates);
+        setPersonaPeople(result.data);
       })
       .catch((err) => {
         console.error("Failed to fetch personal debts:", err);
         toast.error("Error de red al buscar personas");
         setPersonaPickerOpen(false);
       });
+  }
+
+  function handleConfirmPersonaSelection(selection: PersonDebtLinkSelection) {
+    if (selection.kind === "debt") {
+      handleConfirmPersonaLink(selection.id);
+      return;
+    }
+    setPersonaPickerOpen(false);
+    startLinkTransition(async () => {
+      try {
+        const result = await linkTransactionToPersonDebts(selection.debtIds, tx.id);
+        if (result.success) {
+          toast.success(
+            result.data.debts > 1
+              ? `Abono repartido entre ${result.data.debts} deudas (${selection.label})`
+              : "Transacción vinculada a deuda personal",
+          );
+          router.refresh();
+        } else {
+          toast.error(result.error ?? "No se pudo vincular");
+        }
+      } catch {
+        toast.error("No se pudo vincular");
+      }
+    });
   }
 
   function handleConfirmPersonaLink(debtId: string, fromCreate = false) {
@@ -1140,24 +1146,20 @@ export function TransactionQuickActions({
         />
       )}
 
-      {/* Link-to-deuda-personal picker */}
+      {/* Link-to-persona picker: toda la deuda, un viaje o una deuda */}
       {personaPickerOpen && (
-        <LinkPickerSheet
+        <PersonDebtLinkSheet
           open={personaPickerOpen}
           onOpenChange={setPersonaPickerOpen}
-          title="Vincular a deuda personal"
           subtitle={`${description} · ${formatCurrency(tx.amount, tx.currency_code as CurrencyCode)}`}
-          candidates={personaCandidates}
-          emptyLabel="No tienes deudas personales activas en esta moneda. Crea una abajo."
-          onConfirm={handleConfirmPersonaLink}
+          tx={personaLinkTx}
+          people={personaPeople}
           isPending={isLinking}
+          onConfirm={handleConfirmPersonaSelection}
           onCreateNew={() => {
             setPersonaPickerOpen(false);
             setPersonaCreateOpen(true);
           }}
-          createNewLabel="Crear deuda personal nueva"
-          createNewSublabel="Registra la deuda y vincula esta transacción"
-          createNewIcon={<UserPlus className="size-4 text-z-brass" aria-hidden="true" />}
         />
       )}
 

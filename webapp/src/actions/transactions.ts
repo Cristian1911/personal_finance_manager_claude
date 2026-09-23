@@ -37,6 +37,7 @@ import {
 } from "@/lib/utils/account-balance";
 import {
   detachTransactionFromDebt,
+  readAllocatedDebtIds,
   recomputeDebtAfterTxAmountChange,
 } from "@/lib/personal-debts/recompute";
 import type { ActionResult, PaginatedResult } from "@/types/actions";
@@ -1215,6 +1216,15 @@ export async function updateTransaction(
     };
   }
 
+  const splitRepaymentError = await rejectAmountEditOnSplitRepayment(
+    supabase,
+    user.id,
+    id,
+    existing,
+    parsed.data.amount,
+  );
+  if (splitRepaymentError) return { success: false, error: splitRepaymentError };
+
   const categoryChanged = existing?.category_id !== parsed.data.category_id;
 
   // `updateTransaction` reuses `transactionSchema` but does not read the
@@ -1345,6 +1355,29 @@ export async function updateTransaction(
 
   revalidateFinancialViews();
   return { success: true, data };
+}
+
+/**
+ * A repayment split across several of a person's debts has its shares frozen
+ * in personal_debt_allocations; a new amount would leave them adding up to the
+ * old one. Returns the Spanish error to show, or null when the edit is fine.
+ */
+async function rejectAmountEditOnSplitRepayment(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  transactionId: string,
+  existing: { amount: number; personal_debt_id: string | null; pd_role: string | null },
+  nextAmount: number,
+): Promise<string | null> {
+  if (!existing.personal_debt_id || existing.pd_role !== "repayment") return null;
+  if (Number(existing.amount) === Number(nextAmount)) return null;
+  try {
+    const debts = await readAllocatedDebtIds(supabase, userId, transactionId);
+    if (debts.length === 0) return null;
+  } catch {
+    return "No se pudo verificar la deuda vinculada. Intenta de nuevo.";
+  }
+  return "Este abono está repartido entre varias deudas. Desvincúlalo antes de cambiar el monto.";
 }
 
 /**
@@ -1493,6 +1526,15 @@ export async function updateTransactionAmountAndDate(
     return { success: false, error: existingError?.message ?? "Transacción no encontrada" };
   }
 
+  const splitRepaymentError = await rejectAmountEditOnSplitRepayment(
+    supabase,
+    user.id,
+    transactionId,
+    existing,
+    fields.amount,
+  );
+  if (splitRepaymentError) return { success: false, error: splitRepaymentError };
+
   const { error: updateError } = await supabase
     .from("transactions")
     .update({
@@ -1640,6 +1682,17 @@ export async function deleteTransaction(id: string): Promise<ActionResult> {
     };
   }
 
+  // A repayment split across several debts loses its allocation rows with
+  // the delete (cascade) — read which debts they were first.
+  let allocatedDebtIds: string[] = [];
+  if (existing.personal_debt_id && existing.pd_role === "repayment") {
+    try {
+      allocatedDebtIds = await readAllocatedDebtIds(supabase, user.id, id);
+    } catch {
+      return { success: false, error: "No se pudo leer la deuda vinculada. Intenta de nuevo." };
+    }
+  }
+
   const { error } = await supabase.from("transactions").delete().eq("user_id", user.id).eq("id", id);
 
   if (error) return { success: false, error: error.message };
@@ -1674,6 +1727,7 @@ export async function deleteTransaction(id: string): Promise<ActionResult> {
         amount: existing.amount,
         personal_debt_id: existing.personal_debt_id,
         pd_role: existing.pd_role as "origin" | "repayment" | null,
+        allocatedDebtIds,
       });
     } catch (e) {
       // The delete is already committed — invalidate so the UI reflects it,

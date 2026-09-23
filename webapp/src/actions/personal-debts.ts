@@ -16,13 +16,16 @@ import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
 import {
   recomputeOutstanding,
   recomputeSplitRepaid,
+  recomputeDebts,
   detachTransactionFromDebt,
+  readAllocatedDebtIds,
 } from "@/lib/personal-debts/recompute";
 import {
   resolveSplitParticipants,
   cleanupAdHocDestinatarios,
 } from "@/lib/personal-debts/ad-hoc";
 import { SPLIT_ERROR_MESSAGES } from "@/lib/personal-debts/split-errors";
+import { readRepaidByDebt } from "@/lib/personal-debts/repaid";
 import {
   allocatePaymentAcrossDebts,
   buildPersonHierarchy,
@@ -59,68 +62,6 @@ const LOAN_REPAYMENT_CATEGORY_ID = "c0000001-0008-4000-8000-000000000005";
 const ORIGIN_ID_CHUNK = 150;
 
 // ============================================================
-// Cached read
-// ============================================================
-async function getPersonalDebtsCached(
-  accessToken: string,
-  userId: string,
-): Promise<PersonalDebtWithDetails[]> {
-  "use cache";
-  cacheTag("personal-debts");
-  cacheLife("zeta");
-  const supabase = createCachedClient(accessToken);
-
-  // Flat list used by the transaction quick actions (pick one debt to link).
-  // Summaries (/deudas, Deudas personales) read getPersonalDebtsByPerson.
-  // split_group_id MUST stay selected: callers tell shared-payment debts apart
-  // from standalone ones by it.
-  const { data, error } = await supabase
-    .from("personal_debts")
-    .select(`
-      id, user_id, destinatario_id, direction, principal_amount,
-      currency_code, outstanding_amount, opened_on, due_date, status,
-      origin_transaction_id, split_group_id, notes, is_demo, created_at, updated_at,
-      destinatario:destinatarios!personal_debts_destinatario_id_fkey ( name, default_category_id, is_ad_hoc ),
-      repayments:transactions!transactions_enc_personal_debt_id_fkey ( amount, pd_role )
-    `)
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false });
-
-  if (error) throw error;
-  if (!data) return [];
-
-  const today = toColombiaDateString(new Date());
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return data.map((row: any) => {
-    const repayments: number[] = (row.repayments ?? [])
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .filter((t: any) => t.pd_role === "repayment")
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((t: any) => t.amount as number);
-    const total_repaid = repayments.reduce((s: number, n: number) => s + n, 0);
-    return {
-      ...row,
-      destinatario_name: row.destinatario?.name ?? "—",
-      destinatario_default_category_id: row.destinatario?.default_category_id ?? null,
-      destinatario_is_ad_hoc: !!row.destinatario?.is_ad_hoc,
-      total_repaid,
-      is_overdue: isPersonalDebtOverdue(row.due_date, row.status, today),
-    };
-  }) as PersonalDebtWithDetails[];
-}
-
-export async function getPersonalDebts(): Promise<ActionResult<PersonalDebtWithDetails[]>> {
-  const { user, accessToken } = await getAuthenticatedClient();
-  if (!user || !accessToken) return { success: false, error: "No autenticado" };
-  try {
-    const data = await getPersonalDebtsCached(accessToken, user.id);
-    return { success: true, data };
-  } catch {
-    return { success: false, error: "Error al cargar las personas" };
-  }
-}
-
-// ============================================================
 // Persona → viaje → deudas (the Deudas personales page)
 // ============================================================
 async function getPersonalDebtsByPersonCached(
@@ -138,28 +79,26 @@ async function getPersonalDebtsByPersonCached(
   cacheLife("zeta");
   const supabase = createCachedClient(accessToken);
 
-  const { data, error } = await supabase
-    .from("personal_debts")
-    .select(`
-      id, user_id, destinatario_id, direction, principal_amount,
-      currency_code, outstanding_amount, opened_on, due_date, status,
-      origin_transaction_id, split_group_id, notes, is_demo, created_at, updated_at,
-      installment_group_id, installment_total, group_total_amount, interest_amount,
-      destinatario:destinatarios!personal_debts_destinatario_id_fkey ( name, default_category_id, is_ad_hoc ),
-      repayments:transactions!transactions_enc_personal_debt_id_fkey ( amount, pd_role )
-    `)
-    .eq("user_id", userId);
+  const [{ data, error }, repaidByDebt] = await Promise.all([
+    supabase
+      .from("personal_debts")
+      .select(`
+        id, user_id, destinatario_id, direction, principal_amount,
+        currency_code, outstanding_amount, opened_on, due_date, status,
+        origin_transaction_id, split_group_id, notes, is_demo, created_at, updated_at,
+        installment_group_id, installment_total, group_total_amount, interest_amount,
+        destinatario:destinatarios!personal_debts_destinatario_id_fkey ( name, default_category_id, is_ad_hoc )
+      `)
+      .eq("user_id", userId),
+    readRepaidByDebt(supabase, userId),
+  ]);
   if (error) throw error;
   if (!data || data.length === 0) return [];
 
   const today = toColombiaDateString(new Date());
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const debts: PersonalDebtWithDetails[] = data.map((row: any) => {
-    const total_repaid = (row.repayments ?? [])
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .filter((t: any) => t.pd_role === "repayment")
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .reduce((s: number, t: any) => s + Number(t.amount ?? 0), 0);
+    const total_repaid = repaidByDebt.get(row.id) ?? 0;
     return {
       ...row,
       destinatario_name: row.destinatario?.name ?? "—",
@@ -425,6 +364,22 @@ export async function deletePersonalDebt(id: string): Promise<ActionResult<undef
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
+  // A share of an abono split across several debts would vanish with the
+  // debt (cascade) and that money would count nowhere — unlink it first.
+  const { count: allocCount, error: allocErr } = await supabase
+    .from("personal_debt_allocations")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("personal_debt_id", id);
+  if (allocErr) return { success: false, error: "Error al eliminar la deuda" };
+  if ((allocCount ?? 0) > 0) {
+    return {
+      success: false,
+      error:
+        "Esta deuda recibió parte de un abono repartido entre varias deudas. Desvincula ese abono antes de eliminarla.",
+    };
+  }
+
   const { data, error } = await supabase
     .from("personal_debts")
     .delete()
@@ -522,12 +477,12 @@ export async function splitPersonalDebt(
   // Existing repayments can't be attributed to any one participant, and the
   // original debt row is about to disappear — so refuse rather than silently
   // losing who paid what.
+  // The view also counts this debt's share of abonos split across several debts.
   const { count, error: repErr } = await supabase
-    .from("transactions")
-    .select("id", { count: "exact", head: true })
+    .from("personal_debt_repayment_amounts")
+    .select("transaction_id", { count: "exact", head: true })
     .eq("user_id", user.id)
-    .eq("personal_debt_id", id)
-    .eq("pd_role", "repayment");
+    .eq("personal_debt_id", id);
   if (repErr) return { success: false, error: "Error al revisar los abonos de la deuda" };
   if ((count ?? 0) > 0) {
     return {
@@ -969,6 +924,17 @@ export async function unlinkTransactionFromPersonalDebt(
     .single();
   if (debtErr || !debt) return { success: false, error: "Deuda no encontrada" };
 
+  // An abono split across several debts: remember which ones before the
+  // unlink so every one of them is recomputed, not just the anchor.
+  let allocatedDebtIds: string[] = [];
+  if (tx.pd_role === "repayment") {
+    try {
+      allocatedDebtIds = await readAllocatedDebtIds(supabase, user.id, transactionId);
+    } catch {
+      return { success: false, error: "Error al desvincular la transacción" };
+    }
+  }
+
   const { error: updErr } = await supabase
     .from("transactions")
     .update({ personal_debt_id: null, pd_role: null })
@@ -984,6 +950,7 @@ export async function unlinkTransactionFromPersonalDebt(
       amount: tx.amount,
       personal_debt_id: debtId,
       pd_role: tx.pd_role as "origin" | "repayment" | null,
+      allocatedDebtIds,
     });
   } catch (e) {
     revalidateFinancialViews();
@@ -1434,4 +1401,173 @@ export async function recordGroupedRepayment(
   updateTag("personal-debts");
   if (failure) return { success: false, error: failure };
   return { success: true, data: { transactions: inserted, skipped } };
+}
+
+// ============================================================
+// Vincular un movimiento existente a una PERSONA en general (o a un viaje):
+// el abono se reparte entre las deudas elegidas, la más antigua primero.
+//
+// The movement stays ONE row. transactions.personal_debt_id points to the
+// first debt of the split (anchor) with pd_role='repayment', so everything
+// that treats "linked to a person" specially keeps working; each debt's share
+// lives in personal_debt_allocations (anchor included) and
+// personal_debt_repayment_amounts counts the shares instead of the full
+// amount. A split that lands on a single debt is a plain link.
+// ============================================================
+export async function linkTransactionToPersonDebts(
+  debtIds: string[],
+  transactionId: string,
+): Promise<ActionResult<{ debts: number }>> {
+  const idsParsed = groupedRepaymentIdsSchema.safeParse(debtIds);
+  if (!idsParsed.success) return { success: false, error: idsParsed.error.issues[0].message };
+  if (!UUID_RE.test(transactionId)) return { success: false, error: "ID inválido" };
+  const ids = [...new Set(idsParsed.data)];
+
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { data: tx, error: txErr } = await supabase
+    .from("transactions")
+    .select(
+      "id, direction, amount, currency_code, personal_debt_id, split_group_id, transfer_group_id, reconciled_into_transaction_id",
+    )
+    .eq("id", transactionId)
+    .eq("user_id", user.id)
+    .single();
+  if (txErr || !tx) return { success: false, error: "Transacción no encontrada" };
+  if (tx.personal_debt_id) {
+    return { success: false, error: "Esta transacción ya está vinculada a una persona." };
+  }
+  if (tx.split_group_id) {
+    return { success: false, error: "Esta transacción pertenece a un pago compartido." };
+  }
+  if (tx.transfer_group_id) {
+    return { success: false, error: "Esta transacción es una transferencia entre tus cuentas." };
+  }
+  if (tx.reconciled_into_transaction_id) {
+    return { success: false, error: "Esta transacción fue conciliada con otro movimiento." };
+  }
+
+  const { data: debts, error: debtsErr } = await supabase
+    .from("personal_debts")
+    .select(
+      "id, direction, status, principal_amount, outstanding_amount, currency_code, destinatario_id, opened_on, created_at",
+    )
+    .eq("user_id", user.id)
+    .in("id", ids);
+  if (debtsErr || !debts || debts.length !== ids.length) {
+    return { success: false, error: "Alguna de las deudas no existe" };
+  }
+  if (debts.some((d) => d.status !== "active")) {
+    return { success: false, error: "Alguna de las deudas ya no está activa. Recarga la página." };
+  }
+  const first = debts[0];
+  if (debts.some((d) => d.destinatario_id !== first.destinatario_id)) {
+    return { success: false, error: "Un abono repartido es con una sola persona" };
+  }
+  const txCurrency = tx.currency_code ?? "COP";
+  if (debts.some((d) => d.currency_code !== txCurrency)) {
+    return {
+      success: false,
+      error: `La moneda del movimiento (${txCurrency}) no coincide con la de las deudas.`,
+    };
+  }
+  // Only an abono can be spread: a movement going the debt's own way is a new
+  // loan and belongs to one debt (link it to that debt instead).
+  const notRepayment = debts.some(
+    (d) =>
+      inferPersonalDebtRole(d.direction as PersonalDebtDirection, tx.direction as "INFLOW" | "OUTFLOW") !==
+      "repayment",
+  );
+  if (notRepayment) {
+    return {
+      success: false,
+      error:
+        tx.direction === "INFLOW"
+          ? "Este ingreso solo puede abonar a lo que te deben."
+          : "Este gasto solo puede abonar a lo que debes.",
+    };
+  }
+
+  const amount = Number(tx.amount ?? 0);
+  const decimals = getCurrencyDecimals(txCurrency as CurrencyCode);
+  const { allocations, unallocated } = allocatePaymentAcrossDebts(
+    debts.map((d) => ({
+      id: d.id,
+      outstanding_amount: Number(d.outstanding_amount),
+      opened_on: d.opened_on,
+      created_at: d.created_at,
+    })),
+    amount,
+    decimals,
+  );
+  if (unallocated > 0) {
+    const pending = debts.reduce((s, d) => s + Number(d.outstanding_amount), 0);
+    return {
+      success: false,
+      error: `El movimiento (${formatCurrency(amount, txCurrency as CurrencyCode)}) supera lo pendiente (${formatCurrency(pending, txCurrency as CurrencyCode)}). Vincúlalo a una deuda en particular.`,
+    };
+  }
+  if (allocations.length === 0) return { success: false, error: "No hay saldo pendiente que abonar" };
+
+  // One debt covers it: a plain link, no split rows.
+  if (allocations.length === 1) {
+    const res = await linkTransactionToPersonalDebt(allocations[0].id, transactionId);
+    return res.success ? { success: true, data: { debts: 1 } } : res;
+  }
+
+  // Shares first, then the link: the view only counts shares of a movement
+  // that is linked, so a failure between the two leaves nothing counted.
+  const { error: allocErr } = await supabase.from("personal_debt_allocations").insert(
+    allocations.map((a) => ({
+      user_id: user.id,
+      transaction_id: transactionId,
+      personal_debt_id: a.id,
+      amount: a.amount,
+    })),
+  );
+  if (allocErr) {
+    return {
+      success: false,
+      error: allocErr.code === "23505" ? "Esta transacción ya está repartida." : "Error al repartir el abono",
+    };
+  }
+
+  const anchorId = allocations[0].id;
+  const { data: linked, error: updErr } = await supabase
+    .from("transactions")
+    .update({ personal_debt_id: anchorId, pd_role: "repayment" })
+    .eq("id", transactionId)
+    .eq("user_id", user.id)
+    // A concurrent link won the race: don't overwrite it.
+    .is("personal_debt_id", null)
+    .select("id");
+  if (updErr || !linked || linked.length === 0) {
+    await supabase
+      .from("personal_debt_allocations")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("transaction_id", transactionId);
+    return {
+      success: false,
+      error: updErr ? "Error al vincular la transacción" : "Esta transacción ya está vinculada a una persona.",
+    };
+  }
+
+  try {
+    await recomputeDebts(
+      supabase,
+      user.id,
+      allocations.map((a) => a.id),
+    );
+  } catch (e) {
+    revalidateFinancialViews();
+    updateTag("personal-debts");
+    const detail = e instanceof Error ? e.message : String(e);
+    return { success: false, error: `Abono vinculado, pero no se pudo recalcular la deuda: ${detail}` };
+  }
+
+  revalidateFinancialViews();
+  updateTag("personal-debts");
+  return { success: true, data: { debts: allocations.length } };
 }

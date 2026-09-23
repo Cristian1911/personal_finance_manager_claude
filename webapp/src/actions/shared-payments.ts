@@ -20,6 +20,7 @@ import {
   isPersonalDebtOverdue,
 } from "@zeta/shared";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { readRepaidByDebt } from "@/lib/personal-debts/repaid";
 import type { ActionResult } from "@/types/actions";
 import type { Database } from "@/types/database";
 import type {
@@ -522,14 +523,15 @@ async function getSharedPaymentGroupsCached(
       currency_code, outstanding_amount, opened_on, due_date, status,
       origin_transaction_id, notes, is_demo, created_at, updated_at, split_group_id,
       installment_group_id, installment_total, group_total_amount, interest_amount,
-      destinatario:destinatarios!personal_debts_destinatario_id_fkey ( name, default_category_id, is_ad_hoc ),
-      repayments:transactions!transactions_enc_personal_debt_id_fkey ( amount, pd_role )
+      destinatario:destinatarios!personal_debts_destinatario_id_fkey ( name, default_category_id, is_ad_hoc )
     `)
     .eq("user_id", userId)
     .not("split_group_id", "is", null)
     .order("created_at", { ascending: false });
   if (error) throw error;
   if (!debts || debts.length === 0) return [];
+  // Split abonos count by each debt's share, not whole on the anchor debt.
+  const repaidByDebt = await readRepaidByDebt(supabase, userId);
 
   // The single origin transaction per group carries the full total + how much
   // has been repaid so far (split_repaid_amount).
@@ -550,12 +552,7 @@ async function getSharedPaymentGroupsCached(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const row of debts as any[]) {
     const gid = row.split_group_id as string;
-    const repayments: number[] = (row.repayments ?? [])
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .filter((t: any) => t.pd_role === "repayment")
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((t: any) => t.amount as number);
-    const total_repaid = repayments.reduce((s: number, n: number) => s + n, 0);
+    const total_repaid = repaidByDebt.get(row.id) ?? 0;
     const mapped = {
       ...row,
       destinatario_name: row.destinatario?.name ?? "—",
