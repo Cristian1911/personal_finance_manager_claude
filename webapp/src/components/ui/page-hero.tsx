@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const GRADIENTS = {
@@ -95,5 +97,29 @@ export function HeroAccentPill({
     >
       {children}
     </span>
+  );
+}
+
+/** "← Volver a X" pill for sub-page heroes (desktop escape hatch). */
+export function HeroBackPill({
+  href,
+  children,
+  className,
+}: {
+  href: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "inline-flex items-center gap-2 rounded-full border border-white/6 bg-black/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-z-sage-light hover:bg-white/5",
+        className
+      )}
+    >
+      <ArrowLeft className="size-3.5" />
+      {children}
+    </Link>
   );
 }

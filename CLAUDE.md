@@ -242,7 +242,7 @@ This milestone is a comprehensive polish pass — the features exist, but the ex
 - Hostinger VPS — production host, managed via GitHub Actions `deploy.yml`
 - Nginx reverse proxy — `infra/nginx/` (custom Docker image, handles SSL termination)
 - GitHub Actions CI/CD — `.github/workflows/deploy.yml`
-- frankfurter.app API — external exchange rate data, cached 24h in `exchange_rate_cache` Supabase table
+- FX rates — Yahoo Finance chart API (intraday + 3-month daily closes), fawazahmed0 CDN fallback; stored in `exchange_rate_cache` (90-day history), refreshed hourly Mon–Fri by `.github/workflows/fx-rates-cron.yml` → `POST /api/webhooks/fx-rates` (`CRON_SECRET`), inline refresh when the row is >2h old (`webapp/src/lib/fx/`)
 ## Configuration
 - `NEXT_PUBLIC_SUPABASE_URL` — public Supabase URL (build-time arg for Docker)
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` — public anon key (build-time arg for Docker)

@@ -19,6 +19,7 @@ services:
       - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY}
       - RESEND_WEBHOOK_SECRET=${RESEND_WEBHOOK_SECRET}
       - RESEND_API_KEY=${RESEND_API_KEY}
+      - CRON_SECRET=${CRON_SECRET}
     depends_on:
       pdf-parser:
         condition: service_healthy

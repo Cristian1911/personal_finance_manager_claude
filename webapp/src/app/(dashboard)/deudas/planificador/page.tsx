@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Landmark, Sparkles } from "lucide-react";
+import { ArrowRight, Landmark, Sparkles } from "lucide-react";
 import { getDebtOverview } from "@/actions/debt";
 import { getEstimatedIncome } from "@/actions/income";
 import { getPreferredCurrency } from "@/actions/profile";
@@ -12,7 +12,7 @@ const ScenarioPlanner = dynamic(
   { loading: () => <div className="h-64 rounded-xl bg-muted animate-pulse" /> }
 );
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
-import { PageHero, HeroAccentPill } from "@/components/ui/page-hero";
+import { PageHero, HeroAccentPill, HeroBackPill } from "@/components/ui/page-hero";
 import { StatCard } from "@/components/ui/stat-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,13 +37,7 @@ export default async function PlanificadorPage() {
         <PageHero
           variant="brass"
           pills={<>
-            <Link
-              href="/plan"
-              className="inline-flex items-center gap-2 rounded-full border border-white/6 bg-black/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-z-sage-light hover:bg-white/5"
-            >
-              <ArrowLeft className="size-3.5" />
-              Volver a Plan
-            </Link>
+            <HeroBackPill href="/plan">Volver a Plan</HeroBackPill>
             <HeroAccentPill>Simulación</HeroAccentPill>
           </>}
           title="No hay deudas activas para planificar"
@@ -75,13 +69,7 @@ export default async function PlanificadorPage() {
       <PageHero
         variant="brass"
         pills={<>
-          <Link
-            href="/plan"
-            className="inline-flex items-center gap-2 rounded-full border border-white/6 bg-black/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-z-sage-light hover:bg-white/5"
-          >
-            <ArrowLeft className="size-3.5" />
-            Volver a Plan
-          </Link>
+          <HeroBackPill href="/plan">Volver a Plan</HeroBackPill>
           <HeroAccentPill>Simulación de deuda</HeroAccentPill>
         </>}
         title="Prueba escenarios antes de comprometer el próximo paso"

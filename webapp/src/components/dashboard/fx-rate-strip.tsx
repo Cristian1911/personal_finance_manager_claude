@@ -2,10 +2,8 @@ import Link from "next/link";
 import { ChevronRight, DollarSign, TrendingDown, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
-import {
-  FX_RATE_SIGNAL_THRESHOLD_PCT,
-  type FxRateSignal,
-} from "@/lib/debt/fx-rate-signal";
+import type { FxRateSignal } from "@/lib/debt/fx-rate-signal";
+import { FX_TIMING_THRESHOLD_PCT } from "@/lib/debt/usd-debt-insights";
 
 function formatPct(value: number): string {
   return `${Math.abs(value).toLocaleString("es-CO", { maximumFractionDigits: 1 })}%`;
@@ -24,8 +22,8 @@ export function FxRateStrip({
   className?: string;
 }) {
   const { from, to, rate, avg30d, percentVsAvg, foreignDebt } = signal;
-  const isCheap = percentVsAvg !== null && percentVsAvg <= -FX_RATE_SIGNAL_THRESHOLD_PCT;
-  const isExpensive = percentVsAvg !== null && percentVsAvg >= FX_RATE_SIGNAL_THRESHOLD_PCT;
+  const isCheap = percentVsAvg !== null && percentVsAvg <= -FX_TIMING_THRESHOLD_PCT;
+  const isExpensive = percentVsAvg !== null && percentVsAvg >= FX_TIMING_THRESHOLD_PCT;
   const Icon = isCheap ? TrendingDown : isExpensive ? TrendingUp : DollarSign;
 
   const title = isCheap
@@ -43,7 +41,7 @@ export function FxRateStrip({
 
   return (
     <Link
-      href="/deudas"
+      href="/deudas/dolares"
       className={cn(
         "flex items-center gap-3 rounded-2xl border border-white/6 p-4 transition-colors",
         isCheap
