@@ -96,6 +96,11 @@ Health score, 50/30/20 buckets, per-category budgets (maybe v1.1 as "limits" on 
 | Web app | **Backend + small companion**: APIs, email ingest, parser proxy, bulk PDF import/editing. Never kept in parity. |
 | Keep-list (overrides §5 "parked") | **Personas/splits**, **category budgets**, **trips (Modos)** stay in the MLP. |
 
+| Splits | **Not spending.** Only the user's share counts as spending. The rest is a trackable receivable ("Te deben"), per person, that closes when they pay. Today it counts as spending until friends repay (`amount − split_repaid_amount`). |
+| Category budgets | **3 limits by default**, suggested from history after 2–4 weeks, shown under Disponible. The user can add more. No 50/30/20, no setup wizard before there's data. |
+| Trips | A separate pot. Trip spending doesn't lower the monthly Disponible; friends' shares go to "Te deben". |
+
 ### Open
-- **How splits, budgets and trips fit into Disponible** — the user wants to adjust the proposed framing (splits = only your share counts, budgets = ≤3 limits under Disponible, trips = separate pot). Pending input.
+- **Does money owed reduce Disponible?** Cash has left the account even though it isn't spending. Proposal: Disponible counts cash reality and shows "+$X cuando te paguen" beside it.
+- **Capture channel**: forwarding-first is too hard on mobile (Gmail forwarding and filters can only be set up in Gmail on desktop). Candidates: Android notification reading, Gmail read-only connect (≤100 users without Google's security audit), desktop setup wizard with automatic confirmation, Outlook one-tap rule via Microsoft Graph, monthly statement PDF as backfill.
 - Assumptions until told otherwise: single user (no couples mode), encryption kept but schema frozen for the MLP.
