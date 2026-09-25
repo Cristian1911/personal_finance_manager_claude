@@ -100,7 +100,10 @@ Health score, 50/30/20 buckets, per-category budgets (maybe v1.1 as "limits" on 
 | Category budgets | **3 limits by default**, suggested from history after 2–4 weeks, shown under Disponible. The user can add more. No 50/30/20, no setup wizard before there's data. |
 | Trips | A separate pot. Trip spending doesn't lower the monthly Disponible; friends' shares go to "Te deben". |
 
-### Open
-- **Does money owed reduce Disponible?** Cash has left the account even though it isn't spending. Proposal: Disponible counts cash reality and shows "+$X cuando te paguen" beside it.
-- **Capture channel**: forwarding-first is too hard on mobile (Gmail forwarding and filters can only be set up in Gmail on desktop). Candidates: Android notification reading, Gmail read-only connect (≤100 users without Google's security audit), desktop setup wizard with automatic confirmation, Outlook one-tap rule via Microsoft Graph, monthly statement PDF as backfill.
-- Assumptions until told otherwise: single user (no couples mode), encryption kept but schema frozen for the MLP.
+| Te deben | **First-class ledger.** Money lent (the others' share of a split, or a direct loan) is its own tracked category, per person, with a running total and a signal when lending gets too high ("¿debería parar?"). Never counted as spending. |
+| Disponible vs lending | **Disponible drops by the full outflow** (cash reality). Next to it: "+$X cuando te paguen". This is why lending must be tracked. |
+| Capture (Android) | **Bank notification reading, done right**: opt-in; the user picks which apps' notifications Zeta may read (everything else is dropped on-device); pre-built exact templates per bank; unknown notifications from chosen apps go to a training inbox where the user marks amount / merchant / card, which becomes a deterministic template for that sender. Auto-capture only on a full template match; partial matches go to review. Never a generic "any number looks like money" regex; OTP/promo/balance messages are recognized and ignored. |
+
+### Open / assumed
+- iOS capture: Gmail read-only connect (≤100 users without Google's audit) + monthly statement PDF. Desktop setup page for email forwarding is a later upgrade, not onboarding.
+- Single user (no couples mode); encryption kept, schema frozen for the MLP.
