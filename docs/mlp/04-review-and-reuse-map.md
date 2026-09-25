@@ -41,6 +41,14 @@ The proposal is strong and adoptable as the target. It fixes what the audits kep
 | FX cache | `webapp/src/lib/fx/` | "≈" foreign charges |
 | Supabase schema, RLS, encryption, auth | `supabase/` | Keep; freeze schema except MLP additions |
 
+### Destinatarios and recurring — keep the engine, hide the words
+- **Destinatarios stay as the merchant/person identity layer**, surfaced only as the row title ("Rappi", "Juan"). Rules (`destinatario_rules`, 85) + `cleanDescription` normalize raw bank text across notification/email/PDF. That's what makes dedup, "¿Siempre para Rappi?", bill matching and repayment detection work. Today 30% of transactions carry one (1,260 / 4,261).
+- **Merge the two rule systems.** Today `category_rules` (pattern → category, 266) and `destinatario_rules` (pattern → merchant → default category) overlap. MLP: one path, text → merchant (rule) → category (merchant default). "¿Siempre para Rappi?" writes the merchant's default category. Migrate `category_rules` into merchants.
+- **Persons are destinatarios with `kind = person`**; they're the people in Te deben, and incoming transfers matched to them become repayment cards.
+- **UI removed:** destinatarios list, merge dialog, suggestions tab, rule editor. "Renombrar comercio" lives in Detalle; rules show read-only in Ajustes › Reglas.
+- **Recurring stays exactly as the source of truth:** `recurring_transaction_templates` → `recurring_occurrences` (pending → paid / skipped), `findMatchingOccurrence` / anchored matching, `detectRecurringCandidates`, `ensureCurrentOccurrences`. Surfaced as **Pagos del ciclo**; candidates become Revisar cards ("¿Pagas Netflix cada mes?"); subscriptions are just bills; "Pendiente" occurrences feed "Por pagar" in Disponible.
+- **Recurring UI removed:** template editor forms, Periodo/envelopes, the separate subscriptions screen, localStorage paid overlay.
+
 ### Change semantics
 - **Splits:** today spending = `amount − split_repaid_amount` (your spending shrinks as friends repay). MLP: your share is spending from day one; the rest is a Te deben receivable. Disponible drops by the full amount. This needs a new "prestado" amount on the transaction (or a personal_debt origin leg), and the aggregates must move to it.
 - **Budgets:** `budgets` rows reused as limits, but no 50/30/20, no wizard, no Plan/Periodo.
