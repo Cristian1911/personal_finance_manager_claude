@@ -1,0 +1,39 @@
+name: FX rates refresh
+
+# Hourly, Monday–Friday (UTC), refresh the exchange rates Zeta shows
+# (USD hoy, conversions, /deudas/dolares). The webapp endpoint fetches the
+# live quote and writes exchange_rate_cache.
+#
+# Requires two repository secrets:
+#   NEXT_PUBLIC_APP_URL — already used by the image build (e.g. https://zeta.example.com)
+#   CRON_SECRET         — same value as CRON_SECRET in the VPS .env
+on:
+  schedule:
+    - cron: '7 * * * 1-5'
+  workflow_dispatch:
+
+concurrency:
+  group: fx-rates-cron
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Refresh exchange rates
+        env:
+          APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${APP_URL:-}" ] || [ -z "${CRON_SECRET:-}" ]; then
+            echo "::error::NEXT_PUBLIC_APP_URL or CRON_SECRET secret is missing."
+            exit 1
+          fi
+          curl -sS --fail-with-body --retry 3 --retry-delay 10 --retry-all-errors \
+            --max-time 60 \
+            -X POST \
+            -H "x-cron-secret: ${CRON_SECRET}" \
+            "${APP_URL%/}/api/webhooks/fx-rates"
+          echo

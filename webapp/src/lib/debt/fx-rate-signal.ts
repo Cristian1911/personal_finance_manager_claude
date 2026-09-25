@@ -1,11 +1,7 @@
 import "server-only";
 import { getExchangeRateTrend } from "@/actions/exchange-rate";
-import { isDebtAccountType } from "@/lib/utils/account-balance";
-import { getTrackedCurrencyBalances } from "@/lib/utils/currency-balances";
+import { largestForeignDebt } from "@/lib/debt/usd-debt-insights";
 import type { Account, CurrencyCode } from "@/types/domain";
-
-/** ±% vs the 30-day average that counts as a "cheap" / "expensive" day. */
-export const FX_RATE_SIGNAL_THRESHOLD_PCT = 2;
 
 export interface FxRateSignal {
   from: CurrencyCode;
@@ -28,24 +24,9 @@ export async function getForeignDebtFxSignal(
   accounts: Account[],
   baseCurrency: CurrencyCode,
 ): Promise<FxRateSignal | null> {
-  const debtByCurrency = new Map<CurrencyCode, number>();
-  for (const account of accounts) {
-    if (!isDebtAccountType(account.account_type)) continue;
-    const balances = getTrackedCurrencyBalances({
-      currencyCode: account.currency_code,
-      currentBalance: account.current_balance ?? 0,
-      currencyBalances: account.currency_balances,
-    });
-    for (const { currency, currentBalance } of balances) {
-      if (currency === baseCurrency || currentBalance <= 0) continue;
-      debtByCurrency.set(currency, (debtByCurrency.get(currency) ?? 0) + currentBalance);
-    }
-  }
-  if (debtByCurrency.size === 0) return null;
-
-  const [from, foreignDebt] = [...debtByCurrency.entries()].reduce((best, entry) =>
-    entry[1] > best[1] ? entry : best,
-  );
+  const largest = largestForeignDebt(accounts, baseCurrency);
+  if (!largest) return null;
+  const [from, foreignDebt] = largest;
   const result = await getExchangeRateTrend(from, baseCurrency).catch(() => null);
   if (!result || !(result.rate > 0)) return null;
 

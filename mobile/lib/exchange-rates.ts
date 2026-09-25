@@ -9,7 +9,13 @@ import { getDatabase } from "./db/database";
  * callers render nothing until a rate is available.
  */
 
-const FAWAZ_BASE = "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies";
+// `/currencies/{from}.json` → `{ date, [from]: { [to]: rate } }`. The old
+// single-pair `/{from}/{to}.json` path no longer answers with a flat
+// `{ [to]: rate }`, which left the hint on a months-old cached rate.
+const FAWAZ_URLS = [
+  "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies",
+  "https://latest.currency-api.pages.dev/v1/currencies",
+];
 const FRESH_TTL_MS = 24 * 60 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 5000;
 
@@ -48,22 +54,28 @@ async function writeLocal(pair: string, rate: number): Promise<void> {
   }
 }
 
-async function fetchRemote(from: CurrencyCode, to: CurrencyCode): Promise<number | null> {
+async function fetchFrom(base: string, from: string, to: string): Promise<number | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    const res = await fetch(`${FAWAZ_BASE}/${from.toLowerCase()}/${to.toLowerCase()}.json`, {
-      signal: controller.signal,
-    });
+    const res = await fetch(`${base}/${from}.json`, { signal: controller.signal });
     if (!res.ok) return null;
-    const data = (await res.json()) as Record<string, unknown>;
-    const rate = data?.[to.toLowerCase()];
+    const data = (await res.json()) as Record<string, Record<string, unknown> | undefined>;
+    const rate = data?.[from]?.[to];
     return typeof rate === "number" && Number.isFinite(rate) && rate > 0 ? rate : null;
   } catch {
     return null;
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function fetchRemote(from: CurrencyCode, to: CurrencyCode): Promise<number | null> {
+  for (const base of FAWAZ_URLS) {
+    const rate = await fetchFrom(base, from.toLowerCase(), to.toLowerCase());
+    if (rate) return rate;
+  }
+  return null;
 }
 
 /**
