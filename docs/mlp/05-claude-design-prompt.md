@@ -27,7 +27,7 @@ One number, **Disponible**: what you can still spend until your next payday, and
 - **Trips:** a separate pot with its own amount and dates; spending inside it doesn't lower the monthly Disponible.
 - **Category limits:** 3 by default, suggested from real spending after a few weeks, the user can add more. Limits are a lens on Disponible, never a second number.
 - **Privacy is a feature:** the app only reads notifications from bank apps the user picked; everything else is discarded on the phone.
-- No charts dashboard, no gamification, no AI language.
+- No charts dashboard, no gamification, no AI language (smart suggestions appear as ordinary pre-selected chips).
 
 ## Screens to design
 1. **Onboarding** (6–8 screens): welcome → payday and income → "¿Cuánto tienes hoy en tus cuentas?" → bills before payday (chips + amount) → **the aha screen** showing their Disponible → Android: pick bank apps + explainer before the system's scary notification-access warning → iPhone: "Conectar Gmail" (read-only, bank senders only) → first 3 quick questions.
@@ -40,7 +40,8 @@ One number, **Disponible**: what you can still spend until your next payday, and
 8. **Viaje:** pot, spent, left, per day left, foreign-currency rows marked "≈".
 9. **Límites:** 3 rows with bar vs pro-rated line and verdict word; the suggestion card "Te sugiero 3 límites".
 10. **Push notifications and weekly digest:** lock-screen mockups for "Mañana pagas Arriendo…", "Te llegó el sueldo…", Sunday digest.
-11. **Ajustes → Fuentes and Privacidad:** each bank source with a health dot, and "Hoy descartamos 214 avisos de otras apps sin leerlos".
+11. **Agregar gasto por voz o texto:** mic button + text field; the user says "almuerzo con Juan, 45 mil, pagué yo y me debe la mitad" and gets a pre-filled row (amount, category, "tu parte $22.500", "Juan te debe $22.500") to confirm with one tap. Show listening, parsed and "no entendí el monto" states.
+12. **Ajustes → Fuentes and Privacidad:** each bank source with a health dot, and "Hoy descartamos 214 avisos de otras apps sin leerlos".
 
 ## Sample data (use it, keep it consistent across screens)
 Persona: **Laura, 27**, Medellín. Paid the 15th and 30th, $2.100.000 each. Bancolombia debit *4410, Nu credit card *7731.

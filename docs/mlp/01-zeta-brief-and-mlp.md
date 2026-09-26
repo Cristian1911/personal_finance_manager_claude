@@ -104,6 +104,8 @@ Health score, 50/30/20 buckets, per-category budgets (maybe v1.1 as "limits" on 
 | Disponible vs lending | **Disponible drops by the full outflow** (cash reality). Next to it: "+$X cuando te paguen". This is why lending must be tracked. |
 | Capture (Android) | **Bank notification reading, done right**: opt-in; the user picks which apps' notifications Zeta may read (everything else is dropped on-device); pre-built exact templates per bank; unknown notifications from chosen apps go to a training inbox where the user marks amount / merchant / card, which becomes a deterministic template for that sender. Auto-capture only on a full template match; partial matches go to review. Never a generic "any number looks like money" regex; OTP/promo/balance messages are recognized and ignored. |
 
+| AI assist (optional) | AI proposes, deterministic code decides. Typed outputs only. v1: voice/text manual capture (phone speech-to-text, deterministic parser first, AI fallback) + shared merchant-name normalization. Never for idempotency keys, Disponible or live parsing. See `06-ai-assist.md`. |
+
 ### Open / assumed
 - iOS capture: Gmail read-only connect (≤100 users without Google's audit) + monthly statement PDF. Desktop setup page for email forwarding is a later upgrade, not onboarding.
 - Single user (no couples mode); encryption kept, schema frozen for the MLP.
