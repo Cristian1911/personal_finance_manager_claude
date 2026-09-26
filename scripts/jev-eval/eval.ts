@@ -10,7 +10,7 @@
  * Jev runs only when TYPESAFE_API_KEY is set and `jev-client.ts` is
  * implemented against the official API reference.
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { autoCategorize } from "../../packages/shared/src/utils/auto-categorize";
 import { cleanDescription } from "../../packages/shared/src/utils/destinatario-matcher";
@@ -160,7 +160,28 @@ function report(name: string, items: Row[], preds: Prediction[]) {
   console.log(`|   ↳ thresholds | ${th} ||||||`);
 }
 
+/** Scores predictions produced outside this script (e.g. an LLM run), keyed by test index. */
+function loadExternal(): [string, Map<number, Prediction>][] {
+  const spec = process.env.JEV_EVAL_PREDS;
+  if (!spec) return [];
+  return spec.split(",").map((pair) => {
+    const [name, file] = pair.split("=");
+    const list: (Prediction & { id: number })[] = JSON.parse(readFileSync(join(DIR!, file), "utf8"));
+    return [name, new Map(list.map((p) => [p.id, { label: labels.includes(p.label ?? "") ? p.label : null, confidence: p.confidence, top: p.top ?? [] }]))];
+  });
+}
+
 async function main() {
+  if (process.env.JEV_EVAL_EXPORT) {
+    // Exactly what a model would receive: masked state, no labels for the item itself.
+    const out = (withExamples: boolean) =>
+      JSON.stringify({ options: labels, items: test.map((r, id) => ({ id, state: jevState(r, withExamples) })) }, null, 1);
+    writeFileSync(join(DIR!, "items-cold.json"), out(false));
+    writeFileSync(join(DIR!, "items-examples.json"), out(true));
+    console.log(`exported ${test.length} items`);
+    return;
+  }
+  const external = loadExternal();
   const subsets: [string, Row[]][] = [
     ["test (all)", test],
     ["test, unseen merchant", test.filter((r) => knn(r).label === null)],
@@ -173,6 +194,8 @@ async function main() {
     console.log("|---|---|---|---|---|---|---|");
     report("rules (built-in, cold)", items, items.map(rulesBuiltin));
     report("nearest neighbour (learned)", items, items.map(knn));
+    for (const [name, preds] of external)
+      report(name, items, items.map((r) => preds.get(test.indexOf(r)) ?? { label: null, confidence: 0, top: [] }));
     if (jevAvailable()) {
       const cold: Prediction[] = [];
       const few: Prediction[] = [];
