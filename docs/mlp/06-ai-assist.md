@@ -36,7 +36,9 @@ Earlier I said "only if measured". Given Jev's price and design, it moves to **v
 ### 3. Notification gatekeeper (from the bank apps the user chose)
 A `Choice` over {gasto, ingreso, rechazada, código OTP, promoción, saldo, alerta de seguridad, otro}, sent with digits masked. It replaces keyword heuristics for *what kind* of message it is; templates still extract the fields. It also cuts useless training cards (promos that happen to contain "$").
 
-### 4. Category suggestion for bank transactions
+### 4. Category suggestion for bank transactions — **tested: not Jev (see `07-category-eval-baselines.md`)**
+Eval result: best Jev 55% exact but 39% on new merchants, weak top-3, confidence never reaches 95% precision. A small LLM did better (56–57%, 77% top-3, 95% precision on ~20% of rows). Use rules + ask-once for known merchants and a small LLM once per new merchant (cached). The original plan follows for reference.
+
 The state is JSON: descriptor, canonical merchant if known, amount band, time, account type, and the user's categories for similar merchants. The output is a `Choice` of category with a probability.
 - Only above a high threshold does it pre-select the Revisar chip. User rules and merchant defaults always win.
 - Your point stands: raw descriptors are messy. So this goes **after** merchant resolution (#5), and it's measured on your 4,261 labeled transactions before shipping.
@@ -66,5 +68,5 @@ Idempotency keys, Disponible, verdicts, balances, amounts or dates, the weekly d
 
 ## MLP cut (revised)
 - **v1:** #2 voice/text capture (code extracts, Jev picks) and #3 notification gatekeeper. Both are low-risk and directly reduce typing and false captures.
-- **v1.1:** #1 near-duplicate/bill/repayment/trip judgments, #4 category suggestions, #5 merchant resolution, each after passing the eval.
+- **v1.1:** #1 near-duplicate/bill/repayment/trip judgments and #5 merchant resolution, each after passing its own eval. #4 category suggestions → small LLM per new merchant, not Jev (tested).
 - **v1.1, LLM not Jev:** #6 template drafting.

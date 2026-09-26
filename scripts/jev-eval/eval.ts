@@ -32,6 +32,13 @@ const DIR = process.env.JEV_EVAL_DIR;
 if (!DIR) throw new Error("Set JEV_EVAL_DIR to the folder holding data.tsv + cats.json");
 const SPLIT_DATE = process.env.JEV_EVAL_SPLIT ?? "2026-08-01";
 
+// Optional generic category descriptions (desc.json: {"Parent > Name": "…"}), for the Jev variant.
+let descriptions: Record<string, string> | undefined;
+try {
+  descriptions = JSON.parse(readFileSync(join(DIR, "desc.json"), "utf8"));
+} catch {
+  descriptions = undefined;
+}
 const cats: Record<string, string> = JSON.parse(readFileSync(join(DIR, "cats.json"), "utf8"));
 const labels = [...new Set(Object.values(cats))].sort();
 const rows: Row[] = readFileSync(join(DIR, "data.tsv"), "utf8")
@@ -119,12 +126,26 @@ function jevState(r: Row, withExamples: boolean) {
   return state;
 }
 
-async function jev(r: Row, withExamples: boolean): Promise<Prediction> {
+const jevStats = { calls: 0, tokens: 0, ms: [] as number[] };
+
+// Subsets overlap, so each (row, variant) is asked once.
+const jevCache = new Map<string, Promise<Prediction>>();
+function jev(r: Row, withExamples: boolean, described = false): Promise<Prediction> {
+  const key = `${rows.indexOf(r)}:${withExamples}:${described}`;
+  if (!jevCache.has(key)) jevCache.set(key, jevUncached(r, withExamples, described));
+  return jevCache.get(key)!;
+}
+
+async function jevUncached(r: Row, withExamples: boolean, described: boolean): Promise<Prediction> {
   const res = await jevChoice({
     state: jevState(r, withExamples),
     question: "¿En qué categoría de gasto o ingreso va este movimiento bancario?",
     options: labels,
+    descriptions: described ? descriptions : undefined,
   });
+  jevStats.calls++;
+  jevStats.tokens += res.inputTokens;
+  jevStats.ms.push(res.ms);
   const top = Object.entries(res.probabilities)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
@@ -205,7 +226,23 @@ async function main() {
       }
       report("Jev cold", items, cold);
       report("Jev + 5 user examples", items, few);
+      if (descriptions) {
+        const dCold: Prediction[] = [];
+        const dFew: Prediction[] = [];
+        for (const r of items) {
+          dCold.push(await jev(r, false, true));
+          dFew.push(await jev(r, true, true));
+        }
+        report("Jev cold + category descriptions", items, dCold);
+        report("Jev + examples + descriptions", items, dFew);
+      }
     }
+  }
+  if (jevStats.calls) {
+    const ms = [...jevStats.ms].sort((a, b) => a - b);
+    console.log(
+      `\nJev: ${jevStats.calls} calls · ${jevStats.tokens} input tokens (avg ${Math.round(jevStats.tokens / jevStats.calls)}) · latency p50 ${ms[Math.floor(ms.length / 2)]} ms, p95 ${ms[Math.floor(ms.length * 0.95)]} ms`,
+    );
   }
   if (!jevAvailable()) console.log("\n(Jev skipped: TYPESAFE_API_KEY not set or client not implemented.)");
 }
