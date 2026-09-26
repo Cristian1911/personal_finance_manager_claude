@@ -19,7 +19,7 @@ Subsets:
 - **Rows the user had to correct by hand (59):** rules 7%, learned history 3%, LLM cold 53%, LLM + examples 51%.
 
 ## What it means
-1. **A model roughly 4–5× the rules engine** on exact category and gets the right answer into the top 3 about **75%** of the time. That fits the Revisar card design (3 suggested chips, one tap).
+1. **A model is roughly 4–5× better than the rules engine** on exact category, and it gets the right answer into the top 3 about **75%** of the time. That fits the Revisar card design (3 suggested chips, one tap).
 2. **Auto-applying is only safe for a small slice.** Even the best method reaches ≥95% precision on only ~20% of rows. So: suggest always, pre-select only above a high threshold, never write silently.
 3. **User examples mostly improve confidence, not accuracy.** They make the model's confidence trustworthy (the only method with a usable ≥95% threshold), which is what the pre-select rule needs.
 4. **The ceiling is the data, not the model.** The same descriptor carries different categories on different days (e.g. `COMPRA EN RAPPI COLO` → Delivery / Mascotas / Medications / Subscriptions), and transfers to accounts say nothing about their purpose. Asking once per ambiguous merchant ("¿Rappi siempre es Domicilios?") matters more than a better model.
