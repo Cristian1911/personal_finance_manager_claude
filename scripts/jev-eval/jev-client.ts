@@ -22,7 +22,7 @@ export async function jevChoice(input: {
   question: string;
   options: string[];
   /** Optional one-line description per option (TypeSafe recommends them for similar options). */
-  descriptions?: Record<string, string>;
+  descriptions?: Record<string, unknown>;
 }): Promise<JevChoiceResult> {
   const body = {
     model: MODEL,

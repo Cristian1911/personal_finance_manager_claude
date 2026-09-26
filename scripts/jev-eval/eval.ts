@@ -33,22 +33,31 @@ if (!DIR) throw new Error("Set JEV_EVAL_DIR to the folder holding data.tsv + cat
 const SPLIT_DATE = process.env.JEV_EVAL_SPLIT ?? "2026-08-01";
 
 // Optional generic category descriptions (desc.json: {"Parent > Name": "…"}), for the Jev variant.
-let descriptions: Record<string, string> | undefined;
+let descriptions: Record<string, unknown> | undefined;
 try {
-  descriptions = JSON.parse(readFileSync(join(DIR, "desc.json"), "utf8"));
+  descriptions = JSON.parse(readFileSync(join(DIR, process.env.JEV_EVAL_DESC ?? "desc.json"), "utf8"));
 } catch {
   descriptions = undefined;
 }
-const cats: Record<string, string> = JSON.parse(readFileSync(join(DIR, "cats.json"), "utf8"));
-const labels = [...new Set(Object.values(cats))].sort();
+// Optional taxonomy remap ({"old label": "new label" | null}); null rows are dropped as ambiguous gold.
+const taxonomy: Record<string, string | null> | undefined = process.env.JEV_EVAL_TAXONOMY
+  ? JSON.parse(readFileSync(join(DIR, process.env.JEV_EVAL_TAXONOMY), "utf8"))
+  : undefined;
+const remap = (l: string) => (taxonomy ? taxonomy[l] ?? null : l);
+const rawCats: Record<string, string> = JSON.parse(readFileSync(join(DIR, "cats.json"), "utf8"));
+const cats: Record<string, string | null> = Object.fromEntries(
+  Object.entries(rawCats).map(([id, l]) => [id, remap(l)]),
+);
+const labels = [...new Set(Object.values(cats).filter((l): l is string => Boolean(l)))].sort();
 const rows: Row[] = readFileSync(join(DIR, "data.tsv"), "utf8")
   .trim()
   .split("\n")
   .slice(1)
   .map((line) => {
     const [descr, label, dir, acct, n, first, src] = line.split("\t");
-    return { descr, label, dir, acct, n: Number(n), first, src };
-  });
+    return { descr, label: remap(label) as string, dir, acct, n: Number(n), first, src };
+  })
+  .filter((r) => Boolean(r.label));
 
 const train = rows.filter((r) => r.first < SPLIT_DATE);
 const test = rows.filter((r) => r.first >= SPLIT_DATE);
@@ -233,6 +242,11 @@ async function main() {
           dCold.push(await jev(r, false, true));
           dFew.push(await jev(r, true, true));
         }
+        if (process.env.JEV_EVAL_DUMP && sname === "test (all)")
+          writeFileSync(
+            join(DIR!, "jev-dump.json"),
+            JSON.stringify(items.map((r, i) => ({ gold: r.label, cold: dCold[i], few: dFew[i], examples: jevState(r, true).ejemplos_del_usuario ? true : false }))),
+          );
         report("Jev cold + category descriptions", items, dCold);
         report("Jev + examples + descriptions", items, dFew);
       }

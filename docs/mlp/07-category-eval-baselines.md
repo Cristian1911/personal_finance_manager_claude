@@ -45,3 +45,43 @@ while being cheaper and faster. If it only matches accuracy but its probabilitie
 
 ## Caveats
 One user, 86 test rows, noisy labels; the LLM agents ran on this session's default model, which isn't necessarily the small model production would use. Treat the numbers as direction, not precision.
+
+---
+
+## Round 2 — compact list of 25 categories + descriptions tuned for Jev (2026-09-26)
+
+**Why:** fewer, clearer categories should help any classifier, and make budgets and limits more meaningful. The user's 98 categories were mapped to 25 (one bare "Lifestyle" label spanning several groups was dropped as ambiguous; no test rows affected). Jev got descriptions written the way TypeSafe recommends (what each option includes and what belongs elsewhere), naming only merchants from the pre-August training period or universally known brands.
+
+**How much is really predictable:** 93% of this user's transactions carry their merchant's usual category (95% with 25 categories). The rest are deliberate exceptions, like a delivery app used for pet food or medicine. On the test period, 81% (98 categories) / **87% (25 categories)** match the merchant's usual category, which is the ceiling for any engine that doesn't ask.
+
+| Method (25 categories, test n = 86) | Exact | Right group | Top 3 | New merchants (41) | ≥95% precision rule |
+|---|---|---|---|---|---|
+| Built-in rules | 17% | 22% | 17% | 10% | none |
+| Learned history | 28% | 31% | 34% | 0% | none |
+| Jev cold, names only | 29% | 35% | 45% | 22% | none |
+| Jev cold + tuned descriptions | 45% | 51% | 57% | 32% | none (≥0.9 → 40% at 85%) |
+| Jev + examples + tuned descriptions | 51% | 59% | 60% | 32% | none (≥0.9 → 40% at 91%) |
+| LLM cold (names only) | 66% | 76% | 81% | 66% | none (≥0.8 → 15% at 92%) |
+| **LLM + 5 examples (names only)** | **69%** | **81%** | **84%** | **68%** | **≥0.8 → 24% of rows at 95%** |
+
+Jev: 344 calls, ~1,200 input tokens per call, p50 162 ms.
+
+**Findings**
+- **Fewer categories clearly helps the LLM:** 57% → 69% exact, 77% → 84% top 3. That's close to the 87% ceiling, with no descriptions at all.
+- **Jev improves with descriptions (29% → 45% cold) but not past the LLM.** Its typical misses are a catch-all option attracting uncertain cases ("Otros") and literal readings (a restaurant becomes "Mercado" because both are food).
+- **Tuning stopped here on purpose.** Looking at Jev's test errors and rewriting descriptions to fix them would be tuning on the answers. Doing it properly needs a separate validation set (more labelled data, or other users' data with consent).
+
+**Decision (unchanged, now stronger):** categories = deterministic rules and "¿Siempre para X?" for known merchants, plus a small LLM once per new merchant (cached). **Adopt the compact list for the MLP:** 25 categories are enough for limits and spending views, and they make any engine better.
+
+### Proposed compact category list (MLP)
+- **Comida:** Mercado · Restaurantes y café · Domicilios
+- **Transporte:** Apps y taxis · Transporte público · Carro y moto
+- **Hogar:** Vivienda · Servicios · Casa y mantenimiento
+- **Salud** · **Mascotas** · **Suscripciones** · **Compras**
+- **Ocio:** Entretenimiento y hobbies · Viajes
+- **Personas:** Regalos · **Personal:** Cuidado personal y deporte · **Educación**
+- **Finanzas:** Pago de tarjeta o crédito · Intereses, comisiones e impuestos · Préstamos entre personas · Ahorro e inversión
+- **Ingresos:** Salario · Otros ingresos
+- **Otros:** Efectivo y otros
+
+In the MLP, *Pago de tarjeta o crédito* and own-account transfers are flow types (neutral to Disponible), not spending categories, and *Préstamos entre personas* is the Te deben ledger. Users can still add their own categories; these are the defaults.
