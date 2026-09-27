@@ -40,7 +40,12 @@ export default async function AccountsPage({
   const today = toColombiaDateString(new Date());
   const debtAccounts = accounts.filter((account) => isDebtAccountType(account.account_type));
   const liquidAccounts = accounts.filter((account) =>
-    ["CHECKING", "SAVINGS", "CASH", "INVESTMENT"].includes(account.account_type)
+    ["CHECKING", "SAVINGS", "CASH"].includes(account.account_type)
+  );
+  // Investments get their own section so "Liquidez y ahorro" matches the money
+  // the user can actually spend; they still count toward Patrimonio below.
+  const investmentAccounts = accounts.filter(
+    (account) => account.account_type === "INVESTMENT"
   );
   const otherAccounts = accounts.filter((account) => account.account_type === "OTHER");
   const debtPressureCount = debtAccounts.filter((account) => account.current_balance > 0).length;
@@ -82,6 +87,11 @@ export default async function AccountsPage({
       key: "liquidez",
       title: "Liquidez y ahorro",
       accounts: liquidAccounts,
+    },
+    {
+      key: "inversiones",
+      title: "Inversiones",
+      accounts: investmentAccounts,
     },
     {
       key: "deuda",

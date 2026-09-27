@@ -8,7 +8,7 @@ import { toColombiaDateString, getColombiaDayOfMonth } from "@/lib/utils/date";
 import { getAccounts } from "@/actions/accounts";
 import { getPendingOccurrencesCached, getNextIncomeOccurrenceCached } from "@/actions/occurrences";
 import { getRatesForCurrencies } from "@/actions/exchange-rate";
-import { isDebtAccountType } from "@/lib/utils/account-balance";
+import { isDebtAccountType, isLiquidAccountType } from "@/lib/utils/account-balance";
 import { PAY_CYCLE_LOOKAHEAD_DAYS } from "@/lib/constants/occurrences";
 import { getFreshnessLevel } from "@/lib/utils/dashboard";
 import { getIsDemoFilter, getDemoAccountIds } from "@/lib/demo-filter";
@@ -568,7 +568,7 @@ export async function getMonthlyCashflow(month?: string, currency?: CurrencyCode
 /**
  * Daily spending (OUTFLOW) for the given month (defaults to current).
  *
- * `liquidOnly` excludes CREDIT_CARD/LOAN accounts — cash-pace consumers
+ * `liquidOnly` excludes CREDIT_CARD/LOAN/INVESTMENT accounts — cash-pace consumers
  * (hero/ritmo, "gasto de hoy", quick view) must count only money that
  * left the liquid accounts, matching how "Disponible" is computed.
  * Consumption-vs-budget consumers (budget pace, activity heatmap) keep
@@ -731,6 +731,9 @@ export interface PendingObligation {
 
 export interface DashboardHeroData {
   totalLiquid: number;
+  /** INVESTMENT balances (fiducuenta, CDT, fondos). Part of net worth, never
+   *  of `totalLiquid` / Disponible — shown apart so the user sees where it is. */
+  totalInvestments: number;
   pendingObligations: PendingObligation[];
   totalPending: number;
   availableToSpend: number;
@@ -778,6 +781,7 @@ export async function getDashboardHeroData(
   if (!user || !accessToken) {
     return {
       totalLiquid: 0,
+      totalInvestments: 0,
       pendingObligations: [],
       totalPending: 0,
       availableToSpend: 0,
@@ -846,7 +850,10 @@ export async function getDashboardHeroData(
     a.currency_code === baseCurrency || rates.has(a.currency_code);
 
   const liquidAccounts = dashboardAccounts.filter(
-    (account) => !isDebtAccountType(account.account_type) && convertible(account)
+    (account) => isLiquidAccountType(account.account_type) && convertible(account)
+  );
+  const investmentAccounts = dashboardAccounts.filter(
+    (account) => account.account_type === "INVESTMENT" && convertible(account)
   );
   const creditCardAccounts = dashboardAccounts.filter(
     (account) => account.account_type === "CREDIT_CARD" && convertible(account)
@@ -856,6 +863,10 @@ export async function getDashboardHeroData(
   const includesConvertedAmounts = hasOtherCurrencies && rates.size > 0;
   const hasUnconvertibleCurrencies = hasOtherCurrencies && rates.size < otherCurrencies.length;
   const totalLiquid = liquidAccounts.reduce(
+    (sum, account) => sum + toBase(account.current_balance ?? 0, account.currency_code),
+    0
+  );
+  const totalInvestments = investmentAccounts.reduce(
     (sum, account) => sum + toBase(account.current_balance ?? 0, account.currency_code),
     0
   );
@@ -907,9 +918,15 @@ export async function getDashboardHeroData(
       due_date: o.occurrence_date,
     }));
 
-  // Exclude credit card obligations from disponible (they don't reduce liquid balance)
+  // Exclude credit card and investment obligations from disponible (neither
+  // is paid out of the liquid balance)
   const windowObligationsTotal = windowOccurrences
-    .filter((o) => isEffectiveOutflow(o) && o.account_type !== "CREDIT_CARD")
+    .filter(
+      (o) =>
+        isEffectiveOutflow(o) &&
+        o.account_type !== "CREDIT_CARD" &&
+        o.account_type !== "INVESTMENT"
+    )
     .reduce((sum, o) => sum + toBase(o.expected_amount, o.currency_code as CurrencyCode), 0);
 
   // 4. Pending INFLOW occurrences within window (expected income, NOT added to availableToSpend)
@@ -928,6 +945,7 @@ export async function getDashboardHeroData(
 
   return {
     totalLiquid,
+    totalInvestments,
     pendingObligations: allObligations,
     totalPending,
     availableToSpend,

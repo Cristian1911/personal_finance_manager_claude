@@ -11,6 +11,7 @@ import {
   type PurchaseFundingType,
   type PurchaseUrgency,
   isDebtAccountType,
+  isLiquidAccountType,
 } from "@zeta/shared";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
@@ -402,7 +403,7 @@ export async function getFinancialSnapshot(): Promise<FinancialSnapshot | null> 
 
   const liquidCashAvailable = accounts
     .filter(
-      (a) => !isDebtAccountType(a.account_type)
+      (a) => isLiquidAccountType(a.account_type)
     )
     .reduce((sum, a) => sum + Math.max(a.current_balance, 0), 0);
 
@@ -454,7 +455,7 @@ async function scoreItemWithSnapshot(
   const selectedAccount = item.account_id
     ? snapshot.accounts.find((a) => a.id === item.account_id)
     : snapshot.accounts.find(
-        (a) => !isDebtAccountType(a.account_type)
+        (a) => isLiquidAccountType(a.account_type)
       );
 
   if (!selectedAccount) return null;

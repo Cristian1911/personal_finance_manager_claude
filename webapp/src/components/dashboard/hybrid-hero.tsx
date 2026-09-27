@@ -369,6 +369,14 @@ const CalculoView = memo(function CalculoView({
             {formatCurrency(data.liquidBalance, data.currency)}
           </span>
         </div>
+        {data.investmentBalance > 0 && (
+          <div className="flex justify-between text-xs text-z-sage-dark">
+            <span>Inversiones (no incluidas)</span>
+            <span className="tabular-nums">
+              {formatCurrency(data.investmentBalance, data.currency)}
+            </span>
+          </div>
+        )}
         <div className="flex justify-between text-xs text-z-sage-light">
           <span>− Obligaciones pendientes</span>
           <span className="tabular-nums text-z-expense">

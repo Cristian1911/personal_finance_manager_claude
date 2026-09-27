@@ -7,6 +7,17 @@ export function isDebtAccountType(accountType: string): accountType is AccountTy
 }
 
 /**
+ * Money the user can spend today: every non-debt account except investments.
+ * An INVESTMENT account (fiducuenta, CDT, fondo) still counts toward net
+ * worth, but adding it to "Disponible" overstates the cash the user has —
+ * moving savings into a fiducuenta must not look like the money is still
+ * available.
+ */
+export function isLiquidAccountType(accountType: string): boolean {
+  return !isDebtAccountType(accountType) && accountType !== "INVESTMENT";
+}
+
+/**
  * An INFLOW to a credit card or loan is a payment against debt, never income.
  * Promoted from `mobile/lib/transaction-semantics.ts`, which had the only named
  * helper for a rule the rest of the codebase kept re-inlining.
