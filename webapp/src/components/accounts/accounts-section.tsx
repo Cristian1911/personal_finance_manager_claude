@@ -10,7 +10,8 @@ import type { AccountType } from "@/types/domain";
 /** Display groups in render order. OTHER is intentionally excluded. */
 const ACCOUNT_GROUPS: { label: string; types: AccountType[]; isDebt: boolean }[] = [
   { label: "Liquidez", types: ["CHECKING", "CASH"], isDebt: false },
-  { label: "Ahorro e inversión", types: ["SAVINGS", "INVESTMENT"], isDebt: false },
+  { label: "Ahorro", types: ["SAVINGS"], isDebt: false },
+  { label: "Inversiones", types: ["INVESTMENT"], isDebt: false },
   { label: "Tarjetas de crédito", types: ["CREDIT_CARD"], isDebt: true },
   { label: "Préstamos", types: ["LOAN"], isDebt: true },
 ];

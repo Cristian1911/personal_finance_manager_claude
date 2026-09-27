@@ -6,4 +6,5 @@ export {
   reverseAccountBalanceDelta,
   getDirectionForBalanceDelta,
   isDebtAccountType,
+  isLiquidAccountType,
 } from "@zeta/shared";

@@ -26,6 +26,8 @@ export interface RitmoData extends RitmoResult {
   windowEndLabel: string;
   /** Total liquid balance carried over so the UI can show "balance disponible". */
   liquidBalance: number;
+  /** INVESTMENT balances left out of `liquidBalance`, for the Cálculo view. */
+  investmentBalance: number;
   /** Sum of pending obligation amounts in the window, for the secondary panel. */
   pendingObligationsTotal: number;
   /** Next-income metadata for the "Próximo ingreso" line in the Cálculo view. */
@@ -96,6 +98,7 @@ export async function getRitmo(
         currency: usedCurrency,
         windowEndLabel,
         liquidBalance: heroData.totalLiquid,
+        investmentBalance: heroData.totalInvestments,
         pendingObligationsTotal: heroData.windowObligations,
         nextIncomeName: heroData.nextIncomeName,
         nextIncomeAmount: heroData.nextIncomeAmount,

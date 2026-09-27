@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyAccountBalanceDelta,
   getDirectionForBalanceDelta,
+  isLiquidAccountType,
   reverseAccountBalanceDelta,
 } from "../account-balance";
 
@@ -110,5 +111,19 @@ describe("getDirectionForBalanceDelta", () => {
         delta: -50,
       })
     ).toBe("INFLOW");
+  });
+});
+
+describe("isLiquidAccountType", () => {
+  it("counts cash-like accounts as liquid", () => {
+    for (const t of ["CHECKING", "SAVINGS", "CASH", "OTHER"]) {
+      expect(isLiquidAccountType(t)).toBe(true);
+    }
+  });
+
+  it("leaves investments and debt out of the liquid balance", () => {
+    for (const t of ["INVESTMENT", "CREDIT_CARD", "LOAN"]) {
+      expect(isLiquidAccountType(t)).toBe(false);
+    }
   });
 });

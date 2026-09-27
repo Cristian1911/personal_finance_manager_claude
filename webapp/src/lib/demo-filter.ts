@@ -39,8 +39,8 @@ export async function getIsDemoFilter(userId: string): Promise<boolean> {
  * Fetches account IDs matching the demo filter for a user.
  * Returns null if no accounts match (caller should return empty).
  *
- * `liquidOnly` restricts to liquid accounts — excludes CREDIT_CARD/LOAN
- * (same set as `isDebtAccountType` in @zeta/shared). Used by cash-pace
+ * `liquidOnly` restricts to liquid accounts — excludes CREDIT_CARD/LOAN/INVESTMENT
+ * (same set as `isLiquidAccountType` in @zeta/shared). Used by cash-pace
  * metrics (hero/ritmo, "gasto de hoy") where a credit-card purchase must
  * not count against the liquid-balance budget.
  *
@@ -68,7 +68,7 @@ export async function getDemoAccountIds(
     query = query.eq("is_active", true);
   }
   if (opts?.liquidOnly) {
-    query = query.not("account_type", "in", "(CREDIT_CARD,LOAN)");
+    query = query.not("account_type", "in", "(CREDIT_CARD,LOAN,INVESTMENT)");
   }
   const { data } = await query;
   const ids = (data ?? []).map((a) => a.id);
