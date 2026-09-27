@@ -10,6 +10,7 @@ import {
   type PurchaseFundingType,
   type PurchaseUrgency,
   isDebtAccountType,
+  isLiquidAccountType,
 } from "@zeta/shared";
 import { z } from "zod";
 import { uuidStr } from "@/lib/validators/shared";
@@ -164,7 +165,7 @@ export async function analyzePurchaseDecisionAction(
   const liquidCashAvailable = accounts
     .filter(
       (account) =>
-        !isDebtAccountType(account.account_type)
+        isLiquidAccountType(account.account_type)
     )
     .reduce((sum, account) => sum + Math.max(account.current_balance, 0), 0);
 

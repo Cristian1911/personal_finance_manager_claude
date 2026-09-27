@@ -918,9 +918,15 @@ export async function getDashboardHeroData(
       due_date: o.occurrence_date,
     }));
 
-  // Exclude credit card obligations from disponible (they don't reduce liquid balance)
+  // Exclude credit card and investment obligations from disponible (neither
+  // is paid out of the liquid balance)
   const windowObligationsTotal = windowOccurrences
-    .filter((o) => isEffectiveOutflow(o) && o.account_type !== "CREDIT_CARD")
+    .filter(
+      (o) =>
+        isEffectiveOutflow(o) &&
+        o.account_type !== "CREDIT_CARD" &&
+        o.account_type !== "INVESTMENT"
+    )
     .reduce((sum, o) => sum + toBase(o.expected_amount, o.currency_code as CurrencyCode), 0);
 
   // 4. Pending INFLOW occurrences within window (expected income, NOT added to availableToSpend)
