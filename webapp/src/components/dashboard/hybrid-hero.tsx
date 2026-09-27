@@ -370,7 +370,7 @@ const CalculoView = memo(function CalculoView({
           </span>
         </div>
         {data.investmentBalance > 0 && (
-          <div className="flex justify-between text-[10px] text-muted-foreground">
+          <div className="flex justify-between text-xs text-z-sage-dark">
             <span>Inversiones (no incluidas)</span>
             <span className="tabular-nums">
               {formatCurrency(data.investmentBalance, data.currency)}
