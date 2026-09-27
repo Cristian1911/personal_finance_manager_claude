@@ -41,7 +41,8 @@ One number, **Disponible**: what you can still spend until your next payday, and
 9. **Límites:** 3 rows with bar vs pro-rated line and verdict word; the suggestion card "Te sugiero 3 límites".
 10. **Push notifications and weekly digest:** lock-screen mockups for "Mañana pagas Arriendo…", "Te llegó el sueldo…", Sunday digest.
 11. **Agregar gasto por voz o texto:** mic button + text field; the user says "almuerzo con Juan, 45 mil, pagué yo y me debe la mitad" and gets a pre-filled row (amount, category, "tu parte $22.500", "Juan te debe $22.500") to confirm with one tap. Show listening, parsed and "no entendí el monto" states.
-12. **Ajustes → Fuentes and Privacidad:** each bank source with a health dot, and "Hoy descartamos 214 avisos de otras apps sin leerlos".
+12. **"Ordenar en 1 minuto" (teach categories):** one merchant card in the centre ("Rappi · 14 movimientos · $610.000") and 4 drop zones around it (top 3 suggested categories + "Otra…"). Drag or tap; the card flies into the zone and shows "14 movimientos → Domicilios". 10 cards per session, progress bar, undo toast. Then the follow-up "¿Siempre es así?" with Siempre / Casi siempre / Depende, pregúntame. Also "Lo que Zeta sabe": "Reconozco 48 comercios · 92% se clasifican solos", categories listing their merchants.
+13. **Ajustes → Fuentes and Privacidad:** each bank source with a health dot, and "Hoy descartamos 214 avisos de otras apps sin leerlos".
 
 ## Sample data (use it, keep it consistent across screens)
 Persona: **Laura, 27**, Medellín. Paid the 15th and 30th, $2.100.000 each. Bancolombia debit *4410, Nu credit card *7731.
