@@ -26,21 +26,30 @@
  *
  * A row's `flow_class_version` records which rules version produced its
  * verdict, so a backfill can find and re-derive everything below the current
- * one: `WHERE flow_class_version IS NOT NULL AND flow_class_version < N`.
+ * one: `WHERE flow_class_version > 0 AND flow_class_version < N` (plus
+ * `flow_class IS NULL` for never-classified rows).
  *
- * `flow_class_version IS NULL` means **not classifier-derived — do not
- * re-derive**. Two write paths set a class this module cannot express, because
- * the deciding fact is carried by nothing the classifier can see:
+ * `flow_class_version = FLOW_CLASS_HAND_SET_VERSION` (0) means **not
+ * classifier-derived — do not re-derive**. Two write paths set a class this
+ * module cannot express, because the deciding fact is carried by nothing the
+ * classifier can see:
  *
  *   * a manual balance adjustment (a reconciliation plug, not a movement)
  *   * a personal-debt repayment (the counterparty is a person, not an account)
  *
  * Stamping those with a real version would be a lie with teeth: the next
  * version-keyed backfill would "correct" them to SPEND and INCOME, which is
- * exactly what those two sites exist to prevent. NULL keeps them out of its
- * WHERE clause.
+ * exactly what those two sites exist to prevent.
  */
 export const FLOW_CLASS_RULES_VERSION = 2;
+
+/**
+ * `flow_class_version` for a class set by hand at a write path, not by the
+ * classifier. Not NULL: `transactions_enc_flow_class_version_check` requires a
+ * version whenever `flow_class` is set, so NULL makes the INSERT fail. Real
+ * rules versions start at 1, so 0 never collides with one.
+ */
+export const FLOW_CLASS_HAND_SET_VERSION = 0;
 
 export type FlowClass =
   /** Real income — INFLOW to a non-debt account. */
