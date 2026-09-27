@@ -940,6 +940,26 @@ async function processEmail(ctx: {
 
     console.log(`[email-ingest][${emailId}] Transaction auto-imported successfully`);
 
+    // Update account balance — before linking: a phantom swap in the linker
+    // reverses the phantom on this same account from a fresh read, and
+    // `matchedAccount.current_balance` predates the insert.
+    if (matchedAccount) {
+      const newBalance = applyAccountBalanceDelta({
+        currentBalance: matchedAccount.current_balance ?? 0,
+        accountType: matchedAccount.account_type,
+        direction: parsed.direction,
+        amount: parsed.amount,
+      });
+      const { error: balanceError } = await admin
+        .from("accounts")
+        .update({ current_balance: newBalance })
+        .eq("id", suggestedAccountId)
+        .eq("user_id", userId);
+      if (balanceError) {
+        console.error("[webhook] balance update failed:", balanceError);
+      }
+    }
+
     // Link to pending recurring occurrence if applicable. No session here:
     // the server action `linkTransactionToOccurrence` would find no user and
     // silently skip, so run the linker with the service-role context.
@@ -966,24 +986,6 @@ async function processEmail(ctx: {
       } catch (linkError) {
         // Linking never fails the import — the tx is already in.
         console.error(`[email-ingest][${emailId}] occurrence link failed:`, linkError);
-      }
-    }
-
-    // Update account balance
-    if (matchedAccount) {
-      const newBalance = applyAccountBalanceDelta({
-        currentBalance: matchedAccount.current_balance ?? 0,
-        accountType: matchedAccount.account_type,
-        direction: parsed.direction,
-        amount: parsed.amount,
-      });
-      const { error: balanceError } = await admin
-        .from("accounts")
-        .update({ current_balance: newBalance })
-        .eq("id", suggestedAccountId)
-        .eq("user_id", userId);
-      if (balanceError) {
-        console.error("[webhook] balance update failed:", balanceError);
       }
     }
 
