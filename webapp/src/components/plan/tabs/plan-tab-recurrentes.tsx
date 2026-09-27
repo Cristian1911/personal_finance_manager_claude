@@ -7,7 +7,7 @@ import {
   getRecurringTemplates,
   getRecurringSummary,
 } from "@/actions/recurring-templates";
-import { getOccurrencesForMonth } from "@/actions/occurrences";
+import { ensureOccurrencesForRange, getOccurrencesForMonth } from "@/actions/occurrences";
 import { RecurringFormDialog } from "@/components/recurring/recurring-form-dialog";
 import { RecurringList } from "@/components/recurring/recurring-list";
 import { RecurringTimelineView } from "@/components/recurring/recurring-timeline-view";
@@ -20,7 +20,22 @@ import { Verdict } from "@/components/ui/verdict";
 import { getCategories } from "@/actions/categories";
 import { formatCurrency } from "@/lib/utils/currency";
 import { countOccurrences } from "@/lib/utils/occurrence-counts";
+import { endOfMonth } from "date-fns";
+import { parseMonth, toColombiaDateString } from "@/lib/utils/date";
 import type { CurrencyCode } from "@/types/domain";
+
+/**
+ * The plan page only ensures occurrences through mid next month. A future
+ * month (reachable once a statement confirms a due date there) is generated
+ * first, so its list isn't missing late-month rows.
+ */
+async function loadOccurrences(month?: string) {
+  if (month && month > toColombiaDateString(new Date()).slice(0, 7)) {
+    const start = parseMonth(month);
+    await ensureOccurrencesForRange(start, endOfMonth(start));
+  }
+  return getOccurrencesForMonth(month);
+}
 
 interface PlanTabRecurrentesProps {
   month?: string;
@@ -35,7 +50,7 @@ export async function PlanTabRecurrentes({ month }: PlanTabRecurrentesProps = {}
       getRecurringSummary(),
       getPreferredCurrency(),
       getAttentionSnapshot(),
-      getOccurrencesForMonth(month),
+      loadOccurrences(month),
       getSubscriptions(),
     ]);
 

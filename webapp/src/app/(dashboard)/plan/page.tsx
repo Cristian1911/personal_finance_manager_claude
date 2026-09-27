@@ -11,8 +11,10 @@ import { DesktopOnly } from "@/components/ui/responsive-render";
 import { getPreferredCurrency } from "@/actions/profile";
 import { getHasSavedBudget } from "@/actions/budget";
 import { ensureCurrentOccurrences } from "@/actions/occurrences";
+import { getUpcomingPayments } from "@/actions/payment-reminders";
+import { recurringMonthsAhead } from "@/lib/recurring/confirmed-ahead";
 import { PAGE_STACK_CLASS } from "@/lib/constants/styles";
-import { formatMonthLabel, parseMonth } from "@/lib/utils/date";
+import { formatMonthLabel, parseMonth, toColombiaDateString } from "@/lib/utils/date";
 import { PlanResumenZone } from "@/components/plan/zones/plan-resumen-zone";
 import { PlanMobileZone } from "@/components/plan/zones/plan-mobile-zone";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
@@ -46,11 +48,15 @@ export default async function PlanPage({
   // Shell: lightweight data for header + tab nav badges. getHasSavedBudget runs
   // in parallel here (only meaningful on the presupuesto tab) to hide the month
   // selector during first-budget setup — the wizard is not month-scoped.
-  const [, currency, hasSavedBudget] = await Promise.all([
+  // Recurrentes may look one month ahead once an imported card/loan statement
+  // confirms a due date there (cached snapshot read, recurrentes tab only).
+  const [, currency, hasSavedBudget, upcomingPayments] = await Promise.all([
     ensureCurrentOccurrences(),
     getPreferredCurrency(),
     activeTab === "presupuesto" ? getHasSavedBudget() : Promise.resolve(true),
+    activeTab === "recurrentes" ? getUpcomingPayments() : Promise.resolve([]),
   ]);
+  const maxMonthsAhead = recurringMonthsAhead(upcomingPayments, toColombiaDateString(new Date()));
 
   const showMonthSelector = activeTab !== "presupuesto" || hasSavedBudget;
 
@@ -125,7 +131,7 @@ export default async function PlanPage({
             {showMonthSelector && (
               <div className="flex justify-center">
                 <Suspense fallback={<div className="h-9 w-40 rounded-md bg-z-surface-2 animate-pulse" />}>
-                  <MonthSelector compact />
+                  <MonthSelector compact maxMonthsAhead={maxMonthsAhead} />
                 </Suspense>
               </div>
             )}
@@ -156,7 +162,7 @@ export default async function PlanPage({
               <PlanTabNav activeTab={activeTab} month={month} />
               {showMonthSelector && (
                 <Suspense fallback={<div className="h-9 w-40 rounded-md bg-z-surface-2 animate-pulse" />}>
-                  <MonthSelector />
+                  <MonthSelector maxMonthsAhead={maxMonthsAhead} />
                 </Suspense>
               )}
             </div>

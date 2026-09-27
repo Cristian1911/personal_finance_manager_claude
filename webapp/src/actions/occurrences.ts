@@ -592,6 +592,14 @@ export async function ensureOccurrencesForRange(
     return { success: false, error: upsertError.message };
   }
 
+  // New rows must show up in cached month reads right away. Same render-
+  // context caveat as the prune above.
+  try {
+    updateTag("occurrences");
+  } catch {
+    // Render-context call — the fresh month key reads the DB anyway.
+  }
+
   return { success: true, data: undefined };
 }
 
