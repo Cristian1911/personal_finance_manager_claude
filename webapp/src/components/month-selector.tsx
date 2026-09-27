@@ -12,8 +12,16 @@ import {
   addMonths,
   subMonths,
 } from "@/lib/utils/date";
+import { startOfMonth } from "date-fns";
 
-export function MonthSelector({ compact = false }: { compact?: boolean }) {
+export function MonthSelector({
+  compact = false,
+  maxMonthsAhead = 0,
+}: {
+  compact?: boolean;
+  /** Months past the current one the cursor may reach (0 = current month is the limit). */
+  maxMonthsAhead?: number;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -41,6 +49,8 @@ export function MonthSelector({ compact = false }: { compact?: boolean }) {
   }
 
   const isCurrent = isCurrentMonth(currentMonth);
+  const lastMonth = addMonths(startOfMonth(new Date()), maxMonthsAhead);
+  const atLimit = currentMonth >= lastMonth;
 
   return (
     <div className="flex items-center gap-1">
@@ -67,7 +77,7 @@ export function MonthSelector({ compact = false }: { compact?: boolean }) {
         size="icon-sm"
         onClick={() => navigateToMonth(addMonths(currentMonth, 1))}
         aria-label="Mes siguiente"
-        disabled={isCurrent}
+        disabled={atLimit}
       >
         <ChevronRight className="h-4 w-4" />
       </Button>

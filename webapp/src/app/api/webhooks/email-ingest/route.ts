@@ -27,7 +27,7 @@ import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
 import { autoCategorize } from "@zeta/shared";
 import { matchTransactionToDestinatario } from "@/actions/destinatarios";
-import { linkTransactionToOccurrence } from "@/actions/occurrences";
+import { linkTransactionToOccurrenceWith } from "@/lib/recurring/occurrence-linking";
 import { revalidateFinancialViewsFromWebhook } from "@/lib/cache/revalidation";
 import { scheduleSubscriptionDetection } from "@/lib/subscriptions/detect";
 import type { Json } from "@/types/database";
@@ -940,20 +940,9 @@ async function processEmail(ctx: {
 
     console.log(`[email-ingest][${emailId}] Transaction auto-imported successfully`);
 
-    // Link to pending recurring occurrence if applicable
-    if (insertedTx) {
-      await linkTransactionToOccurrence(
-        suggestedAccountId,
-        parsed.transaction_date,
-        parsed.amount,
-        parsed.direction,
-        insertedTx.id,
-        destinatarioId,
-        { currencyCode },
-      );
-    }
-
-    // Update account balance
+    // Update account balance — before linking: a phantom swap in the linker
+    // reverses the phantom on this same account from a fresh read, and
+    // `matchedAccount.current_balance` predates the insert.
     if (matchedAccount) {
       const newBalance = applyAccountBalanceDelta({
         currentBalance: matchedAccount.current_balance ?? 0,
@@ -968,6 +957,35 @@ async function processEmail(ctx: {
         .eq("user_id", userId);
       if (balanceError) {
         console.error("[webhook] balance update failed:", balanceError);
+      }
+    }
+
+    // Link to pending recurring occurrence if applicable. No session here:
+    // the server action `linkTransactionToOccurrence` would find no user and
+    // silently skip, so run the linker with the service-role context.
+    if (insertedTx) {
+      try {
+        await linkTransactionToOccurrenceWith(
+          {
+            supabase: admin,
+            userId,
+            isAdmin: true,
+            invalidate: () => {
+              revalidateFinancialViewsFromWebhook();
+              revalidateTag("cashflow-planner", "zeta");
+            },
+          },
+          suggestedAccountId,
+          parsed.transaction_date,
+          parsed.amount,
+          parsed.direction,
+          insertedTx.id,
+          destinatarioId,
+          { currencyCode, labelHint: parsed.merchant ?? parsed.destination ?? null },
+        );
+      } catch (linkError) {
+        // Linking never fails the import — the tx is already in.
+        console.error(`[email-ingest][${emailId}] occurrence link failed:`, linkError);
       }
     }
 
