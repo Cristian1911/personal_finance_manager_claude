@@ -20,8 +20,10 @@ export async function applyDebtPaymentToBalances(params: {
   accountId: string;
   amount: number;
   currencyCode: string;
+  /** Service-role client (webhooks): see `deactivateTemplatesForPaidOffAccount`. */
+  serviceRole?: boolean;
 }): Promise<void> {
-  const { supabase, userId, accountId, amount, currencyCode } = params;
+  const { supabase, userId, accountId, amount, currencyCode, serviceRole } = params;
 
   const { data: account, error } = await supabase
     .from("accounts")
@@ -51,7 +53,7 @@ export async function applyDebtPaymentToBalances(params: {
   }
 
   if (nextBalance <= 0) {
-    await deactivateTemplatesForPaidOffAccount({ supabase, userId, accountId });
+    await deactivateTemplatesForPaidOffAccount({ supabase, userId, accountId, serviceRole });
   }
 }
 
@@ -68,12 +70,18 @@ export async function deactivateTemplatesForPaidOffAccount(params: {
   supabase: SupabaseClient<Database>;
   userId: string;
   accountId: string;
+  /**
+   * The service-role client has no JWT, so the encrypted view's INSTEAD OF
+   * UPDATE trigger would re-encrypt the NULLs it reads back — write the
+   * plain columns on the `_enc` table instead.
+   */
+  serviceRole?: boolean;
 }): Promise<number> {
-  const { supabase, userId, accountId } = params;
+  const { supabase, userId, accountId, serviceRole } = params;
   const today = toColombiaDateString(new Date());
 
   const { data: deactivated, error } = await supabase
-    .from("recurring_transaction_templates")
+    .from(serviceRole ? "recurring_transaction_templates_enc" : "recurring_transaction_templates")
     .update({ is_active: false, end_date: today })
     .eq("user_id", userId)
     .eq("account_id", accountId)

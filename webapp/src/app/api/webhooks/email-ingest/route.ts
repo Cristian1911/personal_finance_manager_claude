@@ -27,7 +27,7 @@ import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
 import { autoCategorize } from "@zeta/shared";
 import { matchTransactionToDestinatario } from "@/actions/destinatarios";
-import { linkTransactionToOccurrence } from "@/actions/occurrences";
+import { linkTransactionToOccurrenceWith } from "@/lib/recurring/occurrence-linking";
 import { revalidateFinancialViewsFromWebhook } from "@/lib/cache/revalidation";
 import { scheduleSubscriptionDetection } from "@/lib/subscriptions/detect";
 import type { Json } from "@/types/database";
@@ -940,17 +940,33 @@ async function processEmail(ctx: {
 
     console.log(`[email-ingest][${emailId}] Transaction auto-imported successfully`);
 
-    // Link to pending recurring occurrence if applicable
+    // Link to pending recurring occurrence if applicable. No session here:
+    // the server action `linkTransactionToOccurrence` would find no user and
+    // silently skip, so run the linker with the service-role context.
     if (insertedTx) {
-      await linkTransactionToOccurrence(
-        suggestedAccountId,
-        parsed.transaction_date,
-        parsed.amount,
-        parsed.direction,
-        insertedTx.id,
-        destinatarioId,
-        { currencyCode },
-      );
+      try {
+        await linkTransactionToOccurrenceWith(
+          {
+            supabase: admin,
+            userId,
+            isAdmin: true,
+            invalidate: () => {
+              revalidateFinancialViewsFromWebhook();
+              revalidateTag("cashflow-planner", "zeta");
+            },
+          },
+          suggestedAccountId,
+          parsed.transaction_date,
+          parsed.amount,
+          parsed.direction,
+          insertedTx.id,
+          destinatarioId,
+          { currencyCode, labelHint: parsed.merchant ?? parsed.destination ?? null },
+        );
+      } catch (linkError) {
+        // Linking never fails the import — the tx is already in.
+        console.error(`[email-ingest][${emailId}] occurrence link failed:`, linkError);
+      }
     }
 
     // Update account balance
