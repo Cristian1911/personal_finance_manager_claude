@@ -36,6 +36,7 @@ import {
 } from "@/lib/personal-debts/hierarchy";
 import {
   computeSplit,
+  FLOW_CLASS_HAND_SET_VERSION,
   getCurrencyDecimals,
   inferPersonalDebtRole,
   isPersonalDebtOverdue,
@@ -1177,10 +1178,10 @@ function buildRepaymentRow(
     // separate decision about what a receivable is worth, not part of wiring
     // the write paths.
     flow_class: direction === "OUTFLOW" ? "DEBT_PAYMENT" : "DEBT_CREDIT",
-    // NULL version — see the note on FLOW_CLASS_RULES_VERSION. The classifier
+    // Hand-set version — see the note on FLOW_CLASS_RULES_VERSION. The classifier
     // would call an INFLOW to a CHECKING account INCOME, so a version-keyed
     // backfill would undo exactly the fix this site makes.
-    flow_class_version: null,
+    flow_class_version: FLOW_CLASS_HAND_SET_VERSION,
     source_pattern: null,
   };
 }
