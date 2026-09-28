@@ -1,11 +1,11 @@
-# Zeta v2 — use-case catalog (draft for review, 2026-09-28)
+# Zeta v2 — use-case catalog (rev. 2026-09-28, D1–D9 decided)
 
 Every architecture, database and screen decision is checked against this list. Nothing gets built unless it serves a use case here; nothing here ships without a screen that serves it.
 
 **How to read it**
 - **Where:** the v2 surface that serves it (Inicio, Movimientos, Revisar, Detalle sheet, Pagos, Te deben, Límites, Viaje, Ajustes, Onboarding, Push). "Auto" = no screen, the app does it.
 - **Release:** `v1` launch · `v1.1` · `later` · `out` (deliberately not in the product).
-- **Status:** `ok` = follows the decisions in `01`/`03`/`04` · **`DECIDE`** = open, needs your call (collected at the end).
+- **Status:** `ok` = follows the decisions in `01`/`03`/`04` · `D#` = settled by the owner's decision of that number (table at the end).
 - IDs are stable; later docs reference them (e.g. "UC-F7").
 
 ---
@@ -21,7 +21,9 @@ Every architecture, database and screen decision is checked against this list. N
 | A5 | Declare the fixed payments I still owe before payday | Onboarding | v1 | ok |
 | A6 | See my Disponible before giving any permission | Onboarding (aha) | v1 | ok |
 | A7 | Connect a capture source: bank notifications (Android) / Gmail (iPhone) / a PDF | Onboarding, Ajustes › Fuentes | v1 | ok |
-| A8 | Add my accounts and cards (or let Zeta create them from what it sees) | Onboarding, Ajustes › Mis cuentas | v1 | **DECIDE** (D1) |
+| A8 | Add my accounts and cards up front | Onboarding (optional step), Ajustes › Mis cuentas | v1 | D1 |
+| A11 | Import a PDF whose account doesn't exist yet and create it from the statement | PDF import | v1 | D1 |
+| A12 | See a movement from an account Zeta doesn't know (new last-4) and add it or assign it to an existing one | Revisar | v1 | D1 (assumed) |
 | A9 | Sign in on a new phone and find everything there | Login | v1 | ok |
 | A10 | Existing user: move from the old app to v2 without losing data | First launch of v2 | v1 | ok |
 
@@ -39,8 +41,8 @@ Every architecture, database and screen decision is checked against this list. N
 | B8 | See who owes me and how much | Te deben | v1 | ok |
 | B9 | See how my limits are going | Límites | v1 | ok |
 | B10 | Get a weekly summary | Push + Inicio card (Sun/Mon) | v1 | ok |
-| B11 | See past cycles (how did last month go?) | Movimientos cycle switcher | v1 | **DECIDE** (D2) |
-| B12 | See my total debt (cards + loans) and how it's going down | — | later | **DECIDE** (D3) |
+| B11 | Look at a past cycle: its result (sobró / te pasaste), the four lines, where the money went, its movements | Inicio cycle switcher (‹ ciclo ›) | v1 | D2 |
+| B12 | See my total debt (cards + loans) and what's left on each | Pagos › Deudas section | v1 | D3 |
 | B13 | See a home-screen widget with my Disponible | Widget | v1.1 | ok |
 
 ## C. Recording money that moves
@@ -82,7 +84,7 @@ Every architecture, database and screen decision is checked against this list. N
 | D15 | Undo something Zeta or I just did | Toast (5 s), Detalle | v1 | ok |
 | D16 | Search for a movement | Movimientos | v1 | ok |
 | D17 | Create my own category (beyond the 25) | Category picker › Nueva | v1 | ok |
-| D18 | Use tags on movements | — | out | **DECIDE** (D4) |
+| D18 | Use tags on movements | — | later | D4 |
 
 ## E. Bills and recurring payments
 
@@ -98,7 +100,7 @@ Every architecture, database and screen decision is checked against this list. N
 | E8 | Mark a bill as paid when Zeta didn't see the payment | Pagos › row, push "¿Ya pagaste Claro?" | v1 | ok |
 | E9 | Link a movement to the bill it paid (Zeta guessed wrong) | Detalle › "Pagó…" | v1 | ok |
 | E10 | Get reminded the day before a bill | Push | v1 | ok |
-| E11 | Pay a bill in several parts | Pagos (partial) | v1 | **DECIDE** (D5) |
+| E11 | Pay a bill in several parts | Pagos (partial: "Pagado $600.000 de $1.100.000") | v1 | D5 |
 | E12 | See my subscriptions as a group | — (they're just bills) | out | ok |
 
 ## F. Credit cards, loans and debts with banks
@@ -109,13 +111,13 @@ Every architecture, database and screen decision is checked against this list. N
 | F2 | See this month's card bill and what it covers | Pagos › card | v1 | ok |
 | F3 | Pay the card (minimum, total or other amount) | Auto, or Pagos › card | v1 | ok |
 | F4 | See the cuotas pending on a card | Pagos › card › cuotas | v1 | ok |
-| F5 | Register a new loan (bank, vehicle, libre inversión): amount, rate, cuota, day | Ajustes › Mis cuentas › + Crédito | v1 | **DECIDE** (D3) |
+| F5 | Register a new loan (bank, vehicle, libre inversión): amount, rate, cuota, day | Ajustes › Mis cuentas › + Crédito | v1 | D3 |
 | F6 | Register a loan payment that covers the next cuota | Auto-match, or Pagos › loan | v1 | ok |
-| F7 | Register a payment that covers the next minimum **and closes the debt** (pay-off) | Pagos › loan/card › Registrar pago | v1 | **DECIDE** (D6) |
-| F8 | Make an extra payment to a loan (abono a capital) | Pagos › loan | v1 | **DECIDE** (D6) |
-| F9 | See how much I still owe on a loan and when it ends | Pagos › loan | v1 | **DECIDE** (D3) |
+| F7 | Register a payment that covers the next minimum **and closes the debt** (pay-off) | Pagos › loan/card › Registrar pago | v1 | D6 |
+| F8 | Make an extra payment to a loan (abono a capital) | Pagos › loan | v1 | D6 |
+| F9 | See how much I still owe on a loan and when it ends | Pagos › loan | v1 | D3 |
 | F10 | Plan paying off debts (avalanche/snowball, scenarios) | — | out | ok (01: nobody used it) |
-| F11 | Handle a card with USD debt | Pagos › card (≈ COP) | v1 | **DECIDE** (D7) |
+| F11 | Handle a card with USD debt | Pagos › card (≈ COP, "USD 120" subtitle) | v1 | D7 |
 
 ## G. Te deben (money I lent) and money I owe people
 
@@ -129,7 +131,9 @@ Every architecture, database and screen decision is checked against this list. N
 | G6 | Forgive what someone owes (becomes my spending) | Te deben › persona | v1 | ok |
 | G7 | Send a reminder by WhatsApp (pre-written) | Te deben › persona | v1 | ok |
 | G8 | Be warned when I'm lending too much | Te deben, digest | v1 | ok |
-| G9 | Register money **I** owe a person (they paid for me) | — | ? | **DECIDE** (D8) |
+| G9 | Register money **I** owe a person (they paid for me) | Te deben › Tú debes · Detalle › "Pagó otra persona" | v1 | D8 |
+| G11 | Pay back a person I owe (full or partial) | Tú debes › persona › Registrar pago, or auto-detected outgoing transfer | v1 | D8 |
+| G12 | See what I owe people | Te deben › Tú debes | v1 | D8 |
 | G10 | Share a purchase in cuotas with someone | Fue compartido on a cuota purchase | v1 | ok (engine exists) |
 
 ## H. Límites (the budget)
@@ -149,7 +153,7 @@ Every architecture, database and screen decision is checked against this list. N
 |---|---|---|---|---|
 | I1 | Set aside a fixed amount each cycle | Ajustes › Ahorro, first payday prompt | v1 | ok |
 | I2 | Decide what to do with what I didn't spend (to savings / keep it) | Push + prompt at new cycle | v1 | ok |
-| I3 | See how much I've saved in total / towards a goal | — | later | **DECIDE** (D9) |
+| I3 | See how much I've saved in total / towards a goal | — | later | D9 |
 
 ## J. Trips
 
@@ -179,18 +183,20 @@ Every architecture, database and screen decision is checked against this list. N
 
 ---
 
-## Open decisions in this catalog
+## Decisions (owner, 2026-09-28)
 
-| # | Question | My recommendation |
+| # | Question | Decision |
 |---|---|---|
-| D1 | **Accounts:** does the user create accounts/cards up front, or does Zeta create them from the first notification/email/PDF it sees ("Bancolombia *4410")? | Auto-create from what Zeta sees, confirm with one Revisar card; manual add stays in Ajustes. Onboarding asks only for the balance total (A4). |
-| D2 | **Past cycles:** can I browse last month's Disponible/verdict, or only past movements? | Movements + a one-line cycle result ("Ciclo 1–14 sep: te sobraron $85.000"). No history charts. |
-| D3 | **Loans as first-class:** 03 treats cards as accounts and cuotas as bills, but says little about bank loans. Do loans get balance, rate, remaining term and payoff tracking, or are they just a recurring bill? | A loan is an account (type LOAN, exists today) with balance + rate; its cuota is a bill. Show "Te faltan $X · termina en mar 2028" in Pagos. No planner. |
-| D4 | **Tags:** v1 had tags + tag groups (2 users used them). Keep? | Out. Trips cover the main tag use. Data kept in DB. |
-| D5 | **Partial bill payment:** pay rent in two transfers. | v1: an occurrence can have several linked payments; paid when the sum ≥ amount (±5%). |
-| D6 | **Pay-off and extra payments** (F7, F8): when a payment covers the minimum and more, or closes the balance. | One "Registrar pago" flow: Zeta shows the consequence ("Cubre la cuota de octubre y deja el crédito en $0 · se cancelan las cuotas siguientes") before saving. Extra payments lower the balance; future cuotas unchanged unless the balance hits 0. Detailed in session 3. |
-| D7 | **USD card debt:** show in COP (≈) or keep a separate USD line? | COP ≈ in Pagos, "USD 120" as subtitle; exact on PDF import. The FX timing page is out. |
-| D8 | **Money I owe people** (someone paid my share). v1 supports it (`borrowed`); 03 only has Te deben. | v1: yes, as a second section in the same screen ("Tú debes"), same mechanics reversed. It changes Disponible honesty the other way (you'll have to pay it). |
-| D9 | **Savings goals** beyond "aparta $X por ciclo". | Later. v1 only tracks the per-cycle amount and the surplus decision. |
+| D1 | Accounts: up front or auto-created? | **Both.** Users create accounts/cards up front (onboarding optional step, Ajustes). A PDF whose account doesn't exist offers to create it from the statement's metadata. *Assumed, confirm:* a notification/email with an unknown last-4 raises a Revisar card (add as new / assign to existing). |
+| D2 | Past cycles | **Yes.** Inicio has a cycle switcher; a past cycle shows its frozen result, the four lines, ¿En qué se me fue? and its movements. Read-only, no charts. |
+| D3 | Loans | **First-class.** A loan is an account (type `LOAN`) with balance, rate and term; its cuota is a bill. Pagos shows "Te faltan $X · termina en mar 2028". No payoff planner. |
+| D4 | Tags | **Later** (possible future update). Data kept in DB. |
+| D5 | Partial bill payment | **Yes.** An occurrence can have several linked payments; it's paid when the sum reaches the amount (±5 %). |
+| D6 | Pay-off / extra payments | **Recommendation taken.** One "Registrar pago" flow that shows the consequence before saving ("Cubre la cuota de octubre y deja el crédito en $0 · se cancelan las cuotas siguientes"). Extra payments lower the balance; future cuotas unchanged unless the balance reaches 0. |
+| D7 | USD card debt | **Recommendation taken.** COP ≈ in Pagos with "USD 120" subtitle; exact on PDF import. FX timing page out. |
+| D8 | Money I owe people | **Yes, v1.** "Tú debes" section in the Te deben screen, same mechanics reversed. Money I owe counts as a pending payment in Disponible (it will leave). |
+| D9 | Savings goals | **Later.** v1 tracks only the per-cycle amount and the surplus decision. |
 
-**Please review:** add missing use cases, strike what you don't want, move anything between v1 / v1.1 / later / out, and answer D1–D9 (or tell me to take the recommendations).
+Consequences to carry into the sessions:
+- **Session 2 (database):** accounts need `LOAN` balance/rate/term fields (check what `accounts` already has); occurrences need many-to-one payment links (D5); frozen cycle results need storing or recomputing (D2); `personal_debts.direction = 'borrowed'` becomes live again (D8).
+- **Session 3 (engine):** Disponible must subtract "Tú debes" as Por pagar (D8); pay-off flow (D6) and partial payments (D5) change how occurrences close.
