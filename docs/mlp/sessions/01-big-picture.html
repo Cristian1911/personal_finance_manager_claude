@@ -340,18 +340,9 @@ sequenceDiagram
       <p style="margin:0"><span class="decided-tag">DECIDED</span> Yes, the phone keeps a local copy and runs the full engine offline. Commands are queued and the server replays them with the same code. Extra cost: about +2 to 3 weeks in M0/M1 to turn the email webhook's inline pipeline into shared commands with SQLite and Postgres adapters.</p>
     </div>
 
-    <div class="dec">
+    <div class="dec decided">
       <div class="dec-h"><span class="dec-id">S1-2</span><h3>When the server's result differs from the phone's, who wins?</h3></div>
-      <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>Split by kind of field</b>
-          <ul>
-            <li><b>Bank facts</b> (amount, date, merchant text): the higher-trust source wins (PDF over email over notification over manual). This is today's rule.</li>
-            <li><b>Your choices</b> (category, note, split, cuotas, trip, bill link): yours always win. If you changed the same field on two devices, the latest change wins.</li>
-            <li><b>Real doubt</b> (a weak duplicate match): never decided silently. It becomes a Revisar card.</li>
-          </ul>
-        </div>
-        <div class="opt"><b>Server always wins</b>Simplest rule, but an offline edit could silently disappear if the server had different information. That breaks trust.</div>
-      </div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> Split by kind of field. <b>Bank facts</b> (amount, date, merchant text): the higher-trust source wins (PDF › email › notification › manual). <b>Your choices</b> (category, note, split, cuotas, trip, bill link): yours always win; the same field changed on two devices, the latest change wins. <b>Real doubt</b> (a weak duplicate match) is never decided silently: it becomes a Revisar card.</p>
     </div>
 
     <div class="dec">
