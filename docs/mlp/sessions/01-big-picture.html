@@ -91,7 +91,7 @@ li{margin:3px 0}
 <main>
 
 <header>
-  <div class="eyebrow">Zeta v2 · Planning session 1 of 6 · rev. 2</div>
+  <div class="eyebrow">Zeta v2 · Planning session 1 of 6 · closed</div>
   <h1>How Zeta v2 works</h1>
   <p class="lede">This session covers where each part of Zeta runs, how a purchase gets from your bank to your Disponible, and what works without signal. The answer to that last one is almost everything. The page ends with the decisions for this session. We'll take them one at a time in the chat.</p>
 </header>
@@ -350,12 +350,14 @@ sequenceDiagram
       <p style="margin:0"><span class="decided-tag">DECIDED</span> <b>Last 3 cycles of detail + a summary of every closed cycle, forever.</b> Summaries (about 2–5 KB each) hold: the four lines, adjustments, result and verdict; income (salary, other, repayments) vs total out; spending by category (amount, share, count) and top 5 merchants; starting and ending balance per account; ending debt per card and loan, pending cuotas, interest and fees; Te deben and Tú debes open at close; each límite's result; savings and the surplus decision. Summaries are derived, rebuilt by the same engine when late data arrives (marked "actualizado con el extracto"), and backfilled for existing users. Stored per cycle; the month view adds up its cycles. Only older movement detail needs signal.</p>
     </div>
 
-    <div class="dec">
-      <div class="dec-h"><span class="dec-id">S1-4</span><h3>What does the web companion do?</h3></div>
-      <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>PDF bulk import + accounts only</b>Upload several statements at once and manage accounts from a computer. Its actions are the same commands, run by the server engine. The old web dashboard stays until v2 ships, then gets retired.</div>
-        <div class="opt"><b>Also a read-only Disponible</b>Useful on a laptop, but it's another surface to keep correct.</div>
-      </div>
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S1-4</span><h3>What does the web app do?</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> <b>Until v2 ships:</b> the current web app stays exactly as it is and in daily use, on the same database. Schema changes are additive only (no renames, drops or meaning changes); v2's server engine is added as new API routes in the same Next.js app; the web gets one small change (the <code>NOTIFICATION</code> capture tier); the email pipeline refactor must replay the saved email corpus with identical results. Expected difference: shared purchases show different spending in each app (web: amount minus repaid; v2: your share). <b>After v2 ships:</b> the web shrinks to PDF bulk import + accounts, running the same commands.</p>
+    </div>
+
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S1-5</span><h3>Where is v2 developed?</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> A separate Supabase <b>dev project</b> with demo data. Migrations and command code are proven there first; your real account moves to v2 builds only when a milestone is stable.</p>
     </div>
 
   </div>
