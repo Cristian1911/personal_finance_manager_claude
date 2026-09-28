@@ -60,17 +60,22 @@ import {
 import { ExpandableStatTile } from "../../components/ui/ExpandableStatTile";
 import {
   applyReconciliationMerge,
+  computeLocalInstallmentGroupId,
   createTransaction,
   getReconciliationCandidateById,
   getReconciliationCandidates,
 } from "../../lib/repositories/transactions";
-import { getDatabase } from "../../lib/db/database";
+import { clearDatabase, getDatabase } from "../../lib/db/database";
+import { disableDemoMode } from "../../lib/demo-mode";
+import { useAppStore } from "../../lib/store";
+import { MobileHeader } from "../../components/ui/MobileHeader";
 import { applyStatementMetaBalance } from "../../lib/repositories/ledger-helpers";
 import { findAndLinkLocalOccurrence } from "../../lib/repositories/recurring";
 import { upsertLocalStatementSnapshot } from "../../lib/repositories/statement-snapshots";
 import { getDestinatarioRulesForMatching } from "../../lib/repositories/destinatarios";
 import { trackProductEvent } from "../../lib/analytics/product-events";
 import {
+  assignStatementOccurrenceIndexes,
   matchDestinatario,
   prepareDestinatarioRules,
   type PreparedDestinatarioRule,
@@ -132,6 +137,13 @@ type ParsedTransaction = {
   direction: "INFLOW" | "OUTFLOW";
   balance?: number | null;
   currency?: string;
+  // Mirrors webapp/src/types/import.ts ParsedTransaction (same parser backend).
+  authorization_number?: string | null;
+  /** Cuota index (1-based) when the row is one cuota of a purchase in cuotas. */
+  installment_current?: number | null;
+  installment_total?: number | null;
+  /** Full purchase price; `amount` is the monthly cuota for cuota rows. */
+  original_amount?: number | null;
 };
 
 type StatementSummary = {
@@ -361,7 +373,8 @@ function AccountSelector({
 
 export default function ImportScreen() {
   const router = useRouter();
-  const { session } = useAuth();
+  const { session, demoMode, setDemoMode } = useAuth();
+  const clearAppStore = useAppStore((s) => s.clear);
   const [step, setStep] = useState<Step>("pick");
   const [document, setDocument] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const [password, setPassword] = useState("");
@@ -413,6 +426,7 @@ export default function ImportScreen() {
   );
 
   const handlePickDocument = useCallback(async () => {
+    if (demoMode) return;
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: "application/pdf",
@@ -426,10 +440,37 @@ export default function ImportScreen() {
     } catch (error) {
       console.error("Error picking document:", error);
     }
-  }, []);
+  }, [demoMode]);
+
+  // Demo mode has no session: the parser runs behind the authenticated API,
+  // so importing can't work. Same exit path as settings "Salir de modo demo",
+  // landing on signup instead of login.
+  const handleCreateAccountFromDemo = useCallback(() => {
+    Alert.alert(
+      "Crear tu cuenta",
+      "Se borrarán los datos de ejemplo y pasarás a crear tu cuenta.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Continuar",
+          onPress: async () => {
+            try {
+              await disableDemoMode();
+              setDemoMode(false);
+              await clearDatabase();
+              clearAppStore();
+              router.replace("/(auth)/signup");
+            } catch (error) {
+              console.error("Exit demo mode error:", error);
+            }
+          },
+        },
+      ]
+    );
+  }, [clearAppStore, router, setDemoMode]);
 
   const handleParse = useCallback(async () => {
-    if (!document) return;
+    if (!document || demoMode) return;
     setParsing(true);
     const t0 = Date.now();
     const log = (step: string, extra?: unknown) => {
@@ -652,7 +693,7 @@ export default function ImportScreen() {
     } finally {
       setParsing(false);
     }
-  }, [document, password, session]);
+  }, [demoMode, document, password, session]);
 
   const toggleSelect = useCallback((index: number) => {
     setSelected((prev) => {
@@ -697,6 +738,13 @@ export default function ImportScreen() {
               amount: transaction.amount,
               transactionDate: transaction.date,
               rawDescription: transaction.description,
+              // Scorer hard filters + tier rules — same inputs as webapp
+              // previewImportReconciliation.
+              currencyCode:
+                parsedData.currency ?? selectedAccount.currency_code ?? "COP",
+              originalAmount: transaction.original_amount ?? null,
+              installmentCurrent: transaction.installment_current ?? null,
+              captureMethod: "PDF_IMPORT",
             });
 
             if (!ranked.bestMatch) {
@@ -808,9 +856,31 @@ export default function ImportScreen() {
         console.warn("Skipping destinatario auto-match (rules load failed):", err);
       }
 
-      for (const index of Array.from(selected).sort((a, b) => a - b)) {
+      // Identical rows WITHIN one statement are distinct real movements —
+      // mirror webapp importTransactions: the 2nd+ copy gets `occN` folded into
+      // its idempotency key (counted over the selected rows, per statement).
+      const statementIdx = Math.max(allStatements.indexOf(parsedData), 0);
+      const orderedIndexes = Array.from(selected)
+        .sort((a, b) => a - b)
+        .filter((index) => parsedData.transactions[index] != null);
+      const occurrenceIndexes = assignStatementOccurrenceIndexes(
+        orderedIndexes.map((index) => {
+          const row = parsedData.transactions[index];
+          return {
+            importKey: `${statementIdx}:${index}`,
+            transactionDate: row.date,
+            amount: row.amount,
+            originalAmount: row.original_amount ?? null,
+            rawDescription: row.description,
+            installmentCurrent: row.installment_current ?? null,
+          };
+        })
+      );
+
+      for (const [position, index] of orderedIndexes.entries()) {
         const t = parsedData.transactions[index];
         if (!t) continue;
+        const occurrence = occurrenceIndexes[position] ?? 1;
         const isDebtPayment = isDebtInflow({
           direction: t.direction,
           accountType: selectedAccount.account_type,
@@ -847,8 +917,24 @@ export default function ImportScreen() {
         // effective categoryId in its check.
         const categorizationConfidence =
           effectiveCategoryId && destinatarioId ? 0.8 : null;
+        // What createTransaction actually persists (its default when undefined)
+        // — the merge needs it to decide whose category survives.
+        const storedCategorizationSource =
+          categorizationSource ??
+          (effectiveCategoryId ? "USER_CREATED" : "SYSTEM_DEFAULT");
 
         try {
+          // Purchase in cuotas: same group id as webapp step-review (account +
+          // description + full price) so every cuota joins one group.
+          const installmentGroupId =
+            t.installment_current != null && t.installment_total != null
+              ? await computeLocalInstallmentGroupId({
+                  accountId: selectedAccount.id,
+                  rawDescription: t.description,
+                  amount: t.original_amount ?? t.amount,
+                })
+              : null;
+
           const txId = await createTransaction({
             user_id: userId,
             account_id: selectedAccount.id,
@@ -868,6 +954,16 @@ export default function ImportScreen() {
             transaction_date: t.date,
             provider: "OCR",
             capture_method: "PDF_IMPORT",
+            // Cuota fields feed the idempotency key (`original_amount ?? amount`
+            // + installment_current) — without them a cuota imported here got
+            // a different key than the same statement imported on webapp or
+            // by email, and duplicated.
+            installment_current: t.installment_current ?? null,
+            installment_total: t.installment_total ?? null,
+            installment_group_id: installmentGroupId,
+            original_amount: t.original_amount ?? null,
+            provider_transaction_id:
+              occurrence > 1 ? `occ${occurrence}` : undefined,
           });
 
           count++;
@@ -882,6 +978,8 @@ export default function ImportScreen() {
               pdfTransactionId: txId,
               score: autoMatch.score,
               pdfCategoryId: effectiveCategoryId,
+              pdfCategorizationSource: storedCategorizationSource,
+              pdfCaptureMethod: "PDF_IMPORT",
               pdfNotes: null,
             });
             autoMerged++;
@@ -895,6 +993,8 @@ export default function ImportScreen() {
               pdfTransactionId: txId,
               score: reviewMatch.score,
               pdfCategoryId: effectiveCategoryId,
+              pdfCategorizationSource: storedCategorizationSource,
+              pdfCaptureMethod: "PDF_IMPORT",
               pdfNotes: null,
             });
             manualMerged++;
@@ -995,7 +1095,7 @@ export default function ImportScreen() {
     } finally {
       setImporting(false);
     }
-  }, [parsedData, reconciliationPreview, reviewDecisions, selected, session, selectedAccount]);
+  }, [allStatements, parsedData, reconciliationPreview, reviewDecisions, selected, session, selectedAccount]);
 
   const resetFlow = useCallback(() => {
     setStep("pick");
@@ -1176,20 +1276,52 @@ export default function ImportScreen() {
   if (step === "pick") {
     return (
       <ImportThemeProvider neutral={neutralTheme}>
-      <View className={`flex-1 ${inkCls}`} style={{ paddingTop: topInset + 4 }}>
+      {/* MobileHeader owns the safe-area top inset — no extra paddingTop here. */}
+      <View className={`flex-1 ${inkCls}`}>
+        <MobileHeader variant="sub" title="Importar extracto" />
         <AppKeyboardAwareScrollView
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24 }}
         >
         <Text className="text-[11px] font-inter-semibold uppercase text-z-sage-dark tracking-[0.18em]">
           Paso 1 de 4
-        </Text>
-        <Text className="mt-1 font-inter-bold text-xl text-z-white">
-          Importar extracto
         </Text>
         <View className="mt-3 mb-5">
           <WizardProgress step={1} total={4} />
         </View>
 
+        {demoMode ? (
+          <View className="rounded-2xl border border-z-brass-30 bg-z-brass-8 p-5">
+            <Upload size={28} color={COLORS.brass} />
+            <Text className="mt-3 font-inter-semibold text-base text-z-white">
+              Importar extractos necesita una cuenta
+            </Text>
+            <Text className="mt-1 font-inter text-sm text-z-sage-light">
+              En el modo demo puedes explorar los movimientos de ejemplo. Crea tu
+              cuenta para subir los PDF de tu banco.
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Crear mi cuenta"
+              className={`mt-5 items-center rounded-xl py-3.5 ${BRASS_BUTTON_CLASS} active:opacity-90`}
+              onPress={handleCreateAccountFromDemo}
+            >
+              <Text className="font-inter-bold text-base text-z-ink">
+                Crear mi cuenta
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Ver movimientos de ejemplo"
+              className={`mt-3 items-center rounded-xl py-3 ${GHOST_BUTTON_CLASS}`}
+              onPress={() => router.replace("/(tabs)/transactions")}
+            >
+              <Text className="font-inter-semibold text-sm text-z-sage-light">
+                Ver movimientos de ejemplo
+              </Text>
+            </Pressable>
+          </View>
+        ) : (
+        <>
         <Pressable
           accessibilityLabel="Seleccionar extracto PDF"
           accessibilityRole="button"
@@ -1200,8 +1332,9 @@ export default function ImportScreen() {
           <Text className="mt-4 font-inter-semibold text-base text-z-white">
             Seleccionar extracto PDF
           </Text>
-          <Text className="mt-1 font-inter text-sm text-z-sage-dark">
-            Toca para abrir el selector
+          <Text className="mt-1 text-center font-inter text-sm text-z-sage-dark">
+            Sube el PDF tal como lo manda el banco. Zeta detecta el banco; no
+            tienes que elegirlo.
           </Text>
         </Pressable>
 
@@ -1242,7 +1375,9 @@ export default function ImportScreen() {
                 className="rounded-xl border border-z-sage-10 bg-z-ink px-4 py-3 font-inter text-sm text-z-white"
               />
               <Text className="mt-2 font-inter text-xs text-z-sage-dark">
-                Déjalo vacío si el PDF no tiene contraseña.
+                Déjalo vacío si el PDF no tiene contraseña. Si el PDF pide
+                clave, al procesarlo puedes guardarla y no la vuelves a
+                escribir.
               </Text>
               {savedPdfPasswords.length > 0 && (
                 <View className="mt-3">
@@ -1297,6 +1432,8 @@ export default function ImportScreen() {
             </Text>
           )}
         </Pressable>
+        </>
+        )}
         </AppKeyboardAwareScrollView>
       </View>
       </ImportThemeProvider>

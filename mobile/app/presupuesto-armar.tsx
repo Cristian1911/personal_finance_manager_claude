@@ -105,7 +105,7 @@ const BudgetLineRow = memo(function BudgetLineRow({
 export default function ArmarPresupuestoScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { session } = useAuth();
+  const { userId } = useAuth();
 
   const [rows, setRows] = useState<BudgetBuilderRow[]>([]);
   const [income, setIncome] = useState(0);
@@ -179,11 +179,18 @@ export default function ArmarPresupuestoScreen() {
   const handleAddLine = useCallback(
     async (parent: BudgetBuilderRow) => {
       const name = newLineName.trim();
-      if (!name || !session?.user?.id) return;
+      if (!name) return;
+      if (!userId) {
+        Alert.alert(
+          "Sesión no disponible",
+          "Inicia sesión o entra al modo demo para editar el presupuesto."
+        );
+        return;
+      }
       setCreating(true);
       try {
         await createCategory({
-          user_id: session.user.id,
+          user_id: userId,
           name,
           parent_id: parent.category_id,
           color: parent.category_color,
@@ -210,15 +217,21 @@ export default function ArmarPresupuestoScreen() {
         setCreating(false);
       }
     },
-    [newLineName, session?.user?.id]
+    [newLineName, userId]
   );
 
   const handleSave = useCallback(async () => {
-    if (!session?.user?.id) return;
+    if (!userId) {
+      Alert.alert(
+        "Sesión no disponible",
+        "Inicia sesión o entra al modo demo para editar el presupuesto."
+      );
+      return;
+    }
     setSaving(true);
     try {
       await saveBudgetDraft(
-        session.user.id,
+        userId,
         rows.map((r) => ({
           budgetId: r.budget_id,
           categoryId: r.category_id,
@@ -236,7 +249,7 @@ export default function ArmarPresupuestoScreen() {
     } finally {
       setSaving(false);
     }
-  }, [rows, draft, original, session?.user?.id, router]);
+  }, [rows, draft, original, userId, router]);
 
   if (loading) {
     return (

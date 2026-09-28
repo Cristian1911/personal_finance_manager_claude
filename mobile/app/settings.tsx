@@ -816,7 +816,7 @@ export default function SettingsScreen() {
             <NavRow
               title="Administrar cuentas"
               meta="Bancos, tarjetas y efectivo"
-              onPress={() => router.navigate("/(tabs)/accounts")}
+              onPress={() => router.push("/accounts-list" as never)}
             />
             <NavRow
               title="Cuenta predeterminada"
@@ -827,16 +827,6 @@ export default function SettingsScreen() {
                   : "Usar la última utilizada"
               }
               onPress={() => setShowAccountPicker(true)}
-            />
-            <NavRow
-              title="Suscripciones"
-              meta="Pagos recurrentes"
-              onPress={() => router.push("/subscriptions" as never)}
-            />
-            <NavRow
-              title="Etiquetas"
-              meta="Grupos y etiquetas de movimientos"
-              onPress={() => router.push("/etiquetas" as never)}
             />
           </View>
         </View>

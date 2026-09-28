@@ -1,6 +1,7 @@
 import * as SQLite from "expo-sqlite";
 import { DB_MIGRATIONS, LATEST_DB_VERSION } from "./schema";
 import { invalidateProfileCaches } from "../profile-cache";
+import { DEMO_USER_ID } from "../demo-mode";
 
 let db: SQLite.SQLiteDatabase | null = null;
 let dbInitPromise: Promise<SQLite.SQLiteDatabase> | null = null;
@@ -12,6 +13,7 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
       const database = await SQLite.openDatabaseAsync("zeta.db");
       await applyConnectionPragmas(database);
       await runMigrations(database);
+      await ensureDemoSyncGuard(database);
       db = database;
       return database;
     })().catch((error) => {
@@ -45,6 +47,34 @@ async function applyConnectionPragmas(
     PRAGMA cache_size = -8000;
     PRAGMA mmap_size = 67108864;
     PRAGMA temp_store = MEMORY;
+  `);
+}
+
+/**
+ * Demo mode is local-only: its rows must never enter the push outbox. About
+ * thirty call sites write `INSERT INTO sync_queue` directly (not only the
+ * `enqueue*` helpers), so the guard lives at the table itself. While the demo
+ * profile exists — or when the row itself carries the demo owner id — the
+ * INSERT is silently dropped (`RAISE(IGNORE)` aborts just that statement, no
+ * error, so the surrounding local write still commits).
+ *
+ * Recreated on every open (DROP + CREATE) so a changed WHEN clause reaches
+ * existing installs. Outside the versioned migrations on purpose: no schema
+ * change, and no version number to collide with parallel branches. Once
+ * `clearDatabase()` removes the demo profile, the WHEN clause is false again
+ * and real users are unaffected. `lib/sync/push.ts` re-checks every row.
+ */
+async function ensureDemoSyncGuard(database: SQLite.SQLiteDatabase): Promise<void> {
+  await database.execAsync(`
+    DROP TRIGGER IF EXISTS sync_queue_block_demo;
+    CREATE TRIGGER sync_queue_block_demo
+    BEFORE INSERT ON sync_queue
+    WHEN EXISTS (SELECT 1 FROM profiles WHERE id = '${DEMO_USER_ID}')
+      OR NEW.record_id = '${DEMO_USER_ID}'
+      OR NEW.payload LIKE '%${DEMO_USER_ID}%'
+    BEGIN
+      SELECT RAISE(IGNORE);
+    END;
   `);
 }
 

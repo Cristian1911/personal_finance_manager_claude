@@ -1,8 +1,8 @@
 Novedades:
-• Tendencias: nueva pantalla de análisis con 3 lentes, buscador y detalle por categoría.
-• Presupuesto renovado: veredicto del mes, 50·30·20 y armado guiado.
-• Recurrentes: crea y edita plantillas desde la app.
-• Destinatarios: reglas, fusión de duplicados y sugerencias automáticas.
-• Suscripciones: compromiso mensual real y marcar para cancelar.
-• Etiquetas y perfil en Ajustes.
-• Arreglos de inicio de sesión con Google/Apple y estabilidad.
+• Viajes: hora local vs. Colombia y conversión de moneda.
+• Correo: bandeja dedicada, menos duplicados, más alertas reconocidas.
+• Transferencias: vincula pares y fusiona filas repetidas.
+• Deudas compartidas: reparte sin crear contactos.
+• Movimientos: hora en la fila y formulario renovado.
+• La fecha de un pago ya no se corría un día.
+• Arranque sin conexión y arreglos del barrido móvil.

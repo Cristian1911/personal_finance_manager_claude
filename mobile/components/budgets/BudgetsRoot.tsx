@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Platform,
   Pressable,
@@ -50,7 +51,7 @@ interface BudgetsRootProps {
 
 export function BudgetsRoot({ variant = "main" }: BudgetsRootProps) {
   const router = useRouter();
-  const { session } = useAuth();
+  const { userId } = useAuth();
   const { sync } = useSync();
 
   const [items, setItems] = useState<BudgetProgressRow[]>([]);
@@ -161,13 +162,19 @@ export function BudgetsRoot({ variant = "main" }: BudgetsRootProps) {
 
   const handleSave = useCallback(
     async (item: BudgetProgressRow, amount: number) => {
-      if (!session?.user?.id) return;
+      if (!userId) {
+        Alert.alert(
+          "Sesión no disponible",
+          "Inicia sesión o entra al modo demo para editar el presupuesto."
+        );
+        return;
+      }
       const recordId = item.id ?? item.category_id;
       setSavingId(recordId);
       try {
         await upsertBudget({
           id: item.id ?? undefined,
-          user_id: session.user.id,
+          user_id: userId,
           category_id: item.category_id,
           amount,
           period: "monthly",
@@ -177,7 +184,7 @@ export function BudgetsRoot({ variant = "main" }: BudgetsRootProps) {
         setSavingId(null);
       }
     },
-    [session?.user?.id, loadData]
+    [userId, loadData]
   );
 
   const handleDelete = useCallback(

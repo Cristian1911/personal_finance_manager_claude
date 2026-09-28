@@ -34,7 +34,7 @@ import {
 export default function CreateAccountScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { session } = useAuth();
+  const { userId } = useAuth();
   const [saving, setSaving] = useState(false);
 
   // Common fields
@@ -58,7 +58,13 @@ export default function CreateAccountScreen() {
   const isLoan = accountType === "LOAN";
 
   const handleSave = async () => {
-    if (!session?.user?.id) return;
+    if (!userId) {
+      Alert.alert(
+        "Sesión no disponible",
+        "Inicia sesión o entra al modo demo para crear cuentas."
+      );
+      return;
+    }
 
     if (!name.trim()) {
       Alert.alert("Error", "El nombre es requerido.");
@@ -77,7 +83,7 @@ export default function CreateAccountScreen() {
     setSaving(true);
     try {
       const accountId = await createAccount({
-        user_id: session.user.id,
+        user_id: userId,
         name: name.trim(),
         account_type: accountType,
         institution_name: institution.trim() || null,
@@ -98,7 +104,7 @@ export default function CreateAccountScreen() {
             : null,
       });
       await setPdfPasswordForAccount(
-        session.user.id,
+        userId,
         accountId,
         pdfPassword.trim() || null
       );

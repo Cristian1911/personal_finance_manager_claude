@@ -3,6 +3,7 @@ import { pushPendingChanges } from "./push";
 import { notifyLocalDataChanged } from "./notify";
 import { getDatabase } from "../db/database";
 import { isDeadRefreshToken, supabase } from "../supabase";
+import { isDemoModeActive } from "../demo-mode";
 
 export type SyncStatus = "idle" | "syncing" | "error";
 
@@ -103,7 +104,8 @@ export function syncAll(): Promise<SyncResult> {
 }
 
 async function doSyncAll(): Promise<SyncResult> {
-  if (resetInProgress) {
+  // Demo mode is local-only (no session, fake owner id): no push, no pull.
+  if (resetInProgress || isDemoModeActive()) {
     return { pushed: 0, pulled: {} };
   }
   let session = null;
@@ -217,7 +219,7 @@ function scheduleRetry(reason: string): void {
  * outbox is non-empty or the run failed. Never throws, never awaited by UI.
  */
 export function requestSync(reason: string): void {
-  if (resetInProgress) return;
+  if (resetInProgress || isDemoModeActive()) return;
   clearRetryTimer();
   syncAll()
     .then(async () => {
@@ -251,7 +253,7 @@ function pushOnly(): Promise<number> {
     return syncAll().then((r) => r.pushed);
   }
   const run = (async () => {
-    if (resetInProgress) return 0;
+    if (resetInProgress || isDemoModeActive()) return 0;
     const {
       data: { session },
     } = await supabase.auth.getSession().catch(() => ({ data: { session: null } }));
@@ -274,7 +276,7 @@ function pushOnly(): Promise<number> {
  * offline capture up once the connection returns.
  */
 export function scheduleLocalChangeSync(): void {
-  if (!foregrounded || resetInProgress) return;
+  if (!foregrounded || resetInProgress || isDemoModeActive()) return;
   if (localChangeTimer) clearTimeout(localChangeTimer);
   localChangeTimer = setTimeout(() => {
     localChangeTimer = null;

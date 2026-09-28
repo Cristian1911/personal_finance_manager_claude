@@ -4,10 +4,12 @@ import {
   matchOwnAccount,
   FLOW_CLASS_RULES_VERSION,
   computeIdempotencyKey,
+  computeInstallmentGroupId,
   computeMonthlyAggregates,
   extractPattern,
   findReconciliationCandidates,
   mergeTransactionMetadata,
+  type CategorizationSource,
   type DataProvider,
   type ReconciliationCandidate,
   type RankedReconciliationResult,
@@ -125,6 +127,14 @@ export type CreateTransactionParams = {
    * provider/date/amount/description — same as before.
    */
   idempotency_key?: string | null;
+  /**
+   * Key-only discriminator folded into the idempotency key (never persisted).
+   * Statement import passes `occ${n}` for the 2nd+ identical row WITHIN one
+   * statement — mirrors webapp importTransactions + shared
+   * `assignStatementOccurrenceIndexes`, so two real identical movements don't
+   * collapse into one key and the keys match the webapp's.
+   */
+  provider_transaction_id?: string | null;
 };
 
 export type UpdateTransactionParams = {
@@ -283,6 +293,7 @@ async function resolveIdempotencyKey(params: CreateTransactionParams): Promise<s
   return computeIdempotencyKey(
     {
       provider: params.provider ?? "MANUAL",
+      providerTransactionId: params.provider_transaction_id ?? undefined,
       transactionDate: params.transaction_date,
       amount: params.original_amount ?? params.amount,
       rawDescription: params.raw_description ?? params.merchant_name ?? "",
@@ -290,6 +301,19 @@ async function resolveIdempotencyKey(params: CreateTransactionParams): Promise<s
     },
     expoHashFn
   );
+}
+
+/**
+ * `installment_group_id` for one cuota of a purchase in cuotas — same inputs as
+ * webapp step-review (account + description + full price), so every cuota of
+ * the purchase, imported from any platform, lands in the same group.
+ */
+export function computeLocalInstallmentGroupId(params: {
+  accountId: string;
+  rawDescription: string;
+  amount: number;
+}): Promise<string> {
+  return computeInstallmentGroupId(params, expoHashFn);
 }
 
 /** Fetch the account columns applyLocalBalanceDelta needs as a LedgerAccountRow.
@@ -589,15 +613,34 @@ export async function getTransactionById(id: string, includeReconciled = true) {
   );
 }
 
+/**
+ * Column projection the shared reconciliation scorer + mergeTransactionMetadata
+ * expect — mirrors webapp `fetchReconciliationCandidates`. `currency_code`,
+ * `original_amount` and `installment_current` are hard filters in
+ * `scoreReconciliationCandidate` (PR #415: cross-currency pairs never match; a
+ * statement cuota 1 matches its full-price alert via `original_amount`; two
+ * different cuotas never merge). `capture_method` drives the tier-1 AUTO_MERGE
+ * upgrade / REVIEW floor and the merge authority. `categorization_source` is
+ * the real column (webapp reads it raw) — the old CASE projection marked every
+ * categorized row as USER_CREATED.
+ */
+const RECONCILIATION_CANDIDATE_COLUMNS = `id, user_id, account_id, amount, currency_code, original_amount,
+            installment_current, installment_total, direction, transaction_date, transaction_time,
+            source_pattern, raw_description, merchant_name, description AS clean_description, category_id,
+            categorization_source, notes, reconciled_into_transaction_id, capture_method`;
+
+/** "YYYY-MM-DD" ± days, computed in UTC on the calendar date (no tz drift). */
+function shiftDateISO(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.slice(0, 10).split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
 export async function getReconciliationCandidateById(
   id: string
 ): Promise<ReconciliationCandidate | null> {
   const db = await getDatabase();
   return db.getFirstAsync<ReconciliationCandidate>(
-    `SELECT id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name,
-            description as clean_description, category_id,
-            CASE WHEN category_id IS NOT NULL THEN 'USER_CREATED' ELSE NULL END as categorization_source,
-            notes, reconciled_into_transaction_id
+    `SELECT ${RECONCILIATION_CANDIDATE_COLUMNS}
      FROM transactions
      WHERE id = ?`,
     [id]
@@ -620,10 +663,7 @@ export async function getReconciliationCandidateRowsInRange(params: {
 }): Promise<ReconciliationCandidate[]> {
   const db = await getDatabase();
   return db.getAllAsync<ReconciliationCandidate>(
-    `SELECT id, user_id, account_id, amount, direction, transaction_date,
-            raw_description, merchant_name, description AS clean_description,
-            category_id, categorization_source, notes,
-            reconciled_into_transaction_id, capture_method
+    `SELECT ${RECONCILIATION_CANDIDATE_COLUMNS}
      FROM transactions
      WHERE user_id = ? AND account_id = ?
        AND transaction_date >= ? AND transaction_date <= ?
@@ -632,6 +672,13 @@ export async function getReconciliationCandidateRowsInRange(params: {
   );
 }
 
+/**
+ * Rank local candidates for one statement row. Window = ±3 days (the scorer's
+ * date tolerance), like webapp `fetchReconciliationCandidates` — a calendar-
+ * month LIKE missed duplicates on month edges. The import-side fields mirror
+ * webapp `previewImportReconciliation` (currency, cuota, full price, and the
+ * wizard's capture method so the tier-1 rules fire).
+ */
 export async function getReconciliationCandidates(params: {
   userId: string;
   accountId: string;
@@ -639,22 +686,17 @@ export async function getReconciliationCandidates(params: {
   amount: number;
   transactionDate: string;
   rawDescription: string;
+  currencyCode?: string | null;
+  originalAmount?: number | null;
+  installmentCurrent?: number | null;
+  captureMethod?: TransactionCaptureMethod | null;
 }): Promise<RankedReconciliationResult> {
-  const db = await getDatabase();
-  const monthStart = params.transactionDate.slice(0, 7);
-  const rows = await db.getAllAsync<ReconciliationCandidate>(
-    `SELECT id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, description as clean_description,
-            category_id,
-            CASE WHEN category_id IS NOT NULL THEN 'USER_CREATED' ELSE NULL END as categorization_source,
-            notes, reconciled_into_transaction_id
-     FROM transactions
-     WHERE user_id = ?
-       AND account_id = ?
-       AND direction = ?
-       AND transaction_date LIKE ?
-       AND reconciled_into_transaction_id IS NULL`,
-    [params.userId, params.accountId, params.direction, `${monthStart}%`]
-  );
+  const rows = await getReconciliationCandidateRowsInRange({
+    userId: params.userId,
+    accountId: params.accountId,
+    fromDate: shiftDateISO(params.transactionDate, -3),
+    toDate: shiftDateISO(params.transactionDate, 3),
+  });
 
   return findReconciliationCandidates(
     {
@@ -663,6 +705,10 @@ export async function getReconciliationCandidates(params: {
       direction: params.direction,
       transaction_date: params.transactionDate,
       raw_description: params.rawDescription,
+      currency_code: params.currencyCode ?? null,
+      original_amount: params.originalAmount ?? null,
+      installment_current: params.installmentCurrent ?? null,
+      capture_method: params.captureMethod ?? null,
     },
     rows
   );
@@ -673,13 +719,23 @@ export async function applyReconciliationMerge(params: {
   pdfTransactionId: string;
   score: number;
   pdfCategoryId?: string | null;
+  pdfCategorizationSource?: CategorizationSource | null;
   pdfNotes?: string | null;
+  /**
+   * capture_method of the incoming (imported) row. Without it
+   * mergeTransactionMetadata defaulted the incoming side to MANUAL_FORM and
+   * wrote that onto the PDF row, demoting a tier-1 import to tier 3. Mirrors
+   * webapp importTransactions (§ merge: `capture_method: captureMethod`).
+   */
+  pdfCaptureMethod?: TransactionCaptureMethod;
 }): Promise<void> {
   const db = await getDatabase();
   const now = new Date().toISOString();
   const merged = mergeTransactionMetadata(params.manualTransaction, {
     category_id: params.pdfCategoryId ?? null,
+    categorization_source: params.pdfCategorizationSource ?? undefined,
     notes: params.pdfNotes ?? null,
+    capture_method: params.pdfCaptureMethod ?? "PDF_IMPORT",
   });
 
   await db.withTransactionAsync(async () => {

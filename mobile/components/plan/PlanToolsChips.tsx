@@ -1,7 +1,7 @@
 import { memo, useMemo } from "react";
 import { View, Text, Pressable } from "react-native";
 import { useRouter, type Href } from "expo-router";
-import { Wallet, CalendarCheck, RotateCw } from "lucide-react-native";
+import { Wallet, RotateCw } from "lucide-react-native";
 import type { LucideIcon } from "lucide-react-native";
 import { PANEL_INSET_CLASS } from "../../lib/constants/styles";
 import { COLORS } from "../../lib/constants/colors";
@@ -9,8 +9,6 @@ import { COLORS } from "../../lib/constants/colors";
 interface PlanToolsChipsProps {
   budgetOverLimit: number;
   budgetPct: number;
-  periodHasActive: boolean;
-  periodPercentAssigned: number;
   recurringUpcoming: number;
   recurringOverdue: number;
 }
@@ -45,8 +43,6 @@ function Status({ parts }: { parts: Array<{ text: string; emphasis?: boolean }> 
 function PlanToolsChipsBase({
   budgetOverLimit,
   budgetPct,
-  periodHasActive,
-  periodPercentAssigned,
   recurringUpcoming,
   recurringOverdue,
 }: PlanToolsChipsProps) {
@@ -66,17 +62,6 @@ function PlanToolsChipsBase({
         ),
     },
     {
-      key: "periodo",
-      label: "Periodo",
-      icon: CalendarCheck,
-      route: "/periodo" as Href,
-      status: periodHasActive ? (
-        <Status parts={[{ text: `${periodPercentAssigned}% asignado` }]} />
-      ) : (
-        <Status parts={[{ text: "Sin periodo activo" }]} />
-      ),
-    },
-    {
       key: "recurrentes",
       label: "Recurrentes",
       icon: RotateCw,
@@ -93,7 +78,7 @@ function PlanToolsChipsBase({
           <Status parts={[{ text: `${recurringUpcoming} próximos` }]} />
         ),
     },
-  ], [budgetOverLimit, budgetPct, periodHasActive, periodPercentAssigned, recurringUpcoming, recurringOverdue]);
+  ], [budgetOverLimit, budgetPct, recurringUpcoming, recurringOverdue]);
 
   return (
     <View className="flex-row gap-2">

@@ -47,11 +47,12 @@ export function AddWidgetSheet({
         style={{ flexShrink: 1 }}
         contentContainerStyle={{ paddingVertical: 8 }}
       >
-        {WIDGET_CATALOG.map((entry) => (
+        {/* Sin filas "Próximamente": lo no disponible no se ofrece (revisión de tiendas). */}
+        {WIDGET_CATALOG.filter((entry) => entry.available).map((entry) => (
           <CatalogRow
             key={entry.type}
             entry={entry}
-            disabled={!entry.available || existingTypes.has(entry.type)}
+            disabled={existingTypes.has(entry.type)}
             onPress={() => {
               onAdd(entry.type);
               onClose();
@@ -72,7 +73,6 @@ function CatalogRow({
   disabled: boolean;
   onPress: () => void;
 }) {
-  const exists = !entry.available ? false : disabled;
 
   return (
     <Pressable
@@ -86,11 +86,7 @@ function CatalogRow({
           {entry.label}
         </Text>
         <Text className="mt-0.5 text-[11px] font-inter text-muted-foreground">
-          {!entry.available
-            ? "Próximamente"
-            : exists
-              ? "Ya en tu inicio"
-              : entry.description}
+          {disabled ? "Ya en tu inicio" : entry.description}
         </Text>
       </View>
       <View className="h-7 w-7 items-center justify-center rounded-full border border-z-brass-20 bg-z-brass-10">

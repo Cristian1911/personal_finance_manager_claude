@@ -825,6 +825,8 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 
 ### Mobile app — Play Store production release (rebrand + promote from alpha/beta)
 - **Priority:** High · **Tech prep done** — branch `feat/settings-visual-polish`, 2026-04-20
+- **Build 1.3.1 móvil (App Store + ronda 3 Play)** — rama `feat/mobile-appstore-1.3.1`; estado, verificación y pendientes 1.3.2 en `docs/audits/2026-09-22-mobile-appstore-audit.md` § Estado 2026-09-24.
+- **2026-09-22 — 2º rechazo de acceso a producción** ("testers not engaged" + no actuar sobre feedback con updates). Plan ronda 3: `docs/play-store/closed-test-round-3.md` — 20–25 inscritos (regla vigente ≥12 × 14 días continuos), 3 versiones al track cerrado dentro de la ventana (1.3.1 / 1.3.2 / 1.4.0), guion semanal, feedback por Play, registro de reportes → solicitud con números.
 - **Shipped this session:**
   - Bundle drift fixed: `app.json` now uses `com.zetafinance.app` for both `ios.bundleIdentifier` and `android.package` (was `com.venti5.zeta`, out of sync with `build.gradle` + Xcode project).
   - Version bumped 1.0.0 → 1.1.0 across `app.json`, `ios/Info.plist`, `android/app/build.gradle`. `versionCode` auto-increments via EAS (`appVersionSource: remote`).
@@ -991,7 +993,7 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
   - Actualizar política de privacidad con mención del proveedor de observabilidad.
 - **Criterio de activación:** cuando haya >50 usuarios en beta y no queramos depender solo de bug reports manuales.
 
-### In-app eliminación de cuenta (Ajustes → Eliminar cuenta)
+### ~~In-app eliminación de cuenta~~ — ✅ DONE en móvil (PR #236, `mobile/lib/delete-account.ts`); falta solo webapp
 - **Priority:** High (antes de Play Store producción; OK para internal testing)
 - **What:** Implementar flujo self-service de eliminación de cuenta y todos los datos asociados. Hoy solo existe vía email a `giraldo.0302@gmail.com` (documentado en `/eliminar-cuenta`). Google Play prefiere in-app; lo acepta por email para v1 pero la UI más tarde reduce fricción y baja tickets.
 - **Touches:**
