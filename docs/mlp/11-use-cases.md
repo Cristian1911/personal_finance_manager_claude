@@ -23,7 +23,7 @@ Every architecture, database and screen decision is checked against this list. N
 | A7 | Connect a capture source: bank notifications (Android) / Gmail (iPhone) / a PDF | Onboarding, Ajustes › Fuentes | v1 | ok |
 | A8 | Add my accounts and cards up front | Onboarding (optional step), Ajustes › Mis cuentas | v1 | D1 |
 | A11 | Import a PDF whose account doesn't exist yet and create it from the statement | PDF import | v1 | D1 |
-| A12 | See a movement from an account Zeta doesn't know (new last-4) and add it or assign it to an existing one | Revisar | v1 | D1 (assumed) |
+| A12 | See a movement from an account Zeta doesn't know (new last-4) and add it or assign it to an existing one | Revisar | v1 | D1 |
 | A9 | Sign in on a new phone and find everything there | Login | v1 | ok |
 | A10 | Existing user: move from the old app to v2 without losing data | First launch of v2 | v1 | ok |
 
@@ -187,7 +187,7 @@ Every architecture, database and screen decision is checked against this list. N
 
 | # | Question | Decision |
 |---|---|---|
-| D1 | Accounts: up front or auto-created? | **Both.** Users create accounts/cards up front (onboarding optional step, Ajustes). A PDF whose account doesn't exist offers to create it from the statement's metadata. *Assumed, confirm:* a notification/email with an unknown last-4 raises a Revisar card (add as new / assign to existing). |
+| D1 | Accounts: up front or auto-created? | **Both.** Users create accounts/cards up front (onboarding optional step, Ajustes). A PDF whose account doesn't exist offers to create it from the statement's metadata. A notification/email with an unknown last-4 raises a Revisar card (add as new / assign to existing); never created silently (confirmed). |
 | D2 | Past cycles | **Yes.** Inicio has a cycle switcher; a past cycle shows its frozen result, the four lines, ¿En qué se me fue? and its movements. Read-only, no charts. |
 | D3 | Loans | **First-class.** A loan is an account (type `LOAN`) with balance, rate and term; its cuota is a bill. Pagos shows "Te faltan $X · termina en mar 2028". No payoff planner. |
 | D4 | Tags | **Later** (possible future update). Data kept in DB. |
