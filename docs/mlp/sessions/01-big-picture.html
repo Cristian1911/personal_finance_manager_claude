@@ -177,7 +177,7 @@ li{margin:3px 0}
       <tr><td>Capture from Gmail</td><td class="wait">Needs signal</td><td>Google is read by the server</td></tr>
       <tr><td>Import a PDF statement</td><td class="wait">Needs signal</td><td>The parser is on the server; the file waits in the outbox</td></tr>
       <tr><td>Name a merchant Zeta has never seen</td><td class="wait">Needs signal</td><td>Offline you get the 3 chips from your rules; the name is refined later</td></tr>
-      <tr><td>See movement detail older than what's on the phone</td><td class="wait">Needs signal</td><td>See S1-3</td></tr>
+      <tr><td>See individual movements from cycles older than ~90 days</td><td class="wait">Needs signal</td><td>The cycle's summary is always offline</td></tr>
       <tr><td>Get template pack updates, the weekly digest, sign in on a new phone</td><td class="wait">Needs signal</td><td>The last template pack keeps working</td></tr>
     </tbody>
   </table>
@@ -345,13 +345,9 @@ sequenceDiagram
       <p style="margin:0"><span class="decided-tag">DECIDED</span> Split by kind of field. <b>Bank facts</b> (amount, date, merchant text): the higher-trust source wins (PDF › email › notification › manual). <b>Your choices</b> (category, note, split, cuotas, trip, bill link): yours always win; the same field changed on two devices, the latest change wins. <b>Real doubt</b> (a weak duplicate match) is never decided silently: it becomes a Revisar card.</p>
     </div>
 
-    <div class="dec">
+    <div class="dec decided">
       <div class="dec-h"><span class="dec-id">S1-3</span><h3>How much history lives on the phone?</h3></div>
-      <p style="margin:0;font-size:14px;color:var(--muted)">This matters because of offline use and D2 (browsing past cycles). Today the phone keeps only this month and last month.</p>
-      <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>Last 3 cycles + saved cycle results</b>Three cycles of movements (about 90 days) on the phone. Every closed cycle keeps a small summary (four lines plus category totals), so all past cycles open offline. Only the movement detail older than 90 days needs signal.</div>
-        <div class="opt"><b>Everything</b>Full history offline. The first sync is slow for heavy users (one has 3,000+ movements), but it's simple and removes the only offline gap. A reasonable choice if full offline history matters to you.</div>
-      </div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> <b>Last 3 cycles of detail + a summary of every closed cycle, forever.</b> Summaries (about 2–5 KB each) hold: the four lines, adjustments, result and verdict; income (salary, other, repayments) vs total out; spending by category (amount, share, count) and top 5 merchants; starting and ending balance per account; ending debt per card and loan, pending cuotas, interest and fees; Te deben and Tú debes open at close; each límite's result; savings and the surplus decision. Summaries are derived, rebuilt by the same engine when late data arrives (marked "actualizado con el extracto"), and backfilled for existing users. Stored per cycle; the month view adds up its cycles. Only older movement detail needs signal.</p>
     </div>
 
     <div class="dec">
