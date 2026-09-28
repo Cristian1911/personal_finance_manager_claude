@@ -82,57 +82,141 @@ li{margin:3px 0}
 .status{font:500 12px 'Geist Mono',monospace;color:var(--warn)}
 </style>
 
+<style>
+.decided{border-color:var(--server)}
+.decided-tag{font:600 11px 'Geist Mono',monospace;color:var(--server);letter-spacing:.04em}
+.ok{color:var(--server);font-weight:600}
+.wait{color:var(--warn);font-weight:600}
+</style>
 <main>
 
 <header>
-  <div class="eyebrow">Zeta v2 · Planning session 1 of 6</div>
+  <div class="eyebrow">Zeta v2 · Planning session 1 of 6 · rev. 2</div>
   <h1>How Zeta v2 works</h1>
-  <p class="lede">This session covers where each part of Zeta runs, how a purchase gets from your bank to your Disponible, and what happens when the phone is offline or the app is closed. It ends with four decisions for you. We'll take them one at a time in the chat.</p>
+  <p class="lede">This session covers where each part of Zeta runs, how a purchase gets from your bank to your Disponible, and what works without signal. The answer to that last one is almost everything. The page ends with the decisions for this session. We'll take them one at a time in the chat.</p>
 </header>
 
 <section>
-  <h2>The four places things happen</h2>
+  <h2>The one rule</h2>
+  <p class="rule"><b>The phone decides now; the server confirms with the same code.</b> Everything you do becomes a <i>command</i> ("capture this purchase", "Rappi is always Domicilios", "split with Juan", "pay the loan"). The phone runs it immediately against its own database, and you see the final result offline. The command is queued and the server replays it with the identical code when there's signal.</p>
   <div class="prose">
-    <p>Zeta v2 is one app on your phone backed by one server and one database. There's no separate web product anymore. The web app stays only as the backend plus a small page for bulk PDF import.</p>
+    <p>Why this and not "the server decides": being usable offline is a core premise. The old app's bugs didn't come from the phone making decisions. They came from the phone running a <i>separately written copy</i> of the web's logic, and the two drifted apart (8 data bugs in the 2026-06-25 audit). Here the logic lives once, in <code>@zeta/shared</code>, and both sides run that same code.</p>
   </div>
+</section>
+
+<section>
+  <h2>How a command works</h2>
   <figure>
     <div class="scroll">
-    <svg viewBox="0 0 960 500" role="img" aria-label="System map: bank sources feed the phone or the backend; every new movement enters through one server door, /api/ingest, which writes to the database; the phone keeps a synced local copy.">
+    <svg viewBox="0 0 960 330" role="img" aria-label="A command runs on the phone through the shared engine, updates the local database and the screen at once, and is queued. When online, the server runs the same command with the same engine and writes to Postgres; sync brings the server's result back to the phone.">
+      <defs>
+        <marker id="c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah"/></marker>
+        <marker id="cs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah-soft"/></marker>
+      </defs>
+      <rect x="10" y="20" width="940" height="160" rx="12" class="g-phone"/>
+      <text x="24" y="42" class="grp">ON YOUR PHONE · works offline</text>
+      <rect x="10" y="210" width="940" height="105" rx="12" class="g-server"/>
+      <text x="24" y="232" class="grp">ON THE SERVER · when there's signal</text>
+
+      <rect x="24" y="60" width="130" height="44" rx="8" class="box"/><text x="89" y="80" text-anchor="middle">You or a bank notice</text><text x="89" y="95" text-anchor="middle" class="sub">tap, voice, capture</text>
+      <rect x="194" y="60" width="150" height="44" rx="8" class="box"/><text x="269" y="80" text-anchor="middle">Command</text><text x="269" y="95" text-anchor="middle" class="sub">"capture Rappi $48.900"</text>
+      <rect x="384" y="60" width="150" height="44" rx="8" class="box-hot"/><text x="459" y="80" text-anchor="middle" style="font-weight:600">Engine</text><text x="459" y="95" text-anchor="middle" class="sub">@zeta/shared</text>
+      <rect x="574" y="60" width="150" height="44" rx="8" class="box"/><text x="649" y="80" text-anchor="middle">Local database</text><text x="649" y="95" text-anchor="middle" class="sub">result stored</text>
+      <rect x="764" y="60" width="170" height="44" rx="8" class="box"/><text x="849" y="80" text-anchor="middle">Screen</text><text x="849" y="95" text-anchor="middle" class="sub">final result, no "pendiente"</text>
+      <rect x="194" y="126" width="150" height="40" rx="8" class="box"/><text x="269" y="150" text-anchor="middle">Outbox (commands)</text>
+
+      <line x1="154" y1="82" x2="192" y2="82" class="ar" marker-end="url(#c)"/>
+      <line x1="344" y1="82" x2="382" y2="82" class="ar" marker-end="url(#c)"/>
+      <line x1="534" y1="82" x2="572" y2="82" class="ar" marker-end="url(#c)"/>
+      <line x1="724" y1="82" x2="762" y2="82" class="ar" marker-end="url(#c)"/>
+      <line x1="269" y1="104" x2="269" y2="124" class="ar" marker-end="url(#c)"/>
+      <text x="276" y="119" class="lbl">queue it</text>
+
+      <rect x="384" y="250" width="150" height="44" rx="8" class="box-hot"/><text x="459" y="270" text-anchor="middle" style="font-weight:600">Engine</text><text x="459" y="285" text-anchor="middle" class="sub">same code, full data</text>
+      <rect x="574" y="250" width="150" height="44" rx="8" class="g-store"/><text x="649" y="270" text-anchor="middle">Postgres</text><text x="649" y="285" text-anchor="middle" class="sub">source of truth</text>
+      <rect x="764" y="250" width="170" height="44" rx="8" class="box"/><text x="849" y="270" text-anchor="middle">Gmail · PDF</text><text x="849" y="285" text-anchor="middle" class="sub">also enter as commands</text>
+
+      <path d="M269 166 V272 H382" class="ar" marker-end="url(#c)"/>
+      <text x="276" y="200" class="lbl">send when online</text>
+      <line x1="534" y1="272" x2="572" y2="272" class="ar" marker-end="url(#c)"/>
+      <line x1="762" y1="272" x2="726" y2="272" class="ar" marker-end="url(#c)"/>
+      <line x1="459" y1="106" x2="459" y2="248" class="ar-soft"/>
+      <text x="466" y="160" class="lbl">identical code</text>
+      <line x1="649" y1="248" x2="649" y2="106" class="ar" marker-end="url(#c)"/>
+      <text x="656" y="160" class="lbl">sync back: usually no change;</text>
+      <text x="656" y="174" class="lbl">if the server knew more, its version wins</text>
+    </svg>
+    </div>
+    <figcaption>You see the result the moment the phone's engine finishes, offline or not. The server's replay usually reaches the same result. When it knows something the phone didn't (the bank email Gmail brought in an hour earlier), the phone takes the server's version on the next sync, and your own choices survive.</figcaption>
+  </figure>
+  <div class="two" style="margin-top:14px">
+    <div class="card"><h3>Why queue commands, not rows</h3>
+      <p style="margin:0;font-size:14px">A row says "the table looks like this". A command says "this is what the person did". The server can only redo the work correctly (dedup against data the phone never saw, update the right balances) if it knows the intent. Each command carries its own id, so sending it twice never applies it twice.</p>
+    </div>
+    <div class="card"><h3>Why this fixes the old parity bugs</h3>
+      <p style="margin:0;font-size:14px">One test suite runs every command against both storage adapters, SQLite for the phone and Postgres for the server. "The phone and server disagree" becomes a failing test before release, not a wrong number in production.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>What works without signal</h2>
+  <table>
+    <thead><tr><th>You want to…</th><th>Offline</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>See Disponible, verdict, ¿Cómo se calcula?, Pagos, Te deben, Límites</td><td class="ok">Works</td><td>Calculated on the phone</td></tr>
+      <tr><td>Capture from bank notifications (Android)</td><td class="ok">Works</td><td>Template matching runs on the phone</td></tr>
+      <tr><td>Add cash, voice or text expenses</td><td class="ok">Works</td><td>Voice works offline where the phone supports on-device speech recognition; otherwise type it</td></tr>
+      <tr><td>Change category, "¿Siempre para Rappi?", fix past movements</td><td class="ok">Works</td><td>For the movements stored on the phone; older ones update when the server replays</td></tr>
+      <tr><td>Split a purchase, lend money, Tú debes, register repayments</td><td class="ok">Works</td><td></td></tr>
+      <tr><td>Cuotas, card payment, loan payment, pay-off, partial bill payment</td><td class="ok">Works</td><td></td></tr>
+      <tr><td>Mark a bill paid, skip, change amount, create or stop a recurring payment</td><td class="ok">Works</td><td></td></tr>
+      <tr><td>Create accounts, cards, loans, límites; cuadrar con mi saldo</td><td class="ok">Works</td><td></td></tr>
+      <tr><td>Answer Revisar cards, train a new notification format</td><td class="ok">Works</td><td></td></tr>
+      <tr><td>Browse past cycles</td><td class="ok">Works</td><td>Cycle summaries are stored on the phone</td></tr>
+      <tr><td>Capture from Gmail</td><td class="wait">Needs signal</td><td>Google is read by the server</td></tr>
+      <tr><td>Import a PDF statement</td><td class="wait">Needs signal</td><td>The parser is on the server; the file waits in the outbox</td></tr>
+      <tr><td>Name a merchant Zeta has never seen</td><td class="wait">Needs signal</td><td>Offline you get the 3 chips from your rules; the name is refined later</td></tr>
+      <tr><td>See movement detail older than what's on the phone</td><td class="wait">Needs signal</td><td>See S1-3</td></tr>
+      <tr><td>Get template pack updates, the weekly digest, sign in on a new phone</td><td class="wait">Needs signal</td><td>The last template pack keeps working</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>The four places things happen</h2>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 960 500" role="img" aria-label="System map: bank sources feed the phone or the server; the phone runs commands with the shared engine and queues them; the server replays them with the same engine and writes to the database; sync brings results back.">
       <defs>
         <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah"/></marker>
         <marker id="as" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah-soft"/></marker>
       </defs>
-
-      <!-- groups -->
       <rect x="12" y="50" width="176" height="370" rx="12" class="g-out"/>
       <text x="24" y="72" class="grp">OUTSIDE ZETA</text>
       <rect x="210" y="50" width="240" height="285" rx="12" class="g-phone"/>
       <text x="224" y="72" class="grp">YOUR PHONE · Expo app</text>
       <rect x="480" y="50" width="240" height="375" rx="12" class="g-server"/>
-      <text x="494" y="72" class="grp">BACKEND · Next.js on the VPS</text>
+      <text x="494" y="72" class="grp">SERVER · Next.js on the VPS</text>
       <rect x="750" y="50" width="198" height="375" rx="12" class="g-store"/>
       <text x="764" y="72" class="grp">SUPABASE</text>
 
-      <!-- outside -->
       <rect x="24" y="90" width="152" height="44" rx="8" class="box"/><text x="36" y="110">Bank app notices</text><text x="36" y="125" class="sub">Android only</text>
       <rect x="24" y="150" width="152" height="44" rx="8" class="box"/><text x="36" y="170">You</text><text x="36" y="185" class="sub">tap, type or talk</text>
       <rect x="24" y="210" width="152" height="44" rx="8" class="box"/><text x="36" y="230">Bank PDF statement</text><text x="36" y="245" class="sub">monthly</text>
       <rect x="24" y="358" width="152" height="44" rx="8" class="box"/><text x="36" y="378">Gmail inbox</text><text x="36" y="393" class="sub">iPhone path</text>
 
-      <!-- phone -->
       <rect x="225" y="90" width="210" height="44" rx="8" class="box"/><text x="237" y="110">Notification listener</text><text x="237" y="125" class="sub">keeps only chosen bank apps</text>
       <rect x="225" y="150" width="210" height="44" rx="8" class="box"/><text x="237" y="170">Screens</text><text x="237" y="185" class="sub">Inicio · Movimientos · Revisar</text>
-      <rect x="225" y="210" width="210" height="44" rx="8" class="box"/><text x="237" y="230">Engine (@zeta/shared)</text><text x="237" y="245" class="sub">Disponible, verdict, templates</text>
-      <rect x="225" y="270" width="210" height="44" rx="8" class="box"/><text x="237" y="290">Local database + outbox</text><text x="237" y="305" class="sub">copy of your recent data</text>
+      <rect x="225" y="210" width="210" height="44" rx="8" class="box-hot"/><text x="237" y="230" style="font-weight:600">Engine · runs commands</text><text x="237" y="245" class="sub">dedup, category, bills, Disponible</text>
+      <rect x="225" y="270" width="210" height="44" rx="8" class="box"/><text x="237" y="290">Local database + outbox</text><text x="237" y="305" class="sub">recent data · queued commands</text>
 
-      <!-- backend -->
       <rect x="495" y="90" width="210" height="44" rx="8" class="box"/><text x="507" y="110">Push sender</text><text x="507" y="125" class="sub">digest, payday, alerts</text>
       <rect x="495" y="150" width="210" height="44" rx="8" class="box"/><text x="507" y="170">PDF parser (Python)</text><text x="507" y="185" class="sub">9 banks, exists today</text>
       <rect x="495" y="210" width="210" height="44" rx="8" class="box"/><text x="507" y="230">Merchant namer</text><text x="507" y="245" class="sub">small LLM, once per new merchant</text>
-      <rect x="495" y="270" width="210" height="44" rx="8" class="box-hot"/><text x="507" y="290" style="font-weight:600">/api/ingest · the one door</text><text x="507" y="305" class="sub">dedup, merchant, category, bills</text>
+      <rect x="495" y="270" width="210" height="44" rx="8" class="box-hot"/><text x="507" y="290" style="font-weight:600">Engine · replays commands</text><text x="507" y="305" class="sub">same code as the phone</text>
       <rect x="495" y="358" width="210" height="44" rx="8" class="box"/><text x="507" y="378">Gmail sync job</text><text x="507" y="393" class="sub">every 15 min, bank senders only</text>
 
-      <!-- database -->
       <rect x="764" y="90" width="170" height="312" rx="8" class="box"/>
       <text x="778" y="112" style="font-weight:600">Postgres</text>
       <text x="778" y="132" class="sub">source of truth</text>
@@ -141,84 +225,50 @@ li{margin:3px 0}
       <text x="778" y="188" class="sub">  their rows (RLS)</text>
       <text x="778" y="206" class="sub">· names, amounts, notes</text>
       <text x="778" y="220" class="sub">  encrypted at rest</text>
+      <text x="778" y="244" class="sub">· applied command ids</text>
 
-      <!-- arrows: outside -> phone/backend -->
       <line x1="176" y1="112" x2="223" y2="112" class="ar" marker-end="url(#a)"/>
       <line x1="176" y1="172" x2="223" y2="172" class="ar" marker-end="url(#a)"/>
       <line x1="176" y1="232" x2="223" y2="186" class="ar" marker-end="url(#a)"/>
-      <text x="180" y="208" class="lbl" transform="rotate(-40 180 208)">pick file</text>
       <line x1="176" y1="380" x2="493" y2="380" class="ar" marker-end="url(#a)"/>
       <text x="236" y="372" class="lbl">read-only, server side: the phone isn't involved</text>
 
-      <!-- inside phone -->
-      <path d="M435 112 H444 V292 H437" class="ar" marker-end="url(#a)"/>
-      <line x1="330" y1="270" x2="330" y2="256" class="ar" marker-end="url(#a)"/>
+      <path d="M435 112 H444 V232 H437" class="ar" marker-end="url(#a)"/>
       <line x1="330" y1="210" x2="330" y2="196" class="ar" marker-end="url(#a)"/>
+      <line x1="330" y1="254" x2="330" y2="268" class="ar" marker-end="url(#a)"/>
 
-      <!-- phone -> backend -->
       <line x1="452" y1="172" x2="493" y2="172" class="ar" marker-end="url(#a)"/>
       <text x="452" y="164" class="lbl">upload</text>
       <line x1="452" y1="292" x2="493" y2="292" class="ar" marker-end="url(#a)"/>
-      <text x="452" y="284" class="lbl">send</text>
+      <text x="449" y="284" class="lbl">commands</text>
       <line x1="493" y1="112" x2="452" y2="112" class="ar-soft" marker-end="url(#as)"/>
 
-      <!-- backend internal -->
       <line x1="600" y1="358" x2="600" y2="316" class="ar" marker-end="url(#a)"/>
-      <text x="606" y="342" class="lbl">same pipeline</text>
+      <text x="606" y="342" class="lbl">capture command</text>
       <line x1="640" y1="270" x2="640" y2="256" class="ar-soft" marker-end="url(#as)"/>
 
-      <!-- backend -> db -->
       <line x1="705" y1="292" x2="762" y2="292" class="ar" marker-end="url(#a)"/>
       <text x="710" y="284" class="lbl">writes</text>
       <line x1="762" y1="112" x2="707" y2="112" class="ar-soft" marker-end="url(#as)"/>
       <text x="712" y="104" class="lbl">reads</text>
 
-      <!-- sync -->
-      <path d="M300 316 V462 H850 V404" class="ar" marker-start="url(#a)" marker-end="url(#a)"/>
-      <text x="470" y="480" class="lbl">sync: pulls your data down · pushes simple edits (note, date) up</text>
+      <path d="M300 316 V462 H850 V404" class="ar" marker-end="url(#a)" marker-start="url(#a)"/>
+      <text x="410" y="480" class="lbl">sync: server's results come down · nothing is pushed as raw rows anymore</text>
     </svg>
     </div>
     <div class="legend">
       <span><i class="sw" style="background:var(--phone-bg);border:1px solid var(--phone)"></i>runs on your phone</span>
       <span><i class="sw" style="background:var(--server-bg);border:1px solid var(--server)"></i>runs on our server</span>
       <span><i class="sw" style="background:var(--store-bg);border:1px solid var(--store)"></i>stores your data</span>
-      <span>dashed arrow = occasional</span>
+      <span><i class="sw" style="border:2px solid var(--server)"></i>the shared engine</span>
     </div>
-    <figcaption>Every new movement enters through <b>one server door</b>, <code>/api/ingest</code>, whether it came from a bank notification, Gmail, a PDF or you. The phone keeps a synced copy so screens open instantly and keep working offline.</figcaption>
+    <figcaption>The engine appears twice on purpose: it's the same code. The phone uses it to answer instantly; the server uses it to confirm and to handle what only the server sees (Gmail, PDF). There's no separate web product: the web app becomes the server plus a small page for bulk PDF import.</figcaption>
   </figure>
 </section>
 
 <section>
-  <h2>The one rule</h2>
-  <p class="rule"><b>The server owns the truth. The phone keeps a copy.</b> Anything that creates money data or links it to other data (a new purchase, a merged duplicate, a paid bill, a split) is decided on the server, by one pipeline. The phone shows it first, then confirms it.</p>
-  <div class="prose">
-    <p>Why: the old app let the phone write rows straight into the database. So the phone had to repeat every side effect the web did (update the account balance, mark the bill paid, check for duplicates). It missed some, and the 2026-06-25 audit found 8 data bugs caused by exactly that. One pipeline in one place removes that whole class of bug.</p>
-  </div>
-  <div class="two">
-    <div class="card"><h3><span class="tag t-phone">phone</span> keeps and does</h3>
-      <ul>
-        <li>A copy of your recent data (proposed: last 3 cycles)</li>
-        <li>Calculates Disponible and the verdict, instantly and offline</li>
-        <li>Reads bank notifications and matches them against templates</li>
-        <li>An outbox of captures waiting to be sent</li>
-        <li>Bill reminders scheduled on the phone</li>
-      </ul>
-    </div>
-    <div class="card"><h3><span class="tag t-server">server</span> keeps and does</h3>
-      <ul>
-        <li>All your data, encrypted; the source of truth</li>
-        <li>The ingest pipeline: duplicates, merchant, category, bills, balances</li>
-        <li>Gmail reading, PDF parsing, merchant naming</li>
-        <li>The weekly digest and payday pushes</li>
-        <li>The signed pack of bank notification templates</li>
-      </ul>
-    </div>
-  </div>
-</section>
-
-<section>
   <h2>One purchase, start to finish</h2>
-  <div class="prose"><p>Laura pays for Rappi with her Bancolombia debit card at 8:42 pm on an Android phone.</p></div>
+  <div class="prose"><p>Laura pays for Rappi with her Bancolombia debit card at 8:42 pm on an Android phone, on the metro, with no signal.</p></div>
   <figure>
     <div class="scroll">
 <pre class="mermaid">
@@ -226,40 +276,42 @@ sequenceDiagram
   autonumber
   participant B as Bancolombia app
   participant L as Listener (phone)
-  participant P as Zeta app (phone)
-  participant S as /api/ingest (server)
+  participant P as Zeta engine (phone)
+  participant S as Zeta engine (server)
   participant D as Database
   B->>L: notice "Compra por $48.900 en RAPPI"
-  L->>L: package is a chosen bank? yes. Keep it
+  L->>L: chosen bank? yes. Keep it
   L->>P: hand over the notice text
-  P->>P: template match: amount 48.900, merchant RAPPI, card *4410
-  P->>P: save row as "pendiente" and add it to the outbox
-  Note over P: Inicio drops by $48.900 right away
-  P->>S: send outbox (now, or when back online)
-  S->>S: duplicate check (idempotency key + matching)
-  S->>S: merchant = Rappi, category = Domicilios (Siempre)
-  S->>S: bill match? no. Account balance −48.900
-  S->>D: write the movement
-  D-->>P: next sync brings back the confirmed row
-  Note over P: "pendiente" disappears, same number
+  P->>P: template match: $48.900, RAPPI, card *4410
+  P->>P: command "capture": dedup vs local rows, merchant Rappi, Domicilios (Siempre), no bill, balance −48.900
+  Note over P: Inicio shows the final result, offline
+  P->>P: queue the command
+  Note over P,S: 9:05 pm, signal is back
+  P->>S: send queued commands
+  S->>S: same command, same code, all data
+  alt bank email already arrived through Gmail
+    S->>S: same purchase: keep one row, keep Laura's category
+  else nothing new
+    S->>S: same result as the phone
+  end
+  S->>D: write, record the command id
+  D-->>P: sync brings the result back
 </pre>
     </div>
-    <figcaption>The number moves at step 5, on the phone, without waiting for the server. The server's answer usually arrives a few seconds later. It can change the category or turn the row into a Revisar question, but it never makes the purchase count twice.</figcaption>
+    <figcaption>Laura never sees a "pendiente" state. The only visible difference the server can make is in the <i>alt</i> branch: the row's origin becomes "Aviso + correo", and the number stays the same.</figcaption>
   </figure>
 </section>
 
 <section>
   <h2>The same purchase, seen three times</h2>
-  <div class="prose"><p>Bancolombia tells Zeta about the Rappi purchase through the notification, then the email, and weeks later the PDF statement. Zeta keeps it as one row.</p></div>
   <table>
     <thead><tr><th>When</th><th>Source</th><th>Trust level</th><th>What Zeta does</th><th>What you see</th></tr></thead>
     <tbody>
-      <tr><td class="num">Sep 25, 8:42 pm</td><td>Notification</td><td>Tier 2 (new)</td><td>Creates the row</td><td>Rappi −$48.900</td></tr>
-      <tr><td class="num">Sep 25, 8:43 pm</td><td>Bank email (if forwarded or Gmail)</td><td>Tier 2</td><td>Same account, amount and day: recognized, not added</td><td>Nothing changes</td></tr>
+      <tr><td class="num">Sep 25, 8:42 pm</td><td>Notification (phone)</td><td>Tier 2 (new)</td><td>Creates the row on the phone</td><td>Rappi −$48.900</td></tr>
+      <tr><td class="num">Sep 25, 8:43 pm</td><td>Bank email (server)</td><td>Tier 2</td><td>Same account, amount and day: recognized when the phone's command arrives</td><td>Nothing changes</td></tr>
       <tr><td class="num">Oct 3</td><td>Statement PDF</td><td>Tier 1 (bank-verified)</td><td>Merges: PDF wins on amount and date; your category and notes stay</td><td>Origin: "Aviso + extracto ✓"</td></tr>
     </tbody>
   </table>
-  <p class="prose" style="margin-top:10px;color:var(--muted);font-size:14px">This dedup engine already exists and handles email plus PDF today. v2 adds notifications as a new tier-2 source.</p>
 </section>
 
 <section>
@@ -267,78 +319,60 @@ sequenceDiagram
   <table>
     <thead><tr><th>Situation</th><th>What happens</th><th>What you see</th></tr></thead>
     <tbody>
-      <tr><td>No signal when you buy</td><td>The phone captures and counts it; the outbox holds it until there's signal</td><td>Row marked "pendiente"; the number is already right</td></tr>
+      <tr><td>No signal for days</td><td>Everything runs on the phone; commands pile up in the outbox, in order</td><td>A small "Sin conexión · 12 cambios por enviar" line in Ajustes; nothing else</td></tr>
       <tr><td>Zeta is closed or the phone restarted</td><td>Android still runs the listener; it saves the notice in its own small store; Zeta processes it on next open</td><td>The purchase appears when you open the app</td></tr>
       <tr><td>Android kills the listener (battery saver)</td><td>A heartbeat notices the gap</td><td>"Tu Xiaomi está apagando la lectura de avisos" plus a fix button; the number gets a "~"</td></tr>
-      <tr><td>Server is down</td><td>Outbox retries with back-off (15 s up to 5 min)</td><td>Nothing, beyond rows staying "pendiente" longer</td></tr>
+      <tr><td>Server is down</td><td>Outbox retries with back-off</td><td>Nothing</td></tr>
+      <tr><td>The server's replay disagrees with the phone</td><td>See S1-2</td><td>Usually nothing; sometimes a Revisar card</td></tr>
       <tr><td>A notice Zeta doesn't understand</td><td>No guess: it goes to Revisar as a training card</td><td>"Aviso nuevo de Lulo. Enséñame una vez."</td></tr>
-      <tr><td>You lose the phone</td><td>Everything is on the server</td><td>Sign in on the new phone; data comes back</td></tr>
-      <tr><td>iPhone</td><td>No notification reading exists on iOS; Gmail is read by the server; PDF still works</td><td>Purchases show up within ~15 min of the bank email</td></tr>
+      <tr><td>You lose the phone with unsent commands</td><td>Those commands are lost; everything already sent is safe</td><td>The bank's email/PDF usually recovers lost captures; manual edits made offline would need redoing</td></tr>
+      <tr><td>iPhone</td><td>No notification reading exists on iOS; Gmail is read by the server; manual capture works offline</td><td>Gmail purchases show up within ~15 min of the bank email, when online</td></tr>
     </tbody>
   </table>
 </section>
 
 <section>
   <h2>Decisions for this session</h2>
-  <div class="prose"><p>Each decision has a recommendation. We'll go through them one at a time in the chat.</p></div>
   <div class="decisions">
 
-    <div class="dec">
-      <div class="dec-h"><span class="dec-id">S1-1</span><h3>Should the phone keep its own copy of your data?</h3></div>
-      <figure style="padding:12px">
-        <div class="scroll">
-        <svg viewBox="0 0 920 130" role="img" aria-label="Option A: screens read the local copy and sync runs in the background. Option B: screens ask the server every time and keep a cache.">
-          <defs><marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah"/></marker><marker id="bs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah-soft"/></marker></defs>
-          <text x="10" y="16" class="grp">A · LOCAL COPY (TODAY'S DESIGN, NARROWED)</text>
-          <rect x="10" y="32" width="100" height="40" rx="8" class="box"/><text x="60" y="57" text-anchor="middle">Screen</text>
-          <rect x="190" y="32" width="120" height="40" rx="8" class="g-phone"/><text x="250" y="57" text-anchor="middle">Local copy</text>
-          <rect x="390" y="32" width="80" height="40" rx="8" class="g-store"/><text x="430" y="57" text-anchor="middle">Server</text>
-          <line x1="110" y1="52" x2="188" y2="52" class="ar" marker-end="url(#b)"/><text x="150" y="86" class="lbl" text-anchor="middle">&lt;50 ms</text>
-          <line x1="310" y1="52" x2="388" y2="52" class="ar-soft" marker-start="url(#bs)" marker-end="url(#bs)"/><text x="350" y="86" class="lbl" text-anchor="middle">background</text>
-          <text x="10" y="110" class="lbl">Offline: works. Inicio opens instantly. Cost: trim the existing sync to ~13 tables.</text>
-
-          <text x="520" y="16" class="grp">B · ASK THE SERVER, KEEP A CACHE</text>
-          <rect x="520" y="32" width="100" height="40" rx="8" class="box"/><text x="570" y="57" text-anchor="middle">Screen</text>
-          <rect x="700" y="32" width="80" height="40" rx="8" class="g-store"/><text x="740" y="57" text-anchor="middle">Server</text>
-          <rect x="800" y="32" width="112" height="40" rx="8" class="g-phone"/><text x="856" y="57" text-anchor="middle">Capture queue</text>
-          <line x1="620" y1="52" x2="698" y2="52" class="ar" marker-end="url(#b)"/><text x="660" y="86" class="lbl" text-anchor="middle">every open</text>
-          <text x="520" y="110" class="lbl">Offline: spinner or an old number. Still needs a local queue.</text>
-        </svg>
-        </div>
-      </figure>
-      <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>A · Local copy</b>Keep the existing sync engine: it already handles single-flight runs, resets and retries. Sync 13 tables instead of 21. About 300 lines of change.</div>
-        <div class="opt"><b>B · Online-first</b>Simpler to reason about, but it means rewriting every read (about 2,000 lines) and the number isn't there without signal. We'd still need a local queue for captures.</div>
-      </div>
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S1-1</span><h3>Should the phone keep its own copy and work offline?</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> Yes, the phone keeps a local copy and runs the full engine offline. Commands are queued and the server replays them with the same code. Extra cost: about +2 to 3 weeks in M0/M1 to turn the email webhook's inline pipeline into shared commands with SQLite and Postgres adapters.</p>
     </div>
 
     <div class="dec">
-      <div class="dec-h"><span class="dec-id">S1-2</span><h3>Where do new movements get decided?</h3></div>
+      <div class="dec-h"><span class="dec-id">S1-2</span><h3>When the server's result differs from the phone's, who wins?</h3></div>
       <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>One server door</b>Every capture (notification, Gmail, PDF, manual, voice) goes through <code>/api/ingest</code>. We build it by pulling the pipeline out of today's email webhook. The phone shows the row immediately as "pendiente".</div>
-        <div class="opt"><b>Phone decides, then syncs</b>Works fully offline, including duplicate checks and bill matching. But it repeats the pipeline on the phone, which is the cause of today's parity bugs.</div>
+        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>Split by kind of field</b>
+          <ul>
+            <li><b>Bank facts</b> (amount, date, merchant text): the higher-trust source wins (PDF over email over notification over manual). This is today's rule.</li>
+            <li><b>Your choices</b> (category, note, split, cuotas, trip, bill link): yours always win. If you changed the same field on two devices, the latest change wins.</li>
+            <li><b>Real doubt</b> (a weak duplicate match): never decided silently. It becomes a Revisar card.</li>
+          </ul>
+        </div>
+        <div class="opt"><b>Server always wins</b>Simplest rule, but an offline edit could silently disappear if the server had different information. That breaks trust.</div>
       </div>
     </div>
 
     <div class="dec">
       <div class="dec-h"><span class="dec-id">S1-3</span><h3>How much history lives on the phone?</h3></div>
-      <p style="margin:0;font-size:14px;color:var(--muted)">This matters because of D2 (browsing past cycles). Today the phone keeps only this month and last month of movements.</p>
+      <p style="margin:0;font-size:14px;color:var(--muted)">This matters because of offline use and D2 (browsing past cycles). Today the phone keeps only this month and last month.</p>
       <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>Last 3 cycles + saved cycle results</b>The last 3 cycles of movements stay on the phone. Each closed cycle's result (the four lines plus the category totals) is saved as a small record and synced, so past cycles open instantly. Movements older than that load from the server when you open them.</div>
-        <div class="opt"><b>Everything</b>All movements on the phone. Simple, but the first sync is slow for heavy users (one user has 3,000+ movements) and the phone does more work on every sync.</div>
+        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>Last 3 cycles + saved cycle results</b>Three cycles of movements (about 90 days) on the phone. Every closed cycle keeps a small summary (four lines plus category totals), so all past cycles open offline. Only the movement detail older than 90 days needs signal.</div>
+        <div class="opt"><b>Everything</b>Full history offline. The first sync is slow for heavy users (one has 3,000+ movements), but it's simple and removes the only offline gap. A reasonable choice if full offline history matters to you.</div>
       </div>
     </div>
 
     <div class="dec">
       <div class="dec-h"><span class="dec-id">S1-4</span><h3>What does the web companion do?</h3></div>
       <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>PDF bulk import + accounts only</b>Upload several statements at once and manage accounts from a computer. The old web dashboard stays reachable until v2 ships, then gets retired.</div>
-        <div class="opt"><b>Also a read-only Disponible</b>Useful on a laptop, but it's a second surface to keep correct, the parity tax again.</div>
+        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>PDF bulk import + accounts only</b>Upload several statements at once and manage accounts from a computer. Its actions are the same commands, run by the server engine. The old web dashboard stays until v2 ships, then gets retired.</div>
+        <div class="opt"><b>Also a read-only Disponible</b>Useful on a laptop, but it's another surface to keep correct.</div>
       </div>
     </div>
 
   </div>
 </section>
 
-<footer style="color:var(--muted);font-size:13px">Next: session 2, the database. It covers what tables exist, what we keep, add and retire, encryption, and what the phone stores.</footer>
+<footer style="color:var(--muted);font-size:13px">Next: session 2, the database. It covers what tables exist, what we keep, add and retire, the command log, encryption, and what the phone stores.</footer>
 </main>
