@@ -1,10 +1,12 @@
 import { captureManualTransaction } from "./commands/capture-manual-transaction";
+import { setTransactionNote } from "./commands/set-transaction-note";
 import type { CommandEnvelope, CommandResult, CommandType, StoragePort } from "./types";
 
 type Handler = (s: StoragePort, cmd: CommandEnvelope<never>) => Promise<CommandResult>;
 
 const HANDLERS: Partial<Record<CommandType, Handler>> = {
   captureManualTransaction,
+  setTransactionNote,
 };
 
 /**

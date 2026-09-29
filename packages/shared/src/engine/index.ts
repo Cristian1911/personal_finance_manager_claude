@@ -7,3 +7,4 @@ export {
   validateCaptureManualTransaction,
   type CaptureManualTransactionPayload,
 } from "./commands/capture-manual-transaction";
+export { setTransactionNote, type SetTransactionNotePayload } from "./commands/set-transaction-note";
