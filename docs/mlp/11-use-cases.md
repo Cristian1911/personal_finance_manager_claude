@@ -48,6 +48,8 @@ Every architecture, database and screen decision is checked against this list. N
 | B15 | See my next card bill growing as I use the card, and what it will be at the cut | Inicio, Pagos › card | v1 | S3-5 |
 | B16 | Organize Inicio's 2-column widget grid: add/remove, order, size (half/full within each widget's minimum), expand in place, urgent widgets flagged and auto-opened (13 widgets: Hoy, Próximo pago, Te deben, Tarjetas, Deudas, Límites, Mis cuentas, Tu flujo, ¿En qué se me fue?, Últimos movimientos, Tus comercios, Dólar hoy, Viaje) | Inicio › Organizar | v1 | S5-4 |
 | B17 | Be alerted on Inicio when something is urgent or critical (bill due tomorrow, running out before payday, next cycle short, a debt overdue) | Inicio widget alert states | v1 | S5-4 |
+| B18 | See my history with full metrics: trends by category, debt shifts, income vs out (last 3 months free; older with Plus) | Historia (from past cycles) | v1.1 | S6-8 |
+| B19 | "Mi historia": a shareable recap of my year or semester (Wrapped-style) | Historia › Mi historia | later | S6-8 |
 | B13 | See a home-screen widget with my Disponible | Widget | v1.1 | ok |
 
 ## C. Recording money that moves
