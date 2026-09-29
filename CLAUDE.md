@@ -13,7 +13,17 @@
 - `services/pdf_parser/` — Python/FastAPI PDF parser for Bancolombia statements
 - `supabase/` — migrations and config (linked to remote, no local Docker)
 
-## Design Source of Truth
+## Zeta v2 (in development — read first for any v2 work)
+Zeta v2 is a native-only rebuild (same store app, `mobile/`, `(v2)` routes behind `EXPO_PUBLIC_ZETA_V2`). Planning is closed; the spec is `docs/mlp/10-build-plan.md`, every decision with its rationale is in `docs/mlp/12-decision-log.md` (it wins over any older doc), use cases in `docs/mlp/11-use-cases.md`, widget rules in `docs/mlp/13-widget-design-rules.md`. Team: the owner (product owner; accepts each milestone on a device) + Claude (main developer).
+- **Engine:** offline-first commands in `packages/shared/src/engine/`. Every write is a command: the phone runs it against SQLite and queues it; the server (`/api/v2/commands`) replays it with the same code against Postgres. Never write raw rows from the phone. Every command ships with contract tests that run on **both** storage adapters — a build gate.
+- **Conflicts:** bank facts → higher capture tier wins; user choices always survive (latest edit per field); weak duplicates → Revisar.
+- **Disponible:** only the chosen accounts count; card purchases don't lower it, the card **bill** does (minimum payment by default); promised money is subtracted before it's paid. Full rules: spec §4.
+- **Schema until v2 ships:** additive only (the web app must keep working on the same DB); new settings go in side tables, never new `_enc` columns; dev Supabase project first, then production by hand.
+- **Design:** Oliva afinada (default) + Nítido (optional), light/dark; tokens in `mobile/v2/tokens`. **Never use colored side stripes / left accent bars.** Only the Disponible number is bold; widgets centered, one question each, gallery-tested at 360/390/430. Screens come from Claude Design (`docs/mlp/05c-claude-design-v2-prompt.md`).
+- **Agents for v2:** `mobile-webapp-parity` is retired for v2 (contract tests replace it); `zetas-front-guy` reviews `mobile/v2/**` against the v2 tokens and widget rules; `mobile-sync-doctor` also covers the command outbox and replays.
+- The sections below describe the current web app and mobile v1; where they conflict with v2 rules, v2 rules apply to v2 code only.
+
+## Design Source of Truth (web app and mobile v1)
 **Before redesigning any page, read the wireframe handoff first.** The canonical target for all redesigns lives here:
 - `claude-ai-design/Zeta Wireframes.html` — React-rendered wireframes by Claude Design (Flows 01–07)
 - `zetas_design_system_handoff/reference/` — FRONTEND_STANDARDS.md + HTML showcases
@@ -40,6 +50,8 @@ Flows covered:
 - Idempotency: `computeIdempotencyKey()` from `src/lib/utils/idempotency.ts` for dedup
 
 ## Capture Method Hierarchy
+> v2 adds `NOTIFICATION` (tier 2: Android bank-app notifications, SMS and Wallet via notifications, iPhone Shortcuts) and one template engine shared by notifications and bank emails (decision S4-2).
+
 Every transaction has a `capture_method` indicating how it was created. These form an authority hierarchy that governs reconciliation, merge direction, and balance updates.
 
 | Tier | Authority | Methods | Examples |
@@ -86,7 +98,7 @@ Spawn these specialized agents for domain-specific review and diagnosis. Each ha
 5. `mobile-webapp-parity` — every mobile feature that touches Supabase
 6. `mobile-perf-doctor` — every mobile list screen or animated surface
 
-## Performance Rules
+## Performance Rules (web app)
 - **Cache all data reads**: `"use cache"` + `cacheTag()` + `cacheLife("zeta")`. Never add an uncached DB query to a render path.
 - **AppDataProvider**: Client components use context hooks (`useAccounts()`, `useCategories()`, `useOutflowCategories()`, `useDestinatarios()`, `useTagGroups()`, `useAllTags()`) — never lazy-fetch from server actions.
 - **Justify new queries**: Check (1) AppDataProvider already has it? (2) deferrable via Suspense? (3) needed eagerly or only on interaction?
@@ -97,7 +109,7 @@ Spawn these specialized agents for domain-specific review and diagnosis. Each ha
 - **cacheLife("zeta")**: stale 120s / revalidate 300s / expire 3600s. **Mutations MUST use `updateTag("tag")` (from `next/cache`), NOT `revalidateTag`.** `updateTag` immediately expires cache for read-your-own-writes. `revalidateTag` uses stale-while-revalidate — serves old data while refreshing in background, which silently breaks every mutation. `updateTag` also clears the Router Cache so cross-page navigation is fresh. Only use `revalidateTag` in Route Handlers (webhooks, cron) where eventual consistency is acceptable.
 - Spawn `cache-doctor` for stale UI diagnosis.
 
-## UI Rules
+## UI Rules (web app and mobile v1)
 - **No hardcoded colors**: Use design tokens from `docs/design-system/TOKENS.md` — e.g., `text-z-brass`, `bg-z-surface-2`, `border-white/6`. Propose new tokens to TOKENS.md first.
 - **No hardcoded styles**: Prefer existing utility patterns and component props from established components.
 - **Reuse existing components**: Check `webapp/src/components/ui/` (41 stories) before building new cards, badges, stat displays, or layout patterns.
