@@ -67,7 +67,7 @@ Every architecture, database and screen decision is checked against this list. N
 | C13 | Register an expense from the past (I forgot) | "+" with date | v1 | ok |
 | C14 | Have Apple Pay / Google Wallet payments appear on their own | Auto (Android: Wallet app; iPhone: Shortcuts "Transacción") | v1 | S4-6 |
 | C15 | Have bank SMS alerts appear on their own | Auto (Android: SMS app notifications; iPhone: Shortcuts "Mensaje", after spike) | v1 | S4-6 |
-| C16 | Send a screenshot of my bank app and have balances/movements updated | Share sheet / gallery → review | ? (paid) | S4-7 (open) |
+| C16 | Send a screenshot of my bank app and have balances/movements updated | Share sheet / gallery → review | v1.1 (paid) | S4-7 |
 
 ## D. Fixing and organizing
 

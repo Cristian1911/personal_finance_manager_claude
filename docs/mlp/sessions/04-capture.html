@@ -91,7 +91,7 @@ li{margin:3px 0}
 <main>
 
 <header>
-  <div class="eyebrow">Zeta v2 · Planning session 4 of 6</div>
+  <div class="eyebrow">Zeta v2 · Planning session 4 of 7 · closed</div>
   <h1>How movements get into Zeta</h1>
   <p class="lede">Five ways a movement arrives: Android bank notifications, bank emails, PDF statements, statements sent by email, and you. This page shows where each one enters, how notifications are read and learned, what happens when each path fails, and what leaves your phone. Five decisions at the end.</p>
 </header>
@@ -268,13 +268,12 @@ flowchart TD
       <p style="margin:0"><span class="decided-tag">DECIDED</span> <b>Android:</b> Google Wallet as a choosable app, and bank SMS through the messages app's notifications, filtered on the phone by the bank senders you allow (no "read SMS" permission). <b>iPhone:</b> iOS doesn't let any app read other apps' notifications or SMS, so we use two Shortcuts automations the user sets up once from a ready-made shortcut: Wallet "Transacción" (Apple Pay purchases: amount, merchant, card) and "Mensaje" from chosen bank senders (SMS text → the same templates). A 1-day test on a real iPhone in M0 confirms the SMS text reaches Zeta without a prompt each time. Push-only banks (Nu) stay on email and PDF on iPhone.</p>
     </div>
 
-    <div class="dec">
+    <div class="dec decided">
       <div class="dec-h"><span class="dec-id">S4-7</span><h3>Screenshots: send one, Zeta updates balances and movements</h3></div>
-      <p style="margin:0;font-size:14px;color:var(--muted)">Your idea, as a paid feature. Share a screenshot of your bank app to Zeta (share sheet or gallery). A balance becomes a "cuadrar" check (like S4-5), movements become capture commands. Always reviewed before saving, never automatic. Parsers exist today for 5 bank app layouts (Bancolombia app and web, Nequi, Nu card, Nu savings). Needs signal: images are read on the server.</p>
-      <p style="margin:0;font-size:14px"><b>Open:</b> it depends on how Zeta charges for paid features, which isn't planned yet (see the chat).</p>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> A paid feature, planned in a new <b>"Plans and payments"</b> session after session 5 (free vs paid, price, billing tool, release). Likely the first paid feature, in v1.1, so v1's launch doesn't depend on billing. Share a screenshot → balance becomes a "cuadrar" check, movements become captures, always reviewed before saving; needs signal.</p>
     </div>
   </div>
 </section>
 
-<footer style="color:var(--muted);font-size:13px">Next: session 5, the visual direction. It covers fixing Oliva's contrast and hierarchy in light and dark, and timeline variations.</footer>
+<footer style="color:var(--muted);font-size:13px">Next: session 5, the visual direction. It covers fixing Oliva's contrast and hierarchy in light and dark, and timeline variations. Then session 6, plans and payments, and session 7, build order.</footer>
 </main>
