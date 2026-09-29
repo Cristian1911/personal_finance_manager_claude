@@ -158,7 +158,7 @@ export default function TransactionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { session } = useAuth();
+  const { userId: authUserId } = useAuth();
   // Travelling: show the stored (Colombian) clock as it reads where the
   // phone is, and the amount in the home + local currency.
   const travel = useTravelContext();
@@ -412,8 +412,8 @@ export default function TransactionDetailScreen() {
   };
 
   const handlePromoteToRecurring = () => {
-    if (!transaction || !session?.user?.id) return;
-    const userId = session.user.id;
+    if (!transaction || !authUserId) return;
+    const userId = authUserId;
     const txDate = parseLocalDate(transaction.transaction_date);
     const dayOfMonth = txDate.getDate();
     const merchant =
@@ -604,14 +604,6 @@ export default function TransactionDetailScreen() {
                 className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-black-20"
               >
                 <Pencil size={16} color={COLORS.sageDark} />
-              </Pressable>
-              <Pressable
-                onPress={handleDelete}
-                accessibilityLabel="Eliminar transacción"
-                accessibilityRole="button"
-                className="w-8 h-8 items-center justify-center rounded-full bg-z-debt-12 active:bg-z-debt-20"
-              >
-                <Trash2 size={16} color={COLORS.debt} />
               </Pressable>
             </View>
           </>

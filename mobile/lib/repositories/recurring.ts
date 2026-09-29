@@ -16,6 +16,7 @@ import {
 } from "@zeta/shared";
 import { getDatabase } from "../db/database";
 import { enqueueInsert, enqueueUpdate } from "../sync/queue";
+import { isDemoUserId } from "../demo-mode";
 import { toColombiaDateString } from "./accounts-detail";
 import {
   applyLocalBalanceDelta,
@@ -309,6 +310,19 @@ export async function createRecurringTemplate(
     );
 
     await enqueueInsert(db, "recurring_transaction_templates", id, payload, now);
+
+    // Occurrences are normally generated server-side and arrive on pull.
+    // Demo mode never syncs, so seed the first one locally or the new
+    // recurrente would never show up in Plan. Local-only: not enqueued (and
+    // the sync_queue trigger would drop it anyway).
+    if (isDemoUserId(params.user_id)) {
+      await db.runAsync(
+        `INSERT INTO recurring_occurrences
+          (id, user_id, template_id, occurrence_date, expected_amount, status, created_at)
+         VALUES (?, ?, ?, ?, ?, 'pending', ?)`,
+        [Crypto.randomUUID(), params.user_id, id, params.start_date, params.amount, now]
+      );
+    }
   });
 
   return id;

@@ -7,7 +7,6 @@ import {
   Upload,
   Wallet,
   Users,
-  Tag,
   ChevronRight,
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
@@ -170,11 +169,6 @@ function AvatarMenuPopover({
                 icon={<Users size={16} color={COLORS.sageDark} />}
                 label="Destinatarios"
                 onPress={() => navigate("/destinatarios")}
-              />
-              <MenuRow
-                icon={<Tag size={16} color={COLORS.sageDark} />}
-                label="Categorizar"
-                onPress={() => navigate("/categorizar")}
               />
               <MenuRow
                 icon={<Wallet size={16} color={COLORS.sageDark} />}

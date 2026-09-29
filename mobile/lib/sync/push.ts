@@ -1,5 +1,6 @@
 import { supabase } from "../supabase";
 import { getDatabase } from "../db/database";
+import { DEMO_USER_ID, isDemoModeActive } from "../demo-mode";
 
 type SyncQueueItem = {
   id: number;
@@ -121,11 +122,26 @@ export async function pushPendingChanges(options?: {
 }): Promise<number> {
   const shouldAbort = options?.shouldAbort;
   if (shouldAbort?.()) return 0;
+  // Demo mode is local-only: never talk to Supabase while it is on.
+  if (isDemoModeActive()) return 0;
   const db = await getDatabase();
 
-  const pending = await db.getAllAsync<SyncQueueItem>(
+  const queued = await db.getAllAsync<SyncQueueItem>(
     "SELECT * FROM sync_queue WHERE synced_at IS NULL ORDER BY id ASC"
   );
+
+  // Last line of defense, independent of the demo flag and of the
+  // sync_queue trigger (lib/db/database.ts): any row that names the demo
+  // owner — as its record id or anywhere in its payload (user_id, id,
+  // nested) — is dropped here and never sent.
+  const pending: SyncQueueItem[] = [];
+  for (const item of queued) {
+    if (item.record_id === DEMO_USER_ID || item.payload.includes(DEMO_USER_ID)) {
+      await db.runAsync("DELETE FROM sync_queue WHERE id = ?", [item.id]);
+      continue;
+    }
+    pending.push(item);
+  }
 
   if (pending.length === 0) return 0;
 

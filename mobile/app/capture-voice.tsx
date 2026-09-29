@@ -86,8 +86,8 @@ function resolveLocale(): string {
 export default function CaptureVoiceScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { session } = useAuth();
-  const userId = session?.user?.id;
+  // Signed-in user, or the local-only demo owner (demo writes never sync).
+  const { userId } = useAuth();
 
   const [step, setStep] = useState<Step>("idle");
   const [transcript, setTranscript] = useState("");
@@ -242,7 +242,14 @@ export default function CaptureVoiceScreen() {
   }, []);
 
   const saveTransaction = useCallback(async () => {
-    if (!parsed || !userId) return;
+    if (!parsed) return;
+    if (!userId) {
+      Alert.alert(
+        "Sesión no disponible",
+        "Inicia sesión o entra al modo demo para registrar movimientos."
+      );
+      return;
+    }
     const account = accounts.find((a) => a.id === selectedAccountId);
     if (!account) {
       Alert.alert("Cuenta requerida", "Selecciona una cuenta para guardar la transacción.");

@@ -254,8 +254,6 @@ export function PlanRoot() {
         <PlanToolsChips
           budgetOverLimit={budgetOverLimit}
           budgetPct={budgetPct}
-          periodHasActive={false}
-          periodPercentAssigned={0}
           recurringUpcoming={data.upcomingCount}
           recurringOverdue={data.overdueCount}
         />

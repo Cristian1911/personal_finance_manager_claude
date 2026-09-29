@@ -19,7 +19,7 @@ import {
 
 export default function NewRecurrenteScreen() {
   const router = useRouter();
-  const { session } = useAuth();
+  const { userId } = useAuth();
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [categories, setCategories] = useState<CategoryRow[]>([]);
   const [destinatarios, setDestinatarios] = useState<DestinatarioWithCount[]>([]);
@@ -55,12 +55,18 @@ export default function NewRecurrenteScreen() {
 
   const handleSubmit = useCallback(
     async (values: RecurringFormValues) => {
-      if (!session?.user?.id) return;
+      if (!userId) {
+        Alert.alert(
+          "Sesión no disponible",
+          "Inicia sesión o entra al modo demo para crear recurrentes."
+        );
+        return;
+      }
       setSaving(true);
       try {
         const account = accounts.find((a) => a.id === values.account_id);
         await createRecurringTemplate({
-          user_id: session.user.id,
+          user_id: userId,
           account_id: values.account_id,
           amount: values.amount,
           currency_code: values.currency_code,
@@ -89,7 +95,7 @@ export default function NewRecurrenteScreen() {
         setSaving(false);
       }
     },
-    [accounts, session?.user?.id, router]
+    [accounts, userId, router]
   );
 
   return (

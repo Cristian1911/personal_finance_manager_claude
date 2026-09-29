@@ -16,6 +16,9 @@ export default function TabLayout() {
         <FocusModeAccent />
         <Tabs
           tabBar={(props) => <MobileTabBar {...props} navFocus={navFocus} />}
+          // Importar es una pestaña oculta con back en su header: sin historial,
+          // router.back() caía siempre en Inicio en vez de volver al origen.
+          backBehavior="history"
           screenOptions={{
             headerShown: false,
           }}
@@ -27,8 +30,6 @@ export default function TabLayout() {
           <Tabs.Screen name="menu" />
           {/* Hidden tabs — kept as files but not in tab bar */}
           <Tabs.Screen name="import" options={{ href: null }} />
-          <Tabs.Screen name="accounts" options={{ href: null }} />
-          <Tabs.Screen name="budgets" options={{ href: null }} />
         </Tabs>
       </View>
     </TabBarVisibilityProvider>

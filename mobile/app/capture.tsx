@@ -225,7 +225,7 @@ function AccountAccordion({
 export default function CaptureScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { session } = useAuth();
+  const { userId } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -401,10 +401,12 @@ export default function CaptureScreen() {
   }
 
   async function handleSave() {
-    if (!session?.user?.id) {
+    // `userId` is the signed-in user or, in demo mode, the local-only demo
+    // owner — demo captures are saved to SQLite and never synced.
+    if (!userId) {
       Alert.alert(
-        "Requiere cuenta",
-        "Debes iniciar sesión para registrar movimientos."
+        "Sesión no disponible",
+        "Inicia sesión o entra al modo demo para registrar movimientos."
       );
       return;
     }
@@ -434,7 +436,7 @@ export default function CaptureScreen() {
       const { date: storedDate, time: storedTime } = resolveStoredClock();
 
       const createParams: CreateTransactionParams = {
-        user_id: session.user.id,
+        user_id: userId,
         account_id: accountId,
         amount: parsedAmount,
         currency_code: currencyCode,
@@ -479,7 +481,7 @@ export default function CaptureScreen() {
         if (LOCATION_FEATURE_ENABLED && profile?.location_tracking_enabled === 1) {
           await captureCurrentLocation();
           await linkNearestPingToTransaction({
-            userId: session.user.id,
+            userId: userId,
             transactionId: newTxId,
             date: storedDate,
             time: storedTime,
@@ -507,7 +509,7 @@ export default function CaptureScreen() {
           try {
             const dayOfMonth = Number(storedDate.slice(8, 10)) || 1;
             await createRecurringTemplate({
-              user_id: session.user.id,
+              user_id: userId,
               account_id: accountId,
               amount: parsedAmount,
               currency_code: currencyCode,

@@ -9,8 +9,13 @@ import {
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import * as SecureStore from "expo-secure-store";
 import { isDeadRefreshToken, readPersistedSession, supabase } from "./supabase";
-import { disableDemoMode, isDemoModeEnabled } from "./demo-mode";
-import { clearDatabase } from "./db/database";
+import {
+  DEMO_USER_ID,
+  disableDemoMode,
+  isDemoModeEnabled,
+  setDemoModeActive,
+} from "./demo-mode";
+import { clearDatabase, getDatabase } from "./db/database";
 import { requestSync, syncAll } from "./sync/engine";
 import { getLocalProfile } from "./profile";
 import {
@@ -25,6 +30,13 @@ type AuthContextType = {
   loading: boolean;
   demoMode: boolean;
   setDemoMode: (value: boolean) => void;
+  /**
+   * Owner id for local writes: the signed-in user, or `DEMO_USER_ID` while
+   * demo mode is on (writes stay in SQLite; the sync layer never pushes
+   * them). Null when neither. Only for LOCAL writes — code that calls
+   * Supabase directly must keep using `session.user.id`.
+   */
+  userId: string | null;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -32,9 +44,23 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   demoMode: false,
   setDemoMode: () => {},
+  userId: null,
 });
 
 const LAST_AUTH_USER_KEY = "zeta_last_auth_user_id";
+
+async function hasOrphanedDemoProfile(): Promise<boolean> {
+  try {
+    const db = await getDatabase();
+    const row = await db.getFirstAsync<{ id: string }>(
+      "SELECT id FROM profiles WHERE id = ?",
+      [DEMO_USER_ID]
+    );
+    return row != null;
+  } catch {
+    return false;
+  }
+}
 
 export function useAuth() {
   return useContext(AuthContext);
@@ -49,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     demoModeRef.current = demoMode;
+    setDemoModeActive(demoMode);
   }, [demoMode]);
 
   async function resolveSessionSafely(): Promise<Session | null> {
@@ -78,6 +105,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const nextUserId = nextSession?.user?.id ?? null;
 
     if (previousUserId && nextUserId && previousUserId !== nextUserId) {
+      await clearDatabase();
+      autoSyncedUserRef.current = null;
+    } else if (nextUserId && (await hasOrphanedDemoProfile())) {
+      // A demo seed survived into a real session (demo entry failed halfway,
+      // or the app died between "Salir de modo demo" and its wipe). Its
+      // profile row arms the sync_queue trigger (lib/db/database.ts), which
+      // would silently stop this user's writes from ever syncing.
       await clearDatabase();
       autoSyncedUserRef.current = null;
     }
@@ -136,7 +170,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     await handleUserBoundary(resolvedSession);
     setSession(resolvedSession);
-    setDemoMode(demoEnabled && !resolvedSession?.user);
+    const startInDemo = demoEnabled && !resolvedSession?.user;
+    // Mirror synchronously: the effect above only runs after the next render.
+    setDemoModeActive(startInDemo);
+    setDemoMode(startInDemo);
     setLoading(false);
 
     triggerInitialSyncOnce(resolvedSession, "Initial sync failed:");
@@ -179,8 +216,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  const userId = session?.user?.id ?? (demoMode ? DEMO_USER_ID : null);
+
   return (
-    <AuthContext.Provider value={{ session, loading, demoMode, setDemoMode }}>
+    <AuthContext.Provider value={{ session, loading, demoMode, setDemoMode, userId }}>
       {children}
     </AuthContext.Provider>
   );

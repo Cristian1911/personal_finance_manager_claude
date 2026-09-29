@@ -25,6 +25,7 @@ import {
   saveDashboardLayout,
 } from "../../lib/dashboard/layout-storage";
 import { useDashboardData } from "../../lib/dashboard/useDashboardData";
+import { getLocalProfile } from "../../lib/profile";
 import { useExpandableZone } from "../ui/useExpandableZone";
 import { MobileHeader } from "../ui/MobileHeader";
 import { AvatarMenuTrigger } from "../ui/AvatarMenu";
@@ -62,9 +63,6 @@ const UNKNOWN_RENDER: WidgetRender = {
       <Text className="mt-2 text-[20px] font-inter-bold text-z-sage-dark">
         —
       </Text>
-      <Text className="mt-1 text-[10px] font-inter text-muted-foreground">
-        Próximamente
-      </Text>
     </View>
   ),
   detail: () => null,
@@ -76,6 +74,16 @@ export function InicioRoot() {
   const userId = session?.user?.id ?? null;
 
   const { summary, reload } = useDashboardData();
+
+  // Mismo criterio que webapp `charts.ts`: ingreso programado o estimado en el
+  // onboarding. Se relee cuando cambia el resumen (tras sync o foco).
+  const [onboardingIncome, setOnboardingIncome] = useState(false);
+  useEffect(() => {
+    getLocalProfile()
+      .then((p) => setOnboardingIncome(Number(p?.estimated_monthly_income ?? 0) > 0))
+      .catch(() => {});
+  }, [summary]);
+  const incomeConfigured = summary.nextIncome != null || onboardingIncome;
 
   const [layout, setLayout] = useState<DashboardLayout>(DEFAULT_LAYOUT);
   const [refreshing, setRefreshing] = useState(false);
@@ -251,6 +259,7 @@ export function InicioRoot() {
           dailyOutflows={summary.dailyOutflowsThisMonth}
           currency={summary.currency}
           primaryAccount={primaryAccount ?? undefined}
+          incomeConfigured={incomeConfigured}
         />
 
         <SectionDivider label="Herramientas" />

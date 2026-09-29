@@ -35,6 +35,8 @@ interface HybridHeroProps {
   dailyOutflows: { date: string; expense: number }[];
   currency: CurrencyCode;
   primaryAccount?: PrimaryAccountSummary;
+  /** Hay ingreso programado o estimado. Sin él no hay veredicto honesto (webapp `incomeConfigured`). */
+  incomeConfigured: boolean;
 }
 
 // NativeWind v3 can't parse Tailwind v4's `/N` opacity modifier — those
@@ -89,6 +91,7 @@ export const HybridHero = memo(function HybridHero({
   dailyOutflows,
   currency,
   primaryAccount,
+  incomeConfigured,
 }: HybridHeroProps) {
   const router = useRouter();
   const [expanded, setExpanded] = useState(false);
@@ -121,7 +124,8 @@ export const HybridHero = memo(function HybridHero({
   const statusColor = TONE_COLOR[status.tone];
   // Bright when you still have room, red once you're in the negative. The
   // status pill carries the nuanced green/amber/red verdict.
-  const amountColor = overspentToday ? COLORS.debt : COLORS.foreground;
+  const amountColor =
+    incomeConfigured && overspentToday ? COLORS.debt : COLORS.foreground;
 
   const spark = useMemo(() => {
     const values = ritmo.calendar.slice(-7).map((d) => d.expense);
@@ -160,17 +164,25 @@ export const HybridHero = memo(function HybridHero({
       {/* Top row: eyebrow + status pill */}
       <View className="flex-row items-center justify-between">
         <Text className="text-[10px] font-inter-semibold uppercase tracking-[2px] text-z-sage-dark">
-          Disponible hoy
+          {incomeConfigured ? "Disponible hoy" : "Gasto de hoy"}
         </Text>
+        {/* Sin ingreso no hay veredicto: "VAS BIEN · $0/día" el día 0 mentía. */}
         <View
+          accessibilityRole="text"
+          accessibilityLabel={
+            incomeConfigured ? status.label : "Sin datos suficientes para un veredicto"
+          }
           className="flex-row items-center gap-1.5 rounded-full border border-white-6 bg-white-4 px-2.5 py-1"
         >
-          <View className="size-1.5 rounded-full" style={{ backgroundColor: statusColor }} />
+          <View
+            className="size-1.5 rounded-full"
+            style={{ backgroundColor: incomeConfigured ? statusColor : COLORS.sageDark }}
+          />
           <Text
             className="text-[10px] font-inter-semibold uppercase tracking-[1.2px]"
-            style={{ color: statusColor }}
+            style={{ color: incomeConfigured ? statusColor : COLORS.sageDark }}
           >
-            {status.label}
+            {incomeConfigured ? status.label : "Sin datos aún"}
           </Text>
         </View>
       </View>
@@ -181,9 +193,11 @@ export const HybridHero = memo(function HybridHero({
           className="text-[34px] font-inter-bold tracking-[-1.2px]"
           style={{ color: amountColor, fontVariant: ["tabular-nums"] }}
         >
-          {overspentToday
-            ? `−${formatCurrency(Math.abs(remainingToday), currency)}`
-            : formatCurrency(remainingToday, currency)}
+          {!incomeConfigured
+            ? formatCurrency(ritmo.spentToday, currency)
+            : overspentToday
+              ? `−${formatCurrency(Math.abs(remainingToday), currency)}`
+              : formatCurrency(remainingToday, currency)}
         </Text>
         {spark.values.length > 0 && (
           <Sparkline values={spark.values} max={spark.max} color={statusColor} />
@@ -191,15 +205,29 @@ export const HybridHero = memo(function HybridHero({
       </View>
 
       {/* Context: how much of today's allowance is already spent. */}
-      <Text
-        className="mt-2 text-[12px]"
-        style={{
-          color: overspentToday ? COLORS.debt : COLORS.sageLight,
-          fontVariant: ["tabular-nums"],
-        }}
-      >
-        {`Gastaste ${formatCurrency(ritmo.spentToday, currency)} de ${formatCurrency(ritmo.availablePerDay, currency)} hoy`}
-      </Text>
+      {incomeConfigured ? (
+        <Text
+          className="mt-2 text-[12px]"
+          style={{
+            color: overspentToday ? COLORS.debt : COLORS.sageLight,
+            fontVariant: ["tabular-nums"],
+          }}
+        >
+          {`Gastaste ${formatCurrency(ritmo.spentToday, currency)} de ${formatCurrency(ritmo.availablePerDay, currency)} hoy`}
+        </Text>
+      ) : (
+        // Webapp enlaza a Perfil; en móvil el ingreso se programa como recurrente.
+        <Pressable
+          onPress={() => router.push("/recurrentes/new" as never)}
+          accessibilityRole="link"
+          className="mt-2 flex-row items-center gap-1 self-start"
+        >
+          <Text className="text-[12px] font-inter-medium text-z-brass">
+            Programa tu ingreso para calcular tu ritmo
+          </Text>
+          <ChevronRight size={14} color={COLORS.brass} />
+        </Pressable>
+      )}
 
       {/* % del período above bar */}
       <View className="mt-5 flex-row items-end justify-end">

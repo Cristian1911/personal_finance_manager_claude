@@ -86,7 +86,10 @@ export function PaymentSheet({
   onClose,
   onSuccess,
 }: PaymentSheetProps) {
-  const { session } = useAuth();
+  // `userId` also covers demo mode (local-only owner); the remote candidate
+  // search and the link path below still require a real session.
+  const { session, userId } = useAuth();
+  const remoteUserId = session?.user?.id ?? null;
 
   // State
   const [mode, setMode] = useState<SheetMode>("loading");
@@ -103,7 +106,7 @@ export function PaymentSheet({
 
   // Search for candidate transactions when sheet opens
   useEffect(() => {
-    if (!visible || !session?.user?.id) return;
+    if (!visible || !userId) return;
 
     setMode("loading");
     setCandidates([]);
@@ -117,6 +120,11 @@ export function PaymentSheet({
     setShowDatePicker(false);
 
     (async () => {
+      // Demo mode has no session: skip the remote search, register locally.
+      if (!remoteUserId) {
+        setMode("create");
+        return;
+      }
       try {
         const sb = supabase as any;
         const month = toLocalMonthString();
@@ -129,7 +137,7 @@ export function PaymentSheet({
         const { data: txs } = await sb
           .from("transactions")
           .select("id, description, merchant_name, amount, transaction_date, account_id, direction")
-          .eq("user_id", session.user.id)
+          .eq("user_id", remoteUserId)
           .eq("is_excluded", false)
           .is("reconciled_into_transaction_id", null)
           .gte("transaction_date", monthStart)
@@ -172,7 +180,7 @@ export function PaymentSheet({
         setMode("create");
       }
     })();
-  }, [visible, session?.user?.id, entry, debtAccount]);
+  }, [visible, userId, remoteUserId, entry, debtAccount]);
 
   const showTotalDebt = debtAccount != null && isDebtAccountType(debtAccount.account_type);
 
@@ -209,7 +217,7 @@ export function PaymentSheet({
     setError(null);
 
     try {
-      const userId = session.user.id;
+      const sessionUserId = session.user.id;
       const sb = supabase as any;
 
       // 1. Link to recurring occurrence
@@ -219,7 +227,7 @@ export function PaymentSheet({
           .from("recurring_occurrences")
           .select("id, occurrence_date")
           .eq("template_id", entry.recurring_template_id)
-          .eq("user_id", userId)
+          .eq("user_id", sessionUserId)
           .eq("status", "pending")
           .like("occurrence_date", monthPrefix)
           .order("occurrence_date", { ascending: true })
@@ -245,7 +253,7 @@ export function PaymentSheet({
               .from("transactions")
               .select("category_id")
               .eq("id", selectedCandidateId)
-              .eq("user_id", userId)
+              .eq("user_id", sessionUserId)
               .single();
             if (txRow && !txRow.category_id) {
               txEnrichment.category_id = entry.category_id;
@@ -261,7 +269,7 @@ export function PaymentSheet({
             .from("transactions")
             .update(txEnrichment)
             .eq("id", selectedCandidateId)
-            .eq("user_id", userId);
+            .eq("user_id", sessionUserId);
           if (txErr) throw new Error(txErr.message);
 
           const { error: occErr } = await sb
@@ -273,7 +281,7 @@ export function PaymentSheet({
               linked_manually: true,
             })
             .eq("id", occ.id)
-            .eq("user_id", userId);
+            .eq("user_id", sessionUserId);
           if (occErr) throw new Error(occErr.message);
         }
       }
@@ -298,7 +306,7 @@ export function PaymentSheet({
   //     (real tx[s] + balance + occurrence paid-link + payoff lifecycle).
   //   · debt account, no template → registerPayment (INFLOW + paired source OUTFLOW).
   const handleCreatePayment = useCallback(async () => {
-    if (!canSubmit || !session?.user?.id || resolvedAmount == null) return;
+    if (!canSubmit || !userId || resolvedAmount == null) return;
 
     setSubmitting(true);
     setError(null);
@@ -358,7 +366,7 @@ export function PaymentSheet({
     } finally {
       setSubmitting(false);
     }
-  }, [canSubmit, session?.user?.id, resolvedAmount, selectedSourceId, date, entry, debtAccount, handleClose, onSuccess]);
+  }, [canSubmit, userId, resolvedAmount, selectedSourceId, date, entry, debtAccount, handleClose, onSuccess]);
 
   // ── Account name lookup for candidates ──
   const allAccountMap = useMemo(() => {
