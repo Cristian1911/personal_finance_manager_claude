@@ -1884,3 +1884,6 @@ Pendiente de esto:
 - "Cargar más" en Movimientos móvil añade filas en cliente sin sus patas faltantes → degradan a fila individual. Se cierra si `getTransferLegs` se cachea por mes en vez de por conjunto de ids (entra al `Promise.all` y elimina el hop serial).
 - `getTransferLegs` no filtra `is_demo`: una pata demo podría completar un par real. Bajo impacto mientras el modo demo no se use en serio.
 - Enlace a la otra pata desde el detalle (`/transactions/[id]`): hoy solo existe en la fila expandida del móvil.
+
+## Production migration history drift (found 2026-09-29, not fixed)
+Production's `supabase_migrations.schema_migrations` doesn't match `supabase/migrations/`: 146 versions match, **17 local files (2026-08-06 → 2026-09-19) have no production entry, and production has 19 entries with other timestamps from the same dates** (applied via dashboard/MCP, which assigns new versions). The schema itself is current (the 2026-09-29 dump matches), but a plain `supabase db push` to production would try to re-apply those 17 files. Before the next production push: map each local file to its production entry and run `supabase migration repair` (writes to production's history table — needs owner approval). Details: `supabase/baseline/README.md`.
