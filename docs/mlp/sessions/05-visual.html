@@ -126,33 +126,41 @@ td.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 </section>
 
 <section>
-  <h2>The timeline (S3-T): three ways to draw it</h2>
-  <div class="prose"><p>The same data in all three: last cycle, this cycle and the next, with paydays, bills, the Nu card's cut and due dates, and a big bill further ahead. Shown in direction B light so only the layout differs.</p></div>
-  <div class="phones" id="tl"></div>
-  <div class="two">
-    <div class="card"><h3>T1 · Carriles (lanes)</h3><p style="font-size:14px;margin:0">Like the diagram you liked. One lane per thing: paydays, bills, each card. You read <i>when</i> things happen at a glance. Weaker at <i>how much</i>.</p></div>
-    <div class="card"><h3>T2 · Saldo proyectado (projected balance)</h3><p style="font-size:14px;margin:0">One line: your counted money over time. Solid up to today, dashed after. Paydays jump up, bills step down. Its lowest point is marked. Answers "¿me alcanza?" visually.</p></div>
-    <div class="card"><h3>T3 · Agenda</h3><p style="font-size:14px;margin:0">A list by date with a running balance, grouped by cycle. The most readable on a small phone and the easiest to tap. Least "graphic".</p></div>
+  <h2>The timeline (S3-T): "Tu flujo", interactive</h2>
+  <div class="prose"><p>Built on the flow chart Zeta has today (<code>plan-flow-chart.tsx</code>): the balance line, daily bars around $0, and "Hoy". What changes: it follows your <b>pay cycles</b> instead of the calendar month, it <b>projects</b> the rest of the cycle and the next one (dashed line, outlined bars for bills still to pay), and you can <b>touch it</b>. <b>Try it</b>: drag across the chart to read the balance on any day, tap a day to see its movements and bills, and switch cycles. The theme toggles show it in both themes.</p></div>
+  <div style="display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start">
+    <div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap" id="flowToggles"></div>
+      <div id="flow"></div>
+    </div>
+    <div class="card" style="max-width:420px;font-size:14px">
+      <h3 style="margin-bottom:8px">What it shows</h3>
+      <ul style="margin:0;padding-left:18px">
+        <li><b>Line:</b> money in your counted accounts at the end of each day. Solid up to today, dashed after (projected with your usual daily spending).</li>
+        <li><b>Bars up:</b> money in (salary, repayments).</li>
+        <li><b>Bars down:</b> money out. Solid = already happened. Outlined = a bill or payment still to come. Gray = estimated daily spending.</li>
+        <li><b>Marker:</b> the lowest point ahead, i.e. "will I make it?".</li>
+        <li><b>Touch:</b> drag to read any day's balance; tap to list that day's items (each opens its detail sheet in the app).</li>
+        <li><b>Cycles:</b> Pasado / Este / Próximo, or swipe. Totals under the chart follow the selected cycle.</li>
+      </ul>
+      <p style="margin:10px 0 0;color:var(--muted)">One change from today's chart: everyday spending bars are neutral, not red. Red is reserved for "Te pasaste" (the hierarchy rule), so it keeps its meaning.</p>
+    </div>
   </div>
 </section>
 
 <section>
   <h2>Decisions for this session</h2>
   <div class="decisions">
-    <div class="dec">
-      <div class="dec-h"><span class="dir-id">S5-1</span><h3>Which direction?</h3></div>
-      <div class="opts">
-        <div class="opt"><b>A · Oliva afinada</b>Keeps the warm identity; fixes contrast, borders and depth. The safest change, but it's still a "beige finance app".</div>
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b style="margin-top:6px">B · Nítido</b>The verdict is a solid block of color, readable from across the room, and everything else is crisp neutral. It answers "¿cómo voy?" before you read a number, which was the designer's first instinct (1b Clara), now with the hierarchy rule.</div>
-        <div class="opt"><b>C · Tinta</b>Calm and premium: color lives only in the number. Elegant in dark, but the state is quieter; a glance tells you less.</div>
-      </div>
+    <div class="dec" style="border-color:var(--accent)">
+      <div class="dec-h"><span class="dir-id">S5-1</span><h3>Direction</h3></div>
+      <p style="margin:0"><span class="rec-tag" style="border:0;padding:0">DECIDED</span> <b>Oliva afinada is the default theme; Nítido is an optional theme</b> (Ajustes › Apariencia: tema Oliva / Nítido × claro / oscuro / sistema). Tinta is discarded. Both themes share every component; only tokens change.</p>
     </div>
     <div class="dec">
-      <div class="dec-h"><span class="dir-id">S5-2</span><h3>Which timeline?</h3></div>
+      <div class="dec-h"><span class="dir-id">S5-2</span><h3>"Tu flujo": is this the right behaviour?</h3></div>
+      <p style="margin:0;font-size:14px;color:var(--muted)">You rejected T1–T3 and pointed to today's flow chart. Try the prototype above.</p>
       <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b style="margin-top:6px">T2 as the view, T3 below it</b>The projected balance line on top (the "will I make it?" picture); the agenda under it for the details and taps. Lanes (T1) stay a pattern for the card screen.</div>
-        <div class="opt"><b>T1 lanes</b>Closest to the diagram you liked; best for timing, weaker for amounts.</div>
-        <div class="opt"><b>T3 agenda only</b>Simplest to build and read; no picture.</div>
+        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b style="margin-top:6px">As prototyped</b>One cycle at a time with Pasado / Este / Próximo and swipe; drag to read the balance on any day; tap a day for its items; projected line and outlined pending bills; lowest point marked. Lives on Inicio under the number (collapsed by default, "Ver flujo"), like today.</div>
+        <div class="opt"><b>Continuous scroll of 3 cycles</b>One long chart you scroll sideways instead of switching cycles. More "timeline", but harder to compare a cycle's totals.</div>
       </div>
     </div>
     <div class="dec">
@@ -265,67 +273,106 @@ function pagos(t,dir){
      <div class="mut" style="font-size:10.5px;margin:2px 0 8px">Aparta $120.000 por ciclo y llegas sin afán.</div><span class="btn2">Apartar $120.000 por ciclo</span></div>`,'i');
 }
 const dirsEl=document.getElementById('dirs');
-for(const k of ['oliva','A','B','C']){
+for(const k of ['oliva','A','B']){
   const d=D[k]; const L=d.light, Dk=d.dark;
   const sw=(t)=>`<span class="sw"><i style="background:${t.bg}"></i><i style="background:${t.card}"></i><i style="background:${t.ink}"></i><i style="background:${t.ok[2]}"></i><i style="background:${t.warn[2]}"></i><i style="background:${t.bad[2]}"></i></span>`;
   let phones = k==='oliva'
     ? `${inicio(L,d,'ok')}<div class="cap">Inicio · Vas bien</div></div>${revisar(L,d)}<div class="cap">Revisar</div></div>${pagos(L,d)}<div class="cap">Pagos</div></div>`
     : `${inicio(L,d,'ok')}<div class="cap">light · Vas bien</div></div>${inicio(L,d,'warn')}<div class="cap">light · Cuidado</div></div>${inicio(Dk,d,'bad')}<div class="cap">dark · Te pasaste</div></div>${inicio(Dk,d,'ok')}<div class="cap">dark · Vas bien</div></div>${revisar(L,d)}<div class="cap">light · Revisar</div></div>${revisar(Dk,d)}<div class="cap">dark · Revisar</div></div>${pagos(L,d)}<div class="cap">light · Pagos</div></div>${pagos(Dk,d)}<div class="cap">dark · Pagos</div></div>`;
   const el=document.createElement('div'); el.className='dir';
-  el.innerHTML = `<div class="dir-h"><h3>${d.name}</h3>${k==='B'?'<span class="rec-tag">RECOMMENDED</span>':''}${k==='oliva'?'<span class="dir-id">baseline, light only</span>':''}</div>
+  el.innerHTML = `<div class="dir-h"><h3>${d.name}</h3>${k==='A'?'<span class="rec-tag">DEFAULT THEME</span>':''}${k==='B'?'<span class="rec-tag">OPTIONAL THEME</span>':''}${k==='oliva'?'<span class="dir-id">baseline, light only</span>':''}</div>
     ${d.blurb?`<p style="margin:0;max-width:80ch">${d.blurb}</p>`:'<p style="margin:0;max-width:80ch">The current design, rebuilt with the same components so the comparison is fair.</p>'}
     <div class="meta"><span>Light ${sw(L)}</span>${Dk?`<span>Dark ${sw(Dk)}</span>`:''}${d.contrast?`<span>Measured: ${d.contrast}</span>`:''}</div>
     <div class="phones">${phones}</div><div class="cap" style="text-align:left">scroll sideways for Revisar and Pagos, light and dark →</div>`;
   dirsEl.appendChild(el);
 }
-/* ---------- timelines (direction B light) ---------- */
-const TB=D.B.light, TD=D.B;
-function t1(){
-  const W=244, x=(d)=>18+d*(W-36)/45; // day 0 = 30 ago .. 45 = 14 oct
-  const lane=(y,label)=>`<text x="6" y="${y-6}" style="font:600 8.5px 'Geist Mono';fill:${TB.muted}">${label}</text><line x1="6" y1="${y+8}" x2="${W-6}" y2="${y+8}" stroke="${TB.line}"/>`;
-  const dot=(d,y,c,lab,sub,up)=>`<circle cx="${x(d)}" cy="${y+8}" r="5" fill="${c}"/><text x="${x(d)}" y="${up?y-1:y+26}" text-anchor="middle" style="font:600 8.5px Geist;fill:${TB.ink}">${lab}</text>${sub?`<text x="${x(d)}" y="${up?y-10:y+36}" text-anchor="middle" style="font:8px Geist;fill:${TB.muted}">${sub}</text>`:''}`;
-  const cyc=(a,b,l,on)=>`<rect x="${x(a)}" y="20" width="${x(b)-x(a)-2}" height="18" rx="4" fill="${on?TB.ink:TB.sunk}"/><text x="${(x(a)+x(b))/2}" y="32" text-anchor="middle" style="font:600 8.5px Geist;fill:${on?'#fff':TB.muted}">${l}</text>`;
-  return `<svg viewBox="0 0 ${W} 330" style="width:100%">
-    ${cyc(0,16,'30 ago–14 sep')}${cyc(16,31,'15–29 sep',1)}${cyc(31,46,'30 sep–14 oct')}
-    <line x1="${x(19)}" y1="16" x2="${x(19)}" y2="310" stroke="${TB.ink}" stroke-width="1.2" stroke-dasharray="3 3"/><text x="${x(19)+3}" y="14" style="font:600 8.5px Geist;fill:${TB.ink}">hoy</text>
-    ${lane(62,'TE LLEGA')}${dot(0,62,TD.light.ok[2],'+2,1 M','30 ago')}${dot(16,62,TD.light.ok[2],'+2,1 M','15 sep')}${dot(31,62,TD.light.ok[2],'+2,1 M','30 sep')}
-    ${lane(122,'PAGOS')}${dot(6,122,TB.ink,'515 mil','5 sep')}${dot(11,122,TB.ink,'180 mil','10 sep',1)}${dot(20,122,TB.ink,'700 mil','19 sep')}${dot(26,122,TB.ink,'39 mil','24 sep',1)}${dot(36,122,TB.control,'≈515 mil','5 oct')}${dot(41,122,TB.control,'≈180 mil','10 oct',1)}
-    ${lane(182,'TARJETA NU')}<rect x="${x(9)}" y="186" width="${x(39)-x(9)}" height="8" rx="4" fill="${TD.light.warn[0]}"/><text x="${x(9)}" y="208" style="font:8px Geist;fill:${TB.muted}">compras 9 sep–8 oct ≈ $620.000</text>${dot(23,242,TD.light.bad[2],'Mínimo','640 mil')}<text x="6" y="236" style="font:600 8.5px 'Geist Mono';fill:${TB.muted}">VENCE</text>
-    <text x="6" y="300" style="font:9px Geist;fill:${TB.muted}">Después: Nu ≈ $480.000 · 22 oct</text><text x="6" y="312" style="font:9px Geist;fill:${TB.muted}">SOAT $1.100.000 · 15 dic</text>
-  </svg>`;
+/* ---------- "Tu flujo" interactive prototype ---------- */
+const MES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'], DIA=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+const money=(v)=>(v<0?'−':'')+'$'+Math.abs(Math.round(v)).toLocaleString('es-CO');
+const TODAY=19; // 18 sep; day 0 = 30 ago 2026
+const CYC=[{a:0,b:15,name:'30 ago – 14 sep',tab:'Pasado'},{a:16,b:30,name:'15 – 29 sep',tab:'Este ciclo'},{a:31,b:45,name:'30 sep – 14 oct',tab:'Próximo'}];
+function dateOf(d){const x=new Date(2026,7,30+d);return x;}
+function buildDays(){
+  const items={}; const add=(d,name,amt,kind,note)=>{(items[d]=items[d]||[]).push({name,amt,kind,note,proj:d>=TODAY&&kind!=='done'});};
+  for(const c of [0,16,31]){ add(c,'Sueldo',2100000,'in'); add(c,'Ahorro a tu cuenta aparte',-200000,'bill'); }
+  add(1,'Éxito · mercado quincenal',-280000,'spend');
+  add(6,'Crédito libre inversión · cuota',-450000,'bill'); add(6,'Claro',-65000,'bill');
+  add(11,'EPM',-180000,'bill');
+  const sp=[35,52,0,88,41,60,23,95,70,12,64,58,110,47,80,125], nm=['Rappi','D1','','Éxito','Uber','Tostao','Farmacia','Cine Colombia','Rappi','Tostao','Uber','D1','Éxito','Rappi','Uber','Restaurante'];
+  sp.forEach((v,d)=>{ if(v) add(d,nm[d],-v*1000,'spend'); });
+  add(16,'Éxito',-42000,'spend'); add(17,'Uber',-18700,'spend'); add(17,'Tostao',-9800,'spend'); add(18,'Rappi',-29500,'spend');
+  add(20,'Arriendo',-700000,'bill','Pendiente'); add(23,'Tarjeta Nu · pago mínimo',-640000,'bill','Pendiente · debes $1.850.000'); add(25,'Netflix',-38900,'bill','Pendiente');
+  add(36,'Crédito libre inversión · cuota',-450000,'bill'); add(36,'Claro',-65000,'bill','≈ variable'); add(41,'EPM',-180000,'bill','≈ variable');
+  add(39,'Corte tarjeta Nu',0,'mark','Próxima factura ≈ $620.000 · vence 22 oct');
+  for(let d=TODAY; d<=45; d++) add(d,'Gasto diario estimado',-35000,'est','Tu ritmo de este ciclo');
+  let bal=120000; const days=[];
+  for(let d=0; d<=45; d++){ const it=items[d]||[]; const inn=it.filter(x=>x.amt>0).reduce((a,b)=>a+b.amt,0); const out=it.filter(x=>x.amt<0).reduce((a,b)=>a+b.amt,0); bal+=inn+out; days.push({d,items:it,inn,out,bal}); }
+  return days;
 }
-function t2(){
-  const W=244,H=200; let bal=120000; const pts=[]; const ev={0:1900000,1:-280000,6:-515000,9:-180000,16:1900000,20:-700000,23:-640000,25:-38900,31:1900000,36:-515000,39:-180000};
-  for(let d=0;d<=45;d++){ bal+= (ev[d]||0) - (d<=15?60000:(d<=18?25000:35000)); pts.push(bal); }
-  const max=Math.max(...pts), min=Math.min(...pts); const x=(d)=>20+d*(W-40)/45, y=(v)=>14+(H-40)*(1-(v-0)/(max*1.05));
-  let past='',fut=''; pts.forEach((v,d)=>{ const s=`${d?'L':'M'}${x(d).toFixed(1)} ${y(v).toFixed(1)}`; if(d<=19) past+=s; if(d>=19) fut+= (d===19?'M':'L')+`${x(d).toFixed(1)} ${y(v).toFixed(1)}`;});
-  const fl=pts.slice(19); const lo=Math.min(...fl), ld=19+fl.indexOf(lo);
-  const fmt=(v)=>'$'+Math.round(v/1000).toLocaleString('es-CO')+' mil';
-  const mk=(d,l,c)=>`<line x1="${x(d)}" y1="${H-24}" x2="${x(d)}" y2="${H-18}" stroke="${c}"/><text x="${x(d)}" y="${H-8}" text-anchor="middle" style="font:8px Geist;fill:${TB.muted}">${l}</text>`;
-  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%">
-    <rect x="${x(16)}" y="8" width="${x(31)-x(16)}" height="${H-32}" fill="${TB.sunk}" rx="4"/>
-    <line x1="8" y1="${y(0)}" x2="${W-8}" y2="${y(0)}" stroke="${TB.line}"/>
-    <path d="${past}" fill="none" stroke="${TB.ink}" stroke-width="2"/>
-    <path d="${fut}" fill="none" stroke="${TB.ink}" stroke-width="2" stroke-dasharray="4 3"/>
-    <circle cx="${x(19)}" cy="${y(pts[19])}" r="4" fill="${TB.ink}"/><text x="${x(19)+6}" y="${y(pts[19])-6}" style="font:600 8.5px Geist;fill:${TB.ink}">hoy</text>
-    <circle cx="${x(ld)}" cy="${y(lo)}" r="4.5" fill="${TD.light.warn[2]}"/><text x="${x(ld)}" y="${y(lo)+15}" text-anchor="middle" style="font:600 8.5px Geist;fill:${TD.light.warn[1]}">más bajo ${fmt(lo)}</text>
-    ${mk(0,'30 ago',TB.ink)}${mk(16,'15 sep',TB.ink)}${mk(31,'30 sep',TB.ink)}${mk(45,'14 oct',TB.ink)}
-  </svg>`;
+const DAYS=buildDays();
+const flowState={cyc:1,sel:TODAY,theme:'A',mode:'light'};
+function flowRender(){
+  const dir=D[flowState.theme], t=dir[flowState.mode]; const c=CYC[flowState.cyc];
+  const days=DAYS.slice(c.a,c.b+1);
+  const W=244,H=200,PL=8,PR=8,BASE=104,TOP=16,BOT=H-22;
+  const n=days.length, step=(W-PL-PR)/n, cx=(k)=>PL+step*(k+.5);
+  const maxBal=Math.max(...DAYS.map(x=>x.bal))*1.05, yb=(v)=>BASE-(BASE-TOP)*(Math.max(v,0)/maxBal);
+  const maxOut=Math.max(...DAYS.map(x=>-x.out)), yo=(v)=>BASE+(BOT-BASE)*(Math.min(-v,maxOut)/maxOut);
+  let bars='', line='', dline='';
+  days.forEach((x,k)=>{
+    const future=x.d>=TODAY;
+    if(x.inn>0) bars+=`<rect x="${cx(k)-2.5}" y="${TOP}" width="5" height="${BASE-TOP}" rx="2.5" fill="${t.ok[2]}" opacity="${future?.45:.9}"/>`;
+    let yCur=BASE;
+    const outs=x.items.filter(i=>i.amt<0);
+    for(const i of outs){ const h=(BOT-BASE)*(-i.amt/maxOut); const y0=yCur; yCur+=h;
+      if(i.kind==='est') bars+=`<rect x="${cx(k)-2.5}" y="${y0}" width="5" height="${h}" fill="${t.control}" opacity=".45"/>`;
+      else if(future) bars+=`<rect x="${cx(k)-3}" y="${y0+.6}" width="6" height="${Math.max(h-1.2,1)}" rx="1.5" fill="none" stroke="${t.ink}" stroke-width="1.2"/>`;
+      else bars+=`<rect x="${cx(k)-3}" y="${y0}" width="6" height="${h}" rx="1.5" fill="${i.kind==='bill'?t.ink:t.muted}"/>`; }
+    if(x.items.some(i=>i.kind==='mark')) bars+=`<text x="${cx(k)}" y="${BOT+2}" text-anchor="middle" style="font:700 9px Geist;fill:${t.warn[1]}">◆</text>`;
+    const p=`${cx(k).toFixed(1)} ${yb(x.bal).toFixed(1)}`;
+    if(x.d<=TODAY) line+=(line?'L':'M')+p; if(x.d>=TODAY) dline+=(dline?'L':'M')+p;
+  });
+  const ahead=days.filter(x=>x.d>=TODAY); let low='';
+  if(ahead.length){ const m=ahead.reduce((a,b)=>b.bal<a.bal?b:a); const k=m.d-c.a; low=`<circle cx="${cx(k)}" cy="${yb(m.bal)}" r="4" fill="${t.warn[2]}" stroke="${t.card}" stroke-width="1.5"/>`; }
+  const tk=TODAY-c.a, todayM=(tk>=0&&tk<n)?`<line x1="${cx(tk)}" y1="${TOP-6}" x2="${cx(tk)}" y2="${BOT}" stroke="${t.muted}" stroke-dasharray="2 3"/><text x="${cx(tk)}" y="${TOP-8}" text-anchor="middle" style="font:600 8.5px Geist;fill:${t.ink}">Hoy</text>`:'';
+  const sk=flowState.sel-c.a, sel=(sk>=0&&sk<n)?`<rect x="${cx(sk)-step/2}" y="${TOP-4}" width="${step}" height="${BOT-TOP+6}" fill="${t.ink}" opacity=".07"/><circle cx="${cx(sk)}" cy="${yb(days[sk].bal)}" r="4.5" fill="${t.ink}"/>`:'';
+  const ticks=[0,Math.floor(n/2),n-1].map(k=>{const dt=dateOf(days[k].d);return `<text x="${cx(k)}" y="${H-4}" text-anchor="middle" style="font:8.5px Geist;fill:${t.muted}">${dt.getDate()} ${MES[dt.getMonth()]}</text>`}).join('');
+  const svg=`<svg id="flowSvg" viewBox="0 0 ${W} ${H}" style="width:100%;touch-action:pan-y;cursor:crosshair;display:block">
+    <line x1="${PL}" y1="${BASE}" x2="${W-PR}" y2="${BASE}" stroke="${t.line}" stroke-width="1.2"/><text x="${PL}" y="${BASE-3}" style="font:8px Geist;fill:${t.muted}">$0</text>
+    ${sel}${bars}<path d="${line}" fill="none" stroke="${t.ink}" stroke-width="2"/><path d="${dline}" fill="none" stroke="${t.ink}" stroke-width="2" stroke-dasharray="4 3"/>${todayM}${low}${ticks}</svg>`;
+  const x=DAYS[flowState.sel]; const dt=dateOf(x.d); const proj=x.d>TODAY;
+  const inC=days.reduce((a,b)=>a+b.inn,0), outC=days.reduce((a,b)=>a+b.out,0), end=days[n-1].bal;
+  const list=(x.items.length?x.items:[{name:'Sin movimientos',amt:0,kind:'none'}]).map(i=>`<div class="row" style="padding:6px 0"><div class="ic" style="width:24px;height:24px;font-size:10px">${i.kind==='in'?'+':i.kind==='mark'?'◆':i.name[0]}</div><div class="rt"><div class="a" style="font-size:11.5px">${i.name}</div><div class="b">${i.note||(i.kind==='est'?'Estimado':proj||i.proj?'Programado':'Hecho')}</div></div><div class="amt" style="font-size:11.5px;${i.amt>0?`color:${t.ok[1]}`:''}">${i.amt?(i.amt>0?'+':'')+money(i.amt):''}</div></div>`).join('');
+  const seg=CYC.map((cy,ix)=>`<span data-cyc="${ix}" class="${ix===flowState.cyc?'on':''}" style="cursor:pointer">${cy.tab}</span>`).join('');
+  const lbl=flowState.cyc===0?['Te llegó','Salió','Terminaste con']:flowState.cyc===1?['Llega','Sale ≈','Terminas con ≈']:['Llegará','Saldrá ≈','Terminarías con ≈'];
+  const inner=`<div class="hdr"><div><div class="t">Tu flujo</div><div class="s">Ciclo ${c.name}</div></div><div class="av">L</div></div>
+    <div class="seg">${seg}</div>
+    <div class="cd" style="padding:9px 8px 6px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;padding:0 4px 4px"><span style="font:600 11.5px var(--t-ui)">${DIA[dt.getDay()]} ${dt.getDate()} ${MES[dt.getMonth()]}${x.d===TODAY?' · hoy':''}</span><span style="font:700 13px var(--t-ui)">${proj?'≈ ':''}${money(x.bal)}</span></div>
+      ${svg}
+    </div>
+    <div class="cd" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:8px 10px;font-size:9.5px;line-height:1.3;color:var(--t-muted)">
+      <div>${lbl[0]}<br><b style="font-size:11px;color:${t.ok[1]}">${money(inC)}</b></div><div>${lbl[1]}<br><b style="font-size:11px;color:var(--t-ink)">${money(-outC)}</b></div><div>${lbl[2]}<br><b style="font-size:11px;color:var(--t-ink)">${money(end)}</b></div></div>
+    <div class="cd" style="padding:2px 10px;flex:1;overflow:auto">${list}</div>`;
+  const tab=(k,l)=>`<span class="${k==='i'?'on':''}"><i></i>${l}${k==='r'?'<b>3</b>':''}</span>`;
+  document.getElementById('flow').innerHTML=`<div class="ph" style="height:640px"><div class="scr" style="${vars(t,dir)}"><div class="sb"><span>9:41</span><span>●●● ▮</span></div><div class="body" style="gap:8px">${inner}</div><div class="tabs">${tab('i','Inicio')}${tab('m','Movimientos')}${tab('r','Revisar')}</div></div></div>`;
+  document.querySelectorAll('#flow [data-cyc]').forEach(el=>el.onclick=()=>{flowState.cyc=+el.dataset.cyc; const cc=CYC[flowState.cyc]; flowState.sel=(TODAY>=cc.a&&TODAY<=cc.b)?TODAY:cc.a; flowRender();});
+  flowGeom={a:c.a,n,W,PL,step};
+  let sx=null; const scr=document.querySelector('#flow .body');
+  scr.ontouchstart=(e)=>{ if(!e.target.closest('#flowSvg')) sx=e.touches[0].clientX; };
+  scr.ontouchend=(e)=>{ if(sx===null) return; const dx=e.changedTouches[0].clientX-sx; sx=null; if(Math.abs(dx)>50){ flowState.cyc=Math.max(0,Math.min(2,flowState.cyc+(dx<0?1:-1))); const cc=CYC[flowState.cyc]; flowState.sel=(TODAY>=cc.a&&TODAY<=cc.b)?TODAY:cc.a; flowRender(); } };
 }
-function t3(){
-  const r=(dt,n,a,s,b,cls)=>`<div class="row" style="padding:6px 0"><div style="width:34px;font:600 10px var(--t-ui);color:var(--t-muted)">${dt}</div><div class="rt"><div class="a" style="font-size:11.5px">${n}</div>${s?`<div class="b">${s}</div>`:''}</div><div class="amt" style="font-size:11.5px">${a}<br><span class="mut" style="font:500 9.5px var(--t-ui)">${b}</span></div></div>`;
-  return `<div class="secT">Ciclo pasado · te sobraron $85.000 ›</div>
-   <div class="secT">Este ciclo · 15–29 sep</div>
-   <div class="cd" style="padding:2px 10px">${r('19 sep','Arriendo','−$700.000','','queda $1,1 M')}${r('22 sep','Nu · mínimo','−$640.000','','queda $395 mil')}${r('24 sep','Netflix','−$38.900','Pagado ✓','queda $286 mil')}</div>
-   <div class="secT">Próximo · 30 sep–14 oct</div>
-   <div class="cd" style="padding:2px 10px">${r('30 sep','Sueldo','+$2.100.000','− ahorro $200.000','$1,98 M')}${r('5 oct','Crédito + Claro','≈ −$515.000','Claro es variable','$1,29 M')}${r('8 oct','EPM','≈ −$180.000','variable','$1,0 M')}${r('8 oct','Corte Nu','≈ $620.000','vence 22 oct','')}</div>
-   <div class="secT">Prepárate</div>
-   <div class="cd" style="padding:2px 10px">${r('15 dic','SOAT','−$1.100.000','aparta $120 mil/ciclo','')}</div>`;
+let flowGeom=null, flowDrag=false;
+function flowPick(ev){ const sv=document.getElementById('flowSvg'); if(!sv||!flowGeom) return; const r=sv.getBoundingClientRect(); const g=flowGeom;
+  const k=Math.max(0,Math.min(g.n-1,Math.floor(((ev.clientX-r.left)/r.width*g.W-g.PL)/g.step))); const d=g.a+k; if(d!==flowState.sel){flowState.sel=d; flowRender();} }
+document.addEventListener('pointerdown',(ev)=>{ if(ev.target.closest&&ev.target.closest('#flowSvg')){ flowDrag=true; flowPick(ev); } });
+document.addEventListener('pointermove',(ev)=>{ const over=ev.target.closest&&ev.target.closest('#flowSvg'); if(flowDrag||(over&&ev.pointerType==='mouse')) flowPick(ev); });
+document.addEventListener('pointerup',()=>{flowDrag=false}); document.addEventListener('pointercancel',()=>{flowDrag=false});
+function togglesRender(){
+  const b=(key,val,label)=>`<button type="button" data-k="${key}" data-v="${val}" style="font:600 12.5px Geist,sans-serif;padding:6px 12px;border-radius:9px;border:1.5px solid var(--ink);background:${flowState[key]===val?'var(--ink)':'transparent'};color:${flowState[key]===val?'var(--surface)':'var(--ink)'};cursor:pointer">${label}</button>`;
+  const el=document.getElementById('flowToggles');
+  el.innerHTML=b('theme','A','Oliva afinada')+b('theme','B','Nítido')+'<span style="width:8px"></span>'+b('mode','light','Claro')+b('mode','dark','Oscuro');
+  el.querySelectorAll('button').forEach(x=>x.onclick=()=>{flowState[x.dataset.k]=x.dataset.v; togglesRender(); flowRender();});
 }
-const tl=document.getElementById('tl');
-const wrap=(inner,cap)=>{ const s=frame(TB,TD,inner,'i'); return s+`<div class="cap">${cap}</div></div>`; };
-tl.innerHTML =
-  wrap(`<div class="hdr"><div><div class="t">Tu plata en el tiempo</div><div class="s">3 ciclos · hoy 18 sep</div></div></div><div class="cd" style="padding:8px">${t1()}</div>`,'T1 · Carriles') +
-  wrap(`<div class="hdr"><div><div class="t">Tu plata en el tiempo</div><div class="s">Saldo de tus cuentas · hoy 18 sep</div></div></div><div class="cd" style="padding:8px 6px">${t2()}</div><div class="cd" style="font-size:11px"><b>Llegas al 30 con ≈ $110.000</b><div class="mut" style="font-size:10.5px">El punto más bajo es el 29 sep, justo antes del sueldo. Nada se queda sin pagar.</div></div>`,'T2 · Saldo proyectado') +
-  wrap(`<div class="hdr"><div><div class="t">Tu plata en el tiempo</div><div class="s">Agenda · hoy 18 sep</div></div></div>${t3()}`,'T3 · Agenda');
+togglesRender(); flowRender();
 </script>
