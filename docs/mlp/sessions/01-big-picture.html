@@ -1,0 +1,367 @@
+<title>How Zeta v2 Works</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F3F4EF; --surface:#FFFFFF; --ink:#16181A; --muted:#5B6168; --line:#D3D6CC; --soft:#E8EAE2;
+  --phone:#2F5FD0; --phone-bg:#E7EDFB; --server:#0E7A55; --server-bg:#E1F2EA; --store:#8A5A00; --store-bg:#F6ECD6;
+  --warn:#9A5B00;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#111312; --surface:#1A1D1B; --ink:#ECEDE8; --muted:#9CA29B; --line:#30352F; --soft:#232723;
+    --phone:#86A8FF; --phone-bg:#1C2640; --server:#46C79A; --server-bg:#15302A; --store:#E3AE4A; --store-bg:#33280F;
+    --warn:#E3AE4A;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#111312; --surface:#1A1D1B; --ink:#ECEDE8; --muted:#9CA29B; --line:#30352F; --soft:#232723;
+  --phone:#86A8FF; --phone-bg:#1C2640; --server:#46C79A; --server-bg:#15302A; --store:#E3AE4A; --store-bg:#33280F;
+  --warn:#E3AE4A;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.6 'Geist',system-ui,-apple-system,'Segoe UI',sans-serif;padding-inline:20px;padding-block:32px 64px}
+main{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:44px}
+.prose{max-width:68ch}
+h1,h2,h3{text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:34px;line-height:1.15;font-weight:700}
+h2{font-size:22px;font-weight:650;margin-bottom:10px}
+h3{font-size:16px;font-weight:600}
+p{margin:0 0 10px}
+.eyebrow{font:500 12px/1 'Geist Mono',ui-monospace,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.lede{font-size:17px;color:var(--muted);max-width:66ch;margin-top:12px}
+code,.mono{font-family:'Geist Mono',ui-monospace,Menlo,monospace;font-size:.88em}
+code{background:var(--soft);padding:1px 5px;border-radius:4px}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--muted);margin:6px 0 0}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:3px;display:inline-block}
+figure{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px}
+figcaption{font-size:13.5px;color:var(--muted);margin-top:12px;max-width:80ch}
+.scroll{overflow-x:auto}
+svg{display:block;max-width:100%;height:auto;font-family:'Geist',system-ui,sans-serif}
+svg text{fill:var(--ink);font-size:12.5px}
+svg .sub{fill:var(--muted);font-size:11px}
+svg .lbl{fill:var(--muted);font-size:11px}
+svg .grp{font:600 11px 'Geist Mono',monospace;letter-spacing:.06em;fill:var(--muted)}
+svg .g-phone{fill:var(--phone-bg);stroke:var(--phone)}
+svg .g-server{fill:var(--server-bg);stroke:var(--server)}
+svg .g-store{fill:var(--store-bg);stroke:var(--store)}
+svg .g-out{fill:none;stroke:var(--line);stroke-dasharray:4 4}
+svg .box{fill:var(--surface);stroke:var(--line)}
+svg .box-hot{fill:var(--surface);stroke:var(--server);stroke-width:2}
+svg .ar{stroke:var(--ink);stroke-width:1.3;fill:none}
+svg .ar-soft{stroke:var(--muted);stroke-width:1.2;fill:none;stroke-dasharray:4 3}
+svg .ah{fill:var(--ink)}
+svg .ah-soft{fill:var(--muted)}
+table{border-collapse:collapse;width:100%;font-size:14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+th,td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--line)}
+th{font-weight:600;font-size:12.5px;color:var(--muted);background:var(--soft)}
+tr:last-child td{border-bottom:0}
+td.num{white-space:nowrap;font-variant-numeric:tabular-nums}
+.tag{display:inline-block;font:500 11px/1 'Geist Mono',monospace;padding:4px 6px;border-radius:5px;border:1px solid var(--line);white-space:nowrap}
+.t-phone{color:var(--phone);border-color:var(--phone)}
+.t-server{color:var(--server);border-color:var(--server)}
+.t-store{color:var(--store);border-color:var(--store)}
+.rule{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;font-size:17px;max-width:74ch}
+.decisions{display:grid;gap:14px}
+.dec{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:grid;gap:10px}
+.dec-h{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.dec-id{font:600 12px 'Geist Mono',monospace;color:var(--muted)}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.opt{border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:14px}
+.opt.rec{border-color:var(--server);border-width:2px}
+.opt b{display:block;margin-bottom:4px}
+.rec-tag{font:600 11px 'Geist Mono',monospace;color:var(--server);letter-spacing:.04em}
+ul{margin:0;padding-left:20px}
+li{margin:3px 0}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+.card h3{margin-bottom:8px}
+.status{font:500 12px 'Geist Mono',monospace;color:var(--warn)}
+</style>
+
+<style>
+.decided{border-color:var(--server)}
+.decided-tag{font:600 11px 'Geist Mono',monospace;color:var(--server);letter-spacing:.04em}
+.ok{color:var(--server);font-weight:600}
+.wait{color:var(--warn);font-weight:600}
+</style>
+<main>
+
+<header>
+  <div class="eyebrow">Zeta v2 · Planning session 1 of 6 · closed</div>
+  <h1>How Zeta v2 works</h1>
+  <p class="lede">This session covers where each part of Zeta runs, how a purchase gets from your bank to your Disponible, and what works without signal. The answer to that last one is almost everything. The page ends with the decisions for this session. We'll take them one at a time in the chat.</p>
+</header>
+
+<section>
+  <h2>The one rule</h2>
+  <p class="rule"><b>The phone decides now; the server confirms with the same code.</b> Everything you do becomes a <i>command</i> ("capture this purchase", "Rappi is always Domicilios", "split with Juan", "pay the loan"). The phone runs it immediately against its own database, and you see the final result offline. The command is queued and the server replays it with the identical code when there's signal.</p>
+  <div class="prose">
+    <p>Why this and not "the server decides": being usable offline is a core premise. The old app's bugs didn't come from the phone making decisions. They came from the phone running a <i>separately written copy</i> of the web's logic, and the two drifted apart (8 data bugs in the 2026-06-25 audit). Here the logic lives once, in <code>@zeta/shared</code>, and both sides run that same code.</p>
+  </div>
+</section>
+
+<section>
+  <h2>How a command works</h2>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 960 330" role="img" aria-label="A command runs on the phone through the shared engine, updates the local database and the screen at once, and is queued. When online, the server runs the same command with the same engine and writes to Postgres; sync brings the server's result back to the phone.">
+      <defs>
+        <marker id="c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah"/></marker>
+        <marker id="cs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah-soft"/></marker>
+      </defs>
+      <rect x="10" y="20" width="940" height="160" rx="12" class="g-phone"/>
+      <text x="24" y="42" class="grp">ON YOUR PHONE · works offline</text>
+      <rect x="10" y="210" width="940" height="105" rx="12" class="g-server"/>
+      <text x="24" y="232" class="grp">ON THE SERVER · when there's signal</text>
+
+      <rect x="24" y="60" width="130" height="44" rx="8" class="box"/><text x="89" y="80" text-anchor="middle">You or a bank notice</text><text x="89" y="95" text-anchor="middle" class="sub">tap, voice, capture</text>
+      <rect x="194" y="60" width="150" height="44" rx="8" class="box"/><text x="269" y="80" text-anchor="middle">Command</text><text x="269" y="95" text-anchor="middle" class="sub">"capture Rappi $48.900"</text>
+      <rect x="384" y="60" width="150" height="44" rx="8" class="box-hot"/><text x="459" y="80" text-anchor="middle" style="font-weight:600">Engine</text><text x="459" y="95" text-anchor="middle" class="sub">@zeta/shared</text>
+      <rect x="574" y="60" width="150" height="44" rx="8" class="box"/><text x="649" y="80" text-anchor="middle">Local database</text><text x="649" y="95" text-anchor="middle" class="sub">result stored</text>
+      <rect x="764" y="60" width="170" height="44" rx="8" class="box"/><text x="849" y="80" text-anchor="middle">Screen</text><text x="849" y="95" text-anchor="middle" class="sub">final result, no "pendiente"</text>
+      <rect x="194" y="126" width="150" height="40" rx="8" class="box"/><text x="269" y="150" text-anchor="middle">Outbox (commands)</text>
+
+      <line x1="154" y1="82" x2="192" y2="82" class="ar" marker-end="url(#c)"/>
+      <line x1="344" y1="82" x2="382" y2="82" class="ar" marker-end="url(#c)"/>
+      <line x1="534" y1="82" x2="572" y2="82" class="ar" marker-end="url(#c)"/>
+      <line x1="724" y1="82" x2="762" y2="82" class="ar" marker-end="url(#c)"/>
+      <line x1="269" y1="104" x2="269" y2="124" class="ar" marker-end="url(#c)"/>
+      <text x="276" y="119" class="lbl">queue it</text>
+
+      <rect x="384" y="250" width="150" height="44" rx="8" class="box-hot"/><text x="459" y="270" text-anchor="middle" style="font-weight:600">Engine</text><text x="459" y="285" text-anchor="middle" class="sub">same code, full data</text>
+      <rect x="574" y="250" width="150" height="44" rx="8" class="g-store"/><text x="649" y="270" text-anchor="middle">Postgres</text><text x="649" y="285" text-anchor="middle" class="sub">source of truth</text>
+      <rect x="764" y="250" width="170" height="44" rx="8" class="box"/><text x="849" y="270" text-anchor="middle">Gmail · PDF</text><text x="849" y="285" text-anchor="middle" class="sub">also enter as commands</text>
+
+      <path d="M269 166 V272 H382" class="ar" marker-end="url(#c)"/>
+      <text x="276" y="200" class="lbl">send when online</text>
+      <line x1="534" y1="272" x2="572" y2="272" class="ar" marker-end="url(#c)"/>
+      <line x1="762" y1="272" x2="726" y2="272" class="ar" marker-end="url(#c)"/>
+      <line x1="459" y1="106" x2="459" y2="248" class="ar-soft"/>
+      <text x="466" y="160" class="lbl">identical code</text>
+      <line x1="649" y1="248" x2="649" y2="106" class="ar" marker-end="url(#c)"/>
+      <text x="656" y="160" class="lbl">sync back: usually no change;</text>
+      <text x="656" y="174" class="lbl">if the server knew more, its version wins</text>
+    </svg>
+    </div>
+    <figcaption>You see the result the moment the phone's engine finishes, offline or not. The server's replay usually reaches the same result. When it knows something the phone didn't (the bank email Gmail brought in an hour earlier), the phone takes the server's version on the next sync, and your own choices survive.</figcaption>
+  </figure>
+  <div class="two" style="margin-top:14px">
+    <div class="card"><h3>Why queue commands, not rows</h3>
+      <p style="margin:0;font-size:14px">A row says "the table looks like this". A command says "this is what the person did". The server can only redo the work correctly (dedup against data the phone never saw, update the right balances) if it knows the intent. Each command carries its own id, so sending it twice never applies it twice.</p>
+    </div>
+    <div class="card"><h3>Why this fixes the old parity bugs</h3>
+      <p style="margin:0;font-size:14px">One test suite runs every command against both storage adapters, SQLite for the phone and Postgres for the server. "The phone and server disagree" becomes a failing test before release, not a wrong number in production.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>What works without signal</h2>
+  <table>
+    <thead><tr><th>You want to…</th><th>Offline</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>See Disponible, verdict, ¿Cómo se calcula?, Pagos, Te deben, Límites</td><td class="ok">Works</td><td>Calculated on the phone</td></tr>
+      <tr><td>Capture from bank notifications (Android)</td><td class="ok">Works</td><td>Template matching runs on the phone</td></tr>
+      <tr><td>Add cash, voice or text expenses</td><td class="ok">Works</td><td>Voice works offline where the phone supports on-device speech recognition; otherwise type it</td></tr>
+      <tr><td>Change category, "¿Siempre para Rappi?", fix past movements</td><td class="ok">Works</td><td>For the movements stored on the phone; older ones update when the server replays</td></tr>
+      <tr><td>Split a purchase, lend money, Tú debes, register repayments</td><td class="ok">Works</td><td></td></tr>
+      <tr><td>Cuotas, card payment, loan payment, pay-off, partial bill payment</td><td class="ok">Works</td><td></td></tr>
+      <tr><td>Mark a bill paid, skip, change amount, create or stop a recurring payment</td><td class="ok">Works</td><td></td></tr>
+      <tr><td>Create accounts, cards, loans, límites; cuadrar con mi saldo</td><td class="ok">Works</td><td></td></tr>
+      <tr><td>Answer Revisar cards, train a new notification format</td><td class="ok">Works</td><td></td></tr>
+      <tr><td>Browse past cycles</td><td class="ok">Works</td><td>Cycle summaries are stored on the phone</td></tr>
+      <tr><td>Capture from Gmail</td><td class="wait">Needs signal</td><td>Google is read by the server</td></tr>
+      <tr><td>Import a PDF statement</td><td class="wait">Needs signal</td><td>The parser is on the server; the file waits in the outbox</td></tr>
+      <tr><td>Name a merchant Zeta has never seen</td><td class="wait">Needs signal</td><td>Offline you get the 3 chips from your rules; the name is refined later</td></tr>
+      <tr><td>See individual movements from cycles older than ~90 days</td><td class="wait">Needs signal</td><td>The cycle's summary is always offline</td></tr>
+      <tr><td>Get template pack updates, the weekly digest, sign in on a new phone</td><td class="wait">Needs signal</td><td>The last template pack keeps working</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>The four places things happen</h2>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 960 500" role="img" aria-label="System map: bank sources feed the phone or the server; the phone runs commands with the shared engine and queues them; the server replays them with the same engine and writes to the database; sync brings results back.">
+      <defs>
+        <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah"/></marker>
+        <marker id="as" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah-soft"/></marker>
+      </defs>
+      <rect x="12" y="50" width="176" height="370" rx="12" class="g-out"/>
+      <text x="24" y="72" class="grp">OUTSIDE ZETA</text>
+      <rect x="210" y="50" width="240" height="285" rx="12" class="g-phone"/>
+      <text x="224" y="72" class="grp">YOUR PHONE · Expo app</text>
+      <rect x="480" y="50" width="240" height="375" rx="12" class="g-server"/>
+      <text x="494" y="72" class="grp">SERVER · Next.js on the VPS</text>
+      <rect x="750" y="50" width="198" height="375" rx="12" class="g-store"/>
+      <text x="764" y="72" class="grp">SUPABASE</text>
+
+      <rect x="24" y="90" width="152" height="44" rx="8" class="box"/><text x="36" y="110">Bank app notices</text><text x="36" y="125" class="sub">Android only</text>
+      <rect x="24" y="150" width="152" height="44" rx="8" class="box"/><text x="36" y="170">You</text><text x="36" y="185" class="sub">tap, type or talk</text>
+      <rect x="24" y="210" width="152" height="44" rx="8" class="box"/><text x="36" y="230">Bank PDF statement</text><text x="36" y="245" class="sub">monthly</text>
+      <rect x="24" y="358" width="152" height="44" rx="8" class="box"/><text x="36" y="378">Gmail inbox</text><text x="36" y="393" class="sub">iPhone path</text>
+
+      <rect x="225" y="90" width="210" height="44" rx="8" class="box"/><text x="237" y="110">Notification listener</text><text x="237" y="125" class="sub">keeps only chosen bank apps</text>
+      <rect x="225" y="150" width="210" height="44" rx="8" class="box"/><text x="237" y="170">Screens</text><text x="237" y="185" class="sub">Inicio · Movimientos · Revisar</text>
+      <rect x="225" y="210" width="210" height="44" rx="8" class="box-hot"/><text x="237" y="230" style="font-weight:600">Engine · runs commands</text><text x="237" y="245" class="sub">dedup, category, bills, Disponible</text>
+      <rect x="225" y="270" width="210" height="44" rx="8" class="box"/><text x="237" y="290">Local database + outbox</text><text x="237" y="305" class="sub">recent data · queued commands</text>
+
+      <rect x="495" y="90" width="210" height="44" rx="8" class="box"/><text x="507" y="110">Push sender</text><text x="507" y="125" class="sub">digest, payday, alerts</text>
+      <rect x="495" y="150" width="210" height="44" rx="8" class="box"/><text x="507" y="170">PDF parser (Python)</text><text x="507" y="185" class="sub">9 banks, exists today</text>
+      <rect x="495" y="210" width="210" height="44" rx="8" class="box"/><text x="507" y="230">Merchant namer</text><text x="507" y="245" class="sub">small LLM, once per new merchant</text>
+      <rect x="495" y="270" width="210" height="44" rx="8" class="box-hot"/><text x="507" y="290" style="font-weight:600">Engine · replays commands</text><text x="507" y="305" class="sub">same code as the phone</text>
+      <rect x="495" y="358" width="210" height="44" rx="8" class="box"/><text x="507" y="378">Gmail sync job</text><text x="507" y="393" class="sub">every 15 min, bank senders only</text>
+
+      <rect x="764" y="90" width="170" height="312" rx="8" class="box"/>
+      <text x="778" y="112" style="font-weight:600">Postgres</text>
+      <text x="778" y="132" class="sub">source of truth</text>
+      <text x="778" y="156" class="sub">· sign-in (Auth)</text>
+      <text x="778" y="174" class="sub">· each user sees only</text>
+      <text x="778" y="188" class="sub">  their rows (RLS)</text>
+      <text x="778" y="206" class="sub">· names, amounts, notes</text>
+      <text x="778" y="220" class="sub">  encrypted at rest</text>
+      <text x="778" y="244" class="sub">· applied command ids</text>
+
+      <line x1="176" y1="112" x2="223" y2="112" class="ar" marker-end="url(#a)"/>
+      <line x1="176" y1="172" x2="223" y2="172" class="ar" marker-end="url(#a)"/>
+      <line x1="176" y1="232" x2="223" y2="186" class="ar" marker-end="url(#a)"/>
+      <line x1="176" y1="380" x2="493" y2="380" class="ar" marker-end="url(#a)"/>
+      <text x="236" y="372" class="lbl">read-only, server side: the phone isn't involved</text>
+
+      <path d="M435 112 H444 V232 H437" class="ar" marker-end="url(#a)"/>
+      <line x1="330" y1="210" x2="330" y2="196" class="ar" marker-end="url(#a)"/>
+      <line x1="330" y1="254" x2="330" y2="268" class="ar" marker-end="url(#a)"/>
+
+      <line x1="452" y1="172" x2="493" y2="172" class="ar" marker-end="url(#a)"/>
+      <text x="452" y="164" class="lbl">upload</text>
+      <line x1="452" y1="292" x2="493" y2="292" class="ar" marker-end="url(#a)"/>
+      <text x="449" y="284" class="lbl">commands</text>
+      <line x1="493" y1="112" x2="452" y2="112" class="ar-soft" marker-end="url(#as)"/>
+
+      <line x1="600" y1="358" x2="600" y2="316" class="ar" marker-end="url(#a)"/>
+      <text x="606" y="342" class="lbl">capture command</text>
+      <line x1="640" y1="270" x2="640" y2="256" class="ar-soft" marker-end="url(#as)"/>
+
+      <line x1="705" y1="292" x2="762" y2="292" class="ar" marker-end="url(#a)"/>
+      <text x="710" y="284" class="lbl">writes</text>
+      <line x1="762" y1="112" x2="707" y2="112" class="ar-soft" marker-end="url(#as)"/>
+      <text x="712" y="104" class="lbl">reads</text>
+
+      <path d="M300 316 V462 H850 V404" class="ar" marker-end="url(#a)" marker-start="url(#a)"/>
+      <text x="410" y="480" class="lbl">sync: server's results come down · nothing is pushed as raw rows anymore</text>
+    </svg>
+    </div>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--phone-bg);border:1px solid var(--phone)"></i>runs on your phone</span>
+      <span><i class="sw" style="background:var(--server-bg);border:1px solid var(--server)"></i>runs on our server</span>
+      <span><i class="sw" style="background:var(--store-bg);border:1px solid var(--store)"></i>stores your data</span>
+      <span><i class="sw" style="border:2px solid var(--server)"></i>the shared engine</span>
+    </div>
+    <figcaption>The engine appears twice on purpose: it's the same code. The phone uses it to answer instantly; the server uses it to confirm and to handle what only the server sees (Gmail, PDF). There's no separate web product: the web app becomes the server plus a small page for bulk PDF import.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>One purchase, start to finish</h2>
+  <div class="prose"><p>Laura pays for Rappi with her Bancolombia debit card at 8:42 pm on an Android phone, on the metro, with no signal.</p></div>
+  <figure>
+    <div class="scroll">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant B as Bancolombia app
+  participant L as Listener (phone)
+  participant P as Zeta engine (phone)
+  participant S as Zeta engine (server)
+  participant D as Database
+  B->>L: notice "Compra por $48.900 en RAPPI"
+  L->>L: chosen bank? yes. Keep it
+  L->>P: hand over the notice text
+  P->>P: template match: $48.900, RAPPI, card *4410
+  P->>P: command "capture": dedup vs local rows, merchant Rappi, Domicilios (Siempre), no bill, balance −48.900
+  Note over P: Inicio shows the final result, offline
+  P->>P: queue the command
+  Note over P,S: 9:05 pm, signal is back
+  P->>S: send queued commands
+  S->>S: same command, same code, all data
+  alt bank email already arrived through Gmail
+    S->>S: same purchase: keep one row, keep Laura's category
+  else nothing new
+    S->>S: same result as the phone
+  end
+  S->>D: write, record the command id
+  D-->>P: sync brings the result back
+</pre>
+    </div>
+    <figcaption>Laura never sees a "pendiente" state. The only visible difference the server can make is in the <i>alt</i> branch: the row's origin becomes "Aviso + correo", and the number stays the same.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>The same purchase, seen three times</h2>
+  <table>
+    <thead><tr><th>When</th><th>Source</th><th>Trust level</th><th>What Zeta does</th><th>What you see</th></tr></thead>
+    <tbody>
+      <tr><td class="num">Sep 25, 8:42 pm</td><td>Notification (phone)</td><td>Tier 2 (new)</td><td>Creates the row on the phone</td><td>Rappi −$48.900</td></tr>
+      <tr><td class="num">Sep 25, 8:43 pm</td><td>Bank email (server)</td><td>Tier 2</td><td>Same account, amount and day: recognized when the phone's command arrives</td><td>Nothing changes</td></tr>
+      <tr><td class="num">Oct 3</td><td>Statement PDF</td><td>Tier 1 (bank-verified)</td><td>Merges: PDF wins on amount and date; your category and notes stay</td><td>Origin: "Aviso + extracto ✓"</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>When things go wrong</h2>
+  <table>
+    <thead><tr><th>Situation</th><th>What happens</th><th>What you see</th></tr></thead>
+    <tbody>
+      <tr><td>No signal for days</td><td>Everything runs on the phone; commands pile up in the outbox, in order</td><td>A small "Sin conexión · 12 cambios por enviar" line in Ajustes; nothing else</td></tr>
+      <tr><td>Zeta is closed or the phone restarted</td><td>Android still runs the listener; it saves the notice in its own small store; Zeta processes it on next open</td><td>The purchase appears when you open the app</td></tr>
+      <tr><td>Android kills the listener (battery saver)</td><td>A heartbeat notices the gap</td><td>"Tu Xiaomi está apagando la lectura de avisos" plus a fix button; the number gets a "~"</td></tr>
+      <tr><td>Server is down</td><td>Outbox retries with back-off</td><td>Nothing</td></tr>
+      <tr><td>The server's replay disagrees with the phone</td><td>See S1-2</td><td>Usually nothing; sometimes a Revisar card</td></tr>
+      <tr><td>A notice Zeta doesn't understand</td><td>No guess: it goes to Revisar as a training card</td><td>"Aviso nuevo de Lulo. Enséñame una vez."</td></tr>
+      <tr><td>You lose the phone with unsent commands</td><td>Those commands are lost; everything already sent is safe</td><td>The bank's email/PDF usually recovers lost captures; manual edits made offline would need redoing</td></tr>
+      <tr><td>iPhone</td><td>No notification reading exists on iOS; Gmail is read by the server; manual capture works offline</td><td>Gmail purchases show up within ~15 min of the bank email, when online</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>Decisions for this session</h2>
+  <div class="decisions">
+
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S1-1</span><h3>Should the phone keep its own copy and work offline?</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> Yes, the phone keeps a local copy and runs the full engine offline. Commands are queued and the server replays them with the same code. Extra cost: about +2 to 3 weeks in M0/M1 to turn the email webhook's inline pipeline into shared commands with SQLite and Postgres adapters.</p>
+    </div>
+
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S1-2</span><h3>When the server's result differs from the phone's, who wins?</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> Split by kind of field. <b>Bank facts</b> (amount, date, merchant text): the higher-trust source wins (PDF › email › notification › manual). <b>Your choices</b> (category, note, split, cuotas, trip, bill link): yours always win; the same field changed on two devices, the latest change wins. <b>Real doubt</b> (a weak duplicate match) is never decided silently: it becomes a Revisar card.</p>
+    </div>
+
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S1-3</span><h3>How much history lives on the phone?</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> <b>Last 3 cycles of detail + a summary of every closed cycle, forever.</b> Summaries (about 2–5 KB each) hold: the four lines, adjustments, result and verdict; income (salary, other, repayments) vs total out; spending by category (amount, share, count) and top 5 merchants; starting and ending balance per account; ending debt per card and loan, pending cuotas, interest and fees; Te deben and Tú debes open at close; each límite's result; savings and the surplus decision. Summaries are derived, rebuilt by the same engine when late data arrives (marked "actualizado con el extracto"), and backfilled for existing users. Stored per cycle; the month view adds up its cycles. Only older movement detail needs signal.</p>
+    </div>
+
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S1-4</span><h3>What does the web app do?</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> <b>Until v2 ships:</b> the current web app stays exactly as it is and in daily use, on the same database. Schema changes are additive only (no renames, drops or meaning changes); v2's server engine is added as new API routes in the same Next.js app; the web gets one small change (the <code>NOTIFICATION</code> capture tier); the email pipeline refactor must replay the saved email corpus with identical results. Expected difference: shared purchases show different spending in each app (web: amount minus repaid; v2: your share). <b>After v2 ships:</b> the web shrinks to PDF bulk import + accounts, running the same commands.</p>
+    </div>
+
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S1-5</span><h3>Where is v2 developed?</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> A separate Supabase <b>dev project</b> with demo data. Migrations and command code are proven there first; your real account moves to v2 builds only when a milestone is stable.</p>
+    </div>
+
+  </div>
+</section>
+
+<footer style="color:var(--muted);font-size:13px">Next: session 2, the database. It covers what tables exist, what we keep, add and retire, the command log, encryption, and what the phone stores.</footer>
+</main>

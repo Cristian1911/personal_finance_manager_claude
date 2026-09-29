@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="height:100%;display:flex;flex-direction:column;background:var(--bg);overflow:hidden;padding:4px 20px 34px;box-sizing:border-box;gap:16px">
+  <div style="display:flex;align-items:center;gap:12px;flex:none">
+    <span style="width:36px;height:36px;border-radius:10px;border:1.5px solid var(--ctl);display:flex;align-items:center;justify-content:center;box-sizing:border-box"><x-import component="Icono" from="./icono.js" n="chevL" s="18" hint-size="18px,18px"></x-import></span>
+    <div style="flex:1;display:flex;gap:4px"><sc-for list="{{ prog }}" as="p" hint-placeholder-count="8"><div style="{{ p }}"></div></sc-for></div>
+    <span style="font:500 13px var(--ui);color:var(--ink2);min-width:36px;text-align:right">{{ paso }}</span>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:6px;flex:none">
+    <div style="font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink2)">{{ eyebrow }}</div>
+    <div style="font:600 26px/1.15 var(--ui);letter-spacing:-0.02em;text-wrap:pretty">{{ q }}</div>
+    <div style="font:500 14px/1.45 var(--ui);color:var(--ink2);text-wrap:pretty">{{ sub }}</div>
+  </div>
+  <div style="flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;overflow:hidden">
+    <sc-if value="{{ hasOpts }}" hint-placeholder-val="{{ false }}">
+      <sc-for list="{{ opts }}" as="o">
+        <div style="{{ o.st }}">
+          <sc-if value="{{ o.ini }}" hint-placeholder-val="{{ false }}"><div style="width:38px;height:38px;border-radius:11px;background:var(--sunk);display:flex;align-items:center;justify-content:center;font:600 12px var(--ui);color:var(--ink2);flex:none">{{ o.ini }}</div></sc-if>
+          <div style="flex:1;min-width:0"><div style="font:600 15px var(--ui)">{{ o.a }}</div><sc-if value="{{ o.b }}" hint-placeholder-val="{{ false }}"><div style="font:400 12px/1.4 var(--ui);color:var(--ink2)">{{ o.b }}</div></sc-if></div>
+          <sc-if value="{{ o.c }}" hint-placeholder-val="{{ false }}"><div style="font:600 15px var(--num);white-space:nowrap">{{ o.c }}</div></sc-if>
+          <span style="{{ o.box }}"><sc-if value="{{ o.on }}" hint-placeholder-val="{{ false }}"><x-import component="Icono" from="./icono.js" n="check" s="14" w="2.6" hint-size="14px,14px"></x-import></sc-if></span>
+        </div>
+      </sc-for>
+    </sc-if>
+    <sc-if value="{{ hasPad }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px">
+        <div style="font:600 44px var(--num);letter-spacing:-0.03em">{{ monto }}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center"><sc-for list="{{ chips }}" as="c"><span style="height:32px;padding:0 12px;border-radius:9px;border:1.5px solid var(--ctl);font:600 13px var(--ui);display:flex;align-items:center;box-sizing:border-box">{{ c }}</span></sc-for></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;flex:none">
+        <sc-for list="{{ keys }}" as="k"><div style="height:50px;border-radius:12px;background:var(--card);box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;font:500 22px var(--num)">{{ k }}</div></sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isNumero }}" hint-placeholder-val="{{ false }}">
+      <dc-import name="Z Disponible" st="ok" hint-size="100%,190px"></dc-import>
+      <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:4px 16px">
+        <sc-for list="{{ cuenta }}" as="x"><div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);font:500 14px var(--ui)"><span style="color:var(--ink2)">{{ x.l }}</span><span style="font:600 14px var(--num)">{{ x.v }}</span></div></sc-for>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;font:600 14px var(--ui)"><span>Disponible hasta el 30</span><span style="font:600 14px var(--num)">$421.100</span></div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isIphone }}" hint-placeholder-val="{{ false }}">
+      <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:8px"><x-import component="Icono" from="./icono.js" n="mail" s="18" hint-size="18px,18px"></x-import><span style="flex:1;font:600 15px var(--ui)">Reenvía los correos del banco</span></div>
+        <div style="display:flex;align-items:center;gap:8px;background:var(--sunk);border-radius:10px;padding:0 6px 0 12px;height:42px"><span style="flex:1;font:500 13px var(--mono)">laura.8f2k@recibe.zeta.co</span><span style="height:30px;padding:0 10px;border-radius:8px;background:var(--btn);color:var(--btn-ink);font:600 12px var(--ui);display:flex;align-items:center;gap:5px"><x-import component="Icono" from="./icono.js" n="copy" s="13" hint-size="13px,13px"></x-import>Copiar</span></div>
+      </div>
+      <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:14px 16px;display:flex;align-items:center;gap:12px">
+        <div style="flex:1"><div style="font:600 15px var(--ui)">Conectar Gmail</div><div style="font:400 12px var(--ui);color:var(--ink2)">Solo lectura · solo correos de bancos</div></div>
+        <div style="height:38px;padding:0 14px;border-radius:10px;background:var(--btn);color:var(--btn-ink);display:flex;align-items:center;font:600 14px var(--ui)">Conectar</div>
+      </div>
+      <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:14px 16px;display:flex;align-items:center;gap:12px">
+        <div style="flex:1"><div style="font:600 15px var(--ui)">Apple Pay y SMS con Atajos</div><div style="font:400 12px var(--ui);color:var(--ink2)">Te guío paso a paso · 2 minutos</div></div>
+        <div style="height:38px;padding:0 14px;border-radius:10px;border:1.5px solid var(--ctl);display:flex;align-items:center;font:600 14px var(--ui);box-sizing:border-box">Configurar</div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isAtajos }}" hint-placeholder-val="{{ false }}">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="height:40px;border-radius:10px;border:2px solid var(--ink);display:flex;align-items:center;justify-content:center;gap:6px;font:600 13px var(--ui);box-sizing:border-box">1 · Transacción</div>
+        <div style="height:40px;border-radius:10px;border:1.5px solid var(--ctl);display:flex;align-items:center;justify-content:center;font:600 13px var(--ui);color:var(--ink2);box-sizing:border-box">2 · Mensaje</div>
+      </div>
+      <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:6px 16px">
+        <sc-for list="{{ pasos }}" as="p"><div style="display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--line)"><span style="{{ p.n }}">{{ p.i }}</span><div style="flex:1;font:500 14px/1.4 var(--ui)">{{ p.t }}<sc-if value="{{ p.m }}" hint-placeholder-val="{{ false }}"><div style="font:500 12px var(--mono);color:var(--ink2);margin-top:3px">{{ p.m }}</div></sc-if></div></div></sc-for>
+      </div>
+      <div style="height:46px;border-radius:12px;border:1.5px solid var(--ctl);display:flex;align-items:center;justify-content:center;gap:8px;font:600 14px var(--ui);box-sizing:border-box">Abrir Atajos</div>
+    </sc-if>
+    <sc-if value="{{ isPreg }}" hint-placeholder-val="{{ false }}">
+      <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:16px;display:flex;flex-direction:column;gap:12px">
+        <div style="font:400 12px/1.45 var(--mono);color:var(--ink2);background:var(--sunk);border-radius:10px;padding:10px 12px">Nu: Compraste $18.500 en UBER *TRIP el 17/09</div>
+        <div style="font:600 18px var(--ui)">¿Uber siempre es Transporte?</div>
+        <div style="display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:8px">
+          <div style="height:44px;border-radius:10px;background:var(--btn);color:var(--btn-ink);display:flex;align-items:center;justify-content:center;font:600 14px var(--ui)">Siempre</div>
+          <div style="height:44px;border-radius:10px;border:1.5px solid var(--ctl);display:flex;align-items:center;justify-content:center;font:600 14px var(--ui);box-sizing:border-box;white-space:nowrap">Casi siempre</div>
+          <div style="height:44px;border-radius:10px;border:1.5px solid var(--ctl);display:flex;align-items:center;justify-content:center;font:600 14px var(--ui);box-sizing:border-box">Depende</div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:center;gap:6px"><i style="width:18px;height:6px;border-radius:9px;background:var(--ink)"></i><i style="width:6px;height:6px;border-radius:9px;background:var(--ctl)"></i><i style="width:6px;height:6px;border-radius:9px;background:var(--ctl)"></i></div>
+    </sc-if>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:8px;flex:none">
+    <div style="height:52px;border-radius:12px;background:var(--btn);color:var(--btn-ink);display:flex;align-items:center;justify-content:center;font:600 16px var(--ui)">{{ cta }}</div>
+    <sc-if value="{{ skip }}" hint-placeholder-val="{{ false }}"><div style="height:36px;display:flex;align-items:center;justify-content:center;font:600 14px var(--ui)">{{ skip }}</div></sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.props.screen ?? 'pago';
+    const order = ['pago', 'ingreso', 'saldo', 'facturas', 'cuentas', 'numero', 'captura', 'preguntas'];
+    const idx = { android: 6, iphone: 6, atajos: 6 }[s] ?? order.indexOf(s);
+    const O = (a, b, c, on, x = {}) => ({ a, b, c, on, ini: x.ini || '', st: { display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 14, background: 'var(--card)', boxShadow: on ? 'inset 0 0 0 2px var(--ink), var(--shadow)' : 'var(--shadow)' }, box: { width: 24, height: 24, borderRadius: x.round ? 99 : 7, flex: 'none', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', background: on ? 'var(--btn)' : 'transparent', color: 'var(--btn-ink)', border: on ? 'none' : '1.5px solid var(--ctl)' } });
+    const S = {
+      pago: { e: 'Tu quincena', q: '¿Cuándo te pagan?', sub: 'Con esto sé hasta cuándo tiene que alcanzar.', opts: [O('El 15 y el 30', 'Quincenal · lo más común', '', true, { round: 1 }), O('Una vez al mes', 'Elige el día', '', false, { round: 1 }), O('Cada semana', '', '', false, { round: 1 }), O('Varía', 'Freelance o por días', '', false, { round: 1 })], cta: 'Continuar' },
+      ingreso: { e: 'Tu quincena', q: '¿Cuánto te llega cada quincena?', sub: 'Lo que cae en la cuenta, ya con descuentos.', pad: 1, monto: '$2.100.000', chips: ['$1.500.000', '$2.100.000', '$2.500.000'], cta: 'Continuar' },
+      saldo: { e: 'Hoy', q: '¿Cuánta plata tienes hoy?', sub: 'Suma cuentas y efectivo. Luego lo afino con los avisos del banco.', pad: 1, monto: '$1.850.000', chips: ['Bancolombia + Nequi', 'Con efectivo'], cta: 'Continuar' },
+      facturas: { e: 'Antes del 30', q: '¿Qué tienes que pagar antes del 30?', sub: 'Marca lo que aplique. Puedes cambiar los valores.', opts: [O('Arriendo', '19 sep', '$700.000', true), O('Tarjeta Nu · mínimo', '22 sep', '$640.000', true), O('Netflix', '24 sep', '$38.900', true), O('Servicios', 'Energía, agua, gas', '', false), O('Otro pago', '', '', false)], cta: 'Continuar' },
+      cuentas: { e: 'Opcional', q: '¿Qué cuentas usas?', sub: 'Así sé de dónde leer y qué cuenta para tu Disponible.', opts: [O('Bancolombia', 'Cuenta de ahorros', '', true, { ini: 'B' }), O('Nequi', '', '', true, { ini: 'N' }), O('Nu', 'Tarjeta y ahorros', '', true, { ini: 'Nu' }), O('Daviplata', '', '', false, { ini: 'D' }), O('Davivienda', '', '', false, { ini: 'Dv' })], cta: 'Continuar', skip: 'Saltar por ahora' },
+      numero: { e: 'Tu número', q: 'Esto puedes gastar hasta el 30', sub: 'Ya separé arriendo, tarjeta, Netflix y tu ahorro.', cta: 'Tiene sentido', skip: 'Algo no cuadra' },
+      android: { e: 'Captura automática · Android', q: 'Deja que Zeta lea los avisos del banco', sub: 'Solo leo avisos de estas apps. Todo lo demás lo descarto sin guardarlo.', opts: [O('Bancolombia', 'App instalada', '', true, { ini: 'B' }), O('Nequi', 'App instalada', '', true, { ini: 'N' }), O('Nu', 'App instalada', '', true, { ini: 'Nu' }), O('Mensajes (SMS)', 'Solo remitentes de bancos: 85540, 891333', '', true, { ini: 'SMS' }), O('Google Wallet', 'Pagos con el celular', '', false, { ini: 'GW' })], cta: 'Dar acceso a notificaciones' },
+      iphone: { e: 'Captura automática · iPhone', q: '¿Cómo te llegan los avisos?', sub: 'En iPhone no puedo leer notificaciones. Usa una o varias de estas.', cta: 'Listo, seguir', skip: 'Lo hago después' },
+      atajos: { e: 'Atajos · Apple Pay', q: 'Crea la automatización “Transacción”', sub: 'Cada pago con Apple Pay llega a Zeta al instante.', cta: 'Ya lo hice', skip: 'Ver video de 40 s' },
+      preguntas: { e: 'Primeras preguntas', q: 'Enséñame 3 comercios', sub: 'Una vez por comercio. Después lo hago solo.', cta: 'Ir a Inicio', skip: 'Después' }
+    };
+    const d = S[s] || S.pago;
+    const numStyle = on => ({ width: 24, height: 24, borderRadius: 99, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '600 12px var(--ui)', background: on ? 'var(--btn)' : 'var(--sunk)', color: on ? 'var(--btn-ink)' : 'var(--ink2)' });
+    return {
+      prog: order.map((_, i) => ({ flex: 1, height: 4, borderRadius: 9, background: i <= idx ? 'var(--ink)' : 'var(--line)' })), paso: (idx + 1) + ' de 8',
+      eyebrow: d.e, q: d.q, sub: d.sub, cta: d.cta, skip: d.skip || '',
+      hasOpts: !!d.opts, opts: d.opts || [], hasPad: !!d.pad, monto: d.monto, chips: d.chips || [], keys: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '000', '0', '⌫'],
+      isNumero: s === 'numero', isIphone: s === 'iphone', isAtajos: s === 'atajos', isPreg: s === 'preguntas',
+      cuenta: [{ l: 'Llega el 15', v: '$2.100.000' }, { l: 'Por pagar', v: '−$1.378.900' }, { l: 'Ahorro', v: '−$200.000' }, { l: 'Ya salió', v: '−$100.000' }],
+      pasos: [
+        { i: '1', t: 'Abre Atajos › Automatización › Nueva', n: numStyle(true) },
+        { i: '2', t: 'Elige “Transacción” y marca tus tarjetas', m: 'Cuando: toco con Apple Pay', n: numStyle(true) },
+        { i: '3', t: 'Marca “Ejecutar inmediatamente”', n: numStyle(false) },
+        { i: '4', t: 'Acción: “Enviar a Zeta”', m: 'Comercio · Monto · Tarjeta', n: numStyle(false) }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

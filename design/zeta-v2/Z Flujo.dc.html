@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="height:100%;display:flex;flex-direction:column;background:var(--bg);overflow:hidden">
+  <div style="display:flex;align-items:center;gap:10px;padding:2px 16px 8px">
+    <span style="width:36px;height:36px;border-radius:10px;border:1.5px solid var(--ctl);display:flex;align-items:center;justify-content:center;box-sizing:border-box"><x-import component="Icono" from="./icono.js" n="chevL" s="18" hint-size="18px,18px"></x-import></span>
+    <div style="flex:1;text-align:center;font:600 17px var(--ui)">Tu flujo</div><span style="width:36px"></span>
+  </div>
+  <div style="flex:1;min-height:0;overflow:hidden;padding:0 16px 16px;display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;padding:3px;border-radius:12px;background:var(--sunk);box-shadow:inset 0 0 0 1px var(--line)">
+      <div style="flex:1;height:34px;display:flex;align-items:center;justify-content:center;font:500 13px var(--ui);color:var(--ink2)">Pasado</div>
+      <div style="flex:1;height:34px;border-radius:9px;background:var(--card);box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;font:600 13px var(--ui)">Este ciclo</div>
+      <div style="flex:1;height:34px;display:flex;align-items:center;justify-content:center;font:500 13px var(--ui);color:var(--ink2)">Próximo</div>
+    </div>
+    <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:14px 14px 12px;display:flex;flex-direction:column;gap:10px;position:relative">
+      <sc-if value="{{ isBad }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;border-radius:18px;border:1.5px solid var(--bad-s);pointer-events:none"></div></sc-if>
+      <div style="display:flex;align-items:center;justify-content:space-between;font:500 13px var(--ui);color:var(--ink2)"><span style="font-weight:600;color:var(--ink)">15 – 29 sep</span><span>Quedan 12 días</span></div>
+      <dc-import name="Z Grafico" st="{{ cst }}" drag="{{ drag }}" tap="{{ tap }}" hint-size="100%,220px"></dc-import>
+      <div style="display:flex;flex-wrap:wrap;gap:6px 12px;font:500 11px var(--ui);color:var(--ink2);justify-content:center">
+        <span style="display:flex;align-items:center;gap:5px"><i style="width:9px;height:9px;border-radius:2px;background:var(--ink2)"></i>Hecho</span>
+        <span style="display:flex;align-items:center;gap:5px"><i style="width:9px;height:9px;border-radius:2px;border:1.5px solid var(--ink);box-sizing:border-box"></i>Por pagar</span>
+        <span style="display:flex;align-items:center;gap:5px"><i style="width:9px;height:9px;border-radius:2px;background:var(--est)"></i>Gasto estimado</span>
+        <span style="display:flex;align-items:center;gap:5px"><i style="width:7px;height:7px;background:var(--ink2);transform:rotate(45deg)"></i>Corte tarjeta</span>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:12px 6px;text-align:center">
+      <sc-for list="{{ totals }}" as="x" hint-placeholder-count="3"><div><div style="font:500 12px var(--ui);color:var(--ink2)">{{ x.l }}</div><div style="{{ x.st }}">{{ x.v }}</div></div></sc-for>
+    </div>
+    <sc-if value="{{ isBad }}" hint-placeholder-val="{{ false }}">
+      <div style="background:var(--bad-t);color:var(--bad-x);border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+        <div style="font:600 15px var(--ui);line-height:1.35;text-wrap:pretty;color:var(--ink)">A tu ritmo te quedas sin plata el 22 sep</div>
+        <div style="font:500 14px var(--ui);color:var(--ink)">Gasta ≈ $28.000 menos al día y llegas al 30.</div>
+        <div style="display:flex;gap:8px"><div style="flex:1;height:42px;border-radius:10px;background:var(--btn);color:var(--btn-ink);display:flex;align-items:center;justify-content:center;font:600 14px var(--ui)">Ver qué ajustar</div></div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isBig }}" hint-placeholder-val="{{ false }}">
+      <div style="background:var(--warn-t);border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+        <span style="align-self:flex-start;display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:99px;background:var(--card);color:var(--warn-x);font:600 12px var(--ui)"><i style="width:6px;height:6px;border-radius:9px;background:var(--warn-s)"></i>Próximo ciclo</span>
+        <div style="font:600 15px var(--ui);line-height:1.35;text-wrap:pretty;color:var(--ink)">El próximo ciclo no alcanza por ≈ $433.900 (Matrícula, 9 oct)</div>
+        <div style="font:500 13px var(--ui);color:var(--ink)">Si apartas $36.200 al día desde hoy, llegas.</div>
+        <div style="height:42px;border-radius:10px;background:var(--btn);color:var(--btn-ink);display:flex;align-items:center;justify-content:center;font:600 14px var(--ui)">Apartar</div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isDia }}" hint-placeholder-val="{{ false }}">
+      <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:6px 16px 4px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--line)"><span style="font:600 15px var(--ui)">Lunes 22 sep</span><span style="font:500 13px var(--ui);color:var(--ink2)">Terminas el día con <b style="font:600 13px var(--num);color:var(--ink)">$420.000</b></span></div>
+        <sc-for list="{{ dia }}" as="r"><div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)"><div style="flex:1;min-width:0"><div style="font:500 14px var(--ui)">{{ r.a }}</div><div style="font:400 12px var(--ui);color:var(--ink2)">{{ r.b }}</div></div><div style="font:600 14px var(--num)">{{ r.c }}</div></div></sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isNormal }}" hint-placeholder-val="{{ true }}">
+      <div style="font:500 13px var(--ui);color:var(--ink2);text-align:center;line-height:1.5">Arrastra sobre el gráfico para ver cualquier día.<br>Toca un día para ver qué pasa.</div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.props.screen ?? 'normal';
+    const bad = s === 'bad';
+    const n = { font: '600 16px var(--num)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' };
+    const T = bad ? [['Llega', '$2.100.000'], ['Sale', '$2.673.900'], ['Terminas con', '−$513.900', 1]] : [['Llega', '$2.100.000'], ['Sale', '$1.953.900'], ['Terminas con', '$206.100']];
+    return {
+      isBad: bad, isBig: s === 'big', isDia: s === 'dia', isNormal: s === 'normal',
+      cst: bad ? 'bad' : 'n', drag: s === 'normal', tap: s === 'dia' ? 9 : null,
+      totals: T.map(([l, v, r]) => ({ l, v, st: { ...n, color: r ? 'var(--bad-x)' : 'var(--ink)' } })),
+      dia: [{ a: 'Tarjeta Nu · pago mínimo', b: 'Por pagar · de $1.850.000', c: '−$640.000' }, { a: 'Gasto del día', b: 'Estimado a tu ritmo', c: '≈ −$25.000' }]
+    };
+  }
+}
+</script>
+</body>
+</html>

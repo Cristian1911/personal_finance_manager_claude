@@ -1,0 +1,585 @@
+<title>Zeta v2 Visual Direction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600&family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Newsreader:opsz,wght@6..72,400..600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F3F4EF; --surface:#FFFFFF; --ink:#16181A; --muted:#5B6168; --line:#D3D6CC; --soft:#E8EAE2; --accent:#0E7A55; --warn:#9A5B00;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ color-scheme:dark;
+    --bg:#111312; --surface:#1A1D1B; --ink:#ECEDE8; --muted:#9CA29B; --line:#30352F; --soft:#232723; --accent:#46C79A; --warn:#E3AE4A; }
+}
+:root[data-theme="dark"]{ color-scheme:dark;
+  --bg:#111312; --surface:#1A1D1B; --ink:#ECEDE8; --muted:#9CA29B; --line:#30352F; --soft:#232723; --accent:#46C79A; --warn:#E3AE4A; }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.6 'Geist',system-ui,-apple-system,'Segoe UI',sans-serif;padding-inline:20px;padding-block:32px 64px;margin:0}
+main{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:48px}
+.prose{max-width:70ch}
+h1,h2,h3{text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:34px;line-height:1.15;font-weight:700}
+h2{font-size:22px;font-weight:650;margin-bottom:10px}
+h3{font-size:17px;font-weight:650}
+p{margin:0 0 10px}
+.eyebrow{font:500 12px/1 'Geist Mono',ui-monospace,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.lede{font-size:17px;color:var(--muted);max-width:70ch;margin-top:12px}
+code{font-family:'Geist Mono',monospace;font-size:.88em;background:var(--soft);padding:1px 5px;border-radius:4px}
+table{border-collapse:collapse;width:100%;font-size:14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-weight:600;font-size:12.5px;color:var(--muted);background:var(--soft)}
+tr:last-child td{border-bottom:0}
+td.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.bad{color:#C2452D;font-weight:600} .good{color:var(--accent);font-weight:600}
+.scroll{overflow-x:auto}
+.dir{display:flex;flex-direction:column;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px}
+.dir-h{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.dir-id{font:600 12px 'Geist Mono',monospace;color:var(--muted)}
+.rec-tag{font:600 11px 'Geist Mono',monospace;color:var(--accent);letter-spacing:.04em;border:1px solid var(--accent);border-radius:5px;padding:3px 6px}
+.meta{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:13.5px;color:var(--muted)}
+.sw{display:inline-flex;gap:4px;align-items:center}
+.sw i{width:18px;height:18px;border-radius:5px;display:inline-block;border:1px solid rgba(0,0,0,.12)}
+.phones{display:flex;gap:18px;padding:6px 2px 10px;overflow-x:auto}
+.cap{font-size:12px;color:var(--muted);text-align:center;margin-top:6px;font-family:'Geist Mono',monospace}
+.decisions{display:grid;gap:14px}
+.dec{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:grid;gap:10px}
+.dec-h{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+.opt{border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:14px}
+.opt.rec{border-color:var(--accent);border-width:2px}
+.opt b{display:block;margin-bottom:4px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+
+/* ---------- phone mockups (tokens come from inline --t-* vars) ---------- */
+.ph{flex:none;zoom:1.434;width:272px;height:589px;border-radius:38px;padding:9px;background:#0c0c0c;box-shadow:0 18px 40px rgba(0,0,0,.18)}
+.scr{width:100%;height:100%;border-radius:30px;overflow:hidden;background:var(--t-bg);color:var(--t-ink);font-family:var(--t-ui);display:flex;flex-direction:column;font-variant-numeric:tabular-nums}
+.sb{height:30px;display:flex;justify-content:space-between;align-items:center;padding:0 22px;font:600 12px var(--t-ui);flex:none}
+.body{flex:1;overflow:hidden;padding:4px 14px 10px;display:flex;flex-direction:column;gap:9px}
+.tabs{flex:none;height:54px;border-top:1px solid var(--t-line);display:flex;justify-content:space-around;align-items:center;font-size:10.5px;color:var(--t-muted);background:var(--t-card)}
+.tabs span{display:flex;flex-direction:column;align-items:center;gap:3px;position:relative}
+.tabs i{width:18px;height:18px;border-radius:5px;border:1.6px solid currentColor;display:block}
+.tabs .on{color:var(--t-ink);font-weight:600}
+.tabs .on i{background:var(--t-ink);border-color:var(--t-ink)}
+.tabs b{position:absolute;top:-5px;right:-8px;background:var(--t-bad-solid);color:var(--t-bad-on);font:700 9px var(--t-ui);border-radius:9px;padding:1px 5px}
+.hdr{display:flex;justify-content:space-between;align-items:center}
+.hdr .t{font:700 17px/1.1 var(--t-ui)}
+.hdr .s{font-size:11px;color:var(--t-muted)}
+.av{width:28px;height:28px;border-radius:50%;background:var(--t-sunk);display:flex;align-items:center;justify-content:center;font:600 11px var(--t-ui);color:var(--t-ink)}
+.cd{background:var(--t-card);border-radius:14px;padding:11px 12px;box-shadow:var(--t-shadow)}
+.eb{font:600 9.5px 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--t-muted)}
+.pill{display:inline-flex;align-items:center;gap:5px;font:600 10.5px var(--t-ui);padding:3px 9px;border-radius:999px}
+.pill i{width:6px;height:6px;border-radius:50%;background:currentColor;display:block}
+.big{font:var(--t-numw) 40px/1 var(--t-num);letter-spacing:-.02em;margin:6px 0 4px}
+.per{font-size:11.5px}
+.ln{display:flex;justify-content:space-between;font-size:11.5px;padding:3px 0}
+.ln.tot{border-top:1px solid var(--t-line);margin-top:4px;padding-top:6px;font-weight:700}
+.mut{color:var(--t-muted)}
+.row{display:flex;gap:9px;align-items:center;padding:7px 0;border-bottom:1px solid var(--t-line)}
+.row:last-child{border-bottom:0}
+.ic{width:28px;height:28px;border-radius:9px;background:var(--t-sunk);display:flex;align-items:center;justify-content:center;font:600 11px var(--t-ui);flex:none}
+.rt{flex:1;min-width:0}
+.rt .a{font:600 12.5px var(--t-ui)}
+.rt .b{font-size:10.5px;color:var(--t-muted)}
+.amt{font:600 12.5px var(--t-ui);text-align:right}
+.tag{display:inline-block;font:500 9.5px var(--t-ui);border:1px solid var(--t-control);border-radius:4px;padding:1px 5px;color:var(--t-muted);margin-top:2px}
+.btn{display:block;text-align:center;font:600 12.5px var(--t-ui);padding:10px;border-radius:11px;background:var(--t-button);color:var(--t-onbutton)}
+.btn2{display:block;text-align:center;font:600 12px var(--t-ui);padding:8px;border-radius:10px;border:1.5px solid var(--t-ink);color:var(--t-ink)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:600 12px var(--t-ui);padding:8px 11px;border-radius:11px;border:1.5px solid var(--t-control);background:var(--t-card);color:var(--t-ink)}
+.chip.pre{border:2px solid var(--t-ink)}
+.chip.pre::before{content:"• "}
+.chip.oth{border-style:dashed;color:var(--t-muted)}
+.seg{display:flex;background:var(--t-sunk);border-radius:10px;padding:3px;font:600 10.5px var(--t-ui)}
+.seg span{flex:1;text-align:center;padding:6px 0;border-radius:8px;color:var(--t-muted)}
+.seg .on{background:var(--t-card);color:var(--t-ink);box-shadow:var(--t-shadow)}
+.raw{font:500 10px 'Geist Mono',monospace;background:var(--t-sunk);border-radius:8px;padding:6px 8px;color:var(--t-muted)}
+.info{font-size:10.5px;color:var(--t-muted);display:flex;justify-content:space-between;padding:0 2px}
+.secT{font:600 10px 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--t-muted);margin-top:4px}
+</style>
+
+<main>
+<header>
+  <div class="eyebrow">Zeta v2 · Planning session 5 of 7 · closed</div>
+  <h1>A clearer look for Zeta</h1>
+  <p class="lede">Why Oliva feels flat, measured. Three directions that fix it, each shown in light and dark on Inicio, Revisar and Pagos. Three ways to draw the timeline you asked for. The mockups use Laura's numbers under the rules you set in session 3.</p>
+</header>
+<div style="position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:8px;border-bottom:1px solid var(--line)"><div style="font:500 11px 'Geist Mono',monospace;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">Controls for the interactive prototypes (Tu flujo, Inicio)</div><div id="flowToggles"></div></div>
+
+<section>
+  <h2>Why Oliva feels flat</h2>
+  <div class="prose"><p>The words aren't the problem. The <b>shapes</b> are: cards melt into the background, chip borders are too faint to read as "tappable", and "Vas bien" is a tint so pale it looks like an ordinary card. Everything sits in the same beige, so nothing leads.</p></div>
+  <table>
+    <thead><tr><th>Pair (Oliva)</th><th class="r">Contrast</th><th>Needed</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td>Main text on card</td><td class="r">16.6 : 1</td><td>4.5</td><td class="good">Fine</td></tr>
+      <tr><td>Secondary text on card</td><td class="r">5.9 : 1</td><td>4.5</td><td class="good">Fine</td></tr>
+      <tr><td>Tertiary text on card</td><td class="r">3.8 : 1</td><td>4.5</td><td class="bad">Fails for small text</td></tr>
+      <tr><td>Chip / tag border on card</td><td class="r">1.7 : 1</td><td>3.0</td><td class="bad">Controls don't look tappable</td></tr>
+      <tr><td>Card on background</td><td class="r">1.13 : 1</td><td>needs a shadow or ≥1.2</td><td class="bad">Cards melt into the page (no shadow either)</td></tr>
+      <tr><td>"Vas bien" tint on card</td><td class="r">1.26 : 1</td><td>—</td><td class="bad">The most important state is the least visible</td></tr>
+    </tbody>
+  </table>
+  <p class="prose" style="margin-top:10px;font-size:14px;color:var(--muted)">What all three directions keep from Oliva: the hierarchy rule (<b>black = you can tap it, color = how you're doing, gray = data</b>), black rectangular buttons, round verdict pills, and one row grammar. What they change is <b>where the state color lives</b>, and the surfaces, borders and type around it.</p>
+</section>
+
+<section>
+  <h2>Three directions</h2>
+  <div id="dirs" style="display:flex;flex-direction:column;gap:22px"></div>
+</section>
+
+<section>
+  <h2>The timeline (S3-T): "Tu flujo", interactive</h2>
+  <div class="prose"><p>Built on the flow chart Zeta has today (<code>plan-flow-chart.tsx</code>): the balance line, daily bars around $0, and "Hoy". What changes: it follows your <b>pay cycles</b> instead of the calendar month, it <b>projects</b> the rest of the cycle and the next one (dashed line, outlined bars for bills still to pay), and you can <b>touch it</b>. <b>Try it</b>: drag across the chart to read the balance on any day, tap a day to see its movements and bills, and switch cycles. The theme toggles show it in both themes.</p></div>
+  <div style="display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start">
+    <div id="flowEntry"></div>
+    <div><div id="flow"></div><div class="cap">Tu flujo (full screen) · drag · tap · swipe</div></div>
+    <div class="card" style="max-width:420px;font-size:14px">
+      <h3 style="margin-bottom:8px">What it shows</h3>
+      <ul style="margin:0;padding-left:18px">
+        <li><b>Line:</b> money in your counted accounts at the end of each day. Solid up to today, dashed after (projected with your usual daily spending).</li>
+        <li><b>Bars up:</b> money in (salary, repayments).</li>
+        <li><b>Bars down:</b> money out. Solid = already happened. Outlined = a bill or payment still to come. Gray = estimated daily spending.</li>
+        <li><b>Marker:</b> the lowest point ahead, i.e. "will I make it?".</li>
+        <li><b>Touch:</b> drag to read any day's balance; tap to list that day's items (each opens its detail sheet in the app).</li>
+        <li><b>Cycles:</b> Pasado / Este / Próximo, or swipe. Totals under the chart follow the selected cycle.</li>
+        <li><b>Edges:</b> 2 days before and after the cycle, shaded, so you see how it connects (e.g. the next salary arriving).</li>
+        <li><b>Below $0:</b> the line and the area under $0 turn red, the day you'd run out is named, and a card says how much less to spend per day.</li>
+        <li><b>A big payment next cycle:</b> an amber card on the current cycle warns early ("El próximo ciclo no alcanza…") with "Apartar" (S3-7).</li>
+        <li><b>How you get here:</b> a "Tu flujo" row on Inicio with a small line and one sentence ("Llegas al 29 con ≈ $86.100", or the warning); tapping it opens this full screen. Every bill in Pagos also has "Ver en tu flujo".</li>
+      </ul>
+      <p style="margin:10px 0 0;color:var(--muted)">One change from today's chart: everyday spending bars are neutral, not red. Red is reserved for "Te pasaste" (the hierarchy rule), so it keeps its meaning.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Inicio on a 2-column grid</h2>
+  <div class="prose"><p>The grid is back, simplified to <b>two columns</b>: each widget takes <b>half</b> or the <b>full</b> width. A collapsed widget shows only an icon, its title and <b>one</b> primary value or a small visual; details live in the expanded panel, which opens under its row and dims the rest. <b>Urgent things call for attention:</b> a colored edge and a short reason on the widget ("Mañana", "No llegas al 30"), and on opening the app the most critical one opens by itself. <b>Try it:</b> the scenario buttons at the top change what's urgent; "Organizar" changes size, order, and adds or removes widgets.</p></div>
+  <div style="display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start">
+    <div><div id="home"></div><div class="cap">Inicio · tap · Organizar</div></div>
+    <div style="flex:1;min-width:320px">
+      <h3 style="margin-bottom:8px">Every widget, every size it allows</h3>
+      <p style="font-size:14px;color:var(--muted);margin:0 0 10px">This gallery is also the test: each widget at each size it allows, at the chosen width and theme, with its expanded panel. A size that doesn't give valuable information isn't allowed. In the app, the same gallery is a dev screen and is screenshot-tested (see below).</p>
+      <div id="gallery" style="display:flex;flex-direction:column;gap:16px"></div>
+    </div>
+  </div>
+  <div class="two" style="margin-top:16px">
+    <div class="card" style="font-size:14px"><h3 style="margin-bottom:6px">Rules for every widget</h3>
+      <ul style="margin:0;padding-left:18px">
+        <li>Answers one question no other widget answers; only the top block says "¿cómo voy?".</li>
+        <li>Has a <b>minimum size</b>: the smallest size where its information is still useful. It can't be made smaller.</li>
+        <li>Collapsed = icon + title + <b>one</b> primary value or visual (+ at most a 3-word hint). Everything else goes in the expanded panel.</li><li>Alert states: amber (needs attention soon) or red (critical), with a ≤4-word reason. The most critical opens automatically once per day.</li>
+        <li>Every widget expands (panel under its row) and has "Ver todo ›" for its full screen.</li>
+        <li>Amounts auto-fit their space; they're shortened ("$14,3 M") only when a full amount can't fit at 62% of its size.</li>
+      </ul></div>
+    <div class="card" style="font-size:14px"><h3 style="margin-bottom:6px">How each widget is tested</h3>
+      <ul style="margin:0;padding-left:18px">
+        <li>Every allowed size × 3 widths (360, 390, 430) × 2 themes × light/dark × text size 100% and 130%.</li>
+        <li>Data cases: normal, empty (first week), long values ($14.250.000), negative, and the warning state.</li>
+        <li>Pass: nothing clipped or overlapping, contrast ≥ 4.5 for text and ≥ 3 for borders, and the main value readable in one glance.</li>
+        <li>Built as a dev "gallery" screen in the app with automated screenshots per case, checked on every change to a widget.</li>
+      </ul></div>
+  </div>
+</section>
+
+<section>
+  <h2>Decisions for this session</h2>
+  <div class="decisions">
+    <div class="dec" style="border-color:var(--accent)">
+      <div class="dec-h"><span class="dir-id">S5-1</span><h3>Direction</h3></div>
+      <p style="margin:0"><span class="rec-tag" style="border:0;padding:0">DECIDED</span> <b>Oliva afinada is the default theme; Nítido is an optional theme</b> (Ajustes › Apariencia: tema Oliva / Nítido × claro / oscuro / sistema). Tinta is discarded. Both themes share every component; only tokens change.</p>
+    </div>
+    <div class="dec" style="border-color:var(--accent)">
+      <div class="dec-h"><span class="dir-id">S5-2</span><h3>Tu flujo</h3></div>
+      <p style="margin:0"><span class="rec-tag" style="border:0;padding:0">DECIDED</span> As prototyped: one cycle at a time (Pasado / Este / Próximo + swipe) with 2 shaded days on each edge; drag to read any day's balance, tap a day for its items; projected line; below $0 in red with the day you'd run out and how much less to spend per day; a problem in the next cycle warns in amber in the current one, with "Apartar".</p>
+    </div>
+    <div class="dec" style="border-color:var(--accent)">
+      <div class="dec-h"><span class="dir-id">S5-4</span><h3>Inicio: fixed number + a 2-column widget grid you organize?</h3></div>
+      <p style="margin:0"><span class="rec-tag" style="border:0;padding:0">DECIDED</span> <b>As prototyped:</b> Disponible fixed on top; a 2-column widget grid you organize (half/full, per-widget minimum), collapsed = icon + title + one value or visual, expand in place, amber/red alert chips with the most critical auto-opening once a day. Rules in <code>docs/mlp/13-widget-design-rules.md</code>.</p>
+    </div>
+
+    <div class="dec" style="border-color:var(--accent)">
+      <div class="dec-h"><span class="dir-id">S5-3</span><h3>Who draws the full screen set?</h3></div>
+      <p style="margin:0"><span class="rec-tag" style="border:0;padding:0">DECIDED</span> <b>Claude Design redraws the full screen set</b> from the chosen tokens and every decision so far. The prompt is written after session 6, so plans and payment screens are included.</p>
+    </div>
+
+    
+  </div>
+</section>
+
+<footer style="color:var(--muted);font-size:13px">Next: session 6, plans and payments.</footer>
+</main>
+
+<script>
+const D = {
+  oliva:{name:"0 · Oliva today",ui:"'Geist',system-ui,sans-serif",num:"'Geist',system-ui,sans-serif",numw:"800",style:"tint",
+    light:{bg:"#EFE8D9",card:"#FAF6EC",ink:"#161812",muted:"#655F52",line:"#E2D9C6",control:"#C9BEA6",sunk:"#E5DDCB",button:"#141414",onbutton:"#F6F0E3",shadow:"none",
+      ok:["#DCE0BE","#46512A","#6C7A3C","#FFFFFF"],warn:["#EFDDAE","#6E500E","#B88A22","#FFFFFF"],bad:["#EDCBBB","#86361F","#B9553A","#FFFFFF"]}},
+  A:{name:"A · Oliva afinada",ui:"'Geist',system-ui,sans-serif",num:"'Geist',system-ui,sans-serif",numw:"800",style:"tint",
+    light:{bg:"#E9E0CC",card:"#FFFCF5",ink:"#14160F",muted:"#4B463B",line:"#E6DDC9",control:"#8C7F63",sunk:"#EFE7D6",button:"#14160F",onbutton:"#FFFCF5",shadow:"0 1px 2px rgba(40,30,10,.10),0 4px 12px rgba(40,30,10,.06)",
+      ok:["#CFE0A6","#2E4A12","#4E7A1E","#FFFFFF"],warn:["#F6D98C","#5C3F00","#B27800","#FFFFFF"],bad:["#F4BFA8","#7A2410","#C4452A","#FFFFFF"]},
+    dark:{bg:"#12130E",card:"#1F2119",ink:"#F3EFE3",muted:"#B8B09C",line:"#2E3027",control:"#858270",sunk:"#2A2C22",button:"#F3EFE3",onbutton:"#12130E",shadow:"none",
+      ok:["#2A3A14","#CFE39A","#8DB84A","#12130E"],warn:["#3D2F0A","#F2CE74","#E0A626","#12130E"],bad:["#43190F","#F4A58C","#E0664A","#12130E"]},
+    blurb:"Where state color lives: a <b>stronger tint</b> on the Disponible card. White cards with a soft shadow on a deeper sand background; borders that pass 3:1; a heavier number.",
+    contrast:"Card on background 1.28 + shadow · chip border 3.8 · tertiary text 5.8 · dark: chip border 4.2"},
+  B:{name:"B · Nítido",ui:"'Geist',system-ui,sans-serif",num:"'Bricolage Grotesque','Geist',sans-serif",numw:"800",style:"solid",
+    light:{bg:"#EEF0F3",card:"#FFFFFF",ink:"#0E1116",muted:"#475061",line:"#E3E6EB",control:"#7A8394",sunk:"#EEF0F3",button:"#0E1116",onbutton:"#FFFFFF",shadow:"0 1px 2px rgba(14,17,22,.08),0 6px 16px rgba(14,17,22,.06)",
+      ok:["#DDF3E6","#0F5C30","#16804A","#FFFFFF"],warn:["#FFF0C2","#6B4A00","#F2A900","#1A1300"],bad:["#FCE0DB","#8E2213","#D1382A","#FFFFFF"]},
+    dark:{bg:"#0B0D10",card:"#171B21",ink:"#F4F6F8",muted:"#A7AFBC",line:"#252A32",control:"#6B7383",sunk:"#20252D",button:"#F4F6F8",onbutton:"#0B0D10",shadow:"none",
+      ok:["#123522","#7FE0A8","#2BB36A","#04150B"],warn:["#3A2C05","#FFD978","#FFC23D","#1A1300"],bad:["#3D140E","#FFA799","#FF6A55","#1A0502"]},
+    blurb:"Where state color lives: the <b>whole Disponible block</b> is the verdict color, the only saturated thing on screen. Everything else is crisp neutral with real depth. Display face: Bricolage Grotesque for numbers.",
+    contrast:"Text on the green block 5.0 · amber 9.2 · red 4.9 · chip border 3.8 · dark: 6.9 / 11.5 / 7.0 · chip border 3.6"},
+  C:{name:"C · Tinta",ui:"'Geist',system-ui,sans-serif",num:"'Newsreader',Georgia,serif",numw:"500",style:"number",
+    light:{bg:"#FFFFFF",card:"#F3F3F5",ink:"#111114",muted:"#52525C",line:"#E4E4E9",control:"#7C7C88",sunk:"#E9E9EE",button:"#111114",onbutton:"#FFFFFF",shadow:"none",
+      ok:["#E3F4EA","#0F7A43","#0F7A43","#FFFFFF"],warn:["#FBEFD2","#8A5C00","#8A5C00","#FFFFFF"],bad:["#FBE3E0","#B42E25","#B42E25","#FFFFFF"]},
+    dark:{bg:"#0F0F12",card:"#1B1B21",ink:"#F5F2EA",muted:"#A9A49B",line:"#29292F",control:"#76767F",sunk:"#26262D",button:"#F5F2EA",onbutton:"#0F0F12",shadow:"none",
+      ok:["#12301F","#6FDB8C","#6FDB8C","#0F0F12"],warn:["#3A2D0B","#FFC857","#FFC857","#0F0F12"],bad:["#3A1714","#FF7A6B","#FF7A6B","#0F0F12"]},
+    blurb:"Where state color lives: <b>only in the number</b> and its small pill. Flat neutral surfaces, an editorial serif for the big figure. Dark-first in spirit.",
+    contrast:"Number green 5.4 · amber 5.8 · red 6.3 · chip border 3.7 · dark: 11.1 / 12.4 / 7.5 · chip border 3.8"}
+};
+const V = {
+  ok:{label:"Vas bien",n:"$421.100",per:"$35.000 al día · 12 días",sub:"+$180.000 cuando te paguen"},
+  warn:{label:"Cuidado",n:"$271.100",per:"Máximo $22.500 al día para llegar al 30",sub:"+$180.000 cuando te paguen"},
+  bad:{label:"Te pasaste",n:"−$64.000",per:"Lo restamos del próximo ciclo",sub:"Mira en qué se fue ›"},
+  over:{label:"Cuidado",n:"$1.100",per:"Casi nada para llegar al 30",sub:"+$180.000 cuando te paguen"}
+};
+function vars(t,dir){
+  const s=[`--t-bg:${t.bg}`,`--t-card:${t.card}`,`--t-ink:${t.ink}`,`--t-muted:${t.muted}`,`--t-line:${t.line}`,`--t-control:${t.control}`,`--t-sunk:${t.sunk}`,`--t-button:${t.button}`,`--t-onbutton:${t.onbutton}`,`--t-shadow:${t.shadow}`,`--t-ui:${dir.ui}`,`--t-num:${dir.num}`,`--t-numw:${dir.numw}`,`--t-bad-solid:${t.bad[2]}`,`--t-bad-on:${t.bad[3]}`];
+  return s.join(';');
+}
+function frame(t,dir,inner,active){
+  const tab=(n,l)=>`<span class="${active===n?'on':''}"><i></i>${l}${n==='r'?'<b>3</b>':''}</span>`;
+  return `<div><div class="ph"><div class="scr" style="${vars(t,dir)}"><div class="sb"><span>9:41</span><span>●●● ▮</span></div><div class="body">${inner}</div><div class="tabs">${tab('i','Inicio')}${tab('m','Movimientos')}${tab('r','Revisar')}</div></div></div>`;
+}
+function hero(t,dir,st,vk){
+  const v=V[vk||st], c=t[st];
+  if(dir.style==="solid"){
+    return `<div style="background:${c[2]};color:${c[3]};border-radius:18px;padding:13px 14px">
+      <div style="display:flex;justify-content:space-between;align-items:center"><span class="pill" style="border:1.5px solid ${c[3]};color:${c[3]}"><i></i>${v.label}</span><span style="font-size:10.5px;opacity:.9">Te pagan en 12 días</span></div>
+      <div style="font:600 9.5px 'Geist Mono',monospace;letter-spacing:.08em;margin-top:10px;opacity:.85">DISPONIBLE</div>
+      <div class="big">${v.n}</div><div class="per" style="opacity:.95">${v.per}</div><div style="font-size:10.5px;margin-top:4px;opacity:.85">${v.sub}</div></div>`;
+  }
+  if(dir.style==="number"){
+    return `<div class="cd" style="padding:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center"><span class="pill" style="background:${c[0]};color:${c[1]}"><i></i>${v.label}</span><span class="mut" style="font-size:10.5px">Te pagan en 12 días</span></div>
+      <div class="eb" style="margin-top:10px">Disponible</div>
+      <div class="big" style="color:${c[1]};font-size:46px">${v.n}</div><div class="per">${v.per}</div><div class="mut" style="font-size:10.5px;margin-top:4px">${v.sub}</div></div>`;
+  }
+  return `<div style="background:${c[0]};color:${t.ink};border-radius:16px;padding:13px 14px;box-shadow:${t.shadow}">
+      <div style="display:flex;justify-content:space-between;align-items:center"><span class="pill" style="background:${t.card};color:${c[1]}"><i></i>${v.label}</span><span style="font-size:10.5px;color:${c[1]}">Te pagan en 12 días</span></div>
+      <div style="font:600 9.5px 'Geist Mono',monospace;letter-spacing:.08em;margin-top:10px;color:${c[1]}">DISPONIBLE</div>
+      <div class="big">${v.n}</div><div class="per" style="color:${c[1]}">${v.per}</div><div style="font-size:10.5px;margin-top:4px;color:${c[1]}">${v.sub}</div></div>`;
+}
+function inicio(t,dir,st){
+  return frame(t,dir,`<div class="hdr"><div><div class="t">Hola, Laura</div><div class="s">Ciclo 15 – 29 sep</div></div><div class="av">L</div></div>
+   ${hero(t,dir,st)}
+   <div class="cd"><div style="display:flex;justify-content:space-between"><span class="eb">Así sale tu número</span><span style="font-size:10.5px;font-weight:600;text-decoration:underline">Ver detalle</span></div>
+     <div class="ln"><span>Te llega este ciclo</span><span>$2.100.000</span></div>
+     <div class="ln"><span class="mut">− Por pagar</span><span>$1.378.900</span></div>
+     <div class="ln"><span class="mut">− Ahorro</span><span>$200.000</span></div>
+     <div class="ln"><span class="mut">− Ya salió</span><span>${st==='ok'?'$100.000':st==='warn'?'$250.000':'$585.100'}</span></div></div>
+   <div class="cd" style="padding:4px 12px"><div class="row"><div class="ic">A</div><div class="rt"><div class="a">Arriendo</div><div class="b">Mañana · Bancolombia</div></div><div class="amt">$700.000</div></div>
+     <div class="row"><div class="ic">N</div><div class="rt"><div class="a">Tarjeta Nu</div><div class="b">Próxima factura ≈ · vence 22 oct</div></div><div class="amt">$480.000<br><span class="tag">≈ al corte $620.000</span></div></div></div>`,'i');
+}
+function revisar(t,dir){
+  return frame(t,dir,`<div><div class="t" style="font:700 19px var(--t-ui)">Revisar</div><div class="s mut" style="font-size:11px">3 preguntas · unos 20 segundos</div></div>
+   <div class="cd" style="padding:13px">
+     <div style="display:flex;gap:9px;align-items:center"><div class="ic">R</div><div class="rt"><div class="a">Rappi</div><div class="b">Ayer 8:14 p.m. · Tarjeta Nu</div></div><div class="amt">−$38.500</div></div>
+     <div class="raw" style="margin-top:9px">RAPPI*COLOMBIA BOG 110111</div>
+     <div style="font:700 15px var(--t-ui);margin:11px 0 3px">¿Qué fue esto?</div>
+     <div class="mut" style="font-size:10.5px;margin-bottom:8px">Vale para Rappi: sus 14 movimientos y los que vengan.</div>
+     <div class="chips"><span class="chip pre">Domicilios</span><span class="chip">Mascotas</span><span class="chip">Salud</span><span class="chip oth">Otra…</span></div>
+     <div class="eb" style="margin:12px 0 6px">¿Siempre es así?</div>
+     <div class="seg"><span class="on">Siempre</span><span>Casi siempre</span><span>Pregúntame</span></div>
+     <div style="margin-top:12px"><span class="btn">Guardar</span></div></div>
+   <div class="info"><span>Saltar</span><span>1 de 3</span></div>`,'r');
+}
+function pagos(t,dir){
+  const tagOk=`<span class="pill" style="background:${t.ok[0]};color:${t.ok[1]};font-size:9.5px;padding:1px 7px">Pagado</span>`;
+  return frame(t,dir,`<div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px">‹</span><div class="t" style="font:700 19px var(--t-ui)">Pagos</div></div>
+   <div class="seg"><span class="on">Este ciclo</span><span>Próximo</span><span>Deudas</span></div>
+   <div class="secT">Antes del 30 · $1.378.900</div>
+   <div class="cd" style="padding:4px 12px">
+     <div class="row"><div class="ic">A</div><div class="rt"><div class="a">Arriendo</div><div class="b">19 sep · Bancolombia</div></div><div class="amt">$700.000<br><span class="tag">Pendiente</span></div></div>
+     <div class="row"><div class="ic">N</div><div class="rt"><div class="a">Tarjeta Nu · mínimo</div><div class="b">22 sep · debes $1.850.000</div></div><div class="amt">$640.000<br><span class="tag">Pendiente</span></div></div>
+     <div class="row"><div class="ic">N</div><div class="rt"><div class="a">Netflix</div><div class="b">24 sep · Tarjeta Nu</div></div><div class="amt">$38.900<br>${tagOk}</div></div></div>
+   <div class="secT">Prepárate</div>
+   <div class="cd"><div class="row" style="border:0;padding-top:0"><div class="ic">S</div><div class="rt"><div class="a">SOAT</div><div class="b">15 dic · en 11 semanas</div></div><div class="amt">$1.100.000</div></div>
+     <div class="mut" style="font-size:10.5px;margin:2px 0 8px">Aparta $120.000 por ciclo y llegas sin afán.</div><span class="btn2">Apartar $120.000 por ciclo</span></div>`,'i');
+}
+const dirsEl=document.getElementById('dirs');
+for(const k of ['oliva','A','B']){
+  const d=D[k]; const L=d.light, Dk=d.dark;
+  const sw=(t)=>`<span class="sw"><i style="background:${t.bg}"></i><i style="background:${t.card}"></i><i style="background:${t.ink}"></i><i style="background:${t.ok[2]}"></i><i style="background:${t.warn[2]}"></i><i style="background:${t.bad[2]}"></i></span>`;
+  let phones = k==='oliva'
+    ? `${inicio(L,d,'ok')}<div class="cap">Inicio · Vas bien</div></div>${revisar(L,d)}<div class="cap">Revisar</div></div>${pagos(L,d)}<div class="cap">Pagos</div></div>`
+    : `${inicio(L,d,'ok')}<div class="cap">light · Vas bien</div></div>${inicio(L,d,'warn')}<div class="cap">light · Cuidado</div></div>${inicio(Dk,d,'bad')}<div class="cap">dark · Te pasaste</div></div>${inicio(Dk,d,'ok')}<div class="cap">dark · Vas bien</div></div>${revisar(L,d)}<div class="cap">light · Revisar</div></div>${revisar(Dk,d)}<div class="cap">dark · Revisar</div></div>${pagos(L,d)}<div class="cap">light · Pagos</div></div>${pagos(Dk,d)}<div class="cap">dark · Pagos</div></div>`;
+  const el=document.createElement('div'); el.className='dir';
+  el.innerHTML = `<div class="dir-h"><h3>${d.name}</h3>${k==='A'?'<span class="rec-tag">DEFAULT THEME</span>':''}${k==='B'?'<span class="rec-tag">OPTIONAL THEME</span>':''}${k==='oliva'?'<span class="dir-id">baseline, light only</span>':''}</div>
+    ${d.blurb?`<p style="margin:0;max-width:80ch">${d.blurb}</p>`:'<p style="margin:0;max-width:80ch">The current design, rebuilt with the same components so the comparison is fair.</p>'}
+    <div class="meta"><span>Light ${sw(L)}</span>${Dk?`<span>Dark ${sw(Dk)}</span>`:''}${d.contrast?`<span>Measured: ${d.contrast}</span>`:''}</div>
+    <div class="phones">${phones}</div><div class="cap" style="text-align:left">scroll sideways for Revisar and Pagos, light and dark →</div>`;
+  dirsEl.appendChild(el);
+}
+/* ---------- "Tu flujo" interactive prototype ---------- */
+const MES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'], DIA=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+const money=(v)=>(v<0?'−':'')+'$'+Math.abs(Math.round(v)).toLocaleString('es-CO');
+const TODAY=19, DMIN=-2, DMAX=47; // day 0 = 30 ago 2026; today = 18 sep
+const CYC=[{a:0,b:15,name:'30 ago – 14 sep',tab:'Pasado'},{a:16,b:30,name:'15 – 29 sep',tab:'Este ciclo'},{a:31,b:45,name:'30 sep – 14 oct',tab:'Próximo'}];
+const dateOf=(d)=>new Date(2026,7,30+d);
+const fmtD=(d)=>{const x=dateOf(d);return `${x.getDate()} ${MES[x.getMonth()]}`;};
+function buildDays(scn){
+  const items={}; const add=(d,name,amt,kind,note)=>{(items[d]=items[d]||[]).push({name,amt,kind,note});};
+  for(const c of [0,16,31,46]){ add(c,'Sueldo',2100000,'in'); add(c,'Ahorro a tu cuenta aparte',-200000,'bill'); }
+  add(-2,'Rappi',-31000,'spend'); add(-1,'Éxito',-54000,'spend');
+  add(1,'Éxito · mercado quincenal',-280000,'spend');
+  add(6,'Crédito libre inversión · cuota',-450000,'bill'); add(6,'Claro',-65000,'bill'); add(11,'EPM',-180000,'bill');
+  const sp=[35,52,0,88,41,60,23,95,70,12,64,58,110,47,80,125], nm=['Rappi','D1','','Éxito','Uber','Tostao','Farmacia','Cine Colombia','Rappi','Tostao','Uber','D1','Éxito','Rappi','Uber','Restaurante'];
+  sp.forEach((v,d)=>{ if(v) add(d,nm[d],-v*1000,'spend'); });
+  add(16,'Éxito',-42000,'spend'); add(17,'Uber',-18700,'spend'); add(17,'Tostao',-9800,'spend'); add(18,'Rappi',-29500,'spend');
+  if(scn==='over') add(17,'Paseo fin de semana',-420000,'spend');
+  add(20,'Arriendo',-700000,'bill','Pendiente'); add(23,'Tarjeta Nu · pago mínimo',-640000,'bill','Pendiente · debes $1.850.000'); add(25,'Netflix',-38900,'bill','Pendiente');
+  add(36,'Crédito libre inversión · cuota',-450000,'bill'); add(36,'Claro',-65000,'bill','≈ variable'); add(41,'EPM',-180000,'bill','≈ variable');
+  if(scn==='big') add(40,'Matrícula semestre',-1200000,'bill','Pago grande · programado');
+  add(39,'Corte tarjeta Nu',0,'mark','Próxima factura ≈ $620.000 · vence 22 oct');
+  for(let d=TODAY; d<=DMAX; d++) add(d,'Gasto diario estimado',-35000,'est','Tu ritmo habitual');
+  let bal=205000; const days={};
+  for(let d=DMIN; d<=DMAX; d++){ const it=items[d]||[]; const inn=it.filter(x=>x.amt>0).reduce((a,b)=>a+b.amt,0); const out=it.filter(x=>x.amt<0).reduce((a,b)=>a+b.amt,0); bal+=inn+out; days[d]={d,items:it,inn,out,bal}; }
+  return days;
+}
+const flowState={cyc:1,sel:TODAY,theme:'A',mode:'light',scn:'normal'};
+let DAYS=buildDays('normal'), flowGeom=null, flowDrag=false;
+function flowRender(){
+  const dir=D[flowState.theme], t=dir[flowState.mode], c=CYC[flowState.cyc];
+  const wa=Math.max(DMIN,c.a-2), wb=Math.min(DMAX,c.b+2); const days=[]; for(let d=wa; d<=wb; d++) days.push(DAYS[d]);
+  const W=244,H=204,PL=8,PR=8,BASE=100,TOP=16,BOT=H-24;
+  const n=days.length, step=(W-PL-PR)/n, cx=(k)=>PL+step*(k+.5);
+  const all=Object.values(DAYS); const maxBal=Math.max(...all.map(x=>x.bal))*1.05, kb=(BASE-TOP)/maxBal;
+  const yb=(v)=>Math.min(BOT,BASE-v*kb);
+  const maxOut=Math.max(...all.map(x=>-x.out)), yo=(BOT-BASE)/maxOut;
+  let bars='', pts=[], pad='';
+  days.forEach((x,k)=>{
+    const future=x.d>=TODAY, inCyc=x.d>=c.a&&x.d<=c.b, op=inCyc?1:.35;
+    if(!inCyc) pad+=`<rect x="${cx(k)-step/2}" y="${TOP-6}" width="${step}" height="${BOT-TOP+6}" fill="${t.sunk}" opacity=".7"/>`;
+    if(x.inn>0) bars+=`<rect x="${cx(k)-2.5}" y="${TOP}" width="5" height="${BASE-TOP}" rx="2.5" fill="${t.ok[2]}" opacity="${(future?.5:.9)*op}"/>`;
+    let yCur=BASE;
+    for(const i of x.items.filter(i=>i.amt<0)){ const h=Math.max(1.5,-i.amt*yo); const y0=yCur; yCur+=h;
+      if(i.kind==='est') bars+=`<rect x="${cx(k)-2.5}" y="${y0}" width="5" height="${h}" fill="${t.control}" opacity="${.45*op}"/>`;
+      else if(future) bars+=`<rect x="${cx(k)-3}" y="${y0+.6}" width="6" height="${Math.max(h-1.2,1)}" rx="1.5" fill="none" stroke="${i.name.startsWith('Matr')?t.bad[2]:t.ink}" stroke-width="1.3" opacity="${op}"/>`;
+      else bars+=`<rect x="${cx(k)-3}" y="${y0}" width="6" height="${h}" rx="1.5" fill="${i.kind==='bill'?t.ink:t.muted}" opacity="${op}"/>`; }
+    if(x.items.some(i=>i.kind==='mark')) bars+=`<text x="${cx(k)}" y="${BOT+2}" text-anchor="middle" style="font:700 9px Geist;fill:${t.warn[1]}">◆</text>`;
+    pts.push([cx(k),yb(x.bal),x.d]);
+  });
+  const path=(arr)=>arr.map((p,ix)=>(ix?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join('');
+  const past=pts.filter(p=>p[2]<=TODAY), fut=pts.filter(p=>p[2]>=TODAY);
+  const area=(arr)=>arr.length?`M${arr[0][0]} ${BASE}`+arr.map(p=>`L${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join('')+`L${arr[arr.length-1][0]} ${BASE}Z`:'';
+  const lines=`<defs><clipPath id="cpA"><rect x="0" y="0" width="${W}" height="${BASE}"/></clipPath><clipPath id="cpB"><rect x="0" y="${BASE}" width="${W}" height="${H}"/></clipPath></defs>
+    <path d="${area(pts)}" fill="${t.bad[0]}" opacity=".8" clip-path="url(#cpB)"/>
+    <g clip-path="url(#cpA)"><path d="${path(past)}" fill="none" stroke="${t.ink}" stroke-width="2"/><path d="${path(fut)}" fill="none" stroke="${t.ink}" stroke-width="2" stroke-dasharray="4 3"/></g>
+    <g clip-path="url(#cpB)"><path d="${path(past)}" fill="none" stroke="${t.bad[2]}" stroke-width="2.2"/><path d="${path(fut)}" fill="none" stroke="${t.bad[2]}" stroke-width="2.2" stroke-dasharray="4 3"/></g>`;
+  const ahead=days.filter(x=>x.d>=TODAY); let low='';
+  if(ahead.length){ const m=ahead.reduce((a,b)=>b.bal<a.bal?b:a); const k=m.d-wa; low=`<circle cx="${cx(k)}" cy="${yb(m.bal)}" r="4" fill="${m.bal<0?t.bad[2]:t.warn[2]}" stroke="${t.card}" stroke-width="1.5"/>`; }
+  const tk=TODAY-wa, todayM=(tk>=0&&tk<n)?`<line x1="${cx(tk)}" y1="${TOP-6}" x2="${cx(tk)}" y2="${BOT}" stroke="${t.muted}" stroke-dasharray="2 3"/><text x="${cx(tk)}" y="${TOP-8}" text-anchor="middle" style="font:600 8.5px Geist;fill:${t.ink}">Hoy</text>`:'';
+  const sk=flowState.sel-wa, sel=(sk>=0&&sk<n)?`<rect x="${cx(sk)-step/2}" y="${TOP-4}" width="${step}" height="${BOT-TOP+6}" fill="${t.ink}" opacity=".08"/><circle cx="${cx(sk)}" cy="${yb(days[sk].bal)}" r="4.5" fill="${days[sk].bal<0?t.bad[2]:t.ink}"/>`:'';
+  const ka=c.a-wa, kz=c.b-wa;
+  const ticks=`<text x="${cx(ka)}" y="${H-6}" text-anchor="middle" style="font:600 8.5px Geist;fill:${t.ink}">${fmtD(c.a)}</text><text x="${cx(kz)}" y="${H-6}" text-anchor="middle" style="font:600 8.5px Geist;fill:${t.ink}">${fmtD(c.b)}</text>`
+    +(ka>0?`<text x="${cx(0)}" y="${H-6}" text-anchor="middle" style="font:8px Geist;fill:${t.muted}">‹</text>`:'')+(kz<n-1?`<text x="${cx(n-1)}" y="${H-6}" text-anchor="middle" style="font:8px Geist;fill:${t.muted}">›</text>`:'');
+  const svg=`<svg id="flowSvg" viewBox="0 0 ${W} ${H}" style="width:100%;touch-action:pan-y;cursor:crosshair;display:block">
+    ${pad}<line x1="${PL}" y1="${BASE}" x2="${W-PR}" y2="${BASE}" stroke="${t.line}" stroke-width="1.2"/><text x="${W-PR}" y="${BASE-3}" text-anchor="end" style="font:8px Geist;fill:${t.muted}">$0</text>
+    ${sel}${bars}${lines}${todayM}${low}${ticks}</svg>`;
+  flowGeom={a:wa,n,W,PL,step};
+  const x=DAYS[flowState.sel]; const dt=dateOf(x.d); const proj=x.d>TODAY;
+  const cd=days.filter(y=>y.d>=c.a&&y.d<=c.b);
+  const inC=cd.reduce((a,b)=>a+b.inn,0), outC=cd.reduce((a,b)=>a+b.out,0), end=DAYS[c.b].bal;
+  // alerts
+  let alert='';
+  const firstNeg=(a,b)=>{for(let d=Math.max(a,TODAY);d<=b;d++) if(DAYS[d].bal<0) return d; return null;};
+  const minIn=(a,b)=>{let m=Infinity;for(let d=Math.max(a,TODAY);d<=b;d++) m=Math.min(m,DAYS[d].bal);return m;};
+  const negHere=firstNeg(c.a,c.b), nx=CYC[flowState.cyc+1], negNext=nx?firstNeg(nx.a,nx.b):null;
+  if(negHere!==null){ const m=minIn(c.a,c.b); const left=Math.max(1,c.b-Math.max(c.a,TODAY)+1);
+    alert=`<div style="background:${t.bad[0]};color:${t.bad[1]};border-radius:12px;padding:8px 10px;font-size:10.5px;line-height:1.35"><b>A tu ritmo te quedas sin plata el ${fmtD(negHere)}.</b> Te faltarían ≈ ${money(-m)}. Gasta ≈ ${money(Math.ceil(-m/left/1000)*1000)} menos al día para llegar al ${dateOf(c.b+1).getDate()}.</div>`; }
+  else if(negNext!==null){ const m=minIn(nx.a,nx.b); const big=DAYS[negNext].items.find(i=>i.kind==='bill')||{name:'un pago'}; const left=Math.max(1,negNext-Math.max(c.a,TODAY));
+    alert=`<div style="background:${t.warn[0]};color:${t.warn[1]};border-radius:12px;padding:8px 10px;font-size:10.5px;line-height:1.35"><b>El próximo ciclo no alcanza por ≈ ${money(-m)}</b> (${big.name}, ${fmtD(negNext)}). Gasta ≈ ${money(Math.ceil(-m/left/1000)*1000)} menos al día desde hoy, o apártalo. <u>Apartar</u></div>`; }
+  const list=(x.items.length?x.items:[{name:'Sin movimientos',amt:0,kind:'none'}]).map(i=>`<div class="row" style="padding:6px 0"><div class="ic" style="width:24px;height:24px;font-size:10px">${i.kind==='in'?'+':i.kind==='mark'?'◆':i.name[0]}</div><div class="rt"><div class="a" style="font-size:11.5px">${i.name}</div><div class="b">${i.note||(i.kind==='est'?'Estimado':(x.d>=TODAY?'Programado':'Hecho'))}</div></div><div class="amt" style="font-size:11.5px;${i.amt>0?`color:${t.ok[1]}`:''}">${i.amt?(i.amt>0?'+':'')+money(i.amt):''}</div></div>`).join('');
+  const seg=CYC.map((cy,ix)=>`<span data-cyc="${ix}" class="${ix===flowState.cyc?'on':''}" style="cursor:pointer">${cy.tab}</span>`).join('');
+  const lbl=flowState.cyc===0?['Te llegó','Salió','Terminaste con']:flowState.cyc===1?['Llega','Sale ≈','Terminas con ≈']:['Llegará','Saldrá ≈','Terminarías con ≈'];
+  const inner=`<div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px">‹</span><div><div class="t" style="font:700 17px var(--t-ui)">Tu flujo</div><div class="s mut" style="font-size:11px">Ciclo ${c.name}</div></div></div>
+    <div class="seg">${seg}</div>${alert}
+    <div class="cd" style="padding:9px 8px 6px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;padding:0 4px 4px"><span style="font:600 11.5px var(--t-ui)">${DIA[dt.getDay()]} ${dt.getDate()} ${MES[dt.getMonth()]}${x.d===TODAY?' · hoy':''}${x.d<c.a||x.d>c.b?' · otro ciclo':''}</span><span style="font:700 13px var(--t-ui);${x.bal<0?`color:${t.bad[2]}`:''}">${proj?'≈ ':''}${money(x.bal)}</span></div>
+      ${svg}
+    </div>
+    <div class="cd" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:8px 10px;font-size:9.5px;line-height:1.3;color:var(--t-muted)">
+      <div>${lbl[0]}<br><b style="font-size:11px;color:${t.ok[1]}">${money(inC)}</b></div><div>${lbl[1]}<br><b style="font-size:11px;color:var(--t-ink)">${money(-outC)}</b></div><div>${lbl[2]}<br><b style="font-size:11px;color:${end<0?t.bad[2]:'var(--t-ink)'}">${money(end)}</b></div></div>
+    <div class="cd" style="padding:2px 10px;flex:1;overflow:auto">${list}</div>`;
+  const tab=(k,l)=>`<span class="${k==='i'?'on':''}"><i></i>${l}${k==='r'?'<b>3</b>':''}</span>`;
+  document.getElementById('flow').innerHTML=`<div class="ph"><div class="scr" style="${vars(t,dir)}"><div class="sb"><span>9:41</span><span>●●● ▮</span></div><div class="body" style="gap:8px">${inner}</div><div class="tabs">${tab('i','Inicio')}${tab('m','Movimientos')}${tab('r','Revisar')}</div></div></div>`;
+  document.querySelectorAll('#flow [data-cyc]').forEach(el=>el.onclick=()=>{setCyc(+el.dataset.cyc)});
+  let sx=null; const scr=document.querySelector('#flow .body');
+  scr.ontouchstart=(e)=>{ if(!e.target.closest('#flowSvg')) sx=e.touches[0].clientX; };
+  scr.ontouchend=(e)=>{ if(sx===null) return; const dx=e.changedTouches[0].clientX-sx; sx=null; if(Math.abs(dx)>50) setCyc(Math.max(0,Math.min(2,flowState.cyc+(dx<0?1:-1)))); };
+  entryRender(t,dir);
+}
+function setCyc(ix){ flowState.cyc=ix; const cc=CYC[ix]; flowState.sel=(TODAY>=cc.a&&TODAY<=cc.b)?TODAY:cc.a; flowRender(); }
+function flowPick(ev){ const sv=document.getElementById('flowSvg'); if(!sv||!flowGeom) return; const r=sv.getBoundingClientRect(); const g=flowGeom;
+  const k=Math.max(0,Math.min(g.n-1,Math.floor(((ev.clientX-r.left)/r.width*g.W-g.PL)/g.step))); const d=g.a+k; if(d!==flowState.sel){flowState.sel=d; flowRender();} }
+document.addEventListener('pointerdown',(ev)=>{ if(ev.target.closest&&ev.target.closest('#flowSvg')){ flowDrag=true; flowPick(ev); } });
+document.addEventListener('pointermove',(ev)=>{ const over=ev.target.closest&&ev.target.closest('#flowSvg'); if(flowDrag||(over&&ev.pointerType==='mouse')) flowPick(ev); });
+document.addEventListener('pointerup',()=>{flowDrag=false}); document.addEventListener('pointercancel',()=>{flowDrag=false});
+function entryRender(t,dir){
+  const el=document.getElementById('flowEntry'); if(!el) return;
+  const c=CYC[1]; const pts=[]; for(let d=c.a; d<=c.b; d++) pts.push(DAYS[d].bal);
+  const mx=Math.max(...pts,1), mn=Math.min(...pts,0), w=110, h=30, y=(v)=>h-2-(v-mn)/(mx-mn)*(h-4);
+  const sp=pts.map((v,k)=>(k?'L':'M')+(k*w/(pts.length-1)).toFixed(1)+' '+y(v).toFixed(1)).join('');
+  const end=DAYS[c.b].bal, neg=pts.some(v=>v<0), nx=CYC[2]; let nextNeg=false; for(let d=nx.a; d<=nx.b; d++) if(DAYS[d].bal<0) nextNeg=true;
+  const note=neg?`<span style="color:${t.bad[2]};font-weight:600">A tu ritmo no llegas al 30</span>`:nextNeg?`<span style="color:${t.warn[1]};font-weight:600">El próximo ciclo no alcanza</span>`:`Llegas al 29 con ≈ ${money(end)}`;
+  el.innerHTML=frame(t,dir,`<div class="hdr"><div><div class="t">Hola, Laura</div><div class="s">Ciclo 15 – 29 sep</div></div><div class="av">L</div></div>
+    ${hero(t,dir,flowState.scn==='over'?'warn':'ok')}
+    <div class="cd" style="display:flex;align-items:center;gap:10px;outline:2px solid ${t.ink};outline-offset:2px">
+      <div style="flex:1"><div class="eb">Tu flujo</div><div style="font-size:11.5px;margin-top:3px">${note}</div></div>
+      <svg viewBox="0 0 ${w} ${h}" style="width:${w}px;height:${h}px"><line x1="0" y1="${y(0)}" x2="${w}" y2="${y(0)}" stroke="${t.line}"/><path d="${sp}" fill="none" stroke="${neg?t.bad[2]:t.ink}" stroke-width="1.6"/></svg><span style="font-size:16px">›</span></div>
+    <div class="cd"><div class="eb">Así sale tu número</div><div class="ln"><span>Te llega este ciclo</span><span>$2.100.000</span></div><div class="ln"><span class="mut">− Por pagar</span><span>$1.378.900</span></div></div>`,'i')+'<div class="cap">Inicio: the entry point (outlined)</div></div>';
+}
+function togglesRender(){
+  const b=(key,val,label)=>`<button type="button" data-k="${key}" data-v="${val}" style="font:600 12.5px Geist,sans-serif;padding:6px 12px;border-radius:9px;border:1.5px solid var(--ink);background:${flowState[key]===val?'var(--ink)':'transparent'};color:${flowState[key]===val?'var(--surface)':'var(--ink)'};cursor:pointer">${label}</button>`;
+  const el=document.getElementById('flowToggles');
+  el.innerHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap;width:100%">${b('scn','normal','Normal')}${b('scn','big','Pago grande el próximo ciclo')}${b('scn','over','Te pasas este ciclo')}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${b('theme','A','Oliva afinada')}${b('theme','B','Nítido')}<span style="width:8px"></span>${b('mode','light','Claro')}${b('mode','dark','Oscuro')}</div>`;
+  el.querySelectorAll('button').forEach(x=>x.onclick=()=>{flowState[x.dataset.k]=x.dataset.v; if(x.dataset.k==='scn'){DAYS=buildDays(flowState.scn); if(typeof homeState!=='undefined'){homeState.auto=true; homeState.open=null;}} togglesRender(); flowRender();});
+}
+togglesRender(); flowRender();
+
+/* ---------- Inicio grid with expandable widgets (2 columns) ---------- */
+const DEV={360:[360,800],390:[390,844],430:[430,932]}; const Z=1.434;
+flowState.dev=390;
+const SZ={M:'Mitad',L:'Completo'};
+let HT=null;
+const IC={
+  hoy:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  pagos:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  deben:'<circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2M16 3.1a4 4 0 0 1 0 7.8M21 21v-2a4 4 0 0 0-3-3.9"/>',
+  tarjetas:'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+  deudas:'<path d="M3 22h18M6 18v-7M10 18v-7M14 18v-7M18 18v-7M12 2l10 5H2z"/>',
+  limites:'<path d="M12 14l4-4M3.3 19a10 10 0 1 1 17.4 0"/>',
+  cuentas:'<rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20M16 15h2"/>',
+  flujo:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+  sefue:'<path d="M21.2 15.9A10 10 0 1 1 8 2.8M22 12A10 10 0 0 0 12 2v10z"/>',
+  recientes:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  comercios:'<path d="M3 9l1.5-5h15L21 9M4 9v11h16V9M9 20v-6h6v6"/>',
+  dolar:'<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
+  viaje:'<path d="M2 16l20-6-20-6 4 6z"/>'};
+const icon=(k)=>`<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none">${IC[k]}</svg>`;
+const bar=(pct,col,h=6)=>`<div style="height:${h}px;border-radius:${h/2}px;background:${HT.sunk};margin-top:4px"><div style="width:${Math.min(100,pct*100)}%;height:${h}px;border-radius:${h/2}px;background:${col}"></div></div>`;
+const r2=(a,b,c)=>`<div style="display:flex;justify-content:space-between;gap:6px;font-size:10.5px;margin-top:5px;text-align:left"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a}${b?` <span class="mut">· ${b}</span>`:''}</span><b style="white-space:nowrap">${c}</b></div>`;
+const cap=(x)=>`<div class="mut" style="font-size:10px;margin-top:3px;line-height:1.3">${x}</div>`;
+const big=(x,c)=>`<div class="fitv" style="font:600 16px/1.2 var(--t-ui);letter-spacing:-.01em;white-space:nowrap;${c?`color:${c}`:''}">${x}</div>`;
+const hint=(x)=>`<div class="mut" style="font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${x}</div>`;
+const ring=(pct,col,sz=34)=>{const r=13,c=2*Math.PI*r;return `<svg viewBox="0 0 34 34" width="${sz}" height="${sz}"><circle cx="17" cy="17" r="${r}" fill="none" stroke="${HT.sunk}" stroke-width="4"/><circle cx="17" cy="17" r="${r}" fill="none" stroke="${col}" stroke-width="4" stroke-linecap="round" stroke-dasharray="${c*pct} ${c}" transform="rotate(-90 17 17)"/></svg>`};
+const faces=(a)=>`<div style="display:flex;justify-content:center">${a.map((x,i)=>`<span style="width:20px;height:20px;border-radius:50%;background:${HT.sunk};border:1.5px solid ${HT.card};margin-left:${i?-6:0}px;display:flex;align-items:center;justify-content:center;font:700 8.5px var(--t-ui)">${x}</span>`).join('')}</div>`;
+const scn=()=>flowState.scn;
+const W={
+  hoy:{t:'Hoy',sizes:['M'],q:'¿Cuánto llevo hoy?',
+    st:()=>scn()==='over'?['bad','Te pasaste hoy']:null,
+    M:()=>big(scn()==='over'?'$48.500':'$12.500')+bar(scn()==='over'?1:12.5/35,scn()==='over'?HT.bad[2]:HT.ink)+hint('de $35.000'),
+    X:()=>r2('Tostao','8:10 a.m.','−$9.800')+r2('Uber','9:02 a.m.','−$2.700')+(scn()==='over'?r2('Restaurante','1:30 p.m.','−$36.000'):'')+cap('Hoy puedes gastar $35.000 para llegar al 30.')},
+  pagos:{t:'Próximo pago',sizes:['M','L'],q:'¿Qué tengo que pagar y cuándo?',
+    st:()=>['warn','Mañana'],
+    M:()=>big('$700.000')+hint('Arriendo · 19 sep'),
+    L:()=>big('$700.000')+hint('Arriendo · 19 sep')+`<div style="display:flex;gap:6px;margin-top:8px">${[['19','$700 mil'],['22','$640 mil'],['24','$39 mil']].map(x=>`<div style="flex:1;background:${HT.sunk};border-radius:8px;padding:4px 6px;font-size:9.5px"><b>${x[0]} sep</b><br><span class="mut">${x[1]}</span></div>`).join('')}</div>`,
+    X:()=>r2('Arriendo','19 sep · Pendiente','$700.000')+r2('Tarjeta Nu · mínimo','22 sep','$640.000')+r2('Netflix','24 sep','$38.900')+r2('Próximo ciclo: Claro','5 oct · ≈','$65.000')+cap('Prepárate: SOAT $1.100.000 el 15 dic. <u>Apartar</u>')},
+  deben:{t:'Te deben',sizes:['M'],q:'¿Quién me debe y a quién le debo?',
+    st:()=>['warn','Hace 34 días'],
+    M:()=>big('$380.000')+`<div style="margin-top:3px">${faces(['J','C','A'])}</div>`,
+    X:()=>r2('Juan','cena + Uber · 34 días','$180.000')+r2('Caro','préstamo · 5 días','$140.000')+r2('Ana','cena Andrés · 12 días','$60.000')+r2('Tú le debes a Mateo','almuerzo','$50.000')+cap('<u>Recordarle a Juan por WhatsApp</u>')},
+  tarjetas:{t:'Tarjeta Nu',sizes:['M','L'],q:'¿Cuánto va mi próxima factura?',
+    M:()=>big('$480.000')+bar(1850/4000,HT.ink)+hint('próxima factura ≈'),
+    L:()=>`<div style="display:flex;gap:14px">${[['Nu','$480.000',1850/4000],['Visa','$95.000',950/3000]].map(x=>`<div style="flex:1;min-width:0">${big(x[1])}${bar(x[2],HT.ink)}${hint(x[0]+' · factura ≈')}</div>`).join('')}</div>`,
+    X:()=>r2('Nu · al corte (8 oct)','a este ritmo','≈$620.000')+r2('Nu · mínimo estimado','vence 22 oct','≈$480.000')+r2('Usado','de $4.000.000','$1.850.000')+r2('Visa · mínimo estimado','vence 12 oct','≈$95.000')},
+  deudas:{t:'Deudas',sizes:['M','L'],q:'¿Cuánto debo y cuándo termino?',
+    M:()=>`<div style="display:flex;flex-direction:column;align-items:center;gap:3px">${ring(.42,HT.ink,30)}${big('$14,3 M')}</div>`,
+    L:()=>`<div style="display:flex;align-items:center;justify-content:center;gap:12px">${ring(.42,HT.ink,36)}<div style="min-width:0;text-align:left">${big('$14.250.000')}${hint('42% pagado')}</div></div>`,
+    X:()=>r2('Crédito libre inversión','termina mar 2028','$11.450.000')+r2('Tarjeta Nu','mínimo $640.000 · 22 sep','$1.850.000')+r2('Visa Bancolombia','mínimo $95.000 · 12 oct','$950.000')},
+  limites:{t:'Límites',sizes:['M','L'],q:'¿Voy bien en lo que quise controlar?',
+    st:()=>['warn','Domicilios'],
+    M:()=>bar(.92,HT.warn[2],7)+bar(.55,HT.ok[2],7)+bar(.40,HT.ok[2],7)+hint('3 límites'),
+    L:()=>[['Domicilios',.92,HT.warn[2]],['Salidas',.55,HT.ok[2]],['Compras',.40,HT.ok[2]]].map(x=>`<div style="display:flex;align-items:center;gap:8px;margin-top:4px"><span style="font-size:10px;width:62px">${x[0]}</span><div style="flex:1">${bar(x[1],x[2],7)}</div></div>`).join(''),
+    X:()=>cap('Domicilios: $165.000 de $180.000 · Cuidado')+bar(.92,HT.warn[2])+cap('Salidas: $138.000 de $250.000 · Vas bien')+bar(.55,HT.ok[2])+cap('Compras: $80.000 de $200.000 · Vas bien')+bar(.40,HT.ok[2])},
+  cuentas:{t:'Mis cuentas',sizes:['M'],q:'¿Cuánta plata tengo y dónde?',
+    M:()=>big('$1.850.000')+hint('3 cuentas'),
+    X:()=>r2('Bancolombia','hace 2 h','$1.320.000')+r2('Nequi','hace 1 día','$330.000')+r2('Efectivo','','$200.000')+r2('Ahorros Nu','no cuenta','$2.400.000')+cap('<u>Cuadrar con mi saldo</u>')},
+  flujo:{t:'Tu flujo',sizes:['M','L'],q:'¿Me alcanza hasta el próximo sueldo?',
+    st:()=>scn()==='over'?['bad','No llegas al 30']:scn()==='big'?['warn','El próximo ciclo no alcanza']:null,
+    M:()=>spark(36)+hint(scn()==='over'?'sin plata el 22 sep':'≈ $86.100 al 29'),
+    L:()=>`<div style="font-size:12px;line-height:1.35">${scn()==='over'?`A tu ritmo te quedas sin plata el 22 sep`:scn()==='big'?`El próximo ciclo no alcanza por $433.900`:`Llegas al 29 con ≈ $86.100`}</div>${spark(40)}`,
+    X:()=>spark(80)+cap(scn()==='over'?'Gasta ≈ $28.000 menos al día para llegar al 30.':scn()==='big'?'Matrícula $1.200.000 el 9 oct. Gasta ≈ $21.000 menos al día desde hoy, o apártalo.':'Arriendo mañana baja tu saldo a $1.140.000. El punto más bajo es el 29 sep.')+cap('<u>Abrir Tu flujo</u>')},
+  sefue:{t:'¿En qué se me fue?',sizes:['M','L'],q:'¿En qué gasto este ciclo?',
+    M:()=>stack([.42,.30,.19,.09])+hint('Mercado primero'),
+    L:()=>stack([.42,.30,.19,.09])+`<div style="display:flex;gap:10px;margin-top:6px;font-size:9.5px" class="mut">${['Mercado','Domicilios','Transporte','Café'].map((x,i)=>`<span style="display:flex;align-items:center;gap:4px"><i style="width:7px;height:7px;border-radius:2px;background:${HT.ink};opacity:${1-i*.22}"></i>${x}</span>`).join('')}</div>`,
+    X:()=>r2('Mercado','42%','$42.000')+r2('Domicilios','30% · más que tu promedio','$29.500')+r2('Transporte','19%','$18.700')+r2('Café','9%','$9.800')},
+  recientes:{t:'Últimos movimientos',sizes:['L'],q:'¿Qué pasó recién?',
+    L:()=>r2('Rappi','ayer','−$29.500')+r2('Uber','mar','−$18.700')+r2('Tostao','mar','−$9.800'),
+    X:()=>r2('Rappi','ayer 8:14 p.m. · Domicilios','−$29.500')+r2('Uber','mar · Transporte','−$18.700')+r2('Tostao','mar · Café','−$9.800')+r2('Éxito','lun · Mercado','−$42.000')+cap('<u>Ver Movimientos</u>')},
+  comercios:{t:'Tus comercios',sizes:['M','L'],q:'¿Dónde gasto más seguido?',
+    M:()=>big('Rappi')+hint('14 veces · 3 meses'),
+    L:()=>r2('Rappi','14 veces','$610.000')+r2('Éxito','6 veces','$412.000')+r2('Uber','9 veces','$168.000'),
+    X:()=>r2('Rappi','Domicilios · Siempre','$610.000')+r2('Éxito','Mercado','$412.000')+r2('Uber','Transporte','$168.000')+cap('<u>Lo que Zeta sabe</u>')},
+  dolar:{t:'Dólar hoy',sizes:['M'],q:'¿A cuánto está el dólar? (si debes en USD)',
+    M:()=>big('$3.305')+hint('▲ $12 hoy'),
+    X:()=>r2('Debes en dólares','Visa','USD 1.337')+r2('Hoy equivale a','','≈$4.418.800')+cap('Se actualiza cada hora en días hábiles.')},
+  viaje:{t:'Viaje (v1.1)',sizes:['M'],q:'¿Cómo va el viaje?',
+    M:()=>`<div style="display:flex;flex-direction:column;align-items:center;gap:3px">${ring(2/3,HT.ink,30)}${hint('Cartagena · 12 días')}</div>`,
+    X:()=>r2('Apartado','3 ciclos','$1.000.000')+r2('Falta','antes del 30 oct','$500.000')+cap('<u>Ver viaje</u>')},
+};
+function stack(a){return `<div style="display:flex;height:10px;border-radius:5px;overflow:hidden;margin-top:6px;gap:2px">${a.map((p,i)=>`<div style="flex:${p};background:${HT.ink};opacity:${1-i*.22}"></div>`).join('')}</div>`;}
+function spark(h){ if(!DAYS[16]) return ''; const pts=[]; for(let d=16; d<=30; d++) pts.push(DAYS[d].bal); const mx=Math.max(...pts), mn=Math.min(0,...pts), w=220;
+  const y=(v)=>h-3-(v-mn)/(mx-mn)*(h-6); const p=pts.map((v,k)=>(k?'L':'M')+(k*w/(pts.length-1)).toFixed(1)+' '+y(v).toFixed(1));
+  const past=p.slice(0,4).join(''), fut='M'+p.slice(3).join('').slice(1); const neg=pts.some(v=>v<0);
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:${h*0.62}px;display:block;margin:4px 0 2px"><line x1="0" y1="${y(0)}" x2="${w}" y2="${y(0)}" stroke="${HT.line}"/><path d="${past}" fill="none" stroke="${HT.ink}" stroke-width="2"/><path d="${fut}" fill="none" stroke="${neg?HT.bad[2]:HT.ink}" stroke-width="2" stroke-dasharray="4 3"/></svg>`; }
+const homeState={layout:[{id:'flujo',size:'L'},{id:'hoy',size:'M'},{id:'pagos',size:'M'},{id:'deben',size:'M'},{id:'tarjetas',size:'M'},{id:'recientes',size:'L'}],open:null,edit:false,auto:true};
+function pack(ws){ const rows=[]; let cur=[]; for(const w of ws){ if(w.size==='L'){ if(cur.length){rows.push(cur);cur=[];} rows.push([w]); } else { cur.push(w); if(cur.length===2){rows.push(cur);cur=[];} } } if(cur.length) rows.push(cur); return rows; }
+const SEV={bad:2,warn:1};
+function tileHTML(w,dim,sel,editIx){ const def=W[w.id]; const st=def.st?def.st():null; const col=st?(st[0]==='bad'?HT.bad:HT.warn):null;
+  const head=`<div style="display:flex;align-items:center;justify-content:center;gap:5px;color:var(--t-muted);font:600 9.5px var(--t-ui);letter-spacing:.02em;min-width:0;max-width:100%">${icon(w.id)}<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${def.t}</span></div>`;
+  const alert=st?`<div style="display:inline-flex;align-self:center;align-items:center;gap:4px;margin-top:auto;background:${col[0]};color:${col[1]};border-radius:999px;padding:2px 8px;font:600 9.5px var(--t-ui);max-width:100%"><i style="width:6px;height:6px;border-radius:50%;background:${col[2]};flex:none"></i><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${st[1]}</span></div>`:'';
+  const ctr=editIx!==undefined?`<div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;font:600 9px var(--t-ui)"><span data-size="${editIx}" style="border:1px solid var(--t-control);border-radius:5px;padding:1px 5px;cursor:pointer">${SZ[w.size]}</span><span data-up="${editIx}" style="cursor:pointer;padding:1px 3px">↑</span><span data-dn="${editIx}" style="cursor:pointer;padding:1px 3px">↓</span><span data-rm="${editIx}" style="cursor:pointer;padding:1px 3px;color:${HT.bad[2]}">✕</span></div>`:'';
+  return `<div ${editIx===undefined?`data-open="${w.id}"`:''} class="cd" style="padding:10px;min-height:${w.size==='M'?112:0}px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;cursor:pointer;min-width:0;overflow:hidden;opacity:${dim?.4:1};${sel?`outline:1.5px solid ${HT.ink};`:''}${st&&st[0]==='bad'&&!sel?`outline:1.5px solid ${col[2]};`:''}">${head}<div style="min-width:0;width:100%">${def[w.size]()}</div>${alert}${ctr}</div>`; }
+function homeRender(){
+  const dir=D[flowState.theme], t=dir[flowState.mode]; HT=t; const [dw,dh]=DEV[flowState.dev];
+  if(homeState.auto&&!homeState.edit){ let best=null,bs=0; for(const w of homeState.layout){ const st=W[w.id].st&&W[w.id].st(); if(st&&SEV[st[0]]>bs){bs=SEV[st[0]];best=w.id;} } if(bs===2) homeState.open=best; homeState.auto=false; }
+  const rows=pack(homeState.layout); let idx=0; let grid='';
+  for(const row of rows){ const cols=row[0].size==='M'?2:1; const openHere=row.find(w=>w.id===homeState.open);
+    if(openHere&&cols===1&&!homeState.edit){ idx++; }
+    else grid+=`<div style="display:grid;grid-template-columns:repeat(${cols},minmax(0,1fr));gap:8px">${row.map(w=>{const s=tileHTML(w,!!openHere&&openHere!==w,openHere===w,homeState.edit?idx:undefined); idx++; return s;}).join('')}</div>`;
+    if(openHere&&!homeState.edit){ const st=W[openHere.id].st&&W[openHere.id].st(); const col=st?(st[0]==='bad'?t.bad:t.warn):null;
+      grid+=`<div class="cd" style="padding:10px 12px;border:1.5px solid ${col?col[2]:t.ink}"><div style="display:flex;justify-content:space-between;align-items:center"><span style="display:flex;gap:5px;align-items:center;font:600 10px var(--t-ui)">${icon(openHere.id)}${W[openHere.id].t}</span><span data-open="${openHere.id}" style="cursor:pointer;font-size:12px">✕</span></div>${st?`<div style="font:700 12px var(--t-ui);color:${col[1]};margin-top:6px">${st[1]}</div>`:''}${W[openHere.id].X()}<div style="font:600 10.5px var(--t-ui);text-decoration:underline;margin-top:7px">Ver todo ›</div></div>`; }
+  }
+  let extra='';
+  if(homeState.edit){ const off=Object.keys(W).filter(k=>!homeState.layout.some(w=>w.id===k));
+    extra=`<div class="secT">Agregar</div><div class="cd" style="padding:2px 10px">${off.map(k=>`<div class="row" style="padding:5px 0"><span style="color:var(--t-muted)">${icon(k)}</span><div class="rt"><div class="a" style="font-size:11.5px">${W[k].t}</div><div class="b">${W[k].q}</div></div><span data-add="${k}" style="cursor:pointer;font-weight:700;padding:0 4px">+</span></div>`).join('')||'<div class="mut" style="font-size:11px;padding:6px 0">Ya tienes todos</div>'}</div>`; }
+  const body=`<div class="hdr"><div><div class="t">Hola, Laura</div><div class="s">Ciclo 15 – 29 sep</div></div><div class="av">L</div></div>
+    ${hero(t,dir,scn()==='over'?'warn':'ok',scn()==='over'?'over':null)}${grid}${extra}
+    <div style="text-align:center;padding:4px"><span data-edit="${homeState.edit?0:1}" style="display:inline-block;font:600 11px var(--t-ui);border:1.5px solid var(--t-ink);border-radius:9px;padding:5px 12px;cursor:pointer">${homeState.edit?'Listo':'Organizar'}</span></div>`;
+  const tab=(k,l)=>`<span class="${k==='i'?'on':''}"><i></i>${l}${k==='r'?'<b>3</b>':''}</span>`;
+  document.getElementById('home').innerHTML=`<div class="ph" style="width:${dw/Z}px;height:${dh/Z}px"><div class="scr" style="${vars(t,dir)}"><div class="sb"><span>9:41</span><span>●●● ▮</span></div><div class="body" style="gap:8px;overflow:auto">${body}</div><div class="tabs">${tab('i','Inicio')}${tab('m','Movimientos')}${tab('r','Revisar')}</div></div></div>`;
+  const q=(sel,fn)=>document.querySelectorAll('#home '+sel).forEach(el=>el.onclick=(e)=>{e.stopPropagation();fn(el);homeRender();});
+  q('[data-open]',el=>{homeState.open=homeState.open===el.dataset.open?null:el.dataset.open;});
+  q('[data-edit]',el=>{homeState.edit=el.dataset.edit==='1'; homeState.open=null;});
+  q('[data-rm]',el=>{homeState.layout.splice(+el.dataset.rm,1);});
+  q('[data-add]',el=>{homeState.layout.push({id:el.dataset.add,size:W[el.dataset.add].sizes[0]});});
+  q('[data-size]',el=>{const w=homeState.layout[+el.dataset.size], a=W[w.id].sizes; w.size=a[(a.indexOf(w.size)+1)%a.length];});
+  q('[data-up]',el=>{const i=+el.dataset.up,a=homeState.layout; if(i>0)[a[i-1],a[i]]=[a[i],a[i-1]];});
+  q('[data-dn]',el=>{const i=+el.dataset.dn,a=homeState.layout; if(i<a.length-1)[a[i+1],a[i]]=[a[i],a[i+1]];});
+  galleryRender(t,dir);
+}
+function galleryRender(t,dir){ const el=document.getElementById('gallery'); if(!el) return; const [dw]=DEV[flowState.dev]; const inner=dw/Z-18-28;
+  el.innerHTML=Object.entries(W).map(([k,w])=>`<div class="card" style="padding:12px 14px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline"><b>${w.t}</b><span style="font-size:12.5px;color:var(--muted)">${w.q} · min: ${SZ[w.sizes[0]].toLowerCase()}</span></div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;align-items:flex-start">${w.sizes.map(sz=>{const width=sz==='M'?(inner-8)/2:inner; return `<div><div style="zoom:${Z}"><div class="scr" style="${vars(t,dir)};width:${width}px;height:auto;border-radius:0;background:transparent;padding:0">${tileHTML({id:k,size:sz},false,false)}</div></div><div class="cap">${SZ[sz]}</div></div>`}).join('')}
+    <div><div style="zoom:${Z}"><div class="scr" style="${vars(t,dir)};width:${inner}px;height:auto;border-radius:0;background:transparent"><div class="cd" style="padding:10px 12px;border:1.5px solid ${t.ink}">${w.X()}</div></div></div><div class="cap">Expandido</div></div></div></div>`).join('');
+}
+function fitAll(){ document.querySelectorAll('.fitv').forEach(el=>{ el.style.fontSize=''; let f=parseFloat(getComputedStyle(el).fontSize); const min=f*0.62; let n=0; while(el.scrollWidth>el.clientWidth+.5 && f>min && n<40){ f-=0.5; el.style.fontSize=f+'px'; n++; } }); }
+const _hr=homeRender; homeRender=function(){_hr(); fitAll();};
+const _fr=flowRender; flowRender=function(){_fr(); homeRender();};
+const _tr=togglesRender; togglesRender=function(){_tr(); const el=document.getElementById('flowToggles');
+  const b=(v)=>`<button type="button" data-dev="${v}" style="font:600 12.5px Geist,sans-serif;padding:6px 12px;border-radius:9px;border:1.5px solid var(--ink);background:${flowState.dev===v?'var(--ink)':'transparent'};color:${flowState.dev===v?'var(--surface)':'var(--ink)'};cursor:pointer">${v} px</button>`;
+  const d=document.createElement('div'); d.style.cssText='display:flex;gap:6px;flex-wrap:wrap;margin-top:6px'; d.innerHTML='<span style="font-size:12.5px;color:var(--muted);align-self:center">Ancho:</span>'+[360,390,430].map(b).join(''); el.appendChild(d);
+  d.querySelectorAll('button').forEach(x=>x.onclick=()=>{flowState.dev=+x.dataset.dev; togglesRender(); homeRender();}); };
+togglesRender(); homeRender();
+</script>

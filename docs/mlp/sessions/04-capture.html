@@ -1,0 +1,279 @@
+<title>Zeta Capture Paths</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F3F4EF; --surface:#FFFFFF; --ink:#16181A; --muted:#5B6168; --line:#D3D6CC; --soft:#E8EAE2;
+  --phone:#2F5FD0; --phone-bg:#E7EDFB; --server:#0E7A55; --server-bg:#E1F2EA; --store:#8A5A00; --store-bg:#F6ECD6;
+  --warn:#9A5B00;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#111312; --surface:#1A1D1B; --ink:#ECEDE8; --muted:#9CA29B; --line:#30352F; --soft:#232723;
+    --phone:#86A8FF; --phone-bg:#1C2640; --server:#46C79A; --server-bg:#15302A; --store:#E3AE4A; --store-bg:#33280F;
+    --warn:#E3AE4A;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#111312; --surface:#1A1D1B; --ink:#ECEDE8; --muted:#9CA29B; --line:#30352F; --soft:#232723;
+  --phone:#86A8FF; --phone-bg:#1C2640; --server:#46C79A; --server-bg:#15302A; --store:#E3AE4A; --store-bg:#33280F;
+  --warn:#E3AE4A;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.6 'Geist',system-ui,-apple-system,'Segoe UI',sans-serif;padding-inline:20px;padding-block:32px 64px}
+main{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:44px}
+.prose{max-width:68ch}
+h1,h2,h3{text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:34px;line-height:1.15;font-weight:700}
+h2{font-size:22px;font-weight:650;margin-bottom:10px}
+h3{font-size:16px;font-weight:600}
+p{margin:0 0 10px}
+.eyebrow{font:500 12px/1 'Geist Mono',ui-monospace,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.lede{font-size:17px;color:var(--muted);max-width:66ch;margin-top:12px}
+code,.mono{font-family:'Geist Mono',ui-monospace,Menlo,monospace;font-size:.88em}
+code{background:var(--soft);padding:1px 5px;border-radius:4px}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--muted);margin:6px 0 0}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:3px;display:inline-block}
+figure{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px}
+figcaption{font-size:13.5px;color:var(--muted);margin-top:12px;max-width:80ch}
+.scroll{overflow-x:auto}
+svg{display:block;max-width:100%;height:auto;font-family:'Geist',system-ui,sans-serif}
+svg text{fill:var(--ink);font-size:12.5px}
+svg .sub{fill:var(--muted);font-size:11px}
+svg .lbl{fill:var(--muted);font-size:11px}
+svg .grp{font:600 11px 'Geist Mono',monospace;letter-spacing:.06em;fill:var(--muted)}
+svg .g-phone{fill:var(--phone-bg);stroke:var(--phone)}
+svg .g-server{fill:var(--server-bg);stroke:var(--server)}
+svg .g-store{fill:var(--store-bg);stroke:var(--store)}
+svg .g-out{fill:none;stroke:var(--line);stroke-dasharray:4 4}
+svg .box{fill:var(--surface);stroke:var(--line)}
+svg .box-hot{fill:var(--surface);stroke:var(--server);stroke-width:2}
+svg .ar{stroke:var(--ink);stroke-width:1.3;fill:none}
+svg .ar-soft{stroke:var(--muted);stroke-width:1.2;fill:none;stroke-dasharray:4 3}
+svg .ah{fill:var(--ink)}
+svg .ah-soft{fill:var(--muted)}
+table{border-collapse:collapse;width:100%;font-size:14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+th,td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--line)}
+th{font-weight:600;font-size:12.5px;color:var(--muted);background:var(--soft)}
+tr:last-child td{border-bottom:0}
+td.num{white-space:nowrap;font-variant-numeric:tabular-nums}
+.tag{display:inline-block;font:500 11px/1 'Geist Mono',monospace;padding:4px 6px;border-radius:5px;border:1px solid var(--line);white-space:nowrap}
+.t-phone{color:var(--phone);border-color:var(--phone)}
+.t-server{color:var(--server);border-color:var(--server)}
+.t-store{color:var(--store);border-color:var(--store)}
+.rule{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;font-size:17px;max-width:74ch}
+.decisions{display:grid;gap:14px}
+.dec{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:grid;gap:10px}
+.dec-h{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.dec-id{font:600 12px 'Geist Mono',monospace;color:var(--muted)}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.opt{border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:14px}
+.opt.rec{border-color:var(--server);border-width:2px}
+.opt b{display:block;margin-bottom:4px}
+.rec-tag{font:600 11px 'Geist Mono',monospace;color:var(--server);letter-spacing:.04em}
+ul{margin:0;padding-left:20px}
+li{margin:3px 0}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+.card h3{margin-bottom:8px}
+.status{font:500 12px 'Geist Mono',monospace;color:var(--warn)}
+</style>
+
+<style>
+.decided{border-color:var(--server)}
+.decided-tag{font:600 11px 'Geist Mono',monospace;color:var(--server);letter-spacing:.04em}
+.ok{color:var(--server);font-weight:600}
+.wait{color:var(--warn);font-weight:600}
+</style>
+<main>
+
+<header>
+  <div class="eyebrow">Zeta v2 · Planning session 4 of 7 · closed</div>
+  <h1>How movements get into Zeta</h1>
+  <p class="lede">Five ways a movement arrives: Android bank notifications, bank emails, PDF statements, statements sent by email, and you. This page shows where each one enters, how notifications are read and learned, what happens when each path fails, and what leaves your phone. Five decisions at the end.</p>
+</header>
+
+<section>
+  <h2>Five doors, one result</h2>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 960 340" role="img" aria-label="Notifications and manual entries become capture commands on the phone, offline. Bank emails, PDFs and emailed statements become capture commands on the server. Both run the same engine and end as one row per real purchase.">
+      <defs><marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah"/></marker></defs>
+      <rect x="20" y="40" width="200" height="48" rx="8" class="box"/><text x="32" y="61">Bank app notification</text><text x="32" y="77" class="sub">Android · the main path</text>
+      <rect x="20" y="100" width="200" height="48" rx="8" class="box"/><text x="32" y="121">You: +, voz, texto</text><text x="32" y="137" class="sub">cash and anything missed</text>
+      <rect x="20" y="170" width="200" height="48" rx="8" class="box"/><text x="32" y="191">Bank email alert</text><text x="32" y="207" class="sub">forwarded, or Gmail (iPhone)</text>
+      <rect x="20" y="230" width="200" height="48" rx="8" class="box"/><text x="32" y="251">Statement PDF</text><text x="32" y="267" class="sub">uploaded from phone or web</text>
+      <rect x="20" y="290" width="200" height="48" rx="8" class="box"/><text x="32" y="311">Statement by email</text><text x="32" y="327" class="sub">the bank emails the PDF</text>
+
+      <rect x="300" y="30" width="250" height="126" rx="12" class="g-phone"/>
+      <text x="314" y="52" class="grp">ON THE PHONE · offline</text>
+      <text x="314" y="80">Capture command</text>
+      <text x="314" y="98" class="sub">template match or your input</text>
+      <text x="314" y="116" class="sub">runs the engine immediately</text>
+      <rect x="300" y="170" width="250" height="168" rx="12" class="g-server"/>
+      <text x="314" y="192" class="grp">ON THE SERVER · needs signal</text>
+      <text x="314" y="220">Capture command</text>
+      <text x="314" y="238" class="sub">email parsed, PDF parsed by the</text>
+      <text x="314" y="254" class="sub">Python service, then the same engine</text>
+
+      <line x1="220" y1="64" x2="298" y2="64" class="ar" marker-end="url(#g)"/>
+      <line x1="220" y1="124" x2="298" y2="124" class="ar" marker-end="url(#g)"/>
+      <line x1="220" y1="194" x2="298" y2="194" class="ar" marker-end="url(#g)"/>
+      <line x1="220" y1="254" x2="298" y2="254" class="ar" marker-end="url(#g)"/>
+      <line x1="220" y1="314" x2="298" y2="314" class="ar" marker-end="url(#g)"/>
+
+      <rect x="640" y="110" width="300" height="130" rx="12" class="box-hot"/>
+      <text x="656" y="136" style="font-weight:600">One row per real purchase</text>
+      <text x="656" y="160" class="sub">· duplicates recognized across all five doors</text>
+      <text x="656" y="178" class="sub">· bank facts: PDF › email › notification › you</text>
+      <text x="656" y="196" class="sub">· your choices (category, split…) always kept</text>
+      <text x="656" y="214" class="sub">· weak matches become a Revisar card</text>
+      <line x1="550" y1="93" x2="638" y2="150" class="ar" marker-end="url(#g)"/>
+      <line x1="550" y1="254" x2="638" y2="200" class="ar" marker-end="url(#g)"/>
+      <text x="566" y="112" class="lbl">same engine</text>
+      <text x="566" y="246" class="lbl">same engine</text>
+    </svg>
+    </div>
+    <figcaption>The first two doors work offline because they start on the phone. The other three start on the server, because the email or file reaches it first. Whatever the door, the engine and the dedup rules are the same (S1-1, S1-2).</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>Reading a bank notification, step by step</h2>
+  <div class="prose"><p>Everything below runs on the phone. Nothing from apps you didn't choose is ever stored, logged or sent.</p></div>
+  <figure>
+    <div class="scroll">
+<pre class="mermaid">
+flowchart TD
+  A[A notification is posted on the phone] --> B{From a bank app you chose?}
+  B -- no --> X[Dropped in memory: never stored, only counted for the privacy screen]
+  B -- yes --> C{Matches an ignore template? OTP, promo, login, rechazada}
+  C -- yes --> I[Ignorados: kept 30 days on the phone, with 'Esto sí era un movimiento']
+  C -- no --> S{Balance notice? 'saldo disponible'}
+  S -- yes --> K[Checks the account balance, see S4-5]
+  S -- no --> D{Full match of a transaction template?}
+  D -- yes --> F[Capture command, automatic, no push]
+  D -- partial --> P[Revisar card, prefilled with what was read]
+  D -- no --> E{Looks like money? a $ amount}
+  E -- yes --> T[Revisar training card: 'Enséñame una vez']
+  E -- no --> I
+</pre>
+    </div>
+    <figcaption>Auto-capture happens <b>only on a full template match</b>. There's no "any number looks like money" guessing: precision over recall. A missed purchase is recovered by the PDF; a wrong one destroys trust.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>How Zeta learns notifications, and stays current</h2>
+  <div class="two">
+    <div class="card"><h3>Templates you train</h3>
+      <ul style="font-size:14px">
+        <li>An unknown notice becomes a training card. You tap the amount, merchant and card in the text, and choose Salió / Entró / No es un movimiento.</li>
+        <li>Zeta turns your taps into a template: fixed words plus slots (<code>{monto}</code>, <code>{comercio}</code>, <code>{tarjeta4}</code>).</li>
+        <li>It tests the template against the last 20 notices from that bank: "También reconoce 3 avisos anteriores".</li>
+        <li>A template you trained <b>auto-captures only after 2 matches you confirmed</b>. Until then its matches arrive as prefilled Revisar cards.</li>
+      </ul>
+    </div>
+    <div class="card"><h3>Templates Zeta ships</h3>
+      <ul style="font-size:14px">
+        <li>A pack of templates per bank, <b>signed</b> by the server and verified by the app, downloaded without an app release.</li>
+        <li>v1 banks: Bancolombia, Nu, Nequi, Davivienda, Banco de Bogotá, Falabella, Lulo. Built from ~30 real notices per bank (yours plus volunteers').</li>
+        <li>Wording change: 3 partial matches from one bank within 48 h raise a flag to us and a banner for you ("Bancolombia cambió sus avisos…"). The fixed pack resolves pending cards on its own.</li>
+        <li>Your notices never feed the pack unless you opt in (v1.1, amounts and names removed).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>The other doors</h2>
+  <table>
+    <thead><tr><th>Door</th><th>How it works</th><th>Exists today?</th></tr></thead>
+    <tbody>
+      <tr><td><b>Bank email alert</b></td><td>Your bank's alert email reaches Zeta through your personal forwarding address (a Gmail filter forwards bank senders), or through Gmail connect (read-only, bank senders only, every 15 min + 60-day backfill). The server parses it and runs the capture command.</td><td>Forwarding: <span class="ok">yes</span> (Bancolombia alerts; Resend inbound). Gmail connect: <span class="wait">new</span>.</td></tr>
+      <tr><td><b>Statement PDF</b></td><td>Upload from the phone (or several at once from the web). Parsed on the server; you review on the phone: account matched or created from the PDF (D1), cuotas and rates read, reconciliation summary: "124 movimientos · 118 ya los tenía · 5 nuevos · 1 corregido".</td><td><span class="ok">Yes</span>: 9 banks (Bancolombia, Bogotá, Davivienda, Nu, Falabella, Nequi, Confiar, Popular, Lulo), plus a generic fallback.</td></tr>
+      <tr><td><b>Statement by email</b></td><td>Banks that email the PDF: Zeta receives it, opens it with your saved password (encrypted), and imports it automatically. A push: "Llegó tu extracto de Nu · cuadrado ✓".</td><td><span class="ok">Yes</span> (pending-statement queue)</td></tr>
+      <tr><td><b>You: "+"</b></td><td>Amount → category (3 suggested chips) → account (last used). Three taps, offline.</td><td>Rebuilt for v2</td></tr>
+      <tr><td><b>You: voz / texto</b></td><td>"almuerzo con Juan, 45 mil, pagué yo y me debe la mitad". The phone's speech-to-text makes it text; Zeta's own parser extracts amount, date and slang ("45 lucas", "2 palos") and the split. Only if it can't, and there's signal, a small AI model helps; offline it asks just the missing field ("No entendí el monto").</td><td>Parser <span class="ok">yes</span>; AI fallback today uses Gemini (see S4-4)</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>When a door fails</h2>
+  <table>
+    <thead><tr><th>Door</th><th>Failure</th><th>How Zeta notices</th><th>What you see</th></tr></thead>
+    <tbody>
+      <tr><td>Notifications</td><td>Android's battery saver kills the listener</td><td>Heartbeat: no callbacks for 24 h while the phone was in use</td><td>"Tu Xiaomi está apagando la lectura de avisos" + the exact setting to change; "~" on the number</td></tr>
+      <tr><td>Notifications</td><td>You revoked the permission</td><td>Checked on every app open</td><td>Banner with a one-tap fix</td></tr>
+      <tr><td>Notifications</td><td>A bank changed its wording</td><td>3 partial matches in 48 h</td><td>"Bancolombia cambió sus avisos. Confirma 2 movimientos" (1 tap each)</td></tr>
+      <tr><td>Any source</td><td>A bank went quiet</td><td>No movement for 3× its usual gap (min 4 days)</td><td>"Sin avisos de Nu desde el 18 ›" under the number</td></tr>
+      <tr><td>Email</td><td>Forwarding filter broken, or Gmail disconnected</td><td>No email for 3× the usual gap; Google revokes the token</td><td>"Se desconectó tu Gmail. Reconectar (10 s)"</td></tr>
+      <tr><td>PDF</td><td>Wrong password / bank not supported</td><td>Parser error</td><td>"Esa clave no abre el extracto. Suele ser tu cédula sin puntos." / "Todavía no leemos extractos de Confiar. Tus avisos sí funcionan."</td></tr>
+      <tr><td>Everything</td><td>A movement was never captured</td><td>The next statement PDF</td><td>"5 movimientos nuevos que no nos llegaron por aviso"</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>What leaves your phone</h2>
+  <table>
+    <thead><tr><th>Data</th><th>Leaves the phone?</th></tr></thead>
+    <tbody>
+      <tr><td>Notifications from apps you didn't choose</td><td><b>Never.</b> Not stored, not logged. Only counted: "Hoy descartamos 214 avisos de otras apps sin leerlos ni guardarlos."</td></tr>
+      <tr><td>Ignored bank notices (OTP, promos)</td><td>No. They stay 30 days in Ignorados on the phone.</td></tr>
+      <tr><td>The movement a bank notice produced (amount, merchant, card, date)</td><td>Yes, as a capture command, encrypted in transit and at rest.</td></tr>
+      <tr><td>The raw text of that bank notice</td><td>See S4-3.</td></tr>
+      <tr><td>Your trained templates</td><td>Yes, so they work on a new phone. Never shared.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>Decisions for this session</h2>
+  <div class="decisions">
+
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S4-1</span><h3>iPhone: how do bank emails reach Zeta?</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> <b>Both.</b> Forwarding address with guided setup at launch; Google verification (CASA) starts now; "Conectar Gmail" for up to 100 testers meanwhile, for everyone once approved.</p>
+    </div>
+
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S4-2</span><h3>One template engine for notifications and emails?</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> <b>One template engine</b> for notifications and bank emails (signed pack, training, wording-change detection). The Bancolombia email parser becomes the first templates, proven identical by replaying the saved email corpus.</p>
+    </div>
+
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S4-3</span><h3>Upload the raw text of bank notices?</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> <b>Upload raw notice text, encrypted, with an off switch</b> (only from banks you chose), for Origen on any device and for diagnosing misreads.</p>
+    </div>
+
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S4-4</span><h3>AI in capture, given that the app works offline</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> <b>Deterministic first; AI only refines, online.</b> One small model (Claude Haiku) for naming new merchants and hard voice text, replacing today's Gemini call. Jev gatekeeper: v1.1 after its eval.</p>
+    </div>
+
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S4-5</span><h3>Balance notices ("tu saldo disponible es…")</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> <b>Balance notices check, never adjust on their own.</b> Equal → silent "✓ cuadrado"; different → a Revisar card offering an adjustment.</p>
+    </div>
+
+    
+
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S4-6</span><h3>More capture paths: Wallet, SMS, iPhone Shortcuts</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> <b>Android:</b> Google Wallet as a choosable app, and bank SMS through the messages app's notifications, filtered on the phone by the bank senders you allow (no "read SMS" permission). <b>iPhone:</b> iOS doesn't let any app read other apps' notifications or SMS, so we use two Shortcuts automations the user sets up once from a ready-made shortcut: Wallet "Transacción" (Apple Pay purchases: amount, merchant, card) and "Mensaje" from chosen bank senders (SMS text → the same templates). A 1-day test on a real iPhone in M0 confirms the SMS text reaches Zeta without a prompt each time. Push-only banks (Nu) stay on email and PDF on iPhone.</p>
+    </div>
+
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S4-7</span><h3>Screenshots: send one, Zeta updates balances and movements</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> A paid feature, planned in a new <b>"Plans and payments"</b> session after session 5 (free vs paid, price, billing tool, release). Likely the first paid feature, in v1.1, so v1's launch doesn't depend on billing. Share a screenshot → balance becomes a "cuadrar" check, movements become captures, always reviewed before saving; needs signal.</p>
+    </div>
+  </div>
+</section>
+
+<footer style="color:var(--muted);font-size:13px">Next: session 5, the visual direction. It covers fixing Oliva's contrast and hierarchy in light and dark, and timeline variations. Then session 6, plans and payments, and session 7, build order.</footer>
+</main>

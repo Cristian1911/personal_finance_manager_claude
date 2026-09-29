@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div ref="{{ rootRef }}" style="display:flex;flex-direction:column;gap:20px;color:var(--ink)">
+  <sc-if value="{{ isTokens }}" hint-placeholder-val="{{ false }}">
+    <div style="font:600 22px var(--ui)">Tokens</div>
+    <sc-for list="{{ groups }}" as="g">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink2)">{{ g.t }}</div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+          <sc-for list="{{ g.items }}" as="i"><div style="display:flex;align-items:center;gap:8px;background:var(--card);border-radius:12px;padding:8px;box-shadow:var(--shadow)"><div style="{{ i.sw }}"></div><div style="min-width:0"><div style="font:600 12px var(--ui);white-space:nowrap">{{ i.l }}</div><div style="font:500 11px var(--mono);color:var(--ink2);white-space:nowrap">{{ i.hex }}</div></div></div></sc-for>
+        </div>
+      </div>
+    </sc-for>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div style="background:var(--card);border-radius:12px;padding:10px 12px;box-shadow:var(--shadow)"><div style="font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink2)">Radio</div><div style="font:500 13px var(--ui);margin-top:4px">Tarjeta 18 · Disponible 24 · Hoja 26 · Botón 12 · Chip 99</div></div>
+      <div style="background:var(--card);border-radius:12px;padding:10px 12px;box-shadow:var(--shadow)"><div style="font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink2)">Espacio</div><div style="font:500 13px var(--ui);margin-top:4px">4 · 8 · 10 · 12 · 16 · 20 · 24 — margen 16, gap 10–12</div></div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ isTipo }}" hint-placeholder-val="{{ false }}">
+    <div style="font:600 22px var(--ui)">Tipografía</div>
+    <sc-for list="{{ tipo }}" as="t"><div style="display:grid;grid-template-columns:130px 1fr;gap:14px;align-items:baseline;padding:10px 0;border-bottom:1px solid var(--line)"><div style="font:500 11px/1.4 var(--mono);color:var(--ink2);white-space:pre-line">{{ t.spec }}</div><div style="{{ t.st }}">{{ t.s }}</div></div></sc-for>
+  </sc-if>
+  <sc-if value="{{ isReglas }}" hint-placeholder-val="{{ false }}">
+    <div style="font:600 22px var(--ui)">Reglas</div>
+    <sc-for list="{{ reglas }}" as="r"><div style="display:flex;flex-direction:column;gap:6px;padding:12px 0;border-bottom:1px solid var(--line)"><div style="font:600 15px var(--ui)">{{ r.t }}</div><sc-for list="{{ r.l }}" as="x"><div style="font:500 13px/1.5 var(--ui);color:var(--ink2);text-wrap:pretty">{{ x }}</div></sc-for></div></sc-for>
+  </sc-if>
+  <sc-if value="{{ isComp }}" hint-placeholder-val="{{ false }}">
+    <div style="font:600 22px var(--ui)">Componentes base</div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px">
+      <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:16px;display:flex;flex-direction:column;gap:10px">
+        <div style="font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink2)">Botones · negro = se toca</div>
+        <div style="height:50px;border-radius:12px;background:var(--btn);color:var(--btn-ink);display:flex;align-items:center;justify-content:center;font:600 15px var(--ui)">Primario</div>
+        <div style="height:50px;border-radius:12px;border:1.5px solid var(--ctl);display:flex;align-items:center;justify-content:center;font:600 15px var(--ui);box-sizing:border-box">Secundario</div>
+        <div style="display:flex;gap:8px;align-items:center"><div style="height:36px;padding:0 12px;border-radius:10px;border:1.5px solid var(--ctl);display:flex;align-items:center;font:600 13px var(--ui);box-sizing:border-box">Pequeño</div><div style="width:36px;height:36px;border-radius:10px;background:var(--btn);color:var(--btn-ink);display:flex;align-items:center;justify-content:center"><x-import component="Icono" from="./icono.js" n="mic" s="18" hint-size="18px,18px"></x-import></div><div style="width:36px;height:36px;border-radius:10px;border:1.5px solid var(--ctl);display:flex;align-items:center;justify-content:center;box-sizing:border-box"><x-import component="Icono" from="./icono.js" n="chevL" s="18" hint-size="18px,18px"></x-import></div><div style="height:36px;padding:0 6px;display:flex;align-items:center;gap:3px;font:600 14px var(--ui)">Ver todo<x-import component="Icono" from="./icono.js" n="chevR" s="14" hint-size="14px,14px"></x-import></div></div>
+      </div>
+      <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:16px;display:flex;flex-direction:column;gap:10px">
+        <div style="font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink2)">Veredicto · píldora con punto</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span style="display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 12px;border-radius:99px;background:var(--ok-t);color:var(--ok-x);font:600 13px var(--ui)"><i style="width:8px;height:8px;border-radius:9px;background:var(--ok-s)"></i>Vas bien</span>
+          <span style="display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 12px;border-radius:99px;background:var(--warn-t);color:var(--warn-x);font:600 13px var(--ui)"><i style="width:8px;height:8px;border-radius:9px;background:var(--warn-s)"></i>Cuidado</span>
+          <span style="display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 12px;border-radius:99px;background:var(--bad-t);color:var(--bad-x);font:600 13px var(--ui)"><i style="width:8px;height:8px;border-radius:9px;background:var(--bad-s)"></i>Te pasaste</span>
+        </div>
+        <div style="font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);margin-top:6px">Chips de estado · ≤ 4 palabras</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span style="height:24px;padding:0 10px;border-radius:99px;background:var(--sunk);color:var(--ink2);font:600 12px var(--ui);display:flex;align-items:center">Aparte</span>
+          <span style="height:24px;padding:0 10px;border-radius:99px;background:var(--ok-t);color:var(--ok-x);font:600 12px var(--ui);display:flex;align-items:center">Pagado</span>
+          <span style="height:24px;padding:0 10px;border-radius:99px;background:var(--warn-t);color:var(--warn-x);font:600 12px var(--ui);display:flex;align-items:center">Mañana</span>
+          <span style="height:24px;padding:0 10px;border-radius:99px;background:var(--bad-t);color:var(--bad-x);font:600 12px var(--ui);display:flex;align-items:center">No llegas al 30</span>
+        </div>
+        <div style="font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);margin-top:6px">Filtros · rectángulo tocable</div>
+        <div style="display:flex;gap:6px"><span style="height:32px;padding:0 12px;border-radius:9px;background:var(--btn);color:var(--btn-ink);font:600 13px var(--ui);display:flex;align-items:center">Todos</span><span style="height:32px;padding:0 12px;border-radius:9px;border:1.5px solid var(--ctl);font:600 13px var(--ui);display:flex;align-items:center;box-sizing:border-box">Gastos</span><span style="height:32px;padding:0 12px;border-radius:9px;border:1.5px solid var(--ctl);font:600 13px var(--ui);display:flex;align-items:center;box-sizing:border-box">Préstamos</span></div>
+      </div>
+      <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:16px;display:flex;flex-direction:column;gap:12px">
+        <div style="font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink2)">Control segmentado · interruptor</div>
+        <div style="display:flex;padding:3px;border-radius:12px;background:var(--sunk);box-shadow:inset 0 0 0 1px var(--line)"><div style="flex:1;height:34px;border-radius:9px;background:var(--card);box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;font:600 13px var(--ui)">Este ciclo</div><div style="flex:1;height:34px;display:flex;align-items:center;justify-content:center;font:500 13px var(--ui);color:var(--ink2)">Próximo</div><div style="flex:1;height:34px;display:flex;align-items:center;justify-content:center;font:500 13px var(--ui);color:var(--ink2)">Deudas</div></div>
+        <div style="display:flex;align-items:center;gap:10px"><span style="flex:1;font:500 14px var(--ui)">Cuenta para mi Disponible</span><span style="width:44px;height:26px;border-radius:99px;background:var(--btn);box-sizing:border-box;padding:2px;display:flex;justify-content:flex-end"><span style="width:22px;height:22px;border-radius:99px;background:var(--btn-ink)"></span></span></div>
+        <div style="display:flex;align-items:center;gap:10px"><span style="flex:1;font:500 14px var(--ui)">Suelo pagar el total</span><span style="width:44px;height:26px;border-radius:99px;border:1.5px solid var(--ctl);box-sizing:border-box;padding:2px;display:flex"><span style="width:19px;height:19px;border-radius:99px;background:var(--ctl)"></span></span></div>
+        <div style="font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);margin-top:4px">Fila · abre siempre la misma hoja</div>
+        <div style="display:flex;align-items:center;gap:12px;padding:6px 0"><div style="width:36px;height:36px;border-radius:11px;background:var(--sunk);display:flex;align-items:center;justify-content:center;font:600 12px var(--ui);color:var(--ink2)">R</div><div style="flex:1"><div style="font:500 15px var(--ui)">Rappi</div><div style="font:400 12px var(--ui);color:var(--ink2)">Domicilios · 12:41</div></div><div style="font:600 15px var(--num)">−$32.000</div></div>
+      </div>
+      <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:16px;display:flex;flex-direction:column;gap:12px">
+        <div style="font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink2)">Avisos · nunca franja lateral</div>
+        <div style="background:var(--warn-t);border-radius:14px;padding:12px 14px;font:600 14px/1.35 var(--ui);color:var(--ink)">El próximo ciclo no alcanza por ≈ $433.900</div>
+        <div style="border:1.5px solid var(--bad-s);border-radius:14px;padding:12px 14px;font:600 14px/1.35 var(--ui)">A tu ritmo te quedas sin plata el 22 sep</div>
+        <div style="border:1.5px solid var(--ink);border-radius:14px;padding:12px 14px;font:500 14px/1.35 var(--ui)">Consecuencia antes de guardar: deja el crédito en $0</div>
+        <div style="font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);margin-top:4px">Hoja inferior</div>
+        <div style="background:var(--sunk);border-radius:14px;height:110px;position:relative;overflow:hidden"><div style="position:absolute;left:10px;right:10px;bottom:0;height:78px;background:var(--card);border-radius:16px 16px 0 0;box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;padding-top:6px;gap:8px"><i style="width:30px;height:4px;border-radius:3px;background:var(--ctl)"></i><div style="width:80%;height:10px;border-radius:4px;background:var(--line)"></div><div style="width:80%;height:30px;border-radius:9px;background:var(--btn)"></div></div></div>
+      </div>
+    </div>
+    <div style="font:600 22px var(--ui);margin-top:6px">Estados vacío · carga · error</div>
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px">
+      <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:18px 16px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center"><x-import component="Icono" from="./icono.js" n="inbox" s="24" hint-size="24px,24px"></x-import><div style="font:600 15px var(--ui)">Nada por revisar</div><div style="font:500 13px var(--ui);color:var(--ink2)">Te aviso cuando llegue algo nuevo.</div></div>
+      <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:18px 16px;display:flex;flex-direction:column;gap:8px"><div style="width:40%;height:12px;border-radius:5px;background:var(--sunk)"></div><div style="width:70%;height:26px;border-radius:7px;background:var(--sunk)"></div><div style="width:55%;height:12px;border-radius:5px;background:var(--sunk)"></div><div style="font:500 12px var(--ui);color:var(--ink2);margin-top:4px">Leyendo avisos del banco…</div></div>
+      <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:18px 16px;display:flex;flex-direction:column;gap:8px;position:relative"><div style="position:absolute;inset:0;border-radius:18px;border:1.5px solid var(--bad-s)"></div><div style="font:600 15px var(--ui)">No pude leer Gmail</div><div style="font:500 13px var(--ui);color:var(--ink2)">Tu número puede estar desactualizado.</div><div style="height:38px;border-radius:10px;background:var(--btn);color:var(--btn-ink);display:flex;align-items:center;justify-content:center;font:600 14px var(--ui)">Reconectar</div></div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ isWidgets }}" hint-placeholder-val="{{ false }}">
+    <div style="font:600 22px var(--ui)">Widgets · anatomía</div>
+    <div style="font:500 13px/1.5 var(--ui);color:var(--ink2);max-width:640px">Ícono + título · un valor o un visual · pista de ≤ 3 palabras · zona de chip abajo. Valores a la misma altura en cada fila; chips alineados abajo. Rojo suma contorno completo.</div>
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:start">
+      <sc-for list="{{ wHalf }}" as="w"><div style="display:flex;flex-direction:column;gap:6px"><div style="font:500 11px var(--mono);color:var(--ink2)">{{ w.l }}</div><dc-import name="Z Widget" k="{{ w.k }}" st="{{ w.st }}" sel="{{ w.sel }}" edit="{{ w.edit }}" hint-size="100%,148px"></dc-import></div></sc-for>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start">
+      <sc-for list="{{ wFull }}" as="w"><div style="display:flex;flex-direction:column;gap:6px"><div style="font:500 11px var(--mono);color:var(--ink2)">{{ w.l }}</div><dc-import name="Z Widget" k="{{ w.k }}" size="full" st="{{ w.st }}" mode="{{ w.mode }}" open="{{ w.open }}" hint-size="100%,148px"></dc-import></div></sc-for>
+    </div>
+  </sc-if>
+  <sc-if value="{{ isGraf }}" hint-placeholder-val="{{ false }}">
+    <div style="font:600 22px var(--ui)">Tu flujo · estados del gráfico</div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+      <sc-for list="{{ graf }}" as="g"><div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:14px;display:flex;flex-direction:column;gap:8px"><div style="font:500 11px var(--mono);color:var(--ink2)">{{ g.l }}</div><dc-import name="Z Grafico" st="{{ g.st }}" drag="{{ g.drag }}" tap="{{ g.tap }}" hint-size="100%,200px"></dc-import></div></sc-for>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  rootRef = React.createRef();
+  state = { hex: {} };
+  toks() {
+    return [
+      ['Superficies', [['bg', 'Fondo'], ['card', 'Tarjeta'], ['sunk', 'Hundido'], ['line', 'Divisor'], ['ctl', 'Borde control'], ['est', 'Estimado']]],
+      ['Texto y toque', [['ink', 'Tinta'], ['ink2', 'Secundario'], ['btn', 'Botón'], ['btn-ink', 'Texto botón']]],
+      ['Vas bien', [['ok-t', 'Tinte'], ['ok-x', 'Texto'], ['ok-s', 'Sólido']]],
+      ['Cuidado', [['warn-t', 'Tinte'], ['warn-x', 'Texto'], ['warn-s', 'Sólido']]],
+      ['Te pasaste', [['bad-t', 'Tinte'], ['bad-x', 'Texto'], ['bad-s', 'Sólido']]],
+      ['Bloque Disponible', [['d-ok-bg', 'Fondo · bien'], ['d-warn-bg', 'Fondo · cuidado'], ['d-bad-bg', 'Fondo · pasaste']]]
+    ];
+  }
+  componentDidMount() {
+    setTimeout(() => {
+      const el = this.rootRef.current; if (!el) return;
+      const cs = getComputedStyle(el), hex = {};
+      this.toks().forEach(([, it]) => it.forEach(([n]) => { hex[n] = cs.getPropertyValue('--' + n).trim().toUpperCase(); }));
+      this.setState({ hex });
+    }, 50);
+  }
+  renderVals() {
+    const s = this.props.screen ?? 'tokens';
+    const T = (spec, sample, st) => ({ spec, s: sample, st: { ...st, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } });
+    return {
+      rootRef: this.rootRef,
+      isTokens: s === 'tokens', isTipo: s === 'tipo', isReglas: s === 'reglas', isComp: s === 'componentes', isWidgets: s === 'widgets', isGraf: s === 'grafico',
+      groups: this.toks().map(([t, it]) => ({ t, items: it.map(([n, l]) => ({ l, hex: this.state.hex[n] || '—', sw: { width: 34, height: 34, borderRadius: 9, flex: 'none', background: `var(--${n})`, boxShadow: 'inset 0 0 0 1px rgba(128,128,128,.25)' } })) })),
+      tipo: [
+        T('Disponible\nnum 800 · 64 · −4.5%', '$421.100', { font: '800 56px var(--num)', letterSpacing: '-0.045em' }),
+        T('Título\nui 600 · 26', 'Pagos', { font: '600 26px var(--ui)', letterSpacing: '-0.02em' }),
+        T('Monto grande\nnum 600 · 26', '$1.378.900', { font: '600 26px var(--num)' }),
+        T('Monto\nnum 600 · 15–22', '$700.000', { font: '600 18px var(--num)' }),
+        T('Cuerpo\nui 500 · 15', 'Arriendo · Tarjeta Nu · Netflix', { font: '500 15px var(--ui)' }),
+        T('Dato\nui 400 · 12–13 · secundario', 'Domicilios · 12:41', { font: '400 13px var(--ui)', color: 'var(--ink2)' }),
+        T('Rótulo\nmono 600 · 11 · +6%', 'PREPÁRATE', { font: '600 11px var(--mono)', letterSpacing: '.06em', color: 'var(--ink2)' }),
+        T('Texto del banco\nmono 400 · 12', 'Compra por $32.000 en RAPPI*', { font: '400 12px var(--mono)', color: 'var(--ink2)' })
+      ],
+      reglas: [
+        { t: 'Jerarquía', l: ['Negro = se toca. Color = cómo vas. Gris = dato.', 'Solo el número de Disponible es pesado (800). Todo otro monto es 600 y más pequeño.', 'Nunca franja lateral de color: estado con chip, contorno completo o tinte.'] },
+        { t: 'Un número, un veredicto', l: ['Solo Vas bien · Cuidado · Te pasaste, con los mismos umbrales en toda la app.', 'Rojo = crítico (contorno + chip). Ámbar = pronto (solo chip). El widget más crítico se abre solo.'] },
+        { t: 'Dinero', l: ['$1.250.000 — punto de miles, sin decimales, sin “COP”.', 'Negativo con signo menos real: −$32.000. Entradas con +. Estimados con ≈.', 'Los montos se encogen para caber; nunca se cortan.'] },
+        { t: 'Tono', l: ['Tú, español de Colombia, frases cortas. Decimos qué pasa y qué hacer: “Gasta ≈ $28.000 menos al día”.', 'Sin culpa, sin urgencia falsa, sin cuentas regresivas.'] },
+        { t: 'Interacción', l: ['Toda fila abre la misma hoja de detalle. Sin swipes ni modos de edición.', 'Antes de guardar algo que cambia deudas, mostramos la consecuencia.'] },
+        { t: 'Accesibilidad', l: ['Texto ≥ 4.5:1; bordes de control ≥ 3:1 (#8C7F63 sobre tarjeta).', 'Objetivos táctiles ≥ 44 px. El estado nunca depende solo del color: siempre hay palabra.'] }
+      ],
+      wHalf: [
+        { l: 'Media · normal', k: 'hoy', st: 'n' }, { l: 'Media · ámbar', k: 'pago', st: 'warn' }, { l: 'Media · rojo', k: 'hoy', st: 'bad' }, { l: 'Media · seleccionada', k: 'teDeben', st: 'warn', sel: true },
+        { l: 'Visual · barra', k: 'limites', st: 'warn' }, { l: 'Visual · división', k: 'deudas', st: 'n' }, { l: 'Visual · línea', k: 'dolar', st: 'warn' }, { l: 'Organizar', k: 'tarjeta', st: 'n', edit: true }
+      ],
+      wFull: [
+        { l: 'Completa · normal', k: 'flujo', st: 'n' }, { l: 'Completa · rojo, expandida en su sitio', k: 'flujo', st: 'bad', open: true },
+        { l: 'Panel bajo la fila (desde media)', k: 'tarjeta', st: 'n', mode: 'panel' }, { l: 'Completa · expandida', k: 'ultimos', st: 'n', open: true }
+      ],
+      graf: [{ l: 'Normal', st: 'n' }, { l: 'Arrastrar · leer un día', st: 'n', drag: true }, { l: 'Tocar un día', st: 'n', tap: 9 }, { l: 'Te quedas sin plata este ciclo', st: 'bad' }]
+    };
+  }
+}
+</script>
+</body>
+</html>

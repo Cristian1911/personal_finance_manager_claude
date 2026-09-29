@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex;flex-direction:column;gap:6px;width:100%">
+  <sc-if value="{{ drag }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;justify-content:center;gap:8px;align-items:baseline;font:500 13px var(--ui);color:var(--ink2);height:22px">
+      <span>{{ dragLabel }}</span><span style="font:600 17px var(--num);color:var(--ink);font-variant-numeric:tabular-nums">{{ dragAmt }}</span>
+    </div>
+  </sc-if>
+  <div style="width:100%">{{ svg }}</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:360,&quot;height&quot;:240},&quot;st&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;n&quot;,&quot;bad&quot;,&quot;big&quot;],&quot;default&quot;:&quot;n&quot;,&quot;tsType&quot;:&quot;'n'|'bad'|'big'&quot;},&quot;mini&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;drag&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const p = this.props, st = p.st ?? 'n', mini = !!p.mini, bad = st === 'bad';
+    const f = n => (n < 0 ? '−' : '') + '$' + Math.round(Math.abs(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    const W = 342, H = mini ? 80 : 176, LB = mini ? 0 : 22;
+    const days = [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 1];
+    const N = days.length, s = W / N, T = 5;
+    const ev = days.map(() => ({ in: 0, inP: 0, out: 0, bill: 0, est: 0 }));
+    ev[0].out = 30000; ev[1].out = 30000; ev[2].in = 2100000; ev[2].out = 200000;
+    (bad ? [250000, 200000, 150000] : [40000, 35000, 25000]).forEach((v, i) => { ev[3 + i].out = v; });
+    ev[6].bill = 700000; ev[9].bill = 640000; ev[11].bill = 38900;
+    const e = bad ? 45000 : 25000;
+    for (let i = 6; i <= 16; i++) ev[i].est = e;
+    ev[17].inP = 2100000; ev[18].est = e;
+    let b = 120000;
+    const bal = ev.map(x => (b = b + x.in + x.inP - x.out - x.bill - x.est));
+    const top = mini ? 6 : 18, y0 = Math.round(H * 0.64), up = y0 - top, dn = H - y0 - 3;
+    const yB = v => Math.min(H - 2, y0 - v / 2400000 * up);
+    const xs = i => i * s + s / 2;
+    const pts = bal.map((v, i) => [xs(i), yB(v)]);
+    const pd = a => a.map((q, j) => (j ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1)).join(' ');
+    let badAreaD = '';
+    if (bad) { const q = pts.slice(T).map(([x, y]) => [x, Math.max(y, y0)]); badAreaD = pd(q) + ` L${q[q.length - 1][0].toFixed(1)} ${y0} L${q[0][0].toFixed(1)} ${y0} Z`; }
+    const bw = s * 0.56, bars = [];
+    const hIn = v => Math.max(2, v / 2100000 * up * 0.4), hOut = v => Math.max(2, Math.min(dn, v / 700000 * dn * 0.9));
+    ev.forEach((x, i) => {
+      const bx = i * s + (s - bw) / 2;
+      if (x.in) bars.push({ x: bx, y: y0 - hIn(x.in), w: bw, h: hIn(x.in), st: { fill: 'var(--ink2)' } });
+      if (x.inP) bars.push({ x: bx + 0.75, y: y0 - hIn(x.inP) + 0.75, w: bw - 1.5, h: hIn(x.inP) - 1.5, st: { fill: 'var(--card)', stroke: 'var(--ink2)', strokeWidth: 1.5 } });
+      let d = y0 + 1.5;
+      if (x.out) { const h = hOut(x.out); bars.push({ x: bx, y: d, w: bw, h, st: { fill: 'var(--ink2)' } }); d += h + 1; }
+      if (x.bill) { const h = hOut(x.bill); bars.push({ x: bx + 0.75, y: d + 0.75, w: bw - 1.5, h: Math.max(1, h - 1.5), st: { fill: 'var(--card)', stroke: 'var(--ink)', strokeWidth: 1.5 } }); d += h + 1; }
+      if (x.est) { const h = Math.min(H - d, hOut(x.est)); if (h > 1) bars.push({ x: bx, y: d, w: bw, h, st: { fill: 'var(--est)' } }); }
+    });
+    let lo = T; for (let i = T; i <= 16; i++) if (bal[i] < bal[lo]) lo = i;
+    const mk = bad ? bal.findIndex((v, i) => i >= T && v < 0) : lo;
+    const wd = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+    const dl = i => wd[(i - T + 4 + 70) % 7] + ' ' + days[i] + (i >= 18 ? ' oct' : ' sep');
+    const lbl = { fill: 'var(--ink2)', font: '500 10.5px Geist, sans-serif', textAnchor: 'middle' };
+    const labels = mini ? [] : [
+      { x: xs(2), y: H + 15, t: '15 sep', st: lbl }, { x: xs(9), y: H + 15, t: '22', st: lbl }, { x: xs(16), y: H + 15, t: '29', st: lbl },
+      { x: xs(T), y: 11, t: 'Hoy', st: { ...lbl, fill: 'var(--ink)', fontWeight: 600 } },
+      { x: Math.min(W - 4, xs(mk) + 6), y: yB(bal[mk]) - 10, t: bad ? 'Sin plata · 22 sep' : 'Más bajo ' + f(bal[lo]), st: { ...lbl, textAnchor: 'end', fill: bad ? 'var(--bad-x)' : 'var(--ink)', fontWeight: 600 } }
+    ];
+    const cx = xs(14), cy = mini ? H - 4 : H + 11;
+    const sel = p.sel ?? 11;
+    const v = {
+      vb: `0 0 ${W} ${H + LB}`, W, H, y0,
+      svgSt: { width: '100%', height: 'auto', aspectRatio: W + ' / ' + (H + LB), display: 'block', overflow: 'visible' },
+      shade: [{ x: 0, w: 2 * s, st: { fill: 'var(--sunk)' } }, { x: 17 * s, w: 2 * s, st: { fill: 'var(--sunk)' } }],
+      tapR: p.tap != null ? [{ x: p.tap * s + 1, w: s - 2, st: { fill: 'var(--ink)', opacity: 0.08 } }] : [],
+      areaD: pd(pts) + ` L${xs(N - 1).toFixed(1)} ${y0} L${xs(0).toFixed(1)} ${y0} Z`, areaSt: { fill: 'var(--ink)', opacity: 0.06 },
+      badAreaD, badAreaSt: { fill: 'var(--bad-s)', opacity: 0.22 },
+      zeroSt: { stroke: bad ? 'var(--bad-s)' : 'var(--ctl)', strokeWidth: 1 },
+      bars,
+      tx: xs(T), todayTop: mini ? 0 : 16, todaySt: { stroke: 'var(--ink2)', strokeWidth: 1, strokeDasharray: '2 3' },
+      solidD: pd(pts.slice(0, T + 1)), solidSt: { fill: 'none', stroke: 'var(--ink)', strokeWidth: mini ? 2 : 2.5, strokeLinejoin: 'round', strokeLinecap: 'round' },
+      dashD: pd(pts.slice(T)), dashSt: { fill: 'none', stroke: bad ? 'var(--bad-s)' : 'var(--ink)', strokeWidth: mini ? 2 : 2.5, strokeDasharray: '5 4', strokeLinejoin: 'round' },
+      diamond: `M${cx} ${cy - 4} L${cx + 4} ${cy} L${cx} ${cy + 4} L${cx - 4} ${cy} Z`, diaSt: { fill: 'var(--ink2)' },
+      low: { cx: xs(mk), cy: yB(bal[mk]), st: { fill: 'var(--card)', stroke: bad ? 'var(--bad-s)' : 'var(--ink)', strokeWidth: 2 } },
+      labels,
+      drag: !!p.drag, dragLabel: dl(sel), dragAmt: f(bal[sel]),
+      dragM: p.drag ? [{ x: xs(sel), y: yB(bal[sel]), ls: { stroke: 'var(--ink)', strokeWidth: 1.25 }, cs: { fill: 'var(--ink)', stroke: 'var(--card)', strokeWidth: 2.5 } }] : []
+    };
+    const ce = React.createElement;
+    const kids = [];
+    let k = 0;
+    const add = (t, q) => kids.push(ce(t, { key: k++, ...q }));
+    v.shade.forEach(r => add('rect', { x: r.x, y: 0, width: r.w, height: H, rx: 6, style: r.st }));
+    v.tapR.forEach(r => add('rect', { x: r.x, y: 0, width: r.w, height: H, rx: 4, style: r.st }));
+    add('path', { d: v.areaD, style: v.areaSt });
+    if (v.badAreaD) add('path', { d: v.badAreaD, style: v.badAreaSt });
+    add('line', { x1: 0, x2: W, y1: y0, y2: y0, style: v.zeroSt });
+    v.bars.forEach(b => add('rect', { x: b.x, y: b.y, width: b.w, height: b.h, rx: 1.5, style: b.st }));
+    add('line', { x1: v.tx, x2: v.tx, y1: v.todayTop, y2: H, style: v.todaySt });
+    add('path', { d: v.solidD, style: v.solidSt });
+    add('path', { d: v.dashD, style: v.dashSt });
+    add('path', { d: v.diamond, style: v.diaSt });
+    add('circle', { cx: v.low.cx, cy: v.low.cy, r: 4.5, style: v.low.st });
+    v.labels.forEach(l => kids.push(ce('text', { key: k++, x: l.x, y: l.y, style: l.st }, l.t)));
+    v.dragM.forEach(m => { add('line', { x1: m.x, x2: m.x, y1: 0, y2: H, style: m.ls }); add('circle', { cx: m.x, cy: m.y, r: 5.5, style: m.cs }); });
+    return { drag: v.drag, dragLabel: v.dragLabel, dragAmt: v.dragAmt, svg: ce('svg', { viewBox: v.vb, style: v.svgSt }, kids) };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,317 @@
+<title>How Disponible Works</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F3F4EF; --surface:#FFFFFF; --ink:#16181A; --muted:#5B6168; --line:#D3D6CC; --soft:#E8EAE2;
+  --phone:#2F5FD0; --phone-bg:#E7EDFB; --server:#0E7A55; --server-bg:#E1F2EA; --store:#8A5A00; --store-bg:#F6ECD6;
+  --warn:#9A5B00;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#111312; --surface:#1A1D1B; --ink:#ECEDE8; --muted:#9CA29B; --line:#30352F; --soft:#232723;
+    --phone:#86A8FF; --phone-bg:#1C2640; --server:#46C79A; --server-bg:#15302A; --store:#E3AE4A; --store-bg:#33280F;
+    --warn:#E3AE4A;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#111312; --surface:#1A1D1B; --ink:#ECEDE8; --muted:#9CA29B; --line:#30352F; --soft:#232723;
+  --phone:#86A8FF; --phone-bg:#1C2640; --server:#46C79A; --server-bg:#15302A; --store:#E3AE4A; --store-bg:#33280F;
+  --warn:#E3AE4A;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.6 'Geist',system-ui,-apple-system,'Segoe UI',sans-serif;padding-inline:20px;padding-block:32px 64px}
+main{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:44px}
+.prose{max-width:68ch}
+h1,h2,h3{text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:34px;line-height:1.15;font-weight:700}
+h2{font-size:22px;font-weight:650;margin-bottom:10px}
+h3{font-size:16px;font-weight:600}
+p{margin:0 0 10px}
+.eyebrow{font:500 12px/1 'Geist Mono',ui-monospace,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.lede{font-size:17px;color:var(--muted);max-width:66ch;margin-top:12px}
+code,.mono{font-family:'Geist Mono',ui-monospace,Menlo,monospace;font-size:.88em}
+code{background:var(--soft);padding:1px 5px;border-radius:4px}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--muted);margin:6px 0 0}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:3px;display:inline-block}
+figure{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px}
+figcaption{font-size:13.5px;color:var(--muted);margin-top:12px;max-width:80ch}
+.scroll{overflow-x:auto}
+svg{display:block;max-width:100%;height:auto;font-family:'Geist',system-ui,sans-serif}
+svg text{fill:var(--ink);font-size:12.5px}
+svg .sub{fill:var(--muted);font-size:11px}
+svg .lbl{fill:var(--muted);font-size:11px}
+svg .grp{font:600 11px 'Geist Mono',monospace;letter-spacing:.06em;fill:var(--muted)}
+svg .g-phone{fill:var(--phone-bg);stroke:var(--phone)}
+svg .g-server{fill:var(--server-bg);stroke:var(--server)}
+svg .g-store{fill:var(--store-bg);stroke:var(--store)}
+svg .g-out{fill:none;stroke:var(--line);stroke-dasharray:4 4}
+svg .box{fill:var(--surface);stroke:var(--line)}
+svg .box-hot{fill:var(--surface);stroke:var(--server);stroke-width:2}
+svg .ar{stroke:var(--ink);stroke-width:1.3;fill:none}
+svg .ar-soft{stroke:var(--muted);stroke-width:1.2;fill:none;stroke-dasharray:4 3}
+svg .ah{fill:var(--ink)}
+svg .ah-soft{fill:var(--muted)}
+table{border-collapse:collapse;width:100%;font-size:14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+th,td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--line)}
+th{font-weight:600;font-size:12.5px;color:var(--muted);background:var(--soft)}
+tr:last-child td{border-bottom:0}
+td.num{white-space:nowrap;font-variant-numeric:tabular-nums}
+.tag{display:inline-block;font:500 11px/1 'Geist Mono',monospace;padding:4px 6px;border-radius:5px;border:1px solid var(--line);white-space:nowrap}
+.t-phone{color:var(--phone);border-color:var(--phone)}
+.t-server{color:var(--server);border-color:var(--server)}
+.t-store{color:var(--store);border-color:var(--store)}
+.rule{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;font-size:17px;max-width:74ch}
+.decisions{display:grid;gap:14px}
+.dec{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:grid;gap:10px}
+.dec-h{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.dec-id{font:600 12px 'Geist Mono',monospace;color:var(--muted)}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.opt{border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:14px}
+.opt.rec{border-color:var(--server);border-width:2px}
+.opt b{display:block;margin-bottom:4px}
+.rec-tag{font:600 11px 'Geist Mono',monospace;color:var(--server);letter-spacing:.04em}
+ul{margin:0;padding-left:20px}
+li{margin:3px 0}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+.card h3{margin-bottom:8px}
+.status{font:500 12px 'Geist Mono',monospace;color:var(--warn)}
+</style>
+
+<style>
+.decided{border-color:var(--server)}
+.decided-tag{font:600 11px 'Geist Mono',monospace;color:var(--server);letter-spacing:.04em}
+.formula{font:600 19px/1.5 'Geist',sans-serif;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+.formula .m{font:500 14px 'Geist Mono',monospace;color:var(--muted);display:block;margin-top:6px}
+td.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.tot td{font-weight:650;border-top:2px solid var(--ink)}
+.pos{color:var(--server)} .neg{color:var(--ink)} .neu{color:var(--muted)}
+.pill{display:inline-flex;align-items:center;gap:6px;font:600 12px 'Geist',sans-serif;padding:4px 10px;border-radius:999px;border:1px solid var(--line)}
+.pill i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.p-ok i{background:var(--server)} .p-warn i{background:var(--warn)} .p-bad i{background:#C2452D}
+</style>
+<main>
+
+<header>
+  <div class="eyebrow">Zeta v2 · Planning session 3 of 6 · closed</div>
+  <h1>How Disponible is calculated</h1>
+  <p class="lede">The one number: how much you can still spend until your next payday. This page covers how each kind of movement affects it, with real numbers for cards, cuotas, loans, bills, Te deben and Tú debes, and when the verdict changes. The same function runs on the phone and the server. Decisions at the end.</p>
+</header>
+
+<section>
+  <h2>The formula</h2>
+  <div class="formula">Disponible = Llega este ciclo − Por pagar − Ahorro − Ya salió (± ajustes)
+    <span class="m">Por día = Disponible ÷ días que faltan (incluye hoy), rounded down to $100</span></div>
+  <div class="two" style="margin-top:14px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
+    <div class="card"><h3>Llega este ciclo</h3><p style="margin:0;font-size:14px">Expected salary, replaced by the real amount once it arrives. Plus other income you received and repayments ("Te pagaron").</p></div>
+    <div class="card"><h3>Por pagar</h3><p style="margin:0;font-size:14px">Bills, loan cuotas, <b>credit card bills</b> and money you owe people (Tú debes) that are due before next payday and not paid yet.</p></div>
+    <div class="card"><h3>Ahorro</h3><p style="margin:0;font-size:14px">What you set aside this cycle. It's 0 unless you choose an amount.</p></div>
+    <div class="card"><h3>Ya salió</h3><p style="margin:0;font-size:14px">Money that left the accounts that count for Disponible this cycle: debit and cash purchases, money lent, paid bills. Credit card purchases don't count here; the card <i>bill</i> does, in Por pagar.</p></div>
+  </div>
+</section>
+
+<section>
+  <h2>What is a cycle</h2>
+  <div class="prose">
+    <p>A cycle runs from a payday to the day before the next one. Paid on the 15th and 30th means two cycles a month: 15–29 and 30–14. If a payday falls on a weekend or holiday, the salary is expected the business day before. The cycle starts when the money actually arrives, or on the expected date with a "~" if it hasn't. With irregular income, a cycle is simply the calendar month.</p>
+  </div>
+</section>
+
+<section>
+  <h2>A full cycle, with numbers</h2>
+  <div class="prose"><p>Laura is paid $2.100.000 on the 15th and 30th. Her debit account and a savings account count for Disponible; her Nu card doesn't (it's debt). Cycle 15–29 Sep; today is Thursday 18 Sep, so 12 days remain including today.</p></div>
+  <div class="two">
+    <table>
+      <thead><tr><th>Line</th><th>Detail</th><th class="r">Amount</th></tr></thead>
+      <tbody>
+        <tr><td>Llega este ciclo</td><td>Salary, arrived 15 Sep</td><td class="r pos">+2.100.000</td></tr>
+        <tr><td rowspan="3">Por pagar</td><td>Arriendo, 19 Sep</td><td class="r">−700.000</td></tr>
+        <tr><td>Netflix, 24 Sep</td><td class="r">−38.900</td></tr>
+        <tr><td>Tarjeta Nu, pago mínimo, due 22 Sep</td><td class="r">−640.000</td></tr>
+        <tr><td>Ahorro</td><td>Her choice</td><td class="r">−200.000</td></tr>
+        <tr><td>Ya salió</td><td>15–18 Sep, debit only: Éxito, Uber, Tostao…</td><td class="r">−100.000</td></tr>
+        <tr class="tot"><td>Disponible</td><td>÷ 12 days = $35.000 al día</td><td class="r">421.100</td></tr>
+      </tbody>
+    </table>
+    <div class="card">
+      <h3>The card only matters through its bill</h3>
+      <p style="font-size:14px">Her Nu card's available credit is <b>not</b> money she has. It's how much more debt she could take on. Buying with the card only lowers that available credit. What touches Disponible is the <b>bill</b>. By default its minimum payment (S3-6): $640.000 due on 22 Sep, inside this cycle. The rest of the $1.850.000 she owes stays as card debt.</p>
+      <table style="font-size:13.5px">
+        <tbody>
+          <tr><td>Purchases at 1 cuota, 9 Aug–8 Sep</td><td class="r">410.900</td></tr>
+          <tr><td>Samsung cuota 4 of 12</td><td class="r">118.000</td></tr>
+          <tr><td>Interest and fees</td><td class="r">11.100</td></tr>
+          <tr><td>Cuotas of older purchases</td><td class="r">100.000</td></tr>
+          <tr class="tot"><td>Minimum due 22 Sep</td><td class="r">640.000</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:13px;color:var(--muted);margin:8px 0 0">Before the PDF arrives, Zeta estimates it from what it saw: 1-cuota purchases in full, this month's cuota of each purchase, and estimated interest on the balance. The PDF replaces the estimate with the exact amount.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Credit card timing: when a card purchase reaches Disponible</h2>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 1030 250" role="img" aria-label="Timeline from 9 Aug to 29 Oct: pay cycles on top, card statement periods below. Statement A (purchases 9 Aug to 8 Sep) is due 22 Sep and counts in pay cycle 15 to 29 Sep. Statement B (purchases 9 Sep to 8 Oct) is due 22 Oct and counts in pay cycle 15 to 29 Oct.">
+      <defs><marker id="f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah"/></marker></defs>
+      <text x="40" y="58" class="grp">PAY CYCLES</text>
+      <rect x="112" y="66" width="178" height="26" rx="5" class="box"/><text x="201" y="84" text-anchor="middle" class="sub">15–29 ago</text>
+      <rect x="292" y="66" width="190" height="26" rx="5" class="box"/><text x="387" y="84" text-anchor="middle" class="sub">30 ago–14 sep</text>
+      <rect x="484" y="66" width="178" height="26" rx="5" class="g-phone" style="stroke-width:2"/><text x="573" y="84" text-anchor="middle">15–29 sep · this cycle</text>
+      <rect x="664" y="66" width="178" height="26" rx="5" class="box"/><text x="753" y="84" text-anchor="middle" class="sub">30 sep–14 oct</text>
+      <rect x="844" y="66" width="178" height="26" rx="5" class="box"/><text x="933" y="84" text-anchor="middle" class="sub">15–29 oct</text>
+
+      <text x="40" y="124" class="grp">NU CARD · cut on the 8th, due on the 22nd</text>
+      <rect x="40" y="132" width="370" height="26" rx="5" class="g-store"/><text x="225" y="150" text-anchor="middle">Statement A · purchases 9 ago–8 sep</text>
+      <rect x="412" y="132" width="358" height="26" rx="5" class="box"/><text x="591" y="150" text-anchor="middle" class="sub">Statement B · purchases 9 sep–8 oct</text>
+
+      <line x1="568" y1="60" x2="568" y2="200" class="ar"/>
+      <polygon points="568,196 562,206 574,206" class="ah"/>
+      <text x="568" y="222" text-anchor="middle">Bill A due · 22 sep</text>
+      <text x="568" y="238" text-anchor="middle" class="sub">$640.000 in Por pagar of this cycle</text>
+      <line x1="928" y1="60" x2="928" y2="200" class="ar-soft"/>
+      <text x="928" y="222" text-anchor="middle" class="sub">Bill B due · 22 oct</text>
+      <text x="928" y="238" text-anchor="middle" class="sub">counts in cycle 15–29 oct</text>
+
+      <path d="M225 160 C225 185, 400 190, 560 196" class="ar" marker-end="url(#f)"/>
+      <path d="M591 160 C591 185, 780 190, 920 196" class="ar-soft" marker-end="url(#f)"/>
+      <text x="524" y="52" class="lbl">today 18 sep</text>
+      <line x1="520" y1="56" x2="520" y2="66" class="ar"/>
+    </svg>
+    </div>
+    <figcaption>A card purchase touches Disponible only when its bill falls inside a pay cycle. A purchase Laura makes today (18 Sep) goes to statement B and first counts in cycle 15–29 Oct. See S3-5 for how Zeta keeps that from being a surprise.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>Which accounts count for Disponible</h2>
+  <div class="prose"><p>You choose which accounts add up to your Disponible (Ajustes › Mis cuentas › "Cuenta para mi Disponible"). By default: checking, savings and cash count; investments don't. Credit cards and loans never count, because they're debt, not money you have. The first-day question "¿Cuánto tienes hoy?" is the total of the accounts that count.</p></div>
+  <table>
+    <thead><tr><th>Transfer</th><th>Effect</th><th>Example</th></tr></thead>
+    <tbody>
+      <tr><td>Between two accounts that count</td><td>None</td><td>Bancolombia → Nequi, both counted</td></tr>
+      <tr><td>From an account that counts to one that doesn't</td><td>Down. If you have an Ahorro amount for this cycle, it fills that first (no double subtraction)</td><td>$200.000 to a savings account you keep apart: Ahorro done</td></tr>
+      <tr><td>From an account that doesn't count to one that does</td><td>Up ("Traje de mis ahorros")</td><td>Bringing $150.000 back from savings</td></tr>
+      <tr><td>To a credit card (card payment)</td><td>Up to the amount in Por pagar: no change. Anything above it (an extra payment) lowers Disponible now and the card debt</td><td>Paying the $640.000 minimum on 22 Sep</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>Every kind of movement</h2>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Movement</th><th>Effect on Disponible</th><th>Line</th><th>Shown as spending in</th></tr></thead>
+    <tbody>
+      <tr><td>Debit or cash purchase</td><td>Down, now</td><td>Ya salió</td><td>Its category</td></tr>
+      <tr><td>Credit card purchase</td><td>None now: it goes into the next card bill</td><td>Por pagar, when that bill is due</td><td>Its category, the day you buy</td></tr>
+      <tr><td>Card purchase in N cuotas</td><td>None now: each cuota goes into the bill of its month</td><td>Por pagar, one cuota per bill</td><td>Its category, the day you buy (full price, marked "a cuotas")</td></tr>
+      <tr><td>Card bill payment</td><td>No change: moves from Por pagar to Ya salió</td><td>Por pagar → Ya salió</td><td>"Pago de tarjeta", not a spending category</td></tr>
+      <tr><td>Paying a known bill (rent, Netflix)</td><td>No change: moves from Por pagar to Ya salió</td><td>Por pagar → Ya salió</td><td>Its category</td></tr>
+      <tr><td>Partial bill payment (D5)</td><td>No change; the bill shows "Pagado $600.000 de $1.100.000"; the rest stays in Por pagar</td><td>Por pagar → Ya salió, in parts</td><td>Its category</td></tr>
+      <tr><td>Loan cuota</td><td>No change when paid (it was in Por pagar)</td><td>Por pagar → Ya salió</td><td>"Pagos de créditos", not a spending category</td></tr>
+      <tr><td>Extra payment / pay-off (D6)</td><td>Down by the extra; future cuotas disappear from future cycles</td><td>Ya salió</td><td>"Pagos de créditos"</td></tr>
+      <tr><td>Transfer between your accounts</td><td>Depends on which accounts count (table above)</td><td>—</td><td>—</td></tr>
+      <tr><td>Refund</td><td>Up</td><td>Nets against Ya salió</td><td>Reduces that category</td></tr>
+      <tr><td>Salary</td><td>Replaces the expected amount</td><td>Llega este ciclo</td><td>—</td></tr>
+      <tr><td>Other income (bonus, freelance)</td><td>Up</td><td>Llega este ciclo</td><td>—</td></tr>
+      <tr><td>Shared purchase: you paid $240.000, your part $60.000</td><td>Down $240.000 (cash left)</td><td>Ya salió</td><td>$60.000 in its category; $180.000 is Te deben</td></tr>
+      <tr><td>A friend repays you</td><td>Up</td><td>Llega este ciclo ("Te pagaron")</td><td>—</td></tr>
+      <tr><td>Money lent directly</td><td>Down</td><td>Ya salió</td><td>Te deben, never spending</td></tr>
+      <tr><td>Someone paid $50.000 for you (Tú debes, D8)</td><td>Down $50.000 (you'll have to pay it)</td><td>Por pagar ("Le debes a Ana")</td><td>$50.000 in its category, the day it happened</td></tr>
+      <tr><td>You pay Ana back</td><td>No change: moves from Por pagar to Ya salió</td><td>Por pagar → Ya salió</td><td>— (already counted)</td></tr>
+      <tr><td>Cash withdrawal at an ATM</td><td colspan="3"><b>Open, see S3-1</b></td></tr>
+      <tr><td>Purchase inside a trip (v1.1)</td><td>None; comes out of the trip's pot</td><td>—</td><td>The trip</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="prose" style="font-size:14px;color:var(--muted);margin-top:8px">The pattern: <b>Disponible is the cash in the accounts you chose</b>. Money already promised from them (bills, card bills, loan cuotas, debts to people) is subtracted before you pay it, so paying it never surprises your number. The card itself is debt, and it reaches your cash only through its bill.</p>
+</section>
+
+<section>
+  <h2>Special cases</h2>
+  <table>
+    <thead><tr><th>Case</th><th>Rule</th></tr></thead>
+    <tbody>
+      <tr><td>First cycle (just installed)</td><td>Disponible = the balance you told us today − bills before payday − savings. From the next payday on, the income formula.</td></tr>
+      <tr><td>Irregular income</td><td>Only money already received this month plus your starting balance counts. Expected income is shown apart: "Si te entra lo de siempre (~$3.000.000), tendrías $X más."</td></tr>
+      <tr><td>Previous cycle ended negative</td><td>The next cycle opens with a line "Te pasaste el ciclo pasado −$X".</td></tr>
+      <tr><td>Previous cycle ended positive</td><td>You're asked "¿A ahorro o lo dejas disponible?" (S3-3).</td></tr>
+      <tr><td>Card purchase ≥ $300.000 (no cuotas info yet)</td><td>Enters the projected next bill in full until you answer "¿A cuántas cuotas?" (S3-2). The PDF corrects it later.</td></tr>
+      <tr><td>Foreign currency</td><td>The day's rate + 3% (bank markup), marked "≈" until the PDF gives the exact COP.</td></tr>
+      <tr><td>"Cuadrar con mi saldo"</td><td>You type your real balance; the difference becomes one visible "Ajuste de saldo" line you can undo.</td></tr>
+      <tr><td>Missing data</td><td>The number is never hidden. It gets a "~" and a reason: a source has gone quiet, or the salary isn't confirmed.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>The verdict: Vas bien, Cuidado, Te pasaste</h2>
+  <div class="prose"><p>One function, used for Disponible, límites and trips. It compares today's daily allowance with the one at the start of the cycle.</p></div>
+  <table>
+    <thead><tr><th>State</th><th>Condition</th><th>Laura on 18 Sep</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill p-ok"><i></i>Vas bien</span></td><td>Today's per day ≥ 85% of the starting per day</td><td>Start: $521.100 ÷ 15 = $34.700/day. Spent $100.000 → $35.000/day today. <b>Vas bien.</b></td></tr>
+      <tr><td><span class="pill p-warn"><i></i>Cuidado</span></td><td>Below 85% (but ≥ 0), <b>or</b> an account won't cover a bill due in the next 3 days</td><td>Had she spent $250.000 instead: $271.100 ÷ 12 = $22.500/day, below $29.500 (85%). <b>Cuidado:</b> "para llegar al 30, gasta máximo $22.500 al día."</td></tr>
+      <tr><td><span class="pill p-bad"><i></i>Te pasaste</span></td><td>Disponible below 0</td><td>"Te pasaste por $85.000. Lo restamos del próximo ciclo."</td></tr>
+    </tbody>
+  </table>
+  <p class="prose" style="font-size:14px;margin-top:10px"><b>No flicker:</b> the verdict gets worse immediately, but only improves after the better state has held for 24 hours. A refund that briefly lifts you back to "Vas bien" doesn't make the pill jump back and forth.</p>
+</section>
+
+<section>
+  <h2>How we know it's right</h2>
+  <div class="prose"><p>The whole calculation is one pure function, <code>computeDisponible</code>, in <code>@zeta/shared</code>. It gets no database and no dates of its own; everything comes in as input. Every row of the tables above becomes an automated test, written before the code: 19 cases from the design docs plus the new ones from your decisions (partial bills, pay-off, Tú debes, cycle summaries). The phone and the server both run this exact function.</p></div>
+</section>
+
+<section>
+  <h2>Decisions for this session</h2>
+  <div class="decisions">
+
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S3-0</span><h3>Credit cards and which accounts count</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> <b>Your correction:</b> a card's available credit is never Disponible, and card purchases don't lower Disponible when made; they lower the card's available credit. What counts is the <b>card bill</b>, in Por pagar of the cycle it's due. <b>You choose the accounts</b> that add up to Disponible; transfers between two counted accounts change nothing, transfers in or out of the counted set do.</p>
+    </div>
+
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S3-1 to S3-4</span><h3>Cash, big card purchases, leftovers, Cuidado</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> <b>S3-1</b> An ATM withdrawal counts when made ("Efectivo y otros"); logging cash later only relabels it. <b>S3-2</b> A card purchase ≥ $300.000 enters the <i>projected card bill</i> in full until you say how many cuotas (threshold editable). <b>S3-3</b> Leftovers: ask; if unanswered, they stay available. <b>S3-4</b> Cuidado at 85%, fixed, 24 h to improve.</p>
+    </div>
+
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S3-5</span><h3>A growing card bill is never a surprise</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> Same number, plus a look-ahead. Inicio shows each card's next bill as it grows ("Tarjeta Nu · próxima factura ≈ $480.000 · al corte ≈ $620.000 si sigues a este ritmo"), estimated from your card spending so far and your usual pace until the cut date. If that bill would push next cycle below 0, today's verdict turns Cuidado with the reason.</p>
+    </div>
+
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S3-6</span><h3>Which card bill amount goes into Por pagar?</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> <b>The minimum payment, by default</b>, because that's what most people pay. The rest stays as card debt (Pagos › Deudas) and its interest shows in the next bill. <b>Later version:</b> when a cycle has money left, suggest an extra payment with its real impact ("Si abonas $200.000, te ahorras $38.000 de intereses y terminas 4 meses antes").</p>
+    </div>
+
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S3-T</span><h3>A timeline of your money</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> You liked the timeline diagram. v2 gets a timeline view of how money moves across the last, current and next cycle: paydays, bills, card cuts and due dates, and the projected balance. Design variations come in session 5.</p>
+    </div>
+
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S3-7</span><h3>How far ahead do you see bills?</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> <b>60 days + big bills up to 12 months ahead, with "apartar".</b> Bills over 30% of one cycle's income within 12 months appear as "Prepárate" with a per-cycle amount to set aside; accepting creates a reservation that works like Ahorro and is released when the bill is paid.</p>
+    </div>
+
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S3-8</span><h3>Variable bills (EPM, Claro, card bills)</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> <b>Estimate first, real amount as soon as it's known.</b> Average of the last 3 payments marked "≈"; card bills update live and become exact with the statement; utilities get a Revisar card on the usual arrival day ("¿Ya te llegó el recibo de EPM? ¿De cuánto?"). Biller emails via Gmail later.</p>
+    </div>
+
+    
+  </div>
+</section>
+
+<footer style="color:var(--muted);font-size:13px">Next: session 4, capture. It covers bank notifications, Gmail, PDF and manual entry: the flows, the training inbox, templates, and what happens when each one fails.</footer>
+</main>

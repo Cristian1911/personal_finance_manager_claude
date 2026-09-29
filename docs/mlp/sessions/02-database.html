@@ -1,0 +1,311 @@
+<title>Zeta v2 Database</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F3F4EF; --surface:#FFFFFF; --ink:#16181A; --muted:#5B6168; --line:#D3D6CC; --soft:#E8EAE2;
+  --phone:#2F5FD0; --phone-bg:#E7EDFB; --server:#0E7A55; --server-bg:#E1F2EA; --store:#8A5A00; --store-bg:#F6ECD6;
+  --warn:#9A5B00;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#111312; --surface:#1A1D1B; --ink:#ECEDE8; --muted:#9CA29B; --line:#30352F; --soft:#232723;
+    --phone:#86A8FF; --phone-bg:#1C2640; --server:#46C79A; --server-bg:#15302A; --store:#E3AE4A; --store-bg:#33280F;
+    --warn:#E3AE4A;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#111312; --surface:#1A1D1B; --ink:#ECEDE8; --muted:#9CA29B; --line:#30352F; --soft:#232723;
+  --phone:#86A8FF; --phone-bg:#1C2640; --server:#46C79A; --server-bg:#15302A; --store:#E3AE4A; --store-bg:#33280F;
+  --warn:#E3AE4A;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.6 'Geist',system-ui,-apple-system,'Segoe UI',sans-serif;padding-inline:20px;padding-block:32px 64px}
+main{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:44px}
+.prose{max-width:68ch}
+h1,h2,h3{text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:34px;line-height:1.15;font-weight:700}
+h2{font-size:22px;font-weight:650;margin-bottom:10px}
+h3{font-size:16px;font-weight:600}
+p{margin:0 0 10px}
+.eyebrow{font:500 12px/1 'Geist Mono',ui-monospace,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.lede{font-size:17px;color:var(--muted);max-width:66ch;margin-top:12px}
+code,.mono{font-family:'Geist Mono',ui-monospace,Menlo,monospace;font-size:.88em}
+code{background:var(--soft);padding:1px 5px;border-radius:4px}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--muted);margin:6px 0 0}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:3px;display:inline-block}
+figure{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px}
+figcaption{font-size:13.5px;color:var(--muted);margin-top:12px;max-width:80ch}
+.scroll{overflow-x:auto}
+svg{display:block;max-width:100%;height:auto;font-family:'Geist',system-ui,sans-serif}
+svg text{fill:var(--ink);font-size:12.5px}
+svg .sub{fill:var(--muted);font-size:11px}
+svg .lbl{fill:var(--muted);font-size:11px}
+svg .grp{font:600 11px 'Geist Mono',monospace;letter-spacing:.06em;fill:var(--muted)}
+svg .g-phone{fill:var(--phone-bg);stroke:var(--phone)}
+svg .g-server{fill:var(--server-bg);stroke:var(--server)}
+svg .g-store{fill:var(--store-bg);stroke:var(--store)}
+svg .g-out{fill:none;stroke:var(--line);stroke-dasharray:4 4}
+svg .box{fill:var(--surface);stroke:var(--line)}
+svg .box-hot{fill:var(--surface);stroke:var(--server);stroke-width:2}
+svg .ar{stroke:var(--ink);stroke-width:1.3;fill:none}
+svg .ar-soft{stroke:var(--muted);stroke-width:1.2;fill:none;stroke-dasharray:4 3}
+svg .ah{fill:var(--ink)}
+svg .ah-soft{fill:var(--muted)}
+table{border-collapse:collapse;width:100%;font-size:14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+th,td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--line)}
+th{font-weight:600;font-size:12.5px;color:var(--muted);background:var(--soft)}
+tr:last-child td{border-bottom:0}
+td.num{white-space:nowrap;font-variant-numeric:tabular-nums}
+.tag{display:inline-block;font:500 11px/1 'Geist Mono',monospace;padding:4px 6px;border-radius:5px;border:1px solid var(--line);white-space:nowrap}
+.t-phone{color:var(--phone);border-color:var(--phone)}
+.t-server{color:var(--server);border-color:var(--server)}
+.t-store{color:var(--store);border-color:var(--store)}
+.rule{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;font-size:17px;max-width:74ch}
+.decisions{display:grid;gap:14px}
+.dec{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:grid;gap:10px}
+.dec-h{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.dec-id{font:600 12px 'Geist Mono',monospace;color:var(--muted)}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.opt{border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:14px}
+.opt.rec{border-color:var(--server);border-width:2px}
+.opt b{display:block;margin-bottom:4px}
+.rec-tag{font:600 11px 'Geist Mono',monospace;color:var(--server);letter-spacing:.04em}
+ul{margin:0;padding-left:20px}
+li{margin:3px 0}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+.card h3{margin-bottom:8px}
+.status{font:500 12px 'Geist Mono',monospace;color:var(--warn)}
+</style>
+
+<style>
+.decided{border-color:var(--server)}
+.decided-tag{font:600 11px 'Geist Mono',monospace;color:var(--server);letter-spacing:.04em}
+.k-keep{color:var(--muted)}
+.k-new{color:var(--server);font-weight:600}
+.k-chg{color:var(--phone);font-weight:600}
+.k-ret{color:var(--warn);font-weight:600}
+td code{white-space:nowrap}
+</style>
+<main>
+
+<header>
+  <div class="eyebrow">Zeta v2 · Planning session 2 of 6 · closed</div>
+  <h1>Zeta v2's database</h1>
+  <p class="lede">What's in the database today, what v2 keeps, adds and stops using, and why. Also how encryption works, what the phone stores, and how changes reach the database without breaking the web app you still use. Four decisions at the end.</p>
+</header>
+
+<section>
+  <h2>The short version</h2>
+  <div class="two">
+    <div class="card"><h3>Mostly reuse</h3><p style="margin:0;font-size:14px">Today's database already models almost everything v2 needs: accounts including loans, movements, merchants and people, bills and their due dates, Te deben and Tú debes, límites and trips. Most of v2's data work is new <i>rules</i>, not new tables.</p></div>
+    <div class="card"><h3>Nothing breaks</h3><p style="margin:0;font-size:14px">Every change until v2 ships is additive (S1-4): new tables and new columns only. The web app and today's mobile app keep working on the same data. Tables v2 stops using are frozen, not deleted.</p></div>
+    <div class="card"><h3>13 new tables</h3><p style="margin:0;font-size:14px">10 for features (command log, cycle summaries, pay schedule, merchant policy, split bill payments, 2 for notification templates, source health, Gmail link, push tokens) and 3 support tables (per-field versions, category mapping, merchant-name cache).</p></div>
+  </div>
+</section>
+
+<section>
+  <h2>Where your data lives</h2>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 960 250" role="img" aria-label="Three layers: Postgres holds the truth with identifiers encrypted by a per-user key; the phone holds an encrypted local copy plus an outbox of commands; cycle summaries are derived from movements on both sides.">
+      <defs><marker id="d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah"/></marker></defs>
+      <rect x="10" y="20" width="440" height="210" rx="12" class="g-store"/>
+      <text x="24" y="42" class="grp">SUPABASE POSTGRES · the truth</text>
+      <rect x="26" y="58" width="200" height="50" rx="8" class="box"/><text x="38" y="79">Movements, accounts, bills,</text><text x="38" y="96">people, límites, trips</text>
+      <rect x="236" y="58" width="200" height="50" rx="8" class="box"/><text x="248" y="79">Command log</text><text x="248" y="96" class="sub">every action ever applied (by id)</text>
+      <rect x="26" y="120" width="200" height="50" rx="8" class="box"/><text x="38" y="141">Cycle summaries</text><text x="38" y="158" class="sub">derived; rebuilt when data changes</text>
+      <rect x="236" y="120" width="200" height="50" rx="8" class="box"/><text x="248" y="141">Settings, templates,</text><text x="248" y="158" class="sub">Gmail link, push tokens</text>
+      <text x="26" y="200" class="lbl">Names, descriptions, notes, masks: encrypted with your own key.</text>
+      <text x="26" y="216" class="lbl">Amounts and dates: plain (needed for sums and indexes).</text>
+
+      <rect x="510" y="20" width="440" height="210" rx="12" class="g-phone"/>
+      <text x="524" y="42" class="grp">YOUR PHONE · encrypted local copy</text>
+      <rect x="526" y="58" width="200" height="50" rx="8" class="box"/><text x="538" y="79">Last 3 cycles of movements</text><text x="538" y="96" class="sub">+ everything they point to</text>
+      <rect x="736" y="58" width="200" height="50" rx="8" class="box"/><text x="748" y="79">Outbox</text><text x="748" y="96" class="sub">commands not yet confirmed</text>
+      <rect x="526" y="120" width="200" height="50" rx="8" class="box"/><text x="538" y="141">All cycle summaries</text><text x="538" y="158" class="sub">every closed cycle, forever</text>
+      <rect x="736" y="120" width="200" height="50" rx="8" class="box"/><text x="748" y="141">Phone-only data</text><text x="748" y="158" class="sub">raw notices, ignored list</text>
+      <text x="526" y="200" class="lbl">Whole file encrypted (S2-1), key in the phone's secure keychain.</text>
+
+      <line x1="452" y1="83" x2="508" y2="83" class="ar" marker-end="url(#d)"/><text x="458" y="76" class="lbl">sync</text>
+      <line x1="508" y1="97" x2="452" y2="97" class="ar" marker-end="url(#d)"/><text x="458" y="112" class="lbl">cmds</text>
+    </svg>
+    </div>
+    <figcaption>Postgres is the truth; the phone has a working copy. Cycle summaries exist on both sides but are never the source of truth. They are always rebuilt from the movements.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>The v2 data model</h2>
+  <div class="prose"><p>The entities v2 uses and how they connect. <b>New in v2:</b> USER_CYCLE_SETTINGS, MERCHANT_POLICY, OCCURRENCE_PAYMENTS, COMMANDS, CYCLE_SUMMARIES. Everything else exists today.</p></div>
+  <figure>
+    <div class="scroll">
+<pre class="mermaid">
+erDiagram
+  PROFILES ||--|| USER_CYCLE_SETTINGS : "pay schedule, income, savings"
+  PROFILES ||--o{ ACCOUNTS : owns
+  ACCOUNTS ||--o{ TRANSACTIONS : "money moves in"
+  CATEGORIES ||--o{ TRANSACTIONS : classifies
+  DESTINATARIOS ||--o{ TRANSACTIONS : "merchant or person"
+  DESTINATARIOS ||--o{ DESTINATARIO_RULES : "recognized by text"
+  DESTINATARIOS ||--o| MERCHANT_POLICY : "Siempre, Casi siempre, Preguntame"
+  CATEGORIES ||--o{ DESTINATARIOS : "usual category"
+  ACCOUNTS ||--o{ RECURRING_TEMPLATES : "paid from"
+  RECURRING_TEMPLATES ||--o{ RECURRING_OCCURRENCES : "one per due date"
+  RECURRING_OCCURRENCES ||--o{ OCCURRENCE_PAYMENTS : "paid by, partial ok"
+  TRANSACTIONS ||--o{ OCCURRENCE_PAYMENTS : covers
+  DESTINATARIOS ||--o{ PERSONAL_DEBTS : "Te deben, Tu debes"
+  TRANSACTIONS ||--o{ PERSONAL_DEBTS : "shared purchase"
+  PERSONAL_DEBTS ||--o{ PERSONAL_DEBT_ALLOCATIONS : "repaid by"
+  TRANSACTIONS ||--o{ PERSONAL_DEBT_ALLOCATIONS : repayment
+  CATEGORIES ||--o{ BUDGETS : "limite"
+  PROFILES ||--o{ MODOS : "trips (v1.1)"
+  PROFILES ||--o{ COMMANDS : "actions applied"
+  PROFILES ||--o{ CYCLE_SUMMARIES : "one per closed cycle"
+</pre>
+    </div>
+    <figcaption>Loans are accounts of type LOAN. <code>accounts</code> already has <code>loan_amount</code>, <code>interest_rate</code>, <code>monthly_payment</code>, <code>payment_day</code>, <code>loan_start_date</code> and <code>loan_end_date</code>, so D3 needs no new columns. A loan's cuota is a bill (template → occurrences).</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>How your earlier decisions land in the data</h2>
+  <table>
+    <thead><tr><th>Decision</th><th>What changes in the database</th><th>Why this way</th></tr></thead>
+    <tbody>
+      <tr><td><b>S1-1</b> offline commands</td><td>New <code>commands</code>: command id (created on the phone), device, type, payload, applied-at, result. New rows get their ids on the phone, so an offline purchase has the same id before and after sync.</td><td>The id makes replays harmless: the server skips a command it already applied. Phone-made ids mean nothing gets renumbered at sync.</td></tr>
+      <tr><td><b>S1-2</b> latest edit wins, per field</td><td>New <code>field_versions</code>: for your choices (category, note, split, cuotas, trip, bill link), which command last set each field, and when.</td><td>Needed to decide "latest" per field without adding timestamp columns to encrypted tables (each column added there is a 6-step migration).</td></tr>
+      <tr><td><b>S1-3</b> cycle summaries</td><td>New <code>cycle_summaries</code>: user, cycle start and end, contents as JSON, when computed, "updated by statement" flag. One row per closed cycle.</td><td>JSON because the summary is a snapshot the app reads whole. It's never queried field by field, and its contents can grow without migrations.</td></tr>
+      <tr><td><b>D1</b> accounts from PDFs, unknown last-4</td><td>Nothing new. <code>accounts</code> + <code>statement_snapshots</code> already hold what a PDF says.</td><td>—</td></tr>
+      <tr><td><b>D2</b> past cycles</td><td>Served by <code>cycle_summaries</code>.</td><td>—</td></tr>
+      <tr><td><b>D3</b> loans</td><td>Nothing new (fields exist on <code>accounts</code>).</td><td>—</td></tr>
+      <tr><td><b>D5</b> partial bill payments</td><td>New <code>occurrence_payments</code> (occurrence, movement, amount). Today a bill links to exactly one movement.</td><td>A join table is the only way to have many payments per bill. The old single link stays filled (with the latest payment) so the web keeps working.</td></tr>
+      <tr><td><b>D6</b> pay-off</td><td>Nothing new: the payment command closes the loan's remaining occurrences (<code>skipped</code>) and ends the template.</td><td>The consequence is computed by the engine, not stored twice.</td></tr>
+      <tr><td><b>D8</b> Tú debes</td><td>Nothing new. <code>personal_debts.direction = 'borrowed'</code> exists; v2 starts using it.</td><td>—</td></tr>
+      <tr><td>Pay schedule</td><td>New <code>user_cycle_settings</code>: schedule type, paydays, income per cycle, savings per cycle, balance anchor.</td><td>A separate table instead of new columns on the encrypted <code>profiles</code> (avoids the 6-step process). Income amounts get encrypted like names.</td></tr>
+      <tr><td>Merchant teaching</td><td>New <code>merchant_policy</code>: mode (Siempre / Casi siempre / Pregúntame), usual categories, "ask above $X", recent corrections. The usual category stays on <code>destinatarios.default_category_id</code>.</td><td>Same reason: side table, no change to the encrypted <code>destinatarios</code>.</td></tr>
+      <tr><td>25 categories</td><td>25 new system rows in <code>categories</code>, grouped by <code>parent_id</code>. <code>category_migration_map</code> records each user's old → new mapping.</td><td>Old categories are kept (the web still uses them) until the user accepts the new list (S2-3).</td></tr>
+      <tr><td>Notification capture</td><td><code>NOTIFICATION</code> added to the capture-method list (tier 2). New <code>notification_template_packs</code> (signed, shared), <code>user_notification_templates</code> (yours), <code>capture_heartbeats</code> (source health).</td><td>The pack is shared and signed so a bank's wording change is fixed for everyone within hours, without an app release.</td></tr>
+      <tr><td>Gmail, push, merchant naming</td><td>New <code>gmail_connections</code> (token encrypted, never sent to the phone), <code>push_tokens</code>, <code>merchant_suggestions</code> (global cache, no personal data).</td><td>—</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>Every table, and what v2 does with it</h2>
+  <div class="legend" style="margin-bottom:10px">
+    <span><b class="k-keep">Keep</b> used by v2 as is</span>
+    <span><b class="k-chg">Keep+</b> used, gains new meaning or rows</span>
+    <span><b class="k-ret">Freeze</b> v2 stops using it; data untouched while the web app lives</span>
+  </div>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Area</th><th>Tables</th><th>v2</th><th>Note</th></tr></thead>
+    <tbody>
+      <tr><td>You</td><td><code>profiles</code>🔒, <code>user_encryption_keys</code></td><td class="k-keep">Keep</td><td>Your encryption key is created at sign-up</td></tr>
+      <tr><td>Accounts</td><td><code>accounts</code>🔒, <code>statement_snapshots</code>🔒, <code>pdf_passwords</code>🔒</td><td class="k-keep">Keep</td><td>Loans and cards included</td></tr>
+      <tr><td>Movements</td><td><code>transactions</code>🔒</td><td class="k-chg">Keep+</td><td>New capture method <code>NOTIFICATION</code>; ids can come from the phone</td></tr>
+      <tr><td>Merchants and people</td><td><code>destinatarios</code>🔒, <code>destinatario_rules</code></td><td class="k-chg">Keep+</td><td>Become the only rule system; <code>kind</code> = merchant or person</td></tr>
+      <tr><td>Categories</td><td><code>categories</code></td><td class="k-chg">Keep+</td><td>+25 system categories</td></tr>
+      <tr><td>Old category rules</td><td><code>category_rules</code> (266 rules)</td><td class="k-chg">Keep, then merge</td><td>Converted into merchant defaults; frozen after</td></tr>
+      <tr><td>Bills</td><td><code>recurring_transaction_templates</code>🔒, <code>recurring_occurrences</code></td><td class="k-chg">Keep+</td><td>Occurrences get many payments via <code>occurrence_payments</code></td></tr>
+      <tr><td>People debts</td><td><code>personal_debts</code>, <code>personal_debt_allocations</code></td><td class="k-chg">Keep+</td><td>"borrowed" comes back into use (Tú debes)</td></tr>
+      <tr><td>Límites</td><td><code>budgets</code></td><td class="k-keep">Keep</td><td>One row per limited category</td></tr>
+      <tr><td>Trips</td><td><code>modos</code>, <code>modo_participants</code>, <code>modo_tx_reviews</code></td><td class="k-keep">Keep (v1.1)</td><td>"¿Es del viaje?" reuses the review table</td></tr>
+      <tr><td>Email capture</td><td><code>email_ingest_addresses</code>🔒, <code>email_ingest_allowed_senders</code>, <code>email_ingest_logs</code>, <code>pending_email_transactions</code>, <code>pending_email_statements</code>, <code>unrecognized_emails</code></td><td class="k-keep">Keep</td><td>Pending email rows show up as Revisar cards</td></tr>
+      <tr><td>Platform</td><td><code>exchange_rate_cache</code>, <code>product_events</code>, <code>bug_reports</code>, <code>admin_config</code></td><td class="k-keep">Keep</td><td>FX, analytics, bug reports</td></tr>
+      <tr><td>Subscriptions</td><td><code>subscriptions</code> (5 rows)</td><td class="k-ret">Freeze</td><td>Each becomes a normal bill at migration</td></tr>
+      <tr><td>Tags</td><td><code>tags</code>, <code>tag_groups</code>, <code>transaction_tags</code>, <code>category_tags</code>, <code>destinatario_tags</code>, <code>recurring_template_tags</code></td><td class="k-ret">Freeze</td><td>D4: later; data kept for that update</td></tr>
+      <tr><td>Planning</td><td><code>planning_periods</code>, <code>planning_entries</code>, <code>planning_assignments</code></td><td class="k-ret">Freeze</td><td>Replaced by Disponible + Pagos</td></tr>
+      <tr><td>Simulators</td><td><code>budget_scenarios</code>, <code>debt_scenarios</code> (0 rows)</td><td class="k-ret">Freeze</td><td>Never used</td></tr>
+      <tr><td>Wishlist</td><td><code>wishlist_items</code>🔒, <code>wishlist_reflections</code></td><td class="k-ret">Freeze</td><td>3 items in production</td></tr>
+      <tr><td>Other</td><td><code>financial_reminders</code>, <code>statement_tray_dismissals</code>, <code>capture_tokens</code>🔒 (Telegram/API), <code>design_reviews</code></td><td class="k-ret">Freeze</td><td>Bills + push replace reminders</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p style="font-size:13px;color:var(--muted);margin-top:8px">🔒 = encrypted table (a real <code>*_enc</code> table behind a view that decrypts for you). 46 tables today, 10 of them encrypted. v2 keeps using 28, freezes 18 and adds 13.</p>
+</section>
+
+<section>
+  <h2>How encryption works, from the server to your phone</h2>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 960 170" role="img" aria-label="Encryption chain: a master key in Supabase Vault protects a per-user key; the per-user key encrypts names and notes in the _enc tables; a view decrypts them only for the signed-in user; they travel over HTTPS to the phone, whose database file is encrypted with a key kept in the phone's keychain.">
+      <defs><marker id="e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah"/></marker></defs>
+      <rect x="10" y="40" width="150" height="56" rx="8" class="g-store"/><text x="85" y="64" text-anchor="middle">Master key</text><text x="85" y="81" text-anchor="middle" class="sub">Supabase Vault</text>
+      <rect x="200" y="40" width="150" height="56" rx="8" class="g-store"/><text x="275" y="64" text-anchor="middle">Your own key</text><text x="275" y="81" text-anchor="middle" class="sub">one per user</text>
+      <rect x="390" y="40" width="150" height="56" rx="8" class="g-store"/><text x="465" y="64" text-anchor="middle">*_enc tables</text><text x="465" y="81" text-anchor="middle" class="sub">names, notes: ciphertext</text>
+      <rect x="580" y="40" width="150" height="56" rx="8" class="g-server"/><text x="655" y="64" text-anchor="middle">View</text><text x="655" y="81" text-anchor="middle" class="sub">decrypts for you only</text>
+      <rect x="770" y="40" width="180" height="56" rx="8" class="g-phone"/><text x="860" y="64" text-anchor="middle">Phone database</text><text x="860" y="81" text-anchor="middle" class="sub">file encrypted (S2-1)</text>
+      <line x1="160" y1="68" x2="198" y2="68" class="ar" marker-end="url(#e)"/><text x="163" y="60" class="lbl">locks</text>
+      <line x1="350" y1="68" x2="388" y2="68" class="ar" marker-end="url(#e)"/><text x="351" y="60" class="lbl">encrypts</text>
+      <line x1="540" y1="68" x2="578" y2="68" class="ar" marker-end="url(#e)"/>
+      <line x1="730" y1="68" x2="768" y2="68" class="ar" marker-end="url(#e)"/><text x="733" y="60" class="lbl">HTTPS</text>
+      <text x="10" y="130" class="lbl">Search without decrypting: names and card masks also get a keyed fingerprint (blind index), e.g. to find "RAPPI" rules.</text>
+      <text x="10" y="148" class="lbl">Amounts, dates and ids stay plain: the database must add them up and sort by them.</text>
+    </svg>
+    </div>
+    <figcaption>A stolen database dump shows amounts but not who you paid or what you wrote. The phone gets plain values over HTTPS (it must, to work offline), so its database file needs its own protection.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>How the database gets created and changed</h2>
+  <div class="two">
+    <div class="card"><h3>For a new user</h3>
+      <ul style="font-size:14px">
+        <li>Sign-in creates the account (Supabase Auth)</li>
+        <li>A database trigger creates your profile and your own encryption key</li>
+        <li>The 25 categories are shared system rows (nothing to copy)</li>
+        <li>Onboarding writes your pay schedule and first balance, as commands</li>
+        <li>The phone creates its local database on first launch and pulls your data</li>
+      </ul>
+    </div>
+    <div class="card"><h3>For every schema change</h3>
+      <ul style="font-size:14px">
+        <li>Written as a migration file in <code>supabase/migrations/</code> (163 so far)</li>
+        <li>Reviewed by the <code>supabase-migrator</code> agent; mandatory for 🔒 tables</li>
+        <li>Applied to the <b>dev project</b> first (S1-5), with the command tests run against it</li>
+        <li>Applied to production by hand (<code>supabase db push</code>): deploys don't run migrations</li>
+        <li>Additive only until v2 ships (S1-4)</li>
+        <li>The phone's database has its own numbered migrations, run at app start</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Decisions for this session</h2>
+  <div class="decisions">
+
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S2-1</span><h3>Encrypt the phone's database file?</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> <b>Yes, SQLCipher.</b> The phone's database file is encrypted; its key lives in the iPhone Keychain / Android Keystore. The local database re-syncs once from scratch.</p>
+    </div>
+
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S2-2</span><h3>How long do we keep the details of each command?</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> <b>Details for 90 days, id forever.</b> Command details are encrypted with your key while kept; after 90 days only id, type and date remain.</p>
+    </div>
+
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S2-3</span><h3>Moving existing users to the 25 categories</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> <b>Proposed, one tap to accept.</b> A first-launch card shows the mapping with [Usar las 25] / [Mantener las mías]; your extra categories remain.</p>
+    </div>
+
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S2-4</span><h3>What happens to frozen tables after v2 ships?</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> <b>Keep 6 months, then export and drop.</b> Each user's frozen data is exported (downloadable from Ajustes) before the tables are dropped; tags stay until D4 is decided.</p>
+    </div>
+
+    
+
+  </div>
+</section>
+
+<footer style="color:var(--muted);font-size:13px">Next: session 3, the Disponible engine. It covers how the number is calculated, with worked examples for cards, cuotas, Te deben / Tú debes, partial payments and pay-off.</footer>
+</main>

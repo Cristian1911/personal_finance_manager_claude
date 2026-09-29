@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="height:100%;display:flex;flex-direction:column;background:var(--bg);position:relative;overflow:hidden">
+  <div style="flex:1;min-height:0;overflow:hidden;padding:2px 16px 16px;display:flex;flex-direction:column;gap:12px">
+    <sc-if value="{{ normalHead }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;align-items:center;gap:10px;padding:2px 0 0">
+        <div style="flex:1;min-width:0"><div style="font:600 17px var(--ui)">Hola, Laura</div><div style="font:500 13px var(--ui);color:var(--ink2)">Jueves 18 sep</div></div>
+        <div style="height:36px;padding:0 12px;border-radius:10px;border:1.5px solid var(--ctl);display:flex;align-items:center;gap:6px;font:600 13px var(--ui);box-sizing:border-box"><x-import component="Icono" from="./icono.js" n="grip" s="14" hint-size="14px,14px"></x-import>Organizar</div>
+        <div style="width:36px;height:36px;border-radius:10px;background:var(--btn);color:var(--btn-ink);display:flex;align-items:center;justify-content:center"><x-import component="Icono" from="./icono.js" n="mic" s="18" hint-size="18px,18px"></x-import></div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ editHead }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;gap:10px;padding:2px 0 0">
+        <div style="flex:1;min-width:0"><div style="font:600 17px var(--ui)">Organizar Inicio</div><div style="font:500 13px var(--ui);color:var(--ink2)">Arrastra para mover · toca el tamaño</div></div>
+        <div style="height:36px;padding:0 16px;border-radius:10px;background:var(--btn);color:var(--btn-ink);display:flex;align-items:center;font:600 14px var(--ui)">Listo</div>
+      </div>
+    </sc-if>
+    <div style="{{ dispWrap }}">
+      <dc-import name="Z Disponible" st="{{ dst }}" hint-size="100%,190px"></dc-import>
+      <sc-if value="{{ editHead }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;top:12px;right:12px;height:24px;padding:0 9px;border-radius:7px;background:var(--card);color:var(--ink2);font:600 11px var(--ui);display:flex;align-items:center;gap:4px"><x-import component="Icono" from="./icono.js" n="lock" s="12" hint-size="12px,12px"></x-import>Fijo</span></sc-if>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:stretch">
+      <sc-for list="{{ cells }}" as="c" hint-placeholder-count="6">
+        <div style="{{ c.span }}">
+          <dc-import name="Z Widget" k="{{ c.k }}" size="{{ c.size }}" st="{{ c.st }}" mode="{{ c.mode }}" open="{{ c.open }}" dim="{{ c.dim }}" sel="{{ c.sel }}" edit="{{ c.edit }}" hint-size="100%,148px"></dc-import>
+        </div>
+      </sc-for>
+    </div>
+    <sc-if value="{{ editHead }}" hint-placeholder-val="{{ false }}">
+      <div style="height:48px;border-radius:12px;border:1.5px solid var(--ctl);display:flex;align-items:center;justify-content:center;gap:8px;font:600 15px var(--ui);flex:none;box-sizing:border-box"><x-import component="Icono" from="./icono.js" n="plus" s="18" hint-size="18px,18px"></x-import>Agregar widget</div>
+    </sc-if>
+  </div>
+  <dc-import name="Z Tabs" a="inicio" hint-size="100%,84px"></dc-import>
+  <sc-if value="{{ sheet }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;background:var(--scrim);z-index:20"></div>
+    <div style="position:absolute;left:0;right:0;bottom:0;z-index:21;background:var(--card);border-radius:26px 26px 0 0;padding:8px 20px 34px;display:flex;flex-direction:column;gap:4px">
+      <div style="width:38px;height:5px;border-radius:3px;background:var(--ctl);align-self:center;margin-bottom:10px"></div>
+      <div style="display:flex;align-items:center"><div style="flex:1;font:600 20px var(--ui)">Agregar widget</div><span style="width:32px;height:32px;border-radius:99px;border:1.5px solid var(--ctl);display:flex;align-items:center;justify-content:center;box-sizing:border-box"><x-import component="Icono" from="./icono.js" n="x" s="14" hint-size="14px,14px"></x-import></span></div>
+      <div style="font:500 13px var(--ui);color:var(--ink2);margin-bottom:6px">Cada widget responde una pregunta.</div>
+      <sc-for list="{{ add }}" as="a" hint-placeholder-count="6">
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)">
+          <div style="width:38px;height:38px;border-radius:12px;background:var(--sunk);display:flex;align-items:center;justify-content:center;flex:none"><x-import component="Icono" from="./icono.js" n="{{ a.i }}" s="18" hint-size="18px,18px"></x-import></div>
+          <div style="flex:1;min-width:0"><div style="font:600 15px var(--ui)">{{ a.t }}</div><div style="font:400 13px var(--ui);color:var(--ink2)">{{ a.q }}</div></div>
+          <sc-if value="{{ a.plus }}" hint-placeholder-val="{{ false }}"><span style="height:22px;padding:0 8px;border-radius:99px;background:var(--sunk);color:var(--ink2);font:600 11px var(--ui);display:flex;align-items:center">Plus</span></sc-if>
+          <div style="width:32px;height:32px;border-radius:9px;background:var(--btn);color:var(--btn-ink);display:flex;align-items:center;justify-content:center;flex:none"><x-import component="Icono" from="./icono.js" n="plus" s="16" hint-size="16px,16px"></x-import></div>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.props.screen ?? 'default';
+    const C = (k, size, st = 'n', x = {}) => ({ k, size, st, mode: 'card', open: false, dim: false, sel: false, edit: false, ...x });
+    const L = {
+      default: [C('flujo', 'full'), C('hoy', 'half'), C('pago', 'half', 'warn'), C('teDeben', 'half'), C('tarjeta', 'half'), C('ultimos', 'full')],
+      cuidado: [C('flujo', 'full', 'warn'), C('hoy', 'half', 'warn'), C('pago', 'half', 'warn'), C('teDeben', 'half', 'warn'), C('tarjeta', 'half'), C('ultimos', 'full')],
+      rojo: [C('flujo', 'full', 'bad', { open: true }), C('hoy', 'half', 'warn'), C('pago', 'half', 'warn'), C('teDeben', 'half', 'warn'), C('tarjeta', 'half'), C('ultimos', 'full')],
+      panel: [C('flujo', 'full'), C('hoy', 'half', 'n', { dim: true }), C('pago', 'half', 'warn', { sel: true }), C('pago', 'full', 'warn', { mode: 'panel' }), C('teDeben', 'half'), C('tarjeta', 'half')],
+      organizar: [C('flujo', 'full', 'n', { edit: true }), C('hoy', 'half', 'n', { edit: true }), C('pago', 'half', 'warn', { edit: true }), C('teDeben', 'half', 'n', { edit: true }), C('tarjeta', 'half', 'n', { edit: true }), C('ultimos', 'full', 'n', { edit: true })]
+    };
+    const edit = s === 'organizar' || s === 'agregar';
+    const cells = (L[edit ? 'organizar' : s] || L.default).map(c => ({ ...c, span: { gridColumn: c.size === 'full' ? 'span 2' : 'span 1', minWidth: 0 } }));
+    return {
+      normalHead: !edit, editHead: edit, sheet: s === 'agregar', cells,
+      dst: s === 'cuidado' || s === 'rojo' ? 'warn' : 'ok',
+      dispWrap: { position: 'relative', opacity: edit ? 0.55 : 1, flex: 'none' },
+      add: [
+        { i: 'bank', t: 'Deudas', q: '¿Cuánto debo en total?' }, { i: 'gauge', t: 'Límites', q: '¿Me estoy pasando en algo?' },
+        { i: 'wallet', t: 'Mis cuentas', q: '¿Dónde está mi plata?' }, { i: 'pie', t: '¿En qué se me fue?', q: '¿En qué gasté este ciclo?' },
+        { i: 'store', t: 'Tus comercios', q: '¿Dónde compro más?' }, { i: 'dollar', t: 'Dólar hoy', q: '¿Cuánto vale mi deuda en dólares?' },
+        { i: 'plane', t: 'Viaje', q: '¿Cómo voy con el viaje?', plus: true }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
