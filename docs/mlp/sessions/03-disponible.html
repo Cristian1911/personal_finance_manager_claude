@@ -131,7 +131,7 @@ tr.tot td{font-weight:650;border-top:2px solid var(--ink)}
         <tr><td>Llega este ciclo</td><td>Salary, arrived 15 Sep</td><td class="r pos">+2.100.000</td></tr>
         <tr><td rowspan="3">Por pagar</td><td>Arriendo, 19 Sep</td><td class="r">−700.000</td></tr>
         <tr><td>Netflix, 24 Sep</td><td class="r">−38.900</td></tr>
-        <tr><td>Tarjeta Nu bill, due 22 Sep</td><td class="r">−640.000</td></tr>
+        <tr><td>Tarjeta Nu, pago mínimo, due 22 Sep</td><td class="r">−640.000</td></tr>
         <tr><td>Ahorro</td><td>Her choice</td><td class="r">−200.000</td></tr>
         <tr><td>Ya salió</td><td>15–18 Sep, debit only: Éxito, Uber, Tostao…</td><td class="r">−100.000</td></tr>
         <tr class="tot"><td>Disponible</td><td>÷ 12 days = $35.000 al día</td><td class="r">421.100</td></tr>
@@ -139,17 +139,17 @@ tr.tot td{font-weight:650;border-top:2px solid var(--ink)}
     </table>
     <div class="card">
       <h3>The card only matters through its bill</h3>
-      <p style="font-size:14px">Her Nu card's available credit is <b>not</b> money she has. It's how much more debt she could take on. Buying with the card only lowers that available credit. What touches Disponible is the <b>bill</b>: $640.000 due on 22 Sep, inside this cycle.</p>
+      <p style="font-size:14px">Her Nu card's available credit is <b>not</b> money she has. It's how much more debt she could take on. Buying with the card only lowers that available credit. What touches Disponible is the <b>bill</b>. By default its minimum payment (S3-6): $640.000 due on 22 Sep, inside this cycle. The rest of the $1.850.000 she owes stays as card debt.</p>
       <table style="font-size:13.5px">
         <tbody>
-          <tr><td>Purchases 9 Aug–8 Sep</td><td class="r">410.900</td></tr>
+          <tr><td>Purchases at 1 cuota, 9 Aug–8 Sep</td><td class="r">410.900</td></tr>
           <tr><td>Samsung cuota 4 of 12</td><td class="r">118.000</td></tr>
           <tr><td>Interest and fees</td><td class="r">11.100</td></tr>
-          <tr><td>Balance from before Zeta</td><td class="r">100.000</td></tr>
-          <tr class="tot"><td>Bill due 22 Sep</td><td class="r">640.000</td></tr>
+          <tr><td>Cuotas of older purchases</td><td class="r">100.000</td></tr>
+          <tr class="tot"><td>Minimum due 22 Sep</td><td class="r">640.000</td></tr>
         </tbody>
       </table>
-      <p style="font-size:13px;color:var(--muted);margin:8px 0 0">Before the PDF arrives, Zeta projects the bill from the card purchases it saw, plus cuotas and estimated interest. The PDF replaces the projection with the exact amount.</p>
+      <p style="font-size:13px;color:var(--muted);margin:8px 0 0">Before the PDF arrives, Zeta estimates it from what it saw: 1-cuota purchases in full, this month's cuota of each purchase, and estimated interest on the balance. The PDF replaces the estimate with the exact amount.</p>
     </div>
   </div>
 </section>
@@ -198,7 +198,7 @@ tr.tot td{font-weight:650;border-top:2px solid var(--ink)}
       <tr><td>Between two accounts that count</td><td>None</td><td>Bancolombia → Nequi, both counted</td></tr>
       <tr><td>From an account that counts to one that doesn't</td><td>Down. If you have an Ahorro amount for this cycle, it fills that first (no double subtraction)</td><td>$200.000 to a savings account you keep apart: Ahorro done</td></tr>
       <tr><td>From an account that doesn't count to one that does</td><td>Up ("Traje de mis ahorros")</td><td>Bringing $150.000 back from savings</td></tr>
-      <tr><td>To a credit card (card payment)</td><td>Pays the card bill in Por pagar: no change. Paying before the bill exists lowers Disponible now and the next bill later</td><td>Paying the $640.000 bill on 22 Sep</td></tr>
+      <tr><td>To a credit card (card payment)</td><td>Up to the amount in Por pagar: no change. Anything above it (an extra payment) lowers Disponible now and the card debt</td><td>Paying the $640.000 minimum on 22 Sep</td></tr>
     </tbody>
   </table>
 </section>
@@ -284,23 +284,37 @@ tr.tot td{font-weight:650;border-top:2px solid var(--ink)}
       <p style="margin:0"><span class="decided-tag">DECIDED</span> <b>S3-1</b> An ATM withdrawal counts when made ("Efectivo y otros"); logging cash later only relabels it. <b>S3-2</b> A card purchase ≥ $300.000 enters the <i>projected card bill</i> in full until you say how many cuotas (threshold editable). <b>S3-3</b> Leftovers: ask; if unanswered, they stay available. <b>S3-4</b> Cuidado at 85%, fixed, 24 h to improve.</p>
     </div>
 
-    <div class="dec">
-      <div class="dec-h"><span class="dec-id">S3-5</span><h3>How do we keep a growing card bill from being a surprise?</h3></div>
-      <p style="margin:0;font-size:14px;color:var(--muted)">With the card-bill rule, a card purchase made today first counts about 5 weeks later (see the timeline). Someone who spends heavily on the card could see "Vas bien" all cycle and then get a big bill.</p>
-      <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>Same number, plus a look-ahead</b>Inicio shows "Tarjeta Nu · próxima factura $480.000 (vence 22 oct)" under Por pagar, for information only. And the verdict looks one cycle ahead: if next cycle's projected Disponible (expected income − known bills − that card bill) would go below 0, today's verdict turns <b>Cuidado</b> with the reason "Tu próxima factura de Nu ya va en $480.000".</div>
-        <div class="opt"><b>Information line only</b>Show the growing bill, never affect the verdict. Pure, but the pill can say "Vas bien" while next cycle is already in trouble.</div>
-      </div>
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S3-5</span><h3>A growing card bill is never a surprise</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> Same number, plus a look-ahead. Inicio shows each card's next bill as it grows ("Tarjeta Nu · próxima factura ≈ $480.000 · al corte ≈ $620.000 si sigues a este ritmo"), estimated from your card spending so far and your usual pace until the cut date. If that bill would push next cycle below 0, today's verdict turns Cuidado with the reason.</p>
     </div>
 
-    <div class="dec">
+    <div class="dec decided">
       <div class="dec-h"><span class="dec-id">S3-6</span><h3>Which card bill amount goes into Por pagar?</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> <b>The minimum payment, by default</b>, because that's what most people pay. The rest stays as card debt (Pagos › Deudas) and its interest shows in the next bill. <b>Later version:</b> when a cycle has money left, suggest an extra payment with its real impact ("Si abonas $200.000, te ahorras $38.000 de intereses y terminas 4 meses antes").</p>
+    </div>
+
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S3-T</span><h3>A timeline of your money</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> You liked the timeline diagram. v2 gets a timeline view of how money moves across the last, current and next cycle: paydays, bills, card cuts and due dates, and the projected balance. Design variations come in session 5.</p>
+    </div>
+
+    <div class="dec">
+      <div class="dec-h"><span class="dec-id">S3-7</span><h3>How far ahead do you see bills?</h3></div>
+      <p style="margin:0;font-size:14px;color:var(--muted)">Disponible only covers until the next payday, but a big bill right after it (SOAT, matrícula, predial, a big card bill) needs preparing before.</p>
       <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>The total, unless you usually pay the minimum</b>Por pagar uses the full statement amount. A per-card setting "Suelo pagar el mínimo" switches it to the minimum; the rest stays as card debt (visible in Pagos › Deudas) and its interest shows in the next bill.</div>
-        <div class="opt"><b>Always the minimum</b>A friendlier number, but it hides growing debt and interest, the opposite of honest.</div>
+        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>60 days + big bills up to 12 months ahead, with "apartar"</b>Pagos and the timeline show the next 60 days, grouped by cycle. Any bill in the next 12 months larger than 30% of one cycle's income also appears as "Prepárate", with a suggestion: "Aparta $120.000 por ciclo para el SOAT del 15 dic". Accepting creates a reservation that works like Ahorro: subtracted every cycle, released when the bill is paid.</div>
+        <div class="opt"><b>Next 2 cycles only</b>Simpler, but a yearly bill appears only a month before it's due.</div>
       </div>
     </div>
 
+    <div class="dec">
+      <div class="dec-h"><span class="dec-id">S3-8</span><h3>Variable bills (EPM, Claro, card bills)</h3></div>
+      <div class="opts">
+        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>Estimate first, real amount as soon as it's known</b>Until the bill arrives, Zeta uses the average of the last 3 payments, marked "≈". Card bills update live from your purchases and become exact with the statement (PDF or the bank's email). For utilities, on the usual arrival day a Revisar card asks "¿Ya te llegó el recibo de EPM? ¿De cuánto?" (one field). Later: read biller emails through Gmail, if you add those senders.</div>
+        <div class="opt"><b>Only the real amount</b>Nothing shows until you type the bill, so it stays hidden from Disponible until then.</div>
+      </div>
+    </div>
   </div>
 </section>
 

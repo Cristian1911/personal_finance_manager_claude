@@ -44,6 +44,8 @@ Every architecture, database and screen decision is checked against this list. N
 | B10 | Get a weekly summary | Push + Inicio card (Sun/Mon) | v1 | ok |
 | B11 | Look at a past cycle: its result (sobró / te pasaste), the four lines, where the money went, its movements | Inicio cycle switcher (‹ ciclo ›) | v1 | D2 |
 | B12 | See my total debt (cards + loans) and what's left on each | Pagos › Deudas section | v1 | D3 |
+| B14 | See how my money will move across the last, current and next cycle (timeline) | Timeline view (session 5 designs it) | v1 | S3-T |
+| B15 | See my next card bill growing as I use the card, and what it will be at the cut | Inicio, Pagos › card | v1 | S3-5 |
 | B13 | See a home-screen widget with my Disponible | Widget | v1.1 | ok |
 
 ## C. Recording money that moves
@@ -102,6 +104,8 @@ Every architecture, database and screen decision is checked against this list. N
 | E9 | Link a movement to the bill it paid (Zeta guessed wrong) | Detalle › "Pagó…" | v1 | ok |
 | E10 | Get reminded the day before a bill | Push | v1 | ok |
 | E11 | Pay a bill in several parts | Pagos (partial: "Pagado $600.000 de $1.100.000") | v1 | D5 |
+| E13 | See big bills beyond my next payday early enough to prepare | Pagos, timeline | v1 | S3-7 (open) |
+| E14 | See a variable bill's real amount as soon as it arrives | Pagos, Revisar | v1 | S3-8 (open) |
 | E12 | See my subscriptions as a group | — (they're just bills) | out | ok |
 
 ## F. Credit cards, loans and debts with banks
@@ -117,6 +121,7 @@ Every architecture, database and screen decision is checked against this list. N
 | F7 | Register a payment that covers the next minimum **and closes the debt** (pay-off) | Pagos › loan/card › Registrar pago | v1 | D6 |
 | F8 | Make an extra payment to a loan (abono a capital) | Pagos › loan | v1 | D6 |
 | F9 | See how much I still owe on a loan and when it ends | Pagos › loan | v1 | D3 |
+| F12 | Get a suggestion to pay extra on a card/loan when I have money left, with its real impact | Push, Pagos › Deudas | later | S3-6 |
 | F10 | Plan paying off debts (avalanche/snowball, scenarios) | — | out | ok (01: nobody used it) |
 | F11 | Handle a card with USD debt | Pagos › card (≈ COP, "USD 120" subtitle) | v1 | D7 |
 
