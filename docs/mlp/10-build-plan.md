@@ -114,7 +114,7 @@ A native app (iPhone + Android, same store listing `com.venti5.zeta`) that answe
 - **Rules:** additive only until v2 ships; new settings in side tables, never new `_enc` columns; command payloads encrypted with the user's key, kept 90 days, ids forever (S2-2); existing users' categories move to the 25 only if they accept (S2-3).
 
 ## 7. Interface (session 5)
-- **Themes:** Oliva afinada (default) and Nítido (optional; Plus in v1.1), each light and dark → 4 token sets in `mobile/v2/tokens` (S5-1). Oliva's fix: chip/tag borders ≥ 3:1, white cards + soft shadow on deeper sand, stronger Vas-bien tint.
+- **Themes:** Oliva afinada (default) and Nítido (optional; **free in v1, gated behind Plus from v1.1** — don't build the gate before billing), each light and dark → 4 token sets in `mobile/v2/tokens` (S5-1). Oliva's fix: chip/tag borders ≥ 3:1, white cards + soft shadow on deeper sand, stronger Vas-bien tint.
 - **Rules:** black = tap, color = state, gray = data; no side stripes anywhere; only Disponible is bold; widgets centered; see `13-widget-design-rules.md` (S5-R).
 - **Inicio:** Disponible block + 2-column widget grid (13 widgets), alerts with the most critical auto-opening once a day (S5-4).
 - **Tu flujo:** per cycle with 2 edge days; drag to read balance; tap a day for its items; projected line; below $0 in red with the run-out day and per-day cut; next-cycle shortfall in amber with Apartar (S5-2).
@@ -152,7 +152,7 @@ A native app (iPhone + Android, same store listing `com.venti5.zeta`) that answe
 - **Security review** before M7: SQLCipher key handling, command payload encryption, Gmail tokens server-only, RevenueCat webhook auth.
 
 ## 12. The first PR (S7-1)
-**Branch** `feat/v2-engine-skeleton`. **Contents:** `packages/shared/src/engine/` (command model, `StoragePort`, `captureManualTransaction`: validation, idempotency key, counted-account balance delta); SQLite and Postgres adapters; one contract suite run against both, including a replayed command (applied once) and an out-of-order field edit (latest wins); migrations for `commands` and `field_versions` applied to the dev project only. **Proves** S1-1/S1-2 before anything depends on them; invisible to the web app and today's mobile app. **Check:** `pnpm --filter @zeta/shared test` green (both adapters), the integration run green against the dev project, `pnpm build` clean. The detailed implementation plan for this PR is written next (writing-plans).
+**Prerequisite (owner):** create the Supabase dev project and share its URL and keys; until then the Postgres adapter runs only against a local test Postgres. **Branch** `feat/v2-engine-skeleton`. **Contents:** `packages/shared/src/engine/` (command model, `StoragePort`, `captureManualTransaction`: validation, idempotency key, counted-account balance delta); SQLite and Postgres adapters; one contract suite run against both, including a replayed command (applied once) and an out-of-order field edit (latest wins); migrations for `commands` and `field_versions` applied to the dev project only. **Proves** S1-1/S1-2 before anything depends on them; invisible to the web app and today's mobile app. **Check:** `pnpm --filter @zeta/shared test` green (both adapters), the integration run green against the dev project, `pnpm build` clean. The detailed implementation plan for this PR is written next (writing-plans).
 
 ## 13. Risks and external dependencies
 | Risk | Mitigation |
