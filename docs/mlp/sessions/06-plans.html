@@ -104,11 +104,13 @@ li{margin:3px 0}
     <thead><tr><th>Feature</th><th>Plan</th><th>Why</th></tr></thead>
     <tbody>
       <tr><td>Disponible, verdict, Tu flujo, Inicio widgets, past cycles</td><td class="free">Free</td><td>The core promise</td></tr>
-      <tr><td>Capture: notifications, SMS, Wallet, Gmail, forwarding, PDF, manual, voice</td><td class="free">Free</td><td>Automatic capture is the product; Gmail is the iPhone's only automatic path</td></tr>
+      <tr><td>Capture: notifications, SMS, Wallet, Gmail, forwarding, manual, voice</td><td class="free">Free</td><td>Automatic capture is the product; Gmail is the iPhone's only automatic path</td></tr>
+      <tr><td>Statement PDFs: <b>3 per month</b></td><td class="free">Free</td><td>Covers 1–3 banks; enough to keep most people's numbers exact</td></tr>
       <tr><td>Revisar, categories, merchant teaching, templates</td><td class="free">Free</td><td>Needed for correct numbers</td></tr>
       <tr><td>Pagos, cards, loans, Te deben / Tú debes, límites (any number)</td><td class="free">Free</td><td>Core</td></tr>
       <tr><td>Oliva theme, light / dark</td><td class="free">Free</td><td>—</td></tr>
       <tr><td>Export (CSV) and delete everything</td><td class="free">Free</td><td>Your data is yours; never paid</td></tr>
+      <tr><td><b>Unlimited statement PDFs</b></td><td class="plus">Plus</td><td>Power users with 5+ statements a month (your decision)</td></tr>
       <tr><td><b>Screenshots</b>: send a bank screenshot, Zeta updates balances and movements</td><td class="plus">Plus</td><td>A vision AI model reads each image: real cost per use</td></tr>
       <tr><td><b>Viajes</b> (trip pots, v1.1)</td><td class="plus">Plus</td><td>An extra used a few times a year</td></tr>
       <tr><td><b>Nítido</b> theme</td><td class="plus">Plus</td><td>A cosmetic thank-you for supporters</td></tr>
@@ -164,56 +166,37 @@ li{margin:3px 0}
   <h2>Decisions for this session</h2>
   <div class="decisions">
 
-    <div class="dec">
+    <div class="dec" style="border-color:var(--server)">
       <div class="dec-h"><span class="dec-id">S6-1</span><h3>Business model</h3></div>
-      <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>Free + "Zeta Plus" subscription</b>The core stays free to grow; Plus covers AI costs and funds the app. Subscriptions match the ongoing cost (AI, Gmail's yearly security assessment, servers).</div>
-        <div class="opt"><b>One-time purchase</b>Simple, but it doesn't cover per-use AI costs forever.</div>
-        <div class="opt"><b>Everything free for now</b>Fastest growth, but screenshots would ship without covering their cost.</div>
-      </div>
+      <p style="margin:0"><span class="rec-tag">DECIDED</span> <b>Free + "Zeta Plus" subscription.</b></p>
     </div>
 
-    <div class="dec">
+    <div class="dec" style="border-color:var(--server)">
       <div class="dec-h"><span class="dec-id">S6-2</span><h3>What's in Plus</h3></div>
-      <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>As in the table</b>Screenshots, Viajes, the Nítido theme, and later the extra-payment suggestions. Everything tied to the core promise, capture and your data stays free.</div>
-        <div class="opt"><b>Screenshots only</b>The narrowest Plus; easy to explain, but little reason to subscribe for people who don't use screenshots.</div>
-      </div>
+      <p style="margin:0"><span class="rec-tag">DECIDED</span> <b>Plus = unlimited statement PDFs (free: 3 per month), screenshots, Viajes, the Nítido theme, and later the extra-payment suggestions.</b> Everything else stays free.</p>
     </div>
 
-    <div class="dec">
+    <div class="dec" style="border-color:var(--server)">
       <div class="dec-h"><span class="dec-id">S6-3</span><h3>Price and trial</h3></div>
-      <p style="margin:0;font-size:14px;color:var(--muted)">A starting point to test, not final. Both stores take 15% at our size.</p>
-      <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>$12.900 al mes · $99.900 al año · 14 días gratis</b>About USD 3 a month, and the yearly plan costs less than 8 months. The trial is managed by the stores (no card tricks).</div>
-        <div class="opt"><b>Lower: $7.900 al mes · $69.900 al año</b>Easier to say yes, but closer to not covering AI and store fees for heavy screenshot users.</div>
-      </div>
+      <p style="margin:0"><span class="rec-tag">DECIDED</span> <b>$12.900 al mes · $99.900 al año · 14 días gratis</b>, as a starting price to test.</p>
     </div>
 
-    <div class="dec">
+    <div class="dec" style="border-color:var(--server)">
       <div class="dec-h"><span class="dec-id">S6-4</span><h3>Billing tool</h3></div>
-      <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>RevenueCat</b>One SDK for both stores, receipts verified for us, webhooks to our server, an offline cache, and a dashboard. Free at our size (verify the current pricing before signing up).</div>
-        <div class="opt"><b>StoreKit + Play Billing directly</b>No third party, but we'd build receipt checks, renewals and refunds for two stores ourselves.</div>
-      </div>
+      <p style="margin:0"><span class="rec-tag">DECIDED</span> <b>RevenueCat.</b></p>
     </div>
 
-    <div class="dec">
+    <div class="dec" style="border-color:var(--server)">
       <div class="dec-h"><span class="dec-id">S6-5</span><h3>Existing users</h3></div>
-      <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>Founders get Plus free for 12 months</b>The ~45 people who signed up before v2 get Plus automatically, with a thank-you note and a clear end date. They're the testers who shaped it.</div>
-        <div class="opt"><b>Plus free forever for founders</b>Generous, but a permanent cost that grows with AI use.</div>
-      </div>
+      <p style="margin:0"><span class="rec-tag">DECIDED</span> <b>Founders (~45 users before v2) get Plus free for 12 months</b>, with a thank-you note and a clear end date.</p>
     </div>
 
-    <div class="dec">
+    <div class="dec" style="border-color:var(--server)">
       <div class="dec-h"><span class="dec-id">S6-6</span><h3>When billing ships</h3></div>
-      <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>v1.1, together with screenshots and Viajes</b>v1 launches with everything free, so store review and launch don't depend on billing. Plus arrives with its first real features, and you'll know which features people love before charging.</div>
-        <div class="opt"><b>v1, from day one</b>Revenue from the start, but store review has more to check and v1 has fewer Plus features to justify the price.</div>
-      </div>
+      <p style="margin:0"><span class="rec-tag">DECIDED</span> <b>Billing ships in v1.1</b> with screenshots and Viajes; v1 launches entirely free (the PDF limit starts with billing).</p>
     </div>
 
+    
   </div>
 </section>
 

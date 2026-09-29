@@ -190,6 +190,7 @@ Every architecture, database and screen decision is checked against this list. N
 | K8 | Delete everything | Ajustes › Privacidad | v1 | ok |
 | K9 | Lock the app with Face ID / fingerprint | Ajustes | v1 | ok (exists) |
 | K10 | Switch light / dark / system theme | Ajustes | v1 | ok |
+| K12 | Try, buy, restore or cancel Zeta Plus; see my plan and this month's PDF count | Paywall (on tapping a Plus feature), Ajustes › Tu plan | v1.1 | S6 |
 | K11 | Save my PDF password so I don't type it every month | PDF import | v1 | ok (exists) |
 
 ---
