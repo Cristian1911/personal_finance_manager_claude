@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="height:100%;display:flex;flex-direction:column;background:var(--bg);overflow:hidden;position:relative">
+  <sc-if value="{{ backHead }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:center;gap:10px;padding:2px 16px 8px;flex:none">
+      <span style="width:36px;height:36px;border-radius:10px;border:1.5px solid var(--ctl);display:flex;align-items:center;justify-content:center;box-sizing:border-box"><x-import component="Icono" from="./icono.js" n="chevL" s="18" hint-size="18px,18px"></x-import></span>
+      <div style="flex:1;text-align:center;font:600 17px var(--ui)">{{ title }}</div><span style="width:36px"></span>
+    </div>
+  </sc-if>
+  <div style="flex:1;min-height:0;overflow:hidden;padding:2px 16px 16px;display:flex;flex-direction:column;gap:12px">
+    <sc-if value="{{ isMovs }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;align-items:flex-end;gap:10px;padding:4px 4px 0"><div style="flex:1;font:600 26px var(--ui);letter-spacing:-0.02em">Movimientos</div><span style="width:36px;height:36px;border-radius:10px;border:1.5px solid var(--ctl);display:flex;align-items:center;justify-content:center;box-sizing:border-box"><x-import component="Icono" from="./icono.js" n="search" s="17" hint-size="17px,17px"></x-import></span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;background:var(--card);border-radius:14px;box-shadow:var(--shadow);height:46px;padding:0 6px">
+        <span style="width:34px;height:34px;display:flex;align-items:center;justify-content:center"><x-import component="Icono" from="./icono.js" n="chevL" s="18" hint-size="18px,18px"></x-import></span>
+        <div style="text-align:center"><div style="font:600 14px var(--ui)">Este ciclo · 15–29 sep</div></div>
+        <span style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;color:var(--ctl)"><x-import component="Icono" from="./icono.js" n="chevR" s="18" hint-size="18px,18px"></x-import></span>
+      </div>
+      <div style="display:flex;gap:6px;overflow:hidden">
+        <span style="height:32px;padding:0 12px;border-radius:9px;background:var(--btn);color:var(--btn-ink);font:600 13px var(--ui);display:flex;align-items:center;white-space:nowrap">Todos</span>
+        <span style="height:32px;padding:0 12px;border-radius:9px;border:1.5px solid var(--ctl);font:600 13px var(--ui);display:flex;align-items:center;white-space:nowrap;box-sizing:border-box">Gastos</span>
+        <span style="height:32px;padding:0 12px;border-radius:9px;border:1.5px solid var(--ctl);font:600 13px var(--ui);display:flex;align-items:center;white-space:nowrap;box-sizing:border-box">Entradas</span>
+        <span style="height:32px;padding:0 12px;border-radius:9px;border:1.5px solid var(--ctl);font:600 13px var(--ui);display:flex;align-items:center;white-space:nowrap;box-sizing:border-box">Préstamos</span>
+        <span style="height:32px;padding:0 12px;border-radius:9px;border:1.5px solid var(--ctl);font:600 13px var(--ui);display:flex;align-items:center;white-space:nowrap;box-sizing:border-box">Tarjetas</span>
+      </div>
+      <sc-for list="{{ grupos }}" as="g" hint-placeholder-count="3">
+        <div style="display:flex;flex-direction:column">
+          <div style="display:flex;justify-content:space-between;font:600 12px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--ink2);padding:4px 4px 6px"><span>{{ g.d }}</span><span>{{ g.t }}</span></div>
+          <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:0 14px">
+            <sc-for list="{{ g.rows }}" as="r">
+              <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)">
+                <div style="width:38px;height:38px;border-radius:11px;background:var(--sunk);display:flex;align-items:center;justify-content:center;font:600 13px var(--ui);color:var(--ink2);flex:none">{{ r.i }}</div>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+                  <div style="display:flex;align-items:baseline;gap:10px"><div style="flex:1;min-width:0;font:500 15px var(--ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.a }}</div><div style="{{ r.cs }}">{{ r.c }}</div></div>
+                  <div style="display:flex;align-items:center;gap:6px;min-width:0">
+                    <span style="flex:0 1 auto;min-width:0;height:22px;padding:0 8px;border-radius:6px;border:1px solid var(--ctl);box-sizing:border-box;display:inline-flex;align-items:center;font:500 12px var(--ui);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.b }}</span>
+                    <span style="flex:1"></span>
+                    <span style="flex:none;height:22px;padding:0 7px;border-radius:6px;background:var(--sunk);display:inline-flex;align-items:center;font:500 11px var(--mono);color:var(--ink2)">{{ r.h }}</span>
+                    <span style="flex:none;height:22px;padding:0 7px;border-radius:6px;background:var(--sunk);display:inline-flex;align-items:center;gap:5px;font:500 11px var(--mono);color:var(--ink2)"><span style="width:6px;height:6px;border-radius:50%;background:var(--ink2)"></span>{{ r.k }}</span>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </sc-if>
+    <sc-if value="{{ isPersonas }}" hint-placeholder-val="{{ false }}">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:14px;text-align:center"><div style="font:500 13px var(--ui);color:var(--ink2)">Te deben</div><div style="font:600 22px var(--num)">$380.000</div></div>
+        <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:14px;text-align:center"><div style="font:500 13px var(--ui);color:var(--ink2)">Tú debes</div><div style="font:600 22px var(--num)">$50.000</div></div>
+      </div>
+      <div style="font:600 12px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--ink2);padding:4px 4px 0">Te deben</div>
+      <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:0 14px">
+        <sc-for list="{{ deben }}" as="r">
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)">
+            <div style="width:38px;height:38px;border-radius:99px;background:var(--sunk);display:flex;align-items:center;justify-content:center;font:600 13px var(--ui);color:var(--ink2);flex:none">{{ r.i }}</div>
+            <div style="flex:1;min-width:0"><div style="font:500 15px var(--ui)">{{ r.a }}</div><div style="font:400 12px var(--ui);color:var(--ink2)">{{ r.b }}</div></div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><div style="font:600 15px var(--num)">{{ r.c }}</div><sc-if value="{{ r.ct }}" hint-placeholder-val="{{ false }}"><span style="height:22px;padding:0 9px;border-radius:99px;background:var(--warn-t);color:var(--warn-x);font:600 11px var(--ui);display:flex;align-items:center">{{ r.ct }}</span></sc-if></div>
+          </div>
+        </sc-for>
+        <div style="display:flex;gap:8px;padding:12px 0">
+          <div style="flex:1;height:42px;border-radius:10px;background:var(--btn);color:var(--btn-ink);display:flex;align-items:center;justify-content:center;font:600 14px var(--ui)">Recordarle a Juan</div>
+          <div style="flex:1;height:42px;border-radius:10px;border:1.5px solid var(--ctl);display:flex;align-items:center;justify-content:center;font:600 14px var(--ui);box-sizing:border-box">Me pagaron</div>
+        </div>
+      </div>
+      <div style="font:600 12px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--ink2);padding:4px 4px 0">Tú debes</div>
+      <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:0 14px">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 0">
+          <div style="width:38px;height:38px;border-radius:99px;background:var(--sunk);display:flex;align-items:center;justify-content:center;font:600 13px var(--ui);color:var(--ink2);flex:none">M</div>
+          <div style="flex:1"><div style="font:500 15px var(--ui)">Mateo</div><div style="font:400 12px var(--ui);color:var(--ink2)">Concierto · aparece en Pagos</div></div>
+          <div style="font:600 15px var(--num)">$50.000</div>
+        </div>
+      </div>
+      <div style="font:500 13px var(--ui);color:var(--ink2);line-height:1.45;padding:0 4px">Lo que prestas no cuenta como gasto. Lo que debes sí baja tu Disponible, como cualquier pago.</div>
+    </sc-if>
+    <sc-if value="{{ isTarjeta }}" hint-placeholder-val="{{ false }}">
+      <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:16px;display:flex;flex-direction:column;gap:6px">
+        <div style="font:500 13px var(--ui);color:var(--ink2)">Próxima factura</div>
+        <div style="font:600 28px var(--num);letter-spacing:-0.02em">≈ $480.000</div>
+        <div style="font:500 13px var(--ui);color:var(--ink2);line-height:1.4">al corte ≈ $620.000 si sigues a este ritmo</div>
+        <div style="position:relative;height:8px;border-radius:9px;background:var(--sunk);box-shadow:inset 0 0 0 1px var(--line);margin-top:8px"><div style="width:77%;height:100%;border-radius:9px;background:var(--ink2)"></div><i style="position:absolute;right:-4px;top:-3px;width:10px;height:10px;background:var(--ink2);transform:rotate(45deg)"></i></div>
+        <div style="display:flex;justify-content:space-between;font:500 12px var(--ui);color:var(--ink2)"><span>Hoy</span><span>Corte 27 sep</span></div>
+      </div>
+      <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:2px 16px">
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)"><div style="flex:1"><div style="font:500 15px var(--ui)">Pago mínimo · 22 sep</div><div style="font:400 12px var(--ui);color:var(--ink2)">Esto es lo que baja tu Disponible</div></div><div style="font:600 15px var(--num)">$640.000</div></div>
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)"><div style="flex:1"><div style="font:500 15px var(--ui)">Debes en total</div></div><div style="font:600 15px var(--num)">$1.850.000</div></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 0"><div style="flex:1"><div style="font:500 15px var(--ui)">Suelo pagar el total</div><div style="font:400 12px var(--ui);color:var(--ink2);line-height:1.4">Si lo activas, descuento $1.850.000 en vez de $640.000.</div></div><span style="width:44px;height:26px;border-radius:99px;border:1.5px solid var(--ctl);box-sizing:border-box;padding:2px;display:flex;flex:none"><span style="width:19px;height:19px;border-radius:99px;background:var(--ctl)"></span></span></div>
+      </div>
+      <div style="font:600 12px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--ink2);padding:4px 4px 0">Compras de este corte · no bajan tu Disponible</div>
+      <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:0 14px">
+        <sc-for list="{{ compras }}" as="r"><div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)"><div style="width:36px;height:36px;border-radius:11px;background:var(--sunk);display:flex;align-items:center;justify-content:center;font:600 12px var(--ui);color:var(--ink2);flex:none">{{ r.i }}</div><div style="flex:1"><div style="font:500 15px var(--ui)">{{ r.a }}</div><div style="font:400 12px var(--ui);color:var(--ink2)">{{ r.b }}</div></div><div style="font:600 15px var(--num)">{{ r.c }}</div></div></sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isCuentas }}" hint-placeholder-val="{{ false }}">
+      <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:14px 16px;text-align:center"><div style="font:500 13px var(--ui);color:var(--ink2)">Cuentan para tu Disponible</div><div style="font:600 26px var(--num);letter-spacing:-0.02em">$1.850.000</div></div>
+      <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:0 16px">
+        <sc-for list="{{ cuentas }}" as="r">
+          <div style="display:flex;flex-direction:column;gap:10px;padding:14px 0;border-bottom:1px solid var(--line)">
+            <div style="display:flex;align-items:center;gap:12px"><div style="width:38px;height:38px;border-radius:11px;background:var(--sunk);display:flex;align-items:center;justify-content:center;font:600 12px var(--ui);color:var(--ink2);flex:none">{{ r.i }}</div><div style="flex:1"><div style="font:500 15px var(--ui)">{{ r.a }}</div><div style="font:400 12px var(--ui);color:var(--ink2)">{{ r.b }}</div></div><div style="font:600 15px var(--num)">{{ r.c }}</div></div>
+            <div style="display:flex;align-items:center;gap:10px;padding-left:50px"><span style="flex:1;font:500 13px var(--ui)">Cuenta para mi Disponible</span><span style="{{ r.tr }}"><span style="{{ r.kn }}"></span></span></div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="height:48px;border-radius:12px;border:1.5px solid var(--ctl);display:flex;align-items:center;justify-content:center;gap:8px;font:600 15px var(--ui);box-sizing:border-box;flex:none"><x-import component="Icono" from="./icono.js" n="plus" s="18" hint-size="18px,18px"></x-import>Agregar cuenta</div>
+    </sc-if>
+    <sc-if value="{{ isPasado }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;justify-content:space-between;background:var(--card);border-radius:14px;box-shadow:var(--shadow);height:46px;padding:0 6px">
+        <span style="width:34px;height:34px;display:flex;align-items:center;justify-content:center"><x-import component="Icono" from="./icono.js" n="chevL" s="18" hint-size="18px,18px"></x-import></span>
+        <div style="font:600 14px var(--ui)">30 ago – 14 sep · cerrado</div>
+        <span style="width:34px;height:34px;display:flex;align-items:center;justify-content:center"><x-import component="Icono" from="./icono.js" n="chevR" s="18" hint-size="18px,18px"></x-import></span>
+      </div>
+      <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:16px;display:flex;flex-direction:column;gap:6px;align-items:flex-start">
+        <span style="display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 11px;border-radius:99px;background:var(--ok-t);color:var(--ok-x);font:600 12px var(--ui)"><i style="width:7px;height:7px;border-radius:9px;background:var(--ok-s)"></i>Vas bien</span>
+        <div style="font:500 13px var(--ui);color:var(--ink2);margin-top:6px">Terminaste con</div>
+        <div style="font:600 30px var(--num);letter-spacing:-0.02em">$64.000</div>
+        <div style="width:100%;display:flex;flex-direction:column;margin-top:6px">
+          <sc-for list="{{ cuatro }}" as="x"><div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line);font:500 14px var(--ui)"><span style="color:var(--ink2)">{{ x.l }}</span><span style="font:600 14px var(--num)">{{ x.v }}</span></div></sc-for>
+        </div>
+      </div>
+      <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+        <div style="font:600 15px var(--ui)">¿En qué se fue?</div>
+        <div style="display:flex;gap:2px;height:10px"><div style="flex:34;border-radius:3px;background:var(--ink2)"></div><div style="flex:26;border-radius:3px;background:var(--ctl)"></div><div style="flex:22;border-radius:3px;background:var(--est)"></div><div style="flex:18;border-radius:3px;background:var(--line)"></div></div>
+        <sc-for list="{{ fue }}" as="x"><div style="display:flex;justify-content:space-between;font:500 14px var(--ui)"><span>{{ x.l }}</span><span style="font:600 14px var(--num)">{{ x.v }}</span></div></sc-for>
+      </div>
+      <div style="height:46px;border-radius:12px;border:1.5px solid var(--ctl);display:flex;align-items:center;justify-content:center;font:600 14px var(--ui);box-sizing:border-box;flex:none">Ver los 47 movimientos</div>
+    </sc-if>
+    <sc-if value="{{ isLimites }}" hint-placeholder-val="{{ false }}">
+      <div style="font:500 14px var(--ui);color:var(--ink2);line-height:1.45;padding:0 4px">Un límite por categoría y por ciclo. Te aviso antes de llegar.</div>
+      <sc-for list="{{ lims }}" as="r">
+        <div style="{{ r.card }}">
+          <div style="display:flex;align-items:center;gap:10px"><div style="flex:1;font:600 15px var(--ui)">{{ r.a }}</div><sc-if value="{{ r.ct }}" hint-placeholder-val="{{ false }}"><span style="height:24px;padding:0 10px;border-radius:99px;background:var(--warn-t);color:var(--warn-x);font:600 12px var(--ui);display:flex;align-items:center;gap:6px"><i style="width:6px;height:6px;border-radius:9px;background:var(--warn-s)"></i>{{ r.ct }}</span></sc-if></div>
+          <div style="display:flex;align-items:baseline;gap:6px"><span style="font:600 20px var(--num)">{{ r.v }}</span><span style="font:500 13px var(--ui);color:var(--ink2)">de {{ r.m }}</span></div>
+          <div style="height:8px;border-radius:9px;background:var(--sunk);box-shadow:inset 0 0 0 1px var(--line);overflow:hidden"><div style="{{ r.bs }}"></div></div>
+          <div style="font:500 12px var(--ui);color:var(--ink2)">{{ r.h }}</div>
+        </div>
+      </sc-for>
+      <div style="height:48px;border-radius:12px;border:1.5px solid var(--ctl);display:flex;align-items:center;justify-content:center;gap:8px;font:600 15px var(--ui);box-sizing:border-box;flex:none"><x-import component="Icono" from="./icono.js" n="plus" s="18" hint-size="18px,18px"></x-import>Nuevo límite</div>
+    </sc-if>
+  </div>
+  <sc-if value="{{ tabs }}" hint-placeholder-val="{{ true }}"><dc-import name="Z Tabs" a="movs" hint-size="100%,84px"></dc-import></sc-if>
+  <sc-if value="{{ isDetalle }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;background:var(--scrim);z-index:20"></div>
+    <div style="position:absolute;left:0;right:0;bottom:0;z-index:21;background:var(--card);border-radius:26px 26px 0 0;padding:8px 20px 34px;display:flex;flex-direction:column;gap:12px">
+      <div style="width:38px;height:5px;border-radius:3px;background:var(--ctl);align-self:center"></div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:44px;height:44px;border-radius:13px;background:var(--sunk);display:flex;align-items:center;justify-content:center;font:600 14px var(--ui);color:var(--ink2)">R</div>
+        <div style="flex:1"><div style="font:600 18px var(--ui)">Rappi</div><div style="font:400 13px var(--ui);color:var(--ink2)">Hoy 12:41 · Bancolombia</div></div>
+        <div style="font:600 22px var(--num)">−$32.000</div>
+      </div>
+      <div style="display:flex;flex-direction:column">
+        <div style="display:flex;align-items:center;gap:10px;height:50px;border-top:1px solid var(--line)"><span style="flex:1;font:500 14px var(--ui);color:var(--ink2)">Categoría</span><span style="height:32px;padding:0 10px;border-radius:9px;border:1.5px solid var(--ctl);display:flex;align-items:center;gap:6px;font:600 13px var(--ui);box-sizing:border-box">Domicilios<x-import component="Icono" from="./icono.js" n="chevD" s="14" hint-size="14px,14px"></x-import></span></div>
+        <div style="display:flex;align-items:center;gap:10px;height:50px;border-top:1px solid var(--line)"><span style="flex:1;font:500 14px var(--ui);color:var(--ink2)">Rappi es</span><span style="font:600 14px var(--ui)">Siempre Domicilios</span></div>
+        <div style="display:flex;align-items:center;gap:10px;height:50px;border-top:1px solid var(--line)"><span style="flex:1;font:500 14px var(--ui);color:var(--ink2)">Cuenta para Disponible</span><span style="font:600 14px var(--ui)">Sí</span></div>
+      </div>
+      <div style="font:400 12px/1.45 var(--mono);color:var(--ink2);background:var(--sunk);border-radius:10px;padding:10px 12px">Bancolombia: Compra por $32.000 en RAPPI*RAPPI COLOMBIA 18/09 12:41. T.Deb *4821</div>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+        <sc-for list="{{ acciones }}" as="a"><div style="height:62px;border-radius:12px;border:1.5px solid var(--ctl);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font:600 12px var(--ui);box-sizing:border-box"><x-import component="Icono" from="./icono.js" n="{{ a.i }}" s="18" hint-size="18px,18px"></x-import>{{ a.l }}</div></sc-for>
+      </div>
+      <div style="height:50px;border-radius:12px;background:var(--btn);color:var(--btn-ink);display:flex;align-items:center;justify-content:center;font:600 15px var(--ui)">Listo</div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.props.screen ?? 'movs';
+    const amt = pos => ({ font: '600 15px var(--num)', whiteSpace: 'nowrap', color: 'var(--ink)' });
+    const R = (i, a, b, c) => ({ i, a, b, c, cs: amt() });
+    const tone = { out: 'var(--bad-x)', in: 'var(--ok-x)', card: 'var(--ink2)', neutral: 'var(--ink2)' };
+    const M = (i, a, b, c, h, k, t) => ({ i, a, b, c, h, k, cs: { font: '600 15px var(--num)', whiteSpace: 'nowrap', flex: 'none', color: tone[t] } });
+    const titles = { personas: 'Te deben · Tú debes', tarjeta: 'Tarjeta Nu', cuentas: 'Mis cuentas', pasado: 'Ciclos', limites: 'Límites' };
+    const sw = on => ({ tr: { width: 44, height: 26, borderRadius: 99, boxSizing: 'border-box', padding: 2, display: 'flex', justifyContent: on ? 'flex-end' : 'flex-start', flex: 'none', background: on ? 'var(--btn)' : 'transparent', border: on ? '1.5px solid var(--btn)' : '1.5px solid var(--ctl)' }, kn: { width: 19, height: 19, borderRadius: 99, background: on ? 'var(--btn-ink)' : 'var(--ctl)' } });
+    const lim = (a, v, m, p, st, ct, h) => ({ a, v, m, ct, h, card: { background: 'var(--card)', borderRadius: 18, boxShadow: 'var(--shadow)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }, bs: { width: p + '%', height: '100%', borderRadius: 9, background: st ? 'var(--warn-s)' : 'var(--ink2)' } });
+    return {
+      isMovs: s === 'movs' || s === 'detalle', isDetalle: s === 'detalle', isPersonas: s === 'personas', isTarjeta: s === 'tarjeta', isCuentas: s === 'cuentas', isPasado: s === 'pasado', isLimites: s === 'limites',
+      backHead: !!titles[s], title: titles[s] || '', tabs: !titles[s],
+      grupos: [
+        { d: 'Hoy · jue 18', t: '−$45.000', rows: [M('R', 'Rappi', 'Domicilios', '−$32.000', '12:41', 'Banc ··4821', 'out'), M('T', 'Tostao', 'Café', '−$8.000', '08:15', 'Nequi', 'out'), M('U', 'Uber', 'Transporte · tarjeta', '−$5.000', '07:52', 'Nu ··4398', 'card')] },
+        { d: 'Mié 17', t: '−$64.000', rows: [M('É', 'Éxito', 'Mercado', '−$64.000', '19:30', 'Banc ··4821', 'out'), M('C', 'Caro', 'Le prestaste · no cuenta', '$45.000', '13:05', 'Nequi', 'neutral')] },
+        { d: 'Lun 15', t: '+$2.100.000', rows: [M('S', 'Salario', 'Pago nómina', '+$2.100.000', '06:02', 'Banc ··4821', 'in'), M('N', 'Ahorros Nu', 'Aparte · no cuenta', '$200.000', '09:10', 'Banc ··4821', 'neutral')] }
+      ],
+      acciones: [{ i: 'split', l: 'Dividir' }, { i: 'users', l: 'Es préstamo' }, { i: 'eye', l: 'Ignorar' }],
+      deben: [{ i: 'J', a: 'Juan', b: 'Hace 34 días · pasajes', c: '$180.000', ct: 'Hace 34 días' }, { i: 'C', a: 'Caro', b: 'Hace 12 días · almuerzo y envío', c: '$140.000' }, { i: 'A', a: 'Ana', b: 'Hace 3 días · almuerzo', c: '$60.000' }],
+      compras: [R('U', 'Uber', 'Hoy', '$5.000'), R('F', 'Falabella', '14 sep', '$189.000'), R('S', 'Spotify', '10 sep', '$16.900')],
+      cuentas: [
+        { i: 'B', a: 'Bancolombia', b: 'Ahorros *4821', c: '$1.320.000', ...sw(true) }, { i: 'N', a: 'Nequi', b: 'Cuenta', c: '$330.000', ...sw(true) },
+        { i: '$', a: 'Efectivo', b: 'Lo que llevas encima', c: '$200.000', ...sw(true) }, { i: 'Nu', a: 'Ahorros Nu', b: 'Aparte', c: '$2.400.000', ...sw(false) }
+      ],
+      cuatro: [{ l: 'Llegó', v: '$2.100.000' }, { l: 'Pagaste', v: '$1.402.000' }, { l: 'Ahorraste', v: '$200.000' }, { l: 'Gastaste', v: '$434.000' }],
+      fue: [{ l: 'Domicilios', v: '$148.000' }, { l: 'Salidas', v: '$112.000' }, { l: 'Mercado', v: '$96.000' }, { l: 'Otros', v: '$78.000' }],
+      lims: [lim('Domicilios', '$165.000', '$180.000', 92, 1, 'Cuidado', 'Te quedan $15.000 · 12 días'), lim('Salidas', '$138.000', '$250.000', 55, 0, '', 'Te quedan $112.000'), lim('Compras', '$80.000', '$200.000', 40, 0, '', 'Te quedan $120.000')]
+    };
+  }
+}
+</script>
+</body>
+</html>

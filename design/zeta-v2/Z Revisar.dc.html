@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="height:100%;display:flex;flex-direction:column;background:var(--bg);overflow:hidden;position:relative">
+  <sc-if value="{{ isLista }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:1;min-height:0;overflow:hidden;padding:2px 16px 16px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:flex-end;gap:10px;padding:4px 4px 2px">
+        <div style="flex:1"><div style="font:600 26px var(--ui);letter-spacing:-0.02em">Revisar</div><div style="font:500 13px var(--ui);color:var(--ink2)">4 preguntas · menos de un minuto</div></div>
+      </div>
+      <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:16px;display:flex;flex-direction:column;gap:12px">
+        <div style="font:400 12px/1.45 var(--mono);color:var(--ink2);background:var(--sunk);border-radius:10px;padding:10px 12px">Bancolombia: Compra por $32.000 en RAPPI*RAPPI COLOMBIA 18/09 12:41</div>
+        <div style="font:600 18px var(--ui);line-height:1.3">¿Rappi siempre es Domicilios?</div>
+        <div style="align-self:flex-start;height:34px;padding:0 10px 0 12px;border-radius:10px;border:1.5px solid var(--ctl);display:flex;align-items:center;gap:6px;font:600 13px var(--ui);box-sizing:border-box"><x-import component="Icono" from="./icono.js" n="tag" s="14" hint-size="14px,14px"></x-import>Domicilios<x-import component="Icono" from="./icono.js" n="chevD" s="14" hint-size="14px,14px"></x-import></div>
+        <div style="display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:8px">
+          <div style="height:44px;border-radius:10px;background:var(--btn);color:var(--btn-ink);display:flex;align-items:center;justify-content:center;font:600 14px var(--ui)">Siempre</div>
+          <div style="height:44px;border-radius:10px;border:1.5px solid var(--ctl);display:flex;align-items:center;justify-content:center;font:600 14px var(--ui);box-sizing:border-box;white-space:nowrap">Casi siempre</div>
+          <div style="height:44px;border-radius:10px;border:1.5px solid var(--ctl);display:flex;align-items:center;justify-content:center;font:600 14px var(--ui);box-sizing:border-box">Depende</div>
+        </div>
+        <div style="font:400 12px var(--ui);color:var(--ink2);line-height:1.4">Siempre: lo aplico a esta y a todas las compras futuras en Rappi.</div>
+      </div>
+      <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:16px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:8px;font:600 12px var(--mono);color:var(--ink2);text-transform:uppercase;letter-spacing:.04em"><x-import component="Icono" from="./icono.js" n="bank" s="14" hint-size="14px,14px"></x-import>Aviso de saldo</div>
+        <div style="font:600 16px var(--ui);line-height:1.35;text-wrap:pretty">Bancolombia dice $1.320.000, yo tengo $1.290.000</div>
+        <div style="font:500 14px var(--ui);color:var(--ink2)">¿Agregar ajuste de $30.000?</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div style="height:44px;border-radius:10px;background:var(--btn);color:var(--btn-ink);display:flex;align-items:center;justify-content:center;font:600 14px var(--ui)">Agregar ajuste</div>
+          <div style="height:44px;border-radius:10px;border:1.5px solid var(--ctl);display:flex;align-items:center;justify-content:center;font:600 14px var(--ui);box-sizing:border-box">Ver movimientos</div>
+        </div>
+      </div>
+      <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:16px;display:flex;flex-direction:column;gap:10px">
+        <div style="font:400 12px/1.45 var(--mono);color:var(--ink2);background:var(--sunk);border-radius:10px;padding:10px 12px">Nequi: Enviaste $45.000 a CAROLINA R. 17/09 21:03</div>
+        <div style="font:600 16px var(--ui)">¿Qué fue este envío a Caro?</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <div style="height:40px;padding:0 14px;border-radius:10px;border:1.5px solid var(--ctl);display:flex;align-items:center;font:600 14px var(--ui);box-sizing:border-box">Le presté</div>
+          <div style="height:40px;padding:0 14px;border-radius:10px;border:1.5px solid var(--ctl);display:flex;align-items:center;font:600 14px var(--ui);box-sizing:border-box">Le pagué algo</div>
+          <div style="height:40px;padding:0 14px;border-radius:10px;border:1.5px solid var(--ctl);display:flex;align-items:center;font:600 14px var(--ui);box-sizing:border-box">Gasto</div>
+        </div>
+      </div>
+      <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:14px 16px;display:flex;align-items:center;gap:12px">
+        <div style="flex:1"><div style="font:600 15px var(--ui)">12 comercios por enseñar</div><div style="font:400 13px var(--ui);color:var(--ink2)">Arrástralos a su categoría</div></div>
+        <div style="height:40px;padding:0 14px;border-radius:10px;background:var(--btn);color:var(--btn-ink);display:flex;align-items:center;font:600 14px var(--ui);white-space:nowrap">Ordenar en 1 min</div>
+      </div>
+    </div>
+    <dc-import name="Z Tabs" a="revisar" hint-size="100%,84px"></dc-import>
+  </sc-if>
+  <sc-if value="{{ isOrdenar }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;min-height:0;overflow:hidden;padding:2px 16px 34px;display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="width:36px;height:36px;border-radius:10px;border:1.5px solid var(--ctl);display:flex;align-items:center;justify-content:center;box-sizing:border-box"><x-import component="Icono" from="./icono.js" n="x" s="16" hint-size="16px,16px"></x-import></span>
+        <div style="flex:1;text-align:center"><div style="font:600 17px var(--ui)">Ordenar en 1 minuto</div><div style="font:500 12px var(--ui);color:var(--ink2)">3 de 12</div></div><span style="width:36px"></span>
+      </div>
+      <div style="height:6px;border-radius:9px;background:var(--sunk);box-shadow:inset 0 0 0 1px var(--line)"><div style="width:25%;height:100%;border-radius:9px;background:var(--ink2)"></div></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center">
+        <span style="height:26px;padding:0 10px;border-radius:99px;background:var(--ok-t);color:var(--ok-x);font:600 12px var(--ui);display:flex;align-items:center;gap:4px"><x-import component="Icono" from="./icono.js" n="check" s="12" w="2.4" hint-size="12px,12px"></x-import>Rappi · Domicilios</span>
+        <span style="height:26px;padding:0 10px;border-radius:99px;background:var(--ok-t);color:var(--ok-x);font:600 12px var(--ui);display:flex;align-items:center;gap:4px"><x-import component="Icono" from="./icono.js" n="check" s="12" w="2.4" hint-size="12px,12px"></x-import>Tostao · Café</span>
+      </div>
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;min-height:170px">
+        <div style="width:230px;background:var(--card);border-radius:20px;box-shadow:0 12px 30px rgba(20,20,10,.22),0 0 0 2px var(--ink);padding:18px;display:flex;flex-direction:column;align-items:center;gap:6px;transform:rotate(-4deg) translate(-26px,40px);position:relative">
+          <div style="width:48px;height:48px;border-radius:14px;background:var(--sunk);display:flex;align-items:center;justify-content:center;font:600 16px var(--ui);color:var(--ink2)">D1</div>
+          <div style="font:600 18px var(--ui)">Tiendas D1</div>
+          <div style="font:500 13px var(--ui);color:var(--ink2)">4 compras este mes</div>
+          <div style="position:absolute;bottom:-18px;right:-8px;color:var(--ink)"><x-import component="Icono" from="./icono.js" n="hand" s="30" hint-size="30px,30px"></x-import></div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+        <sc-for list="{{ zonas }}" as="z" hint-placeholder-count="6"><div style="{{ z.st }}"><x-import component="Icono" from="./icono.js" n="{{ z.i }}" s="18" hint-size="18px,18px"></x-import><span>{{ z.l }}</span></div></sc-for>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="height:46px;border-radius:12px;border:1.5px solid var(--ctl);display:flex;align-items:center;justify-content:center;font:600 14px var(--ui);box-sizing:border-box">Deshacer</div>
+        <div style="height:46px;border-radius:12px;border:1.5px solid var(--ctl);display:flex;align-items:center;justify-content:center;font:600 14px var(--ui);box-sizing:border-box">Saltar este</div>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ isSplit }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;min-height:0;overflow:hidden;padding:2px 16px 34px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="width:36px;height:36px;border-radius:10px;border:1.5px solid var(--ctl);display:flex;align-items:center;justify-content:center;box-sizing:border-box"><x-import component="Icono" from="./icono.js" n="x" s="16" hint-size="16px,16px"></x-import></span>
+        <div style="flex:1;text-align:center;font:600 17px var(--ui)">Anotar gasto</div><span style="width:36px"></span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start;background:var(--sunk);border-radius:16px;padding:14px">
+        <div style="width:34px;height:34px;border-radius:10px;background:var(--btn);color:var(--btn-ink);display:flex;align-items:center;justify-content:center;flex:none"><x-import component="Icono" from="./icono.js" n="mic" s="16" hint-size="16px,16px"></x-import></div>
+        <div style="font:500 15px var(--ui);line-height:1.4">“Almuerzo con Caro y Ana, 96 mil, pagué yo con Nequi”</div>
+      </div>
+      <div style="background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:16px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:baseline;gap:10px"><div style="flex:1"><div style="font:600 17px var(--ui)">Almuerzo</div><div style="font:400 13px var(--ui);color:var(--ink2)">Salidas · Nequi · hoy 13:10</div></div><div style="font:600 22px var(--num)">$96.000</div></div>
+        <div style="display:flex;gap:3px;height:10px"><div style="flex:1;border-radius:4px;background:var(--ink2)"></div><div style="flex:1;border-radius:4px;background:var(--ctl)"></div><div style="flex:1;border-radius:4px;background:var(--est)"></div></div>
+        <sc-for list="{{ partes }}" as="r"><div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)"><div style="width:32px;height:32px;border-radius:99px;background:var(--sunk);display:flex;align-items:center;justify-content:center;font:600 12px var(--ui);color:var(--ink2)">{{ r.i }}</div><div style="flex:1"><div style="font:500 14px var(--ui)">{{ r.a }}</div><div style="font:400 12px var(--ui);color:var(--ink2)">{{ r.b }}</div></div><div style="font:600 14px var(--num)">{{ r.c }}</div></div></sc-for>
+      </div>
+      <div style="font:500 13px var(--ui);color:var(--ink2);line-height:1.45;padding:0 4px">Solo tus $32.000 bajan tu Disponible. Los $64.000 quedan en Te deben.</div>
+      <div style="flex:1"></div>
+      <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:8px">
+        <div style="height:50px;border-radius:12px;border:1.5px solid var(--ctl);display:flex;align-items:center;justify-content:center;font:600 15px var(--ui);box-sizing:border-box">Dividir distinto</div>
+        <div style="height:50px;border-radius:12px;background:var(--btn);color:var(--btn-ink);display:flex;align-items:center;justify-content:center;font:600 15px var(--ui)">Guardar</div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.props.screen ?? 'lista';
+    const z = (l, i, on) => ({ l, i, st: { height: 64, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, font: '600 14px var(--ui)', boxSizing: 'border-box', background: on ? 'var(--sunk)' : 'var(--card)', border: on ? '2px solid var(--ink)' : '1.5px dashed var(--ctl)', color: 'var(--ink)' } });
+    return {
+      isLista: s === 'lista', isOrdenar: s === 'ordenar', isSplit: s === 'split',
+      zonas: [z('Mercado', 'store', true), z('Domicilios', 'receipt'), z('Transporte', 'plane'), z('Salidas', 'star'), z('Hogar', 'home'), z('Otra…', 'plus')],
+      partes: [{ i: 'L', a: 'Tú', b: 'Salidas · cuenta como gasto', c: '$32.000' }, { i: 'C', a: 'Caro', b: 'Te debe', c: '$32.000' }, { i: 'A', a: 'Ana', b: 'Te debe', c: '$32.000' }]
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex;flex-direction:column;gap:10px;font-family:Geist,system-ui,sans-serif">
+  <div style="display:flex;gap:10px;align-items:baseline;font:500 12px 'Geist Mono',ui-monospace,monospace;color:#6B6456">
+    <span style="font:600 13px Geist,system-ui,sans-serif;color:#2A2720">{{ label }}</span><span>{{ meta }}</span>
+  </div>
+  <div style="{{ vars }}">
+    <sc-if value="{{ phone }}" hint-placeholder-val="{{ true }}">
+      <div style="width:var(--fw);height:var(--fh);background:var(--bg);color:var(--ink);font-family:var(--ui);border-radius:46px;overflow:hidden;position:relative;display:flex;flex-direction:column;box-shadow:0 0 0 1px rgba(0,0,0,.14),0 24px 60px rgba(40,30,10,.20)">
+        <div style="height:50px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:8px 30px 0 36px;font:600 15px var(--ui);color:var(--ink)">
+          <span>9:41</span>
+          <div style="display:flex;gap:6px;align-items:center">
+            <div style="display:flex;gap:2px;align-items:flex-end;height:11px"><i style="width:3px;height:4px;background:var(--ink);border-radius:1px"></i><i style="width:3px;height:6px;background:var(--ink);border-radius:1px"></i><i style="width:3px;height:8px;background:var(--ink);border-radius:1px"></i><i style="width:3px;height:11px;background:var(--ink);border-radius:1px"></i></div>
+            <div style="width:24px;height:12px;border:1.5px solid var(--ink);border-radius:4px;padding:1.5px;box-sizing:border-box"><div style="width:70%;height:100%;background:var(--ink);border-radius:1.5px"></div></div>
+          </div>
+        </div>
+        <div style="flex:1;min-height:0;position:relative;display:grid;grid-template-rows:minmax(0,1fr);grid-template-columns:minmax(0,1fr)">{{ children }}</div>
+        <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--ink);z-index:60"></div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ board }}" hint-placeholder-val="{{ false }}">
+      <div style="width:var(--fw);background:var(--bg);color:var(--ink);font-family:var(--ui);border-radius:28px;padding:28px;box-sizing:border-box;box-shadow:0 0 0 1px rgba(0,0,0,.10)">{{ children }}</div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const T = {
+      ol: { name: 'Oliva afinada · claro', bg: '#E9E0CC', card: '#FFFCF5', ink: '#14160F', ink2: '#4B463B', line: '#E6DDC9', ctl: '#8C7F63', sunk: '#EFE7D6', btn: '#14160F', 'btn-ink': '#FFFCF5', est: '#CDBF9F', scrim: 'rgba(20,22,15,.45)', shadow: '0 1px 2px rgba(40,30,10,.10), 0 4px 12px rgba(40,30,10,.06)', num: "Geist, system-ui, sans-serif",
+        ok: ['#CFE0A6', '#2E4A12', '#4E7A1E'], warn: ['#F6D98C', '#5C3F00', '#B27800'], bad: ['#F4BFA8', '#7A2410', '#C4452A'] },
+      od: { name: 'Oliva afinada · oscuro', dark: 1, bg: '#12130E', card: '#1F2119', ink: '#F3EFE3', ink2: '#B8B09C', line: '#2E3027', ctl: '#858270', sunk: '#2A2C22', btn: '#F3EFE3', 'btn-ink': '#12130E', est: '#4A4B3E', scrim: 'rgba(0,0,0,.6)', shadow: '0 0 0 1px rgba(255,255,255,.03), 0 4px 14px rgba(0,0,0,.35)', num: "Geist, system-ui, sans-serif",
+        ok: ['#2A3A14', '#CFE39A', '#8DB84A'], warn: ['#3D2F0A', '#F2CE74', '#E0A626'], bad: ['#43190F', '#F4A58C', '#E0664A'] },
+      nl: { name: 'Nítido · claro', solid: 1, bg: '#EEF0F3', card: '#FFFFFF', ink: '#0E1116', ink2: '#475061', line: '#E3E6EB', ctl: '#7A8394', sunk: '#EEF0F3', btn: '#0E1116', 'btn-ink': '#FFFFFF', est: '#C9CED6', scrim: 'rgba(14,17,22,.45)', shadow: '0 1px 2px rgba(15,20,30,.08), 0 4px 12px rgba(15,20,30,.06)', num: "'Bricolage Grotesque', Geist, sans-serif",
+        ok: ['#DDF3E6', '#0F5C34', '#16804A', '#FFFFFF'], warn: ['#FFF0C2', '#6B4A00', '#F2A900', '#1A1300'], bad: ['#FCE0DB', '#9A2418', '#D1382A', '#FFFFFF'], pill: { ok: 'rgba(255,255,255,.2)', warn: 'rgba(0,0,0,.1)', bad: 'rgba(255,255,255,.2)' } },
+      nd: { name: 'Nítido · oscuro', solid: 1, dark: 1, bg: '#0B0D10', card: '#171B21', ink: '#F4F6F8', ink2: '#A7AFBC', line: '#262B33', ctl: '#6B7383', sunk: '#20252C', btn: '#F4F6F8', 'btn-ink': '#0B0D10', est: '#3A404A', scrim: 'rgba(0,0,0,.6)', shadow: '0 0 0 1px rgba(255,255,255,.04), 0 4px 14px rgba(0,0,0,.4)', num: "'Bricolage Grotesque', Geist, sans-serif",
+        ok: ['#12301F', '#7BE0A6', '#2BB36A', '#0B0D10'], warn: ['#3A2C05', '#FFD479', '#FFC23D', '#0B0D10'], bad: ['#3D1612', '#FF9C8C', '#FF6A55', '#0B0D10'], pill: { ok: 'rgba(0,0,0,.14)', warn: 'rgba(0,0,0,.12)', bad: 'rgba(0,0,0,.14)' } }
+    };
+    const id = this.props.theme ?? 'ol';
+    const t = T[id] || T.ol;
+    const phone = this.props.phone ?? true;
+    const w = this.props.w ?? (phone ? 390 : 520);
+    const h = this.props.h ?? 844;
+    const v = { '--fw': w + 'px', '--fh': h + 'px', '--ui': "Geist, system-ui, sans-serif", '--mono': "'Geist Mono', ui-monospace, monospace", colorScheme: t.dark ? 'dark' : 'light' };
+    ['bg', 'card', 'ink', 'ink2', 'line', 'ctl', 'sunk', 'btn', 'btn-ink', 'est', 'scrim', 'shadow', 'num'].forEach(k => { v['--' + k] = t[k]; });
+    ['ok', 'warn', 'bad'].forEach(s => {
+      const [tt, x, so, on] = t[s];
+      v[`--${s}-t`] = tt; v[`--${s}-x`] = x; v[`--${s}-s`] = so;
+      if (t.solid) Object.assign(v, { [`--d-${s}-bg`]: so, [`--d-${s}-fg`]: on, [`--d-${s}-2`]: on, [`--d-${s}-pb`]: t.pill[s], [`--d-${s}-px`]: on, [`--d-${s}-dot`]: on });
+      else Object.assign(v, { [`--d-${s}-bg`]: tt, [`--d-${s}-fg`]: t.ink, [`--d-${s}-2`]: t.ink2, [`--d-${s}-pb`]: t.card, [`--d-${s}-px`]: x, [`--d-${s}-dot`]: so });
+    });
+    return { vars: v, phone, board: !phone, label: this.props.label ?? '', meta: t.name + (phone ? ' · ' + w : ''), children: this.props.children };
+  }
+}
+</script>
+</body>
+</html>

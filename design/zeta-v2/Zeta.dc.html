@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="design_doc_mode" content="canvas">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,800&display=swap" rel="stylesheet">
+  <style>body{margin:0;background:#D8D0BD}a{color:#14160F;text-decoration:underline;text-underline-offset:3px}a:hover{color:#4E7A1E}</style>
+</helmet>
+<div style="padding:64px;display:flex;flex-direction:column;gap:96px;font-family:Geist,system-ui,sans-serif;color:#14160F">
+  <header style="display:flex;flex-direction:column;gap:12px;max-width:900px">
+    <div style="font:600 12px 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#5B5446">Zeta · v3 · Oliva afinada + Nítido</div>
+    <div style="font:600 48px/1.05 Geist;letter-spacing:-0.03em">Pantallas completas y sistema</div>
+    <div style="font:500 16px/1.5 Geist;color:#3E392F;max-width:760px">Todo sale de un solo lugar: los tokens viven en el marco de tema (4 juegos) y cada pantalla usa solo tokens por función. Cambiar un color en <b>Z Marco</b> lo cambia en todas las pantallas.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+      <sc-for list="{{ nav }}" as="n" hint-placeholder-count="9"><div onClick="{{ n.go }}" style="{{ n.st }}">{{ n.l }}</div></sc-for>
+    </div>
+  </header>
+
+  <sc-if value="{{ is_sistema }}" hint-placeholder-val="{{ false }}"><section id="sistema" style="display:flex;flex-direction:column;gap:28px">
+    <div style="font:600 34px Geist;letter-spacing:-0.02em">Sistema</div>
+    <div style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start">
+      <sc-for list="{{ themes }}" as="t"><dc-import name="Z Marco" theme="{{ t }}" phone="{{ false }}" w="{{ 470 }}" label="Tokens" hint-size="470px,700px"><dc-import name="Z Sistema" screen="tokens" hint-size="100%,600px"></dc-import></dc-import></sc-for>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start">
+      <dc-import name="Z Marco" theme="ol" phone="{{ false }}" w="{{ 560 }}" label="Tipografía" hint-size="560px,600px"><dc-import name="Z Sistema" screen="tipo" hint-size="100%,500px"></dc-import></dc-import>
+      <dc-import name="Z Marco" theme="nl" phone="{{ false }}" w="{{ 560 }}" label="Tipografía · Nítido" hint-size="560px,600px"><dc-import name="Z Sistema" screen="tipo" hint-size="100%,500px"></dc-import></dc-import>
+      <dc-import name="Z Marco" theme="ol" phone="{{ false }}" w="{{ 620 }}" label="Reglas" hint-size="620px,900px"><dc-import name="Z Sistema" screen="reglas" hint-size="100%,800px"></dc-import></dc-import>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start">
+      <sc-for list="{{ themes2 }}" as="t"><dc-import name="Z Marco" theme="{{ t }}" phone="{{ false }}" w="{{ 820 }}" label="Componentes base" hint-size="820px,900px"><dc-import name="Z Sistema" screen="componentes" hint-size="100%,800px"></dc-import></dc-import></sc-for>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start">
+      <sc-for list="{{ themes2 }}" as="t"><dc-import name="Z Marco" theme="{{ t }}" phone="{{ false }}" w="{{ 860 }}" label="Widgets" hint-size="860px,900px"><dc-import name="Z Sistema" screen="widgets" hint-size="100%,800px"></dc-import></dc-import></sc-for>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start">
+      <sc-for list="{{ themes2 }}" as="t"><dc-import name="Z Marco" theme="{{ t }}" phone="{{ false }}" w="{{ 860 }}" label="Gráfico Tu flujo" hint-size="860px,600px"><dc-import name="Z Sistema" screen="grafico" hint-size="100%,500px"></dc-import></dc-import></sc-for>
+    </div>
+  </section></sc-if>
+
+  <sc-if value="{{ is_inicio }}" hint-placeholder-val="{{ false }}"><section id="inicio" style="display:flex;flex-direction:column;gap:28px">
+    <div style="font:600 34px Geist;letter-spacing:-0.02em">Inicio</div>
+    <sc-for list="{{ R.inicio }}" as="r"><div style="display:flex;flex-direction:column;gap:14px"><div style="font:600 13px 'Geist Mono',monospace;color:#5B5446;text-transform:uppercase;letter-spacing:.06em">{{ r.l }}</div><div style="display:flex;flex-wrap:wrap;gap:36px;align-items:flex-end"><sc-for list="{{ r.s }}" as="s"><dc-import name="Z Marco" theme="{{ s.t }}" w="{{ s.w }}" label="{{ s.l }}" hint-size="390px,880px"><dc-import name="Z Inicio" screen="{{ s.id }}" hint-size="100%,100%"></dc-import></dc-import></sc-for></div></div></sc-for>
+  </section></sc-if>
+
+  <sc-if value="{{ is_flujo }}" hint-placeholder-val="{{ false }}"><section id="flujo" style="display:flex;flex-direction:column;gap:28px">
+    <div style="font:600 34px Geist;letter-spacing:-0.02em">Tu flujo</div>
+    <sc-for list="{{ R.flujo }}" as="r"><div style="display:flex;flex-direction:column;gap:14px"><div style="font:600 13px 'Geist Mono',monospace;color:#5B5446;text-transform:uppercase;letter-spacing:.06em">{{ r.l }}</div><div style="display:flex;flex-wrap:wrap;gap:36px"><sc-for list="{{ r.s }}" as="s"><dc-import name="Z Marco" theme="{{ s.t }}" label="{{ s.l }}" hint-size="390px,880px"><dc-import name="Z Flujo" screen="{{ s.id }}" hint-size="100%,100%"></dc-import></dc-import></sc-for></div></div></sc-for>
+  </section></sc-if>
+
+  <sc-if value="{{ is_revisar }}" hint-placeholder-val="{{ false }}"><section id="revisar" style="display:flex;flex-direction:column;gap:28px">
+    <div style="font:600 34px Geist;letter-spacing:-0.02em">Revisar</div>
+    <sc-for list="{{ R.revisar }}" as="r"><div style="display:flex;flex-direction:column;gap:14px"><div style="font:600 13px 'Geist Mono',monospace;color:#5B5446;text-transform:uppercase;letter-spacing:.06em">{{ r.l }}</div><div style="display:flex;flex-wrap:wrap;gap:36px"><sc-for list="{{ r.s }}" as="s"><dc-import name="Z Marco" theme="{{ s.t }}" label="{{ s.l }}" hint-size="390px,880px"><dc-import name="Z Revisar" screen="{{ s.id }}" hint-size="100%,100%"></dc-import></dc-import></sc-for></div></div></sc-for>
+  </section></sc-if>
+
+  <sc-if value="{{ is_pagos }}" hint-placeholder-val="{{ false }}"><section id="pagos" style="display:flex;flex-direction:column;gap:28px">
+    <div style="font:600 34px Geist;letter-spacing:-0.02em">Pagos</div>
+    <sc-for list="{{ R.pagos }}" as="r"><div style="display:flex;flex-direction:column;gap:14px"><div style="font:600 13px 'Geist Mono',monospace;color:#5B5446;text-transform:uppercase;letter-spacing:.06em">{{ r.l }}</div><div style="display:flex;flex-wrap:wrap;gap:36px"><sc-for list="{{ r.s }}" as="s"><dc-import name="Z Marco" theme="{{ s.t }}" label="{{ s.l }}" hint-size="390px,880px"><dc-import name="Z Pagos" screen="{{ s.id }}" hint-size="100%,100%"></dc-import></dc-import></sc-for></div></div></sc-for>
+  </section></sc-if>
+
+  <sc-if value="{{ is_cuentas }}" hint-placeholder-val="{{ false }}"><section id="cuentas" style="display:flex;flex-direction:column;gap:28px">
+    <div style="font:600 34px Geist;letter-spacing:-0.02em">Movimientos, personas y cuentas</div>
+    <sc-for list="{{ R.cuentas }}" as="r"><div style="display:flex;flex-direction:column;gap:14px"><div style="font:600 13px 'Geist Mono',monospace;color:#5B5446;text-transform:uppercase;letter-spacing:.06em">{{ r.l }}</div><div style="display:flex;flex-wrap:wrap;gap:36px"><sc-for list="{{ r.s }}" as="s"><dc-import name="Z Marco" theme="{{ s.t }}" label="{{ s.l }}" hint-size="390px,880px"><dc-import name="Z Cuentas" screen="{{ s.id }}" hint-size="100%,100%"></dc-import></dc-import></sc-for></div></div></sc-for>
+  </section></sc-if>
+
+  <sc-if value="{{ is_onboarding }}" hint-placeholder-val="{{ false }}"><section id="onboarding" style="display:flex;flex-direction:column;gap:28px">
+    <div style="font:600 34px Geist;letter-spacing:-0.02em">Onboarding y captura</div>
+    <sc-for list="{{ R.onb }}" as="r"><div style="display:flex;flex-direction:column;gap:14px"><div style="font:600 13px 'Geist Mono',monospace;color:#5B5446;text-transform:uppercase;letter-spacing:.06em">{{ r.l }}</div><div style="display:flex;flex-wrap:wrap;gap:36px"><sc-for list="{{ r.s }}" as="s"><dc-import name="Z Marco" theme="{{ s.t }}" label="{{ s.l }}" hint-size="390px,880px"><dc-import name="Z Onboarding" screen="{{ s.id }}" hint-size="100%,100%"></dc-import></dc-import></sc-for></div></div></sc-for>
+  </section></sc-if>
+
+  <sc-if value="{{ is_ajustes }}" hint-placeholder-val="{{ false }}"><section id="ajustes" style="display:flex;flex-direction:column;gap:28px">
+    <div style="font:600 34px Geist;letter-spacing:-0.02em">Ajustes</div>
+    <sc-for list="{{ R.ajustes }}" as="r"><div style="display:flex;flex-direction:column;gap:14px"><div style="font:600 13px 'Geist Mono',monospace;color:#5B5446;text-transform:uppercase;letter-spacing:.06em">{{ r.l }}</div><div style="display:flex;flex-wrap:wrap;gap:36px"><sc-for list="{{ r.s }}" as="s"><dc-import name="Z Marco" theme="{{ s.t }}" label="{{ s.l }}" hint-size="390px,880px"><dc-import name="Z Ajustes" screen="{{ s.id }}" hint-size="100%,100%"></dc-import></dc-import></sc-for></div></div></sc-for>
+  </section></sc-if>
+
+  <sc-if value="{{ is_plus }}" hint-placeholder-val="{{ false }}"><section id="plus" style="display:flex;flex-direction:column;gap:28px">
+    <div style="font:600 34px Geist;letter-spacing:-0.02em">Zeta Plus</div>
+    <sc-for list="{{ R.plus }}" as="r"><div style="display:flex;flex-direction:column;gap:14px"><div style="font:600 13px 'Geist Mono',monospace;color:#5B5446;text-transform:uppercase;letter-spacing:.06em">{{ r.l }}</div><div style="display:flex;flex-wrap:wrap;gap:36px"><sc-for list="{{ r.s }}" as="s"><dc-import name="Z Marco" theme="{{ s.t }}" label="{{ s.l }}" hint-size="390px,880px"><dc-import name="Z Plus" screen="{{ s.id }}" hint-size="100%,100%"></dc-import></dc-import></sc-for></div></div></sc-for>
+  </section></sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { sec: (typeof location !== 'undefined' && location.hash.slice(1)) || localStorage.getItem('zeta-sec') || 'inicio' };
+  go(sec) { this.setState({ sec }); try { localStorage.setItem('zeta-sec', sec); history.replaceState(null, '', '#' + sec); } catch (e) {} }
+  renderVals() {
+    const NAV = [['sistema', 'Sistema'], ['inicio', 'Inicio'], ['flujo', 'Tu flujo'], ['revisar', 'Revisar'], ['pagos', 'Pagos'], ['cuentas', 'Movimientos y cuentas'], ['onboarding', 'Onboarding y captura'], ['ajustes', 'Ajustes'], ['plus', 'Zeta Plus']];
+    const sec = NAV.some(n => n[0] === this.state.sec) ? this.state.sec : 'inicio';
+    const flags = {}; NAV.forEach(([id]) => { flags['is_' + id] = id === sec; });
+    const nav = NAV.map(([id, l]) => ({ l, go: () => this.go(id), st: { height: 38, padding: '0 14px', borderRadius: 10, display: 'flex', alignItems: 'center', cursor: 'pointer', font: '600 14px Geist', background: id === sec ? '#14160F' : 'transparent', color: id === sec ? '#FFFCF5' : '#14160F', border: '1.5px solid ' + (id === sec ? '#14160F' : '#8C7F63') } }));
+    const TN = { ol: 'Oliva afinada · claro', od: 'Oliva afinada · oscuro', nl: 'Nítido · claro', nd: 'Nítido · oscuro' };
+    const rows = (list, themes) => themes.map(t => ({ l: TN[t], s: list.map(([id, l]) => ({ id, l, t, w: 390 })) }));
+    const ini = [['default', 'Vas bien'], ['cuidado', 'Cuidado'], ['rojo', 'Alerta roja · se abre sola'], ['panel', 'Panel bajo la fila'], ['organizar', 'Organizar'], ['agregar', 'Agregar widget']];
+    const iniKey = ini.slice(0, 3);
+    const widths = { l: 'Tamaños · 360 · 390 · 430', s: [['ol', 360], ['ol', 430], ['od', 360], ['od', 430], ['nl', 360], ['nd', 430]].map(([t, w]) => ({ id: 'default', l: 'Inicio · ' + w, t, w })) };
+    return {
+      ...flags, nav,
+      themes: ['ol', 'od', 'nl', 'nd'], themes2: ['ol', 'od'],
+      R: {
+        inicio: [...rows(ini, ['ol', 'od']), ...rows(iniKey, ['nl', 'nd']), widths],
+        flujo: rows([['normal', 'Arrastrar · leer un día'], ['dia', 'Tocar un día'], ['bad', 'Te quedas sin plata'], ['big', 'Pago grande el próximo ciclo']], ['ol', 'od']),
+        revisar: rows([['lista', 'Preguntas'], ['ordenar', 'Ordenar en 1 minuto'], ['split', 'Voz · dividir']], ['ol', 'od', 'nl', 'nd']),
+        pagos: rows([['ciclo', 'Este ciclo'], ['proximo', 'Próximo'], ['deudas', 'Deudas'], ['registrar', 'Registrar pago']], ['ol', 'od', 'nl', 'nd']),
+        cuentas: rows([['movs', 'Movimientos'], ['detalle', 'Detalle (hoja)'], ['personas', 'Te deben · Tú debes'], ['tarjeta', 'Tarjeta'], ['cuentas', 'Mis cuentas'], ['limites', 'Límites'], ['pasado', 'Ciclo cerrado']], ['ol', 'od']),
+        onb: rows([['pago', '1 · Día de pago'], ['ingreso', '2 · Ingreso'], ['saldo', '3 · Saldo hoy'], ['facturas', '4 · Pagos antes del 30'], ['cuentas', '5 · Cuentas'], ['numero', '6 · Tu número'], ['android', '7 · Captura Android'], ['iphone', '7 · Captura iPhone'], ['atajos', '7 · Atajos guiados'], ['preguntas', '8 · Primeras preguntas']], ['ol', 'od']),
+        ajustes: rows([['ajustes', 'Ajustes'], ['apariencia', 'Apariencia'], ['privacidad', 'Privacidad'], ['plan', 'Tu plan']], ['ol', 'od']),
+        plus: rows([['paywall', 'Paywall'], ['pdf4', '4.º extracto del mes'], ['captura1', 'Captura · compartir'], ['captura2', 'Captura · revisar'], ['captura3', 'Captura · guardado'], ['historia', 'Historia']], ['ol', 'od'])
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

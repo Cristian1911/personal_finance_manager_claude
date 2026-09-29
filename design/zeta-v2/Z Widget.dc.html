@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="{{ wrapSt }}">
+  <div style="position:relative;background:var(--card);border-radius:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;container-type:inline-size;color:var(--ink)">
+    <sc-if value="{{ showHead }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid;grid-template-rows:20px 1fr 24px;grid-template-columns:minmax(0,1fr);gap:8px;min-height:120px;padding:14px 12px 12px;text-align:center;justify-items:center">
+        <div style="display:flex;align-items:center;justify-content:center;gap:6px;width:100%;min-width:0;color:var(--ink)">
+          <x-import component="Icono" from="./icono.js" n="{{ d.i }}" s="16" hint-size="16px,16px"></x-import>
+          <span style="font:600 13px var(--ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ d.t }}</span>
+        </div>
+        <sc-if value="{{ isChart }}" hint-placeholder-val="{{ false }}">
+          <div style="width:100%;align-self:center"><dc-import name="Z Grafico" mini="{{ true }}" st="{{ chartSt }}" hint-size="100%,80px"></dc-import></div>
+        </sc-if>
+        <sc-if value="{{ notChart }}" hint-placeholder-val="{{ true }}">
+          <div style="display:grid;grid-template-rows:32px 20px;gap:2px;align-content:center;justify-items:center;width:100%">
+            <div style="font-family:var(--num);font-weight:600;font-size:min(24px,12.5cqw);line-height:32px;letter-spacing:-0.02em;white-space:nowrap;font-variant-numeric:tabular-nums">{{ val }}</div>
+            <sc-if value="{{ vHint }}" hint-placeholder-val="{{ true }}"><div style="font:500 12px var(--ui);color:var(--ink2);line-height:20px;white-space:nowrap">{{ d.h }}</div></sc-if>
+            <sc-if value="{{ vBar }}" hint-placeholder-val="{{ false }}"><div style="width:72%;height:6px;border-radius:9px;background:var(--sunk);align-self:center;overflow:hidden;box-shadow:inset 0 0 0 1px var(--line)"><div style="{{ barSt }}"></div></div></sc-if>
+            <sc-if value="{{ vIni }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-self:center"><sc-for list="{{ d.ini }}" as="n"><span style="width:22px;height:22px;border-radius:99px;background:var(--sunk);border:2px solid var(--card);margin-left:-5px;font:600 10px var(--ui);color:var(--ink2);display:flex;align-items:center;justify-content:center">{{ n }}</span></sc-for></div></sc-if>
+            <sc-if value="{{ vSplit }}" hint-placeholder-val="{{ false }}"><div style="display:flex;gap:2px;width:78%;height:8px;align-self:center"><sc-for list="{{ splitSegs }}" as="g"><div style="{{ g }}"></div></sc-for></div></sc-if>
+            <sc-if value="{{ vSpark }}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 80 20" style="{{ sparkSt }}"><path d="M2 14 L14 12 L26 13 L38 10 L50 11 L62 7 L78 4" style="{{ sparkP }}"></path></svg></sc-if>
+          </div>
+        </sc-if>
+        <div style="display:flex;align-items:flex-end;justify-content:center">
+          <sc-if value="{{ hasChip }}" hint-placeholder-val="{{ false }}"><span style="{{ chipSt }}">{{ chipText }}</span></sc-if>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ panelHead }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;gap:8px;padding:14px 14px 4px 16px">
+        <x-import component="Icono" from="./icono.js" n="{{ d.i }}" s="18" hint-size="18px,18px"></x-import>
+        <span style="flex:1;font:600 15px var(--ui)">{{ d.t }}</span>
+        <span style="width:30px;height:30px;border-radius:99px;border:1.5px solid var(--ctl);display:flex;align-items:center;justify-content:center;box-sizing:border-box"><x-import component="Icono" from="./icono.js" n="x" s="14" hint-size="14px,14px"></x-import></span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ showBody }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;padding:4px 16px 0">
+        <sc-if value="{{ isChart }}" hint-placeholder-val="{{ false }}">
+          <div style="border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:10px">
+            <sc-if value="{{ flujoBad }}" hint-placeholder-val="{{ false }}"><div style="font:500 14px var(--ui);line-height:1.4;text-wrap:pretty">A tu ritmo te quedas sin plata el <b style="font-weight:600">22 sep</b> · gasta ≈ $28.000 menos al día.</div></sc-if>
+            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;text-align:center">
+              <sc-for list="{{ totals }}" as="x"><div><div style="font:500 12px var(--ui);color:var(--ink2)">{{ x.l }}</div><div style="font:600 15px var(--num);white-space:nowrap;font-variant-numeric:tabular-nums">{{ x.v }}</div></div></sc-for>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ hasLead }}" hint-placeholder-val="{{ false }}"><div style="font:500 14px var(--ui);line-height:1.4;padding:6px 0 4px;text-wrap:pretty">{{ lead }}</div></sc-if>
+        <sc-for list="{{ rows }}" as="r">
+          <div style="display:flex;flex-direction:column;gap:6px;padding:10px 0;border-bottom:1px solid var(--line)">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="flex:1;min-width:0"><div style="font:500 14px var(--ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.a }}</div><div style="font:400 12px var(--ui);color:var(--ink2)">{{ r.b }}</div></div>
+              <sc-if value="{{ r.ct }}" hint-placeholder-val="{{ false }}"><span style="{{ r.cs }}">{{ r.ct }}</span></sc-if>
+              <div style="font:600 14px var(--num);white-space:nowrap;font-variant-numeric:tabular-nums">{{ r.c }}</div>
+            </div>
+            <sc-if value="{{ r.bar }}" hint-placeholder-val="{{ false }}"><div style="height:6px;border-radius:9px;background:var(--sunk);overflow:hidden;box-shadow:inset 0 0 0 1px var(--line)"><div style="{{ r.bs }}"></div></div></sc-if>
+          </div>
+        </sc-for>
+        <sc-if value="{{ hasToggle }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)">
+            <span style="flex:1;font:500 14px var(--ui)">{{ d.toggle }}</span>
+            <span style="width:44px;height:26px;border-radius:99px;border:1.5px solid var(--ctl);box-sizing:border-box;padding:2px;display:flex"><span style="width:19px;height:19px;border-radius:99px;background:var(--ctl)"></span></span>
+          </div>
+        </sc-if>
+        <sc-if value="{{ hasNote }}" hint-placeholder-val="{{ false }}"><div style="font:400 13px var(--ui);color:var(--ink2);padding:10px 0 0;line-height:1.4">{{ d.note }}</div></sc-if>
+        <div style="display:flex;align-items:center;justify-content:center;gap:4px;height:46px;font:600 14px var(--ui);color:var(--ink)">Ver todo<x-import component="Icono" from="./icono.js" n="chevR" s="14" hint-size="14px,14px"></x-import></div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isBad }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;border-radius:18px;border:1.5px solid var(--bad-s);pointer-events:none"></div></sc-if>
+    <sc-if value="{{ sel }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;border-radius:18px;border:2px solid var(--ink);pointer-events:none"></div></sc-if>
+    <sc-if value="{{ edit }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;border-radius:18px;border:1.5px dashed var(--ctl);pointer-events:none"></div>
+      <div style="position:absolute;top:8px;left:8px;color:var(--ink2)"><x-import component="Icono" from="./icono.js" n="grip" s="18" hint-size="18px,18px"></x-import></div>
+      <div style="position:absolute;top:7px;right:7px;display:flex;gap:5px">
+        <span style="height:24px;padding:0 8px;border-radius:7px;background:var(--btn);color:var(--btn-ink);font:600 11px var(--ui);display:flex;align-items:center;white-space:nowrap">{{ sizeLabel }}</span>
+        <span style="width:24px;height:24px;border-radius:7px;border:1.5px solid var(--ctl);background:var(--card);box-sizing:border-box;display:flex;align-items:center;justify-content:center"><x-import component="Icono" from="./icono.js" n="x" s="12" w="2.2" hint-size="12px,12px"></x-import></span>
+      </div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:180,&quot;height&quot;:160},&quot;k&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;hoy&quot;,&quot;pago&quot;,&quot;teDeben&quot;,&quot;tarjeta&quot;,&quot;deudas&quot;,&quot;limites&quot;,&quot;cuentas&quot;,&quot;flujo&quot;,&quot;enque&quot;,&quot;ultimos&quot;,&quot;comercios&quot;,&quot;dolar&quot;,&quot;viaje&quot;],&quot;default&quot;:&quot;hoy&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;size&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;half&quot;,&quot;full&quot;],&quot;default&quot;:&quot;half&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;st&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;n&quot;,&quot;warn&quot;,&quot;bad&quot;],&quot;default&quot;:&quot;n&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;mode&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;card&quot;,&quot;panel&quot;],&quot;default&quot;:&quot;card&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;open&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  data() {
+    return {
+      hoy: { t: 'Hoy', i: 'sun', v: { n: '$22.000', warn: '$4.000', bad: '−$6.000' }, vis: 'bar', pct: { n: 37, warn: 89, bad: 100 }, chip: { warn: 'Casi al tope', bad: 'Te pasaste hoy' },
+        lead: { n: 'Llevas $13.000 de $35.000 hoy.', warn: 'Llevas $31.000 de $35.000 hoy.', bad: 'Llevas $41.000 de $35.000. Mañana tendrás un poco menos por día.' }, rows: [['Tostao', 'Café · 8:10', '−$8.000'], ['Uber', 'Transporte · 12:02', '−$5.000']] },
+      pago: { t: 'Próximo pago', i: 'clock', v: '$700.000', h: 'Arriendo, 19 sep', chip: { warn: 'Mañana', bad: 'No alcanza' }, lead: 'Por pagar antes del 30: $1.378.900',
+        rows: [['Arriendo', '19 sep', '$700.000', 'warn', 'Mañana'], ['Tarjeta Nu · mínimo', '22 sep', '$640.000'], ['Netflix', '24 sep', '$38.900']] },
+      teDeben: { t: 'Te deben', i: 'users', v: '$380.000', vis: 'ini', ini: ['J', 'C', 'A'], chip: { warn: 'Hace 34 días', bad: 'Hace 60 días' },
+        rows: [['Juan', 'Hace 34 días', '$180.000', 'warn', 'Recordar'], ['Caro', 'Hace 12 días', '$140.000'], ['Ana', 'Hace 3 días', '$60.000']], note: 'Tú le debes a Mateo $50.000 · está en Pagos.' },
+      tarjeta: { t: 'Tarjeta Nu', i: 'card', v: '≈ $480.000', h: 'próxima factura', chip: { warn: 'Corte en 2 días', bad: 'Pago vence hoy' }, lead: '≈ $480.000 · al corte ≈ $620.000 si sigues a este ritmo. Comprar con tarjeta no baja tu Disponible; pagarla sí.',
+        rows: [['Pago mínimo', '22 sep · cuenta en Disponible', '$640.000'], ['Debes en total', 'Corte 27 sep', '$1.850.000']], toggle: 'Suelo pagar el total' },
+      deudas: { t: 'Deudas', i: 'bank', v: '$14.250.000', vis: 'split', split: [80, 13, 7], chip: { warn: 'Cuota en 3 días', bad: 'Cuota vencida' },
+        rows: [['Crédito libre inversión', 'Termina en mar 2028', '$11.450.000'], ['Tarjeta Nu', 'Mínimo $640.000 · 22 sep', '$1.850.000'], ['Visa', 'Incluye USD 120', '$950.000']] },
+      limites: { t: 'Límites', i: 'gauge', v: 'Domicilios', vis: 'bar', pct: { n: 55, warn: 92, bad: 100 }, chip: { warn: 'Casi al tope', bad: 'Te pasaste' },
+        rows: [['Domicilios', '$165.000 de $180.000', '92%', 'warn', 'Cuidado', 92], ['Salidas', '$138.000 de $250.000', '55%', '', '', 55], ['Compras', '$80.000 de $200.000', '40%', '', '', 40]] },
+      cuentas: { t: 'Mis cuentas', i: 'wallet', v: '$1.850.000', h: 'cuentan', chip: { warn: 'Revisa un saldo', bad: 'Saldo sin confirmar' },
+        rows: [['Bancolombia', 'Cuenta para Disponible', '$1.320.000'], ['Nequi', 'Cuenta para Disponible', '$330.000'], ['Efectivo', 'Cuenta para Disponible', '$200.000'], ['Ahorros Nu', 'No cuenta', '$2.400.000', 'n', 'Aparte']] },
+      flujo: { t: 'Tu flujo', i: 'chart', min: 'full', chip: { warn: 'Próximo ciclo no alcanza', bad: 'No llegas al 30' } },
+      enque: { t: '¿En qué se me fue?', i: 'pie', v: 'Domicilios', h: 'lo que más',
+        rows: [['Domicilios', '14 compras', '$165.000', '', '', 100], ['Salidas', '5 compras', '$138.000', '', '', 84], ['Compras', '3 compras', '$80.000', '', '', 48], ['Mercado', '4 compras', '$64.000', '', '', 39]] },
+      ultimos: { t: 'Últimos movimientos', i: 'receipt', min: 'full', v: '−$32.000', h: 'Rappi, hace 2 h',
+        rows: [['Rappi', 'Domicilios · 12:41', '−$32.000'], ['Tostao', 'Café · 8:10', '−$8.000'], ['Uber', 'Transporte · ayer', '−$5.000'], ['Éxito', 'Mercado · ayer', '−$64.000'], ['Juan', 'Préstamo · no cuenta', '$180.000', 'n', 'Te debe']] },
+      comercios: { t: 'Tus comercios', i: 'store', v: 'Rappi', h: '6 veces', rows: [['Rappi', '6 veces', '$165.000'], ['Tostao', '9 veces', '$72.000'], ['Éxito', '4 veces', '$64.000']] },
+      dolar: { t: 'Dólar hoy', i: 'dollar', v: '$4.012', vis: 'spark', chip: { warn: 'Subió 2%', bad: 'Subió 5%' }, lead: 'Tu Visa tiene USD 120. Hoy son ≈ $481.440.', rows: [['Ayer', '', '$3.934'], ['Hace 7 días', '', '$3.980']] },
+      viaje: { t: 'Viaje', i: 'plane', v: 'Cartagena', h: 'en 3 semanas', always: 'Con Plus', lead: 'Arma el presupuesto del viaje y sepáralo de tu Disponible.', rows: [] }
+    };
+  }
+  renderVals() {
+    const p = this.props, k = p.k ?? 'hoy', size = p.size ?? 'half', st = p.st ?? 'n', mode = p.mode ?? 'card';
+    const d = this.data()[k] || this.data().hoy;
+    const CH = { n: ['var(--sunk)', 'var(--ink2)'], ok: ['var(--ok-t)', 'var(--ok-x)'], warn: ['var(--warn-t)', 'var(--warn-x)'], bad: ['var(--bad-t)', 'var(--bad-x)'] };
+    const chip = s => ({ display: 'inline-flex', alignItems: 'center', height: 24, padding: '0 10px', borderRadius: 99, font: '600 12px var(--ui)', whiteSpace: 'nowrap', background: CH[s][0], color: CH[s][1] });
+    const fillC = s => s === 'warn' ? 'var(--warn-s)' : s === 'bad' ? 'var(--bad-s)' : 'var(--ink2)';
+    const pick = x => (x && typeof x === 'object' && !Array.isArray(x)) ? (x[st] ?? x.n) : x;
+    const chipText = (d.chip && d.chip[st]) || d.always || '';
+    const chipS = d.chip && d.chip[st] ? st : 'n';
+    const isChart = k === 'flujo';
+    const panel = mode === 'panel', open = !!p.open || panel;
+    const pct = pick(d.pct) || 0;
+    const segs = (d.split || [1320, 330, 200]).map((v, i) => ({ flex: v, height: 8, borderRadius: 3, background: i === 0 ? 'var(--ink2)' : i === 1 ? 'var(--ctl)' : 'var(--est)' }));
+    const rows = (d.rows || []).map(r => ({ a: r[0], b: r[1], c: r[2], ct: r[4] || '', cs: chip(r[3] || 'n'), bar: r[5] != null, bs: { width: (r[5] || 0) + '%', height: '100%', borderRadius: 9, background: fillC(r[3]) } }));
+    const tot = st === 'bad' ? [['Llega', '$2.100.000'], ['Sale', '$2.673.900'], ['Terminas con', '−$513.900']] : [['Llega', '$2.100.000'], ['Sale', '$1.953.900'], ['Terminas con', '$206.100']];
+    return {
+      d, isChart, notChart: !isChart, chartSt: st === 'bad' ? 'bad' : 'n',
+      wrapSt: { opacity: p.dim ? 0.38 : 1, height: '100%' },
+      showHead: !panel, panelHead: panel, showBody: open,
+      val: pick(d.v), vHint: !d.vis && !!d.h, vBar: d.vis === 'bar', vIni: d.vis === 'ini', vSplit: d.vis === 'split' || k === 'cuentas' && false, vSpark: d.vis === 'spark',
+      barSt: { width: pct + '%', height: '100%', borderRadius: 9, background: fillC(k === 'limites' && st === 'n' ? 'n' : st) },
+      splitSegs: segs,
+      sparkSt: { width: 80, height: 20, alignSelf: 'center', display: 'block' }, sparkP: { fill: 'none', stroke: 'var(--ink2)', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
+      hasChip: !!chipText, chipText, chipSt: chip(chipS),
+      hasLead: !!pick(d.lead), lead: pick(d.lead), rows: isChart ? [] : rows,
+      hasToggle: !!d.toggle, hasNote: !!d.note, totals: tot.map(([l, v]) => ({ l, v })), flujoBad: st === 'bad',
+      isBad: st === 'bad', sel: !!p.sel, edit: !!p.edit, sizeLabel: size === 'full' ? 'Completo' : '½ ancho'
+    };
+  }
+}
+</script>
+</body>
+</html>
