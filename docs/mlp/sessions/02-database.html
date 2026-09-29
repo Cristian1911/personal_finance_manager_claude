@@ -94,7 +94,7 @@ td code{white-space:nowrap}
 <main>
 
 <header>
-  <div class="eyebrow">Zeta v2 · Planning session 2 of 6</div>
+  <div class="eyebrow">Zeta v2 · Planning session 2 of 6 · closed</div>
   <h1>Zeta v2's database</h1>
   <p class="lede">What's in the database today, what v2 keeps, adds and stops using, and why. Also how encryption works, what the phone stores, and how changes reach the database without breaking the web app you still use. Four decisions at the end.</p>
 </header>
@@ -282,39 +282,27 @@ erDiagram
   <h2>Decisions for this session</h2>
   <div class="decisions">
 
-    <div class="dec">
+    <div class="dec decided">
       <div class="dec-h"><span class="dec-id">S2-1</span><h3>Encrypt the phone's database file?</h3></div>
-      <p style="margin:0;font-size:14px;color:var(--muted)">The phone holds your merchants, notes and raw bank notification text in plain form, so it can work offline.</p>
-      <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>Yes, with SQLCipher</b>The whole file is encrypted; its key lives in the iPhone Keychain / Android Keystore. It's supported by expo-sqlite with one config flag. Cost: about 5–15% slower queries (unnoticeable at this size), and the local database starts fresh once (it re-syncs).</div>
-        <div class="opt"><b>No, rely on the phone's own protection</b>iOS and Android already encrypt storage while the phone is locked, and Face ID app lock exists. That's weaker on rooted phones and in device backups.</div>
-      </div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> <b>Yes, SQLCipher.</b> The phone's database file is encrypted; its key lives in the iPhone Keychain / Android Keystore. The local database re-syncs once from scratch.</p>
     </div>
 
-    <div class="dec">
+    <div class="dec decided">
       <div class="dec-h"><span class="dec-id">S2-2</span><h3>How long do we keep the details of each command?</h3></div>
-      <p style="margin:0;font-size:14px;color:var(--muted)">A command's id must be kept forever (so a late resend is never applied twice). Its details (what you did, with names and amounts) are only needed for replays, debugging and "undo".</p>
-      <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>Details for 90 days, id forever</b>Enough for any offline gap, debugging and undo. After 90 days, only the id, type and date remain. The details are encrypted with your key while kept.</div>
-        <div class="opt"><b>Keep everything forever</b>A complete history of every change you made. It could power a future "historial de cambios", but it's more personal data stored indefinitely.</div>
-      </div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> <b>Details for 90 days, id forever.</b> Command details are encrypted with your key while kept; after 90 days only id, type and date remain.</p>
     </div>
 
-    <div class="dec">
+    <div class="dec decided">
       <div class="dec-h"><span class="dec-id">S2-3</span><h3>Moving existing users to the 25 categories</h3></div>
-      <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>Proposed, one tap to accept</b>On first launch, a card shows the mapping ("Comida rápida → Restaurantes y café", …) with [Usar las 25] and [Mantener las mías]. If accepted, movements are recategorized; your own extra categories remain. The web keeps showing the old ones until then.</div>
-        <div class="opt"><b>Automatic</b>Everyone moves on day one. Simpler, but people who carefully built categories lose them without being asked.</div>
-      </div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> <b>Proposed, one tap to accept.</b> A first-launch card shows the mapping with [Usar las 25] / [Mantener las mías]; your extra categories remain.</p>
     </div>
 
-    <div class="dec">
+    <div class="dec decided">
       <div class="dec-h"><span class="dec-id">S2-4</span><h3>What happens to frozen tables after v2 ships?</h3></div>
-      <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>Keep 6 months, then export and drop</b>Once the web is reduced (S1-4), frozen data stays 6 months in case something is missed. Then each user's frozen data is exported (downloadable from Ajustes) and the tables are dropped. Tags stay until D4's update is decided.</div>
-        <div class="opt"><b>Keep forever</b>No risk of losing anything, but 18 tables nobody uses stay in every migration and review.</div>
-      </div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> <b>Keep 6 months, then export and drop.</b> Each user's frozen data is exported (downloadable from Ajustes) before the tables are dropped; tags stay until D4 is decided.</p>
     </div>
+
+    
 
   </div>
 </section>
