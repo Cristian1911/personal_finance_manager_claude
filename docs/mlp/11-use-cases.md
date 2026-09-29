@@ -23,6 +23,7 @@ Every architecture, database and screen decision is checked against this list. N
 | A7 | Connect a capture source: bank notifications (Android) / Gmail (iPhone) / a PDF | Onboarding, Ajustes › Fuentes | v1 | ok |
 | A8 | Add my accounts and cards up front | Onboarding (optional step), Ajustes › Mis cuentas | v1 | D1 |
 | A11 | Import a PDF whose account doesn't exist yet and create it from the statement | PDF import | v1 | D1 |
+| A13 | Choose which accounts add up to my Disponible (e.g. keep a savings account apart) | Onboarding, Ajustes › Mis cuentas | v1 | S3-0 |
 | A12 | See a movement from an account Zeta doesn't know (new last-4) and add it or assign it to an existing one | Revisar | v1 | D1 |
 | A9 | Sign in on a new phone and find everything there | Login | v1 | ok |
 | A10 | Existing user: move from the old app to v2 without losing data | First launch of v2 | v1 | ok |
