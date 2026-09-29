@@ -1,0 +1,234 @@
+<title>Zeta v2 Build Order</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F3F4EF; --surface:#FFFFFF; --ink:#16181A; --muted:#5B6168; --line:#D3D6CC; --soft:#E8EAE2;
+  --phone:#2F5FD0; --phone-bg:#E7EDFB; --server:#0E7A55; --server-bg:#E1F2EA; --store:#8A5A00; --store-bg:#F6ECD6;
+  --warn:#9A5B00;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#111312; --surface:#1A1D1B; --ink:#ECEDE8; --muted:#9CA29B; --line:#30352F; --soft:#232723;
+    --phone:#86A8FF; --phone-bg:#1C2640; --server:#46C79A; --server-bg:#15302A; --store:#E3AE4A; --store-bg:#33280F;
+    --warn:#E3AE4A;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#111312; --surface:#1A1D1B; --ink:#ECEDE8; --muted:#9CA29B; --line:#30352F; --soft:#232723;
+  --phone:#86A8FF; --phone-bg:#1C2640; --server:#46C79A; --server-bg:#15302A; --store:#E3AE4A; --store-bg:#33280F;
+  --warn:#E3AE4A;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.6 'Geist',system-ui,-apple-system,'Segoe UI',sans-serif;padding-inline:20px;padding-block:32px 64px}
+main{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:44px}
+.prose{max-width:68ch}
+h1,h2,h3{text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:34px;line-height:1.15;font-weight:700}
+h2{font-size:22px;font-weight:650;margin-bottom:10px}
+h3{font-size:16px;font-weight:600}
+p{margin:0 0 10px}
+.eyebrow{font:500 12px/1 'Geist Mono',ui-monospace,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.lede{font-size:17px;color:var(--muted);max-width:66ch;margin-top:12px}
+code,.mono{font-family:'Geist Mono',ui-monospace,Menlo,monospace;font-size:.88em}
+code{background:var(--soft);padding:1px 5px;border-radius:4px}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--muted);margin:6px 0 0}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:3px;display:inline-block}
+figure{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px}
+figcaption{font-size:13.5px;color:var(--muted);margin-top:12px;max-width:80ch}
+.scroll{overflow-x:auto}
+svg{display:block;max-width:100%;height:auto;font-family:'Geist',system-ui,sans-serif}
+svg text{fill:var(--ink);font-size:12.5px}
+svg .sub{fill:var(--muted);font-size:11px}
+svg .lbl{fill:var(--muted);font-size:11px}
+svg .grp{font:600 11px 'Geist Mono',monospace;letter-spacing:.06em;fill:var(--muted)}
+svg .g-phone{fill:var(--phone-bg);stroke:var(--phone)}
+svg .g-server{fill:var(--server-bg);stroke:var(--server)}
+svg .g-store{fill:var(--store-bg);stroke:var(--store)}
+svg .g-out{fill:none;stroke:var(--line);stroke-dasharray:4 4}
+svg .box{fill:var(--surface);stroke:var(--line)}
+svg .box-hot{fill:var(--surface);stroke:var(--server);stroke-width:2}
+svg .ar{stroke:var(--ink);stroke-width:1.3;fill:none}
+svg .ar-soft{stroke:var(--muted);stroke-width:1.2;fill:none;stroke-dasharray:4 3}
+svg .ah{fill:var(--ink)}
+svg .ah-soft{fill:var(--muted)}
+table{border-collapse:collapse;width:100%;font-size:14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+th,td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--line)}
+th{font-weight:600;font-size:12.5px;color:var(--muted);background:var(--soft)}
+tr:last-child td{border-bottom:0}
+td.num{white-space:nowrap;font-variant-numeric:tabular-nums}
+.tag{display:inline-block;font:500 11px/1 'Geist Mono',monospace;padding:4px 6px;border-radius:5px;border:1px solid var(--line);white-space:nowrap}
+.t-phone{color:var(--phone);border-color:var(--phone)}
+.t-server{color:var(--server);border-color:var(--server)}
+.t-store{color:var(--store);border-color:var(--store)}
+.rule{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;font-size:17px;max-width:74ch}
+.decisions{display:grid;gap:14px}
+.dec{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:grid;gap:10px}
+.dec-h{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.dec-id{font:600 12px 'Geist Mono',monospace;color:var(--muted)}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.opt{border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:14px}
+.opt.rec{border-color:var(--server);border-width:2px}
+.opt b{display:block;margin-bottom:4px}
+.rec-tag{font:600 11px 'Geist Mono',monospace;color:var(--server);letter-spacing:.04em}
+ul{margin:0;padding-left:20px}
+li{margin:3px 0}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+.card h3{margin-bottom:8px}
+.status{font:500 12px 'Geist Mono',monospace;color:var(--warn)}
+</style>
+
+<style>
+.ms{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.ms .card h3{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.ms .card h3 span{font:500 12px 'Geist Mono',monospace;color:var(--muted)}
+.demo{background:var(--soft);border-radius:10px;padding:8px 10px;font-size:13.5px;margin-top:8px}
+.ms ul{font-size:13.5px}
+</style>
+<main>
+
+<header>
+  <div class="eyebrow">Zeta v2 · Planning session 7 of 7</div>
+  <h1>Build order</h1>
+  <p class="lede">Every decision from sessions 1–6 turned into milestones you can test on your phone, in the order that retires the biggest risks first. Plus the first PR, what changes in CLAUDE.md, and what happens after v1. Four decisions at the end. After them, I rewrite <code>10-build-plan.md</code> as the final spec and write the Claude Design prompt.</p>
+</header>
+
+<section>
+  <h2>Why this order</h2>
+  <p class="rule"><b>Riskiest first.</b> The offline command engine (S1-1) is the foundation everything else writes through, and nothing like it exists yet, so it's proven before any screen depends on it. Then the number (Disponible) on real data, then the server side of the engine, then everything that feeds or uses it. Each milestone ends with something you can use on your phone against the dev project (S1-5), and your real account only moves when a milestone is stable.</p>
+</section>
+
+<section>
+  <h2>Timeline (one developer)</h2>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 980 360" role="img" aria-label="Gantt chart: M0 weeks 0-3, M1 3-6, M2 6-9, M3 9-11.5, M4 11.5-14.5, M5 14.5-19, M6 19-21.5, M7 21.5-24.5; external tracks for Google verification, Claude Design and Play policy review; v1 around week 25, v1.1 about 6 weeks later.">
+      <g id="gantt"></g>
+    </svg>
+    </div>
+    <figcaption>About <b>25 weeks to v1</b> for one developer (Oct 2026 → roughly early April 2027). A second developer taking M5 (Android capture) from week 9 saves about 4 weeks. Viajes lands in v1.1, so this December's travel season is missed; that's the honest cost of the scope.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>The milestones</h2>
+  <div class="ms" id="ms"></div>
+</section>
+
+<section>
+  <h2>After v1</h2>
+  <table>
+    <thead><tr><th>Release</th><th>What</th></tr></thead>
+    <tbody>
+      <tr><td><b>v1.1</b> (~6 weeks after v1)</td><td>Zeta Plus: RevenueCat, <code>entitlements</code>, paywall, "Tu plan", founders' 12 months, PDF limit (3/month, 7 free days), history beyond 3 months · Screenshots · Viajes · Nítido gated · Historia metrics · "Ordenar en 1 minuto" (drag merchants) · Jev notification gatekeeper (after its eval) · home-screen widget</td></tr>
+      <tr><td><b>Later</b></td><td>"Mi historia" recap · extra-payment suggestions · savings goals · tags · biller emails via Gmail · shared template shapes (opt-in) · retroactive rule UI</td></tr>
+      <tr><td><b>Cleanup</b> (6 months after the web is reduced)</td><td>Export and drop the 18 frozen tables (S2-4); drop <code>category_rules</code> after the merge</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>The first PR: the engine's walking skeleton</h2>
+  <div class="two">
+    <div class="card"><h3>What's in it</h3>
+      <ul style="font-size:14px">
+        <li><code>packages/shared/src/engine/</code>: the command model (id, type, payload, timestamps), a storage "port" (the operations a command needs), and <b>one command</b>: <code>captureManualTransaction</code> (validate, idempotency key, balance of counted accounts).</li>
+        <li><b>Two adapters</b>: SQLite (the phone) and Postgres (the server), behind the same port.</li>
+        <li><b>One contract test suite</b> that runs the command against both adapters and asserts identical results, including a replayed command (applied once) and an out-of-order edit (latest wins per field).</li>
+        <li>Migrations for <code>commands</code> and <code>field_versions</code>, applied to the <b>dev project</b> only.</li>
+      </ul></div>
+    <div class="card"><h3>What it proves, and how to check it</h3>
+      <ul style="font-size:14px">
+        <li>Proves: one piece of logic really can run identically on phone and server (S1-1), replays are harmless, and conflicts resolve by the S1-2 rule.</li>
+        <li>No UI, no production changes, nothing the web app or today's mobile app can notice.</li>
+        <li>Check: <code>pnpm --filter @zeta/shared test</code> green; the same suite green against the dev project's Postgres; <code>pnpm build</code> clean.</li>
+        <li>The second PR is the UI shell: tokens (4 sets), primitives, the <code>(v2)</code> routes behind the flag, SQLCipher, and the widget gallery screen.</li>
+      </ul></div>
+  </div>
+</section>
+
+<section>
+  <h2>What changes in CLAUDE.md</h2>
+  <table>
+    <thead><tr><th>Section</th><th>Change</th></tr></thead>
+    <tbody>
+      <tr><td>Design Source of Truth</td><td>v2 mobile: <code>docs/mlp/13-widget-design-rules.md</code> + the Claude Design v2 screens + <code>mobile/v2/tokens</code>. The old wireframes and <code>docs/design-system/</code> apply only to the web app until it's reduced.</td></tr>
+      <tr><td>New: Zeta v2 architecture</td><td>Offline-first commands in <code>@zeta/shared/engine</code>; every write is a command; phone applies then queues; server replays with the same code; contract tests on both adapters are a build gate. Links to the decision log.</td></tr>
+      <tr><td>New: design rules</td><td>No side stripes; centered widgets; only Disponible bold; one question per widget; widget gallery test required.</td></tr>
+      <tr><td>Schema rules</td><td>Additive only until v2 ships (S1-4); new settings in side tables, not <code>_enc</code> columns; dev project first.</td></tr>
+      <tr><td>Capture hierarchy</td><td>Add <code>NOTIFICATION</code> (tier 2); one template engine for notifications and bank emails.</td></tr>
+      <tr><td>Agents</td><td><code>mobile-webapp-parity</code> retired for v2 (replaced by the contract tests); <code>zetas-front-guy</code> retargeted to v2 tokens and widget rules; <code>mobile-sync-doctor</code> covers the command outbox and replays.</td></tr>
+      <tr><td>Webapp-only rules</td><td>Cache/<code>updateTag</code>, BRASS buttons, tab-bar clearance, focus mode, z-index scale: marked "web app only".</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>Decisions for this session</h2>
+  <div class="decisions">
+    <div class="dec">
+      <div class="dec-h"><span class="dec-id">S7-1</span><h3>What does the first PR prove?</h3></div>
+      <div class="opts">
+        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>The engine's walking skeleton</b>One command, two adapters, one contract suite. It proves the riskiest decision (S1-1) before anything is built on it.</div>
+        <div class="opt"><b>The UI shell first</b>Something visible sooner, but built on an engine that isn't proven yet.</div>
+      </div>
+    </div>
+    <div class="dec">
+      <div class="dec-h"><span class="dec-id">S7-2</span><h3>Team</h3></div>
+      <div class="opts">
+        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>Solo, with M5 open to a second developer</b>The plan works for one person (~25 weeks). If someone joins, M5 (Android capture, Kotlin + Play policy) is the cleanest piece to hand over from week 9.</div>
+        <div class="opt"><b>Plan for two developers now</b>~21 weeks, but only if the second person is really available.</div>
+      </div>
+    </div>
+    <div class="dec">
+      <div class="dec-h"><span class="dec-id">S7-3</span><h3>Which capture comes first</h3></div>
+      <div class="opts">
+        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>Android (M5) before iPhone (M6)</b>Android is where notification capture works fully and where most Colombian users are, and Play's policy review is the long pole. Meanwhile Google's verification for Gmail runs in the background.</div>
+        <div class="opt"><b>iPhone first</b>If your own daily phone is an iPhone, you'd dogfood capture sooner.</div>
+      </div>
+    </div>
+    <div class="dec">
+      <div class="dec-h"><span class="dec-id">S7-4</span><h3>Apply the CLAUDE.md changes?</h3></div>
+      <div class="opts">
+        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>Yes, in the plan PR</b>So every future session (and agent) builds v2 by these rules from the start.</div>
+        <div class="opt"><b>Later, when coding starts</b>Keeps CLAUDE.md about today's app for a while longer.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer style="color:var(--muted);font-size:13px">After your answers: <code>10-build-plan.md</code> rewritten as the final spec, the Claude Design prompt, and the CLAUDE.md update. Then the detailed implementation plan for the first PR.</footer>
+</main>
+<script>
+const M=[
+ {id:'M0',a:0,b:3,t:'Foundations',demo:'Nothing to tap yet: the engine test suite passes on phone-style SQLite and on the dev project\'s Postgres; the v2 shell opens behind a flag with the widget gallery.',
+  items:['Dev Supabase project + seed data (S1-5)','Engine skeleton: commands, storage port, SQLite + Postgres adapters, contract tests; <code>commands</code>, <code>field_versions</code>','v2 shell behind a flag: 4 token sets, primitives, widget gallery screen with screenshot tests','SQLCipher on the phone database (S2-1)','Spikes: iPhone Shortcuts "Mensaje" (S4-6)','Start: Google OAuth verification + CASA (S4-1); send the Claude Design prompt (S5-3)']},
+ {id:'M1',a:3,b:6,t:'The number',demo:'Add expenses by hand, offline, and watch Disponible, the verdict, Tu flujo and your past cycles react.',
+  items:['<code>computeDisponible</code> + verdict with all session-3 rules (card bills at minimum, counted accounts, look-ahead, apartar, variable estimates)','<code>user_cycle_settings</code>, <code>account_settings</code>, <code>bill_reservations</code>','Inicio: Disponible block + first 6 widgets + alerts; Tu flujo full screen','Movimientos + Detalle sheet','Cycle summaries + past cycles (S1-3, D2)']},
+ {id:'M2',a:6,b:9,t:'Server engine + capture core',demo:'Your forwarded Bancolombia emails and a PDF arrive through the new engine; edits made offline on the phone survive the server replay.',
+  items:['Server command runner route; outbox drain; narrowed sync (S1-1)','Conflict rules by field kind (S1-2)','Email pipeline → shared capture command + template engine, proven by replaying the saved email corpus (S4-2)','PDF import as commands; account created from a PDF (D1); unknown last-4 → Revisar card','<code>NOTIFICATION</code> tier added (the one small web change)']},
+ {id:'M3',a:9,b:11.5,t:'Revisar + categories',demo:'Answer Revisar cards; "¿Siempre para Rappi?" fixes past and future movements; accept the 25 categories.',
+  items:['Merchant policy (Siempre / Casi siempre / Pregúntame), <code>merchant_policy</code>','25 categories + opt-in migration card (S2-3); <code>category_rules</code> merged into merchants','Suggestions: rules → dictionary → Claude Haiku for new merchants (S4-4)','Lo que Zeta sabe (Ajustes › Categorías)']},
+ {id:'M4',a:11.5,b:14.5,t:'Pagos, debts, people',demo:'See every bill for 60 days, pay a bill in parts, pay off a loan, split a dinner and track who owes you.',
+  items:['Pagos: 60 days + Prepárate + apartar (S3-7); variable bills (S3-8)','<code>occurrence_payments</code> (D5); loans first-class (D3); pay-off flow (D6)','Cards: minimum payment default (S3-6); Deudas tab','Te deben + Tú debes (D8); Límites','Remaining widgets']},
+ {id:'M5',a:14.5,b:19,t:'Android capture',demo:'Pay with your card and the purchase appears on its own in seconds, offline too.',
+  items:['Kotlin NotificationListener module; chosen apps; SMS app + Google Wallet (S4-6)','Signed template pack; training cards; wording-change detection','Heartbeat + OEM battery guidance; <code>capture_heartbeats</code>','Play prominent disclosure + policy review (internal track early)']},
+ {id:'M6',a:19,b:21.5,t:'iPhone capture + voice',demo:'On iPhone: forwarding or Gmail brings purchases; Apple Pay and bank SMS arrive via Shortcuts; add expenses by voice.',
+  items:['Forwarding guided setup; Gmail connect for testers (<code>gmail_connections</code>)','Shortcuts automations + App Intent (Wallet, Mensaje)','Voice capture + Haiku fallback (replaces Gemini)','Balance notices check (S4-5)']},
+ {id:'M7',a:21.5,b:24.5,t:'Migration + launch',demo:'Your real account on v2; existing users move over on first launch; store builds submitted.',
+  items:['First-launch migration for existing users (categories card, subscriptions → bills, drain old outbox)','Onboarding (payday, balance, sources), push (local + server digest, <code>push_tokens</code>), privacy screen','Store assets; App Store + Play review; flag flipped; old mobile screens deleted','Web app reduced to PDF bulk import + accounts (S1-4)']},
+];
+const X=(w)=>180+w*30, rowH=30;
+let g='';
+for(let w=0;w<=25;w+=5){ g+=`<line x1="${X(w)}" y1="20" x2="${X(w)}" y2="345" stroke="var(--line)"/><text x="${X(w)}" y="14" text-anchor="middle" class="lbl">sem ${w}</text>`; }
+M.forEach((m,i)=>{ const y=28+i*rowH; g+=`<text x="10" y="${y+15}" style="font-weight:600">${m.id}</text><text x="40" y="${y+15}" class="sub">${m.t}</text><rect x="${X(m.a)}" y="${y+2}" width="${(m.b-m.a)*30-3}" height="20" rx="5" class="${i===0?'g-server':'g-phone'}"/><text x="${X(m.a)+6}" y="${y+16}" class="sub">${m.b-m.a} sem</text>`; });
+const ext=[['Google verification (Gmail)',0,12],['Claude Design screens',0,4],['Play policy review',15,19]];
+ext.forEach((e,i)=>{ const y=28+(M.length+i)*rowH; g+=`<text x="10" y="${y+15}" class="sub">${e[0]}</text><rect x="${X(e[1])}" y="${y+4}" width="${(e[2]-e[1])*30}" height="16" rx="5" class="g-out"/>`; });
+g+=`<line x1="${X(24.5)}" y1="20" x2="${X(24.5)}" y2="345" stroke="var(--ink)" stroke-width="1.5"/><text x="${X(24.5)-4}" y="340" text-anchor="end" style="font-weight:600">v1</text>`;
+document.getElementById('gantt').innerHTML=g;
+document.getElementById('ms').innerHTML=M.map(m=>`<div class="card"><h3>${m.id} · ${m.t}<span>${m.b-m.a} semanas</span></h3><ul style="margin:0;padding-left:18px">${m.items.map(x=>`<li>${x}</li>`).join('')}</ul><div class="demo"><b>You can test:</b> ${m.demo}</div></div>`).join('');
+</script>
