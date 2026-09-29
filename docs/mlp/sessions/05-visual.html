@@ -50,7 +50,7 @@ td.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
 
 /* ---------- phone mockups (tokens come from inline --t-* vars) ---------- */
-.ph{flex:none;width:272px;height:590px;border-radius:38px;padding:9px;background:#0c0c0c;box-shadow:0 18px 40px rgba(0,0,0,.18)}
+.ph{flex:none;zoom:1.434;width:272px;height:589px;border-radius:38px;padding:9px;background:#0c0c0c;box-shadow:0 18px 40px rgba(0,0,0,.18)}
 .scr{width:100%;height:100%;border-radius:30px;overflow:hidden;background:var(--t-bg);color:var(--t-ink);font-family:var(--t-ui);display:flex;flex-direction:column;font-variant-numeric:tabular-nums}
 .sb{height:30px;display:flex;justify-content:space-between;align-items:center;padding:0 22px;font:600 12px var(--t-ui);flex:none}
 .body{flex:1;overflow:hidden;padding:4px 14px 10px;display:flex;flex-direction:column;gap:9px}
@@ -102,6 +102,7 @@ td.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
   <h1>A clearer look for Zeta</h1>
   <p class="lede">Why Oliva feels flat, measured. Three directions that fix it, each shown in light and dark on Inicio, Revisar and Pagos. Three ways to draw the timeline you asked for. The mockups use Laura's numbers under the rules you set in session 3.</p>
 </header>
+<div style="position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:8px;border-bottom:1px solid var(--line)"><div style="font:500 11px 'Geist Mono',monospace;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">Controls for the interactive prototypes (Tu flujo, Inicio)</div><div id="flowToggles"></div></div>
 
 <section>
   <h2>Why Oliva feels flat</h2>
@@ -129,7 +130,6 @@ td.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
   <h2>The timeline (S3-T): "Tu flujo", interactive</h2>
   <div class="prose"><p>Built on the flow chart Zeta has today (<code>plan-flow-chart.tsx</code>): the balance line, daily bars around $0, and "Hoy". What changes: it follows your <b>pay cycles</b> instead of the calendar month, it <b>projects</b> the rest of the cycle and the next one (dashed line, outlined bars for bills still to pay), and you can <b>touch it</b>. <b>Try it</b>: drag across the chart to read the balance on any day, tap a day to see its movements and bills, and switch cycles. The theme toggles show it in both themes.</p></div>
   <div style="display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start">
-    <div style="flex-basis:100%"><div id="flowToggles"></div></div>
     <div id="flowEntry"></div>
     <div><div id="flow"></div><div class="cap">Tu flujo (full screen) · drag · tap · swipe</div></div>
     <div class="card" style="max-width:420px;font-size:14px">
@@ -152,39 +152,32 @@ td.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 </section>
 
 <section>
-  <h2>Inicio: one number on top, cards you choose below</h2>
-  <div class="prose"><p>Today's dashboard repeats the same facts in several widgets. v2 keeps the <b>widget idea</b>, planned from scratch, but with one rule: <b>only the top block answers "¿cómo voy?"</b>. Every card below answers a different question, shows one line when collapsed, and expands in place (the "toca para ver" pattern from today's Plan hero). "Ver todo ›" opens the full screen. <b>Try it:</b> tap a card to expand it; "Editar Inicio" adds, removes and orders cards.</p></div>
+  <h2>Inicio on a grid</h2>
+  <div class="prose"><p>The grid from today's app is back (<code>packRows</code> in <code>dashboard-layout.ts</code>): rows of <b>3 small</b>, <b>2 medium</b> or <b>1 large</b> widget. Tapping a widget opens its <b>expanded panel under its row</b>, full width, and dims the rest of the row, like today's "Herramientas". The Disponible block stays fixed on top. <b>Try it:</b> tap widgets; "Organizar" changes size, order, and adds or removes widgets. The width buttons show a small Android (360), an iPhone 15 (390) and a Pro Max (430) at real size.</p></div>
   <div style="display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start">
-    <div><div id="home"></div><div class="cap">Inicio · tap cards · Editar Inicio</div></div>
-    <div style="flex:1;min-width:300px">
-      <table>
-        <thead><tr><th>Card</th><th>The one question it answers</th><th>Default</th></tr></thead>
-        <tbody>
-          <tr><td><b>Tu flujo</b></td><td>¿Me alcanza hasta el próximo sueldo, y el siguiente ciclo?</td><td>On</td></tr>
-          <tr><td><b>Próximos pagos</b></td><td>¿Qué tengo que pagar y cuándo? (includes Prepárate)</td><td>On</td></tr>
-          <tr><td><b>Te deben</b></td><td>¿Quién me debe, y a quién le debo yo?</td><td>On</td></tr>
-          <tr><td><b>Deudas</b></td><td>¿Cuánto le debo a los bancos y cuándo termino?</td><td>Off</td></tr>
-          <tr><td><b>Límites</b></td><td>¿Voy bien en lo que quise controlar?</td><td>Off (suggested week 3)</td></tr>
-          <tr><td><b>Mis cuentas</b></td><td>¿Cuánta plata tengo y dónde?</td><td>Off</td></tr>
-          <tr><td><b>¿En qué se me fue?</b></td><td>¿En qué gasto este ciclo?</td><td>Off</td></tr>
-          <tr><td><b>Últimos movimientos</b></td><td>¿Qué pasó recién?</td><td>Off</td></tr>
-          <tr><td><b>Tus comercios</b></td><td>¿Dónde gasto más seguido?</td><td>Off</td></tr>
-          <tr><td><b>Viaje</b> (v1.1)</td><td>¿Cómo va el viaje?</td><td>Appears on its own</td></tr>
-        </tbody>
-      </table>
-      <p style="font-size:13.5px;color:var(--muted);margin:8px 0 0">Planned from scratch; today's widget catalog isn't carried over. Rules for every card: one line when collapsed, details when expanded, "Ver todo ›" for the full screen. No two cards answer the same question. Only Límites and Viaje show a verdict, and it comes from the same verdict function as the top block.</p>
-      <div class="card" style="margin-top:14px;font-size:14px">
-        <h3 style="margin-bottom:6px">Where every feature lives</h3>
-        <ul style="margin:0;padding-left:18px">
-          <li><b>Deudas personales</b> (Te deben / Tú debes): its Inicio card → full screen. Also from any movement: "Fue compartido".</li>
-          <li><b>Deudas con bancos</b> (tarjetas, créditos): Pagos › Deudas tab; its Inicio card is optional.</li>
-          <li><b>Modos / Viajes</b> (v1.1): created from "+"; its card appears on Inicio while a trip is upcoming or on.</li>
-          <li><b>Límites</b>: its card once limits exist (suggested from week 3).</li>
-          <li><b>Everything else</b>: Movimientos and Revisar tabs; Ajustes from the avatar.</li>
-        </ul>
-        <p style="margin:8px 0 0;color:var(--muted)">Default for a new user: Tu flujo, Próximos pagos, Te deben. Contextual cards (weekly summary, statement due, a quiet source, new cycle) appear on their own and can't be pinned.</p>
-      </div>
+    <div><div id="home"></div><div class="cap">Inicio · tap · Organizar</div></div>
+    <div style="flex:1;min-width:320px">
+      <h3 style="margin-bottom:8px">Every widget, every size it allows</h3>
+      <p style="font-size:14px;color:var(--muted);margin:0 0 10px">This gallery is also the test: each widget at each size it allows, at the chosen width and theme, with its expanded panel. A size that doesn't give valuable information isn't allowed. In the app, the same gallery is a dev screen and is screenshot-tested (see below).</p>
+      <div id="gallery" style="display:flex;flex-direction:column;gap:16px"></div>
     </div>
+  </div>
+  <div class="two" style="margin-top:16px">
+    <div class="card" style="font-size:14px"><h3 style="margin-bottom:6px">Rules for every widget</h3>
+      <ul style="margin:0;padding-left:18px">
+        <li>Answers one question no other widget answers; only the top block says "¿cómo voy?".</li>
+        <li>Has a <b>minimum size</b>: the smallest size where its information is still useful. It can't be made smaller.</li>
+        <li>Small: a label, one value, one line. Medium: + one detail or a mini bar. Large: a short list or a mini chart.</li>
+        <li>Every widget expands (panel under its row) and has "Ver todo ›" for its full screen.</li>
+        <li>Amounts shorten only in small tiles ("$380 mil", "$14,3 M"); everywhere else full "$380.000".</li>
+      </ul></div>
+    <div class="card" style="font-size:14px"><h3 style="margin-bottom:6px">How each widget is tested</h3>
+      <ul style="margin:0;padding-left:18px">
+        <li>Every allowed size × 3 widths (360, 390, 430) × 2 themes × light/dark × text size 100% and 130%.</li>
+        <li>Data cases: normal, empty (first week), long values ($14.250.000), negative, and the warning state.</li>
+        <li>Pass: nothing clipped or overlapping, contrast ≥ 4.5 for text and ≥ 3 for borders, and the main value readable in one glance.</li>
+        <li>Built as a dev "gallery" screen in the app with automated screenshots per case, checked on every change to a widget.</li>
+      </ul></div>
   </div>
 </section>
 
@@ -195,19 +188,15 @@ td.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
       <div class="dec-h"><span class="dir-id">S5-1</span><h3>Direction</h3></div>
       <p style="margin:0"><span class="rec-tag" style="border:0;padding:0">DECIDED</span> <b>Oliva afinada is the default theme; Nítido is an optional theme</b> (Ajustes › Apariencia: tema Oliva / Nítido × claro / oscuro / sistema). Tinta is discarded. Both themes share every component; only tokens change.</p>
     </div>
-    <div class="dec">
-      <div class="dec-h"><span class="dir-id">S5-2</span><h3>"Tu flujo": is this the right behaviour?</h3></div>
-      <p style="margin:0;font-size:14px;color:var(--muted)">You rejected T1–T3 and pointed to today's flow chart. Try the prototype above.</p>
-      <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b style="margin-top:6px">As prototyped</b>One cycle at a time with Pasado / Este / Próximo and swipe; drag to read the balance on any day; tap a day for its items; projected line and outlined pending bills; lowest point marked. Lives on Inicio under the number (collapsed by default, "Ver flujo"), like today.</div>
-        <div class="opt"><b>Continuous scroll of 3 cycles</b>One long chart you scroll sideways instead of switching cycles. More "timeline", but harder to compare a cycle's totals.</div>
-      </div>
+    <div class="dec" style="border-color:var(--accent)">
+      <div class="dec-h"><span class="dir-id">S5-2</span><h3>Tu flujo</h3></div>
+      <p style="margin:0"><span class="rec-tag" style="border:0;padding:0">DECIDED</span> As prototyped: one cycle at a time (Pasado / Este / Próximo + swipe) with 2 shaded days on each edge; drag to read any day's balance, tap a day for its items; projected line; below $0 in red with the day you'd run out and how much less to spend per day; a problem in the next cycle warns in amber in the current one, with "Apartar".</p>
     </div>
     <div class="dec">
-      <div class="dec-h"><span class="dir-id">S5-4</span><h3>Inicio: fixed number + cards you choose?</h3></div>
+      <div class="dec-h"><span class="dir-id">S5-4</span><h3>Inicio: fixed number + a widget grid you organize?</h3></div>
       <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b style="margin-top:6px">As prototyped</b>The Disponible block is fixed on top. Below it, cards from the catalog above, which you add, remove and order in "Editar Inicio"; each expands in place. Default: Tu flujo, Próximos pagos, Te deben. Contextual cards appear on their own. It overrides 01/03's "no dashboard customization", with the one-question-per-card rule to keep clutter out.</div>
-        <div class="opt"><b>Fixed Inicio, no editing</b>Same cards in a fixed order, with less to build and to explain. Features you don't use still take space.</div>
+        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b style="margin-top:6px">As prototyped</b>The Disponible block is fixed on top. Below it, the grid (rows of 3 small / 2 medium / 1 large, today's <code>packRows</code>) with 13 widgets planned from scratch, each with its own minimum size and an expanded panel under its row. "Organizar" changes size, order, adds and removes. Default: Hoy · Próximo pago · Te deben (small), Tu flujo (large), Tarjetas · Últimos (medium). Values auto-fit; each widget passes the gallery test at 360/390/430 in both themes before shipping.</div>
+        <div class="opt"><b>Fixed Inicio, no editing</b>Same widgets in a fixed layout, with less to build. Features you don't use still take space.</div>
       </div>
     </div>
     <div class="dec">
@@ -425,7 +414,7 @@ function flowRender(){
       <div>${lbl[0]}<br><b style="font-size:11px;color:${t.ok[1]}">${money(inC)}</b></div><div>${lbl[1]}<br><b style="font-size:11px;color:var(--t-ink)">${money(-outC)}</b></div><div>${lbl[2]}<br><b style="font-size:11px;color:${end<0?t.bad[2]:'var(--t-ink)'}">${money(end)}</b></div></div>
     <div class="cd" style="padding:2px 10px;flex:1;overflow:auto">${list}</div>`;
   const tab=(k,l)=>`<span class="${k==='i'?'on':''}"><i></i>${l}${k==='r'?'<b>3</b>':''}</span>`;
-  document.getElementById('flow').innerHTML=`<div class="ph" style="height:660px"><div class="scr" style="${vars(t,dir)}"><div class="sb"><span>9:41</span><span>●●● ▮</span></div><div class="body" style="gap:8px">${inner}</div><div class="tabs">${tab('i','Inicio')}${tab('m','Movimientos')}${tab('r','Revisar')}</div></div></div>`;
+  document.getElementById('flow').innerHTML=`<div class="ph"><div class="scr" style="${vars(t,dir)}"><div class="sb"><span>9:41</span><span>●●● ▮</span></div><div class="body" style="gap:8px">${inner}</div><div class="tabs">${tab('i','Inicio')}${tab('m','Movimientos')}${tab('r','Revisar')}</div></div></div>`;
   document.querySelectorAll('#flow [data-cyc]').forEach(el=>el.onclick=()=>{setCyc(+el.dataset.cyc)});
   let sx=null; const scr=document.querySelector('#flow .body');
   scr.ontouchstart=(e)=>{ if(!e.target.closest('#flowSvg')) sx=e.touches[0].clientX; };
@@ -460,52 +449,120 @@ function togglesRender(){
 }
 togglesRender(); flowRender();
 
-/* ---------- Inicio with expandable, user-chosen cards ---------- */
-const CARDS={
-  flujo:{t:'Tu flujo',one:'Llegas al 29 con ≈ $86.100',more:()=>`<svg viewBox="0 0 220 44" style="width:100%;height:44px"><path d="M0 8 L40 10 L60 30 L90 36 L120 38 L160 40 L200 41 L220 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="0"/></svg>`,link:'Abrir tu flujo'},
-  pagos:{t:'Próximos pagos',one:'Arriendo mañana · $700.000',more:()=>rows([['Arriendo','19 sep','$700.000'],['Tarjeta Nu · mínimo','22 sep','$640.000'],['Netflix','24 sep','$38.900'],['SOAT · Prepárate','15 dic','$1.100.000']]),link:'Ver Pagos'},
-  deben:{t:'Te deben',one:'$380.000 · 3 personas · tú debes $50.000',more:()=>rows([['Juan','hace 34 días','$180.000'],['Caro','préstamo · 5 días','$140.000'],['Ana','cena Andrés','$60.000'],['Tú le debes a Mateo','almuerzo','−$50.000']]),link:'Ver todo'},
-  deudas:{t:'Deudas',one:'$14.250.000 en 2 tarjetas y 1 crédito',more:()=>rows([['Tarjeta Nu','mínimo $640.000 · 22 sep','$1.850.000'],['Visa Bancolombia','mínimo $95.000 · 5 oct','$950.000'],['Crédito libre inversión','termina mar 2028','$11.450.000']]),link:'Ver Deudas'},
-  limites:{t:'Límites',one:'Domicilios va en Cuidado',more:()=>bars([['Domicilios',.92,'warn','te quedan $15.000'],['Salidas',.55,'ok','te quedan $112.000'],['Compras',.40,'ok','te quedan $120.000']]),link:'Ver límites'},
-  cuentas:{t:'Mis cuentas',one:'$1.850.000 en 3 cuentas',more:()=>rows([['Bancolombia','cuenta para Disponible','$1.320.000'],['Nequi','cuenta para Disponible','$330.000'],['Efectivo','cuenta para Disponible','$200.000'],['Ahorros Nu','aparte','$2.400.000']]),link:'Ver cuentas'},
-  sefue:{t:'¿En qué se me fue?',one:'Mercado · 32% del ciclo',more:()=>bars([['Mercado',.32,'n','$32.000'],['Transporte',.19,'n','$18.700'],['Domicilios',.29,'n','$29.500'],['Café',.10,'n','$9.800']]),link:'Ver todo'},
-  recientes:{t:'Últimos movimientos',one:'Rappi −$29.500 · ayer',more:()=>rows([['Rappi','ayer · Nu','−$29.500'],['Uber','mar · Bancolombia','−$18.700'],['Tostao','mar · efectivo','−$9.800']]),link:'Ver Movimientos'},
-  comercios:{t:'Tus comercios',one:'Rappi es el que más se repite',more:()=>rows([['Rappi','14 veces','$610.000'],['Éxito','6 veces','$412.000'],['Uber','9 veces','$168.000']]),link:'Ver todo'},
-  viaje:{t:'Viaje · v1.1',one:'Cartagena en 12 días · $1.500.000',more:()=>rows([['Apartado','de 3 ciclos','$1.000.000'],['Falta','antes del 30 oct','$500.000']]),link:'Ver viaje'},
-};
-function rows(a){return a.map(r=>`<div class="row" style="padding:5px 0"><div class="rt"><div class="a" style="font-size:11.5px">${r[0]}</div><div class="b">${r[1]}</div></div><div class="amt" style="font-size:11.5px">${r[2]}</div></div>`).join('');}
+/* ---------- Inicio grid with expandable widgets ---------- */
+const DEV={360:[360,800],390:[390,844],430:[430,932]}; const Z=1.434;
+flowState.dev=390;
+const SZ={XS:'Pequeño',S:'Mediano',L:'Grande'};
 let HT=null;
-function bars(a){return a.map(r=>{const col=r[2]==='warn'?HT.warn[2]:r[2]==='ok'?HT.ok[2]:HT.ink;return `<div style="font-size:11px;margin:5px 0"><div style="display:flex;justify-content:space-between"><span>${r[0]}</span><span class="mut">${r[3]}</span></div><div style="height:6px;border-radius:3px;background:${HT.sunk};margin-top:3px"><div style="width:${r[1]*100}%;height:6px;border-radius:3px;background:${col}"></div></div></div>`}).join('');}
-const homeState={active:['flujo','pagos','deben'],open:new Set(['pagos']),edit:false};
+const bar=(pct,col)=>`<div style="height:6px;border-radius:3px;background:${HT.sunk};margin-top:4px"><div style="width:${Math.min(100,pct*100)}%;height:6px;border-radius:3px;background:${col}"></div></div>`;
+const r2=(a,b,c)=>`<div style="display:flex;justify-content:space-between;gap:6px;font-size:10.5px;margin-top:4px"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a}${b?` <span class="mut">· ${b}</span>`:''}</span><b style="white-space:nowrap">${c}</b></div>`;
+const lbl=(x)=>`<div class="eb" style="font-size:8.5px">${x}</div>`, val=(x,c)=>`<div class="fitv" style="font:800 var(--tv,17px)/1.15 var(--t-num);margin-top:3px;white-space:nowrap;${c?`color:${c}`:''}">${x}</div>`, cap=(x)=>`<div class="mut" style="font-size:9.5px;margin-top:2px;line-height:1.25">${x}</div>`;
+const W={
+  hoy:{t:'Hoy',sizes:['XS','S'],q:'¿Cuánto llevo hoy?',
+    XS:()=>lbl('Hoy')+val('$12.500')+cap('de $35.000'),
+    S:()=>lbl('Hoy')+val('$12.500')+cap('de $35.000 · te quedan $22.500')+bar(12.5/35,HT.ink),
+    X:()=>r2('Tostao','8:10 a.m.','−$9.800')+r2('Uber','9:02 a.m.','−$2.700')+cap('Hoy puedes gastar $35.000 para llegar al 30.')},
+  pagos:{t:'Próximo pago',sizes:['XS','S','L'],q:'¿Qué tengo que pagar y cuándo?',
+    XS:()=>lbl('Próximo pago')+val('$700 mil')+cap('Arriendo · mañana'),
+    S:()=>lbl('Próximos pagos')+r2('Arriendo','mañana','$700.000')+r2('Nu · mínimo','22 sep','$640.000'),
+    L:()=>lbl('Próximos pagos · antes del 30')+r2('Arriendo','19 sep','$700.000')+r2('Tarjeta Nu · mínimo','22 sep','$640.000')+r2('Netflix','24 sep','$38.900')+r2('Prepárate: SOAT','15 dic','$1.100.000'),
+    X:()=>r2('Arriendo','19 sep · Pendiente','$700.000')+r2('Tarjeta Nu · mínimo','22 sep · debes $1.850.000','$640.000')+r2('Netflix','24 sep','$38.900')+r2('Próximo ciclo: Claro','5 oct · ≈','$65.000')+cap('Aparta $120.000 por ciclo para el SOAT del 15 dic.')},
+  deben:{t:'Te deben',sizes:['XS','S','L'],q:'¿Quién me debe y a quién le debo?',
+    XS:()=>lbl('Te deben')+val('$380 mil')+cap('3 personas'),
+    S:()=>lbl('Te deben')+val('$380.000')+cap('Juan $180.000 · 34 días')+cap('Tú debes $50.000'),
+    L:()=>lbl('Te deben $380.000 · tú debes $50.000')+r2('Juan','34 días','$180.000')+r2('Caro','préstamo','$140.000')+r2('Ana','cena Andrés','$60.000')+r2('Tú a Mateo','almuerzo','−$50.000'),
+    X:()=>r2('Juan','cena + Uber · 34 días','$180.000')+r2('Caro','préstamo · 5 días','$140.000')+r2('Ana','cena Andrés · 12 días','$60.000')+r2('Tú le debes a Mateo','almuerzo','$50.000')+cap('Juan lleva más de 30 días. <u>Recordarle por WhatsApp</u>')},
+  tarjetas:{t:'Tarjetas',sizes:['XS','S','L'],q:'¿Cuánto va mi próxima factura?',
+    XS:()=>lbl('Tarjeta Nu')+val('$480 mil')+cap('≈ próxima factura'),
+    S:()=>lbl('Próximas facturas')+r2('Nu','corte 8 oct','≈$480.000')+r2('Visa','corte 28 sep','≈$95.000'),
+    L:()=>lbl('Tarjetas · próxima factura')+r2('Nu','usado $1.850.000 de $4.000.000','≈$480.000')+bar(1850/4000,HT.ink)+r2('Visa Bancolombia','usado $950.000 de $3.000.000','≈$95.000')+bar(950/3000,HT.ink),
+    X:()=>r2('Nu · al corte (8 oct)','si sigues a este ritmo','≈$620.000')+r2('Nu · mínimo estimado','vence 22 oct','≈$480.000')+r2('Visa · mínimo estimado','vence 12 oct','≈$95.000')+cap('Pagar el mínimo deja deuda; te mostraremos cuánto ahorras abonando más (versión posterior).')},
+  deudas:{t:'Deudas',sizes:['XS','S','L'],q:'¿Cuánto le debo a los bancos y cuándo termino?',
+    XS:()=>lbl('Deudas')+val('$14,3 M')+cap('2 tarjetas · 1 crédito'),
+    S:()=>lbl('Deudas')+val('$14.250.000')+cap('Próximo mínimo $640.000 · 22 sep'),
+    L:()=>lbl('Deudas · $14.250.000')+r2('Crédito libre inversión','termina mar 2028','$11.450.000')+bar(.42,HT.ink)+r2('Tarjeta Nu','','$1.850.000')+r2('Visa Bancolombia','','$950.000'),
+    X:()=>r2('Crédito libre inversión','cuota $450.000 · 5 oct','$11.450.000')+r2('Tarjeta Nu','mínimo $640.000 · 22 sep','$1.850.000')+r2('Visa Bancolombia','mínimo $95.000 · 12 oct','$950.000')+cap('Pagaste 42% del crédito.')},
+  limites:{t:'Límites',sizes:['XS','S','L'],q:'¿Voy bien en lo que quise controlar?',
+    XS:()=>lbl('Límites')+`<div style="margin-top:6px"><span class="pill" style="background:${HT.warn[0]};color:${HT.warn[1]};font-size:9.5px;padding:2px 7px"><i></i>Cuidado</span></div>`+cap('Domicilios'),
+    S:()=>lbl('Límites')+cap('Domicilios · te quedan $15.000')+bar(.92,HT.warn[2])+cap('Salidas · $112.000')+bar(.55,HT.ok[2]),
+    L:()=>lbl('Límites de este ciclo')+cap('Domicilios · te quedan $15.000')+bar(.92,HT.warn[2])+cap('Salidas · te quedan $112.000')+bar(.55,HT.ok[2])+cap('Compras · te quedan $120.000')+bar(.40,HT.ok[2]),
+    X:()=>cap('Domicilios $165.000 de $180.000 · Cuidado')+bar(.92,HT.warn[2])+cap('Salidas $138.000 de $250.000 · Vas bien')+bar(.55,HT.ok[2])+cap('Compras $80.000 de $200.000 · Vas bien')+bar(.40,HT.ok[2])},
+  cuentas:{t:'Mis cuentas',sizes:['XS','S','L'],q:'¿Cuánta plata tengo y dónde?',
+    XS:()=>lbl('Mis cuentas')+val('$1,85 M')+cap('3 cuentas'),
+    S:()=>lbl('Mis cuentas')+r2('Bancolombia','','$1.320.000')+r2('Nequi','','$330.000'),
+    L:()=>lbl('Mis cuentas · $1.850.000')+r2('Bancolombia','','$1.320.000')+r2('Nequi','','$330.000')+r2('Efectivo','','$200.000')+r2('Ahorros Nu','aparte','$2.400.000'),
+    X:()=>r2('Bancolombia','actualizado hace 2 h','$1.320.000')+r2('Nequi','hace 1 día','$330.000')+r2('Efectivo','','$200.000')+r2('Ahorros Nu','no cuenta para Disponible','$2.400.000')+cap('<u>Cuadrar con mi saldo</u>')},
+  flujo:{t:'Tu flujo',sizes:['S','L'],q:'¿Me alcanza hasta el próximo sueldo?',
+    S:()=>lbl('Tu flujo')+spark(40)+cap('Llegas al 29 con ≈ $86.100'),
+    L:()=>lbl('Tu flujo · 15 – 29 sep')+spark(64)+`<div style="display:flex;justify-content:space-between;font-size:9.5px;margin-top:4px" class="mut"><span>Llega $2.100.000</span><span>Sale ≈ $2.098.900</span><span>Quedan ≈ $86.100</span></div>`,
+    X:()=>spark(90)+cap('Arriendo mañana baja tu saldo a $1.140.000. El punto más bajo es el 29 sep: $86.100.')+cap('<u>Abrir Tu flujo</u>')},
+  sefue:{t:'¿En qué se me fue?',sizes:['S','L'],q:'¿En qué gasto este ciclo?',
+    S:()=>lbl('¿En qué se me fue?')+cap('Mercado · 42%')+bar(.42,HT.ink)+cap('Domicilios · 30%')+bar(.30,HT.ink),
+    L:()=>lbl('¿En qué se me fue? · $100.000')+cap('Mercado · $42.000')+bar(.42,HT.ink)+cap('Domicilios · $29.500')+bar(.30,HT.ink)+cap('Transporte · $18.700')+bar(.19,HT.ink),
+    X:()=>cap('Mercado $42.000 · Domicilios $29.500 · Transporte $18.700 · Café $9.800')+cap('Domicilios va 40% más que tu promedio.')},
+  recientes:{t:'Últimos movimientos',sizes:['S','L'],q:'¿Qué pasó recién?',
+    S:()=>lbl('Últimos')+r2('Rappi','ayer','−$29.500')+r2('Uber','mar','−$18.700'),
+    L:()=>lbl('Últimos movimientos')+r2('Rappi','ayer · Nu','−$29.500')+r2('Uber','mar · Bancolombia','−$18.700')+r2('Tostao','mar · efectivo','−$9.800')+r2('Éxito','lun · Bancolombia','−$42.000'),
+    X:()=>r2('Rappi','ayer 8:14 p.m. · Domicilios','−$29.500')+r2('Uber','mar · Transporte','−$18.700')+r2('Tostao','mar · Café','−$9.800')+r2('Éxito','lun · Mercado','−$42.000')+cap('<u>Ver Movimientos</u>')},
+  comercios:{t:'Tus comercios',sizes:['S','L'],q:'¿Dónde gasto más seguido?',
+    S:()=>lbl('Tus comercios')+r2('Rappi','14 veces','$610.000')+r2('Éxito','6 veces','$412.000'),
+    L:()=>lbl('Tus comercios · 3 meses')+r2('Rappi','14 veces','$610.000')+r2('Éxito','6 veces','$412.000')+r2('Uber','9 veces','$168.000'),
+    X:()=>r2('Rappi','Domicilios · Siempre','$610.000')+r2('Éxito','Mercado','$412.000')+r2('Uber','Transporte','$168.000')+cap('<u>Lo que Zeta sabe</u>')},
+  dolar:{t:'Dólar hoy',sizes:['XS'],q:'¿A cuánto está el dólar? (solo si tienes deuda en USD)',
+    XS:()=>lbl('Dólar hoy')+val('$3.305')+cap('debes USD 1.337'),
+    X:()=>r2('Deuda en dólares','Visa','USD 1.337')+r2('Hoy equivale a','','≈$4.418.800')+cap('Se actualiza cada hora en días hábiles.')},
+  viaje:{t:'Viaje (v1.1)',sizes:['S','L'],q:'¿Cómo va el viaje?',
+    S:()=>lbl('Cartagena · en 12 días')+cap('Apartado $1.000.000 de $1.500.000')+bar(2/3,HT.ink),
+    L:()=>lbl('Viaje a Cartagena · 30 oct')+cap('Apartado $1.000.000 de $1.500.000')+bar(2/3,HT.ink)+r2('Falta apartar','este ciclo','$250.000'),
+    X:()=>r2('Apartado','3 ciclos','$1.000.000')+r2('Falta','2 ciclos','$500.000')+cap('<u>Ver viaje</u>')},
+};
+function spark(h){ if(!DAYS[16]) return ''; const pts=[]; for(let d=16; d<=30; d++) pts.push(DAYS[d].bal); const mx=Math.max(...pts), mn=Math.min(0,...pts), w=220;
+  const y=(v)=>h-3-(v-mn)/(mx-mn)*(h-6); const p=pts.map((v,k)=>(k?'L':'M')+(k*w/(pts.length-1)).toFixed(1)+' '+y(v).toFixed(1));
+  const past=p.slice(0,4).join(''), fut='M'+p.slice(3).join('').slice(1);
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:${h*0.62}px;display:block;margin-top:4px"><line x1="0" y1="${y(0)}" x2="${w}" y2="${y(0)}" stroke="${HT.line}"/><path d="${past}" fill="none" stroke="${HT.ink}" stroke-width="2"/><path d="${fut}" fill="none" stroke="${HT.ink}" stroke-width="2" stroke-dasharray="4 3"/></svg>`; }
+const homeState={layout:[{id:'hoy',size:'XS'},{id:'pagos',size:'XS'},{id:'deben',size:'XS'},{id:'flujo',size:'L'},{id:'tarjetas',size:'S'},{id:'recientes',size:'S'}],open:null,edit:false};
+function pack(ws){ const cap={XS:3,S:2,L:1}; const rows=[]; let cur=[],kind=null; const flush=()=>{if(cur.length){rows.push(cur);cur=[];kind=null;}};
+  for(const w of ws){ if(kind===null){kind=w.size;cur.push(w);} else if(w.size===kind&&cur.length<cap[kind]) cur.push(w); else {flush();kind=w.size;cur.push(w);} if(cur.length>=cap[w.size]) flush(); } flush(); return rows; }
+function tileHTML(w,dim,sel,editIx){ const def=W[w.id];
+  const ctr=editIx!==undefined?`<div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;font:600 9px var(--t-ui)"><span data-size="${editIx}" style="border:1px solid var(--t-control);border-radius:5px;padding:1px 5px;cursor:pointer">${SZ[w.size]}</span><span data-up="${editIx}" style="cursor:pointer;padding:1px 3px">↑</span><span data-dn="${editIx}" style="cursor:pointer;padding:1px 3px">↓</span><span data-rm="${editIx}" style="cursor:pointer;padding:1px 3px;color:${HT.bad[2]}">✕</span></div>`:'';
+  return `<div ${editIx===undefined?`data-open="${w.id}"`:''} class="cd" style="--tv:${w.size==='XS'?'13.5px':'17px'};padding:8px 9px;min-height:${w.size==='L'?0:74}px;cursor:pointer;min-width:0;overflow:hidden;opacity:${dim?.4:1};${sel?`outline:1.5px solid ${HT.ink};`:''}">${def[w.size]()}${ctr}</div>`; }
 function homeRender(){
-  const dir=D[flowState.theme], t=dir[flowState.mode]; HT=t;
-  let body;
-  if(homeState.edit){
-    const all=Object.keys(CARDS);
-    const on=homeState.active.map((k,ix)=>`<div class="row" style="padding:6px 0"><div class="rt"><div class="a" style="font-size:12px">${CARDS[k].t}</div></div><span data-up="${ix}" style="cursor:pointer;padding:0 6px">↑</span><span data-dn="${ix}" style="cursor:pointer;padding:0 6px">↓</span><span data-rm="${k}" style="cursor:pointer;color:${t.bad[2]};font-weight:700;padding:0 4px">−</span></div>`).join('');
-    const off=all.filter(k=>!homeState.active.includes(k)).map(k=>`<div class="row" style="padding:6px 0"><div class="rt"><div class="a" style="font-size:12px">${CARDS[k].t}</div><div class="b">${CARDS[k].one}</div></div><span data-add="${k}" style="cursor:pointer;font-weight:700;padding:0 4px">+</span></div>`).join('');
-    body=`<div class="hdr"><div class="t">Editar Inicio</div><span data-edit="0" style="font:600 12px var(--t-ui);cursor:pointer;text-decoration:underline">Listo</span></div>
-      <div class="mut" style="font-size:10.5px">El número de arriba siempre va primero.</div>
-      <div class="secT">En tu Inicio</div><div class="cd" style="padding:2px 10px">${on||'<div class="mut" style="font-size:11px;padding:8px 0">Nada todavía</div>'}</div>
-      <div class="secT">Agregar</div><div class="cd" style="padding:2px 10px;overflow:auto">${off}</div>`;
-  } else {
-    const cards=homeState.active.map(k=>{const c=CARDS[k], o=homeState.open.has(k);
-      return `<div class="cd" style="padding:9px 12px"><div data-tog="${k}" style="display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer"><div style="min-width:0"><div class="eb">${c.t}</div><div style="font:600 12px var(--t-ui);margin-top:2px">${c.one}</div></div><span style="font-size:12px;transform:rotate(${o?180:0}deg);transition:transform .2s">⌄</span></div>
-        ${o?`<div style="margin-top:6px">${c.more()}</div><div style="font:600 11px var(--t-ui);text-decoration:underline;margin-top:4px">${c.link} ›</div>`:''}</div>`}).join('');
-    body=`<div class="hdr"><div><div class="t">Hola, Laura</div><div class="s">Ciclo 15 – 29 sep</div></div><div class="av">L</div></div>
-      ${hero(t,dir,'ok')}${cards}
-      <div style="text-align:center;font:600 11px var(--t-ui);text-decoration:underline;cursor:pointer;padding:4px" data-edit="1">Editar Inicio</div>`;
+  const dir=D[flowState.theme], t=dir[flowState.mode]; HT=t; const [dw,dh]=DEV[flowState.dev];
+  const rows=pack(homeState.layout); let idx=0; let grid='';
+  for(const row of rows){ const cols=row[0].size==='XS'?3:row[0].size==='S'?2:1;
+    const openHere=row.find(w=>w.id===homeState.open);
+    grid+=`<div style="display:grid;grid-template-columns:repeat(${cols},minmax(0,1fr));gap:7px">${row.map(w=>{const s=tileHTML(w,!!openHere&&openHere!==w,openHere===w,homeState.edit?idx:undefined); idx++; return s;}).join('')}</div>`;
+    if(openHere&&!homeState.edit) grid+=`<div class="cd" style="padding:9px 11px;border:1.5px solid ${t.ink}"><div style="display:flex;justify-content:space-between"><span class="eb" style="font-size:8.5px">${W[openHere.id].t}</span><span data-open="${openHere.id}" style="cursor:pointer;font-size:11px">✕</span></div>${W[openHere.id].X()}<div style="font:600 10.5px var(--t-ui);text-decoration:underline;margin-top:6px">Ver todo ›</div></div>`;
   }
+  let extra='';
+  if(homeState.edit){ const off=Object.keys(W).filter(k=>!homeState.layout.some(w=>w.id===k));
+    extra=`<div class="secT">Agregar</div><div class="cd" style="padding:2px 10px">${off.map(k=>`<div class="row" style="padding:5px 0"><div class="rt"><div class="a" style="font-size:11.5px">${W[k].t}</div><div class="b">${W[k].q} · mínimo ${SZ[W[k].sizes[0]].toLowerCase()}</div></div><span data-add="${k}" style="cursor:pointer;font-weight:700;padding:0 4px">+</span></div>`).join('')||'<div class="mut" style="font-size:11px;padding:6px 0">Ya tienes todos</div>'}</div>`; }
+  const body=`<div class="hdr"><div><div class="t">Hola, Laura</div><div class="s">Ciclo 15 – 29 sep</div></div><div class="av">L</div></div>
+    ${hero(t,dir,'ok')}${grid}${extra}
+    <div style="text-align:center;padding:4px"><span data-edit="${homeState.edit?0:1}" style="display:inline-block;font:600 11px var(--t-ui);border:1.5px solid var(--t-ink);border-radius:9px;padding:5px 12px;cursor:pointer">${homeState.edit?'Listo':'Organizar'}</span></div>`;
   const tab=(k,l)=>`<span class="${k==='i'?'on':''}"><i></i>${l}${k==='r'?'<b>3</b>':''}</span>`;
-  document.getElementById('home').innerHTML=`<div class="ph" style="height:660px"><div class="scr" style="${vars(t,dir)}"><div class="sb"><span>9:41</span><span>●●● ▮</span></div><div class="body" style="gap:8px;overflow:auto">${body}</div><div class="tabs">${tab('i','Inicio')}${tab('m','Movimientos')}${tab('r','Revisar')}</div></div></div>`;
-  const q=(sel,fn)=>document.querySelectorAll('#home '+sel).forEach(el=>el.onclick=()=>{fn(el);homeRender();});
-  q('[data-tog]',el=>{const k=el.dataset.tog; homeState.open.has(k)?homeState.open.delete(k):homeState.open.add(k);});
-  q('[data-edit]',el=>{homeState.edit=el.dataset.edit==='1';});
-  q('[data-rm]',el=>{homeState.active=homeState.active.filter(k=>k!==el.dataset.rm);});
-  q('[data-add]',el=>{homeState.active.push(el.dataset.add);});
-  q('[data-up]',el=>{const i=+el.dataset.up; if(i>0){const a=homeState.active; [a[i-1],a[i]]=[a[i],a[i-1]];}});
-  q('[data-dn]',el=>{const i=+el.dataset.dn, a=homeState.active; if(i<a.length-1){[a[i+1],a[i]]=[a[i],a[i+1]];}});
+  document.getElementById('home').innerHTML=`<div class="ph" style="width:${dw/Z}px;height:${dh/Z}px"><div class="scr" style="${vars(t,dir)}"><div class="sb"><span>9:41</span><span>●●● ▮</span></div><div class="body" style="gap:7px;overflow:auto">${body}</div><div class="tabs">${tab('i','Inicio')}${tab('m','Movimientos')}${tab('r','Revisar')}</div></div></div>`;
+  const q=(sel,fn)=>document.querySelectorAll('#home '+sel).forEach(el=>el.onclick=(e)=>{e.stopPropagation();fn(el);homeRender();});
+  q('[data-open]',el=>{homeState.open=homeState.open===el.dataset.open?null:el.dataset.open;});
+  q('[data-edit]',el=>{homeState.edit=el.dataset.edit==='1'; homeState.open=null;});
+  q('[data-rm]',el=>{homeState.layout.splice(+el.dataset.rm,1);});
+  q('[data-add]',el=>{homeState.layout.push({id:el.dataset.add,size:W[el.dataset.add].sizes[0]});});
+  q('[data-size]',el=>{const w=homeState.layout[+el.dataset.size], a=W[w.id].sizes; w.size=a[(a.indexOf(w.size)+1)%a.length];});
+  q('[data-up]',el=>{const i=+el.dataset.up,a=homeState.layout; if(i>0)[a[i-1],a[i]]=[a[i],a[i-1]];});
+  q('[data-dn]',el=>{const i=+el.dataset.dn,a=homeState.layout; if(i<a.length-1)[a[i+1],a[i]]=[a[i],a[i+1]];});
+  galleryRender(t,dir);
 }
+function galleryRender(t,dir){ const el=document.getElementById('gallery'); if(!el) return; const [dw]=DEV[flowState.dev]; const inner=dw/Z-18-28;
+  el.innerHTML=Object.entries(W).map(([k,w])=>`<div class="card" style="padding:12px 14px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline"><b>${w.t}</b><span style="font-size:12.5px;color:var(--muted)">${w.q} · min: ${SZ[w.sizes[0]]}</span></div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;align-items:flex-start">${w.sizes.map(sz=>{const width=sz==='XS'?(inner-14)/3:sz==='S'?(inner-7)/2:inner; return `<div><div style="zoom:${Z}"><div class="scr" style="${vars(t,dir)};width:${width}px;height:auto;border-radius:0;background:transparent;padding:0"><div class="cd" style="--tv:${sz==='XS'?'13.5px':'17px'};padding:8px 9px;min-height:${sz==='L'?0:74}px;overflow:hidden">${w[sz]()}</div></div></div><div class="cap">${SZ[sz]}</div></div>`}).join('')}
+    <div><div style="zoom:${Z}"><div class="scr" style="${vars(t,dir)};width:${inner}px;height:auto;border-radius:0;background:transparent"><div class="cd" style="padding:9px 11px;border:1.5px solid ${t.ink}">${w.X()}</div></div></div><div class="cap">Expandido</div></div></div></div>`).join('');
+}
+function fitAll(){ document.querySelectorAll('.fitv').forEach(el=>{ el.style.fontSize=''; let f=parseFloat(getComputedStyle(el).fontSize); const min=f*0.62; let n=0; while(el.scrollWidth>el.clientWidth+.5 && f>min && n<40){ f-=0.5; el.style.fontSize=f+'px'; n++; } }); }
+const _hr=homeRender; homeRender=function(){_hr(); fitAll();};
 const _fr=flowRender; flowRender=function(){_fr(); homeRender();};
-homeRender();
+const _tr=togglesRender; togglesRender=function(){_tr(); const el=document.getElementById('flowToggles');
+  const b=(v)=>`<button type="button" data-dev="${v}" style="font:600 12.5px Geist,sans-serif;padding:6px 12px;border-radius:9px;border:1.5px solid var(--ink);background:${flowState.dev===v?'var(--ink)':'transparent'};color:${flowState.dev===v?'var(--surface)':'var(--ink)'};cursor:pointer">${v} px</button>`;
+  const d=document.createElement('div'); d.style.cssText='display:flex;gap:6px;flex-wrap:wrap;margin-top:6px'; d.innerHTML='<span style="font-size:12.5px;color:var(--muted);align-self:center">Ancho:</span>'+[360,390,430].map(b).join(''); el.appendChild(d);
+  d.querySelectorAll('button').forEach(x=>x.onclick=()=>{flowState.dev=+x.dataset.dev; togglesRender(); homeRender();}); };
+togglesRender(); homeRender();
 </script>

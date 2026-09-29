@@ -46,7 +46,7 @@ Every architecture, database and screen decision is checked against this list. N
 | B12 | See my total debt (cards + loans) and what's left on each | Pagos › Deudas section | v1 | D3 |
 | B14 | See how my money will move across the last, current and next cycle (timeline) | Timeline view (session 5 designs it) | v1 | S3-T |
 | B15 | See my next card bill growing as I use the card, and what it will be at the cut | Inicio, Pagos › card | v1 | S3-5 |
-| B16 | Choose, order and expand the cards on Inicio (Tu flujo, Próximos pagos, Te deben, Deudas, Límites, Mis cuentas, ¿En qué se me fue?, Últimos movimientos, Tus comercios, Viaje) | Inicio › Editar Inicio | v1 | S5-4 (open) |
+| B16 | Organize Inicio's widget grid: add/remove, order, size (small/medium/large within each widget's minimum), expand in place (13 widgets: Hoy, Próximo pago, Te deben, Tarjetas, Deudas, Límites, Mis cuentas, Tu flujo, ¿En qué se me fue?, Últimos movimientos, Tus comercios, Dólar hoy, Viaje) | Inicio › Organizar | v1 | S5-4 (open) |
 | B13 | See a home-screen widget with my Disponible | Widget | v1.1 | ok |
 
 ## C. Recording money that moves
