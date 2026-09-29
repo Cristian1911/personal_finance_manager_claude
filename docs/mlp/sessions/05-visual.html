@@ -152,8 +152,8 @@ td.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 </section>
 
 <section>
-  <h2>Inicio on a grid</h2>
-  <div class="prose"><p>The grid from today's app is back (<code>packRows</code> in <code>dashboard-layout.ts</code>): rows of <b>3 small</b>, <b>2 medium</b> or <b>1 large</b> widget. Tapping a widget opens its <b>expanded panel under its row</b>, full width, and dims the rest of the row, like today's "Herramientas". The Disponible block stays fixed on top. <b>Try it:</b> tap widgets; "Organizar" changes size, order, and adds or removes widgets. The width buttons show a small Android (360), an iPhone 15 (390) and a Pro Max (430) at real size.</p></div>
+  <h2>Inicio on a 2-column grid</h2>
+  <div class="prose"><p>The grid is back, simplified to <b>two columns</b>: each widget takes <b>half</b> or the <b>full</b> width. A collapsed widget shows only an icon, its title and <b>one</b> primary value or a small visual; details live in the expanded panel, which opens under its row and dims the rest. <b>Urgent things call for attention:</b> a colored edge and a short reason on the widget ("Mañana", "No llegas al 30"), and on opening the app the most critical one opens by itself. <b>Try it:</b> the scenario buttons at the top change what's urgent; "Organizar" changes size, order, and adds or removes widgets.</p></div>
   <div style="display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start">
     <div><div id="home"></div><div class="cap">Inicio · tap · Organizar</div></div>
     <div style="flex:1;min-width:320px">
@@ -167,9 +167,9 @@ td.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
       <ul style="margin:0;padding-left:18px">
         <li>Answers one question no other widget answers; only the top block says "¿cómo voy?".</li>
         <li>Has a <b>minimum size</b>: the smallest size where its information is still useful. It can't be made smaller.</li>
-        <li>Small: a label, one value, one line. Medium: + one detail or a mini bar. Large: a short list or a mini chart.</li>
+        <li>Collapsed = icon + title + <b>one</b> primary value or visual (+ at most a 3-word hint). Everything else goes in the expanded panel.</li><li>Alert states: amber (needs attention soon) or red (critical), with a ≤4-word reason. The most critical opens automatically once per day.</li>
         <li>Every widget expands (panel under its row) and has "Ver todo ›" for its full screen.</li>
-        <li>Amounts shorten only in small tiles ("$380 mil", "$14,3 M"); everywhere else full "$380.000".</li>
+        <li>Amounts auto-fit their space; they're shortened ("$14,3 M") only when a full amount can't fit at 62% of its size.</li>
       </ul></div>
     <div class="card" style="font-size:14px"><h3 style="margin-bottom:6px">How each widget is tested</h3>
       <ul style="margin:0;padding-left:18px">
@@ -193,10 +193,10 @@ td.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
       <p style="margin:0"><span class="rec-tag" style="border:0;padding:0">DECIDED</span> As prototyped: one cycle at a time (Pasado / Este / Próximo + swipe) with 2 shaded days on each edge; drag to read any day's balance, tap a day for its items; projected line; below $0 in red with the day you'd run out and how much less to spend per day; a problem in the next cycle warns in amber in the current one, with "Apartar".</p>
     </div>
     <div class="dec">
-      <div class="dec-h"><span class="dir-id">S5-4</span><h3>Inicio: fixed number + a widget grid you organize?</h3></div>
+      <div class="dec-h"><span class="dir-id">S5-4</span><h3>Inicio: fixed number + a 2-column widget grid you organize?</h3></div>
       <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b style="margin-top:6px">As prototyped</b>The Disponible block is fixed on top. Below it, the grid (rows of 3 small / 2 medium / 1 large, today's <code>packRows</code>) with 13 widgets planned from scratch, each with its own minimum size and an expanded panel under its row. "Organizar" changes size, order, adds and removes. Default: Hoy · Próximo pago · Te deben (small), Tu flujo (large), Tarjetas · Últimos (medium). Values auto-fit; each widget passes the gallery test at 360/390/430 in both themes before shipping.</div>
-        <div class="opt"><b>Fixed Inicio, no editing</b>Same widgets in a fixed layout, with less to build. Features you don't use still take space.</div>
+        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b style="margin-top:6px">As prototyped</b>The Disponible block is fixed on top. Below it, a 2-column grid: each widget is half or full width, never smaller than its minimum. Collapsed = icon + title + one value or visual; details expand in place. Urgent widgets show an amber or red edge with a short reason, and the most critical opens by itself once a day. "Organizar" changes size, order, adds and removes. Default: Tu flujo (full), Hoy · Próximo pago · Te deben · Tarjeta Nu (half), Últimos movimientos (full). Every widget passes the gallery test at 360/390/430 in both themes.</div>
+        <div class="opt"><b>Fixed Inicio, no editing</b>Same widgets in a fixed layout, with less to build.</div>
       </div>
     </div>
     <div class="dec">
@@ -242,7 +242,8 @@ const D = {
 const V = {
   ok:{label:"Vas bien",n:"$421.100",per:"$35.000 al día · 12 días",sub:"+$180.000 cuando te paguen"},
   warn:{label:"Cuidado",n:"$271.100",per:"Máximo $22.500 al día para llegar al 30",sub:"+$180.000 cuando te paguen"},
-  bad:{label:"Te pasaste",n:"−$64.000",per:"Lo restamos del próximo ciclo",sub:"Mira en qué se fue ›"}
+  bad:{label:"Te pasaste",n:"−$64.000",per:"Lo restamos del próximo ciclo",sub:"Mira en qué se fue ›"},
+  over:{label:"Cuidado",n:"$1.100",per:"Casi nada para llegar al 30",sub:"+$180.000 cuando te paguen"}
 };
 function vars(t,dir){
   const s=[`--t-bg:${t.bg}`,`--t-card:${t.card}`,`--t-ink:${t.ink}`,`--t-muted:${t.muted}`,`--t-line:${t.line}`,`--t-control:${t.control}`,`--t-sunk:${t.sunk}`,`--t-button:${t.button}`,`--t-onbutton:${t.onbutton}`,`--t-shadow:${t.shadow}`,`--t-ui:${dir.ui}`,`--t-num:${dir.num}`,`--t-numw:${dir.numw}`,`--t-bad-solid:${t.bad[2]}`,`--t-bad-on:${t.bad[3]}`];
@@ -252,8 +253,8 @@ function frame(t,dir,inner,active){
   const tab=(n,l)=>`<span class="${active===n?'on':''}"><i></i>${l}${n==='r'?'<b>3</b>':''}</span>`;
   return `<div><div class="ph"><div class="scr" style="${vars(t,dir)}"><div class="sb"><span>9:41</span><span>●●● ▮</span></div><div class="body">${inner}</div><div class="tabs">${tab('i','Inicio')}${tab('m','Movimientos')}${tab('r','Revisar')}</div></div></div>`;
 }
-function hero(t,dir,st){
-  const v=V[st], c=t[st];
+function hero(t,dir,st,vk){
+  const v=V[vk||st], c=t[st];
   if(dir.style==="solid"){
     return `<div style="background:${c[2]};color:${c[3]};border-radius:18px;padding:13px 14px">
       <div style="display:flex;justify-content:space-between;align-items:center"><span class="pill" style="border:1.5px solid ${c[3]};color:${c[3]}"><i></i>${v.label}</span><span style="font-size:10.5px;opacity:.9">Te pagan en 12 días</span></div>
@@ -445,103 +446,122 @@ function togglesRender(){
   const b=(key,val,label)=>`<button type="button" data-k="${key}" data-v="${val}" style="font:600 12.5px Geist,sans-serif;padding:6px 12px;border-radius:9px;border:1.5px solid var(--ink);background:${flowState[key]===val?'var(--ink)':'transparent'};color:${flowState[key]===val?'var(--surface)':'var(--ink)'};cursor:pointer">${label}</button>`;
   const el=document.getElementById('flowToggles');
   el.innerHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap;width:100%">${b('scn','normal','Normal')}${b('scn','big','Pago grande el próximo ciclo')}${b('scn','over','Te pasas este ciclo')}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${b('theme','A','Oliva afinada')}${b('theme','B','Nítido')}<span style="width:8px"></span>${b('mode','light','Claro')}${b('mode','dark','Oscuro')}</div>`;
-  el.querySelectorAll('button').forEach(x=>x.onclick=()=>{flowState[x.dataset.k]=x.dataset.v; if(x.dataset.k==='scn'){DAYS=buildDays(flowState.scn);} togglesRender(); flowRender();});
+  el.querySelectorAll('button').forEach(x=>x.onclick=()=>{flowState[x.dataset.k]=x.dataset.v; if(x.dataset.k==='scn'){DAYS=buildDays(flowState.scn); if(typeof homeState!=='undefined'){homeState.auto=true; homeState.open=null;}} togglesRender(); flowRender();});
 }
 togglesRender(); flowRender();
 
-/* ---------- Inicio grid with expandable widgets ---------- */
+/* ---------- Inicio grid with expandable widgets (2 columns) ---------- */
 const DEV={360:[360,800],390:[390,844],430:[430,932]}; const Z=1.434;
 flowState.dev=390;
-const SZ={XS:'Pequeño',S:'Mediano',L:'Grande'};
+const SZ={M:'Mitad',L:'Completo'};
 let HT=null;
-const bar=(pct,col)=>`<div style="height:6px;border-radius:3px;background:${HT.sunk};margin-top:4px"><div style="width:${Math.min(100,pct*100)}%;height:6px;border-radius:3px;background:${col}"></div></div>`;
-const r2=(a,b,c)=>`<div style="display:flex;justify-content:space-between;gap:6px;font-size:10.5px;margin-top:4px"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a}${b?` <span class="mut">· ${b}</span>`:''}</span><b style="white-space:nowrap">${c}</b></div>`;
-const lbl=(x)=>`<div class="eb" style="font-size:8.5px">${x}</div>`, val=(x,c)=>`<div class="fitv" style="font:800 var(--tv,17px)/1.15 var(--t-num);margin-top:3px;white-space:nowrap;${c?`color:${c}`:''}">${x}</div>`, cap=(x)=>`<div class="mut" style="font-size:9.5px;margin-top:2px;line-height:1.25">${x}</div>`;
+const IC={
+  hoy:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  pagos:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  deben:'<circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2M16 3.1a4 4 0 0 1 0 7.8M21 21v-2a4 4 0 0 0-3-3.9"/>',
+  tarjetas:'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+  deudas:'<path d="M3 22h18M6 18v-7M10 18v-7M14 18v-7M18 18v-7M12 2l10 5H2z"/>',
+  limites:'<path d="M12 14l4-4M3.3 19a10 10 0 1 1 17.4 0"/>',
+  cuentas:'<rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20M16 15h2"/>',
+  flujo:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+  sefue:'<path d="M21.2 15.9A10 10 0 1 1 8 2.8M22 12A10 10 0 0 0 12 2v10z"/>',
+  recientes:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  comercios:'<path d="M3 9l1.5-5h15L21 9M4 9v11h16V9M9 20v-6h6v6"/>',
+  dolar:'<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
+  viaje:'<path d="M2 16l20-6-20-6 4 6z"/>'};
+const icon=(k)=>`<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none">${IC[k]}</svg>`;
+const bar=(pct,col,h=6)=>`<div style="height:${h}px;border-radius:${h/2}px;background:${HT.sunk};margin-top:4px"><div style="width:${Math.min(100,pct*100)}%;height:${h}px;border-radius:${h/2}px;background:${col}"></div></div>`;
+const r2=(a,b,c)=>`<div style="display:flex;justify-content:space-between;gap:6px;font-size:10.5px;margin-top:5px"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a}${b?` <span class="mut">· ${b}</span>`:''}</span><b style="white-space:nowrap">${c}</b></div>`;
+const cap=(x)=>`<div class="mut" style="font-size:10px;margin-top:3px;line-height:1.3">${x}</div>`;
+const big=(x,c)=>`<div class="fitv" style="font:800 19px/1.1 var(--t-num);white-space:nowrap;${c?`color:${c}`:''}">${x}</div>`;
+const hint=(x)=>`<div class="mut" style="font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${x}</div>`;
+const ring=(pct,col,sz=34)=>{const r=13,c=2*Math.PI*r;return `<svg viewBox="0 0 34 34" width="${sz}" height="${sz}"><circle cx="17" cy="17" r="${r}" fill="none" stroke="${HT.sunk}" stroke-width="4"/><circle cx="17" cy="17" r="${r}" fill="none" stroke="${col}" stroke-width="4" stroke-linecap="round" stroke-dasharray="${c*pct} ${c}" transform="rotate(-90 17 17)"/></svg>`};
+const faces=(a)=>`<div style="display:flex">${a.map((x,i)=>`<span style="width:20px;height:20px;border-radius:50%;background:${HT.sunk};border:1.5px solid ${HT.card};margin-left:${i?-6:0}px;display:flex;align-items:center;justify-content:center;font:700 8.5px var(--t-ui)">${x}</span>`).join('')}</div>`;
+const scn=()=>flowState.scn;
 const W={
-  hoy:{t:'Hoy',sizes:['XS','S'],q:'¿Cuánto llevo hoy?',
-    XS:()=>lbl('Hoy')+val('$12.500')+cap('de $35.000'),
-    S:()=>lbl('Hoy')+val('$12.500')+cap('de $35.000 · te quedan $22.500')+bar(12.5/35,HT.ink),
-    X:()=>r2('Tostao','8:10 a.m.','−$9.800')+r2('Uber','9:02 a.m.','−$2.700')+cap('Hoy puedes gastar $35.000 para llegar al 30.')},
-  pagos:{t:'Próximo pago',sizes:['XS','S','L'],q:'¿Qué tengo que pagar y cuándo?',
-    XS:()=>lbl('Próximo pago')+val('$700 mil')+cap('Arriendo · mañana'),
-    S:()=>lbl('Próximos pagos')+r2('Arriendo','mañana','$700.000')+r2('Nu · mínimo','22 sep','$640.000'),
-    L:()=>lbl('Próximos pagos · antes del 30')+r2('Arriendo','19 sep','$700.000')+r2('Tarjeta Nu · mínimo','22 sep','$640.000')+r2('Netflix','24 sep','$38.900')+r2('Prepárate: SOAT','15 dic','$1.100.000'),
-    X:()=>r2('Arriendo','19 sep · Pendiente','$700.000')+r2('Tarjeta Nu · mínimo','22 sep · debes $1.850.000','$640.000')+r2('Netflix','24 sep','$38.900')+r2('Próximo ciclo: Claro','5 oct · ≈','$65.000')+cap('Aparta $120.000 por ciclo para el SOAT del 15 dic.')},
-  deben:{t:'Te deben',sizes:['XS','S','L'],q:'¿Quién me debe y a quién le debo?',
-    XS:()=>lbl('Te deben')+val('$380 mil')+cap('3 personas'),
-    S:()=>lbl('Te deben')+val('$380.000')+cap('Juan $180.000 · 34 días')+cap('Tú debes $50.000'),
-    L:()=>lbl('Te deben $380.000 · tú debes $50.000')+r2('Juan','34 días','$180.000')+r2('Caro','préstamo','$140.000')+r2('Ana','cena Andrés','$60.000')+r2('Tú a Mateo','almuerzo','−$50.000'),
-    X:()=>r2('Juan','cena + Uber · 34 días','$180.000')+r2('Caro','préstamo · 5 días','$140.000')+r2('Ana','cena Andrés · 12 días','$60.000')+r2('Tú le debes a Mateo','almuerzo','$50.000')+cap('Juan lleva más de 30 días. <u>Recordarle por WhatsApp</u>')},
-  tarjetas:{t:'Tarjetas',sizes:['XS','S','L'],q:'¿Cuánto va mi próxima factura?',
-    XS:()=>lbl('Tarjeta Nu')+val('$480 mil')+cap('≈ próxima factura'),
-    S:()=>lbl('Próximas facturas')+r2('Nu','corte 8 oct','≈$480.000')+r2('Visa','corte 28 sep','≈$95.000'),
-    L:()=>lbl('Tarjetas · próxima factura')+r2('Nu','usado $1.850.000 de $4.000.000','≈$480.000')+bar(1850/4000,HT.ink)+r2('Visa Bancolombia','usado $950.000 de $3.000.000','≈$95.000')+bar(950/3000,HT.ink),
-    X:()=>r2('Nu · al corte (8 oct)','si sigues a este ritmo','≈$620.000')+r2('Nu · mínimo estimado','vence 22 oct','≈$480.000')+r2('Visa · mínimo estimado','vence 12 oct','≈$95.000')+cap('Pagar el mínimo deja deuda; te mostraremos cuánto ahorras abonando más (versión posterior).')},
-  deudas:{t:'Deudas',sizes:['XS','S','L'],q:'¿Cuánto le debo a los bancos y cuándo termino?',
-    XS:()=>lbl('Deudas')+val('$14,3 M')+cap('2 tarjetas · 1 crédito'),
-    S:()=>lbl('Deudas')+val('$14.250.000')+cap('Próximo mínimo $640.000 · 22 sep'),
-    L:()=>lbl('Deudas · $14.250.000')+r2('Crédito libre inversión','termina mar 2028','$11.450.000')+bar(.42,HT.ink)+r2('Tarjeta Nu','','$1.850.000')+r2('Visa Bancolombia','','$950.000'),
-    X:()=>r2('Crédito libre inversión','cuota $450.000 · 5 oct','$11.450.000')+r2('Tarjeta Nu','mínimo $640.000 · 22 sep','$1.850.000')+r2('Visa Bancolombia','mínimo $95.000 · 12 oct','$950.000')+cap('Pagaste 42% del crédito.')},
-  limites:{t:'Límites',sizes:['XS','S','L'],q:'¿Voy bien en lo que quise controlar?',
-    XS:()=>lbl('Límites')+`<div style="margin-top:6px"><span class="pill" style="background:${HT.warn[0]};color:${HT.warn[1]};font-size:9.5px;padding:2px 7px"><i></i>Cuidado</span></div>`+cap('Domicilios'),
-    S:()=>lbl('Límites')+cap('Domicilios · te quedan $15.000')+bar(.92,HT.warn[2])+cap('Salidas · $112.000')+bar(.55,HT.ok[2]),
-    L:()=>lbl('Límites de este ciclo')+cap('Domicilios · te quedan $15.000')+bar(.92,HT.warn[2])+cap('Salidas · te quedan $112.000')+bar(.55,HT.ok[2])+cap('Compras · te quedan $120.000')+bar(.40,HT.ok[2]),
-    X:()=>cap('Domicilios $165.000 de $180.000 · Cuidado')+bar(.92,HT.warn[2])+cap('Salidas $138.000 de $250.000 · Vas bien')+bar(.55,HT.ok[2])+cap('Compras $80.000 de $200.000 · Vas bien')+bar(.40,HT.ok[2])},
-  cuentas:{t:'Mis cuentas',sizes:['XS','S','L'],q:'¿Cuánta plata tengo y dónde?',
-    XS:()=>lbl('Mis cuentas')+val('$1,85 M')+cap('3 cuentas'),
-    S:()=>lbl('Mis cuentas')+r2('Bancolombia','','$1.320.000')+r2('Nequi','','$330.000'),
-    L:()=>lbl('Mis cuentas · $1.850.000')+r2('Bancolombia','','$1.320.000')+r2('Nequi','','$330.000')+r2('Efectivo','','$200.000')+r2('Ahorros Nu','aparte','$2.400.000'),
-    X:()=>r2('Bancolombia','actualizado hace 2 h','$1.320.000')+r2('Nequi','hace 1 día','$330.000')+r2('Efectivo','','$200.000')+r2('Ahorros Nu','no cuenta para Disponible','$2.400.000')+cap('<u>Cuadrar con mi saldo</u>')},
-  flujo:{t:'Tu flujo',sizes:['S','L'],q:'¿Me alcanza hasta el próximo sueldo?',
-    S:()=>lbl('Tu flujo')+spark(40)+cap('Llegas al 29 con ≈ $86.100'),
-    L:()=>lbl('Tu flujo · 15 – 29 sep')+spark(64)+`<div style="display:flex;justify-content:space-between;font-size:9.5px;margin-top:4px" class="mut"><span>Llega $2.100.000</span><span>Sale ≈ $2.098.900</span><span>Quedan ≈ $86.100</span></div>`,
-    X:()=>spark(90)+cap('Arriendo mañana baja tu saldo a $1.140.000. El punto más bajo es el 29 sep: $86.100.')+cap('<u>Abrir Tu flujo</u>')},
-  sefue:{t:'¿En qué se me fue?',sizes:['S','L'],q:'¿En qué gasto este ciclo?',
-    S:()=>lbl('¿En qué se me fue?')+cap('Mercado · 42%')+bar(.42,HT.ink)+cap('Domicilios · 30%')+bar(.30,HT.ink),
-    L:()=>lbl('¿En qué se me fue? · $100.000')+cap('Mercado · $42.000')+bar(.42,HT.ink)+cap('Domicilios · $29.500')+bar(.30,HT.ink)+cap('Transporte · $18.700')+bar(.19,HT.ink),
-    X:()=>cap('Mercado $42.000 · Domicilios $29.500 · Transporte $18.700 · Café $9.800')+cap('Domicilios va 40% más que tu promedio.')},
-  recientes:{t:'Últimos movimientos',sizes:['S','L'],q:'¿Qué pasó recién?',
-    S:()=>lbl('Últimos')+r2('Rappi','ayer','−$29.500')+r2('Uber','mar','−$18.700'),
-    L:()=>lbl('Últimos movimientos')+r2('Rappi','ayer · Nu','−$29.500')+r2('Uber','mar · Bancolombia','−$18.700')+r2('Tostao','mar · efectivo','−$9.800')+r2('Éxito','lun · Bancolombia','−$42.000'),
+  hoy:{t:'Hoy',sizes:['M'],q:'¿Cuánto llevo hoy?',
+    st:()=>scn()==='over'?['bad','Te pasaste hoy']:null,
+    M:()=>big(scn()==='over'?'$48.500':'$12.500')+bar(scn()==='over'?1:12.5/35,scn()==='over'?HT.bad[2]:HT.ink)+hint('de $35.000'),
+    X:()=>r2('Tostao','8:10 a.m.','−$9.800')+r2('Uber','9:02 a.m.','−$2.700')+(scn()==='over'?r2('Restaurante','1:30 p.m.','−$36.000'):'')+cap('Hoy puedes gastar $35.000 para llegar al 30.')},
+  pagos:{t:'Próximo pago',sizes:['M','L'],q:'¿Qué tengo que pagar y cuándo?',
+    st:()=>['warn','Mañana'],
+    M:()=>big('$700.000')+hint('Arriendo · 19 sep'),
+    L:()=>big('$700.000')+hint('Arriendo · 19 sep')+`<div style="display:flex;gap:6px;margin-top:8px">${[['19','$700 mil'],['22','$640 mil'],['24','$39 mil']].map(x=>`<div style="flex:1;background:${HT.sunk};border-radius:8px;padding:4px 6px;font-size:9.5px"><b>${x[0]} sep</b><br><span class="mut">${x[1]}</span></div>`).join('')}</div>`,
+    X:()=>r2('Arriendo','19 sep · Pendiente','$700.000')+r2('Tarjeta Nu · mínimo','22 sep','$640.000')+r2('Netflix','24 sep','$38.900')+r2('Próximo ciclo: Claro','5 oct · ≈','$65.000')+cap('Prepárate: SOAT $1.100.000 el 15 dic. <u>Apartar</u>')},
+  deben:{t:'Te deben',sizes:['M'],q:'¿Quién me debe y a quién le debo?',
+    st:()=>['warn','Hace 34 días'],
+    M:()=>big('$380.000')+`<div style="margin-top:3px">${faces(['J','C','A'])}</div>`,
+    X:()=>r2('Juan','cena + Uber · 34 días','$180.000')+r2('Caro','préstamo · 5 días','$140.000')+r2('Ana','cena Andrés · 12 días','$60.000')+r2('Tú le debes a Mateo','almuerzo','$50.000')+cap('<u>Recordarle a Juan por WhatsApp</u>')},
+  tarjetas:{t:'Tarjeta Nu',sizes:['M','L'],q:'¿Cuánto va mi próxima factura?',
+    M:()=>big('$480.000')+bar(1850/4000,HT.ink)+hint('próxima factura ≈'),
+    L:()=>`<div style="display:flex;gap:14px">${[['Nu','$480.000',1850/4000],['Visa','$95.000',950/3000]].map(x=>`<div style="flex:1;min-width:0">${hint(x[0]+' · factura ≈')}${big(x[1])}${bar(x[2],HT.ink)}</div>`).join('')}</div>`,
+    X:()=>r2('Nu · al corte (8 oct)','a este ritmo','≈$620.000')+r2('Nu · mínimo estimado','vence 22 oct','≈$480.000')+r2('Usado','de $4.000.000','$1.850.000')+r2('Visa · mínimo estimado','vence 12 oct','≈$95.000')},
+  deudas:{t:'Deudas',sizes:['M','L'],q:'¿Cuánto debo y cuándo termino?',
+    M:()=>`<div style="display:flex;align-items:center;gap:8px">${ring(.42,HT.ink)}<div style="min-width:0">${big('$14,3 M')}${hint('42% pagado')}</div></div>`,
+    L:()=>`<div style="display:flex;align-items:center;gap:10px">${ring(.42,HT.ink,40)}<div style="min-width:0;flex:1">${big('$14.250.000')}${hint('2 tarjetas · 1 crédito · 42% pagado')}</div></div>`,
+    X:()=>r2('Crédito libre inversión','termina mar 2028','$11.450.000')+r2('Tarjeta Nu','mínimo $640.000 · 22 sep','$1.850.000')+r2('Visa Bancolombia','mínimo $95.000 · 12 oct','$950.000')},
+  limites:{t:'Límites',sizes:['M','L'],q:'¿Voy bien en lo que quise controlar?',
+    st:()=>['warn','Domicilios'],
+    M:()=>bar(.92,HT.warn[2],7)+bar(.55,HT.ok[2],7)+bar(.40,HT.ok[2],7)+hint('3 límites'),
+    L:()=>[['Domicilios',.92,HT.warn[2]],['Salidas',.55,HT.ok[2]],['Compras',.40,HT.ok[2]]].map(x=>`<div style="display:flex;align-items:center;gap:8px;margin-top:4px"><span style="font-size:10px;width:62px">${x[0]}</span><div style="flex:1">${bar(x[1],x[2],7)}</div></div>`).join(''),
+    X:()=>cap('Domicilios: $165.000 de $180.000 · Cuidado')+bar(.92,HT.warn[2])+cap('Salidas: $138.000 de $250.000 · Vas bien')+bar(.55,HT.ok[2])+cap('Compras: $80.000 de $200.000 · Vas bien')+bar(.40,HT.ok[2])},
+  cuentas:{t:'Mis cuentas',sizes:['M'],q:'¿Cuánta plata tengo y dónde?',
+    M:()=>big('$1.850.000')+hint('3 cuentas'),
+    X:()=>r2('Bancolombia','hace 2 h','$1.320.000')+r2('Nequi','hace 1 día','$330.000')+r2('Efectivo','','$200.000')+r2('Ahorros Nu','no cuenta','$2.400.000')+cap('<u>Cuadrar con mi saldo</u>')},
+  flujo:{t:'Tu flujo',sizes:['M','L'],q:'¿Me alcanza hasta el próximo sueldo?',
+    st:()=>scn()==='over'?['bad','No llegas al 30']:scn()==='big'?['warn','El próximo ciclo no alcanza']:null,
+    M:()=>spark(36)+hint(scn()==='over'?'sin plata el 22 sep':'≈ $86.100 al 29'),
+    L:()=>`<div style="display:flex;align-items:center;gap:10px"><div style="flex:1;font-size:12px;line-height:1.35">${scn()==='over'?`A tu ritmo te quedas sin plata el <b>22 sep</b>`:scn()==='big'?`El próximo ciclo no alcanza por <b>$433.900</b>`:`Llegas al 29 con ≈ <b>$86.100</b>`}</div><div style="width:48%">${spark(44)}</div></div>`,
+    X:()=>spark(80)+cap(scn()==='over'?'Gasta ≈ $28.000 menos al día para llegar al 30.':scn()==='big'?'Matrícula $1.200.000 el 9 oct. Gasta ≈ $21.000 menos al día desde hoy, o apártalo.':'Arriendo mañana baja tu saldo a $1.140.000. El punto más bajo es el 29 sep.')+cap('<u>Abrir Tu flujo</u>')},
+  sefue:{t:'¿En qué se me fue?',sizes:['M','L'],q:'¿En qué gasto este ciclo?',
+    M:()=>stack([.42,.30,.19,.09])+hint('Mercado primero'),
+    L:()=>stack([.42,.30,.19,.09])+`<div style="display:flex;gap:10px;margin-top:6px;font-size:9.5px" class="mut">${['Mercado','Domicilios','Transporte','Café'].map((x,i)=>`<span style="display:flex;align-items:center;gap:4px"><i style="width:7px;height:7px;border-radius:2px;background:${HT.ink};opacity:${1-i*.22}"></i>${x}</span>`).join('')}</div>`,
+    X:()=>r2('Mercado','42%','$42.000')+r2('Domicilios','30% · más que tu promedio','$29.500')+r2('Transporte','19%','$18.700')+r2('Café','9%','$9.800')},
+  recientes:{t:'Últimos movimientos',sizes:['L'],q:'¿Qué pasó recién?',
+    L:()=>r2('Rappi','ayer','−$29.500')+r2('Uber','mar','−$18.700')+r2('Tostao','mar','−$9.800'),
     X:()=>r2('Rappi','ayer 8:14 p.m. · Domicilios','−$29.500')+r2('Uber','mar · Transporte','−$18.700')+r2('Tostao','mar · Café','−$9.800')+r2('Éxito','lun · Mercado','−$42.000')+cap('<u>Ver Movimientos</u>')},
-  comercios:{t:'Tus comercios',sizes:['S','L'],q:'¿Dónde gasto más seguido?',
-    S:()=>lbl('Tus comercios')+r2('Rappi','14 veces','$610.000')+r2('Éxito','6 veces','$412.000'),
-    L:()=>lbl('Tus comercios · 3 meses')+r2('Rappi','14 veces','$610.000')+r2('Éxito','6 veces','$412.000')+r2('Uber','9 veces','$168.000'),
+  comercios:{t:'Tus comercios',sizes:['M','L'],q:'¿Dónde gasto más seguido?',
+    M:()=>big('Rappi')+hint('14 veces · 3 meses'),
+    L:()=>r2('Rappi','14 veces','$610.000')+r2('Éxito','6 veces','$412.000')+r2('Uber','9 veces','$168.000'),
     X:()=>r2('Rappi','Domicilios · Siempre','$610.000')+r2('Éxito','Mercado','$412.000')+r2('Uber','Transporte','$168.000')+cap('<u>Lo que Zeta sabe</u>')},
-  dolar:{t:'Dólar hoy',sizes:['XS'],q:'¿A cuánto está el dólar? (solo si tienes deuda en USD)',
-    XS:()=>lbl('Dólar hoy')+val('$3.305')+cap('debes USD 1.337'),
-    X:()=>r2('Deuda en dólares','Visa','USD 1.337')+r2('Hoy equivale a','','≈$4.418.800')+cap('Se actualiza cada hora en días hábiles.')},
-  viaje:{t:'Viaje (v1.1)',sizes:['S','L'],q:'¿Cómo va el viaje?',
-    S:()=>lbl('Cartagena · en 12 días')+cap('Apartado $1.000.000 de $1.500.000')+bar(2/3,HT.ink),
-    L:()=>lbl('Viaje a Cartagena · 30 oct')+cap('Apartado $1.000.000 de $1.500.000')+bar(2/3,HT.ink)+r2('Falta apartar','este ciclo','$250.000'),
-    X:()=>r2('Apartado','3 ciclos','$1.000.000')+r2('Falta','2 ciclos','$500.000')+cap('<u>Ver viaje</u>')},
+  dolar:{t:'Dólar hoy',sizes:['M'],q:'¿A cuánto está el dólar? (si debes en USD)',
+    M:()=>big('$3.305')+hint('▲ $12 hoy'),
+    X:()=>r2('Debes en dólares','Visa','USD 1.337')+r2('Hoy equivale a','','≈$4.418.800')+cap('Se actualiza cada hora en días hábiles.')},
+  viaje:{t:'Viaje (v1.1)',sizes:['M'],q:'¿Cómo va el viaje?',
+    M:()=>`<div style="display:flex;align-items:center;gap:8px">${ring(2/3,HT.ink)}<div style="min-width:0">${big('67%')}${hint('Cartagena · 12 días')}</div></div>`,
+    X:()=>r2('Apartado','3 ciclos','$1.000.000')+r2('Falta','antes del 30 oct','$500.000')+cap('<u>Ver viaje</u>')},
 };
+function stack(a){return `<div style="display:flex;height:10px;border-radius:5px;overflow:hidden;margin-top:6px;gap:2px">${a.map((p,i)=>`<div style="flex:${p};background:${HT.ink};opacity:${1-i*.22}"></div>`).join('')}</div>`;}
 function spark(h){ if(!DAYS[16]) return ''; const pts=[]; for(let d=16; d<=30; d++) pts.push(DAYS[d].bal); const mx=Math.max(...pts), mn=Math.min(0,...pts), w=220;
   const y=(v)=>h-3-(v-mn)/(mx-mn)*(h-6); const p=pts.map((v,k)=>(k?'L':'M')+(k*w/(pts.length-1)).toFixed(1)+' '+y(v).toFixed(1));
-  const past=p.slice(0,4).join(''), fut='M'+p.slice(3).join('').slice(1);
-  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:${h*0.62}px;display:block;margin-top:4px"><line x1="0" y1="${y(0)}" x2="${w}" y2="${y(0)}" stroke="${HT.line}"/><path d="${past}" fill="none" stroke="${HT.ink}" stroke-width="2"/><path d="${fut}" fill="none" stroke="${HT.ink}" stroke-width="2" stroke-dasharray="4 3"/></svg>`; }
-const homeState={layout:[{id:'hoy',size:'XS'},{id:'pagos',size:'XS'},{id:'deben',size:'XS'},{id:'flujo',size:'L'},{id:'tarjetas',size:'S'},{id:'recientes',size:'S'}],open:null,edit:false};
-function pack(ws){ const cap={XS:3,S:2,L:1}; const rows=[]; let cur=[],kind=null; const flush=()=>{if(cur.length){rows.push(cur);cur=[];kind=null;}};
-  for(const w of ws){ if(kind===null){kind=w.size;cur.push(w);} else if(w.size===kind&&cur.length<cap[kind]) cur.push(w); else {flush();kind=w.size;cur.push(w);} if(cur.length>=cap[w.size]) flush(); } flush(); return rows; }
-function tileHTML(w,dim,sel,editIx){ const def=W[w.id];
+  const past=p.slice(0,4).join(''), fut='M'+p.slice(3).join('').slice(1); const neg=pts.some(v=>v<0);
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:${h*0.62}px;display:block;margin:4px 0 2px"><line x1="0" y1="${y(0)}" x2="${w}" y2="${y(0)}" stroke="${HT.line}"/><path d="${past}" fill="none" stroke="${HT.ink}" stroke-width="2"/><path d="${fut}" fill="none" stroke="${neg?HT.bad[2]:HT.ink}" stroke-width="2" stroke-dasharray="4 3"/></svg>`; }
+const homeState={layout:[{id:'flujo',size:'L'},{id:'hoy',size:'M'},{id:'pagos',size:'M'},{id:'deben',size:'M'},{id:'tarjetas',size:'M'},{id:'recientes',size:'L'}],open:null,edit:false,auto:true};
+function pack(ws){ const rows=[]; let cur=[]; for(const w of ws){ if(w.size==='L'){ if(cur.length){rows.push(cur);cur=[];} rows.push([w]); } else { cur.push(w); if(cur.length===2){rows.push(cur);cur=[];} } } if(cur.length) rows.push(cur); return rows; }
+const SEV={bad:2,warn:1};
+function tileHTML(w,dim,sel,editIx){ const def=W[w.id]; const st=def.st?def.st():null; const col=st?(st[0]==='bad'?HT.bad:HT.warn):null;
+  const head=`<div style="display:flex;align-items:center;gap:5px;color:var(--t-muted);font:600 9.5px var(--t-ui);letter-spacing:.02em;min-width:0">${icon(w.id)}<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${def.t}</span></div>`;
+  const alert=st?`<div style="display:inline-flex;align-self:flex-start;align-items:center;gap:4px;margin-top:auto;background:${col[0]};color:${col[1]};border-radius:999px;padding:2px 8px;font:600 9.5px var(--t-ui);max-width:100%"><i style="width:6px;height:6px;border-radius:50%;background:${col[2]};flex:none"></i><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${st[1]}</span></div>`:'';
   const ctr=editIx!==undefined?`<div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;font:600 9px var(--t-ui)"><span data-size="${editIx}" style="border:1px solid var(--t-control);border-radius:5px;padding:1px 5px;cursor:pointer">${SZ[w.size]}</span><span data-up="${editIx}" style="cursor:pointer;padding:1px 3px">↑</span><span data-dn="${editIx}" style="cursor:pointer;padding:1px 3px">↓</span><span data-rm="${editIx}" style="cursor:pointer;padding:1px 3px;color:${HT.bad[2]}">✕</span></div>`:'';
-  return `<div ${editIx===undefined?`data-open="${w.id}"`:''} class="cd" style="--tv:${w.size==='XS'?'13.5px':'17px'};padding:8px 9px;min-height:${w.size==='L'?0:74}px;cursor:pointer;min-width:0;overflow:hidden;opacity:${dim?.4:1};${sel?`outline:1.5px solid ${HT.ink};`:''}">${def[w.size]()}${ctr}</div>`; }
+  return `<div ${editIx===undefined?`data-open="${w.id}"`:''} class="cd" style="padding:9px 10px;min-height:${w.size==='M'?104:0}px;display:flex;flex-direction:column;justify-content:flex-start;gap:6px;cursor:pointer;min-width:0;overflow:hidden;opacity:${dim?.4:1};${sel?`outline:1.5px solid ${HT.ink};`:''}${st&&!sel?`box-shadow:inset 3px 0 0 ${col[2]},${HT.shadow==='none'?'0 0 0 transparent':HT.shadow};`:''}">${head}<div style="min-width:0">${def[w.size]()}</div>${alert}${ctr}</div>`; }
 function homeRender(){
   const dir=D[flowState.theme], t=dir[flowState.mode]; HT=t; const [dw,dh]=DEV[flowState.dev];
+  if(homeState.auto&&!homeState.edit){ let best=null,bs=0; for(const w of homeState.layout){ const st=W[w.id].st&&W[w.id].st(); if(st&&SEV[st[0]]>bs){bs=SEV[st[0]];best=w.id;} } if(bs===2) homeState.open=best; homeState.auto=false; }
   const rows=pack(homeState.layout); let idx=0; let grid='';
-  for(const row of rows){ const cols=row[0].size==='XS'?3:row[0].size==='S'?2:1;
-    const openHere=row.find(w=>w.id===homeState.open);
-    grid+=`<div style="display:grid;grid-template-columns:repeat(${cols},minmax(0,1fr));gap:7px">${row.map(w=>{const s=tileHTML(w,!!openHere&&openHere!==w,openHere===w,homeState.edit?idx:undefined); idx++; return s;}).join('')}</div>`;
-    if(openHere&&!homeState.edit) grid+=`<div class="cd" style="padding:9px 11px;border:1.5px solid ${t.ink}"><div style="display:flex;justify-content:space-between"><span class="eb" style="font-size:8.5px">${W[openHere.id].t}</span><span data-open="${openHere.id}" style="cursor:pointer;font-size:11px">✕</span></div>${W[openHere.id].X()}<div style="font:600 10.5px var(--t-ui);text-decoration:underline;margin-top:6px">Ver todo ›</div></div>`;
+  for(const row of rows){ const cols=row[0].size==='M'?2:1; const openHere=row.find(w=>w.id===homeState.open);
+    if(openHere&&cols===1&&!homeState.edit){ idx++; }
+    else grid+=`<div style="display:grid;grid-template-columns:repeat(${cols},minmax(0,1fr));gap:8px">${row.map(w=>{const s=tileHTML(w,!!openHere&&openHere!==w,openHere===w,homeState.edit?idx:undefined); idx++; return s;}).join('')}</div>`;
+    if(openHere&&!homeState.edit){ const st=W[openHere.id].st&&W[openHere.id].st(); const col=st?(st[0]==='bad'?t.bad:t.warn):null;
+      grid+=`<div class="cd" style="padding:10px 12px;border:1.5px solid ${col?col[2]:t.ink}"><div style="display:flex;justify-content:space-between;align-items:center"><span style="display:flex;gap:5px;align-items:center;font:600 10px var(--t-ui)">${icon(openHere.id)}${W[openHere.id].t}</span><span data-open="${openHere.id}" style="cursor:pointer;font-size:12px">✕</span></div>${st?`<div style="font:700 12px var(--t-ui);color:${col[1]};margin-top:6px">${st[1]}</div>`:''}${W[openHere.id].X()}<div style="font:600 10.5px var(--t-ui);text-decoration:underline;margin-top:7px">Ver todo ›</div></div>`; }
   }
   let extra='';
   if(homeState.edit){ const off=Object.keys(W).filter(k=>!homeState.layout.some(w=>w.id===k));
-    extra=`<div class="secT">Agregar</div><div class="cd" style="padding:2px 10px">${off.map(k=>`<div class="row" style="padding:5px 0"><div class="rt"><div class="a" style="font-size:11.5px">${W[k].t}</div><div class="b">${W[k].q} · mínimo ${SZ[W[k].sizes[0]].toLowerCase()}</div></div><span data-add="${k}" style="cursor:pointer;font-weight:700;padding:0 4px">+</span></div>`).join('')||'<div class="mut" style="font-size:11px;padding:6px 0">Ya tienes todos</div>'}</div>`; }
+    extra=`<div class="secT">Agregar</div><div class="cd" style="padding:2px 10px">${off.map(k=>`<div class="row" style="padding:5px 0"><span style="color:var(--t-muted)">${icon(k)}</span><div class="rt"><div class="a" style="font-size:11.5px">${W[k].t}</div><div class="b">${W[k].q}</div></div><span data-add="${k}" style="cursor:pointer;font-weight:700;padding:0 4px">+</span></div>`).join('')||'<div class="mut" style="font-size:11px;padding:6px 0">Ya tienes todos</div>'}</div>`; }
   const body=`<div class="hdr"><div><div class="t">Hola, Laura</div><div class="s">Ciclo 15 – 29 sep</div></div><div class="av">L</div></div>
-    ${hero(t,dir,'ok')}${grid}${extra}
+    ${hero(t,dir,scn()==='over'?'warn':'ok',scn()==='over'?'over':null)}${grid}${extra}
     <div style="text-align:center;padding:4px"><span data-edit="${homeState.edit?0:1}" style="display:inline-block;font:600 11px var(--t-ui);border:1.5px solid var(--t-ink);border-radius:9px;padding:5px 12px;cursor:pointer">${homeState.edit?'Listo':'Organizar'}</span></div>`;
   const tab=(k,l)=>`<span class="${k==='i'?'on':''}"><i></i>${l}${k==='r'?'<b>3</b>':''}</span>`;
-  document.getElementById('home').innerHTML=`<div class="ph" style="width:${dw/Z}px;height:${dh/Z}px"><div class="scr" style="${vars(t,dir)}"><div class="sb"><span>9:41</span><span>●●● ▮</span></div><div class="body" style="gap:7px;overflow:auto">${body}</div><div class="tabs">${tab('i','Inicio')}${tab('m','Movimientos')}${tab('r','Revisar')}</div></div></div>`;
+  document.getElementById('home').innerHTML=`<div class="ph" style="width:${dw/Z}px;height:${dh/Z}px"><div class="scr" style="${vars(t,dir)}"><div class="sb"><span>9:41</span><span>●●● ▮</span></div><div class="body" style="gap:8px;overflow:auto">${body}</div><div class="tabs">${tab('i','Inicio')}${tab('m','Movimientos')}${tab('r','Revisar')}</div></div></div>`;
   const q=(sel,fn)=>document.querySelectorAll('#home '+sel).forEach(el=>el.onclick=(e)=>{e.stopPropagation();fn(el);homeRender();});
   q('[data-open]',el=>{homeState.open=homeState.open===el.dataset.open?null:el.dataset.open;});
   q('[data-edit]',el=>{homeState.edit=el.dataset.edit==='1'; homeState.open=null;});
@@ -553,9 +573,9 @@ function homeRender(){
   galleryRender(t,dir);
 }
 function galleryRender(t,dir){ const el=document.getElementById('gallery'); if(!el) return; const [dw]=DEV[flowState.dev]; const inner=dw/Z-18-28;
-  el.innerHTML=Object.entries(W).map(([k,w])=>`<div class="card" style="padding:12px 14px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline"><b>${w.t}</b><span style="font-size:12.5px;color:var(--muted)">${w.q} · min: ${SZ[w.sizes[0]]}</span></div>
-    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;align-items:flex-start">${w.sizes.map(sz=>{const width=sz==='XS'?(inner-14)/3:sz==='S'?(inner-7)/2:inner; return `<div><div style="zoom:${Z}"><div class="scr" style="${vars(t,dir)};width:${width}px;height:auto;border-radius:0;background:transparent;padding:0"><div class="cd" style="--tv:${sz==='XS'?'13.5px':'17px'};padding:8px 9px;min-height:${sz==='L'?0:74}px;overflow:hidden">${w[sz]()}</div></div></div><div class="cap">${SZ[sz]}</div></div>`}).join('')}
-    <div><div style="zoom:${Z}"><div class="scr" style="${vars(t,dir)};width:${inner}px;height:auto;border-radius:0;background:transparent"><div class="cd" style="padding:9px 11px;border:1.5px solid ${t.ink}">${w.X()}</div></div></div><div class="cap">Expandido</div></div></div></div>`).join('');
+  el.innerHTML=Object.entries(W).map(([k,w])=>`<div class="card" style="padding:12px 14px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline"><b>${w.t}</b><span style="font-size:12.5px;color:var(--muted)">${w.q} · min: ${SZ[w.sizes[0]].toLowerCase()}</span></div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;align-items:flex-start">${w.sizes.map(sz=>{const width=sz==='M'?(inner-8)/2:inner; return `<div><div style="zoom:${Z}"><div class="scr" style="${vars(t,dir)};width:${width}px;height:auto;border-radius:0;background:transparent;padding:0">${tileHTML({id:k,size:sz},false,false)}</div></div><div class="cap">${SZ[sz]}</div></div>`}).join('')}
+    <div><div style="zoom:${Z}"><div class="scr" style="${vars(t,dir)};width:${inner}px;height:auto;border-radius:0;background:transparent"><div class="cd" style="padding:10px 12px;border:1.5px solid ${t.ink}">${w.X()}</div></div></div><div class="cap">Expandido</div></div></div></div>`).join('');
 }
 function fitAll(){ document.querySelectorAll('.fitv').forEach(el=>{ el.style.fontSize=''; let f=parseFloat(getComputedStyle(el).fontSize); const min=f*0.62; let n=0; while(el.scrollWidth>el.clientWidth+.5 && f>min && n<40){ f-=0.5; el.style.fontSize=f+'px'; n++; } }); }
 const _hr=homeRender; homeRender=function(){_hr(); fitAll();};
