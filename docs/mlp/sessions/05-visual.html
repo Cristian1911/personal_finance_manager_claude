@@ -98,7 +98,7 @@ td.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 
 <main>
 <header>
-  <div class="eyebrow">Zeta v2 · Planning session 5 of 7</div>
+  <div class="eyebrow">Zeta v2 · Planning session 5 of 7 · closed</div>
   <h1>A clearer look for Zeta</h1>
   <p class="lede">Why Oliva feels flat, measured. Three directions that fix it, each shown in light and dark on Inicio, Revisar and Pagos. Three ways to draw the timeline you asked for. The mockups use Laura's numbers under the rules you set in session 3.</p>
 </header>
@@ -192,20 +192,17 @@ td.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
       <div class="dec-h"><span class="dir-id">S5-2</span><h3>Tu flujo</h3></div>
       <p style="margin:0"><span class="rec-tag" style="border:0;padding:0">DECIDED</span> As prototyped: one cycle at a time (Pasado / Este / Próximo + swipe) with 2 shaded days on each edge; drag to read any day's balance, tap a day for its items; projected line; below $0 in red with the day you'd run out and how much less to spend per day; a problem in the next cycle warns in amber in the current one, with "Apartar".</p>
     </div>
-    <div class="dec">
+    <div class="dec" style="border-color:var(--accent)">
       <div class="dec-h"><span class="dir-id">S5-4</span><h3>Inicio: fixed number + a 2-column widget grid you organize?</h3></div>
-      <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b style="margin-top:6px">As prototyped</b>The Disponible block is fixed on top. Below it, a 2-column grid: each widget is half or full width, never smaller than its minimum. Collapsed = icon + title + one value or visual; details expand in place. Urgent widgets show an amber or red edge with a short reason, and the most critical opens by itself once a day. "Organizar" changes size, order, adds and removes. Default: Tu flujo (full), Hoy · Próximo pago · Te deben · Tarjeta Nu (half), Últimos movimientos (full). Every widget passes the gallery test at 360/390/430 in both themes.</div>
-        <div class="opt"><b>Fixed Inicio, no editing</b>Same widgets in a fixed layout, with less to build.</div>
-      </div>
+      <p style="margin:0"><span class="rec-tag" style="border:0;padding:0">DECIDED</span> <b>As prototyped:</b> Disponible fixed on top; a 2-column widget grid you organize (half/full, per-widget minimum), collapsed = icon + title + one value or visual, expand in place, amber/red alert chips with the most critical auto-opening once a day. Rules in <code>docs/mlp/13-widget-design-rules.md</code>.</p>
     </div>
-    <div class="dec">
+
+    <div class="dec" style="border-color:var(--accent)">
       <div class="dec-h"><span class="dir-id">S5-3</span><h3>Who draws the full screen set?</h3></div>
-      <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b style="margin-top:6px">Claude Design redoes it from the chosen tokens</b>I write a follow-up prompt with the chosen direction's exact tokens, the contrast rules, dark mode, the timeline and everything decided in sessions 1–4 (card bills at the minimum, counted accounts, Tú debes, Prepárate…). The designer returns the full set; the code uses the same tokens.</div>
-        <div class="opt"><b>I build from the tokens directly</b>Faster to start, but no designed reference for the 40-odd screens; details get decided in code.</div>
-      </div>
+      <p style="margin:0"><span class="rec-tag" style="border:0;padding:0">DECIDED</span> <b>Claude Design redraws the full screen set</b> from the chosen tokens and every decision so far. The prompt is written after session 6, so plans and payment screens are included.</p>
     </div>
+
+    
   </div>
 </section>
 
