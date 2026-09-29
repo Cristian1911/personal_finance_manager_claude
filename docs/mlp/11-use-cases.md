@@ -65,6 +65,9 @@ Every architecture, database and screen decision is checked against this list. N
 | C11 | Register a purchase in cuotas | Revisar "¿A cuántas cuotas?", Detalle › Cuotas | v1 | ok |
 | C12 | Register a purchase in another currency | Auto (≈), corrected by PDF | v1 | ok |
 | C13 | Register an expense from the past (I forgot) | "+" with date | v1 | ok |
+| C14 | Have Apple Pay / Google Wallet payments appear on their own | Auto (Android: Wallet app; iPhone: Shortcuts "Transacción") | v1 | S4-6 |
+| C15 | Have bank SMS alerts appear on their own | Auto (Android: SMS app notifications; iPhone: Shortcuts "Mensaje", after spike) | v1 | S4-6 |
+| C16 | Send a screenshot of my bank app and have balances/movements updated | Share sheet / gallery → review | ? (paid) | S4-7 (open) |
 
 ## D. Fixing and organizing
 

@@ -262,6 +262,17 @@ flowchart TD
     </div>
 
     
+
+    <div class="dec decided">
+      <div class="dec-h"><span class="dec-id">S4-6</span><h3>More capture paths: Wallet, SMS, iPhone Shortcuts</h3></div>
+      <p style="margin:0"><span class="decided-tag">DECIDED</span> <b>Android:</b> Google Wallet as a choosable app, and bank SMS through the messages app's notifications, filtered on the phone by the bank senders you allow (no "read SMS" permission). <b>iPhone:</b> iOS doesn't let any app read other apps' notifications or SMS, so we use two Shortcuts automations the user sets up once from a ready-made shortcut: Wallet "Transacción" (Apple Pay purchases: amount, merchant, card) and "Mensaje" from chosen bank senders (SMS text → the same templates). A 1-day test on a real iPhone in M0 confirms the SMS text reaches Zeta without a prompt each time. Push-only banks (Nu) stay on email and PDF on iPhone.</p>
+    </div>
+
+    <div class="dec">
+      <div class="dec-h"><span class="dec-id">S4-7</span><h3>Screenshots: send one, Zeta updates balances and movements</h3></div>
+      <p style="margin:0;font-size:14px;color:var(--muted)">Your idea, as a paid feature. Share a screenshot of your bank app to Zeta (share sheet or gallery). A balance becomes a "cuadrar" check (like S4-5), movements become capture commands. Always reviewed before saving, never automatic. Parsers exist today for 5 bank app layouts (Bancolombia app and web, Nequi, Nu card, Nu savings). Needs signal: images are read on the server.</p>
+      <p style="margin:0;font-size:14px"><b>Open:</b> it depends on how Zeta charges for paid features, which isn't planned yet (see the chat).</p>
+    </div>
   </div>
 </section>
 
