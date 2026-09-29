@@ -1,0 +1,331 @@
+<title>Zeta v2 Visual Direction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600&family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Newsreader:opsz,wght@6..72,400..600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F3F4EF; --surface:#FFFFFF; --ink:#16181A; --muted:#5B6168; --line:#D3D6CC; --soft:#E8EAE2; --accent:#0E7A55; --warn:#9A5B00;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ color-scheme:dark;
+    --bg:#111312; --surface:#1A1D1B; --ink:#ECEDE8; --muted:#9CA29B; --line:#30352F; --soft:#232723; --accent:#46C79A; --warn:#E3AE4A; }
+}
+:root[data-theme="dark"]{ color-scheme:dark;
+  --bg:#111312; --surface:#1A1D1B; --ink:#ECEDE8; --muted:#9CA29B; --line:#30352F; --soft:#232723; --accent:#46C79A; --warn:#E3AE4A; }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.6 'Geist',system-ui,-apple-system,'Segoe UI',sans-serif;padding-inline:20px;padding-block:32px 64px;margin:0}
+main{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:48px}
+.prose{max-width:70ch}
+h1,h2,h3{text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:34px;line-height:1.15;font-weight:700}
+h2{font-size:22px;font-weight:650;margin-bottom:10px}
+h3{font-size:17px;font-weight:650}
+p{margin:0 0 10px}
+.eyebrow{font:500 12px/1 'Geist Mono',ui-monospace,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.lede{font-size:17px;color:var(--muted);max-width:70ch;margin-top:12px}
+code{font-family:'Geist Mono',monospace;font-size:.88em;background:var(--soft);padding:1px 5px;border-radius:4px}
+table{border-collapse:collapse;width:100%;font-size:14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-weight:600;font-size:12.5px;color:var(--muted);background:var(--soft)}
+tr:last-child td{border-bottom:0}
+td.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.bad{color:#C2452D;font-weight:600} .good{color:var(--accent);font-weight:600}
+.scroll{overflow-x:auto}
+.dir{display:flex;flex-direction:column;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px}
+.dir-h{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.dir-id{font:600 12px 'Geist Mono',monospace;color:var(--muted)}
+.rec-tag{font:600 11px 'Geist Mono',monospace;color:var(--accent);letter-spacing:.04em;border:1px solid var(--accent);border-radius:5px;padding:3px 6px}
+.meta{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:13.5px;color:var(--muted)}
+.sw{display:inline-flex;gap:4px;align-items:center}
+.sw i{width:18px;height:18px;border-radius:5px;display:inline-block;border:1px solid rgba(0,0,0,.12)}
+.phones{display:flex;gap:18px;padding:6px 2px 10px;overflow-x:auto}
+.cap{font-size:12px;color:var(--muted);text-align:center;margin-top:6px;font-family:'Geist Mono',monospace}
+.decisions{display:grid;gap:14px}
+.dec{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:grid;gap:10px}
+.dec-h{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+.opt{border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:14px}
+.opt.rec{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.opt b{display:block;margin-bottom:4px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+
+/* ---------- phone mockups (tokens come from inline --t-* vars) ---------- */
+.ph{flex:none;width:272px;height:590px;border-radius:38px;padding:9px;background:#0c0c0c;box-shadow:0 18px 40px rgba(0,0,0,.18)}
+.scr{width:100%;height:100%;border-radius:30px;overflow:hidden;background:var(--t-bg);color:var(--t-ink);font-family:var(--t-ui);display:flex;flex-direction:column;font-variant-numeric:tabular-nums}
+.sb{height:30px;display:flex;justify-content:space-between;align-items:center;padding:0 22px;font:600 12px var(--t-ui);flex:none}
+.body{flex:1;overflow:hidden;padding:4px 14px 10px;display:flex;flex-direction:column;gap:9px}
+.tabs{flex:none;height:54px;border-top:1px solid var(--t-line);display:flex;justify-content:space-around;align-items:center;font-size:10.5px;color:var(--t-muted);background:var(--t-card)}
+.tabs span{display:flex;flex-direction:column;align-items:center;gap:3px;position:relative}
+.tabs i{width:18px;height:18px;border-radius:5px;border:1.6px solid currentColor;display:block}
+.tabs .on{color:var(--t-ink);font-weight:600}
+.tabs .on i{background:var(--t-ink);border-color:var(--t-ink)}
+.tabs b{position:absolute;top:-5px;right:-8px;background:var(--t-bad-solid);color:var(--t-bad-on);font:700 9px var(--t-ui);border-radius:9px;padding:1px 5px}
+.hdr{display:flex;justify-content:space-between;align-items:center}
+.hdr .t{font:700 17px/1.1 var(--t-ui)}
+.hdr .s{font-size:11px;color:var(--t-muted)}
+.av{width:28px;height:28px;border-radius:50%;background:var(--t-sunk);display:flex;align-items:center;justify-content:center;font:600 11px var(--t-ui);color:var(--t-ink)}
+.cd{background:var(--t-card);border-radius:14px;padding:11px 12px;box-shadow:var(--t-shadow)}
+.eb{font:600 9.5px 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--t-muted)}
+.pill{display:inline-flex;align-items:center;gap:5px;font:600 10.5px var(--t-ui);padding:3px 9px;border-radius:999px}
+.pill i{width:6px;height:6px;border-radius:50%;background:currentColor;display:block}
+.big{font:var(--t-numw) 40px/1 var(--t-num);letter-spacing:-.02em;margin:6px 0 4px}
+.per{font-size:11.5px}
+.ln{display:flex;justify-content:space-between;font-size:11.5px;padding:3px 0}
+.ln.tot{border-top:1px solid var(--t-line);margin-top:4px;padding-top:6px;font-weight:700}
+.mut{color:var(--t-muted)}
+.row{display:flex;gap:9px;align-items:center;padding:7px 0;border-bottom:1px solid var(--t-line)}
+.row:last-child{border-bottom:0}
+.ic{width:28px;height:28px;border-radius:9px;background:var(--t-sunk);display:flex;align-items:center;justify-content:center;font:600 11px var(--t-ui);flex:none}
+.rt{flex:1;min-width:0}
+.rt .a{font:600 12.5px var(--t-ui)}
+.rt .b{font-size:10.5px;color:var(--t-muted)}
+.amt{font:600 12.5px var(--t-ui);text-align:right}
+.tag{display:inline-block;font:500 9.5px var(--t-ui);border:1px solid var(--t-control);border-radius:4px;padding:1px 5px;color:var(--t-muted);margin-top:2px}
+.btn{display:block;text-align:center;font:600 12.5px var(--t-ui);padding:10px;border-radius:11px;background:var(--t-button);color:var(--t-onbutton)}
+.btn2{display:block;text-align:center;font:600 12px var(--t-ui);padding:8px;border-radius:10px;border:1.5px solid var(--t-ink);color:var(--t-ink)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:600 12px var(--t-ui);padding:8px 11px;border-radius:11px;border:1.5px solid var(--t-control);background:var(--t-card);color:var(--t-ink)}
+.chip.pre{border:2px solid var(--t-ink)}
+.chip.pre::before{content:"• "}
+.chip.oth{border-style:dashed;color:var(--t-muted)}
+.seg{display:flex;background:var(--t-sunk);border-radius:10px;padding:3px;font:600 10.5px var(--t-ui)}
+.seg span{flex:1;text-align:center;padding:6px 0;border-radius:8px;color:var(--t-muted)}
+.seg .on{background:var(--t-card);color:var(--t-ink);box-shadow:var(--t-shadow)}
+.raw{font:500 10px 'Geist Mono',monospace;background:var(--t-sunk);border-radius:8px;padding:6px 8px;color:var(--t-muted)}
+.info{font-size:10.5px;color:var(--t-muted);display:flex;justify-content:space-between;padding:0 2px}
+.secT{font:600 10px 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--t-muted);margin-top:4px}
+</style>
+
+<main>
+<header>
+  <div class="eyebrow">Zeta v2 · Planning session 5 of 7</div>
+  <h1>A clearer look for Zeta</h1>
+  <p class="lede">Why Oliva feels flat, measured. Three directions that fix it, each shown in light and dark on Inicio, Revisar and Pagos. Three ways to draw the timeline you asked for. The mockups use Laura's numbers under the rules you set in session 3.</p>
+</header>
+
+<section>
+  <h2>Why Oliva feels flat</h2>
+  <div class="prose"><p>The words aren't the problem. The <b>shapes</b> are: cards melt into the background, chip borders are too faint to read as "tappable", and "Vas bien" is a tint so pale it looks like an ordinary card. Everything sits in the same beige, so nothing leads.</p></div>
+  <table>
+    <thead><tr><th>Pair (Oliva)</th><th class="r">Contrast</th><th>Needed</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td>Main text on card</td><td class="r">16.6 : 1</td><td>4.5</td><td class="good">Fine</td></tr>
+      <tr><td>Secondary text on card</td><td class="r">5.9 : 1</td><td>4.5</td><td class="good">Fine</td></tr>
+      <tr><td>Tertiary text on card</td><td class="r">3.8 : 1</td><td>4.5</td><td class="bad">Fails for small text</td></tr>
+      <tr><td>Chip / tag border on card</td><td class="r">1.7 : 1</td><td>3.0</td><td class="bad">Controls don't look tappable</td></tr>
+      <tr><td>Card on background</td><td class="r">1.13 : 1</td><td>needs a shadow or ≥1.2</td><td class="bad">Cards melt into the page (no shadow either)</td></tr>
+      <tr><td>"Vas bien" tint on card</td><td class="r">1.26 : 1</td><td>—</td><td class="bad">The most important state is the least visible</td></tr>
+    </tbody>
+  </table>
+  <p class="prose" style="margin-top:10px;font-size:14px;color:var(--muted)">What all three directions keep from Oliva: the hierarchy rule (<b>black = you can tap it, color = how you're doing, gray = data</b>), black rectangular buttons, round verdict pills, and one row grammar. What they change is <b>where the state color lives</b>, and the surfaces, borders and type around it.</p>
+</section>
+
+<section>
+  <h2>Three directions</h2>
+  <div id="dirs" style="display:flex;flex-direction:column;gap:22px"></div>
+</section>
+
+<section>
+  <h2>The timeline (S3-T): three ways to draw it</h2>
+  <div class="prose"><p>The same data in all three: last cycle, this cycle and the next, with paydays, bills, the Nu card's cut and due dates, and a big bill further ahead. Shown in direction B light so only the layout differs.</p></div>
+  <div class="phones" id="tl"></div>
+  <div class="two">
+    <div class="card"><h3>T1 · Carriles (lanes)</h3><p style="font-size:14px;margin:0">Like the diagram you liked. One lane per thing: paydays, bills, each card. You read <i>when</i> things happen at a glance. Weaker at <i>how much</i>.</p></div>
+    <div class="card"><h3>T2 · Saldo proyectado (projected balance)</h3><p style="font-size:14px;margin:0">One line: your counted money over time. Solid up to today, dashed after. Paydays jump up, bills step down. Its lowest point is marked. Answers "¿me alcanza?" visually.</p></div>
+    <div class="card"><h3>T3 · Agenda</h3><p style="font-size:14px;margin:0">A list by date with a running balance, grouped by cycle. The most readable on a small phone and the easiest to tap. Least "graphic".</p></div>
+  </div>
+</section>
+
+<section>
+  <h2>Decisions for this session</h2>
+  <div class="decisions">
+    <div class="dec">
+      <div class="dec-h"><span class="dir-id">S5-1</span><h3>Which direction?</h3></div>
+      <div class="opts">
+        <div class="opt"><b>A · Oliva afinada</b>Keeps the warm identity; fixes contrast, borders and depth. The safest change, but it's still a "beige finance app".</div>
+        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b style="margin-top:6px">B · Nítido</b>The verdict is a solid block of color, readable from across the room, and everything else is crisp neutral. It answers "¿cómo voy?" before you read a number, which was the designer's first instinct (1b Clara), now with the hierarchy rule.</div>
+        <div class="opt"><b>C · Tinta</b>Calm and premium: color lives only in the number. Elegant in dark, but the state is quieter; a glance tells you less.</div>
+      </div>
+    </div>
+    <div class="dec">
+      <div class="dec-h"><span class="dir-id">S5-2</span><h3>Which timeline?</h3></div>
+      <div class="opts">
+        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b style="margin-top:6px">T2 as the view, T3 below it</b>The projected balance line on top (the "will I make it?" picture); the agenda under it for the details and taps. Lanes (T1) stay a pattern for the card screen.</div>
+        <div class="opt"><b>T1 lanes</b>Closest to the diagram you liked; best for timing, weaker for amounts.</div>
+        <div class="opt"><b>T3 agenda only</b>Simplest to build and read; no picture.</div>
+      </div>
+    </div>
+    <div class="dec">
+      <div class="dec-h"><span class="dir-id">S5-3</span><h3>Who draws the full screen set?</h3></div>
+      <div class="opts">
+        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b style="margin-top:6px">Claude Design redoes it from the chosen tokens</b>I write a follow-up prompt with the chosen direction's exact tokens, the contrast rules, dark mode, the timeline and everything decided in sessions 1–4 (card bills at the minimum, counted accounts, Tú debes, Prepárate…). The designer returns the full set; the code uses the same tokens.</div>
+        <div class="opt"><b>I build from the tokens directly</b>Faster to start, but no designed reference for the 40-odd screens; details get decided in code.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer style="color:var(--muted);font-size:13px">Next: session 6, plans and payments.</footer>
+</main>
+
+<script>
+const D = {
+  oliva:{name:"0 · Oliva today",ui:"'Geist',system-ui,sans-serif",num:"'Geist',system-ui,sans-serif",numw:"800",style:"tint",
+    light:{bg:"#EFE8D9",card:"#FAF6EC",ink:"#161812",muted:"#655F52",line:"#E2D9C6",control:"#C9BEA6",sunk:"#E5DDCB",button:"#141414",onbutton:"#F6F0E3",shadow:"none",
+      ok:["#DCE0BE","#46512A","#6C7A3C","#FFFFFF"],warn:["#EFDDAE","#6E500E","#B88A22","#FFFFFF"],bad:["#EDCBBB","#86361F","#B9553A","#FFFFFF"]}},
+  A:{name:"A · Oliva afinada",ui:"'Geist',system-ui,sans-serif",num:"'Geist',system-ui,sans-serif",numw:"800",style:"tint",
+    light:{bg:"#E9E0CC",card:"#FFFCF5",ink:"#14160F",muted:"#4B463B",line:"#E6DDC9",control:"#8C7F63",sunk:"#EFE7D6",button:"#14160F",onbutton:"#FFFCF5",shadow:"0 1px 2px rgba(40,30,10,.10),0 4px 12px rgba(40,30,10,.06)",
+      ok:["#CFE0A6","#2E4A12","#4E7A1E","#FFFFFF"],warn:["#F6D98C","#5C3F00","#B27800","#FFFFFF"],bad:["#F4BFA8","#7A2410","#C4452A","#FFFFFF"]},
+    dark:{bg:"#12130E",card:"#1F2119",ink:"#F3EFE3",muted:"#B8B09C",line:"#2E3027",control:"#858270",sunk:"#2A2C22",button:"#F3EFE3",onbutton:"#12130E",shadow:"none",
+      ok:["#2A3A14","#CFE39A","#8DB84A","#12130E"],warn:["#3D2F0A","#F2CE74","#E0A626","#12130E"],bad:["#43190F","#F4A58C","#E0664A","#12130E"]},
+    blurb:"Where state color lives: a <b>stronger tint</b> on the Disponible card. White cards with a soft shadow on a deeper sand background; borders that pass 3:1; a heavier number.",
+    contrast:"Card on background 1.28 + shadow · chip border 3.8 · tertiary text 5.8 · dark: chip border 4.2"},
+  B:{name:"B · Nítido",ui:"'Geist',system-ui,sans-serif",num:"'Bricolage Grotesque','Geist',sans-serif",numw:"800",style:"solid",
+    light:{bg:"#EEF0F3",card:"#FFFFFF",ink:"#0E1116",muted:"#475061",line:"#E3E6EB",control:"#7A8394",sunk:"#EEF0F3",button:"#0E1116",onbutton:"#FFFFFF",shadow:"0 1px 2px rgba(14,17,22,.08),0 6px 16px rgba(14,17,22,.06)",
+      ok:["#DDF3E6","#0F5C30","#16804A","#FFFFFF"],warn:["#FFF0C2","#6B4A00","#F2A900","#1A1300"],bad:["#FCE0DB","#8E2213","#D1382A","#FFFFFF"]},
+    dark:{bg:"#0B0D10",card:"#171B21",ink:"#F4F6F8",muted:"#A7AFBC",line:"#252A32",control:"#6B7383",sunk:"#20252D",button:"#F4F6F8",onbutton:"#0B0D10",shadow:"none",
+      ok:["#123522","#7FE0A8","#2BB36A","#04150B"],warn:["#3A2C05","#FFD978","#FFC23D","#1A1300"],bad:["#3D140E","#FFA799","#FF6A55","#1A0502"]},
+    blurb:"Where state color lives: the <b>whole Disponible block</b> is the verdict color, the only saturated thing on screen. Everything else is crisp neutral with real depth. Display face: Bricolage Grotesque for numbers.",
+    contrast:"Text on the green block 5.0 · amber 9.2 · red 4.9 · chip border 3.8 · dark: 6.9 / 11.5 / 7.0 · chip border 3.6"},
+  C:{name:"C · Tinta",ui:"'Geist',system-ui,sans-serif",num:"'Newsreader',Georgia,serif",numw:"500",style:"number",
+    light:{bg:"#FFFFFF",card:"#F3F3F5",ink:"#111114",muted:"#52525C",line:"#E4E4E9",control:"#7C7C88",sunk:"#E9E9EE",button:"#111114",onbutton:"#FFFFFF",shadow:"none",
+      ok:["#E3F4EA","#0F7A43","#0F7A43","#FFFFFF"],warn:["#FBEFD2","#8A5C00","#8A5C00","#FFFFFF"],bad:["#FBE3E0","#B42E25","#B42E25","#FFFFFF"]},
+    dark:{bg:"#0F0F12",card:"#1B1B21",ink:"#F5F2EA",muted:"#A9A49B",line:"#29292F",control:"#76767F",sunk:"#26262D",button:"#F5F2EA",onbutton:"#0F0F12",shadow:"none",
+      ok:["#12301F","#6FDB8C","#6FDB8C","#0F0F12"],warn:["#3A2D0B","#FFC857","#FFC857","#0F0F12"],bad:["#3A1714","#FF7A6B","#FF7A6B","#0F0F12"]},
+    blurb:"Where state color lives: <b>only in the number</b> and its small pill. Flat neutral surfaces, an editorial serif for the big figure. Dark-first in spirit.",
+    contrast:"Number green 5.4 · amber 5.8 · red 6.3 · chip border 3.7 · dark: 11.1 / 12.4 / 7.5 · chip border 3.8"}
+};
+const V = {
+  ok:{label:"Vas bien",n:"$421.100",per:"$35.000 al día · 12 días",sub:"+$180.000 cuando te paguen"},
+  warn:{label:"Cuidado",n:"$271.100",per:"Máximo $22.500 al día para llegar al 30",sub:"+$180.000 cuando te paguen"},
+  bad:{label:"Te pasaste",n:"−$64.000",per:"Lo restamos del próximo ciclo",sub:"Mira en qué se fue ›"}
+};
+function vars(t,dir){
+  const s=[`--t-bg:${t.bg}`,`--t-card:${t.card}`,`--t-ink:${t.ink}`,`--t-muted:${t.muted}`,`--t-line:${t.line}`,`--t-control:${t.control}`,`--t-sunk:${t.sunk}`,`--t-button:${t.button}`,`--t-onbutton:${t.onbutton}`,`--t-shadow:${t.shadow}`,`--t-ui:${dir.ui}`,`--t-num:${dir.num}`,`--t-numw:${dir.numw}`,`--t-bad-solid:${t.bad[2]}`,`--t-bad-on:${t.bad[3]}`];
+  return s.join(';');
+}
+function frame(t,dir,inner,active){
+  const tab=(n,l)=>`<span class="${active===n?'on':''}"><i></i>${l}${n==='r'?'<b>3</b>':''}</span>`;
+  return `<div><div class="ph"><div class="scr" style="${vars(t,dir)}"><div class="sb"><span>9:41</span><span>●●● ▮</span></div><div class="body">${inner}</div><div class="tabs">${tab('i','Inicio')}${tab('m','Movimientos')}${tab('r','Revisar')}</div></div></div>`;
+}
+function hero(t,dir,st){
+  const v=V[st], c=t[st];
+  if(dir.style==="solid"){
+    return `<div style="background:${c[2]};color:${c[3]};border-radius:18px;padding:13px 14px">
+      <div style="display:flex;justify-content:space-between;align-items:center"><span class="pill" style="border:1.5px solid ${c[3]};color:${c[3]}"><i></i>${v.label}</span><span style="font-size:10.5px;opacity:.9">Te pagan en 12 días</span></div>
+      <div style="font:600 9.5px 'Geist Mono',monospace;letter-spacing:.08em;margin-top:10px;opacity:.85">DISPONIBLE</div>
+      <div class="big">${v.n}</div><div class="per" style="opacity:.95">${v.per}</div><div style="font-size:10.5px;margin-top:4px;opacity:.85">${v.sub}</div></div>`;
+  }
+  if(dir.style==="number"){
+    return `<div class="cd" style="padding:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center"><span class="pill" style="background:${c[0]};color:${c[1]}"><i></i>${v.label}</span><span class="mut" style="font-size:10.5px">Te pagan en 12 días</span></div>
+      <div class="eb" style="margin-top:10px">Disponible</div>
+      <div class="big" style="color:${c[1]};font-size:46px">${v.n}</div><div class="per">${v.per}</div><div class="mut" style="font-size:10.5px;margin-top:4px">${v.sub}</div></div>`;
+  }
+  return `<div style="background:${c[0]};color:${t.ink};border-radius:16px;padding:13px 14px;box-shadow:${t.shadow}">
+      <div style="display:flex;justify-content:space-between;align-items:center"><span class="pill" style="background:${t.card};color:${c[1]}"><i></i>${v.label}</span><span style="font-size:10.5px;color:${c[1]}">Te pagan en 12 días</span></div>
+      <div style="font:600 9.5px 'Geist Mono',monospace;letter-spacing:.08em;margin-top:10px;color:${c[1]}">DISPONIBLE</div>
+      <div class="big">${v.n}</div><div class="per" style="color:${c[1]}">${v.per}</div><div style="font-size:10.5px;margin-top:4px;color:${c[1]}">${v.sub}</div></div>`;
+}
+function inicio(t,dir,st){
+  return frame(t,dir,`<div class="hdr"><div><div class="t">Hola, Laura</div><div class="s">Ciclo 15 – 29 sep</div></div><div class="av">L</div></div>
+   ${hero(t,dir,st)}
+   <div class="cd"><div style="display:flex;justify-content:space-between"><span class="eb">Así sale tu número</span><span style="font-size:10.5px;font-weight:600;text-decoration:underline">Ver detalle</span></div>
+     <div class="ln"><span>Te llega este ciclo</span><span>$2.100.000</span></div>
+     <div class="ln"><span class="mut">− Por pagar</span><span>$1.378.900</span></div>
+     <div class="ln"><span class="mut">− Ahorro</span><span>$200.000</span></div>
+     <div class="ln"><span class="mut">− Ya salió</span><span>${st==='ok'?'$100.000':st==='warn'?'$250.000':'$585.100'}</span></div></div>
+   <div class="cd" style="padding:4px 12px"><div class="row"><div class="ic">A</div><div class="rt"><div class="a">Arriendo</div><div class="b">Mañana · Bancolombia</div></div><div class="amt">$700.000</div></div>
+     <div class="row"><div class="ic">N</div><div class="rt"><div class="a">Tarjeta Nu</div><div class="b">Próxima factura ≈ · vence 22 oct</div></div><div class="amt">$480.000<br><span class="tag">≈ al corte $620.000</span></div></div></div>`,'i');
+}
+function revisar(t,dir){
+  return frame(t,dir,`<div><div class="t" style="font:700 19px var(--t-ui)">Revisar</div><div class="s mut" style="font-size:11px">3 preguntas · unos 20 segundos</div></div>
+   <div class="cd" style="padding:13px">
+     <div style="display:flex;gap:9px;align-items:center"><div class="ic">R</div><div class="rt"><div class="a">Rappi</div><div class="b">Ayer 8:14 p.m. · Tarjeta Nu</div></div><div class="amt">−$38.500</div></div>
+     <div class="raw" style="margin-top:9px">RAPPI*COLOMBIA BOG 110111</div>
+     <div style="font:700 15px var(--t-ui);margin:11px 0 3px">¿Qué fue esto?</div>
+     <div class="mut" style="font-size:10.5px;margin-bottom:8px">Vale para Rappi: sus 14 movimientos y los que vengan.</div>
+     <div class="chips"><span class="chip pre">Domicilios</span><span class="chip">Mascotas</span><span class="chip">Salud</span><span class="chip oth">Otra…</span></div>
+     <div class="eb" style="margin:12px 0 6px">¿Siempre es así?</div>
+     <div class="seg"><span class="on">Siempre</span><span>Casi siempre</span><span>Pregúntame</span></div>
+     <div style="margin-top:12px"><span class="btn">Guardar</span></div></div>
+   <div class="info"><span>Saltar</span><span>1 de 3</span></div>`,'r');
+}
+function pagos(t,dir){
+  const tagOk=`<span class="pill" style="background:${t.ok[0]};color:${t.ok[1]};font-size:9.5px;padding:1px 7px">Pagado</span>`;
+  return frame(t,dir,`<div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px">‹</span><div class="t" style="font:700 19px var(--t-ui)">Pagos</div></div>
+   <div class="seg"><span class="on">Este ciclo</span><span>Próximo</span><span>Deudas</span></div>
+   <div class="secT">Antes del 30 · $1.378.900</div>
+   <div class="cd" style="padding:4px 12px">
+     <div class="row"><div class="ic">A</div><div class="rt"><div class="a">Arriendo</div><div class="b">19 sep · Bancolombia</div></div><div class="amt">$700.000<br><span class="tag">Pendiente</span></div></div>
+     <div class="row"><div class="ic">N</div><div class="rt"><div class="a">Tarjeta Nu · mínimo</div><div class="b">22 sep · debes $1.850.000</div></div><div class="amt">$640.000<br><span class="tag">Pendiente</span></div></div>
+     <div class="row"><div class="ic">N</div><div class="rt"><div class="a">Netflix</div><div class="b">24 sep · Tarjeta Nu</div></div><div class="amt">$38.900<br>${tagOk}</div></div></div>
+   <div class="secT">Prepárate</div>
+   <div class="cd"><div class="row" style="border:0;padding-top:0"><div class="ic">S</div><div class="rt"><div class="a">SOAT</div><div class="b">15 dic · en 11 semanas</div></div><div class="amt">$1.100.000</div></div>
+     <div class="mut" style="font-size:10.5px;margin:2px 0 8px">Aparta $120.000 por ciclo y llegas sin afán.</div><span class="btn2">Apartar $120.000 por ciclo</span></div>`,'i');
+}
+const dirsEl=document.getElementById('dirs');
+for(const k of ['oliva','A','B','C']){
+  const d=D[k]; const L=d.light, Dk=d.dark;
+  const sw=(t)=>`<span class="sw"><i style="background:${t.bg}"></i><i style="background:${t.card}"></i><i style="background:${t.ink}"></i><i style="background:${t.ok[2]}"></i><i style="background:${t.warn[2]}"></i><i style="background:${t.bad[2]}"></i></span>`;
+  let phones = k==='oliva'
+    ? `${inicio(L,d,'ok')}<div class="cap">Inicio · Vas bien</div></div>${revisar(L,d)}<div class="cap">Revisar</div></div>${pagos(L,d)}<div class="cap">Pagos</div></div>`
+    : `${inicio(L,d,'ok')}<div class="cap">light · Vas bien</div></div>${inicio(L,d,'warn')}<div class="cap">light · Cuidado</div></div>${inicio(Dk,d,'bad')}<div class="cap">dark · Te pasaste</div></div>${inicio(Dk,d,'ok')}<div class="cap">dark · Vas bien</div></div>${revisar(L,d)}<div class="cap">light · Revisar</div></div>${revisar(Dk,d)}<div class="cap">dark · Revisar</div></div>${pagos(L,d)}<div class="cap">light · Pagos</div></div>${pagos(Dk,d)}<div class="cap">dark · Pagos</div></div>`;
+  const el=document.createElement('div'); el.className='dir';
+  el.innerHTML = `<div class="dir-h"><h3>${d.name}</h3>${k==='B'?'<span class="rec-tag">RECOMMENDED</span>':''}${k==='oliva'?'<span class="dir-id">baseline, light only</span>':''}</div>
+    ${d.blurb?`<p style="margin:0;max-width:80ch">${d.blurb}</p>`:'<p style="margin:0;max-width:80ch">The current design, rebuilt with the same components so the comparison is fair.</p>'}
+    <div class="meta"><span>Light ${sw(L)}</span>${Dk?`<span>Dark ${sw(Dk)}</span>`:''}${d.contrast?`<span>Measured: ${d.contrast}</span>`:''}</div>
+    <div class="phones">${phones}</div><div class="cap" style="text-align:left">scroll sideways for Revisar and Pagos, light and dark →</div>`;
+  dirsEl.appendChild(el);
+}
+/* ---------- timelines (direction B light) ---------- */
+const TB=D.B.light, TD=D.B;
+function t1(){
+  const W=244, x=(d)=>18+d*(W-36)/45; // day 0 = 30 ago .. 45 = 14 oct
+  const lane=(y,label)=>`<text x="6" y="${y-6}" style="font:600 8.5px 'Geist Mono';fill:${TB.muted}">${label}</text><line x1="6" y1="${y+8}" x2="${W-6}" y2="${y+8}" stroke="${TB.line}"/>`;
+  const dot=(d,y,c,lab,sub,up)=>`<circle cx="${x(d)}" cy="${y+8}" r="5" fill="${c}"/><text x="${x(d)}" y="${up?y-1:y+26}" text-anchor="middle" style="font:600 8.5px Geist;fill:${TB.ink}">${lab}</text>${sub?`<text x="${x(d)}" y="${up?y-10:y+36}" text-anchor="middle" style="font:8px Geist;fill:${TB.muted}">${sub}</text>`:''}`;
+  const cyc=(a,b,l,on)=>`<rect x="${x(a)}" y="20" width="${x(b)-x(a)-2}" height="18" rx="4" fill="${on?TB.ink:TB.sunk}"/><text x="${(x(a)+x(b))/2}" y="32" text-anchor="middle" style="font:600 8.5px Geist;fill:${on?'#fff':TB.muted}">${l}</text>`;
+  return `<svg viewBox="0 0 ${W} 330" style="width:100%">
+    ${cyc(0,16,'30 ago–14 sep')}${cyc(16,31,'15–29 sep',1)}${cyc(31,46,'30 sep–14 oct')}
+    <line x1="${x(19)}" y1="16" x2="${x(19)}" y2="310" stroke="${TB.ink}" stroke-width="1.2" stroke-dasharray="3 3"/><text x="${x(19)+3}" y="14" style="font:600 8.5px Geist;fill:${TB.ink}">hoy</text>
+    ${lane(62,'TE LLEGA')}${dot(0,62,TD.light.ok[2],'+2,1 M','30 ago')}${dot(16,62,TD.light.ok[2],'+2,1 M','15 sep')}${dot(31,62,TD.light.ok[2],'+2,1 M','30 sep')}
+    ${lane(122,'PAGOS')}${dot(6,122,TB.ink,'515 mil','5 sep')}${dot(11,122,TB.ink,'180 mil','10 sep',1)}${dot(20,122,TB.ink,'700 mil','19 sep')}${dot(26,122,TB.ink,'39 mil','24 sep',1)}${dot(36,122,TB.control,'≈515 mil','5 oct')}${dot(41,122,TB.control,'≈180 mil','10 oct',1)}
+    ${lane(182,'TARJETA NU')}<rect x="${x(9)}" y="186" width="${x(39)-x(9)}" height="8" rx="4" fill="${TD.light.warn[0]}"/><text x="${x(9)}" y="208" style="font:8px Geist;fill:${TB.muted}">compras 9 sep–8 oct ≈ $620.000</text>${dot(23,242,TD.light.bad[2],'Mínimo','640 mil')}<text x="6" y="236" style="font:600 8.5px 'Geist Mono';fill:${TB.muted}">VENCE</text>
+    <text x="6" y="300" style="font:9px Geist;fill:${TB.muted}">Después: Nu ≈ $480.000 · 22 oct</text><text x="6" y="312" style="font:9px Geist;fill:${TB.muted}">SOAT $1.100.000 · 15 dic</text>
+  </svg>`;
+}
+function t2(){
+  const W=244,H=200; let bal=120000; const pts=[]; const ev={0:1900000,1:-280000,6:-515000,9:-180000,16:1900000,20:-700000,23:-640000,25:-38900,31:1900000,36:-515000,39:-180000};
+  for(let d=0;d<=45;d++){ bal+= (ev[d]||0) - (d<=15?60000:(d<=18?25000:35000)); pts.push(bal); }
+  const max=Math.max(...pts), min=Math.min(...pts); const x=(d)=>20+d*(W-40)/45, y=(v)=>14+(H-40)*(1-(v-0)/(max*1.05));
+  let past='',fut=''; pts.forEach((v,d)=>{ const s=`${d?'L':'M'}${x(d).toFixed(1)} ${y(v).toFixed(1)}`; if(d<=19) past+=s; if(d>=19) fut+= (d===19?'M':'L')+`${x(d).toFixed(1)} ${y(v).toFixed(1)}`;});
+  const fl=pts.slice(19); const lo=Math.min(...fl), ld=19+fl.indexOf(lo);
+  const fmt=(v)=>'$'+Math.round(v/1000).toLocaleString('es-CO')+' mil';
+  const mk=(d,l,c)=>`<line x1="${x(d)}" y1="${H-24}" x2="${x(d)}" y2="${H-18}" stroke="${c}"/><text x="${x(d)}" y="${H-8}" text-anchor="middle" style="font:8px Geist;fill:${TB.muted}">${l}</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%">
+    <rect x="${x(16)}" y="8" width="${x(31)-x(16)}" height="${H-32}" fill="${TB.sunk}" rx="4"/>
+    <line x1="8" y1="${y(0)}" x2="${W-8}" y2="${y(0)}" stroke="${TB.line}"/>
+    <path d="${past}" fill="none" stroke="${TB.ink}" stroke-width="2"/>
+    <path d="${fut}" fill="none" stroke="${TB.ink}" stroke-width="2" stroke-dasharray="4 3"/>
+    <circle cx="${x(19)}" cy="${y(pts[19])}" r="4" fill="${TB.ink}"/><text x="${x(19)+6}" y="${y(pts[19])-6}" style="font:600 8.5px Geist;fill:${TB.ink}">hoy</text>
+    <circle cx="${x(ld)}" cy="${y(lo)}" r="4.5" fill="${TD.light.warn[2]}"/><text x="${x(ld)}" y="${y(lo)+15}" text-anchor="middle" style="font:600 8.5px Geist;fill:${TD.light.warn[1]}">más bajo ${fmt(lo)}</text>
+    ${mk(0,'30 ago',TB.ink)}${mk(16,'15 sep',TB.ink)}${mk(31,'30 sep',TB.ink)}${mk(45,'14 oct',TB.ink)}
+  </svg>`;
+}
+function t3(){
+  const r=(dt,n,a,s,b,cls)=>`<div class="row" style="padding:6px 0"><div style="width:34px;font:600 10px var(--t-ui);color:var(--t-muted)">${dt}</div><div class="rt"><div class="a" style="font-size:11.5px">${n}</div>${s?`<div class="b">${s}</div>`:''}</div><div class="amt" style="font-size:11.5px">${a}<br><span class="mut" style="font:500 9.5px var(--t-ui)">${b}</span></div></div>`;
+  return `<div class="secT">Ciclo pasado · te sobraron $85.000 ›</div>
+   <div class="secT">Este ciclo · 15–29 sep</div>
+   <div class="cd" style="padding:2px 10px">${r('19 sep','Arriendo','−$700.000','','queda $1,1 M')}${r('22 sep','Nu · mínimo','−$640.000','','queda $395 mil')}${r('24 sep','Netflix','−$38.900','Pagado ✓','queda $286 mil')}</div>
+   <div class="secT">Próximo · 30 sep–14 oct</div>
+   <div class="cd" style="padding:2px 10px">${r('30 sep','Sueldo','+$2.100.000','− ahorro $200.000','$1,98 M')}${r('5 oct','Crédito + Claro','≈ −$515.000','Claro es variable','$1,29 M')}${r('8 oct','EPM','≈ −$180.000','variable','$1,0 M')}${r('8 oct','Corte Nu','≈ $620.000','vence 22 oct','')}</div>
+   <div class="secT">Prepárate</div>
+   <div class="cd" style="padding:2px 10px">${r('15 dic','SOAT','−$1.100.000','aparta $120 mil/ciclo','')}</div>`;
+}
+const tl=document.getElementById('tl');
+const wrap=(inner,cap)=>{ const s=frame(TB,TD,inner,'i'); return s+`<div class="cap">${cap}</div></div>`; };
+tl.innerHTML =
+  wrap(`<div class="hdr"><div><div class="t">Tu plata en el tiempo</div><div class="s">3 ciclos · hoy 18 sep</div></div></div><div class="cd" style="padding:8px">${t1()}</div>`,'T1 · Carriles') +
+  wrap(`<div class="hdr"><div><div class="t">Tu plata en el tiempo</div><div class="s">Saldo de tus cuentas · hoy 18 sep</div></div></div><div class="cd" style="padding:8px 6px">${t2()}</div><div class="cd" style="font-size:11px"><b>Llegas al 30 con ≈ $110.000</b><div class="mut" style="font-size:10.5px">El punto más bajo es el 29 sep, justo antes del sueldo. Nada se queda sin pagar.</div></div>`,'T2 · Saldo proyectado') +
+  wrap(`<div class="hdr"><div><div class="t">Tu plata en el tiempo</div><div class="s">Agenda · hoy 18 sep</div></div></div>${t3()}`,'T3 · Agenda');
+</script>
