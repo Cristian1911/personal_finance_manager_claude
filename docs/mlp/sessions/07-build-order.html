@@ -92,7 +92,7 @@ li{margin:3px 0}
 <main>
 
 <header>
-  <div class="eyebrow">Zeta v2 · Planning session 7 of 7</div>
+  <div class="eyebrow">Zeta v2 · Planning session 7 of 7 · closed</div>
   <h1>Build order</h1>
   <p class="lede">Every decision from sessions 1–6 turned into milestones you can test on your phone, in the order that retires the biggest risks first. Plus the first PR, what changes in CLAUDE.md, and what happens after v1. Four decisions at the end. After them, I rewrite <code>10-build-plan.md</code> as the final spec and write the Claude Design prompt.</p>
 </header>
@@ -103,14 +103,14 @@ li{margin:3px 0}
 </section>
 
 <section>
-  <h2>Timeline (one developer)</h2>
+  <h2>Timeline (you + Claude)</h2>
   <figure>
     <div class="scroll">
     <svg viewBox="0 0 980 360" role="img" aria-label="Gantt chart: M0 weeks 0-3, M1 3-6, M2 6-9, M3 9-11.5, M4 11.5-14.5, M5 14.5-19, M6 19-21.5, M7 21.5-24.5; external tracks for Google verification, Claude Design and Play policy review; v1 around week 25, v1.1 about 6 weeks later.">
       <g id="gantt"></g>
     </svg>
     </div>
-    <figcaption>About <b>25 weeks to v1</b> for one developer (Oct 2026 → roughly early April 2027). A second developer taking M5 (Android capture) from week 9 saves about 4 weeks. Viajes lands in v1.1, so this December's travel season is missed; that's the honest cost of the scope.</figcaption>
+    <figcaption>About <b>25 calendar weeks to v1</b> (Oct 2026 → roughly early April 2027), including your reviews on device and the external reviews; re-estimated after M0 with real velocity. Viajes lands in v1.1, so this December's travel season is missed; that's the honest cost of the scope.</figcaption>
   </figure>
 </section>
 
@@ -170,34 +170,27 @@ li{margin:3px 0}
 <section>
   <h2>Decisions for this session</h2>
   <div class="decisions">
-    <div class="dec">
+    <div class="dec" style="border-color:var(--server)">
       <div class="dec-h"><span class="dec-id">S7-1</span><h3>What does the first PR prove?</h3></div>
-      <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>The engine's walking skeleton</b>One command, two adapters, one contract suite. It proves the riskiest decision (S1-1) before anything is built on it.</div>
-        <div class="opt"><b>The UI shell first</b>Something visible sooner, but built on an engine that isn't proven yet.</div>
-      </div>
+      <p style="margin:0"><span class="rec-tag">DECIDED</span> <b>The engine's walking skeleton</b> first; the UI shell is the second PR.</p>
     </div>
-    <div class="dec">
+
+    <div class="dec" style="border-color:var(--server)">
       <div class="dec-h"><span class="dec-id">S7-2</span><h3>Team</h3></div>
-      <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>Solo, with M5 open to a second developer</b>The plan works for one person (~25 weeks). If someone joins, M5 (Android capture, Kotlin + Play policy) is the cleanest piece to hand over from week 9.</div>
-        <div class="opt"><b>Plan for two developers now</b>~21 weeks, but only if the second person is really available.</div>
-      </div>
+      <p style="margin:0"><span class="rec-tag">DECIDED</span> <b>You and me.</b> You're the product owner, manager and stakeholder, and you accept each milestone on a real device; I'm the main developer. Estimates are calendar weeks including your reviews and external reviews, re-estimated after M0.</p>
     </div>
-    <div class="dec">
+
+    <div class="dec" style="border-color:var(--server)">
       <div class="dec-h"><span class="dec-id">S7-3</span><h3>Which capture comes first</h3></div>
-      <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>Android (M5) before iPhone (M6)</b>Android is where notification capture works fully and where most Colombian users are, and Play's policy review is the long pole. Meanwhile Google's verification for Gmail runs in the background.</div>
-        <div class="opt"><b>iPhone first</b>If your own daily phone is an iPhone, you'd dogfood capture sooner.</div>
-      </div>
+      <p style="margin:0"><span class="rec-tag">DECIDED</span> <b>Android (M5) before iPhone (M6).</b></p>
     </div>
-    <div class="dec">
+
+    <div class="dec" style="border-color:var(--server)">
       <div class="dec-h"><span class="dec-id">S7-4</span><h3>Apply the CLAUDE.md changes?</h3></div>
-      <div class="opts">
-        <div class="opt rec"><span class="rec-tag">RECOMMENDED</span><b>Yes, in the plan PR</b>So every future session (and agent) builds v2 by these rules from the start.</div>
-        <div class="opt"><b>Later, when coding starts</b>Keeps CLAUDE.md about today's app for a while longer.</div>
-      </div>
+      <p style="margin:0"><span class="rec-tag">DECIDED</span> <b>Yes, in the plan PR.</b></p>
     </div>
+
+    
   </div>
 </section>
 
