@@ -104,8 +104,8 @@ Every architecture, database and screen decision is checked against this list. N
 | E9 | Link a movement to the bill it paid (Zeta guessed wrong) | Detalle › "Pagó…" | v1 | ok |
 | E10 | Get reminded the day before a bill | Push | v1 | ok |
 | E11 | Pay a bill in several parts | Pagos (partial: "Pagado $600.000 de $1.100.000") | v1 | D5 |
-| E13 | See big bills beyond my next payday early enough to prepare | Pagos, timeline | v1 | S3-7 (open) |
-| E14 | See a variable bill's real amount as soon as it arrives | Pagos, Revisar | v1 | S3-8 (open) |
+| E13 | See big bills beyond my next payday early enough to prepare | Pagos, timeline ("Prepárate" + apartar) | v1 | S3-7 |
+| E14 | See a variable bill's real amount as soon as it arrives | Pagos, Revisar (estimate ≈ until known) | v1 | S3-8 |
 | E12 | See my subscriptions as a group | — (they're just bills) | out | ok |
 
 ## F. Credit cards, loans and debts with banks
