@@ -15,3 +15,6 @@ The migrations folder can't build Zeta's database from zero: the first tables we
 Verified on `zeta-dev`: object counts identical to production (47 tables, 13 views, 64 functions, 132 policies, 58 triggers, 19 enums); sign-up creates the profile and data key; an account name round-trips through encryption and is stored encrypted.
 
 **Never run these files against production.** Refresh the dump when the baseline gets stale (e.g. before creating another project).
+
+## History alignment (2026-09-29)
+Production's migration history had drifted from this folder (17 files recorded under other timestamps after being applied from the dashboard, plus one change never committed). Aligned: production and `zeta-dev` both list 164/164. Apply migrations with `supabase db push`/CLI from now on, not from the dashboard or MCP, so versions stay in sync.
