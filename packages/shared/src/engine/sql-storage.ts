@@ -85,7 +85,7 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
 
     async setFieldVersion(v) {
       await q(
-        "INSERT INTO field_versions (user_id, entity, entity_id, field, client_ts, command_id) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (entity, entity_id, field) DO UPDATE SET client_ts = excluded.client_ts, command_id = excluded.command_id",
+        "INSERT INTO field_versions (user_id, entity, entity_id, field, client_ts, command_id) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (user_id, entity, entity_id, field) DO UPDATE SET client_ts = excluded.client_ts, command_id = excluded.command_id",
         [v.userId, v.entity, v.entityId, v.field, v.clientTs, v.commandId],
       );
     },

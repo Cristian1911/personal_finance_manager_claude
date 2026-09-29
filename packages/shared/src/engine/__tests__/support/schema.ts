@@ -14,15 +14,16 @@ CREATE TABLE transactions (
   capture_method TEXT NOT NULL, idempotency_key TEXT NOT NULL UNIQUE
 );
 CREATE TABLE commands (
-  id TEXT PRIMARY KEY, user_id TEXT NOT NULL, device_id TEXT NOT NULL,
+  id TEXT NOT NULL, user_id TEXT NOT NULL, device_id TEXT NOT NULL,
   type TEXT NOT NULL, client_ts TEXT NOT NULL, payload TEXT,
   status TEXT NOT NULL, result TEXT NOT NULL,
-  applied_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+  applied_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  PRIMARY KEY (user_id, id)
 );
 CREATE TABLE field_versions (
   user_id TEXT NOT NULL, entity TEXT NOT NULL, entity_id TEXT NOT NULL,
   field TEXT NOT NULL, client_ts TEXT NOT NULL, command_id TEXT NOT NULL,
-  PRIMARY KEY (entity, entity_id, field)
+  PRIMARY KEY (user_id, entity, entity_id, field)
 );
 `;
 
@@ -40,14 +41,15 @@ CREATE TABLE transactions (
   capture_method text NOT NULL, idempotency_key text NOT NULL UNIQUE
 );
 CREATE TABLE commands (
-  id uuid PRIMARY KEY, user_id uuid NOT NULL, device_id text NOT NULL,
+  id uuid NOT NULL, user_id uuid NOT NULL, device_id text NOT NULL,
   type text NOT NULL, client_ts timestamptz NOT NULL, payload_enc bytea,
   status text NOT NULL, result jsonb NOT NULL,
-  applied_at timestamptz NOT NULL DEFAULT now()
+  applied_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, id)
 );
 CREATE TABLE field_versions (
   user_id uuid NOT NULL, entity text NOT NULL, entity_id uuid NOT NULL,
   field text NOT NULL, client_ts timestamptz NOT NULL, command_id uuid NOT NULL,
-  PRIMARY KEY (entity, entity_id, field)
+  PRIMARY KEY (user_id, entity, entity_id, field)
 );
 `;
