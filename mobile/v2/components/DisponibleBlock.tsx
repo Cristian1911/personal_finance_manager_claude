@@ -25,32 +25,31 @@ export const DisponibleBlock = memo(function DisponibleBlock({
   const number = solid ? state.onSolid : t.colors.ink;
 
   return (
-    <View
-      style={[styles.block, { backgroundColor: fill }, !solid && t.shadow]}
-      accessible
-      accessibilityLabel={`${view.pill}. Disponible ${view.amount}. ${view.perDay}. ${view.payday}.`}
-    >
-      <View style={styles.top}>
-        <View
-          style={[
-            styles.pill,
-            solid ? { borderWidth: 1.5, borderColor: accent } : { backgroundColor: t.colors.card },
-          ]}
-        >
-          <View style={[styles.dot, { backgroundColor: accent }]} />
-          <Text style={[styles.pillText, { color: accent, fontFamily: t.fonts.uiSemibold }]}>{view.pill}</Text>
+    <View style={[styles.block, { backgroundColor: fill }, !solid && t.shadow]}>
+      {/* One read-only group for screen readers; the sub line below stays its own button. */}
+      <View accessible accessibilityLabel={spokenLabel(view)}>
+        <View style={styles.top}>
+          <View
+            style={[
+              styles.pill,
+              solid ? { borderWidth: 1.5, borderColor: accent } : { backgroundColor: t.colors.card },
+            ]}
+          >
+            <View style={[styles.dot, { backgroundColor: accent }]} />
+            <Text style={[styles.pillText, { color: accent, fontFamily: t.fonts.uiSemibold }]}>{view.pill}</Text>
+          </View>
+          <Text style={[styles.payday, { color: accent, fontFamily: t.fonts.ui }]} numberOfLines={2}>
+            {view.payday}
+          </Text>
         </View>
-        <Text style={[styles.payday, { color: accent, fontFamily: t.fonts.ui }]} numberOfLines={1}>
-          {view.payday}
-        </Text>
-      </View>
 
-      <Text style={[styles.eyebrow, { color: accent, fontFamily: t.fonts.mono }]}>DISPONIBLE</Text>
-      <FittedAmount full={view.amount} short={view.amountShort} color={number} fontFamily={t.fonts.number} />
-      <Text style={[styles.perDay, { color: accent, fontFamily: t.fonts.uiMedium }]}>{view.perDay}</Text>
-      {view.approxNote && (
-        <Text style={[styles.sub, { color: accent, fontFamily: t.fonts.ui }]}>~ {view.approxNote}</Text>
-      )}
+        <Text style={[styles.eyebrow, { color: accent, fontFamily: t.fonts.mono }]}>DISPONIBLE</Text>
+        <FittedAmount full={view.amount} short={view.amountShort} color={number} fontFamily={t.fonts.number} />
+        <Text style={[styles.perDay, { color: accent, fontFamily: t.fonts.uiMedium }]}>{view.perDay}</Text>
+        {view.approxNote && (
+          <Text style={[styles.sub, { color: accent, fontFamily: t.fonts.ui }]}>~ {view.approxNote}</Text>
+        )}
+      </View>
       {view.sub && (
         <Pressable onPress={onPressSub} disabled={!onPressSub} accessibilityRole={onPressSub ? "button" : "text"} hitSlop={8}>
           <Text style={[styles.sub, { color: accent, fontFamily: t.fonts.ui }]}>{view.sub}</Text>
@@ -60,6 +59,15 @@ export const DisponibleBlock = memo(function DisponibleBlock({
   );
 });
 
+/** "~" and "−" read aloud the same way on every screen reader. */
+const spoken = (amount: string) => amount.replace("~", "aproximadamente ").replace("−", "menos ");
+
+function spokenLabel(v: DisponibleBlockView): string {
+  const parts = [v.pill, `Disponible ${spoken(v.amount)}`, v.perDay, v.payday];
+  if (v.approxNote) parts.push(v.approxNote);
+  return `${parts.join(". ")}.`;
+}
+
 const NUMBER_SIZE = 56;
 const MIN_SCALE = 0.62;
 
@@ -67,6 +75,8 @@ const MIN_SCALE = 0.62;
  * Widget rule: the amount shrinks to fit (down to 62%) and is shortened
  * ("$14,4 M") only when the full amount can't fit at 62%. Measured by hand
  * instead of adjustsFontSizeToFit so iOS, Android and the web preview agree.
+ * If even the short form doesn't fit it keeps shrinking (below 62%) rather
+ * than clip: a readable number beats the floor.
  */
 function FittedAmount({ full, short, color, fontFamily }: { full: string; short: string; color: string; fontFamily: string }) {
   const [box, setBox] = useState(0);
@@ -84,7 +94,7 @@ function FittedAmount({ full, short, color, fontFamily }: { full: string; short:
   const text = { color, fontFamily };
 
   return (
-    <View style={styles.fit} onLayout={(e) => setBox(e.nativeEvent.layout.width)} accessibilityLabel={full}>
+    <View style={styles.fit} onLayout={(e) => setBox(e.nativeEvent.layout.width)}>
       <Text
         style={[styles.number, text, { fontSize: size, lineHeight: Math.round(size * 1.14), opacity: ready ? 1 : 0 }]}
         numberOfLines={1}
@@ -106,7 +116,7 @@ const styles = StyleSheet.create({
   pill: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 11, paddingVertical: 4, borderRadius: 999 },
   dot: { width: 7, height: 7, borderRadius: 4 },
   pillText: { fontSize: 14 },
-  payday: { fontSize: 14, flexShrink: 1 },
+  payday: { fontSize: 14, flexShrink: 1, textAlign: "right" },
   eyebrow: { fontSize: 12, letterSpacing: 1.2, marginTop: 14 },
   number: { fontSize: 56, lineHeight: 64, letterSpacing: -1, marginTop: 4, fontVariant: ["tabular-nums"] },
   fit: { overflow: "hidden" },

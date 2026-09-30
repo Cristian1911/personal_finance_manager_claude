@@ -44,7 +44,7 @@ function Gallery(props: {
       style={{ backgroundColor: t.colors.bg }}
       contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 32, paddingHorizontal: 16, gap: 14 }}
     >
-      <Text style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.uiBold }]}>Galería v2 · Disponible</Text>
+      <Text style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]}>Galería v2 · Disponible</Text>
       <View style={styles.row}>
         <Segment options={[["oliva", "Oliva afinada"], ["nitido", "Nítido"]]} value={props.theme} onChange={props.setTheme} />
         <Segment options={[["light", "Claro"], ["dark", "Oscuro"]]} value={props.mode} onChange={props.setMode} />
@@ -68,6 +68,7 @@ function Segment<T extends string>({ options, value, onChange }: { options: [T, 
         const on = v === value;
         return (
           <Pressable
+            hitSlop={6}
             key={v}
             onPress={() => onChange(v)}
             accessibilityRole="button"
