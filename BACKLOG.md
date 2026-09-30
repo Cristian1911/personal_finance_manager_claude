@@ -17,10 +17,11 @@
 - Opcionales del driver: `aud: "authenticated"` en los claims y `SET LOCAL statement_timeout`.
 - Outbox del teléfono (siguiente PR de sync): tabla `outbox` aparte (seq, estado, intentos, resultado del servidor), mutex en el driver de expo-sqlite, no pisar `current_balance` en un pull mientras haya comandos sin confirmar.
 
-## Seguridad: `zeta_decrypt_as` / `zeta_encrypt_as` ejecutables por `anon` y `authenticated` (2026-09-29)
-- Hallado por `supabase-migrator` al revisar la migración del motor v2. Las dos funciones reciben un `user_id` arbitrario; con el ciphertext de otra persona, cualquier sesión (incluso anónima) podría descifrarlo como ese usuario.
-- Arreglo propuesto: `REVOKE EXECUTE ... FROM anon, authenticated` y dejarlas solo para `service_role` (webhooks/cron las usan vía RPC con la clave de servicio). Antes, buscar todos los llamadores de cliente/usuario.
-- Probar en zeta-dev, luego producción con aprobación del dueño.
+## Seguridad: funciones SECURITY DEFINER con `user_id` abiertas a `anon` — ARREGLADO (2026-09-30, rama `fix/revoke-decrypt-as`)
+- `zeta_decrypt_as`, `get_accounts_with_masks` (contraseñas de PDF y máscaras de cualquier usuario), `get_email_ingest_settings`, `set_gmail_verification`, `generate_occurrences_for_template` y `cleanup_anonymous_demo_users` quedan solo para `service_role`; `zeta_encrypt_as` y `zeta_hmac_as` se quitan a `anon` (los triggers de las vistas cifradas las necesitan como `authenticated`).
+- Test de regresión: `webapp/src/lib/supabase/__tests__/definer-grants.integration.test.ts` (zeta-dev).
+- Pendiente: push a producción tras el merge (con aprobación del dueño).
+- Guardia pendiente: `ALTER DEFAULT PRIVILEGES … GRANT ALL ON FUNCTIONS TO anon, authenticated` re-otorga EXECUTE a toda función nueva (DROP+CREATE, cambio de firma, overload). El test de regresión se salta en CI (sin `SUPABASE_DEV_*`). Opciones: secretos de zeta-dev en CI para los tests de integración, o revocar esos default privileges (revisar qué depende de ellos).
 
 ## Primeras semanas — recorte de alcance + guía de página + descubrimiento guiado por datos (2026-09-15, rama `design/primeras-semanas`)
 
