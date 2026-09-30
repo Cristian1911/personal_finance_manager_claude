@@ -20,7 +20,7 @@
 ## Seguridad: funciones SECURITY DEFINER con `user_id` abiertas a `anon` — ARREGLADO (2026-09-30, rama `fix/revoke-decrypt-as`)
 - `zeta_decrypt_as`, `get_accounts_with_masks` (contraseñas de PDF y máscaras de cualquier usuario), `get_email_ingest_settings`, `set_gmail_verification`, `generate_occurrences_for_template` y `cleanup_anonymous_demo_users` quedan solo para `service_role`; `zeta_encrypt_as` y `zeta_hmac_as` se quitan a `anon` (los triggers de las vistas cifradas las necesitan como `authenticated`).
 - Test de regresión: `webapp/src/lib/supabase/__tests__/definer-grants.integration.test.ts` (zeta-dev).
-- Pendiente: push a producción tras el merge (con aprobación del dueño).
+- Aplicado en producción 2026-09-30 (PR #432; historial 166/166; grants verificados solo lectura).
 - Guardia pendiente: `ALTER DEFAULT PRIVILEGES … GRANT ALL ON FUNCTIONS TO anon, authenticated` re-otorga EXECUTE a toda función nueva (DROP+CREATE, cambio de firma, overload). El test de regresión se salta en CI (sin `SUPABASE_DEV_*`). Opciones: secretos de zeta-dev en CI para los tests de integración, o revocar esos default privileges (revisar qué depende de ellos).
 
 ## Primeras semanas — recorte de alcance + guía de página + descubrimiento guiado por datos (2026-09-15, rama `design/primeras-semanas`)
