@@ -39,3 +39,4 @@ export {
   type StoredTemplate,
   type StoredTransaction,
 } from "./movements";
+export { disponibleBlockView, type DisponibleBlockView } from "./view";

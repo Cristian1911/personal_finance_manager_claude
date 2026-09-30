@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
-import { Redirect } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import * as Crypto from "expo-crypto";
 import { applyAndEnqueue, createSqlStorage, type CommandEnvelope, type CommandResult } from "@zeta/shared";
 import { MobileHeader } from "../components/ui/MobileHeader";
@@ -59,6 +59,7 @@ export default function V2DebugRoute() {
 }
 
 function V2DebugScreen() {
+  const router = useRouter();
   const { userId: authUserId } = useAuth();
   const userId = authUserId ?? LOCAL_USER;
   const [snapshot, setSnapshot] = useState<Snapshot>({ balance: null, note: null, pending: 0 });
@@ -174,6 +175,7 @@ function V2DebugScreen() {
         <Action label="Nota nueva y luego una vieja" onPress={notesOutOfOrder} disabled={busy} />
         <Action label="Autoprueba" onPress={selfTest} primary disabled={busy} />
         <Action label="Borrar base v2" onPress={reset} disabled={busy} />
+        <Action label="Galería de diseño v2" onPress={() => router.push("/v2-gallery" as never)} disabled={busy} />
 
         {busy && <ActivityIndicator color={COLORS.brass} accessibilityLabel="Cargando" />}
 
