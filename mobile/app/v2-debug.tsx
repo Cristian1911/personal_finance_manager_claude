@@ -147,6 +147,9 @@ function V2DebugScreen() {
     setChecks(await runSelfTest());
   });
 
+  const skipped = checks?.filter((c) => c.skipped).length ?? 0;
+  const passed = checks?.filter((c) => c.ok && !c.skipped).length ?? 0;
+
   const format = (n: number | null) =>
     n == null ? "—" : n.toLocaleString("es-CO", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
@@ -177,12 +180,17 @@ function V2DebugScreen() {
         {checks && (
           <View className={`${PANEL_SURFACE_CLASS} p-4 gap-2`}>
             <Text className="font-inter-semibold text-foreground">
-              Autoprueba: {checks.filter((c) => c.ok).length} de {checks.length} bien
+              Autoprueba: {passed} de {checks.length - skipped} bien
+              {skipped > 0 ? ` · ${skipped} no aplica aquí` : ""}
             </Text>
             {checks.map((c) => (
               <View key={c.name}>
-                <Text className={`font-inter ${c.ok ? "text-foreground" : "text-z-expense"}`}>
-                  {c.ok ? "Bien" : "Falla"} · {c.name}
+                <Text
+                  className={`font-inter ${
+                    c.skipped ? "text-muted-foreground" : c.ok ? "text-foreground" : "text-z-expense"
+                  }`}
+                >
+                  {c.skipped ? "No aplica" : c.ok ? "Bien" : "Falla"} · {c.name}
                 </Text>
                 {c.detail && <Text className="font-inter text-xs text-muted-foreground">{c.detail}</Text>}
               </View>

@@ -52,6 +52,10 @@
         "GHSA-5p2g-fcmc-qvqq",
         "GHSA-w3rx-r6r6-pgpr"
       ]
+    },
+    "patchedDependencies": {
+      "expo-sqlite@55.0.10": "patches/expo-sqlite@55.0.10.patch",
+      "react-native-css-interop@0.2.2": "patches/react-native-css-interop@0.2.2.patch"
     }
   },
   "scripts": {

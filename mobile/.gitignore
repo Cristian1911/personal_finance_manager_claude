@@ -53,3 +53,6 @@ credentials/
 # Artefactos generados por fastlane
 fastlane/report.xml
 fastlane/README.md
+
+# Web preview output (pnpm preview:web:shots)
+web-preview/out/

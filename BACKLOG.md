@@ -10,6 +10,12 @@
 
 ---
 
+## Login con Google y Apple no funciona en Android (reportado 2026-09-30; iPhone sin verificar)
+- **Apple en Android** (flujo web: `signInWithOAuth` + `WebBrowser.openAuthSessionAsync`, `mobile/lib/auth-social.ts`): appleid.apple.com responde `invalid_request — Invalid client id or web redirect url`. Apple rechaza el par client id / return URL antes de llegar a Supabase. Revisar: (1) en Supabase → Auth → Apple, que el primer "Client ID" sea el Services ID `com.venti5.zeta.web` (el flujo web usa ese, no el bundle id); (2) en Apple Developer → Services ID `com.venti5.zeta.web`, que "Return URLs" tenga exactamente `https://<ref de producción>.supabase.co/auth/v1/callback` y el dominio `<ref>.supabase.co`; (3) que el secreto (JWT firmado con la clave .p8 `Y39H4A8255`) no haya vencido: dura máximo 6 meses.
+- **Google en Android** (nativo, `GoogleSignin.signIn` → `signInWithIdToken`): la app solo muestra "No se pudo iniciar sesión con Google"; el código real queda en `console.error("[google-signin] sign-in failed")` (ver con `adb logcat`). Sospecha principal: `DEVELOPER_ERROR` (código 10) porque el cliente OAuth Android en Google Cloud no tiene el SHA-1 del certificado con que se firma el build instalado (Play App Signing ≠ clave de subida ≠ keystore de EAS; registrar los que apliquen). Revisar también que `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` exista en el perfil de `eas.json` del build probado y que ese client id esté en Supabase → Auth → Google.
+- Verificar ambos en iPhone (Apple nativo + Google). Aprovechar para mostrar el código de error en el mensaje de soporte (sin datos sensibles) y no solo en consola.
+- Spec original: `docs/superpowers/specs/2026-06-21-social-signin-design.md`.
+
 ## Motor v2 — pendientes para la ruta `/api/v2/commands` (2026-09-29, rama `feat/v2-engine-skeleton`)
 - La ruta debe sobrescribir `cmd.userId` con el usuario del token (`getRequestUser()`) y rechazar `clientTs` en el futuro (margen de pocos minutos): un `clientTs` lejano "gana" todas las ediciones siguientes.
 - Dos reenvíos simultáneos del mismo comando: el segundo choca con la PK de `commands` (23505) y lanza; la ruta debe reintentar `applyCommand` (el reintento devuelve `replayed: true`).
