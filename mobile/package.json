@@ -7,6 +7,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
+    "preview:web": "node web-preview/preview.mjs dev",
+    "preview:web:shots": "node web-preview/preview.mjs shots",
     "build:aab:local": "cd android && ./gradlew bundleRelease",
     "build:apk:local": "eas build --platform android --profile preview-local",
     "build:apk:device": "eas build --platform android --profile preview-device",
@@ -73,6 +75,7 @@
     "@babel/plugin-transform-react-jsx": "^7.28.6",
     "@types/react": "~19.2.14",
     "babel-preset-expo": "^55.0.11",
+    "playwright": "1.58.2",
     "react-test-renderer": "19.1.0",
     "tailwindcss": "3.3.5",
     "typescript": "~5.9.2"

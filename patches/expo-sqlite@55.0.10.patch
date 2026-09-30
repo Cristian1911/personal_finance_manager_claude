@@ -1,0 +1,68 @@
+diff --git a/web/wa-sqlite/AccessHandlePoolVFS.js b/web/wa-sqlite/AccessHandlePoolVFS.js
+index cbb68f307d11645f509383d130441787d9985ac6..3afaf050287cabf67f1ecc76acd14d8cf38408cd 100644
+--- a/web/wa-sqlite/AccessHandlePoolVFS.js
++++ b/web/wa-sqlite/AccessHandlePoolVFS.js
+@@ -22,7 +22,7 @@ const PERSISTENT_FILE_TYPES =
+   VFS.SQLITE_OPEN_SUPER_JOURNAL |
+   VFS.SQLITE_OPEN_WAL;
+ 
+-const DEFAULT_CAPACITY = 6;
++const DEFAULT_CAPACITY = 24;
+ 
+ /**
+  * This VFS uses the updated Access Handle API with all synchronous methods
+@@ -227,8 +227,9 @@ export class AccessHandlePoolVFS extends FacadeVFS {
+       this.#directoryHandle = handle;
+ 
+       await this.#acquireAccessHandles();
+-      if (this.getCapacity() === 0) {
+-        await this.addCapacity(DEFAULT_CAPACITY);
++      // Zeta web preview: grow older pools too (each database needs its file plus journal/WAL).
++      if (this.getCapacity() < DEFAULT_CAPACITY) {
++        await this.addCapacity(DEFAULT_CAPACITY - this.getCapacity());
+       }
+     }
+     return true;
+diff --git a/web/worker.ts b/web/worker.ts
+index deaf7218f98add013b73876130f2c496ec3820fa..883c3237a7c1633587631ebefad040f08916c8ff 100644
+--- a/web/worker.ts
++++ b/web/worker.ts
+@@ -772,11 +772,27 @@ async function maybeFinalizeAllStatements(nativeDatabaseId: number) {
+   if (error) throw error;
+ }
+ 
++// Zeta web preview: single-flight init. Two databases opened at once would
++// otherwise both create the OPFS pool, and the second fails on the file locks.
++let _initPromise: Promise<void> | null = null;
++
+ async function maybeInitAsync(): Promise<{
+   sqlite3: SQLiteAPI;
+   vfs: AccessHandlePoolVFS;
+   vfsMemory: MemoryVFS;
+ }> {
++  _initPromise ??= initOnceAsync().catch((e) => {
++    _initPromise = null;
++    throw e;
++  });
++  await _initPromise;
++  if (_sqlite3 == null || _vfs == null || _vfsMemory == null) {
++    throw new Error('Invalid VFS state');
++  }
++  return { sqlite3: _sqlite3, vfs: _vfs, vfsMemory: _vfsMemory };
++}
++
++async function initOnceAsync(): Promise<void> {
+   if (!_sqlite3) {
+     const module = await WaSQLiteFactory({
+       locateFile: () => wasmModule,
+@@ -802,10 +818,6 @@ async function maybeInitAsync(): Promise<{
+     }
+     _sqlite3.vfs_register(_vfsMemory, false);
+   }
+-  if (_vfs == null || _vfsMemory == null) {
+-    throw new Error('Invalid VFS state');
+-  }
+-  return { sqlite3: _sqlite3, vfs: _vfs, vfsMemory: _vfsMemory };
+ }
+ 
+ //#endregion Internal helpers

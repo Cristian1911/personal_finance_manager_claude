@@ -1,0 +1,15 @@
+diff --git a/dist/runtime/web/color-scheme.js b/dist/runtime/web/color-scheme.js
+index c8fb1d2d9eb59204349cf80aeb56cbc281e81771..aa0a0b36e7ee25c81afc8945f05f1322bbca3a12 100644
+--- a/dist/runtime/web/color-scheme.js
++++ b/dist/runtime/web/color-scheme.js
+@@ -33,6 +33,10 @@ else if ("window" in globalThis) {
+         const flags = darkModeFlag.split(" ");
+         darkMode = flags[0];
+         darkModeValue = flags[1];
++        // Zeta web preview: with darkMode "media" set() throws, and in dev (CSS injected
++        // after load) that throw lands here and blocks the page. Media mode needs no set.
++        if (darkMode === "media")
++            return;
+         exports.colorScheme.set(globalThis.window.document.documentElement.classList.contains(darkModeValue)
+             ? "dark"
+             : "system");

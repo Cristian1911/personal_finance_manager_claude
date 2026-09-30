@@ -177,12 +177,17 @@ function V2DebugScreen() {
         {checks && (
           <View className={`${PANEL_SURFACE_CLASS} p-4 gap-2`}>
             <Text className="font-inter-semibold text-foreground">
-              Autoprueba: {checks.filter((c) => c.ok).length} de {checks.length} bien
+              Autoprueba: {checks.filter((c) => c.ok).length} de {checks.filter((c) => !c.skipped).length} bien
+              {checks.some((c) => c.skipped) ? ` · ${checks.filter((c) => c.skipped).length} no aplica aquí` : ""}
             </Text>
             {checks.map((c) => (
               <View key={c.name}>
-                <Text className={`font-inter ${c.ok ? "text-foreground" : "text-z-expense"}`}>
-                  {c.ok ? "Bien" : "Falla"} · {c.name}
+                <Text
+                  className={`font-inter ${
+                    c.skipped ? "text-muted-foreground" : c.ok ? "text-foreground" : "text-z-expense"
+                  }`}
+                >
+                  {c.skipped ? "No aplica" : c.ok ? "Bien" : "Falla"} · {c.name}
                 </Text>
                 {c.detail && <Text className="font-inter text-xs text-muted-foreground">{c.detail}</Text>}
               </View>

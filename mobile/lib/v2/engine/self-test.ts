@@ -1,12 +1,14 @@
 import * as Crypto from "expo-crypto";
 import * as SQLite from "expo-sqlite";
+import { Platform } from "react-native";
 import { applyAndEnqueue, createSqlStorage, type CommandEnvelope } from "@zeta/shared";
 import { deleteDatabaseFiles, openKeyed } from "./database";
 import { expoSha256 } from "./run-local";
 import { createExpoSqliteDriver } from "./sqlite-driver";
 import { toHex } from "./secrets";
 
-export type SelfTestCheck = { name: string; ok: boolean; detail?: string };
+/** `skipped`: the check can't run on this platform (web preview has no SQLCipher). */
+export type SelfTestCheck = { name: string; ok: boolean; skipped?: boolean; detail?: string };
 
 const FILE = "zeta-v2-selftest.db";
 const USER = "11111111-1111-4111-8111-111111111111";
@@ -111,19 +113,28 @@ export async function runSelfTest(): Promise<SelfTestCheck[]> {
       eq(await balance(), (before ?? 0) - 3000, "saldo");
     });
 
-    await check("El archivo no se puede leer sin la clave", async () => {
-      const raw = await SQLite.openDatabaseAsync(FILE, { useNewConnection: true });
-      let readable = false;
-      try {
-        await raw.getFirstAsync("SELECT count(*) FROM sqlite_master");
-        readable = true;
-      } catch {
-        // expected: "file is not a database"
-      } finally {
-        await raw.closeAsync().catch(() => undefined);
-      }
-      eq(readable, false, "legible sin clave");
-    });
+    if (Platform.OS === "web") {
+      checks.push({
+        name: "El archivo no se puede leer sin la clave",
+        ok: false,
+        skipped: true,
+        detail: "No aplica en la vista web: el navegador no tiene SQLCipher, la base no se cifra.",
+      });
+    } else {
+      await check("El archivo no se puede leer sin la clave", async () => {
+        const raw = await SQLite.openDatabaseAsync(FILE, { useNewConnection: true });
+        let readable = false;
+        try {
+          await raw.getFirstAsync("SELECT count(*) FROM sqlite_master");
+          readable = true;
+        } catch {
+          // expected: "file is not a database"
+        } finally {
+          await raw.closeAsync().catch(() => undefined);
+        }
+        eq(readable, false, "legible sin clave");
+      });
+    }
   } finally {
     await db.closeAsync().catch(() => undefined);
     await deleteDatabaseFiles(FILE).catch(() => undefined);
