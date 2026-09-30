@@ -10,10 +10,9 @@
 
 ---
 
-## Seguridad: `admin_config` sin RLS y con `GRANT ALL` a `anon` (encontrado 2026-09-30, sin corregir)
-- Según `supabase/baseline/2026-09-29-prod-schema.sql`, `public.admin_config (id, prompt_text)` no tiene RLS y `anon`/`authenticated` tienen ALL: cualquiera con la llave pública puede leer, cambiar o vaciar la tabla. Ningún código del repo la usa; puede usarla algo externo (¿un prompt de una automatización?).
-- Pendiente del dueño: confirmar quién la usa. Si nadie de afuera: migración con `ENABLE ROW LEVEL SECURITY` + `REVOKE ALL ... FROM anon, authenticated` (queda para `service_role`). Si algo la lee con la llave pública: moverlo a `service_role` primero.
-- Relacionado: zeta-dev tenía las RPC `zeta_mcp_*` y `zeta_flow_class_candidates` ejecutables por `anon` (producción no, según el baseline). Corregido en zeta-dev el 2026-09-30 y agregado al test `definer-grants.integration.test.ts`. La guardia de fondo (default privileges que re-otorgan EXECUTE) sigue pendiente, ver la sección de SECURITY DEFINER abajo.
+## Seguridad: RPC `zeta_mcp_*` ejecutables por `anon` en zeta-dev — ARREGLADO en zeta-dev (2026-09-30)
+- zeta-dev tenía las RPC `zeta_mcp_*` y `zeta_flow_class_candidates` ejecutables por `anon` (producción no, según el baseline). Corregido en zeta-dev y agregado al test `definer-grants.integration.test.ts`. La guardia de fondo (default privileges que re-otorgan EXECUTE) sigue pendiente, ver la sección de SECURITY DEFINER abajo.
+- `admin_config` (sin RLS, `GRANT ALL` a `anon`): el dueño confirmó que se puede borrar; migración `20260930172412_drop_admin_config.sql` (aplicada en zeta-dev; producción a mano).
 
 ## Login con Google y Apple no funciona en Android (reportado 2026-09-30; iPhone sin verificar)
 - **Apple en Android** (flujo web: `signInWithOAuth` + `WebBrowser.openAuthSessionAsync`, `mobile/lib/auth-social.ts`): appleid.apple.com responde `invalid_request — Invalid client id or web redirect url`. Apple rechaza el par client id / return URL antes de llegar a Supabase. Revisar: (1) en Supabase → Auth → Apple, que el primer "Client ID" sea el Services ID `com.venti5.zeta.web` (el flujo web usa ese, no el bundle id); (2) en Apple Developer → Services ID `com.venti5.zeta.web`, que "Return URLs" tenga exactamente `https://<ref de producción>.supabase.co/auth/v1/callback` y el dominio `<ref>.supabase.co`; (3) que el secreto (JWT firmado con la clave .p8 `Y39H4A8255`) no haya vencido: dura máximo 6 meses.
