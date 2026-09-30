@@ -9,23 +9,26 @@
 | File | Function | Job |
 |---|---|---|
 | `dates.ts` | `addDays`, `diffDays`, … | ISO `YYYY-MM-DD` arithmetic in UTC (no local-time drift). |
-| `cycle.ts` | `computePayCycle` | The cycle containing `today`: semimonthly (15/30), monthly, biweekly or irregular (calendar month). A payday on a weekend or holiday moves to the business day before; a day past month end clamps to the last day. The cycle starts when the salary actually arrived (up to 5 days early), otherwise on the expected date and `startsOnExpectedDate` (the UI's "~"). |
+| `cycle.ts` | `computePayCycle` | The cycle containing `today`: semimonthly (15/30), monthly, biweekly or irregular (calendar month). A payday on a weekend or holiday moves to the business day before; a day past month end clamps to the last day. The cycle starts when the salary actually arrived (up to 5 days early). Otherwise it starts on the expected date with `startsOnExpectedDate` (the UI's "~"); a salary up to 5 days late clears the "~" without moving the start. |
 | `disponible.ts` | `computeDisponible` | `Disponible = Llega − Por pagar − Ahorro − Ya salió ± ajustes`; `perDay = ⌊Disponible ÷ días que faltan (incluye hoy)⌋₁₀₀` (0 when negative); the starting Disponible and per-day, used by the verdict. Returns every line (Spanish labels) and why the number is approximate. |
-| `verdict.ts` | `computeVerdict`, `verdictMessage`, `findBillAtRisk` | Vas bien / Cuidado / Te pasaste with the no-flicker rule; Spanish messages; the bill-at-risk check (≤ 3 days). |
+| `verdict.ts` | `computeVerdict`, `verdictMessage`, `findBillAtRisk` | Vas bien / Cuidado / Te pasaste with the no-flicker rule; Spanish messages; the bill-at-risk check (due within 3 days, or overdue). |
 | `card-bill.ts` | `estimateCardMinimum`, `projectCardBillAtCut` | S3-6 minimum before the PDF; S3-2 big purchases in full; S3-5 look-ahead at the cut date. |
 
 ## 2. Input contract of `computeDisponible`
 
 - `cycle`, `today`, `accounts: { id, countsInDisponible, isDebt? }`.
+- A debt account never counts, whatever its setting says.
 - `movements`: already classified by the caller: `spend | payment | income | salary | repayment | refund | transfer | ignored`, with `obligationId` for payments, `expectedIncomeId` for salary, `counterpartAccountId` for transfers, and `approx` for foreign-currency estimates.
   - Movements on accounts that don't count are ignored, so card purchases never touch Disponible (S3-0).
-  - A transfer to a debt account is a payment.
+  - A transfer to a debt account is a payment. A plain transfer (no `obligationId`) pays that account's open bills in due order; the rest is an extra payment.
+  - A transfer from a debt account is an advance ("Avance de tarjeta o crédito").
+  - A transfer to an account we don't know is money out (Ya salió), never Ahorro.
   - An ATM withdrawal is `spend` (S3-1); logging that cash later is `ignored`. Trip purchases (v1.1) are also `ignored`.
 - `expectedIncomes`: an expected salary counts until it arrives, then the real amount replaces it.
-- `obligations`: bills, card bills (at minimum), loan cuotas and Tú debes (D8), each with `dueDate`, `amount`, `paidBefore` and `estimated` (≈). Por pagar = what's still unpaid of those due by the cycle end. Payments move money Por pagar → Ya salió. Paying more than the remaining amount is an extra payment and lowers Disponible now. Partial payments show "pagado X de Y" (D5).
+- `obligations`: bills, card bills (at minimum), loan cuotas and Tú debes (D8), each with `dueDate`, `amount`, `paidBefore` and `estimated` (≈). Por pagar = what's still unpaid of those due by the cycle end. Payments move money Por pagar → Ya salió. Paying more than the remaining amount is an extra payment and lowers Disponible now. Partial payments show "pagado X de Y" (D5). A bill is paid once its payments reach 95% of the amount (D5 ±5%). An estimated (≈) bill closes with any payment, because the real amount replaces the estimate.
 - `savingsTarget` + `reservations` (S3-7) make up Ahorro. A transfer out of the counted set fills Ahorro first, and only the excess goes to Ya salió (no double subtraction).
 - `carryOver` (Te pasaste / Te sobró el ciclo pasado, S3-3), `balanceAdjustments` ("Cuadrar con mi saldo").
-- `anchor` (first cycle: the balance told today), `irregular` + `openingBalance` (only received money counts; expected income comes back apart as `expectedApart`).
+- `anchor` (first cycle: the balance told today; movements before it are inside that balance, so a salary seen before it drops its expected income and a bill paid before it counts as paid; a same-day movement needs `at` to be placed after it), `irregular` + `openingBalance` (only received money counts; the part of the expected income not received yet comes back apart as `expectedApart`).
 - `staleSources`: a quiet source makes the number approximate.
 
 **Starting Disponible** = Llega − (each obligation's amount − `paidBefore`) − Ahorro ± ajustes, i.e. the cycle before any spending, with today's knowledge. Laura: $521.100 ÷ 15 = $34.700/day.
@@ -33,9 +36,9 @@
 ## 3. Verdict (S3-4, S3-5)
 
 - **Te pasaste** when Disponible < 0.
-- **Cuidado** when per-day < 85% of the starting per-day, when a bill is at risk within 3 days, or when the next cycle would be short.
+- **Cuidado** when nothing is left per day ("No te queda para gastar hasta el 30"), when per-day < 85% of the starting per-day, when a bill is at risk within 3 days, or when the next cycle would be short.
 - **Vas bien** otherwise.
-- **No flicker:** the shown state worsens immediately but only improves after the better state has held for 24 h. The caller stores the returned `memo` and passes it back.
+- **No flicker:** the shown state worsens immediately but only improves after the better state has held for 24 h; the clock restarts whenever the better state changes. The caller stores the returned `memo` and passes it back.
 
 ## 4. Tests
 

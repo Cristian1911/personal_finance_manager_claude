@@ -1,6 +1,7 @@
 export type { IsoDate } from "./dates";
-export { computePayCycle, EARLY_ARRIVAL_DAYS, type PayCycle, type PaySchedule } from "./cycle";
+export { computePayCycle, EARLY_ARRIVAL_DAYS, LATE_ARRIVAL_DAYS, type PayCycle, type PaySchedule } from "./cycle";
 export {
+  PAID_TOLERANCE_PERCENT,
   computeDisponible,
   type ApproxReason,
   type DisponibleAccount,

@@ -50,6 +50,11 @@ describe("computePayCycle", () => {
     expect(c.start).toBe("2026-09-15");
   });
 
+  it("a salary a few days late clears the '~' without moving the cycle's start", () => {
+    const c = computePayCycle({ schedule: SEMI, today: "2026-09-18", salaryArrivals: ["2026-09-16"] });
+    expect(c).toMatchObject({ start: "2026-09-15", startsOnExpectedDate: false });
+  });
+
   it("without an arrival the cycle starts on the expected date, flagged for the '~'", () => {
     const c = computePayCycle({ schedule: SEMI, today: "2026-09-16" });
     expect(c).toMatchObject({ start: "2026-09-15", startsOnExpectedDate: true });

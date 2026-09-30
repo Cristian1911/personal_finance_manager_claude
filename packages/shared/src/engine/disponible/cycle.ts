@@ -33,6 +33,8 @@ export interface PayCycle {
 
 /** A salary seen up to this many days before its payday opens that payday's cycle. */
 export const EARLY_ARRIVAL_DAYS = 5;
+/** A salary up to this many days late confirms the cycle without moving its start. */
+export const LATE_ARRIVAL_DAYS = 5;
 
 /** A payday on a weekend or holiday is paid the business day before. */
 function businessDayOnOrBefore(d: IsoDate, holidays: ReadonlySet<IsoDate>): IsoDate {
@@ -81,15 +83,16 @@ export function computePayCycle(input: {
 
   const holidays = new Set(input.holidays ?? []);
   const arrivals = input.salaryArrivals ?? [];
-  const boundaries = [...new Set(nominalPaydays(schedule, today).map((d) => businessDayOnOrBefore(d, holidays)))]
-    .sort()
-    .map((expected) => {
-      // The earliest arrival in the window opens the cycle.
-      const arrival = arrivals
-        .filter((a) => a <= expected && diffDays(a, expected) <= EARLY_ARRIVAL_DAYS)
-        .sort()[0];
-      return { expected, start: arrival ?? expected, arrived: arrival !== undefined };
-    });
+  const paydays = [...new Set(nominalPaydays(schedule, today).map((d) => businessDayOnOrBefore(d, holidays)))].sort();
+  const boundaries = paydays.map((expected, i) => {
+    // The earliest arrival in the early window opens the cycle; a late one only confirms it.
+    const early = arrivals.filter((a) => a <= expected && diffDays(a, expected) <= EARLY_ARRIVAL_DAYS).sort()[0];
+    const next = paydays[i + 1];
+    const late = arrivals.some(
+      (a) => a > expected && diffDays(expected, a) <= LATE_ARRIVAL_DAYS && (!next || a < next),
+    );
+    return { expected, start: early ?? expected, arrived: early !== undefined || late };
+  });
 
   let i = 0;
   while (boundaries[i + 1].start <= today) i++;

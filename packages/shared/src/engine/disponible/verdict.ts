@@ -1,4 +1,4 @@
-import { addDays, diffDays, type IsoDate } from "./dates";
+import { addDays, type IsoDate } from "./dates";
 
 /** One verdict for Disponible, límites and trips (S3-4). */
 export type DisponibleVerdictState = "vas_bien" | "cuidado" | "te_pasaste";
@@ -7,6 +7,8 @@ export type DisponibleVerdictReason =
   | { code: "on_track"; perDay: number }
   | { code: "overspent"; amount: number }
   | { code: "low_pace"; maxPerDay: number; until: IsoDate | null }
+  /** Not negative, but nothing left to spend per day until payday. */
+  | { code: "nothing_left"; until: IsoDate | null }
   | { code: "bill_at_risk"; label: string; dueDate: IsoDate }
   | { code: "next_cycle_short"; amount: number }
   /** Shown state is still the worse one while the better one holds for 24 h. */
@@ -15,8 +17,8 @@ export type DisponibleVerdictReason =
 /** What the caller stores between evaluations for the no-flicker rule. */
 export interface DisponibleVerdictMemo {
   shown: DisponibleVerdictState;
-  /** When the raw verdict first became better than `shown` (continuously). */
-  betterSince?: string;
+  /** The better state seen since `since` (continuously); promoted after 24 h. */
+  better?: { state: DisponibleVerdictState; since: string };
 }
 
 export interface DisponibleVerdictInput {
@@ -50,6 +52,7 @@ const SEVERITY: Record<DisponibleVerdictState, number> = { vas_bien: 0, cuidado:
 function rawVerdict(i: DisponibleVerdictInput): { state: DisponibleVerdictState; reason: DisponibleVerdictReason } {
   if (i.disponible < 0) return { state: "te_pasaste", reason: { code: "overspent", amount: -i.disponible } };
   if (i.billAtRisk) return { state: "cuidado", reason: { code: "bill_at_risk", ...i.billAtRisk } };
+  if (i.perDay <= 0) return { state: "cuidado", reason: { code: "nothing_left", until: i.nextPayday } };
   // In whole percents so a float can't tip the boundary (85% of $40.000 is exactly $34.000).
   if (i.perDay * 100 < CUIDADO_PERCENT * i.startingPerDay) {
     return { state: "cuidado", reason: { code: "low_pace", maxPerDay: i.perDay, until: i.nextPayday } };
@@ -71,11 +74,15 @@ export function computeVerdict(input: DisponibleVerdictInput): DisponibleVerdict
   if (!memo || SEVERITY[raw.state] >= SEVERITY[memo.shown]) {
     return { state: raw.state, raw: raw.state, reason: raw.reason, memo: { shown: raw.state } };
   }
-  const since = memo.betterSince ?? input.now;
+  // The clock restarts whenever the better state changes: a state must itself hold 24 h.
+  const since = memo.better?.state === raw.state ? memo.better.since : input.now;
   if (Date.parse(input.now) - Date.parse(since) >= IMPROVE_AFTER_MS) {
     return { state: raw.state, raw: raw.state, reason: raw.reason, memo: { shown: raw.state } };
   }
-  return { state: memo.shown, raw: raw.state, reason: { code: "recovering" }, memo: { shown: memo.shown, betterSince: since } };
+  return {
+    state: memo.shown, raw: raw.state, reason: { code: "recovering" },
+    memo: { shown: memo.shown, better: { state: raw.state, since } },
+  };
 }
 
 /** $22.500: Colombian thousands separator, whole pesos. */
@@ -95,6 +102,8 @@ export function verdictMessage(reason: DisponibleVerdictReason): string {
       return `Te pasaste por ${formatPesos(reason.amount)}. Lo restamos del próximo ciclo.`;
     case "low_pace":
       return `Para llegar ${reason.until ? `al ${dayOf(reason.until)}` : "a fin de mes"}, gasta máximo ${formatPesos(reason.maxPerDay)} al día.`;
+    case "nothing_left":
+      return `No te queda para gastar ${reason.until ? `hasta el ${dayOf(reason.until)}` : "este mes"}.`;
     case "bill_at_risk":
       return `Tu saldo no alcanza para ${reason.label}, que vence el ${dayOf(reason.dueDate)}.`;
     case "next_cycle_short":
@@ -108,7 +117,7 @@ export function verdictMessage(reason: DisponibleVerdictReason): string {
 export const BILL_RISK_DAYS = 3;
 
 /**
- * The first bill due in the next 3 days that the counted balances won't
+ * The first bill due in the next 3 days (or overdue) that the counted balances won't
  * cover, paying them in due order. A bill with `payFromAccountId` is checked
  * against that account; the rest against the total.
  */
@@ -121,7 +130,8 @@ export function findBillAtRisk(input: {
   const byAccount = new Map(input.balances.map((b) => [b.accountId, b.balance]));
   let pool = input.balances.reduce((a, b) => a + b.balance, 0);
   const due = input.bills
-    .filter((b) => b.amount > 0 && diffDays(input.today, b.dueDate) >= 0 && b.dueDate <= horizon)
+    // Overdue unpaid bills are the most at risk.
+    .filter((b) => b.amount > 0 && b.dueDate <= horizon)
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   for (const b of due) {
     const from = b.payFromAccountId;

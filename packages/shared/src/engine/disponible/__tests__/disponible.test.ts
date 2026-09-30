@@ -326,3 +326,104 @@ describe("computeDisponible — special cases", () => {
     expect(r.disponible).toBe(LAURA - 0.3);
   });
 });
+
+describe("computeDisponible — review fixes", () => {
+  it("first cycle told on payday after the salary arrived: the salary isn't counted twice", () => {
+    const r = computeDisponible(laura({
+      anchor: { at: "2026-09-15T20:00:00.000Z", balance: 2_100_000 },
+      savingsTarget: 0, obligations: [],
+      movements: [mv({ kind: "salary", amount: 2_100_000, direction: "INFLOW", date: "2026-09-15", at: "2026-09-15T13:00:00.000Z", expectedIncomeId: "salary" })],
+    }));
+    expect(r.disponible).toBe(2_100_000);
+    expect(r.approximate).toBe(false);
+  });
+
+  it("first cycle told before the salary arrived: the salary still counts when it comes", () => {
+    const r = computeDisponible(laura({
+      anchor: { at: "2026-09-15T08:00:00.000Z", balance: 300_000 },
+      savingsTarget: 0, obligations: [],
+      movements: [mv({ kind: "salary", amount: 2_100_000, direction: "INFLOW", date: "2026-09-15", at: "2026-09-15T13:00:00.000Z", expectedIncomeId: "salary" })],
+    }));
+    expect(r.disponible).toBe(2_400_000);
+  });
+
+  it("first cycle: a bill paid before the anchor isn't subtracted again", () => {
+    const r = computeDisponible(laura({
+      anchor: { at: "2026-09-20T12:00:00.000Z", balance: 1_000_000 },
+      today: "2026-09-20", cycle: { ...CYCLE, daysLeft: 10 },
+      savingsTarget: 0,
+      obligations: [{ id: "rent", kind: "bill", label: "Arriendo", dueDate: "2026-09-19", amount: 700_000 }],
+      movements: [mv({ kind: "payment", amount: 700_000, date: "2026-09-19", obligationId: "rent" })],
+    }));
+    expect(r.disponible).toBe(1_000_000);
+  });
+
+  it("one transfer to the loan covers two open cuotas in due order", () => {
+    const input = laura({ savingsTarget: 0 });
+    input.accounts.push({ id: "loan", countsInDisponible: false, isDebt: true });
+    input.obligations = [
+      { id: "c1", kind: "loan", label: "Cuota 1", dueDate: "2026-09-10", amount: 100_000, accountId: "loan" },
+      { id: "c2", kind: "loan", label: "Cuota 2", dueDate: "2026-09-25", amount: 100_000, accountId: "loan" },
+    ];
+    const before = computeDisponible(input).disponible;
+    input.movements.push(mv({ kind: "transfer", amount: 200_000, counterpartAccountId: "loan" }));
+    const r = computeDisponible(input);
+    expect(r.disponible).toBe(before);
+    expect(r.porPagar.lines).toEqual([]);
+  });
+
+  it("D5: a bill is paid when payments reach its amount within 5%", () => {
+    const input = laura();
+    input.movements.push(mv({ kind: "payment", amount: 670_000, obligationId: "rent" }));
+    const r = computeDisponible(input);
+    expect(r.porPagar.lines.some((l) => l.id === "rent")).toBe(false);
+    expect(r.disponible).toBe(LAURA + 30_000);
+  });
+
+  it("an estimated (≈) bill closes with its payment, whatever the real amount", () => {
+    const input = laura();
+    input.obligations.push({ id: "luz", kind: "bill", label: "Luz", dueDate: "2026-09-20", amount: 100_000, estimated: true });
+    input.movements.push(mv({ kind: "payment", amount: 80_000, obligationId: "luz" }));
+    const r = computeDisponible(input);
+    expect(r.porPagar.lines.some((l) => l.id === "luz")).toBe(false);
+    expect(r.disponible).toBe(LAURA - 80_000);
+  });
+
+  it("a debt account never counts, even if marked", () => {
+    const input = laura();
+    input.accounts[3] = { id: "nu", countsInDisponible: true, isDebt: true };
+    input.movements.push(mv({ kind: "spend", amount: 400_000, accountId: "nu" }));
+    expect(computeDisponible(input).disponible).toBe(LAURA);
+  });
+
+  it("a transfer to an unknown account is money out, not Ahorro", () => {
+    const r = computeDisponible(laura({}, [mv({ kind: "transfer", amount: 200_000 })]));
+    expect(r.disponible).toBe(LAURA - 200_000);
+    expect(r.ahorro.filledByTransfers).toBe(0);
+  });
+
+  it("money in from a card or loan (cash advance) is labelled as such", () => {
+    const r = computeDisponible(laura({}, [mv({ kind: "transfer", amount: 300_000, direction: "INFLOW", counterpartAccountId: "nu" })]));
+    expect(r.disponible).toBe(LAURA + 300_000);
+    expect(r.llega.lines.find((l) => l.id === "advance")?.label).toBe("Avance de tarjeta o crédito");
+  });
+
+  it("an expected income from before the cycle isn't pending in this one", () => {
+    const input = laura();
+    input.expectedIncomes.push({ id: "old", label: "Salario", amount: 2_100_000, expectedDate: "2026-08-30" });
+    expect(computeDisponible(input).disponible).toBe(LAURA);
+  });
+
+  it("irregular income: the part of the usual income not received yet is shown apart", () => {
+    const r = computeDisponible({
+      cycle: { start: "2026-09-01", end: "2026-09-30", days: 30, daysLeft: 13 },
+      today: "2026-09-18", irregular: true, openingBalance: 0,
+      accounts: [{ id: "debit", countsInDisponible: true }],
+      expectedIncomes: [{ id: "usual", label: "Ingresos", amount: 3_000_000, expectedDate: "2026-09-20" }],
+      movements: [mv({ kind: "salary", amount: 1_000_000, direction: "INFLOW", date: "2026-09-05", expectedIncomeId: "usual" })],
+      obligations: [],
+    });
+    expect(r.disponible).toBe(1_000_000);
+    expect(r.expectedApart).toBe(2_000_000);
+  });
+});

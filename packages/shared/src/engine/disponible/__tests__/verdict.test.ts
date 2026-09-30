@@ -48,8 +48,10 @@ describe("computeVerdict (S3-4)", () => {
     expect(verdictMessage(v.reason)).toBe("Para llegar a fin de mes, gasta máximo $10.000 al día.");
   });
 
-  it("no income yet (starting per day 0) and not negative: Vas bien", () => {
-    expect(computeVerdict({ ...base, disponible: 0, perDay: 0, startingPerDay: 0 }).state).toBe("vas_bien");
+  it("nothing left to spend until payday (per day $0): Cuidado", () => {
+    const v = computeVerdict({ ...base, disponible: 0, perDay: 0, startingPerDay: 0 });
+    expect(v.state).toBe("cuidado");
+    expect(verdictMessage(v.reason)).toBe("No te queda para gastar hasta el 30.");
   });
 });
 
@@ -77,6 +79,15 @@ describe("computeVerdict — no flicker (worsens now, improves after 24 h)", () 
     const down = computeVerdict({ ...cuidado, memo: up.memo, now: "2026-09-19T08:00:00.000Z" });
     const up2 = computeVerdict({ ...base, memo: down.memo, now: "2026-09-19T21:00:00.000Z" });
     expect(up2.state).toBe("cuidado");
+  });
+
+  it("the clock restarts when the better state changes (no jump on a state that barely held)", () => {
+    const over = computeVerdict({ ...base, disponible: -10_000, perDay: 0 });
+    const toCuidado = computeVerdict({ ...cuidado, memo: over.memo, now: "2026-09-18T16:00:00.000Z" });
+    // Cuidado held since 16:00; Vas bien appears 24.5 h later and has held for 0 h.
+    const toBien = computeVerdict({ ...base, memo: toCuidado.memo, now: "2026-09-19T16:30:00.000Z" });
+    expect(toBien.state).toBe("te_pasaste");
+    expect(computeVerdict({ ...base, memo: toBien.memo, now: "2026-09-20T16:30:00.000Z" }).state).toBe("vas_bien");
   });
 
   it("from Te pasaste, improving to Cuidado also waits", () => {
@@ -113,6 +124,14 @@ describe("findBillAtRisk", () => {
       bills: [{ label: "Crédito", dueDate: "2026-09-20", amount: 300_000, payFromAccountId: "savings" }],
       balances: [{ accountId: "debit", balance: 2_000_000 }, { accountId: "savings", balance: 100_000 }],
     })?.label).toBe("Crédito");
+  });
+
+  it("an overdue unpaid bill is the most at risk", () => {
+    expect(findBillAtRisk({
+      today,
+      bills: [{ label: "Claro", dueDate: "2026-09-15", amount: 90_000 }],
+      balances: [{ accountId: "debit", balance: 50_000 }],
+    })?.label).toBe("Claro");
   });
 
   it("bills further than 3 days out aren't at risk yet", () => {

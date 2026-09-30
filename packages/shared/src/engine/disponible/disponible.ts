@@ -137,27 +137,53 @@ const sum = (xs: number[]) => cents(xs.reduce((a, b) => a + b, 0));
 const floorTo100 = (n: number) => Math.floor(n / 100) * 100;
 const section = (lines: DisponibleLine[]): DisponibleSection => ({ total: sum(lines.map((l) => l.amount)), lines });
 
+/** D5: a bill is paid once its payments reach the amount within 5%. */
+export const PAID_TOLERANCE_PERCENT = 95;
+
+/** Which expected income each salary replaces: its own, else the first one still open. */
+function matchSalaries(incomes: ExpectedIncome[], salaries: DisponibleMovement[]) {
+  const received = new Map<string, number>();
+  const claimed = new Set<string>();
+  for (const e of incomes) {
+    const linked = salaries.filter((m) => m.expectedIncomeId === e.id);
+    if (linked.length === 0) {
+      const loose = salaries.find((m) => !m.expectedIncomeId && !claimed.has(m.id));
+      if (loose) linked.push(loose);
+    }
+    linked.forEach((m) => claimed.add(m.id));
+    if (linked.length) received.set(e.id, sum(linked.map((m) => m.amount)));
+  }
+  return { received, claimed };
+}
+
 export function computeDisponible(input: DisponibleInput): DisponibleResult {
   const { cycle, anchor } = input;
-  const counts = new Map(input.accounts.map((a) => [a.id, a.countsInDisponible]));
   const debt = new Set(input.accounts.filter((a) => a.isDebt).map((a) => a.id));
+  // Cards and loans never count, whatever the setting says (S3-0).
+  const counts = new Map(input.accounts.map((a) => [a.id, a.countsInDisponible && !a.isDebt]));
   const anchorDate = anchor?.at.slice(0, 10);
 
-  // Only movements on counted accounts, inside the cycle (and after the first-cycle anchor).
-  const movements = input.movements.filter((m) => {
-    if (!counts.get(m.accountId) || m.kind === "ignored") return false;
-    if (m.date < cycle.start || m.date > cycle.end) return false;
-    if (anchorDate && (m.date < anchorDate || (m.date === anchorDate && !(m.at && m.at > anchor!.at)))) return false;
-    return true;
-  });
+  // Movements on counted accounts inside the cycle. In the first cycle, those
+  // before the anchor are already in the balance the user told us.
+  const inCycle = input.movements.filter(
+    (m) => counts.get(m.accountId) && m.kind !== "ignored" && m.date >= cycle.start && m.date <= cycle.end,
+  );
+  const beforeAnchor = (m: DisponibleMovement) =>
+    !!anchorDate && (m.date < anchorDate || (m.date === anchorDate && !(m.at && m.at > anchor!.at)));
+  const movements = inCycle.filter((m) => !beforeAnchor(m));
+  const priorMovements = inCycle.filter(beforeAnchor);
 
-  // Transfers: between counted accounts nothing happens; to a debt account it's a payment.
+  // Transfers: nothing between counted accounts; to a card/loan it's a payment,
+  // from one it's an advance; to an account we don't know it's just money out.
   const transferKind = (m: DisponibleMovement) => {
-    const other = m.counterpartAccountId ?? "";
+    const other = m.counterpartAccountId;
+    if (!other || !counts.has(other)) return m.direction === "OUTFLOW" ? "unknown_out" : "unknown_in";
     if (counts.get(other)) return "internal";
-    if (m.direction === "OUTFLOW" && debt.has(other)) return "debt_payment";
+    if (debt.has(other)) return m.direction === "OUTFLOW" ? "debt_payment" : "advance";
     return m.direction === "OUTFLOW" ? "out" : "in";
   };
+  const isTransfer = (kind: string) => (m: DisponibleMovement) => m.kind === "transfer" && transferKind(m) === kind;
+  const isPayment = (m: DisponibleMovement) => m.kind === "payment" || isTransfer("debt_payment")(m);
 
   // ── Llega este ciclo ──
   const llega: DisponibleLine[] = [];
@@ -166,64 +192,75 @@ export function computeDisponible(input: DisponibleInput): DisponibleResult {
   if (anchor) llega.push({ id: "anchor", label: "Saldo inicial", amount: anchor.balance });
   if (input.irregular) llega.push({ id: "opening", label: "Saldo inicial", amount: input.openingBalance ?? 0 });
 
-  const salaries = movements.filter((m) => m.kind === "salary");
-  const incomes = input.expectedIncomes
-    .filter((e) => e.expectedDate <= cycle.end && (!anchorDate || e.expectedDate >= anchorDate))
+  let incomes = input.expectedIncomes
+    .filter((e) => e.expectedDate >= cycle.start && e.expectedDate <= cycle.end)
     .sort((a, b) => a.expectedDate.localeCompare(b.expectedDate));
-  const claimed = new Set<string>();
+  if (anchorDate) {
+    // A salary that arrived before the anchor is inside the balance: drop its expected income.
+    const prior = matchSalaries(incomes, priorMovements.filter((m) => m.kind === "salary"));
+    incomes = incomes.filter((e) => e.expectedDate >= anchorDate && !prior.received.has(e.id));
+  }
+  const salaries = movements.filter((m) => m.kind === "salary");
+  const { received, claimed } = matchSalaries(incomes, salaries);
   for (const e of incomes) {
-    const linked = salaries.filter((m) => m.expectedIncomeId === e.id);
-    // A salary that names no expected income replaces the first one still open.
-    if (linked.length === 0) {
-      const loose = salaries.find((m) => !m.expectedIncomeId && !claimed.has(m.id));
-      if (loose) linked.push(loose);
-    }
-    linked.forEach((m) => claimed.add(m.id));
-    const received = sum(linked.map((m) => m.amount));
+    const got = received.get(e.id) ?? 0;
     if (input.irregular) {
-      if (received === 0) expectedApart = cents(expectedApart + e.amount);
-      else llega.push({ id: e.id, label: e.label, amount: received, pending: false });
+      if (got > 0) llega.push({ id: e.id, label: e.label, amount: got, pending: false });
+      expectedApart = cents(expectedApart + Math.max(0, e.amount - got));
       continue;
     }
     // Unconfirmed only once its date has passed; income due later in the cycle is just expected.
-    if (received === 0 && e.expectedDate <= input.today) salaryPending = true;
-    llega.push({ id: e.id, label: e.label, amount: received || e.amount, pending: received === 0 });
+    if (got === 0 && e.expectedDate <= input.today) salaryPending = true;
+    llega.push({ id: e.id, label: e.label, amount: got || e.amount, pending: got === 0 });
   }
-  // Salary with no expected income left to replace: plain income.
-  const extraSalary = salaries.filter((m) => !claimed.has(m.id));
 
   const pushSum = (id: string, label: string, ms: DisponibleMovement[]) => {
     const amount = sum(ms.map((m) => m.amount));
     if (amount !== 0) llega.push({ id, label, amount });
   };
-  pushSum("income", "Otros ingresos", [...movements.filter((m) => m.kind === "income"), ...extraSalary]);
+  pushSum("income", "Otros ingresos", [
+    ...movements.filter((m) => m.kind === "income" || (m.kind === "salary" && !claimed.has(m.id))),
+    ...movements.filter(isTransfer("unknown_in")),
+  ]);
   pushSum("repayment", "Te pagaron", movements.filter((m) => m.kind === "repayment"));
-  pushSum("from_savings", "Traje de mis ahorros", movements.filter((m) => m.kind === "transfer" && transferKind(m) === "in"));
+  pushSum("from_savings", "Traje de mis ahorros", movements.filter(isTransfer("in")));
+  pushSum("advance", "Avance de tarjeta o crédito", movements.filter(isTransfer("advance")));
 
   // ── Por pagar ──
-  const payments = movements.filter(
-    (m) => m.kind === "payment" || (m.kind === "transfer" && transferKind(m) === "debt_payment"),
-  );
   const open = input.obligations
     .filter((o) => o.dueDate <= cycle.end)
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.id.localeCompare(b.id))
-    .map((o) => ({ o, before: o.paidBefore ?? 0, now: 0 }));
-  for (const p of payments) {
-    // An unlinked transfer to a card/loan pays its earliest open bill.
-    const target = p.obligationId
-      ? open.find((x) => x.o.id === p.obligationId)
-      : p.counterpartAccountId
-        ? open.find((x) => x.o.accountId === p.counterpartAccountId && x.before + x.now < x.o.amount)
-        : undefined;
-    if (target) target.now = cents(target.now + p.amount);
-  }
+    .map((o) => ({ o, paid: o.paidBefore ?? 0, before: o.paidBefore ?? 0 }));
+  const allocate = (p: DisponibleMovement, prior: boolean) => {
+    const apply = (x: (typeof open)[number], amount: number) => {
+      x.paid = cents(x.paid + amount);
+      if (prior) x.before = cents(x.before + amount);
+    };
+    if (p.obligationId) {
+      const x = open.find((y) => y.o.id === p.obligationId);
+      if (x) apply(x, p.amount); // beyond the bill it's an extra payment
+      return;
+    }
+    // A plain transfer to a card/loan pays its open bills in due order; the rest is extra.
+    let left = p.amount;
+    for (const x of open) {
+      if (left <= 0 || !p.counterpartAccountId || x.o.accountId !== p.counterpartAccountId) continue;
+      const take = Math.min(left, Math.max(0, x.o.amount - x.paid));
+      apply(x, take);
+      left = cents(left - take);
+    }
+  };
+  priorMovements.filter(isPayment).forEach((p) => allocate(p, true));
+  const payments = movements.filter(isPayment);
+  payments.forEach((p) => allocate(p, false));
+
+  const settled = (o: Obligation, paid: number) =>
+    paid * 100 >= PAID_TOLERANCE_PERCENT * o.amount || (!!o.estimated && paid > 0);
   const porPagar: DisponibleLine[] = [];
-  for (const { o, before, now } of open) {
-    const remaining = cents(Math.max(0, o.amount - before - now));
-    if (remaining === 0) continue;
-    const paid = cents(before + now);
+  for (const { o, paid } of open) {
+    if (settled(o, paid)) continue;
     porPagar.push({
-      id: o.id, label: o.label, amount: remaining,
+      id: o.id, label: o.label, amount: cents(o.amount - paid),
       ...(o.estimated ? { estimated: true } : {}),
       ...(paid > 0 ? { paid, total: o.amount } : {}),
     });
@@ -234,14 +271,14 @@ export function computeDisponible(input: DisponibleInput): DisponibleResult {
   if (input.savingsTarget) ahorroLines.push({ id: "savings", label: "Ahorro", amount: input.savingsTarget });
   for (const r of input.reservations ?? []) ahorroLines.push({ id: r.id, label: `Apartado: ${r.label}`, amount: r.amount });
   const ahorroTotal = sum(ahorroLines.map((l) => l.amount));
-  // Money moved out of the counted set fills Ahorro first; only the excess is Ya salió.
-  const movedOut = sum(movements.filter((m) => m.kind === "transfer" && transferKind(m) === "out").map((m) => m.amount));
+  // Money moved to an own account that doesn't count fills Ahorro first; only the excess is Ya salió.
+  const movedOut = sum(movements.filter(isTransfer("out")).map((m) => m.amount));
   const filledByTransfers = Math.min(movedOut, ahorroTotal);
 
   // ── Ya salió ──
   const yaSalio: DisponibleLine[] = [];
   const out = (id: string, label: string, amount: number) => amount !== 0 && yaSalio.push({ id, label, amount });
-  out("spend", "Gastos", sum(movements.filter((m) => m.kind === "spend").map((m) => m.amount)));
+  out("spend", "Gastos", sum([...movements.filter((m) => m.kind === "spend"), ...movements.filter(isTransfer("unknown_out"))].map((m) => m.amount)));
   out("payments", "Pagos", sum(payments.map((m) => m.amount)));
   out("moved_out", "A cuentas aparte", cents(movedOut - filledByTransfers));
   out("refunds", "Devoluciones", -sum(movements.filter((m) => m.kind === "refund").map((m) => m.amount)));
@@ -263,7 +300,8 @@ export function computeDisponible(input: DisponibleInput): DisponibleResult {
   const Y = section(yaSalio);
   const A = section(ajustes);
   const disponible = cents(L.total - P.total - S.total - Y.total + A.total);
-  const promised = sum(open.map(({ o, before }) => Math.max(0, o.amount - before)));
+  // What was promised when the cycle began: each bill minus what was paid before this cycle's movements.
+  const promised = sum(open.map(({ o, before }) => (settled(o, before) ? 0 : Math.max(0, o.amount - before))));
   const startingDisponible = cents(L.total - promised - S.total + A.total);
 
   const reasons: ApproxReason[] = [];
