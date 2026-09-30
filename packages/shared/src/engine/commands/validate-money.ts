@@ -1,6 +1,10 @@
+/** numeric(15,2) holds up to 9.999.999.999.999,99: anything larger would fail in Postgres, not as a clean rejection. */
+export const MAX_MONEY = 9_999_999_999_999;
+
 /** A finite amount with at most two decimals (0.29 * 100 isn't exactly 29 in floating point). */
 export function isMoney(v: unknown): v is number {
-  return typeof v === "number" && Number.isFinite(v) && Math.abs(Math.round(v * 100) - v * 100) <= 1e-6;
+  return typeof v === "number" && Number.isFinite(v) && Math.abs(v) <= MAX_MONEY
+    && Math.abs(Math.round(v * 100) - v * 100) <= 1e-6;
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;

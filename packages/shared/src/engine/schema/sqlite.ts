@@ -66,11 +66,11 @@ CREATE TABLE account_settings (
 );
 CREATE TABLE bill_reservations (
   id TEXT NOT NULL, user_id TEXT NOT NULL,
-  recurring_template_id TEXT, occurrence_id TEXT,
+  recurring_template_id TEXT NOT NULL, occurrence_id TEXT,
   amount_per_cycle REAL NOT NULL CHECK (amount_per_cycle > 0),
   starts_on TEXT NOT NULL, released_at TEXT,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-  PRIMARY KEY (user_id, id),
-  CHECK (recurring_template_id IS NOT NULL OR occurrence_id IS NOT NULL)
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  PRIMARY KEY (user_id, id)
 );
 `;

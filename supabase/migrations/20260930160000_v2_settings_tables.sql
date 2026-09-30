@@ -79,42 +79,148 @@ GRANT SELECT, INSERT, UPDATE ON public.account_settings TO authenticated;
 CREATE TABLE public.bill_reservations (
   id                    uuid NOT NULL,
   user_id               uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  recurring_template_id uuid REFERENCES public.recurring_transaction_templates_enc(id) ON DELETE CASCADE,
-  occurrence_id         uuid REFERENCES public.recurring_occurrences(id) ON DELETE CASCADE,
+  recurring_template_id uuid NOT NULL REFERENCES public.recurring_transaction_templates_enc(id) ON DELETE CASCADE,
+  -- Optional pin to one occurrence. SET NULL, not CASCADE: pending occurrences
+  -- are deleted and regenerated when a template is edited, and the
+  -- reservation (money already set aside) must survive that.
+  occurrence_id         uuid REFERENCES public.recurring_occurrences(id) ON DELETE SET NULL,
   amount_per_cycle      numeric(15,2) NOT NULL CHECK (amount_per_cycle > 0),
   starts_on             date NOT NULL,
   released_at           timestamptz,
   created_at            timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (user_id, id),
-  CONSTRAINT bill_reservations_target CHECK (recurring_template_id IS NOT NULL OR occurrence_id IS NOT NULL)
+  updated_at            timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, id)
 );
-CREATE INDEX bill_reservations_active_idx ON public.bill_reservations (user_id) WHERE released_at IS NULL;
+-- Disponible reads the active reservations of a user that started by a date.
+CREATE INDEX bill_reservations_active_idx ON public.bill_reservations (user_id, starts_on) WHERE released_at IS NULL;
 CREATE INDEX bill_reservations_template_idx ON public.bill_reservations (recurring_template_id);
 CREATE INDEX bill_reservations_occurrence_idx ON public.bill_reservations (occurrence_id);
 ALTER TABLE public.bill_reservations ENABLE ROW LEVEL SECURITY;
 CREATE POLICY bill_reservations_select_own ON public.bill_reservations
   FOR SELECT TO authenticated USING ((SELECT auth.uid()) = user_id);
--- The bill must be the user's own (a reservation can't point at someone else's template or occurrence).
+-- The bill must be the user's own (a reservation can't point at someone else's
+-- template or occurrence), and a pinned occurrence must belong to that template.
 CREATE POLICY bill_reservations_insert_own ON public.bill_reservations
   FOR INSERT TO authenticated WITH CHECK (
     (SELECT auth.uid()) = user_id
-    AND (recurring_template_id IS NULL OR EXISTS (
+    AND EXISTS (
       SELECT 1 FROM public.recurring_transaction_templates_enc t
-      WHERE t.id = recurring_template_id AND t.user_id = (SELECT auth.uid())))
+      WHERE t.id = recurring_template_id AND t.user_id = (SELECT auth.uid()))
     AND (occurrence_id IS NULL OR EXISTS (
       SELECT 1 FROM public.recurring_occurrences o
-      WHERE o.id = occurrence_id AND o.user_id = (SELECT auth.uid())))
+      WHERE o.id = occurrence_id AND o.user_id = (SELECT auth.uid())
+        AND o.template_id = recurring_template_id))
   );
 CREATE POLICY bill_reservations_update_own ON public.bill_reservations
   FOR UPDATE TO authenticated USING ((SELECT auth.uid()) = user_id)
   WITH CHECK (
     (SELECT auth.uid()) = user_id
-    AND (recurring_template_id IS NULL OR EXISTS (
+    AND EXISTS (
       SELECT 1 FROM public.recurring_transaction_templates_enc t
-      WHERE t.id = recurring_template_id AND t.user_id = (SELECT auth.uid())))
+      WHERE t.id = recurring_template_id AND t.user_id = (SELECT auth.uid()))
     AND (occurrence_id IS NULL OR EXISTS (
       SELECT 1 FROM public.recurring_occurrences o
-      WHERE o.id = occurrence_id AND o.user_id = (SELECT auth.uid())))
+      WHERE o.id = occurrence_id AND o.user_id = (SELECT auth.uid())
+        AND o.template_id = recurring_template_id))
   );
 REVOKE ALL ON public.bill_reservations FROM anon, authenticated;
 GRANT SELECT, INSERT, UPDATE ON public.bill_reservations TO authenticated;
+
+-- ── "Borrar mis datos" also clears the v2 settings ────────────────────────
+-- Same function as 20260422223709 plus the three tables above and their edit
+-- versions (field_versions), which no cascade reaches. `commands` is kept on
+-- purpose: command ids are kept forever (S2-2) so a replay after a reset
+-- stays a no-op.
+CREATE OR REPLACE FUNCTION public.reset_user_data()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_user_id uuid := auth.uid();
+  v_table   text;
+  v_user_scoped_tables constant text[] := ARRAY[
+    'bill_reservations',
+    'account_settings',
+    'user_cycle_settings',
+    'field_versions',
+    'transaction_tags',
+    'recurring_template_tags',
+    'planning_assignments',
+    'planning_entries',
+    'planning_periods',
+    'budgets',
+    'debt_scenarios',
+    'financial_reminders',
+    'recurring_occurrence_skips',
+    'obligation_skips',
+    'recurring_occurrences',
+    'wishlist_reflections',
+    'wishlist_items',
+    'pending_email_transactions',
+    'pending_email_statements',
+    'email_ingest_allowed_senders',
+    'email_ingest_logs',
+    'email_ingest_addresses',
+    'unrecognized_emails',
+    'capture_tokens',
+    'product_events',
+    'design_reviews',
+    'destinatarios',
+    'category_rules',
+    'accounts'
+  ];
+BEGIN
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Usuario no autenticado';
+  END IF;
+
+  IF to_regclass('public.category_tags') IS NOT NULL THEN
+    DELETE FROM public.category_tags
+      WHERE tag_id IN (
+        SELECT id FROM public.tags WHERE user_id = v_user_id
+      );
+  END IF;
+
+  IF to_regclass('public.destinatario_tags') IS NOT NULL THEN
+    DELETE FROM public.destinatario_tags
+      WHERE destinatario_id IN (
+        SELECT id FROM public.destinatarios WHERE user_id = v_user_id
+      );
+  END IF;
+
+  FOREACH v_table IN ARRAY v_user_scoped_tables LOOP
+    IF to_regclass('public.' || v_table) IS NOT NULL THEN
+      EXECUTE format('DELETE FROM public.%I WHERE user_id = $1', v_table)
+        USING v_user_id;
+    END IF;
+  END LOOP;
+
+  IF to_regclass('public.tags') IS NOT NULL THEN
+    DELETE FROM public.tags
+      WHERE user_id = v_user_id AND is_system = false;
+  END IF;
+  IF to_regclass('public.tag_groups') IS NOT NULL THEN
+    DELETE FROM public.tag_groups
+      WHERE user_id = v_user_id AND is_system = false;
+  END IF;
+
+  UPDATE public.profiles SET
+    full_name                   = NULL,
+    app_purpose                 = NULL,
+    avatar_url                  = NULL,
+    budget_mode                 = NULL,
+    estimated_monthly_income    = NULL,
+    estimated_monthly_expenses  = NULL,
+    monthly_salary              = NULL,
+    preferred_currency          = 'COP',
+    timezone                    = 'America/Bogota',
+    locale                      = 'es-CO',
+    onboarding_completed        = false,
+    dashboard_config            = NULL,
+    mobile_dashboard_config     = NULL,
+    updated_at                  = now()
+  WHERE id = v_user_id;
+END;
+$$;

@@ -103,6 +103,7 @@ describe.each(DRIVERS)("setCycleSettings on %s", (_name, make) => {
     [{ savingsPerCycle: 0.001 }, "El monto no es válido."],
     [{ bigPurchaseThreshold: 0 }, "El monto no es válido."],
     [{ balanceAnchor: Number.NaN }, "El monto no es válido."],
+    [{ incomePerCycle: 1e16 }, "El monto no es válido."],
   ])("rejects %j", async (payload, error) => {
     const s = await setup();
     expect(await applyCommand(s, cmd("setCycleSettings", payload))).toEqual({ status: "rejected", replayed: false, code: "invalid", error });
