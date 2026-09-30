@@ -99,7 +99,27 @@ describe("toDisponibleMovements — recurring bills and salary", () => {
   });
 });
 
+describe("toDisponibleMovements — debt payments without a named card", () => {
+  it("with a single card or loan, an unnamed debt payment goes to it", () => {
+    const m = toDisponibleMovements({
+      transactions: [tx({ flowClass: "DEBT_PAYMENT" })],
+      accounts: [{ id: "debit", accountType: "CHECKING" }, { id: "nu", accountType: "CREDIT_CARD" }],
+    })[0];
+    expect(m).toMatchObject({ kind: "transfer", counterpartAccountId: "nu" });
+  });
+
+  it("with several, it stays a payment (computeDisponible pays the earliest card/loan bill)", () => {
+    expect(one(tx({ flowClass: "DEBT_PAYMENT" }))).toMatchObject({ kind: "payment" });
+    expect(one(tx({ flowClass: "DEBT_PAYMENT" }))?.counterpartAccountId).toBeUndefined();
+  });
+});
+
 describe("toDisponibleMovements — people (Te deben / Tú debes)", () => {
+  it("the debt's direction is derived when it wasn't joined (hand-set DEBT_CREDIT repayments)", () => {
+    expect(one(tx({ direction: "INFLOW", flowClass: "DEBT_CREDIT", personalDebtId: "d1", pdRole: "repayment" }))?.kind).toBe("repayment");
+    expect(one(tx({ flowClass: "DEBT_PAYMENT", personalDebtId: "d2", pdRole: "repayment" }))).toMatchObject({ kind: "payment", obligationId: "d2" });
+  });
+
   it("money lent is spending", () => {
     expect(one(tx({ flowClass: "SPEND", personalDebtId: "d1", pdRole: "origin", personalDebtDirection: "lent" }))?.kind).toBe("spend");
   });
@@ -138,12 +158,13 @@ describe("toDisponibleMovements — amounts and time", () => {
 describe("occurrencesToCycleInputs", () => {
   const templates = [
     { id: "tpl-salary", direction: "INFLOW" as const, label: "Salario" },
-    { id: "tpl-rent", direction: "OUTFLOW" as const, label: "Arriendo", accountId: "debit" },
+    { id: "tpl-rent", direction: "OUTFLOW" as const, label: "Arriendo" },
   ];
 
   it("income occurrences are expected incomes; bill occurrences are obligations; skipped ones vanish", () => {
     const r = occurrencesToCycleInputs({
       templates,
+      transactions: [],
       occurrences: [
         { id: "o1", templateId: "tpl-salary", date: "2026-09-15", amount: 2_100_000, status: "pending", transactionId: null },
         { id: "o2", templateId: "tpl-rent", date: "2026-09-19", amount: 700_000, status: "pending", transactionId: null },
@@ -151,18 +172,54 @@ describe("occurrencesToCycleInputs", () => {
       ],
     });
     expect(r.expectedIncomes).toEqual([{ id: "o1", label: "Salario", amount: 2_100_000, expectedDate: "2026-09-15" }]);
-    expect(r.obligations).toEqual([{ id: "o2", kind: "bill", label: "Arriendo", dueDate: "2026-09-19", amount: 700_000, accountId: "debit" }]);
+    expect(r.obligations).toEqual([{ id: "o2", kind: "bill", label: "Arriendo", dueDate: "2026-09-19", amount: 700_000 }]);
     expect(r.occurrenceLinks).toEqual([]);
   });
 
-  it("a paid occurrence links its movement; if that movement isn't in the window it counts as paid before", () => {
+  it("a paid occurrence whose movement isn't passed counts as paid before (bill) or received (income)", () => {
     const r = occurrencesToCycleInputs({
       templates,
-      occurrences: [{ id: "o2", templateId: "tpl-rent", date: "2026-09-19", amount: 700_000, status: "paid", transactionId: "t-rent" }],
-      transactionIds: new Set(["t-other"]),
+      transactions: [tx({ id: "t-other" })],
+      occurrences: [
+        { id: "o2", templateId: "tpl-rent", date: "2026-09-19", amount: 700_000, status: "paid", transactionId: "t-rent" },
+        { id: "o1", templateId: "tpl-salary", date: "2026-09-15", amount: 2_100_000, status: "paid", transactionId: "t-sal" },
+      ],
     });
     expect(r.obligations[0]).toMatchObject({ id: "o2", paidBefore: 700_000 });
+    expect(r.expectedIncomes[0]).toMatchObject({ id: "o1", received: true });
+    expect(r.occurrenceLinks).toEqual([]);
+  });
+
+  it("a paid occurrence whose movement is passed links it", () => {
+    const r = occurrencesToCycleInputs({
+      templates,
+      transactions: [tx({ id: "t-rent" })],
+      occurrences: [{ id: "o2", templateId: "tpl-rent", date: "2026-09-19", amount: 700_000, status: "paid", transactionId: "t-rent" }],
+    });
+    expect(r.obligations[0].paidBefore).toBeUndefined();
     expect(r.occurrenceLinks).toEqual([{ transactionId: "t-rent", occurrenceId: "o2", isIncome: false }]);
+  });
+
+  it("a link to a merged duplicate follows it to the row that survived", () => {
+    const r = occurrencesToCycleInputs({
+      templates,
+      transactions: [tx({ id: "manual", reconciledIntoTransactionId: "pdf" }), tx({ id: "pdf", captureMethod: "PDF_IMPORT" })],
+      occurrences: [{ id: "o2", templateId: "tpl-rent", date: "2026-09-19", amount: 700_000, status: "paid", transactionId: "manual" }],
+    });
+    expect(r.occurrenceLinks).toEqual([{ transactionId: "pdf", occurrenceId: "o2", isIncome: false }]);
+  });
+
+  it("one movement that paid two bills settles both, its money counted once", () => {
+    const r = occurrencesToCycleInputs({
+      templates: [...templates, { id: "tpl-luz", direction: "OUTFLOW" as const, label: "Luz" }],
+      transactions: [tx({ id: "both", amount: 800_000 })],
+      occurrences: [
+        { id: "o2", templateId: "tpl-rent", date: "2026-09-19", amount: 700_000, status: "paid", transactionId: "both" },
+        { id: "o4", templateId: "tpl-luz", date: "2026-09-20", amount: 100_000, status: "paid", transactionId: "both" },
+      ],
+    });
+    expect(r.occurrenceLinks).toHaveLength(1);
+    expect(r.obligations.find((o) => o.id === "o4")).toMatchObject({ paidBefore: 100_000 });
   });
 });
 
@@ -183,7 +240,7 @@ describe("end to end: stored rows → computeDisponible (Laura)", () => {
     ];
     const cycle = occurrencesToCycleInputs({
       templates,
-      transactionIds: new Set(transactions.map((t) => t.id)),
+      transactions,
       occurrences: [
         { id: "o-sal", templateId: "tpl-salary", date: "2026-09-15", amount: 2_100_000, status: "paid", transactionId: "sal" },
         { id: "o-rent", templateId: "tpl-rent", date: "2026-09-19", amount: 700_000, status: "pending", transactionId: null },

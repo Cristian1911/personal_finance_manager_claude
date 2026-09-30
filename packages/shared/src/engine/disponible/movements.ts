@@ -59,6 +59,11 @@ function captureInstant(t: StoredTransaction): string | undefined {
   return t.createdAt ? new Date(t.createdAt).toISOString() : undefined;
 }
 
+/** Rows that count at all: not excluded, not merged into a duplicate, not cancelled. */
+export function isLiveTransaction(t: StoredTransaction): boolean {
+  return !t.isExcluded && !t.reconciledIntoTransactionId && t.status !== "CANCELLED";
+}
+
 export function toDisponibleMovements(input: {
   transactions: StoredTransaction[];
   accounts: { id: string; accountType: string }[];
@@ -68,9 +73,10 @@ export function toDisponibleMovements(input: {
   const base = input.baseCurrency ?? "COP";
   const links = new Map((input.occurrenceLinks ?? []).map((l) => [l.transactionId, l]));
 
-  const live = input.transactions.filter(
-    (t) => !t.isExcluded && !t.reconciledIntoTransactionId && t.status !== "CANCELLED",
-  );
+  const live = input.transactions.filter(isLiveTransaction);
+  // With a single card or loan, an unnamed debt payment can only be for it.
+  const debts = input.accounts.filter((a) => a.accountType === "CREDIT_CARD" || a.accountType === "LOAN");
+  const onlyDebt = debts.length === 1 ? debts[0].id : undefined;
   // Each transfer leg learns the other leg's account.
   const legs = new Map<string, StoredTransaction[]>();
   for (const t of live) {
@@ -95,7 +101,8 @@ export function toDisponibleMovements(input: {
     if (at) m.at = at;
     if (foreign && !EXACT_CAPTURE.has(t.captureMethod ?? "")) m.approx = true;
 
-    Object.assign(m, classify(t, links.get(t.id), counterpartOf(t)));
+    const counterpart = counterpartOf(t) ?? (t.flowClass === "DEBT_PAYMENT" && t.direction === "OUTFLOW" ? onlyDebt : undefined);
+    Object.assign(m, classify(t, links.get(t.id), counterpart));
     return m;
   });
 }
@@ -115,8 +122,12 @@ function classify(
 
   // 2. People (D8): lent → spend, repaid to you → Te pagaron,
   //    you pay back → settles that Tú debes, borrowed → money in.
-  if (t.personalDebtId && t.pdRole && t.personalDebtDirection) {
-    const lent = t.personalDebtDirection === "lent";
+  if (t.personalDebtId && t.pdRole) {
+    // The debt's direction follows from role + flow (inverse of inferPersonalDebtRole),
+    // so a caller that didn't join personal_debts still gets it right.
+    const lent = t.personalDebtDirection
+      ? t.personalDebtDirection === "lent"
+      : (t.pdRole === "origin") !== inflow;
     if (t.pdRole === "repayment") {
       if (lent && inflow) return { kind: "repayment" };
       if (!lent && !inflow) return { kind: "payment", obligationId: t.personalDebtId };
@@ -139,7 +150,7 @@ function classify(
     case "INCOME":
       return { kind: inflow ? "income" : "spend" };
     case "DEBT_PAYMENT":
-      // Card/loan unknown: an extra payment until a leg or a match says which.
+      // Card/loan unknown: computeDisponible applies it to the open card/loan bills first.
       return { kind: inflow ? "ignored" : "payment" };
     case "DEBT_CREDIT":
       // Lands on the card/loan itself, which never counts.
@@ -169,43 +180,60 @@ export interface StoredTemplate {
   id: string;
   direction: "INFLOW" | "OUTFLOW";
   label: string;
-  /** The account it's paid from (or into). */
-  accountId?: string;
 }
 
 /**
  * Occurrences (the source of truth for recurring obligations) → the cycle's
- * expected incomes and bills. Skipped occurrences are gone. A paid occurrence
- * links its movement; when that movement isn't among the ones being passed
- * (paid in an earlier window), it counts as already paid.
+ * expected incomes and bills. Pass the same transactions given to
+ * toDisponibleMovements: a paid occurrence links its movement (following a
+ * merged duplicate to the row that survived); when that movement isn't among
+ * the live ones, the bill counts as already paid and the income as received.
+ * Skipped occurrences are gone.
  */
 export function occurrencesToCycleInputs(input: {
   occurrences: StoredOccurrence[];
   templates: StoredTemplate[];
-  /** Ids of the transactions that will be passed to toDisponibleMovements. */
-  transactionIds?: ReadonlySet<string>;
+  transactions: StoredTransaction[];
 }): { expectedIncomes: ExpectedIncome[]; obligations: Obligation[]; occurrenceLinks: OccurrenceLink[] } {
   const templates = new Map(input.templates.map((t) => [t.id, t]));
+  const byId = new Map(input.transactions.map((t) => [t.id, t]));
+  /** The live row a link points at, after following merges (bounded, in case of a cycle). */
+  const liveRow = (id: string | null) => {
+    let t = id ? byId.get(id) : undefined;
+    for (let hops = 0; t?.reconciledIntoTransactionId && hops < 5; hops++) t = byId.get(t.reconciledIntoTransactionId);
+    return t && isLiveTransaction(t) ? t : undefined;
+  };
+
   const expectedIncomes: ExpectedIncome[] = [];
   const obligations: Obligation[] = [];
   const occurrenceLinks: OccurrenceLink[] = [];
+  const linked = new Set<string>();
 
-  for (const o of input.occurrences) {
+  const sorted = [...input.occurrences].sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+  for (const o of sorted) {
     const t = templates.get(o.templateId);
     if (!t || o.status === "skipped") continue;
     const isIncome = t.direction === "INFLOW";
-    if (o.transactionId) occurrenceLinks.push({ transactionId: o.transactionId, occurrenceId: o.id, isIncome });
-    const paidElsewhere = o.status === "paid" && !(o.transactionId && input.transactionIds?.has(o.transactionId));
+    const row = o.status === "paid" ? liveRow(o.transactionId) : undefined;
+    // One movement can carry one link: when it paid several occurrences, the
+    // first holds the link and the rest count as paid (its money is counted once).
+    const linkedHere = !!row && !linked.has(row.id);
+    if (row && linkedHere) {
+      linked.add(row.id);
+      occurrenceLinks.push({ transactionId: row.id, occurrenceId: o.id, isIncome });
+    }
+    const paidElsewhere = o.status === "paid" && !linkedHere;
 
     if (isIncome) {
-      // Income received outside this window is already in the balance.
-      if (!paidElsewhere) expectedIncomes.push({ id: o.id, label: t.label, amount: o.amount, expectedDate: o.date });
+      expectedIncomes.push({
+        id: o.id, label: t.label, amount: o.amount, expectedDate: o.date,
+        ...(paidElsewhere ? { received: true } : {}),
+      });
       continue;
     }
     obligations.push({
       id: o.id, kind: "bill", label: t.label, dueDate: o.date, amount: o.amount,
       ...(paidElsewhere ? { paidBefore: o.amount } : {}),
-      ...(t.accountId ? { accountId: t.accountId } : {}),
     });
   }
   return { expectedIncomes, obligations, occurrenceLinks };

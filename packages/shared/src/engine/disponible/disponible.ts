@@ -50,6 +50,8 @@ export interface ExpectedIncome {
   label: string;
   amount: number;
   expectedDate: IsoDate;
+  /** Already received through a movement not passed in (e.g. before this window): counts, not pending. */
+  received?: boolean;
 }
 
 export type ObligationKind = "bill" | "card_bill" | "loan" | "owed_to_person";
@@ -200,6 +202,15 @@ export function computeDisponible(input: DisponibleInput): DisponibleResult {
     const prior = matchSalaries(incomes, priorMovements.filter((m) => m.kind === "salary"));
     incomes = incomes.filter((e) => e.expectedDate >= anchorDate && !prior.received.has(e.id));
   }
+  // A salary paid into an account that doesn't count confirms its expected
+  // income without adding money: it reaches Disponible when moved in (a transfer).
+  const apartSalaries = input.movements.filter(
+    (m) => m.kind === "salary" && !counts.get(m.accountId) && m.date >= cycle.start && m.date <= cycle.end,
+  );
+  if (apartSalaries.length) {
+    const apart = matchSalaries(incomes, apartSalaries);
+    incomes = incomes.filter((e) => !apart.received.has(e.id));
+  }
   const salaries = movements.filter((m) => m.kind === "salary");
   const { received, claimed } = matchSalaries(incomes, salaries);
   for (const e of incomes) {
@@ -207,6 +218,10 @@ export function computeDisponible(input: DisponibleInput): DisponibleResult {
     if (input.irregular) {
       if (got > 0) llega.push({ id: e.id, label: e.label, amount: got, pending: false });
       expectedApart = cents(expectedApart + Math.max(0, e.amount - got));
+      continue;
+    }
+    if (got === 0 && e.received) {
+      llega.push({ id: e.id, label: e.label, amount: e.amount, pending: false });
       continue;
     }
     // Unconfirmed only once its date has passed; income due later in the cycle is just expected.
@@ -242,9 +257,15 @@ export function computeDisponible(input: DisponibleInput): DisponibleResult {
       return;
     }
     // A plain transfer to a card/loan pays its open bills in due order; the rest is extra.
+    // A debt payment whose card/loan isn't known pays the earliest open card or
+    // loan bills: counting it as extra while the bill stays in Por pagar would
+    // subtract the same money twice.
+    const target = p.counterpartAccountId;
+    const pays = (o: Obligation) =>
+      target ? o.accountId === target : o.kind === "card_bill" || o.kind === "loan";
     let left = p.amount;
     for (const x of open) {
-      if (left <= 0 || !p.counterpartAccountId || x.o.accountId !== p.counterpartAccountId) continue;
+      if (left <= 0 || !pays(x.o)) continue;
       const take = Math.min(left, Math.max(0, x.o.amount - x.paid));
       apply(x, take);
       left = cents(left - take);

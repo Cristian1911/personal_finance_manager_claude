@@ -31,6 +31,7 @@ export {
 } from "./verdict";
 export { BIG_PURCHASE_THRESHOLD, estimateCardMinimum, projectCardBillAtCut } from "./card-bill";
 export {
+  isLiveTransaction,
   occurrencesToCycleInputs,
   toDisponibleMovements,
   type OccurrenceLink,
