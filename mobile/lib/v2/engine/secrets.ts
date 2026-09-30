@@ -16,10 +16,13 @@ export function getDbKey(): Promise<string | null> {
   return SecureStore.getItemAsync(DB_KEY, OPTS);
 }
 
-export async function createDbKey(): Promise<string> {
-  const key = toHex(await Crypto.getRandomBytesAsync(32));
-  await SecureStore.setItemAsync(DB_KEY, key, OPTS);
-  return key;
+/** A fresh 32-byte key as hex. Not stored: save it only once a file opened with it exists. */
+export async function newDbKey(): Promise<string> {
+  return toHex(await Crypto.getRandomBytesAsync(32));
+}
+
+export function saveDbKey(key: string): Promise<void> {
+  return SecureStore.setItemAsync(DB_KEY, key, OPTS);
 }
 
 export async function getDeviceId(): Promise<string> {

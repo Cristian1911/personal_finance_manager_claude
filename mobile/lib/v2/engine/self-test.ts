@@ -126,7 +126,7 @@ export async function runSelfTest(): Promise<SelfTestCheck[]> {
     });
   } finally {
     await db.closeAsync().catch(() => undefined);
-    await deleteDatabaseFiles(FILE);
+    await deleteDatabaseFiles(FILE).catch(() => undefined);
   }
   return checks;
 }

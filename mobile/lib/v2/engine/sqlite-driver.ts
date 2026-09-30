@@ -32,6 +32,9 @@ export function createExpoSqliteDriver(db: SQLiteDatabase): SqlDriver {
     query: (sql, params) => exclusive(() => all(sql, params)),
     transaction: (fn) =>
       exclusive(async () => {
+        // A failed ROLLBACK after a failed COMMIT leaves the connection inside a
+        // transaction; end it here instead of failing every later BEGIN.
+        if (await db.isInTransactionAsync()) await db.execAsync("ROLLBACK");
         await db.execAsync("BEGIN IMMEDIATE");
         try {
           const result = await fn(inTx);

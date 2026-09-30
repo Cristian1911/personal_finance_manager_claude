@@ -12,10 +12,10 @@ Cloud session scope (owner): Tasks 1–5, Task 6 Step 4 (gates) and Step 5 (revi
 | 2 Outbox — `applyAndEnqueue` | done | `0159673` |
 | 3 Phone database | done | `8f6e397` |
 | 4 Local runner + self-test | done | `903b68b` |
-| 5 Debug screen | done | (this commit) |
+| 5 Debug screen | done | `e92ccf7` |
 | 6.1–6.3 Simulator | left for the local session | |
-| 6.4 Gates | pending | |
-| 6.5 Reviews | pending | |
+| 6.4 Gates | done (run before and after the review fixes) | |
+| 6.5 Reviews | done; fixes applied | (review-fix commit) |
 
 ## Rulings (deviations from the plan)
 
@@ -28,6 +28,14 @@ Cloud session scope (owner): Tasks 1–5, Task 6 Step 4 (gates) and Step 5 (revi
 - **R6 — Colombia date (Task 5).** The test capture used `new Date().toISOString().slice(0, 10)` (UTC; rolls the day after ~7 pm COT, forbidden by CLAUDE.md). Uses `toColombiaDateString()` from `lib/utils/date`.
 - **R7 — Panel class (Task 5).** The plan's `rounded-2xl bg-z-surface-2` panels became `PANEL_SURFACE_CLASS` (the existing standard panel), and the spinner uses `COLORS.brass` instead of the platform default.
 
+- **R8 — Rebuild only an unreadable file (review, mobile-sync-doctor F1, required).** The plan's `openV2Database` rebuilt on any open error, so a busy database, a full disk or a failed future migration would wipe the file and its queued outbox; and a delete that failed silently (file still open) was followed by a new key overwriting the good one. Now: rebuild only on SQLCipher's "file is not a database" / "malformed" (SQLite codes 26/11), rethrow anything else (the single-flight retries on the next open); `deleteDatabaseFiles` ignores only "not found" and rethrows the rest; the new key is generated first and saved to SecureStore only after the fresh file opens with it. `createDbKey()` became `newDbKey()` + `saveDbKey(key)`.
+- **R9 — Recover a connection left in a transaction (review F2, optional, applied).** If COMMIT and then ROLLBACK both fail, the connection stays inside a transaction and every later `BEGIN IMMEDIATE` fails until restart. The driver now checks `isInTransactionAsync()` before `BEGIN` and rolls back the leftover.
+- **R10 — Debug buttons disabled while busy (review F3 + zetas-front-guy optional 1–2).** Prevents a reset closing the database under an in-flight command and accidental double captures; the spinner has an accessibility label. Concurrency itself stays covered by the Autoprueba line "Dos comandos a la vez no se mezclan".
+- **Not applied (optional, logged):** warning about pending outbox rows before a rebuild (F1.4) belongs to M2, already flagged by the `ponytail` comment; `text-z-debt` instead of `text-z-expense` for failures, a destructive style for "Borrar base v2" (not one of the approved button variants), and Spanish wrapping of raw error/JSON text in a debug tool — cosmetic.
+
 ## Notes
 
 - Task 1: the first cold run of the engine suite had 3 failures that did not reproduce in three later runs (57/57 each). Likely the default 5 s Vitest timeout on a cold PGlite start (each contract test boots a fresh PGlite). Pre-existing; watched in the gates.
+- Gates (after review fixes): `pnpm install` (lockfile unchanged), `pnpm --filter @zeta/shared test`, `pnpm build:web`, `mobile: npx tsc --noEmit`, `pnpm audit --audit-level high` (2 high, both ignored image-size advisories). Results in the session summary.
+- `superpowers:systematic-debugging` was not needed: no gate failed.
+- Left for the local Mac session: Task 6 Steps 1–3 (SQLCipher native build on the iOS simulator, v1 data check, debug flow with Autoprueba 9/9 screenshot), then Step 6 (PR).

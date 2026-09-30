@@ -23,12 +23,26 @@ const LOCAL_USER = "00000000-0000-4000-8000-000000000001";
 
 type Snapshot = { balance: number | null; note: string | null; pending: number };
 
-function Action({ label, onPress, primary }: { label: string; onPress: () => void; primary?: boolean }) {
+function Action({
+  label,
+  onPress,
+  primary,
+  disabled,
+}: {
+  label: string;
+  onPress: () => void;
+  primary?: boolean;
+  disabled?: boolean;
+}) {
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
       accessibilityRole="button"
-      className={`rounded-xl px-4 py-3 active:opacity-80 ${primary ? BRASS_BUTTON_CLASS : GHOST_BUTTON_CLASS}`}
+      accessibilityState={{ disabled }}
+      className={`rounded-xl px-4 py-3 active:opacity-80 ${primary ? BRASS_BUTTON_CLASS : GHOST_BUTTON_CLASS} ${
+        disabled ? "opacity-40" : ""
+      }`}
     >
       {/* RN Text doesn't inherit color from the Pressable: set it here. */}
       <Text className={`text-center font-inter-semibold ${primary ? "text-z-ink" : "text-z-sage-light"}`}>
@@ -151,14 +165,14 @@ function V2DebugScreen() {
           {error && <Text className="font-inter text-xs text-z-expense">{error}</Text>}
         </View>
 
-        <Action label="Crear cuenta de prueba (100.000)" onPress={createAccount} />
-        <Action label="Anotar gasto de 25.000" onPress={capture} primary />
-        <Action label="Repetir el último comando" onPress={replay} />
-        <Action label="Nota nueva y luego una vieja" onPress={notesOutOfOrder} />
-        <Action label="Autoprueba" onPress={selfTest} primary />
-        <Action label="Borrar base v2" onPress={reset} />
+        <Action label="Crear cuenta de prueba (100.000)" onPress={createAccount} disabled={busy} />
+        <Action label="Anotar gasto de 25.000" onPress={capture} primary disabled={busy} />
+        <Action label="Repetir el último comando" onPress={replay} disabled={busy} />
+        <Action label="Nota nueva y luego una vieja" onPress={notesOutOfOrder} disabled={busy} />
+        <Action label="Autoprueba" onPress={selfTest} primary disabled={busy} />
+        <Action label="Borrar base v2" onPress={reset} disabled={busy} />
 
-        {busy && <ActivityIndicator color={COLORS.brass} />}
+        {busy && <ActivityIndicator color={COLORS.brass} accessibilityLabel="Cargando" />}
 
         {checks && (
           <View className={`${PANEL_SURFACE_CLASS} p-4 gap-2`}>

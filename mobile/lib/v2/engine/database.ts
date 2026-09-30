@@ -1,7 +1,7 @@
 import * as SQLite from "expo-sqlite";
 import { OUTBOX_SCHEMA, SQLITE_ENGINE_SCHEMA, type SqlDriver } from "@zeta/shared";
 import { createExpoSqliteDriver } from "./sqlite-driver";
-import { createDbKey, getDbKey } from "./secrets";
+import { getDbKey, newDbKey, saveDbKey } from "./secrets";
 
 export const V2_DB_NAME = "zeta-v2.db";
 
@@ -22,8 +22,20 @@ let opening: Promise<V2Database> | null = null;
  */
 export async function deleteDatabaseFiles(name: string): Promise<void> {
   for (const file of [name, `${name}-wal`, `${name}-shm`]) {
-    await SQLite.deleteDatabaseAsync(file).catch(() => undefined);
+    try {
+      await SQLite.deleteDatabaseAsync(file);
+    } catch (e) {
+      // A missing file is fine; one still open (or undeletable) must stop the caller.
+      if (!/not found/i.test(message(e))) throw e;
+    }
   }
+}
+
+const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
+
+/** SQLCipher's answer to a wrong or missing key (SQLITE_NOTADB, 26) or a damaged file (SQLITE_CORRUPT, 11). */
+function isUnreadable(e: unknown): boolean {
+  return /not a database|malformed|Error code (11|26)\b/i.test(message(e));
 }
 
 /** Opens `name` with a raw 32-byte key, verifies the key, applies pragmas and migrations. */
@@ -66,13 +78,24 @@ async function openV2Database(): Promise<V2Database> {
     try {
       const db = await openKeyed(V2_DB_NAME, stored);
       return { db, driver: createExpoSqliteDriver(db) };
-    } catch {
-      // Wrong key or damaged file: rebuilt below.
+    } catch (e) {
+      // Only a file this key can't read is rebuilt. Anything else (busy, disk
+      // full, a failed migration) is thrown and retried on the next open.
+      if (!isUnreadable(e)) throw e;
     }
   }
   // ponytail: rebuilding is safe only while the outbox is never drained (M2 must drain or warn first).
+  // Throws if the old file can't be deleted, so the stored key is never replaced while it still exists.
   await deleteDatabaseFiles(V2_DB_NAME);
-  const db = await openKeyed(V2_DB_NAME, await createDbKey());
+  const key = await newDbKey();
+  const db = await openKeyed(V2_DB_NAME, key);
+  try {
+    await saveDbKey(key);
+  } catch (e) {
+    // Without a stored key the next open rebuilds this (empty) file.
+    await db.closeAsync().catch(() => undefined);
+    throw e;
+  }
   return { db, driver: createExpoSqliteDriver(db) };
 }
 
