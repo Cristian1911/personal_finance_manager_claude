@@ -302,21 +302,6 @@ export type Database = {
           },
         ]
       }
-      admin_config: {
-        Row: {
-          id: string
-          prompt_text: string | null
-        }
-        Insert: {
-          id: string
-          prompt_text?: string | null
-        }
-        Update: {
-          id?: string
-          prompt_text?: string | null
-        }
-        Relationships: []
-      }
       budget_scenarios: {
         Row: {
           applied_at: string | null
