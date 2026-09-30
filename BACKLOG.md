@@ -36,11 +36,8 @@ Diseño listo, código pendiente. Spec: `docs/superpowers/specs/2026-09-15-prime
 
 ---
 
-## `pnpm audit` con 31 high preexistentes (2026-09-15)
-
-`pnpm audit --audit-level high` en `main` (lockfile de #402) reporta 31 high, todas transitivas y ninguna introducida por el recorte de nav: `@xmldom/xmldom` ×8 y `image-size`, `browserslist`, `brace-expansion` (vía `mobile/`, cadena Expo), `nanoid` ×6 (`mobile` + `webapp`), `fast-uri` ×5 e `ip-address` (`packages/mcp-server`). Arreglar en un PR propio con `pnpm.overrides` en el `package.json` raíz y verificar que Expo prebuild y `pnpm build` sigan pasando; el bump de `@xmldom/xmldom` es major y hay que probarlo en el simulador.
-
----
+## `pnpm audit`: excepción aceptada para `image-size` (2026-09-29)
+Los 31+ high preexistentes se arreglaron con `pnpm.overrides` (rama `fix/pnpm-audit-highs`). Queda una excepción en `pnpm.auditConfig.ignoreGhsas`: GHSA-5p2g-fcmc-qvqq y GHSA-w3rx-r6r6-pgpr (`image-size` ≤2.0.2, bucles infinitos en los parsers JXL/HEIF/ICNS). Solo lo usa Metro al empaquetar, para medir las imágenes del propio repo — no llega a la app ni al servidor. La versión corregida (2.x) rompe `expo export` ("The \"list\" argument must be an instance of … ArrayBufferView" en `expo-router/assets/unmatched.png`). Quitar la excepción cuando Metro/Expo adopten `image-size` 2.x.
 
 ## Historial de migraciones desincronizado (2026-09-14)
 
