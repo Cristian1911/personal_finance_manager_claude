@@ -132,7 +132,7 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "static",
+      "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
@@ -167,7 +167,7 @@
       ],
       "@react-native-community/datetimepicker",
       "expo-font",
-      "expo-sqlite",
+      ["expo-sqlite", { "useSQLCipher": true }],
       "expo-web-browser",
       [
         "expo-image-picker",

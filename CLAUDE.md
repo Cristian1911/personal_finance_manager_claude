@@ -4,6 +4,7 @@
 - `cd webapp && pnpm dev` — start Next.js dev server
 - `cd webapp && pnpm build` — production build (uses Turbopack)
 - `cd services/pdf_parser && uv run python main.py` — start PDF parser on :8000
+- `cd mobile && pnpm preview:web` — the mobile app in a browser (Expo web, demo or zeta-dev data, never production); `pnpm preview:web:shots <routes>` screenshots it headless. Details and limits: `mobile/web-preview/README.md`
 - Living context docs: `python3 .claude/skills/codebase-context/scripts/build_context.py`
 - If Turbopack panics during dev: kill the server, `rm -rf .next`, restart `pnpm dev`
 - **Lockfile sync**: Always run `pnpm install` from the **repo root** (not from `webapp/`) after adding or changing dependencies. The root `pnpm-lock.yaml` is what CI uses with `--frozen-lockfile`.

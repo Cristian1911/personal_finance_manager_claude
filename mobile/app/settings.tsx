@@ -41,6 +41,7 @@ import { formatRelativeDate } from "@zeta/shared";
 import { useSync } from "../lib/sync/hooks";
 import { useAppStore } from "../lib/store";
 import { useAuth } from "../lib/auth";
+import { V2_DEBUG_ENABLED } from "../lib/v2/flags";
 import { useBugReport } from "../lib/bugReportMode";
 import { supabase } from "../lib/supabase";
 import { clearDatabase, getDatabase } from "../lib/db/database";
@@ -939,6 +940,13 @@ export default function SettingsScreen() {
               meta="Envíanos comentarios o errores"
               onPress={() => router.push("/bug-report" as never)}
             />
+            {V2_DEBUG_ENABLED && (
+              <NavRow
+                title="Motor v2 (debug)"
+                meta="Pruebas del motor sin conexión"
+                onPress={() => router.push("/v2-debug" as never)}
+              />
+            )}
             <ToggleRow
               icon={<Bug size={18} color={COLORS.sageDark} />}
               label="Botón flotante de reporte"

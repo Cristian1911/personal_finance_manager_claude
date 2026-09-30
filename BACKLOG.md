@@ -10,6 +10,12 @@
 
 ---
 
+## Login con Google y Apple no funciona en Android (reportado 2026-09-30; iPhone sin verificar)
+- **Apple en Android** (flujo web: `signInWithOAuth` + `WebBrowser.openAuthSessionAsync`, `mobile/lib/auth-social.ts`): appleid.apple.com responde `invalid_request — Invalid client id or web redirect url`. Apple rechaza el par client id / return URL antes de llegar a Supabase. Revisar: (1) en Supabase → Auth → Apple, que el primer "Client ID" sea el Services ID `com.venti5.zeta.web` (el flujo web usa ese, no el bundle id); (2) en Apple Developer → Services ID `com.venti5.zeta.web`, que "Return URLs" tenga exactamente `https://<ref de producción>.supabase.co/auth/v1/callback` y el dominio `<ref>.supabase.co`; (3) que el secreto (JWT firmado con la clave .p8 `Y39H4A8255`) no haya vencido: dura máximo 6 meses.
+- **Google en Android** (nativo, `GoogleSignin.signIn` → `signInWithIdToken`): la app solo muestra "No se pudo iniciar sesión con Google"; el código real queda en `console.error("[google-signin] sign-in failed")` (ver con `adb logcat`). Sospecha principal: `DEVELOPER_ERROR` (código 10) porque el cliente OAuth Android en Google Cloud no tiene el SHA-1 del certificado con que se firma el build instalado (Play App Signing ≠ clave de subida ≠ keystore de EAS; registrar los que apliquen). Revisar también que `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` exista en el perfil de `eas.json` del build probado y que ese client id esté en Supabase → Auth → Google.
+- Verificar ambos en iPhone (Apple nativo + Google). Aprovechar para mostrar el código de error en el mensaje de soporte (sin datos sensibles) y no solo en consola.
+- Spec original: `docs/superpowers/specs/2026-06-21-social-signin-design.md`.
+
 ## Motor v2 — pendientes para la ruta `/api/v2/commands` (2026-09-29, rama `feat/v2-engine-skeleton`)
 - La ruta debe sobrescribir `cmd.userId` con el usuario del token (`getRequestUser()`) y rechazar `clientTs` en el futuro (margen de pocos minutos): un `clientTs` lejano "gana" todas las ediciones siguientes.
 - Dos reenvíos simultáneos del mismo comando: el segundo choca con la PK de `commands` (23505) y lanza; la ruta debe reintentar `applyCommand` (el reintento devuelve `replayed: true`).
@@ -20,7 +26,7 @@
 ## Seguridad: funciones SECURITY DEFINER con `user_id` abiertas a `anon` — ARREGLADO (2026-09-30, rama `fix/revoke-decrypt-as`)
 - `zeta_decrypt_as`, `get_accounts_with_masks` (contraseñas de PDF y máscaras de cualquier usuario), `get_email_ingest_settings`, `set_gmail_verification`, `generate_occurrences_for_template` y `cleanup_anonymous_demo_users` quedan solo para `service_role`; `zeta_encrypt_as` y `zeta_hmac_as` se quitan a `anon` (los triggers de las vistas cifradas las necesitan como `authenticated`).
 - Test de regresión: `webapp/src/lib/supabase/__tests__/definer-grants.integration.test.ts` (zeta-dev).
-- Pendiente: push a producción tras el merge (con aprobación del dueño).
+- Aplicado en producción 2026-09-30 (PR #432; historial 166/166; grants verificados solo lectura).
 - Guardia pendiente: `ALTER DEFAULT PRIVILEGES … GRANT ALL ON FUNCTIONS TO anon, authenticated` re-otorga EXECUTE a toda función nueva (DROP+CREATE, cambio de firma, overload). El test de regresión se salta en CI (sin `SUPABASE_DEV_*`). Opciones: secretos de zeta-dev en CI para los tests de integración, o revocar esos default privileges (revisar qué depende de ellos).
 
 ## Primeras semanas — recorte de alcance + guía de página + descubrimiento guiado por datos (2026-09-15, rama `design/primeras-semanas`)

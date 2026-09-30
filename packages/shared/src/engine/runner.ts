@@ -1,9 +1,15 @@
 import { captureManualTransaction } from "./commands/capture-manual-transaction";
 import { setTransactionNote } from "./commands/set-transaction-note";
+import type { HashFn } from "../utils/idempotency";
 import type { CommandEnvelope, CommandResult, CommandType, StoragePort } from "./types";
 import { UUID_RE, isIsoUtc } from "./validate";
 
-type Handler = (s: StoragePort, cmd: CommandEnvelope<never>) => Promise<CommandResult>;
+/** Platform services a handler may need. The phone passes expo-crypto's SHA-256 (Hermes has no crypto.subtle). */
+export interface EngineOptions {
+  hash?: HashFn;
+}
+
+type Handler = (s: StoragePort, cmd: CommandEnvelope<never>, opts: EngineOptions) => Promise<CommandResult>;
 
 const HANDLERS: Partial<Record<CommandType, Handler>> = {
   captureManualTransaction,
@@ -20,7 +26,11 @@ const HANDLERS: Partial<Record<CommandType, Handler>> = {
  * are uuid keys, clientTs a timestamptz) and an unknown command type (a newer
  * phone's command must stay applicable once this server learns it).
  */
-export async function applyCommand(storage: StoragePort, cmd: CommandEnvelope): Promise<CommandResult> {
+export async function applyCommand(
+  storage: StoragePort,
+  cmd: CommandEnvelope,
+  opts: EngineOptions = {},
+): Promise<CommandResult> {
   if (!UUID_RE.test(cmd.id ?? "") || !UUID_RE.test(cmd.userId ?? "") || !isIsoUtc(cmd.clientTs)) {
     return { status: "rejected", replayed: false, code: "invalid", error: "Comando inválido." };
   }
@@ -33,7 +43,7 @@ export async function applyCommand(storage: StoragePort, cmd: CommandEnvelope): 
     const prior = await s.findCommand(cmd.userId, cmd.id);
     if (prior) return { ...prior.result, replayed: true };
 
-    const result = await handler(s, cmd as CommandEnvelope<never>);
+    const result = await handler(s, cmd as CommandEnvelope<never>, opts);
     await s.recordCommand(cmd, result);
     return result;
   });
