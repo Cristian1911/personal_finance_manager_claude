@@ -59,6 +59,14 @@ describe.each(DRIVERS)("captureManualTransaction on %s", (_name, make) => {
     expect((await s.getAccount(USER, ACCOUNT))?.currentBalance).toBe(75000);
   });
 
+  it("uses the hash function it is given (the phone passes expo-crypto's)", async () => {
+    const s = await setup();
+    const seen: string[] = [];
+    await applyCommand(s, capture(), { hash: async (payload) => { seen.push(payload); return "custom-key"; } });
+    expect(seen).toHaveLength(1);
+    expect((await s.getTransaction(USER, TX))?.idempotencyKey).toBe("custom-key");
+  });
+
   it("reports a duplicate when a different command captures the same movement", async () => {
     const s = await setup();
     await applyCommand(s, capture());

@@ -1,7 +1,8 @@
 export * from "./types";
 export { toDialect } from "./sql";
 export { createSqlStorage } from "./sql-storage";
-export { applyCommand } from "./runner";
+export { applyCommand, type EngineOptions } from "./runner";
+export { SQLITE_ENGINE_SCHEMA } from "./schema/sqlite";
 export {
   captureManualTransaction,
   validateCaptureManualTransaction,

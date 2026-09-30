@@ -1,4 +1,5 @@
 import { computeIdempotencyKey } from "../../utils/idempotency";
+import type { EngineOptions } from "../runner";
 import type { CommandEnvelope, CommandResult, StoragePort } from "../types";
 import { UUID_RE } from "../validate";
 
@@ -34,6 +35,7 @@ export function validateCaptureManualTransaction(p: CaptureManualTransactionPayl
 export async function captureManualTransaction(
   s: StoragePort,
   cmd: CommandEnvelope<CaptureManualTransactionPayload>,
+  opts: EngineOptions = {},
 ): Promise<CommandResult> {
   const p = cmd.payload;
   const error = validateCaptureManualTransaction(p);
@@ -54,7 +56,7 @@ export async function captureManualTransaction(
     transactionDate: p.date,
     amount: p.amount,
     rawDescription: p.description.trim(),
-  });
+  }, opts.hash);
   const existing = await s.findTransactionByIdempotencyKey(cmd.userId, idempotencyKey);
   if (existing) return { status: "duplicate", replayed: false, data: { transactionId: existing.id } };
 
