@@ -16,11 +16,15 @@ export interface CommandEnvelope<P = unknown> {
 
 export type CommandStatus = "applied" | "duplicate" | "superseded" | "rejected";
 
+/** Machine-readable reason for a rejection; `error` is the Spanish text for people. */
+export type RejectionCode = "invalid" | "not_found" | "unsupported";
+
 export interface CommandResult {
   status: CommandStatus;
   /** True when this command id had already been applied before. */
   replayed: boolean;
   data?: Record<string, unknown>;
+  code?: RejectionCode;
   error?: string;
 }
 
@@ -65,6 +69,11 @@ export interface TransactionRow {
   idempotencyKey: string;
 }
 
+export interface FieldVersion {
+  clientTs: string;
+  commandId: string;
+}
+
 export interface FieldVersionWrite {
   userId: string;
   entity: string;
@@ -74,17 +83,21 @@ export interface FieldVersionWrite {
   commandId: string;
 }
 
-/** Everything a command may read or write. One SQL implementation serves both databases. */
+/**
+ * Everything a command may read or write. One SQL implementation serves both
+ * databases. Every read and update is scoped by `userId`, even where RLS
+ * already does it (defense in depth; the phone has no RLS).
+ */
 export interface StoragePort {
   withTransaction<T>(fn: (s: StoragePort) => Promise<T>): Promise<T>;
-  findCommand(id: string): Promise<{ id: string; result: CommandResult } | null>;
+  findCommand(userId: string, id: string): Promise<{ id: string; result: CommandResult } | null>;
   recordCommand(cmd: CommandEnvelope, result: CommandResult): Promise<void>;
-  getAccount(id: string): Promise<AccountRow | null>;
-  adjustAccountBalance(id: string, delta: number): Promise<void>;
-  findTransactionByIdempotencyKey(key: string): Promise<{ id: string } | null>;
+  getAccount(userId: string, id: string): Promise<AccountRow | null>;
+  adjustAccountBalance(userId: string, id: string, delta: number): Promise<void>;
+  findTransactionByIdempotencyKey(userId: string, key: string): Promise<{ id: string } | null>;
   insertTransaction(row: TransactionInsert): Promise<void>;
-  getTransaction(id: string): Promise<TransactionRow | null>;
-  updateTransactionNotes(id: string, notes: string | null): Promise<void>;
-  getFieldVersion(entity: string, entityId: string, field: string): Promise<string | null>;
+  getTransaction(userId: string, id: string): Promise<TransactionRow | null>;
+  updateTransactionNotes(userId: string, id: string, notes: string | null): Promise<void>;
+  getFieldVersion(userId: string, entity: string, entityId: string, field: string): Promise<FieldVersion | null>;
   setFieldVersion(v: FieldVersionWrite): Promise<void>;
 }

@@ -48,14 +48,27 @@ describe.skipIf(!enabled)("engine on zeta-dev (real Postgres)", { timeout: 30_00
 
     expect(await applyCommand(s, capture)).toEqual({ status: "applied", replayed: false, data: { transactionId: txId } });
     expect((await applyCommand(s, capture)).replayed).toBe(true);
-    expect((await s.getAccount(accountId))?.currentBalance).toBe(75000);
-    expect((await s.getTransaction(txId))?.cleanDescription).toBe("Tostao motor");
+    expect((await s.getAccount(userId, accountId))?.currentBalance).toBe(75000);
+    expect((await s.getTransaction(userId, txId))?.cleanDescription).toBe("Tostao motor");
 
     const newer = { ...base, id: crypto.randomUUID(), type: "setTransactionNote" as const, clientTs: "2026-09-18T17:00:00.000Z", payload: { transactionId: txId, notes: "nueva" } };
     const older = { ...base, id: crypto.randomUUID(), type: "setTransactionNote" as const, clientTs: "2026-09-18T16:00:00.000Z", payload: { transactionId: txId, notes: "vieja" } };
     expect((await applyCommand(s, newer)).status).toBe("applied");
     expect((await applyCommand(s, older)).status).toBe("superseded");
-    expect((await s.getTransaction(txId))?.notes).toBe("nueva");
+    expect((await s.getTransaction(userId, txId))?.notes).toBe("nueva");
+  });
+
+  it("keeps both balance changes when two captures on one account run at the same time", async () => {
+    const s = createSqlStorage(createUserScopedPgDriver(pool, userId));
+    const before = (await s.getAccount(userId, accountId))!.currentBalance;
+    const capture = (amount: number) => ({
+      id: crypto.randomUUID(), type: "captureManualTransaction" as const, userId, deviceId: "integration",
+      clientTs: "2026-09-18T18:00:00.000Z",
+      payload: { transactionId: crypto.randomUUID(), accountId, amount, direction: "OUTFLOW" as const, currencyCode: "COP", date: "2026-09-18", description: `Concurrente ${amount}` },
+    });
+    const results = await Promise.all([applyCommand(s, capture(1000)), applyCommand(s, capture(2000))]);
+    expect(results.map((r) => r.status)).toEqual(["applied", "applied"]);
+    expect((await s.getAccount(userId, accountId))?.currentBalance).toBe(before - 3000);
   });
 
   it("stores the command payload encrypted, never as plain text", async () => {

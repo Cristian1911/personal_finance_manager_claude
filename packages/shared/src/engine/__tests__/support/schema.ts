@@ -30,10 +30,12 @@ CREATE TABLE field_versions (
 export const POSTGRES_SCHEMA = `
 CREATE FUNCTION zeta_encrypt(plaintext text) RETURNS bytea
   LANGUAGE sql AS $$ SELECT convert_to(plaintext, 'UTF8') $$;
-CREATE TABLE accounts (
+-- Mirrors Supabase: encrypted base table + view of the same name.
+CREATE TABLE accounts_enc (
   id uuid PRIMARY KEY, user_id uuid NOT NULL,
   current_balance numeric(15,2) NOT NULL DEFAULT 0
 );
+CREATE VIEW accounts AS SELECT * FROM accounts_enc;
 CREATE TABLE transactions (
   id uuid PRIMARY KEY, user_id uuid NOT NULL, account_id uuid NOT NULL,
   amount numeric(15,2) NOT NULL, currency_code text NOT NULL, direction text NOT NULL,

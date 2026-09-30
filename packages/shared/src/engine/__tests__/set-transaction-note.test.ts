@@ -30,15 +30,28 @@ describe.each(DRIVERS)("setTransactionNote on %s", (_name, make) => {
     const s = await setup();
     const r = await applyCommand(s, note("a1111111-1111-4111-8111-111111111111", "2026-09-18T16:00:00.000Z", "con Ana"));
     expect(r.status).toBe("applied");
-    expect((await s.getTransaction(TX))?.notes).toBe("con Ana");
+    expect((await s.getTransaction(USER, TX))?.notes).toBe("con Ana");
   });
 
   it("keeps the latest edit when an older one arrives later", async () => {
     const s = await setup();
     await applyCommand(s, note("a2222222-2222-4222-8222-222222222222", "2026-09-18T17:00:00.000Z", "nueva"));
     const late = await applyCommand(s, note("a3333333-3333-4333-8333-333333333333", "2026-09-18T16:00:00.000Z", "vieja"));
-    expect(late).toEqual({ status: "superseded", replayed: false });
-    expect((await s.getTransaction(TX))?.notes).toBe("nueva");
+    expect(late).toEqual({
+      status: "superseded", replayed: false,
+      data: { winningClientTs: "2026-09-18T17:00:00.000Z", winningCommandId: "a2222222-2222-4222-8222-222222222222" },
+    });
+    expect((await s.getTransaction(USER, TX))?.notes).toBe("nueva");
+  });
+
+  it.each([
+    ["higher id first", ["b1111111-1111-4111-8111-111111111111", "a5555555-5555-4555-8555-555555555555"]],
+    ["lower id first", ["a5555555-5555-4555-8555-555555555555", "b1111111-1111-4111-8111-111111111111"]],
+  ])("breaks equal timestamps by command id, whatever the arrival order (%s)", async (_label, ids) => {
+    const s = await setup();
+    const ts = "2026-09-18T16:00:00.000Z";
+    for (const id of ids) await applyCommand(s, note(id, ts, id.startsWith("b") ? "gana b" : "pierde a"));
+    expect((await s.getTransaction(USER, TX))?.notes).toBe("gana b");
   });
 
   it("rejects a note for a movement that doesn't exist", async () => {
@@ -47,6 +60,6 @@ describe.each(DRIVERS)("setTransactionNote on %s", (_name, make) => {
       ...note("a4444444-4444-4444-8444-444444444444", "2026-09-18T16:00:00.000Z", "x"),
       payload: { transactionId: "99999999-9999-4999-8999-999999999999", notes: "x" },
     });
-    expect(r).toEqual({ status: "rejected", replayed: false, error: "Movimiento no encontrado." });
+    expect(r).toEqual({ status: "rejected", replayed: false, code: "not_found", error: "Movimiento no encontrado." });
   });
 });

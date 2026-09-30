@@ -1,5 +1,6 @@
 import { computeIdempotencyKey } from "../../utils/idempotency";
 import type { CommandEnvelope, CommandResult, StoragePort } from "../types";
+import { UUID_RE } from "../validate";
 
 export interface CaptureManualTransactionPayload {
   transactionId: string;
@@ -12,7 +13,6 @@ export interface CaptureManualTransactionPayload {
   notes?: string | null;
 }
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Returns a Spanish error message, or null when the payload is valid. */
@@ -37,11 +37,15 @@ export async function captureManualTransaction(
 ): Promise<CommandResult> {
   const p = cmd.payload;
   const error = validateCaptureManualTransaction(p);
-  if (error) return { status: "rejected", replayed: false, error };
+  if (error) return { status: "rejected", replayed: false, code: "invalid", error };
 
-  const account = await s.getAccount(p.accountId);
-  if (!account || account.userId !== cmd.userId) {
-    return { status: "rejected", replayed: false, error: "Cuenta no encontrada." };
+  const account = await s.getAccount(cmd.userId, p.accountId);
+  if (!account) return { status: "rejected", replayed: false, code: "not_found", error: "Cuenta no encontrada." };
+
+  // The client-generated id is the movement's identity: resending it (even
+  // with edited values) is a duplicate, never a second insert.
+  if (await s.getTransaction(cmd.userId, p.transactionId)) {
+    return { status: "duplicate", replayed: false, data: { transactionId: p.transactionId } };
   }
 
   const idempotencyKey = await computeIdempotencyKey({
@@ -51,7 +55,7 @@ export async function captureManualTransaction(
     amount: p.amount,
     rawDescription: p.description.trim(),
   });
-  const existing = await s.findTransactionByIdempotencyKey(idempotencyKey);
+  const existing = await s.findTransactionByIdempotencyKey(cmd.userId, idempotencyKey);
   if (existing) return { status: "duplicate", replayed: false, data: { transactionId: existing.id } };
 
   await s.insertTransaction({
@@ -67,6 +71,6 @@ export async function captureManualTransaction(
     captureMethod: "MANUAL_FORM",
     idempotencyKey,
   });
-  await s.adjustAccountBalance(p.accountId, p.direction === "OUTFLOW" ? -p.amount : p.amount);
+  await s.adjustAccountBalance(cmd.userId, p.accountId, p.direction === "OUTFLOW" ? -p.amount : p.amount);
   return { status: "applied", replayed: false, data: { transactionId: p.transactionId } };
 }

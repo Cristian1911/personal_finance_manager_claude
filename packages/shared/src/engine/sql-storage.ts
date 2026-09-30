@@ -14,9 +14,9 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
   const storage: StoragePort = {
     withTransaction: (fn) => driver.transaction((tx) => fn(createSqlStorage(tx))),
 
-    async findCommand(id) {
+    async findCommand(userId, id) {
       const rows = await q<{ id: string; result: unknown }>(
-        "SELECT id, result FROM commands WHERE id = ?", [id]);
+        "SELECT id, result FROM commands WHERE user_id = ? AND id = ?", [userId, id]);
       return rows[0] ? { id: String(rows[0].id), result: toJson<CommandResult>(rows[0].result) } : null;
     },
 
@@ -30,19 +30,26 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
       );
     },
 
-    async getAccount(id) {
+    async getAccount(userId, id) {
       const rows = await q<{ id: string; user_id: string; current_balance: unknown }>(
-        "SELECT id, user_id, current_balance FROM accounts WHERE id = ?", [id]);
+        "SELECT id, user_id, current_balance FROM accounts WHERE user_id = ? AND id = ?", [userId, id]);
       const r = rows[0];
       return r ? { id: String(r.id), userId: String(r.user_id), currentBalance: toNumber(r.current_balance) } : null;
     },
 
-    async adjustAccountBalance(id, delta) {
-      await q("UPDATE accounts SET current_balance = current_balance + ? WHERE id = ?", [delta, id]);
+    async adjustAccountBalance(userId, id, delta) {
+      // Postgres writes the base table: the `accounts` view's INSTEAD OF trigger
+      // stores an absolute value from an unlocked snapshot, which would lose a
+      // concurrent delta. ROUND keeps SQLite's REAL at cents like numeric(15,2).
+      await q(
+        `UPDATE ${pg ? "accounts_enc" : "accounts"} SET current_balance = ROUND(current_balance + ?, 2) WHERE user_id = ? AND id = ?`,
+        [delta, userId, id],
+      );
     },
 
-    async findTransactionByIdempotencyKey(key) {
-      const rows = await q<{ id: string }>("SELECT id FROM transactions WHERE idempotency_key = ?", [key]);
+    async findTransactionByIdempotencyKey(userId, key) {
+      const rows = await q<{ id: string }>(
+        "SELECT id FROM transactions WHERE user_id = ? AND idempotency_key = ?", [userId, key]);
       return rows[0] ? { id: String(rows[0].id) } : null;
     },
 
@@ -54,10 +61,10 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
       );
     },
 
-    async getTransaction(id) {
+    async getTransaction(userId, id) {
       const rows = await q<Record<string, unknown>>(
-        "SELECT id, user_id, account_id, amount, direction, clean_description, notes, idempotency_key FROM transactions WHERE id = ?",
-        [id]);
+        "SELECT id, user_id, account_id, amount, direction, clean_description, notes, idempotency_key FROM transactions WHERE user_id = ? AND id = ?",
+        [userId, id]);
       const r = rows[0];
       if (!r) return null;
       return {
@@ -72,15 +79,15 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
       };
     },
 
-    async updateTransactionNotes(id, notes) {
-      await q("UPDATE transactions SET notes = ? WHERE id = ?", [notes, id]);
+    async updateTransactionNotes(userId, id, notes) {
+      await q("UPDATE transactions SET notes = ? WHERE user_id = ? AND id = ?", [notes, userId, id]);
     },
 
-    async getFieldVersion(entity, entityId, field) {
-      const rows = await q<{ client_ts: unknown }>(
-        "SELECT client_ts FROM field_versions WHERE entity = ? AND entity_id = ? AND field = ?",
-        [entity, entityId, field]);
-      return rows[0] ? toIso(rows[0].client_ts) : null;
+    async getFieldVersion(userId, entity, entityId, field) {
+      const rows = await q<{ client_ts: unknown; command_id: string }>(
+        "SELECT client_ts, command_id FROM field_versions WHERE user_id = ? AND entity = ? AND entity_id = ? AND field = ?",
+        [userId, entity, entityId, field]);
+      return rows[0] ? { clientTs: toIso(rows[0].client_ts), commandId: String(rows[0].command_id) } : null;
     },
 
     async setFieldVersion(v) {

@@ -35,14 +35,14 @@ describe.each(DRIVERS)("captureManualTransaction on %s", (_name, make) => {
     const s = await setup();
     const r = await applyCommand(s, capture());
     expect(r).toEqual({ status: "applied", replayed: false, data: { transactionId: TX } });
-    expect((await s.getTransaction(TX))?.cleanDescription).toBe("Tostao");
-    expect((await s.getAccount(ACCOUNT))?.currentBalance).toBe(75000);
+    expect((await s.getTransaction(USER, TX))?.cleanDescription).toBe("Tostao");
+    expect((await s.getAccount(USER, ACCOUNT))?.currentBalance).toBe(75000);
   });
 
   it("raises the balance for an INFLOW", async () => {
     const s = await setup();
     await applyCommand(s, capture({ direction: "INFLOW", amount: 50000 }));
-    expect((await s.getAccount(ACCOUNT))?.currentBalance).toBe(150000);
+    expect((await s.getAccount(USER, ACCOUNT))?.currentBalance).toBe(150000);
   });
 
   it("accepts cents that aren't exact in floating point", async () => {
@@ -56,7 +56,7 @@ describe.each(DRIVERS)("captureManualTransaction on %s", (_name, make) => {
     const first = await applyCommand(s, capture());
     const again = await applyCommand(s, capture());
     expect(again).toEqual({ ...first, replayed: true });
-    expect((await s.getAccount(ACCOUNT))?.currentBalance).toBe(75000);
+    expect((await s.getAccount(USER, ACCOUNT))?.currentBalance).toBe(75000);
   });
 
   it("reports a duplicate when a different command captures the same movement", async () => {
@@ -64,7 +64,21 @@ describe.each(DRIVERS)("captureManualTransaction on %s", (_name, make) => {
     await applyCommand(s, capture());
     const dup = await applyCommand(s, capture({}, "77777777-7777-4777-8777-777777777777"));
     expect(dup).toEqual({ status: "duplicate", replayed: false, data: { transactionId: TX } });
-    expect((await s.getAccount(ACCOUNT))?.currentBalance).toBe(75000);
+    expect((await s.getAccount(USER, ACCOUNT))?.currentBalance).toBe(75000);
+  });
+
+  it("treats the same movement id resent with other values as a duplicate, not an error", async () => {
+    const s = await setup();
+    await applyCommand(s, capture());
+    const dup = await applyCommand(s, capture({ amount: 30000 }, "88888888-8888-4888-8888-888888888888"));
+    expect(dup).toEqual({ status: "duplicate", replayed: false, data: { transactionId: TX } });
+    expect((await s.getAccount(USER, ACCOUNT))?.currentBalance).toBe(75000);
+  });
+
+  it("rejects upper-case ids (phone and server must agree on the key)", async () => {
+    const s = await setup();
+    const r = await applyCommand(s, capture({ transactionId: TX.replace(/3/g, "C") }));
+    expect(r).toMatchObject({ status: "rejected", code: "invalid" });
   });
 
   it("rejects invalid input, records the rejection and changes nothing", async () => {
@@ -73,13 +87,14 @@ describe.each(DRIVERS)("captureManualTransaction on %s", (_name, make) => {
     const r = await applyCommand(s, bad);
     expect(r.status).toBe("rejected");
     expect(r.error).toBe("El monto debe ser mayor que cero.");
+    expect(r.code).toBe("invalid");
     expect(await applyCommand(s, bad)).toEqual({ ...r, replayed: true });
-    expect((await s.getAccount(ACCOUNT))?.currentBalance).toBe(100000);
+    expect((await s.getAccount(USER, ACCOUNT))?.currentBalance).toBe(100000);
   });
 
   it("rejects an account that belongs to someone else", async () => {
     const s = await setup();
     const r = await applyCommand(s, { ...capture(), userId: OTHER_USER });
-    expect(r).toEqual({ status: "rejected", replayed: false, error: "Cuenta no encontrada." });
+    expect(r).toEqual({ status: "rejected", replayed: false, code: "not_found", error: "Cuenta no encontrada." });
   });
 });
