@@ -12,6 +12,9 @@
     "date-fns": "^4.1.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@types/sql.js": "^1.4.11",
+    "sql.js": "^1.14.2",
     "typescript": "^5.7.0",
     "vite": "^8.0.16",
     "vitest": "^4.1.0"

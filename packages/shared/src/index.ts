@@ -5,6 +5,7 @@ export * from "./utils/currency";
 export * from "./utils/date";
 export * from "./utils/timezone";
 export * from "./utils/idempotency";
+export * from "./engine";
 export * from "./utils/auto-categorize";
 export * from "./utils/pattern-extract";
 export * from "./utils/quick-capture";

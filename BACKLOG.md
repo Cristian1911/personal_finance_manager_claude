@@ -10,6 +10,18 @@
 
 ---
 
+## Motor v2 — pendientes para la ruta `/api/v2/commands` (2026-09-29, rama `feat/v2-engine-skeleton`)
+- La ruta debe sobrescribir `cmd.userId` con el usuario del token (`getRequestUser()`) y rechazar `clientTs` en el futuro (margen de pocos minutos): un `clientTs` lejano "gana" todas las ediciones siguientes.
+- Dos reenvíos simultáneos del mismo comando: el segundo choca con la PK de `commands` (23505) y lanza; la ruta debe reintentar `applyCommand` (el reintento devuelve `replayed: true`).
+- `updateTransactionNotes` escribe por la vista `transactions`, cuyo trigger reescribe todas las columnas: una edición concurrente desde la web (p. ej. categoría) puede revertirse. Escribir `transactions_enc.notes = zeta_encrypt(?)` directo, como ya se hace con el saldo en `accounts_enc`.
+- Opcionales del driver: `aud: "authenticated"` en los claims y `SET LOCAL statement_timeout`.
+- Outbox del teléfono (siguiente PR de sync): tabla `outbox` aparte (seq, estado, intentos, resultado del servidor), mutex en el driver de expo-sqlite, no pisar `current_balance` en un pull mientras haya comandos sin confirmar.
+
+## Seguridad: `zeta_decrypt_as` / `zeta_encrypt_as` ejecutables por `anon` y `authenticated` (2026-09-29)
+- Hallado por `supabase-migrator` al revisar la migración del motor v2. Las dos funciones reciben un `user_id` arbitrario; con el ciphertext de otra persona, cualquier sesión (incluso anónima) podría descifrarlo como ese usuario.
+- Arreglo propuesto: `REVOKE EXECUTE ... FROM anon, authenticated` y dejarlas solo para `service_role` (webhooks/cron las usan vía RPC con la clave de servicio). Antes, buscar todos los llamadores de cliente/usuario.
+- Probar en zeta-dev, luego producción con aprobación del dueño.
+
 ## Primeras semanas — recorte de alcance + guía de página + descubrimiento guiado por datos (2026-09-15, rama `design/primeras-semanas`)
 
 Diseño listo, código pendiente. Spec: `docs/superpowers/specs/2026-09-15-primeras-semanas-design.md` (§5 recorte, §6 guía, §9 orden). Mockups: `claude-ai-design/primeras-semanas/` (11 pantallas + mapa; canvas https://claude.ai/artifact/Xb1ADsabZcjXWDd3vGXVKT v4; DS cards grupo "Primeras semanas"). Plan de ejecución: `~/.claude/plans/what-do-we-have-rippling-stearns.md`.
