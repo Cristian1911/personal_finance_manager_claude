@@ -1,5 +1,5 @@
 import { toDialect, toIso, toJson, toNumber } from "./sql";
-import type { CommandResult, SqlDriver, StoragePort } from "./types";
+import type { CommandResult, CycleSettingsPatch, SqlDriver, StoragePort, StoredPaySchedule } from "./types";
 
 /**
  * The single SQL implementation of StoragePort. Table and column names match
@@ -31,10 +31,12 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
     },
 
     async getAccount(userId, id) {
-      const rows = await q<{ id: string; user_id: string; current_balance: unknown }>(
-        "SELECT id, user_id, current_balance FROM accounts WHERE user_id = ? AND id = ?", [userId, id]);
+      const rows = await q<{ id: string; user_id: string; account_type: string; current_balance: unknown }>(
+        "SELECT id, user_id, account_type, current_balance FROM accounts WHERE user_id = ? AND id = ?", [userId, id]);
       const r = rows[0];
-      return r ? { id: String(r.id), userId: String(r.user_id), currentBalance: toNumber(r.current_balance) } : null;
+      return r
+        ? { id: String(r.id), userId: String(r.user_id), accountType: String(r.account_type), currentBalance: toNumber(r.current_balance) }
+        : null;
     },
 
     async adjustAccountBalance(userId, id, delta) {
@@ -96,6 +98,76 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
         [v.userId, v.entity, v.entityId, v.field, v.clientTs, v.commandId],
       );
     },
+
+    async getCycleSettings(userId) {
+      // date as text on Postgres: a JS Date would shift the day with the time zone.
+      const rows = await q<Record<string, unknown>>(
+        `SELECT schedule_kind, payday_1, payday_2, ${pg ? "biweekly_anchor::text" : "biweekly_anchor"} AS biweekly_anchor,
+           income_per_cycle, savings_per_cycle, balance_anchor, balance_anchor_at, big_purchase_threshold
+         FROM user_cycle_settings WHERE user_id = ?`,
+        [userId]);
+      const r = rows[0];
+      if (!r) return null;
+      const num = (v: unknown) => (v == null ? null : toNumber(v));
+      let schedule: StoredPaySchedule | null = null;
+      switch (r.schedule_kind) {
+        case "semimonthly": schedule = { kind: "semimonthly", paydays: [toNumber(r.payday_1), toNumber(r.payday_2)] }; break;
+        case "monthly": schedule = { kind: "monthly", paydays: [toNumber(r.payday_1)] }; break;
+        case "biweekly": schedule = { kind: "biweekly", anchor: String(r.biweekly_anchor) }; break;
+        case "irregular": schedule = { kind: "irregular" }; break;
+      }
+      return {
+        schedule,
+        incomePerCycle: num(r.income_per_cycle),
+        savingsPerCycle: toNumber(r.savings_per_cycle),
+        balanceAnchor: r.balance_anchor == null ? null : { balance: toNumber(r.balance_anchor), at: toIso(r.balance_anchor_at) },
+        bigPurchaseThreshold: toNumber(r.big_purchase_threshold),
+      };
+    },
+
+    async upsertCycleSettings(userId, patch) {
+      const cols = cycleSettingsColumns(patch);
+      const names = Object.keys(cols);
+      if (names.length === 0) return;
+      await q(
+        `INSERT INTO user_cycle_settings (user_id, ${names.join(", ")}) VALUES (?, ${names.map(() => "?").join(", ")})
+         ON CONFLICT (user_id) DO UPDATE SET ${names.map((n) => `${n} = excluded.${n}`).join(", ")}, updated_at = CURRENT_TIMESTAMP`,
+        [userId, ...Object.values(cols)]);
+    },
+
+    async getAccountSetting(userId, accountId) {
+      const rows = await q<{ counts_in_disponible: unknown }>(
+        "SELECT counts_in_disponible FROM account_settings WHERE user_id = ? AND account_id = ?", [userId, accountId]);
+      // SQLite stores booleans as 0/1.
+      return rows[0] ? { countsInDisponible: rows[0].counts_in_disponible === true || rows[0].counts_in_disponible === 1 } : null;
+    },
+
+    async setAccountSetting(userId, accountId, countsInDisponible) {
+      await q(
+        `INSERT INTO account_settings (user_id, account_id, counts_in_disponible) VALUES (?, ?, ?)
+         ON CONFLICT (user_id, account_id) DO UPDATE SET counts_in_disponible = excluded.counts_in_disponible, updated_at = CURRENT_TIMESTAMP`,
+        [userId, accountId, pg ? countsInDisponible : countsInDisponible ? 1 : 0]);
+    },
   };
   return storage;
+}
+
+/** Only these column names ever reach the SQL (never payload keys). */
+function cycleSettingsColumns(p: CycleSettingsPatch): Record<string, unknown> {
+  const c: Record<string, unknown> = {};
+  if (p.schedule) {
+    const s = p.schedule;
+    c.schedule_kind = s.kind;
+    c.payday_1 = s.kind === "semimonthly" || s.kind === "monthly" ? s.paydays[0] : null;
+    c.payday_2 = s.kind === "semimonthly" ? s.paydays[1] : null;
+    c.biweekly_anchor = s.kind === "biweekly" ? s.anchor : null;
+  }
+  if (p.incomePerCycle !== undefined) c.income_per_cycle = p.incomePerCycle;
+  if (p.savingsPerCycle !== undefined) c.savings_per_cycle = p.savingsPerCycle;
+  if (p.balanceAnchor !== undefined) {
+    c.balance_anchor = p.balanceAnchor?.balance ?? null;
+    c.balance_anchor_at = p.balanceAnchor?.at ?? null;
+  }
+  if (p.bigPurchaseThreshold !== undefined) c.big_purchase_threshold = p.bigPurchaseThreshold;
+  return c;
 }
