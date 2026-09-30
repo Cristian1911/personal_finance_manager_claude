@@ -57,9 +57,9 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
 
     async insertTransaction(t) {
       await q(
-        "INSERT INTO transactions (id, user_id, account_id, amount, currency_code, direction, transaction_date, clean_description, notes, capture_method, idempotency_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO transactions (id, user_id, account_id, amount, currency_code, direction, transaction_date, clean_description, notes, capture_method, idempotency_key, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [t.id, t.userId, t.accountId, t.amount, t.currencyCode, t.direction, t.transactionDate,
-          t.cleanDescription, t.notes, t.captureMethod, t.idempotencyKey],
+          t.cleanDescription, t.notes, t.captureMethod, t.idempotencyKey, t.createdAt],
       );
     },
 

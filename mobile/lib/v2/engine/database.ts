@@ -1,15 +1,34 @@
 import * as SQLite from "expo-sqlite";
-import { OUTBOX_SCHEMA, SQLITE_ENGINE_SCHEMA, SQLITE_SETTINGS_SCHEMA, type SqlDriver } from "@zeta/shared";
+import {
+  OUTBOX_SCHEMA,
+  SQLITE_CAPTURE_TIME_SCHEMA,
+  SQLITE_ENGINE_SCHEMA,
+  SQLITE_SETTINGS_SCHEMA,
+  type SqlDriver,
+} from "@zeta/shared";
 import { createExpoSqliteDriver } from "./sqlite-driver";
 import { getDbKey, newDbKey, saveDbKey } from "./secrets";
 
 export const V2_DB_NAME = "zeta-v2.db";
+
+/**
+ * Phone-only state that is never synced (e.g. the verdict's no-flicker memo).
+ * Per user, so another account signing in on this phone starts clean.
+ */
+const LOCAL_STATE_SCHEMA = `
+CREATE TABLE local_state (
+  user_id TEXT NOT NULL, key TEXT NOT NULL, value TEXT NOT NULL,
+  PRIMARY KEY (user_id, key)
+);
+`;
 
 /** Schema versions, in order; PRAGMA user_version = how many have run. */
 const MIGRATIONS: string[] = [
   SQLITE_ENGINE_SCHEMA + OUTBOX_SCHEMA,
   // 2: v2 M1 settings (cycle, counted accounts, reservations) + accounts.account_type.
   SQLITE_SETTINGS_SCHEMA,
+  // 3: when each movement was captured (Inicio's first-cycle anchor) + phone-only state.
+  SQLITE_CAPTURE_TIME_SCHEMA + LOCAL_STATE_SCHEMA,
 ];
 
 export interface V2Database {
@@ -49,7 +68,10 @@ export async function openKeyed(name: string, keyHex: string): Promise<SQLite.SQ
   try {
     await db.execAsync(`PRAGMA key = "x'${keyHex}'"`);
     // Throws "file is not a database" when the key doesn't match the file.
-    await db.getFirstAsync("SELECT count(*) FROM sqlite_master");
+    // execAsync runs it to completion: on the web build a getFirstAsync here
+    // left a read transaction open on an existing file, and the pragmas below
+    // then failed ("Safety level may not be changed inside a transaction").
+    await db.execAsync("SELECT count(*) FROM sqlite_master");
     await db.execAsync(
       "PRAGMA busy_timeout = 5000; PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON;",
     );
@@ -123,4 +145,24 @@ export async function resetV2Database(): Promise<void> {
     await db?.closeAsync().catch(() => undefined);
   }
   await deleteDatabaseFiles(V2_DB_NAME);
+}
+
+/**
+ * Debug: the Keychain loses the key (restore to a new phone, a wiped
+ * Keychain). Closes the database, stores a different key and opens again:
+ * the file can't be read with it, so it must be rebuilt empty, not crash.
+ * Returns how many accounts the reopened database has (0 = rebuilt).
+ * On the web preview the file isn't encrypted, so any key reads it.
+ */
+export async function simulateLostKey(): Promise<{ accountsAfter: number }> {
+  const current = opening;
+  opening = null;
+  if (current) {
+    const { db } = await current.catch(() => ({ db: null }));
+    await db?.closeAsync().catch(() => undefined);
+  }
+  await saveDbKey(await newDbKey());
+  const { driver } = await getV2Database();
+  const [{ n }] = await driver.query<{ n: number }>("SELECT count(*) AS n FROM accounts");
+  return { accountsAfter: Number(n) };
 }

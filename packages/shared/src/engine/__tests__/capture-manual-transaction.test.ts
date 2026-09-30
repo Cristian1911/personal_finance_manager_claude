@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { applyCommand } from "../runner";
 import { createSqlStorage } from "../sql-storage";
+import { toDialect, toIso } from "../sql";
 import type { CaptureManualTransactionPayload } from "../commands/capture-manual-transaction";
 import type { CommandEnvelope } from "../types";
 import { DRIVERS, seedAccount } from "./support/drivers";
@@ -37,6 +38,15 @@ describe.each(DRIVERS)("captureManualTransaction on %s", (_name, make) => {
     expect(r).toEqual({ status: "applied", replayed: false, data: { transactionId: TX } });
     expect((await s.getTransaction(USER, TX))?.cleanDescription).toBe("Tostao");
     expect((await s.getAccount(USER, ACCOUNT))?.currentBalance).toBe(75000);
+  });
+
+  it("stores the capture instant from the command, not the database clock (same on replay)", async () => {
+    const d = await make();
+    await seedAccount(d, { id: ACCOUNT, userId: USER, balance: 100000 });
+    await applyCommand(createSqlStorage(d), capture());
+    const [row] = await d.query<{ created_at: unknown }>(
+      toDialect("SELECT created_at FROM transactions WHERE id = ?", d.dialect), [TX]);
+    expect(toIso(row.created_at)).toBe("2026-09-18T15:00:00.000Z");
   });
 
   it("raises the balance for an INFLOW", async () => {

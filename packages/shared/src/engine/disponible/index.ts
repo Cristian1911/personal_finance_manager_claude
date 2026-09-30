@@ -39,4 +39,12 @@ export {
   type StoredTemplate,
   type StoredTransaction,
 } from "./movements";
-export { disponibleBlockView, type DisponibleBlockView } from "./view";
+export { cycleLabel, disponibleBlockView, type DisponibleBlockView } from "./view";
+export {
+  INICIO_LOOKBACK_DAYS,
+  SALARY_SHARE_PERCENT,
+  buildInicio,
+  inicioSince,
+  type InicioAccount,
+  type InicioState,
+} from "./inicio";

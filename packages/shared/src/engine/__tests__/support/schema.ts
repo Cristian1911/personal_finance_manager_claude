@@ -1,7 +1,7 @@
-import { SQLITE_ENGINE_SCHEMA, SQLITE_SETTINGS_SCHEMA } from "../../schema/sqlite";
+import { SQLITE_CAPTURE_TIME_SCHEMA, SQLITE_ENGINE_SCHEMA, SQLITE_SETTINGS_SCHEMA } from "../../schema/sqlite";
 
 /** The phone's full schema: every version in order. */
-export const SQLITE_SCHEMA = SQLITE_ENGINE_SCHEMA + SQLITE_SETTINGS_SCHEMA;
+export const SQLITE_SCHEMA = SQLITE_ENGINE_SCHEMA + SQLITE_SETTINGS_SCHEMA + SQLITE_CAPTURE_TIME_SCHEMA;
 
 // Same logical tables in both dialects; names and columns match the real
 // Supabase views (`accounts`, `transactions`) and new tables (`commands`,
@@ -21,7 +21,8 @@ CREATE TABLE transactions (
   id uuid PRIMARY KEY, user_id uuid NOT NULL, account_id uuid NOT NULL,
   amount numeric(15,2) NOT NULL, currency_code text NOT NULL, direction text NOT NULL,
   transaction_date date NOT NULL, clean_description text, notes text,
-  capture_method text NOT NULL, idempotency_key text NOT NULL UNIQUE
+  capture_method text NOT NULL, idempotency_key text NOT NULL UNIQUE,
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE TABLE commands (
   id uuid NOT NULL, user_id uuid NOT NULL, device_id text NOT NULL,

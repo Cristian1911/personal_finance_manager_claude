@@ -2,7 +2,7 @@ export * from "./types";
 export { toDialect } from "./sql";
 export { createSqlStorage } from "./sql-storage";
 export { applyCommand, type EngineOptions } from "./runner";
-export { SQLITE_ENGINE_SCHEMA, SQLITE_SETTINGS_SCHEMA } from "./schema/sqlite";
+export { SQLITE_CAPTURE_TIME_SCHEMA, SQLITE_ENGINE_SCHEMA, SQLITE_SETTINGS_SCHEMA } from "./schema/sqlite";
 export { OUTBOX_SCHEMA, applyAndEnqueue } from "./outbox";
 export {
   captureManualTransaction,
@@ -21,3 +21,4 @@ export {
   type SetAccountCountsInDisponiblePayload,
 } from "./commands/set-account-counts-in-disponible";
 export * from "./disponible";
+export { readInicioData, type InicioData } from "./inicio-read";

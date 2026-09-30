@@ -15,6 +15,11 @@ function fromUtc(ms: number): IsoDate {
   return new Date(ms).toISOString().slice(0, 10);
 }
 
+/** The day in Colombia (UTC−5, no daylight saving) of an ISO instant: 8 p.m. on the 18th is still the 18th. */
+export function colombiaDate(iso: string): IsoDate {
+  return new Date(Date.parse(iso) - 5 * 3_600_000).toISOString().slice(0, 10);
+}
+
 export function addDays(d: IsoDate, n: number): IsoDate {
   return fromUtc(toUtc(d) + n * DAY_MS);
 }

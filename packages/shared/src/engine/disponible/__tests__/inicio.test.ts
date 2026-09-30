@@ -1,0 +1,165 @@
+import { describe, expect, it } from "vitest";
+import type { CycleSettings } from "../../types";
+import { buildInicio, type InicioAccount } from "../inicio";
+import type { StoredTransaction } from "../movements";
+
+const DEBIT = "debit";
+const CARD = "card";
+const ACCOUNTS: InicioAccount[] = [
+  { id: DEBIT, accountType: "CHECKING", currentBalance: 0, countsInDisponible: null },
+  { id: CARD, accountType: "CREDIT_CARD", currentBalance: 0, countsInDisponible: null },
+];
+
+/** Semimonthly 15/30, $2.100.000 per cycle, $200.000 saved; "¿Cuánto tienes hoy?" answered on the 16th. */
+function settings(over: Partial<CycleSettings> = {}): CycleSettings {
+  return {
+    schedule: { kind: "semimonthly", paydays: [15, 30] },
+    incomePerCycle: 2_100_000,
+    savingsPerCycle: 200_000,
+    balanceAnchor: { balance: 1_500_000, at: "2026-09-16T14:00:00.000Z" },
+    bigPurchaseThreshold: 300_000,
+    ...over,
+  };
+}
+
+let n = 0;
+function tx(date: string, amount: number, direction: "INFLOW" | "OUTFLOW" = "OUTFLOW", over: Partial<StoredTransaction> = {}): StoredTransaction {
+  return { id: `t${++n}`, accountId: DEBIT, date, amount, direction, currencyCode: "COP", flowClass: null, ...over };
+}
+
+function build(today: string, transactions: StoredTransaction[], over: Partial<Parameters<typeof buildInicio>[0]> = {}) {
+  const r = buildInicio({ today, now: `${today}T15:00:00.000Z`, settings: settings(), accounts: ACCOUNTS, transactions, ...over });
+  if (r.status !== "ready") throw new Error("expected ready");
+  return r;
+}
+
+describe("buildInicio — first run", () => {
+  it.each([
+    ["no settings", null],
+    ["no payday", settings({ schedule: null })],
+    ["no income (not irregular)", settings({ incomePerCycle: null })],
+    ["no balance today", settings({ balanceAnchor: null })],
+  ])("asks the first-run questions when there's %s", (_why, s) => {
+    expect(buildInicio({ today: "2026-09-18", now: "2026-09-18T15:00:00.000Z", settings: s, accounts: ACCOUNTS, transactions: [] }))
+      .toEqual({ status: "needs_setup" });
+  });
+
+  it("irregular income needs no amount", () => {
+    const r = buildInicio({
+      today: "2026-09-18", now: "2026-09-18T15:00:00.000Z",
+      settings: settings({ schedule: { kind: "irregular" }, incomePerCycle: null }), accounts: ACCOUNTS, transactions: [],
+    });
+    expect(r.status).toBe("ready");
+  });
+});
+
+describe("buildInicio — the first cycle starts from the balance told", () => {
+  it("balance − Ahorro − what went out after it; card purchases don't count", () => {
+    const r = build("2026-09-18", [
+      tx("2026-09-16", 50_000, "OUTFLOW", { createdAt: "2026-09-16T13:00:00.000Z" }), // before the anchor: inside the balance
+      tx("2026-09-17", 100_000),
+      tx("2026-09-17", 300_000, "OUTFLOW", { accountId: CARD }),
+    ]);
+    expect(r.cycle).toMatchObject({ start: "2026-09-15", end: "2026-09-29", payday: "2026-09-15", daysLeft: 12 });
+    expect(r.result.llega.total).toBe(1_500_000);
+    expect(r.result.ahorro.total).toBe(200_000);
+    expect(r.result.yaSalio.total).toBe(100_000);
+    expect(r.view.amount).toBe("$1.200.000");
+    expect(r.view.perDay).toBe("$100.000 al día · 12 días");
+    expect(r.verdict.state).toBe("vas_bien");
+  });
+
+  it("a movement captured later the same day counts", () => {
+    const r = build("2026-09-18", [tx("2026-09-16", 50_000, "OUTFLOW", { createdAt: "2026-09-16T20:00:00.000Z" })]);
+    expect(r.result.yaSalio.total).toBe(50_000);
+  });
+
+  it("the anchor's day is Colombia's: told at 8 p.m. on the 15th, a 9 p.m. expense counts", () => {
+    const r = build("2026-09-18", [tx("2026-09-15", 40_000, "OUTFLOW", { createdAt: "2026-09-16T02:00:00.000Z" })], {
+      settings: settings({ balanceAnchor: { balance: 1_500_000, at: "2026-09-16T01:00:00.000Z" } }),
+    });
+    expect(r.result.yaSalio.total).toBe(40_000);
+  });
+
+  it("told on payday: the salary is taken as inside the balance, not added again", () => {
+    const r = build("2026-09-30", [], {
+      settings: settings({ balanceAnchor: { balance: 1_500_000, at: "2026-09-30T14:00:00.000Z" } }),
+    });
+    expect(r.cycle.payday).toBe("2026-09-30");
+    expect(r.result.llega.total).toBe(1_500_000);
+    expect(r.result.approximate).toBe(false);
+  });
+
+  it("…and if it lands later that day after all, it counts once", () => {
+    const r = build("2026-09-30", [tx("2026-09-30", 2_100_000, "INFLOW", { createdAt: "2026-09-30T18:00:00.000Z" })], {
+      settings: settings({ balanceAnchor: { balance: 1_500_000, at: "2026-09-30T14:00:00.000Z" } }),
+    });
+    expect(r.result.llega.total).toBe(3_600_000);
+  });
+
+  it("an account the user left out doesn't count", () => {
+    const r = build("2026-09-18", [tx("2026-09-17", 100_000)], {
+      accounts: [{ ...ACCOUNTS[0], countsInDisponible: false }, ACCOUNTS[1]],
+    });
+    expect(r.result.yaSalio.total).toBe(0);
+  });
+});
+
+describe("buildInicio — later cycles start from the salary", () => {
+  it("a salary seen on payday replaces the expected one", () => {
+    const r = build("2026-10-05", [tx("2026-09-30", 2_100_000, "INFLOW"), tx("2026-10-02", 100_000)]);
+    expect(r.cycle).toMatchObject({ start: "2026-09-30", end: "2026-10-14", payday: "2026-09-30", startsOnExpectedDate: false });
+    expect(r.result.llega.total).toBe(2_100_000);
+    expect(r.result.approximate).toBe(false);
+    expect(r.view.amount).toBe("$1.800.000");
+  });
+
+  it("no salary yet: the expected amount counts with a '~'", () => {
+    const r = build("2026-10-05", [tx("2026-10-02", 100_000)]);
+    expect(r.result.llega.total).toBe(2_100_000);
+    expect(r.view.amount).toBe("~$1.800.000");
+    expect(r.view.approxNote).toBe("Tu salario aún no llega");
+  });
+
+  it("a small inflow is Otros ingresos, not the salary", () => {
+    const r = build("2026-10-05", [tx("2026-10-01", 80_000, "INFLOW")]);
+    expect(r.result.llega.lines.find((l) => l.id === "income")?.amount).toBe(80_000);
+    expect(r.result.approximate).toBe(true);
+  });
+
+  it("a salary a few days early opens the cycle that day", () => {
+    const r = build("2026-09-28", [tx("2026-09-27", 2_000_000, "INFLOW")]);
+    expect(r.cycle).toMatchObject({ start: "2026-09-27", payday: "2026-09-30" });
+    expect(r.result.llega.total).toBe(2_000_000);
+    expect(r.view.payday).toBe("Te pagan en 17 días");
+  });
+
+  it("a big refund mid-cycle isn't taken as the salary", () => {
+    const r = build("2026-10-10", [tx("2026-09-30", 2_100_000, "INFLOW"), tx("2026-10-08", 1_200_000, "INFLOW")]);
+    expect(r.cycle.start).toBe("2026-09-30");
+    expect(r.result.llega.lines.find((l) => l.id === "income")?.amount).toBe(1_200_000);
+  });
+});
+
+describe("buildInicio — irregular income", () => {
+  it("the month from the counted balance at its start; only received money counts", () => {
+    const r = build("2026-10-05", [tx("2026-10-03", 400_000, "INFLOW"), tx("2026-10-04", 100_000)], {
+      settings: settings({ schedule: { kind: "irregular" }, incomePerCycle: 1_000_000, savingsPerCycle: 0 }),
+      accounts: [{ ...ACCOUNTS[0], currentBalance: 1_000_000 }, ACCOUNTS[1]],
+    });
+    expect(r.cycle).toMatchObject({ start: "2026-10-01", end: "2026-10-31", irregular: true });
+    expect(r.result.disponible).toBe(1_000_000); // 700.000 at the start + 400.000 − 100.000
+    expect(r.result.expectedApart).toBe(1_000_000);
+    expect(r.view.payday).toBe("Quedan 27 días del mes");
+  });
+});
+
+describe("buildInicio — verdict memory", () => {
+  it("a better state waits 24 h (the stored memo comes back in)", () => {
+    const memo = { shown: "cuidado" as const };
+    const r = build("2026-10-05", [tx("2026-09-30", 2_100_000, "INFLOW")], { memo });
+    expect(r.verdict.raw).toBe("vas_bien");
+    expect(r.verdict.state).toBe("cuidado");
+    expect(r.verdict.memo.better?.state).toBe("vas_bien");
+  });
+});
