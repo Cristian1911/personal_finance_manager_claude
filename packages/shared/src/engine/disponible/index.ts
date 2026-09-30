@@ -30,3 +30,11 @@ export {
   type DisponibleVerdictState,
 } from "./verdict";
 export { BIG_PURCHASE_THRESHOLD, estimateCardMinimum, projectCardBillAtCut } from "./card-bill";
+export {
+  occurrencesToCycleInputs,
+  toDisponibleMovements,
+  type OccurrenceLink,
+  type StoredOccurrence,
+  type StoredTemplate,
+  type StoredTransaction,
+} from "./movements";
