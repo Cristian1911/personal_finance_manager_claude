@@ -1,3 +1,4 @@
+import { beforeAll } from "vitest";
 import initSqlJs from "sql.js";
 import { PGlite } from "@electric-sql/pglite";
 import type { SqlDriver } from "../../types";
@@ -38,18 +39,41 @@ export async function createSqlJsDriver(): Promise<SqlDriver> {
   return driver;
 }
 
+// Booting PGlite (WASM Postgres) costs ~2 s, more under parallel load; doing it
+// per test put the contract tests at ~4 s against Vitest's 5 s timeout. One
+// PGlite per test file instead, and each driver gets its own fresh schema.
+let shared: Promise<PGlite> | null = null;
+let schemas = 0;
+let current = "";
+
+// Boot in a hook (own 30 s budget) so no test body pays for it.
+beforeAll(async () => {
+  await (shared ??= PGlite.create());
+}, 30_000);
+
 export async function createPgliteDriver(): Promise<SqlDriver> {
-  const db = new PGlite();
+  const db = await (shared ??= PGlite.create());
+  const schema = `t${++schemas}`;
+  // Switch outside any transaction (a rollback would undo the SET).
+  const use = async () => {
+    if (current === schema) return;
+    await db.query(`SET search_path TO ${schema}`);
+    current = schema;
+  };
+  await db.exec(`CREATE SCHEMA ${schema}`);
+  await use();
   await db.exec(POSTGRES_SCHEMA);
   type Q = { query: (sql: string, params?: unknown[]) => Promise<{ rows: unknown[] }> };
   const wrap = (q: Q, inTx: boolean): SqlDriver => {
     const d: SqlDriver = {
       dialect: "postgres",
       async query(sql, params = []) {
+        if (!inTx) await use();
         return (await q.query(sql, params)).rows as never;
       },
       async transaction(fn) {
         if (inTx) return fn(d);
+        await use();
         return db.transaction((tx) => fn(wrap(tx as unknown as Q, true)));
       },
     };
