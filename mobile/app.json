@@ -167,7 +167,7 @@
       ],
       "@react-native-community/datetimepicker",
       "expo-font",
-      "expo-sqlite",
+      ["expo-sqlite", { "useSQLCipher": true }],
       "expo-web-browser",
       [
         "expo-image-picker",
