@@ -3,6 +3,7 @@ export { toDialect } from "./sql";
 export { createSqlStorage } from "./sql-storage";
 export { applyCommand, type EngineOptions } from "./runner";
 export { SQLITE_ENGINE_SCHEMA } from "./schema/sqlite";
+export { OUTBOX_SCHEMA, applyAndEnqueue } from "./outbox";
 export {
   captureManualTransaction,
   validateCaptureManualTransaction,
