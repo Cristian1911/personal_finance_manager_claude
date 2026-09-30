@@ -10,7 +10,7 @@ import { createSqlStorage } from "../sql-storage";
 import type { SqlDriver } from "../types";
 
 const MIGRATION = fileURLToPath(
-  new URL("../../../../../supabase/migrations/20260930160000_v2_settings_tables.sql", import.meta.url),
+  new URL("../../../../../supabase/migrations/20260930155213_v2_settings_tables.sql", import.meta.url),
 );
 
 const ME = "11111111-1111-4111-8111-111111111111";
@@ -63,7 +63,7 @@ INSERT INTO public.recurring_occurrences VALUES
   ('${MY_OCCURRENCE}', '${ME}', '${MY_TEMPLATE}'), ('${THEIR_OCCURRENCE}', '${THEM}', '${THEIR_TEMPLATE}');
 `;
 
-describe("migration 20260930160000_v2_settings_tables", () => {
+describe("migration 20260930155213_v2_settings_tables", () => {
   let db: PGlite;
   /** Runs `sql` as the signed-in user `uid` (like PostgREST and the engine's user-scoped driver). */
   const as = async (uid: string, sql: string, params: unknown[] = []) =>

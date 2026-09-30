@@ -30,7 +30,7 @@ CREATE TABLE field_versions (
 
 /**
  * v2 M1 settings on the phone (phone schema version 2; mirrors
- * supabase/migrations/20260930160000_v2_settings_tables.sql, same checks).
+ * supabase/migrations/20260930155213_v2_settings_tables.sql, same checks).
  * A separate constant so the version-1 schema the phone may already have
  * is never edited.
  */

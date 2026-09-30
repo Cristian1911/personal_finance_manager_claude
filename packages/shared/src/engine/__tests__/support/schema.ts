@@ -35,7 +35,7 @@ CREATE TABLE field_versions (
   field text NOT NULL, client_ts timestamptz NOT NULL, command_id uuid NOT NULL,
   PRIMARY KEY (user_id, entity, entity_id, field)
 );
--- v2 settings: same columns and checks as supabase/migrations/20260930160000_v2_settings_tables.sql
+-- v2 settings: same columns and checks as supabase/migrations/20260930155213_v2_settings_tables.sql
 -- (migration.test.ts runs that file itself, with RLS).
 CREATE TABLE user_cycle_settings (
   user_id uuid PRIMARY KEY,

@@ -18,6 +18,15 @@ const SERVICE_ONLY = [
   "set_gmail_verification(uuid,uuid,text)",
   "generate_occurrences_for_template(uuid)",
   "cleanup_anonymous_demo_users(interval)",
+  // MCP analysis RPCs: take any user id and decrypt (zeta-dev had drifted to anon-executable).
+  "zeta_mcp_tx_base(uuid,date,date)",
+  "zeta_mcp_accounts(uuid)",
+  "zeta_mcp_transactions(uuid,date,date,text,uuid,text,text,numeric,integer,integer)",
+  "zeta_mcp_breakdown(uuid,date,date)",
+  "zeta_mcp_cashflow(uuid,integer)",
+  "zeta_mcp_recurring(uuid)",
+  "zeta_mcp_data_quality(uuid,date,date)",
+  "zeta_flow_class_candidates(uuid)",
 ];
 /** Needed by the encrypted views' insert triggers, which run as the signed-in user. */
 const SIGNED_IN_ONLY = ["zeta_encrypt_as(text,uuid)", "zeta_hmac_as(text,uuid)"];
