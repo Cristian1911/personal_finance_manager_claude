@@ -1,12 +1,16 @@
 import * as SQLite from "expo-sqlite";
-import { OUTBOX_SCHEMA, SQLITE_ENGINE_SCHEMA, type SqlDriver } from "@zeta/shared";
+import { OUTBOX_SCHEMA, SQLITE_ENGINE_SCHEMA, SQLITE_SETTINGS_SCHEMA, type SqlDriver } from "@zeta/shared";
 import { createExpoSqliteDriver } from "./sqlite-driver";
 import { getDbKey, newDbKey, saveDbKey } from "./secrets";
 
 export const V2_DB_NAME = "zeta-v2.db";
 
 /** Schema versions, in order; PRAGMA user_version = how many have run. */
-const MIGRATIONS: string[] = [SQLITE_ENGINE_SCHEMA + OUTBOX_SCHEMA];
+const MIGRATIONS: string[] = [
+  SQLITE_ENGINE_SCHEMA + OUTBOX_SCHEMA,
+  // 2: v2 M1 settings (cycle, counted accounts, reservations) + accounts.account_type.
+  SQLITE_SETTINGS_SCHEMA,
+];
 
 export interface V2Database {
   db: SQLite.SQLiteDatabase;

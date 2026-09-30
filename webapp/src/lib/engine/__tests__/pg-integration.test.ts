@@ -71,6 +71,29 @@ describe.skipIf(!enabled)("engine on zeta-dev (real Postgres)", { timeout: 30_00
     expect((await s.getAccount(userId, accountId))?.currentBalance).toBe(before - 3000);
   });
 
+  it("saves cycle and account settings through RLS, latest edit per field", async () => {
+    const s = createSqlStorage(createUserScopedPgDriver(pool, userId));
+    const base = { userId, deviceId: "integration", type: "setCycleSettings" as const };
+    const r = await applyCommand(s, {
+      ...base, id: crypto.randomUUID(), clientTs: "2026-09-30T15:00:00.000Z",
+      payload: { schedule: { kind: "semimonthly", paydays: [15, 30] }, incomePerCycle: 2100000, balanceAnchor: 1000000 },
+    });
+    expect(r.status).toBe("applied");
+    const late = await applyCommand(s, { ...base, id: crypto.randomUUID(), clientTs: "2026-09-30T14:00:00.000Z", payload: { incomePerCycle: 1 } });
+    expect(late.status).toBe("superseded");
+    expect(await s.getCycleSettings(userId)).toEqual({
+      schedule: { kind: "semimonthly", paydays: [15, 30] }, incomePerCycle: 2100000, savingsPerCycle: 0,
+      balanceAnchor: { balance: 1000000, at: "2026-09-30T15:00:00.000Z" }, bigPurchaseThreshold: 300000,
+    });
+
+    const counts = await applyCommand(s, {
+      userId, deviceId: "integration", id: crypto.randomUUID(), type: "setAccountCountsInDisponible",
+      clientTs: "2026-09-30T15:00:00.000Z", payload: { accountId, counts: false },
+    });
+    expect(counts.status).toBe("applied");
+    expect(await s.getAccountSetting(userId, accountId)).toEqual({ countsInDisponible: false });
+  });
+
   it("stores the command payload encrypted, never as plain text", async () => {
     const d = createUserScopedPgDriver(pool, userId);
     const rows = await d.query<{ payload_enc: Buffer }>(

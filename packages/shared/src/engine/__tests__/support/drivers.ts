@@ -90,10 +90,10 @@ export const DRIVERS: [string, () => Promise<SqlDriver>][] = [
 
 export async function seedAccount(
   driver: SqlDriver,
-  row: { id: string; userId: string; balance: number },
+  row: { id: string; userId: string; balance: number; accountType?: string },
 ): Promise<void> {
   await driver.query(
-    toDialect("INSERT INTO accounts (id, user_id, current_balance) VALUES (?, ?, ?)", driver.dialect),
-    [row.id, row.userId, row.balance],
+    toDialect("INSERT INTO accounts (id, user_id, current_balance, account_type) VALUES (?, ?, ?, ?)", driver.dialect),
+    [row.id, row.userId, row.balance, row.accountType ?? "CHECKING"],
   );
 }

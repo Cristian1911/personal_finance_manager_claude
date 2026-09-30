@@ -1,5 +1,9 @@
 /** Commands known to the engine. Add a name here when adding a handler. */
-export type CommandType = "captureManualTransaction" | "setTransactionNote";
+export type CommandType =
+  | "captureManualTransaction"
+  | "setTransactionNote"
+  | "setCycleSettings"
+  | "setAccountCountsInDisponible";
 
 /**
  * One user action. `id` is created on the device (UUID) and makes replays
@@ -41,7 +45,34 @@ export interface SqlDriver {
 export interface AccountRow {
   id: string;
   userId: string;
+  /** CHECKING, SAVINGS, CASH, INVESTMENT, CREDIT_CARD, LOAN, OTHER. */
+  accountType: string;
   currentBalance: number;
+}
+
+/** When the user gets paid (mirrors PaySchedule in disponible/cycle.ts, as stored). */
+export type StoredPaySchedule =
+  | { kind: "semimonthly"; paydays: [number, number] }
+  | { kind: "monthly"; paydays: [number] }
+  | { kind: "biweekly"; anchor: string }
+  | { kind: "irregular" };
+
+export interface CycleSettings {
+  schedule: StoredPaySchedule | null;
+  incomePerCycle: number | null;
+  savingsPerCycle: number;
+  /** First cycle: the balance told and when (the command's clientTs). */
+  balanceAnchor: { balance: number; at: string } | null;
+  bigPurchaseThreshold: number;
+}
+
+/** The columns a command may write; each key is written only when present. */
+export interface CycleSettingsPatch {
+  schedule?: StoredPaySchedule;
+  incomePerCycle?: number | null;
+  savingsPerCycle?: number;
+  balanceAnchor?: { balance: number; at: string } | null;
+  bigPurchaseThreshold?: number;
 }
 
 export interface TransactionInsert {
@@ -100,4 +131,8 @@ export interface StoragePort {
   updateTransactionNotes(userId: string, id: string, notes: string | null): Promise<void>;
   getFieldVersion(userId: string, entity: string, entityId: string, field: string): Promise<FieldVersion | null>;
   setFieldVersion(v: FieldVersionWrite): Promise<void>;
+  getCycleSettings(userId: string): Promise<CycleSettings | null>;
+  upsertCycleSettings(userId: string, patch: CycleSettingsPatch): Promise<void>;
+  getAccountSetting(userId: string, accountId: string): Promise<{ countsInDisponible: boolean } | null>;
+  setAccountSetting(userId: string, accountId: string, countsInDisponible: boolean): Promise<void>;
 }

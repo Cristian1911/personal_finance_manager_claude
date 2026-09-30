@@ -1,5 +1,6 @@
 import type { CommandEnvelope, CommandResult, StoragePort } from "../types";
 import { UUID_RE } from "../validate";
+import { isNewer } from "./field-version";
 
 export interface SetTransactionNotePayload {
   transactionId: string;
@@ -38,10 +39,4 @@ export async function setTransactionNote(
     field: "notes", clientTs: cmd.clientTs, commandId: cmd.id,
   });
   return { status: "applied", replayed: false };
-}
-
-function isNewer(v: { clientTs: string; commandId: string }, clientTs: string, commandId: string): boolean {
-  const a = Date.parse(v.clientTs);
-  const b = Date.parse(clientTs);
-  return a !== b ? a > b : v.commandId > commandId;
 }
