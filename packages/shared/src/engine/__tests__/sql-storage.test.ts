@@ -26,7 +26,7 @@ describe.each(DRIVERS)("createSqlStorage on %s", (_name, make) => {
     await s.insertTransaction({
       id: TX, userId: USER, accountId: ACCOUNT, amount: 25000, currencyCode: "COP",
       direction: "OUTFLOW", transactionDate: "2026-09-18", cleanDescription: "Tostao",
-      notes: null, captureMethod: "MANUAL_FORM", idempotencyKey: "k1",
+      notes: null, captureMethod: "MANUAL_FORM", idempotencyKey: "k1", createdAt: "2026-09-18T15:00:00.000Z",
     });
     expect(await s.findTransactionByIdempotencyKey(USER, "k1")).toEqual({ id: TX });
     expect(await s.findTransactionByIdempotencyKey(USER, "nope")).toBeNull();

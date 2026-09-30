@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { computeDisponible, type DisponibleInput } from "../disponible";
 import { computeVerdict } from "../verdict";
-import { disponibleBlockView, shortMoney } from "../view";
+import { cycleLabel, disponibleBlockView, shortMoney } from "../view";
 
 const CYCLE = { start: "2026-09-15", end: "2026-09-29", days: 15, daysLeft: 12 };
 
@@ -127,5 +127,13 @@ describe("shortMoney — the fallback when the full amount can't fit at 62%", ()
   it("the view carries both, with the same '~'", () => {
     const v = view(100_000, { over: { movements: laura(100_000).movements.slice(1) } });
     expect(v.amountShort).toBe("~$421.100");
+  });
+});
+
+describe("cycleLabel", () => {
+  it("one month, or both months when it crosses one", () => {
+    expect(cycleLabel({ start: "2026-09-15", end: "2026-09-29" })).toBe("Ciclo 15 – 29 sep");
+    expect(cycleLabel({ start: "2026-09-30", end: "2026-10-14" })).toBe("Ciclo 30 sep – 14 oct");
+    expect(cycleLabel({ start: "2026-12-30", end: "2027-01-14" })).toBe("Ciclo 30 dic – 14 ene");
   });
 });

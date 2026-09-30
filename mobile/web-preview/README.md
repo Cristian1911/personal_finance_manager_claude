@@ -15,6 +15,7 @@ Screenshot examples:
 pnpm preview:web:shots / /transactions /plan
 WIDTH=360 pnpm preview:web:shots /                    # gallery widths: 360, 390, 430
 HEIGHT=1500 pnpm preview:web:shots "/v2-debug@Crear cuenta de prueba (100.000)|Anotar gasto de 25.000|Autoprueba"
+pnpm preview:web:shots "/inicio@El 15 y el 30|fill:Ingreso de cada pago=2100000|fill:Saldo de hoy=1500000|Ver mi número"  # fill:<accessibilityLabel>=<text>
 DEMO=0 pnpm preview:web:shots /                       # stay on the login screen
 ```
 

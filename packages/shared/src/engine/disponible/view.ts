@@ -110,3 +110,14 @@ export function disponibleBlockView(input: {
     breakdown,
   };
 }
+
+const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const dayMonth = (d: IsoDate) => ({ day: Number(d.slice(8, 10)), month: MONTHS[Number(d.slice(5, 7)) - 1] });
+
+/** Inicio's header: "Ciclo 15 – 29 sep", or "Ciclo 30 sep – 14 oct" across months. */
+export function cycleLabel(cycle: { start: IsoDate; end: IsoDate }): string {
+  const a = dayMonth(cycle.start);
+  const b = dayMonth(cycle.end);
+  const from = a.month === b.month && cycle.start.slice(0, 7) === cycle.end.slice(0, 7) ? `${a.day}` : `${a.day} ${a.month}`;
+  return `Ciclo ${from} – ${b.day} ${b.month}`;
+}

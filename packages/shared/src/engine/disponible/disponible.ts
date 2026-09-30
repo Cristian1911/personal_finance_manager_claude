@@ -1,4 +1,4 @@
-import type { IsoDate } from "./dates";
+import { colombiaDate, type IsoDate } from "./dates";
 
 /**
  * Disponible: how much you can still spend until your next payday.
@@ -163,7 +163,8 @@ export function computeDisponible(input: DisponibleInput): DisponibleResult {
   const debt = new Set(input.accounts.filter((a) => a.isDebt).map((a) => a.id));
   // Cards and loans never count, whatever the setting says (S3-0).
   const counts = new Map(input.accounts.map((a) => [a.id, a.countsInDisponible && !a.isDebt]));
-  const anchorDate = anchor?.at.slice(0, 10);
+  // The anchor's day in Colombia: told at 8 p.m. on the 18th, UTC already says the 19th.
+  const anchorDate = anchor ? colombiaDate(anchor.at) : undefined;
 
   // Movements on counted accounts inside the cycle. In the first cycle, those
   // before the anchor are already in the balance the user told us.

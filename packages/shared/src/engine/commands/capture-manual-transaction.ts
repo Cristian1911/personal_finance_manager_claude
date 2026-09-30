@@ -72,6 +72,9 @@ export async function captureManualTransaction(
     notes: p.notes ?? null,
     captureMethod: "MANUAL_FORM",
     idempotencyKey,
+    // When it was captured on the device, not when the server replays it: a
+    // movement on the first-cycle balance's day lands before or after it the same everywhere.
+    createdAt: cmd.clientTs,
   });
   await s.adjustAccountBalance(cmd.userId, p.accountId, p.direction === "OUTFLOW" ? -p.amount : p.amount);
   return { status: "applied", replayed: false, data: { transactionId: p.transactionId } };

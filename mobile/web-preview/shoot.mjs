@@ -1,6 +1,7 @@
 // Serves a `expo export --platform web` build and screenshots routes in headless Chromium.
-// Usage: node web-preview/shoot.mjs <exportDir> <outDir> [route[@Tap text|Other text] ...]
-// Each route is loaded, the listed texts are tapped in order, then a full-page screenshot is saved.
+// Usage: node web-preview/shoot.mjs <exportDir> <outDir> [route[@Tap text|fill:Field label=value|...] ...]
+// Each route is loaded, the listed steps run in order (tap a text, or type into the
+// input whose accessibilityLabel is "Field label"), then a full-page screenshot is saved.
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
@@ -45,8 +46,12 @@ for (const spec of routes.length ? routes : ["/"]) {
   await page.waitForTimeout(1000);
   await page.goto(base + route, { waitUntil: "networkidle" }).catch((e) => console.log(`[goto] ${e.message}`));
   await page.waitForTimeout(2500);
-  for (const text of taps.split("|").filter(Boolean)) {
-    await page.getByText(text, { exact: true }).first().click({ timeout: 8000 }).catch((e) => console.log(`[tap] ${text}: ${e.message.split("\n")[0]}`));
+  for (const step of taps.split("|").filter(Boolean)) {
+    const fill = step.match(/^fill:(.+?)=(.*)$/);
+    const action = fill
+      ? page.getByLabel(fill[1], { exact: true }).first().fill(fill[2], { timeout: 8000 })
+      : page.getByText(step, { exact: true }).first().click({ timeout: 8000 });
+    await action.catch((e) => console.log(`[step] ${step}: ${e.message.split("\n")[0]}`));
     await page.waitForTimeout(1500);
   }
   const name = spec.replace(/[^a-z0-9]+/gi, "_").replace(/^_|_$/g, "").slice(0, 60) || "root";

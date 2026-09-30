@@ -87,6 +87,8 @@ export interface TransactionInsert {
   notes: string | null;
   captureMethod: "MANUAL_FORM";
   idempotencyKey: string;
+  /** Capture instant (the command's clientTs), ISO-8601 UTC. */
+  createdAt: string;
 }
 
 export interface TransactionRow {

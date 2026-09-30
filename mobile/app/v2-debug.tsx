@@ -11,15 +11,14 @@ import {
   PANEL_SURFACE_CLASS,
 } from "../lib/constants/styles";
 import { COLORS } from "../lib/constants/colors";
-import { useAuth } from "../lib/auth";
 import { toColombiaDateString } from "../lib/utils/date";
 import { V2_DEBUG_ENABLED } from "../lib/v2/flags";
 import { getV2Database, resetV2Database } from "../lib/v2/engine/database";
 import { expoSha256, replayLocalCommand, runLocalCommand } from "../lib/v2/engine/run-local";
 import { runSelfTest, type SelfTestCheck } from "../lib/v2/engine/self-test";
+import { useV2UserId } from "../lib/v2/user";
 
 const TEST_ACCOUNT = "0000aaaa-0000-4000-8000-00000000c0de";
-const LOCAL_USER = "00000000-0000-4000-8000-000000000001";
 
 type Snapshot = { balance: number | null; note: string | null; pending: number };
 
@@ -60,8 +59,7 @@ export default function V2DebugRoute() {
 
 function V2DebugScreen() {
   const router = useRouter();
-  const { userId: authUserId } = useAuth();
-  const userId = authUserId ?? LOCAL_USER;
+  const userId = useV2UserId();
   const [snapshot, setSnapshot] = useState<Snapshot>({ balance: null, note: null, pending: 0 });
   const [lastCommand, setLastCommand] = useState<CommandEnvelope | null>(null);
   const [lastTxId, setLastTxId] = useState<string | null>(null);
@@ -175,6 +173,7 @@ function V2DebugScreen() {
         <Action label="Nota nueva y luego una vieja" onPress={notesOutOfOrder} disabled={busy} />
         <Action label="Autoprueba" onPress={selfTest} primary disabled={busy} />
         <Action label="Borrar base v2" onPress={reset} disabled={busy} />
+        <Action label="Inicio v2" onPress={() => router.push("/inicio" as never)} primary disabled={busy} />
         <Action label="Galería de diseño v2" onPress={() => router.push("/v2-gallery" as never)} disabled={busy} />
 
         {busy && <ActivityIndicator color={COLORS.brass} accessibilityLabel="Cargando" />}

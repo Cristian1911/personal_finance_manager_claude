@@ -21,6 +21,8 @@ export type PaySchedule =
 export interface PayCycle {
   start: IsoDate;
   end: IsoDate;
+  /** Expected date of the salary that opens this cycle (after weekend/holiday moves); the month's first day when irregular. */
+  payday: IsoDate;
   /** Expected date of the next salary (after weekend/holiday moves); null when irregular. */
   nextPayday: IsoDate | null;
   days: number;
@@ -75,7 +77,7 @@ export function computePayCycle(input: {
     const start = clampedDate(year, month, 1);
     const end = clampedDate(year, month, daysInMonth(year, month));
     return {
-      start, end, nextPayday: null,
+      start, end, payday: start, nextPayday: null,
       days: diffDays(start, end) + 1, daysLeft: diffDays(today, end) + 1,
       startsOnExpectedDate: false, irregular: true,
     };
@@ -102,6 +104,7 @@ export function computePayCycle(input: {
   return {
     start: current.start,
     end,
+    payday: current.expected,
     nextPayday: next.expected,
     days: diffDays(current.start, end) + 1,
     daysLeft: diffDays(today, end) + 1,

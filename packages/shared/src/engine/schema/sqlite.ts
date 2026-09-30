@@ -74,3 +74,14 @@ CREATE TABLE bill_reservations (
   PRIMARY KEY (user_id, id)
 );
 `;
+
+/**
+ * Phone schema version 3: when each movement was captured, so a movement
+ * made on the day of the first-cycle balance ("¿Cuánto tienes hoy?") lands
+ * before or after it (computeDisponible's anchor). Commands write it (the
+ * command's clientTs) on both databases; rows from before version 3 stay NULL
+ * and count as earlier that day. Postgres already has transactions.created_at.
+ */
+export const SQLITE_CAPTURE_TIME_SCHEMA = `
+ALTER TABLE transactions ADD COLUMN created_at TEXT;
+`;
