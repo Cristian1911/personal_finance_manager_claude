@@ -129,8 +129,34 @@ describe("computeDisponible — every kind of movement (session 3 table)", () =>
     expect(computeDisponible(input).disponible).toBe(before);
   });
 
-  it("extra payment / pay-off (D6): down by the extra", () => {
-    expect(computeDisponible(laura({}, [mv({ kind: "payment", amount: 300_000 })])).disponible).toBe(LAURA - 300_000);
+  it("extra payment / pay-off (D6): down by the extra, once the open card/loan bills are covered", () => {
+    // Nu's $640.000 bill is open: a debt payment with no card named pays it first.
+    const r = computeDisponible(laura({}, [mv({ kind: "payment", amount: 700_000 })]));
+    expect(r.porPagar.lines.some((l) => l.id === "nu-a")).toBe(false);
+    expect(r.disponible).toBe(LAURA - 60_000);
+  });
+
+  it("a debt payment with no card/loan named never subtracts twice (PDF 'PAGO TC' rows)", () => {
+    expect(computeDisponible(laura({}, [mv({ kind: "payment", amount: 640_000 })])).disponible).toBe(LAURA);
+  });
+
+  it("a salary paid into an account that doesn't count confirms it; moving it in brings the money", () => {
+    const input = laura();
+    input.movements[0] = { ...input.movements[0], accountId: "apart" };
+    const before = computeDisponible(input);
+    expect(before.disponible).toBe(LAURA - 2_100_000);
+    expect(before.approximate).toBe(false);
+    input.movements.push(mv({ kind: "transfer", amount: 2_100_000, direction: "INFLOW", counterpartAccountId: "apart" }));
+    expect(computeDisponible(input).disponible).toBe(LAURA);
+  });
+
+  it("income already received outside the window counts, without a '~'", () => {
+    const input = laura();
+    input.movements.shift();
+    input.expectedIncomes[0] = { ...input.expectedIncomes[0], received: true };
+    const r = computeDisponible(input);
+    expect(r.disponible).toBe(LAURA);
+    expect(r.approximate).toBe(false);
   });
 
   it("transfer between two counted accounts: no effect", () => {

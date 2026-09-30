@@ -2,16 +2,13 @@
 // minimal stand-ins for Supabase's auth schema and the existing tables it
 // references (own-row RLS like production), then checks its constraints and
 // RLS as the `authenticated` role, including the engine's own upsert SQL.
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createSqlStorage } from "../sql-storage";
 import type { SqlDriver } from "../types";
 
-const MIGRATION = fileURLToPath(
-  new URL("../../../../../supabase/migrations/20260930155213_v2_settings_tables.sql", import.meta.url),
-);
+// Vite's ?raw import: the file's text, without Node types in this (Hermes-bound) package.
+import MIGRATION_SQL from "../../../../../supabase/migrations/20260930155213_v2_settings_tables.sql?raw";
 
 const ME = "11111111-1111-4111-8111-111111111111";
 const THEM = "66666666-6666-4666-8666-666666666666";
@@ -85,7 +82,7 @@ describe("migration 20260930155213_v2_settings_tables", () => {
   beforeAll(async () => {
     db = await PGlite.create();
     await db.exec(STUBS);
-    await db.exec(readFileSync(MIGRATION, "utf8"));
+    await db.exec(MIGRATION_SQL);
   }, 30_000);
 
   it("the engine's upsert SQL inserts, then updates, as the user", async () => {

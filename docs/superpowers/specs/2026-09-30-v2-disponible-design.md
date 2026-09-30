@@ -13,6 +13,7 @@
 | `disponible.ts` | `computeDisponible` | `Disponible = Llega − Por pagar − Ahorro − Ya salió ± ajustes`; `perDay = ⌊Disponible ÷ días que faltan (incluye hoy)⌋₁₀₀` (0 when negative); the starting Disponible and per-day, used by the verdict. Returns every line (Spanish labels) and why the number is approximate. |
 | `verdict.ts` | `computeVerdict`, `verdictMessage`, `findBillAtRisk` | Vas bien / Cuidado / Te pasaste with the no-flicker rule; Spanish messages; the bill-at-risk check (due within 3 days, or overdue). |
 | `card-bill.ts` | `estimateCardMinimum`, `projectCardBillAtCut` | S3-6 minimum before the PDF; S3-2 big purchases in full; S3-5 look-ahead at the cut date. |
+| `movements.ts` | `toDisponibleMovements`, `occurrencesToCycleInputs` | Stored rows → the inputs below. Excluded, merged-duplicate and cancelled rows drop out. A movement linked to an occurrence is salary or a bill payment. Personal debts: lent → spend, repaid to you → Te pagaron, you pay back → settles that Tú debes, borrowed → money in (the debt's direction is derived from role + flow when not joined). Transfer legs learn their counterpart. The rest goes by `flow_class`, never category. Foreign currency uses the COP amount and is "≈" until the PDF. Occurrences: income → expected income, bill → obligation, skipped gone. A paid occurrence whose movement isn't passed (or was excluded) counts as paid / received, a link to a merged duplicate follows to the survivor, and one movement paying several bills settles all of them. |
 
 ## 2. Input contract of `computeDisponible`
 
@@ -20,7 +21,8 @@
 - A debt account never counts, whatever its setting says.
 - `movements`: already classified by the caller: `spend | payment | income | salary | repayment | refund | transfer | ignored`, with `obligationId` for payments, `expectedIncomeId` for salary, `counterpartAccountId` for transfers, and `approx` for foreign-currency estimates.
   - Movements on accounts that don't count are ignored, so card purchases never touch Disponible (S3-0).
-  - A transfer to a debt account is a payment. A plain transfer (no `obligationId`) pays that account's open bills in due order; the rest is an extra payment.
+  - A transfer to a debt account is a payment. A plain transfer (no `obligationId`) pays that account's open bills in due order; the rest is an extra payment. A debt payment whose card/loan isn't known pays the earliest open card or loan bills first, so it's never subtracted twice.
+  - A salary paid into an account that doesn't count confirms its expected income without adding money; the transfer that brings it in does. An expected income marked `received` (paid outside the window) counts without a "~".
   - A transfer from a debt account is an advance ("Avance de tarjeta o crédito").
   - A transfer to an account we don't know is money out (Ya salió), never Ahorro.
   - An ATM withdrawal is `spend` (S3-1); logging that cash later is `ignored`. Trip purchases (v1.1) are also `ignored`.
