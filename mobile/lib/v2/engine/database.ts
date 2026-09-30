@@ -146,3 +146,23 @@ export async function resetV2Database(): Promise<void> {
   }
   await deleteDatabaseFiles(V2_DB_NAME);
 }
+
+/**
+ * Debug: the Keychain loses the key (restore to a new phone, a wiped
+ * Keychain). Closes the database, stores a different key and opens again:
+ * the file can't be read with it, so it must be rebuilt empty, not crash.
+ * Returns how many accounts the reopened database has (0 = rebuilt).
+ * On the web preview the file isn't encrypted, so any key reads it.
+ */
+export async function simulateLostKey(): Promise<{ accountsAfter: number }> {
+  const current = opening;
+  opening = null;
+  if (current) {
+    const { db } = await current.catch(() => ({ db: null }));
+    await db?.closeAsync().catch(() => undefined);
+  }
+  await saveDbKey(await newDbKey());
+  const { driver } = await getV2Database();
+  const [{ n }] = await driver.query<{ n: number }>("SELECT count(*) AS n FROM accounts");
+  return { accountsAfter: Number(n) };
+}

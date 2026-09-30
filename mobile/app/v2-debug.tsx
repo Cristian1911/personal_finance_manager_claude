@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { Redirect, useRouter } from "expo-router";
 import * as Crypto from "expo-crypto";
 import { applyAndEnqueue, createSqlStorage, type CommandEnvelope, type CommandResult } from "@zeta/shared";
@@ -13,7 +13,7 @@ import {
 import { COLORS } from "../lib/constants/colors";
 import { toColombiaDateString } from "../lib/utils/date";
 import { V2_DEBUG_ENABLED } from "../lib/v2/flags";
-import { getV2Database, resetV2Database } from "../lib/v2/engine/database";
+import { getV2Database, resetV2Database, simulateLostKey } from "../lib/v2/engine/database";
 import { expoSha256, replayLocalCommand, runLocalCommand } from "../lib/v2/engine/run-local";
 import { runSelfTest, type SelfTestCheck } from "../lib/v2/engine/self-test";
 import { useV2UserId } from "../lib/v2/user";
@@ -65,6 +65,7 @@ function V2DebugScreen() {
   const [lastTxId, setLastTxId] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<CommandResult | null>(null);
   const [checks, setChecks] = useState<SelfTestCheck[] | null>(null);
+  const [keyCheck, setKeyCheck] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -142,6 +143,20 @@ function V2DebugScreen() {
     setLastResult(null);
   });
 
+  const lostKey = act(async () => {
+    const { accountsAfter } = await simulateLostKey();
+    setLastCommand(null);
+    setLastTxId(null);
+    setLastResult(null);
+    setKeyCheck(
+      Platform.OS === "web"
+        ? "No aplica en la vista web: la base no se cifra, cualquier clave la lee."
+        : accountsAfter === 0
+          ? "Bien: sin la clave, la base se rehízo vacía y abre."
+          : `Falla: la base sigue con ${accountsAfter} cuenta(s) con otra clave.`,
+    );
+  });
+
   const selfTest = act(async () => {
     setChecks(await runSelfTest());
   });
@@ -173,6 +188,8 @@ function V2DebugScreen() {
         <Action label="Nota nueva y luego una vieja" onPress={notesOutOfOrder} disabled={busy} />
         <Action label="Autoprueba" onPress={selfTest} primary disabled={busy} />
         <Action label="Borrar base v2" onPress={reset} disabled={busy} />
+        <Action label="Simular clave perdida" onPress={lostKey} disabled={busy} />
+        {keyCheck && <Text className="font-inter text-foreground">{keyCheck}</Text>}
         <Action label="Inicio v2" onPress={() => router.push("/inicio" as never)} primary disabled={busy} />
         <Action label="Galería de diseño v2" onPress={() => router.push("/v2-gallery" as never)} disabled={busy} />
 
