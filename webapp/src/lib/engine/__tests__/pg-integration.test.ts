@@ -4,7 +4,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Pool } from "pg";
 import { createClient } from "@supabase/supabase-js";
-import { applyCommand, createSqlStorage, toDialect } from "@zeta/shared";
+import { applyCommand, createSqlStorage, readInicioData, toDialect } from "@zeta/shared";
 import { createUserScopedPgDriver } from "../pg-driver";
 
 const env = process.env;
@@ -50,6 +50,15 @@ describe.skipIf(!enabled)("engine on zeta-dev (real Postgres)", { timeout: 30_00
     expect((await applyCommand(s, capture)).replayed).toBe(true);
     expect((await s.getAccount(userId, accountId))?.currentBalance).toBe(75000);
     expect((await s.getTransaction(userId, txId))?.cleanDescription).toBe("Tostao motor");
+    // The capture instant is the command's, through the view's INSTEAD OF trigger.
+    const [row] = await createUserScopedPgDriver(pool, userId).query<{ created_at: Date }>(
+      toDialect("SELECT created_at FROM transactions WHERE id = ?", "postgres"), [txId]);
+    expect(new Date(row.created_at).toISOString()).toBe("2026-09-18T15:00:00.000Z");
+
+    // Inicio's reads work on the real views too.
+    const data = await readInicioData(createUserScopedPgDriver(pool, userId), userId, "2026-09-01");
+    expect(data.transactions.find((t) => t.id === txId)).toMatchObject({ date: "2026-09-18", amount: 25000, createdAt: "2026-09-18T15:00:00.000Z" });
+    expect(data.accounts.find((a) => a.id === accountId)).toMatchObject({ accountType: "CHECKING", countsInDisponible: null });
 
     const newer = { ...base, id: crypto.randomUUID(), type: "setTransactionNote" as const, clientTs: "2026-09-18T17:00:00.000Z", payload: { transactionId: txId, notes: "nueva" } };
     const older = { ...base, id: crypto.randomUUID(), type: "setTransactionNote" as const, clientTs: "2026-09-18T16:00:00.000Z", payload: { transactionId: txId, notes: "vieja" } };
