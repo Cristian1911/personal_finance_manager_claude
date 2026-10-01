@@ -1,8 +1,8 @@
-import { memo, useCallback, useDeferredValue, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ChevronLeft, ChevronRight, Search, X } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, MoreHorizontal, Search, X } from "lucide-react-native";
 import {
   detalleView,
   movimientosView,
@@ -20,7 +20,9 @@ import {
 import { runLocalCommand } from "../../lib/v2/engine/run-local";
 import { loadMovimientos, type LoadedMovimientos } from "../../lib/v2/movimientos/load";
 import { useV2UserId } from "../../lib/v2/user";
+import { Collapse } from "../../v2/components/Collapse";
 import { DetalleSheet } from "../../v2/components/DetalleSheet";
+import { Dim } from "../../v2/components/Dim";
 import { Toast } from "../../v2/components/Toast";
 import { useV2Theme } from "../../v2/theme/ThemeProvider";
 
@@ -109,6 +111,10 @@ export default function MovimientosScreen() {
   }, [openId, data, detalle, run]);
 
   const onRow = useCallback((id: string) => setOpenId(id), []);
+  // One row open at a time; a new cycle, filter or search closes it.
+  const [openRow, setOpenRow] = useState<string | null>(null);
+  const onToggle = useCallback((id: string) => setOpenRow((o) => (o === id ? null : id)), []);
+  useEffect(() => setOpenRow(null), [index, filter, search]);
   const back = useCallback(() => (router.canGoBack() ? router.back() : router.replace("/inicio" as never)), [router]);
   const tone = useMemo(() => toneColors(t), [t]);
 
@@ -190,7 +196,8 @@ export default function MovimientosScreen() {
       <FlatList
         data={view.groups}
         keyExtractor={(g) => g.date}
-        renderItem={({ item }) => <DayGroup group={item} tone={tone} onRow={onRow} />}
+        renderItem={({ item }) => <DayGroup group={item} tone={tone} openRow={openRow} onToggle={onToggle} onMore={onRow} />}
+        extraData={openRow}
         ListHeaderComponent={header}
         ListEmptyComponent={view.empty ? <Text style={[styles.empty, { color: t.colors.muted, fontFamily: t.fonts.uiMedium }]}>{view.empty}</Text> : null}
         contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 32, paddingHorizontal: 16, gap: 14 }}
@@ -226,7 +233,9 @@ const sameRow = (a: MovimientoRow, b: MovimientoRow) =>
   a.id === b.id && a.title === b.title && a.amount === b.amount && a.tone === b.tone
   && a.status === b.status && a.time === b.time && a.account === b.account;
 
-const DayGroup = memo(function DayGroup({ group, tone, onRow }: { group: MovimientosGroup; tone: ToneColors; onRow: (id: string) => void }) {
+const DayGroup = memo(function DayGroup({ group, tone, openRow, onToggle, onMore }: {
+  group: MovimientosGroup; tone: ToneColors; openRow: string | null; onToggle: (id: string) => void; onMore: (id: string) => void;
+}) {
   const t = useV2Theme();
   return (
     <View>
@@ -236,23 +245,36 @@ const DayGroup = memo(function DayGroup({ group, tone, onRow }: { group: Movimie
       </View>
       <View style={[styles.card, { backgroundColor: t.colors.card }, t.shadow]}>
         {group.rows.map((r, k) => (
-          <Row key={r.id} row={r} color={tone[r.tone]} last={k === group.rows.length - 1} onPress={onRow} />
+          <Row
+            key={r.id} row={r} color={tone[r.tone]} last={k === group.rows.length - 1}
+            open={openRow === r.id} dimmed={openRow !== null && openRow !== r.id}
+            onToggle={onToggle} onMore={onMore}
+          />
         ))}
       </View>
     </View>
   );
-}, (p, n) => p.tone === n.tone && p.onRow === n.onRow && p.group.label === n.group.label && p.group.total === n.group.total
+}, (p, n) => p.tone === n.tone && p.openRow === n.openRow && p.onToggle === n.onToggle && p.onMore === n.onMore && p.group.label === n.group.label && p.group.total === n.group.total
   && p.group.rows.length === n.group.rows.length && p.group.rows.every((r, i) => sameRow(r, n.group.rows[i])));
 
-const Row = memo(function Row({ row: r, color, last, onPress }: { row: MovimientoRow; color: string; last: boolean; onPress: (id: string) => void }) {
+/**
+ * A movement. A tap opens it in place (S8-3): in M1 only ⋯ (Detalle), already in
+ * its final spot on the right; Categoría and Destinatario join it in M3.
+ */
+const Row = memo(function Row({ row: r, color, last, open, dimmed, onToggle, onMore }: {
+  row: MovimientoRow; color: string; last: boolean; open: boolean; dimmed: boolean;
+  onToggle: (id: string) => void; onMore: (id: string) => void;
+}) {
   const t = useV2Theme();
   return (
+    <Dim on={dimmed} style={!last && { borderBottomWidth: 1, borderBottomColor: t.colors.line }}>
     <Pressable
-      onPress={() => onPress(r.id)}
+      onPress={() => onToggle(r.id)}
       accessibilityRole="button"
+      accessibilityState={{ expanded: open }}
       accessibilityLabel={r.spoken}
-      accessibilityHint="Abre el detalle"
-      style={[styles.row, !last && { borderBottomWidth: 1, borderBottomColor: t.colors.line }]}
+      accessibilityHint={open ? "Cierra" : "Muestra las acciones"}
+      style={styles.row}
     >
       <View style={[styles.avatar, { backgroundColor: t.colors.sunk }]}>
         <Text style={{ fontSize: 13, color: t.colors.muted, fontFamily: t.fonts.uiSemibold }}>{r.initial}</Text>
@@ -281,8 +303,23 @@ const Row = memo(function Row({ row: r, color, last, onPress }: { row: Movimient
         </View>
       </View>
     </Pressable>
+    <Collapse open={open}>
+      <View style={styles.actions}>
+        <View style={{ flex: 1 }} />
+        <Pressable
+          onPress={() => onMore(r.id)}
+          accessibilityRole="button"
+          accessibilityLabel={`Ver detalle de ${r.title}`}
+          style={[styles.more, { borderColor: t.colors.control }]}
+        >
+          <MoreHorizontal size={20} color={t.colors.ink} />
+        </Pressable>
+      </View>
+    </Collapse>
+    </Dim>
   );
-}, (p, n) => sameRow(p.row, n.row) && p.color === n.color && p.last === n.last && p.onPress === n.onPress);
+}, (p, n) => sameRow(p.row, n.row) && p.color === n.color && p.last === n.last && p.open === n.open
+  && p.dimmed === n.dimmed && p.onToggle === n.onToggle && p.onMore === n.onMore);
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16, padding: 24 },
@@ -301,6 +338,8 @@ const styles = StyleSheet.create({
   dayText: { fontSize: 12, letterSpacing: 0.5, textTransform: "uppercase" },
   card: { borderRadius: 18, paddingHorizontal: 14 },
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12 },
+  actions: { flexDirection: "row", paddingBottom: 12 },
+  more: { width: 44, height: 44, borderRadius: 11, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
   avatar: { width: 38, height: 38, borderRadius: 11, alignItems: "center", justifyContent: "center" },
   rowBody: { flex: 1, minWidth: 0, gap: 6 },
   rowTop: { flexDirection: "row", alignItems: "baseline", gap: 10 },
