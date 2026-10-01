@@ -10,6 +10,14 @@
 
 ---
 
+## v2 Tu flujo — pendientes (2026-10-01, PRs #442 / #443)
+- **Apartar dice "Pronto"**: `createReservation` necesita la plantilla del pago (`bill_reservations.recurring_template_id NOT NULL`) y las plantillas llegan al teléfono en M4. Cuando lleguen: el botón crea la reserva (comando + contract tests en ambos adaptadores) y la tarjeta ámbar desaparece al cubrir el faltante.
+- **"Ver qué ajustar" abre Movimientos v1** hasta que exista Límites (M4).
+- **Ámbar casi nunca sale con datos reales**: el teléfono no tiene pagos (`obligations: []` en `buildInicio`) hasta M2/M4; hoy solo salta si tu ritmo supera el próximo sueldo.
+- **Android sin probar**: el swipe de ciclo (Pan alrededor de un ScrollView, bloqueado por el arrastre del gráfico) y el arrastre del widget. En algunas versiones de Android hace falta componer con `Gesture.Native()`.
+- **Contraste del "Gasto estimado"** (`est` sobre `card` en Oliva oscuro ≈ 1,8:1) — token correcto según diseño; llevar a Claude Design.
+- **Perf (opcional)**: `buildInicio` arma las 3 pestañas en cada carga de Inicio aunque Inicio no las lee; volverlo perezoso si aparece en un trace.
+
 ## iOS: Xcode 27 rompe el build y el arranque de la app (2026-09-30)
 - **La app se cierra al abrir en iOS 27** si se compila con el SDK de Xcode 27: UIKit exige el ciclo de vida UIScene (`_UIApplicationEvaluateRuntimeIssueForNoSceneLifecycleAdoption` → SIGTRAP). Expo 55 / RN 0.83 no traen `SceneDelegate` ni `UIApplicationSceneManifest`. EAS va a chocar con esto apenas su imagen pase a Xcode 27. Arreglo: subir Expo cuando traiga soporte de escenas, o un config plugin con `SceneDelegate` (pasa la `window` del AppDelegate a la escena y reenvía `openURLContexts` a `application(_:open:options:)`, si no los deep links se pierden). Probado como parche local en `mobile/ios/` (ignorado por git) y arranca.
 - **Pods con deployment target < 15.0** (SDWebImage 9.0, GoogleSignIn/AppAuth/GTM 12.0, RNSVG 12.4…) fallan con Xcode 27; además `expo-router` no compila con target 15.1 (`subtitle` es iOS 16+). Hoy se compila con `IPHONEOS_DEPLOYMENT_TARGET=16.0` por línea de comandos. Arreglo durable: `post_install` en el Podfile (config plugin) que suba los pods viejos, o subir `ios.deploymentTarget` a 16.0.

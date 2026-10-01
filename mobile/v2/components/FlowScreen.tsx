@@ -56,15 +56,17 @@ export function FlowScreen({
   indexRef.current = index;
   const swipe = useMemo(() => Gesture.Pan().runOnJS(true).activeOffsetX([-40, 40]).failOffsetY([-15, 15])
     .onEnd((e) => {
+      if (Math.abs(e.translationX) < 2 * Math.abs(e.translationY)) return; // a diagonal scroll, not a swipe
       if (e.translationX <= -SWIPE_PX) showRef.current(indexRef.current + 1);
       else if (e.translationX >= SWIPE_PX) showRef.current(indexRef.current - 1);
     }), []);
 
-  const n = tab.chart.days.length;
+  const n = tab?.chart.days.length ?? 0;
   const day = useMemo(
-    () => (selected == null ? null : flowDayView(tab.chart.days[Math.min(selected, n - 1)], today)),
+    () => (selected == null || !tab ? null : flowDayView(tab.chart.days[Math.min(selected, n - 1)], today)),
     [tab, selected, n, today],
   );
+  if (!tab) return null;
   const dayDate = selected == null ? null : tab.chart.days[Math.min(selected, n - 1)].date;
   const muted = { color: t.colors.muted, fontFamily: t.fonts.uiMedium };
 
@@ -88,6 +90,7 @@ export function FlowScreen({
                   <Pressable
                     key={x.key}
                     onPress={() => show(k)}
+                    hitSlop={{ top: 5, bottom: 5 }}
                     accessibilityRole="tab"
                     accessibilityState={{ selected: on }}
                     style={[styles.tab, on && [{ backgroundColor: t.colors.card }, t.shadow]]}
@@ -110,11 +113,11 @@ export function FlowScreen({
               accessibilityRole="adjustable"
               accessibilityLabel="Día en Tu flujo"
               accessibilityHint="Desliza arriba o abajo para cambiar de día"
-              accessibilityValue={{ text: day ? `${day.label}, ${day.balance.replace(/≈\s/, "aproximadamente ")}` : "Ningún día" }}
+              accessibilityValue={{ text: day ? `${day.label}, ${day.balance.replace(/≈\s/, "aproximadamente ").replace(/−/g, "menos ")}` : "Ningún día" }}
               accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
               onAccessibilityAction={(e) => {
                 const step = e.nativeEvent.actionName === "increment" ? 1 : -1;
-                setSelected((k) => Math.max(0, Math.min(n - 1, (k ?? Math.max(0, Math.min(n - 1, tab.chart.todayIndex))) + (k == null ? 0 : step))));
+                setSelected((k) => Math.max(0, Math.min(n - 1, (k ?? Math.max(0, Math.min(n - 1, tab.chart.todayIndex))) + step)));
               }}
             >
               <FlowChart

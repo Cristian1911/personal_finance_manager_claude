@@ -1,5 +1,6 @@
-import { useCallback, useState } from "react";
-import { ActivityIndicator, Alert, Text, View } from "react-native";
+import { useCallback, useRef, useState } from "react";
+import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import type { FlowScreenTab } from "@zeta/shared";
 import { loadInicio } from "../../lib/v2/inicio/load";
@@ -18,6 +19,9 @@ export default function FlujoScreen() {
   const userId = useV2UserId();
   const [tabs, setTabs] = useState<FlowScreenTab[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
+  // Coming back (from Movimientos) keeps the same objects when nothing changed, so the chart and day stay put.
+  const lastJson = useRef("");
 
   useFocusEffect(
     useCallback(() => {
@@ -25,8 +29,13 @@ export default function FlujoScreen() {
       loadInicio(userId)
         .then(({ state }) => {
           if (!live) return;
-          if (state.status === "ready") setTabs(state.flow);
-          else router.back(); // the first-run questions live on Inicio
+          if (state.status !== "ready") return router.back(); // the first-run questions live on Inicio
+          const json = JSON.stringify(state.flow);
+          if (json !== lastJson.current) {
+            lastJson.current = json;
+            setTabs(state.flow);
+          }
+          setError(null);
         })
         .catch((e) => {
           console.warn("[v2 flujo] load failed", e);
@@ -43,10 +52,15 @@ export default function FlujoScreen() {
 
   if (!tabs) {
     return (
-      <View style={{ flex: 1, backgroundColor: t.colors.bg, alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <View style={{ flex: 1, backgroundColor: t.colors.bg, alignItems: "center", justifyContent: "center", gap: 16, padding: 24, paddingTop: insets.top + 24 }}>
         {error
           ? <Text style={{ color: t.colors.bad.text, fontFamily: t.fonts.uiMedium, textAlign: "center" }} accessibilityRole="alert">{error}</Text>
           : <ActivityIndicator color={t.colors.ink} accessibilityLabel="Cargando" />}
+        {error && (
+          <Pressable onPress={() => router.back()} accessibilityRole="button" style={{ height: 42, paddingHorizontal: 20, borderRadius: 10, borderWidth: 1.5, borderColor: t.colors.control, justifyContent: "center" }}>
+            <Text style={{ color: t.colors.ink, fontFamily: t.fonts.uiSemibold, fontSize: 14 }}>Volver</Text>
+          </Pressable>
+        )}
       </View>
     );
   }
