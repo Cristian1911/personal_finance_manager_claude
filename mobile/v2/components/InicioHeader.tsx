@@ -32,13 +32,13 @@ export const InicioHeader = memo(function InicioHeader({
         <Text style={[styles.sub, { color: t.colors.muted, fontFamily: t.fonts.uiMedium }]} numberOfLines={1}>{sub}</Text>
       </View>
       {editing ? (
-        <Pressable onPress={onDone} accessibilityRole="button" style={[styles.done, { backgroundColor: t.colors.button }]}>
+        <Pressable onPress={onDone} accessibilityRole="button" hitSlop={6} style={[styles.done, { backgroundColor: t.colors.button }]}>
           <Text style={{ color: t.colors.onButton, fontFamily: t.fonts.uiSemibold, fontSize: 14 }}>Listo</Text>
         </Pressable>
       ) : (
         <>
           {onOrganize && (
-            <Pressable onPress={onOrganize} accessibilityRole="button" style={[styles.organize, { borderColor: t.colors.control }]}>
+            <Pressable onPress={onOrganize} accessibilityRole="button" hitSlop={6} style={[styles.organize, { borderColor: t.colors.control }]}>
               <Grip size={14} color={t.colors.ink} />
               <Text style={{ color: t.colors.ink, fontFamily: t.fonts.uiSemibold, fontSize: 13 }}>Organizar</Text>
             </Pressable>
@@ -47,6 +47,7 @@ export const InicioHeader = memo(function InicioHeader({
             onPress={onVoice}
             accessibilityRole="button"
             accessibilityLabel="Anotar con la voz"
+            hitSlop={6}
             style={[styles.mic, { backgroundColor: t.colors.button }]}
           >
             <Mic size={18} color={t.colors.onButton} />

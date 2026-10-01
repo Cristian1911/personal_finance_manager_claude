@@ -43,7 +43,7 @@ export const AddWidgetSheet = memo(function AddWidgetSheet({
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={[styles.scrim, { backgroundColor: t.colors.scrim }]} onPress={onClose} accessibilityLabel="Cerrar" />
+      <Pressable style={[styles.scrim, { backgroundColor: t.colors.scrim }]} onPress={onClose} accessible={false} />
       <View style={[styles.sheet, { backgroundColor: t.colors.card, paddingBottom: insets.bottom + 20 }]}>
         <View style={[styles.handle, { backgroundColor: t.colors.control }]} />
         <View style={styles.head}>
@@ -62,6 +62,7 @@ export const AddWidgetSheet = memo(function AddWidgetSheet({
                   onPress={() => onAdd(w.id)}
                   accessibilityRole="button"
                   accessibilityLabel={`Agregar ${w.title}`}
+                  hitSlop={8}
                   style={[styles.add, { backgroundColor: t.colors.button }]}
                 >
                   <Plus size={16} color={t.colors.onButton} />
@@ -87,7 +88,7 @@ function Row({ icon: Icon, title, question, muted, children }: {
 }) {
   const t = useV2Theme();
   return (
-    <View style={[styles.row, { borderBottomColor: t.colors.line, opacity: muted ? 0.7 : 1 }]} accessible={muted} accessibilityLabel={muted ? `${title}. ${question}. Pronto.` : undefined}>
+    <View style={[styles.row, { borderBottomColor: t.colors.line }]} accessible={muted} accessibilityLabel={muted ? `${title}. ${question}. Pronto.` : undefined}>
       <View style={[styles.icon, { backgroundColor: t.colors.sunk }]}>
         <Icon size={18} color={t.colors.ink} />
       </View>

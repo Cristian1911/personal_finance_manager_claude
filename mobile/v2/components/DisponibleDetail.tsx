@@ -118,17 +118,15 @@ function PartRow({
   const Chevron = open ? ChevronUp : ChevronDown;
   return (
     <View style={[styles.rowWrap, { borderTopColor: t.colors.line }]}>
-      <Pressable
-        onPress={() => onToggle(p.key)}
-        accessibilityRole="button"
-        accessibilityState={{ expanded: open }}
-        accessibilityLabel={`${p.label}: ${p.amount}. ${p.sub}`}
-        style={[
-          styles.row,
-          open && [styles.glow, { backgroundColor: t.colors.sunk, borderColor: c.outline ?? c.fill, shadowColor: c.outline ?? c.fill }],
-        ]}
-      >
-        <View style={styles.rowTop}>
+      {/* The glow is on this wrapper; the items sit outside the row's button so screen readers reach them. */}
+      <View style={[styles.row, open && [styles.glow, { backgroundColor: t.colors.sunk, borderColor: c.outline ?? c.fill, shadowColor: c.outline ?? c.fill }]]}>
+        <Pressable
+          onPress={() => onToggle(p.key)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: open }}
+          accessibilityLabel={`${p.label}: ${p.amount}. ${p.sub}`}
+          style={styles.rowTop}
+        >
           <View style={[styles.swatch, { backgroundColor: c.fill }, c.outline && { borderWidth: 1.5, borderColor: c.outline }]} />
           <View style={styles.rowText}>
             <Text style={[styles.rowLabel, { color: t.colors.ink, fontFamily: t.fonts.uiMedium }]}>{p.label}</Text>
@@ -138,7 +136,7 @@ function PartRow({
           <View style={[styles.chev, { borderColor: t.colors.control }]}>
             <Chevron size={14} color={t.colors.ink} strokeWidth={2.2} />
           </View>
-        </View>
+        </Pressable>
 
         {open && (
           <View style={[styles.items, { backgroundColor: t.colors.card }]}>
@@ -163,7 +161,7 @@ function PartRow({
             )}
           </View>
         )}
-      </Pressable>
+      </View>
     </View>
   );
 }
@@ -193,7 +191,7 @@ const styles = StyleSheet.create({
   item: { flexDirection: "row", justifyContent: "space-between", gap: 10 },
   itemText: { fontSize: 13, fontVariant: ["tabular-nums"] },
   itemTitle: { flexShrink: 1 },
-  done: { textDecorationLine: "line-through", opacity: 0.6 },
+  done: { textDecorationLine: "line-through" },
   more: { alignItems: "center", paddingTop: 2 },
   result: { borderRadius: 14, borderWidth: 1.5, borderColor: "transparent", padding: 12, marginTop: 6 },
   resultTop: { flexDirection: "row", alignItems: "center", gap: 10 },

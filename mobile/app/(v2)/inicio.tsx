@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, LayoutAnimation, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useReducedMotion } from "react-native-reanimated";
 import { Lock, Plus } from "lucide-react-native";
 import {
   applyInicioLayout, headerDate, layoutOf, WIDGET_SIZES,
@@ -59,6 +60,10 @@ export default function InicioScreen() {
   const [adding, setAdding] = useState(false);
   const [dragging, setDragging] = useState(false);
   const editing = draft !== null;
+  const reduceMotion = useReducedMotion();
+  const animate = useCallback(() => {
+    if (!reduceMotion) LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+  }, [reduceMotion]);
 
   // Only the latest load may land (focus, answer and user changes can overlap), and
   // an unchanged result keeps the old objects so memoized widgets don't redraw.
@@ -118,9 +123,9 @@ export default function InicioScreen() {
     if (route) router.push(route as never);
   }, [router]);
   const toggleDetail = useCallback(() => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    animate();
     setDetailOpen((o) => !o);
-  }, []);
+  }, [animate]);
   const voice = useCallback(() => Alert.alert("Pronto", "Anotar con la voz llega en una próxima versión."), []);
 
   // ── Organizar ──
@@ -129,6 +134,8 @@ export default function InicioScreen() {
     setDraft(layoutOf(widgets, layout?.hidden ?? []));
   }, [widgets, layout]);
   const finishOrganizing = useCallback(() => {
+    // A load already in flight read the old layout: let it go.
+    request.current++;
     if (draft) {
       setLayout(draft);
       void saveInicioLayout(userId, draft).catch((e) => console.warn("[v2 inicio] layout not saved", e));
@@ -138,7 +145,6 @@ export default function InicioScreen() {
   }, [draft, userId]);
   const editingHandlers = useMemo<GridEditing | null>(() => {
     if (!draft) return null;
-    const animate = () => LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     return {
       onMove: (id, targetId) => {
         animate();
@@ -164,12 +170,12 @@ export default function InicioScreen() {
       },
       onDragging: setDragging,
     };
-  }, [draft]);
+  }, [draft, animate]);
   const addWidget = useCallback((id: string) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    animate();
     const key = id.split(":")[0] as InicioWidgetKey;
     setDraft((d) => d && { items: [...d.items, { id, size: WIDGET_SIZES[key][0] }], hidden: d.hidden.filter((h) => h !== id) });
-  }, []);
+  }, [animate]);
 
   const firstName = fullName?.trim().split(/\s+/)[0] ?? null;
 
@@ -203,7 +209,7 @@ export default function InicioScreen() {
             <View>
               <DisponibleBlock view={ready.view} open={detailOpen} onToggle={editing ? undefined : toggleDetail} dimmed={editing} />
               {editing && (
-                <View style={[styles.fixed, { backgroundColor: t.colors.card }]} accessibilityLabel="Fijo">
+                <View style={[styles.fixed, { backgroundColor: t.colors.card }]} accessible accessibilityLabel="Fijo">
                   <Lock size={12} color={t.colors.muted} />
                   <Text style={{ color: t.colors.muted, fontFamily: t.fonts.uiSemibold, fontSize: 11 }}>Fijo</Text>
                 </View>

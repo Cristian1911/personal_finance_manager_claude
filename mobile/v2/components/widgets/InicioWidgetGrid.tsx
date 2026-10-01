@@ -76,6 +76,8 @@ export const InicioWidgetGrid = memo(function InicioWidgetGrid({
   const rowY = useRef(new Map<string, number>());
   const cells = useRef(new Map<string, LayoutRectangle>());
   const [dragging, setDragging] = useState<string | null>(null);
+  const ids = useRef<string[]>([]);
+  ids.current = widgets.map((w) => w.id);
   const dropTarget = useCallback((id: string, dx: number, dy: number): string | null => {
     const from = cells.current.get(id);
     // Barely moved: stay put.
@@ -85,13 +87,13 @@ export const InicioWidgetGrid = memo(function InicioWidgetGrid({
     let best: string | null = null;
     let bestDist = Infinity;
     for (const [other, r] of cells.current) {
-      if (other === id || !widgets.some((w) => w.id === other)) continue;
+      if (other === id || !ids.current.includes(other)) continue;
       const inside = cx >= r.x && cx <= r.x + r.width && cy >= r.y && cy <= r.y + r.height;
       const dist = inside ? -1 : Math.hypot(cx - (r.x + r.width / 2), cy - (r.y + r.height / 2));
       if (dist < bestDist) { bestDist = dist; best = other; }
     }
     return best;
-  }, [widgets]);
+  }, []);
 
   return (
     <View style={styles.grid}>
@@ -120,7 +122,14 @@ export const InicioWidgetGrid = memo(function InicioWidgetGrid({
                   }}
                 >
                   {editing ? (
-                    <EditableCell widget={w} editing={editing} onDrag={setDragging} dropTarget={dropTarget} />
+                    <EditableCell
+                      widget={w}
+                      editing={editing}
+                      onDrag={setDragging}
+                      dropTarget={dropTarget}
+                      prevId={ids.current[ids.current.indexOf(w.id) - 1] ?? null}
+                      nextId={ids.current[ids.current.indexOf(w.id) + 1] ?? null}
+                    />
                   ) : (
                     <WidgetCard widget={w} open={open === w.id} dim={!!openHalf && openHalf.id !== w.id} onToggle={toggle} onAction={onAction} />
                   )}
@@ -139,16 +148,21 @@ export const InicioWidgetGrid = memo(function InicioWidgetGrid({
 const keyOf = (id: string) => id.split(":")[0] as InicioWidgetKey;
 const FILL = { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 } as const;
 
-function EditableCell({
+const EditableCell = memo(function EditableCell({
   widget: w,
   editing,
   onDrag,
   dropTarget,
+  prevId,
+  nextId,
 }: {
   widget: InicioWidget;
   editing: GridEditing;
   onDrag: (id: string | null) => void;
   dropTarget: (id: string, dx: number, dy: number) => string | null;
+  /** Neighbours in order, for moving with a screen reader. */
+  prevId: string | null;
+  nextId: string | null;
 }) {
   const t = useV2Theme();
   const pan = useRef(new Animated.ValueXY()).current;
@@ -159,6 +173,9 @@ function EditableCell({
 
   const responder = useMemo(() => {
     const end = (target: string | null) => {
+      // ponytail: snaps to its old slot, then the reorder animates it; a full widget's
+      // row keeps its key, so skipping this would leave it offset. Reanimated layout
+      // transitions would fix the snap if it bothers on device.
       pan.setValue({ x: 0, y: 0 });
       setActive(false);
       latest.current.onDrag(null);
@@ -186,11 +203,22 @@ function EditableCell({
 
   return (
     <Animated.View style={[styles.editCell, { transform: pan.getTranslateTransform() }, active && styles.dragged]}>
-      <View pointerEvents="none" style={styles.editCell} importantForAccessibility="no-hide-descendants">
+      <View pointerEvents="none" style={styles.editCell} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
         <WidgetCard widget={w} open={false} dim={false} onToggle={noop} editInset />
       </View>
       <View pointerEvents="none" style={[FILL, styles.dashed, { borderColor: t.colors.control }]} />
-      <View {...responder.panHandlers} style={styles.grip} accessible accessibilityLabel={`Mover ${w.title}`}>
+      <View
+        {...responder.panHandlers}
+        style={styles.grip}
+        accessible
+        accessibilityRole="adjustable"
+        accessibilityLabel={`Mover ${w.title}`}
+        accessibilityActions={[{ name: "decrement", label: "Mover antes" }, { name: "increment", label: "Mover después" }]}
+        onAccessibilityAction={(e) => {
+          const target = e.nativeEvent.actionName === "decrement" ? prevId : nextId;
+          if (target) editing.onMove(w.id, target);
+        }}
+      >
         <Grip size={18} color={t.colors.muted} />
       </View>
       <View style={styles.editTools}>
@@ -199,7 +227,7 @@ function EditableCell({
           disabled={sizes.length < 2}
           accessibilityRole="button"
           accessibilityLabel={`Tamaño de ${w.title}: ${sizeLabel}${sizes.length < 2 ? "" : ". Toca para cambiar"}`}
-          hitSlop={6}
+          hitSlop={10}
           style={[styles.sizeChip, { backgroundColor: t.colors.button, opacity: sizes.length < 2 ? 0.55 : 1 }]}
         >
           <Text style={[styles.sizeText, { color: t.colors.onButton, fontFamily: t.fonts.uiSemibold }]}>{sizeLabel}</Text>
@@ -208,7 +236,7 @@ function EditableCell({
           onPress={() => editing.onRemove(w.id)}
           accessibilityRole="button"
           accessibilityLabel={`Quitar ${w.title}`}
-          hitSlop={6}
+          hitSlop={10}
           style={[styles.remove, { borderColor: t.colors.control, backgroundColor: t.colors.card }]}
         >
           <X size={12} color={t.colors.ink} strokeWidth={2.2} />
@@ -216,7 +244,7 @@ function EditableCell({
       </View>
     </Animated.View>
   );
-}
+});
 
 const noop = () => undefined;
 

@@ -549,9 +549,9 @@ export function applyInicioLayout(widgets: InicioWidget[], layout: InicioLayout 
   const add = (w: InicioWidget, size: InicioWidgetSize) => {
     const allowed = WIDGET_SIZES[keyOf(w.id)];
     const s = allowed.includes(size) ? size : allowed[0];
-    const sized = s === w.size ? w : { ...w, size: s };
-    if (s === "full" && (w.key === "pago" || w.key === "tarjeta") && !w.empty) sized.previewRows = w.rows.slice(0, 3);
-    out.push(sized);
+    const preview = s === "full" && (w.key === "pago" || w.key === "tarjeta") && !w.empty;
+    // New objects only when something changes: the input lives in React state.
+    out.push(s === w.size && !preview ? w : { ...w, size: s, ...(preview ? { previewRows: w.rows.slice(0, 3) } : {}) });
     placed.add(w.id);
   };
   for (const item of layout?.items ?? []) {

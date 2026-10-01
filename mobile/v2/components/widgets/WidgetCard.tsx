@@ -52,6 +52,11 @@ export const WidgetCard = memo(function WidgetCard({
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
         accessibilityLabel={spokenLabel(w)}
+        // The action chip sits inside this button; screen readers get it as an action.
+        accessibilityActions={firstAction && onAction ? [{ name: "action", label: firstAction.label }] : undefined}
+        onAccessibilityAction={(e) => {
+          if (e.nativeEvent.actionName === "action" && firstAction && onAction) onAction(firstAction.id);
+        }}
         style={[styles.press, editInset && styles.pressEdit]}
       >
         <View style={styles.head}>
@@ -127,7 +132,7 @@ export const WidgetPanel = memo(function WidgetPanel({
           onPress={onClose}
           accessibilityRole="button"
           accessibilityLabel={`Cerrar ${w.title}`}
-          hitSlop={8}
+          hitSlop={10}
           style={[styles.close, { borderColor: t.colors.control }]}
         >
           <X size={14} color={t.colors.ink} strokeWidth={2.2} />
