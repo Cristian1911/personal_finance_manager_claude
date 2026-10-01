@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import {
   ChartSpline, ChevronRight, Clock, CreditCard, Receipt, Sun, Users, X, type LucideIcon,
@@ -149,38 +149,40 @@ const FlowWidgetCard = memo(function FlowWidgetCard({ widget: w, open, dim, onTo
   const t = useV2Theme();
   const visual = w.visual?.kind === "flow" ? w.visual : null;
   const [selected, setSelected] = useState(visual?.todayIndex ?? 0);
-  // Every opening starts on today.
+  // Back to today when it closes, so the next opening starts there without a stale frame.
   useEffect(() => {
-    if (open && visual) setSelected(visual.todayIndex);
+    if (!open && visual) setSelected(visual.todayIndex);
   }, [open, visual?.todayIndex]);
-  if (!visual) return null;
+  const day = useMemo(() => {
+    if (!visual) return null;
+    const n = visual.days.length;
+    return flowDayView(visual.days[Math.min(selected, n - 1)], visual.days[visual.todayIndex].date);
+  }, [visual, selected]);
+  if (!visual || !day) return null;
   const n = visual.days.length;
-  const day = flowDayView(visual.days[Math.min(selected, n - 1)], visual.days[visual.todayIndex].date);
   const red = w.attention?.level === "red";
   const Icon = WIDGET_ICONS[w.key];
 
   return (
     <Dim on={dim} style={[styles.card, { backgroundColor: t.colors.card }, t.shadow]}>
       <View style={styles.flowWrap}>
-        <Pressable
-          onPress={() => onToggle(w.id)}
-          accessibilityRole="button"
-          accessibilityState={{ expanded: open }}
-          accessibilityLabel={spokenLabel(w)}
-          accessibilityHint={open ? "Cierra Tu flujo" : dim ? "Cambia a este widget" : undefined}
-          style={styles.head}
-        >
-          <Icon size={16} color={t.colors.ink} strokeWidth={2} />
-          <Text style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]} numberOfLines={1}>{w.title}</Text>
-          {open && (
-            <View style={[styles.flowClose, { borderColor: t.colors.control }]} accessible={false}>
-              <X size={13} color={t.colors.ink} strokeWidth={2.2} />
-            </View>
-          )}
-        </Pressable>
+        <View style={styles.flowHead}>
+          <Pressable
+            onPress={() => onToggle(w.id)}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: open }}
+            accessibilityLabel={open ? `Cerrar ${w.title}` : spokenLabel(w)}
+            accessibilityHint={!open && dim ? "Cambia a este widget" : undefined}
+            style={[styles.head, styles.flowTitle]}
+          >
+            <Icon size={16} color={t.colors.ink} strokeWidth={2} />
+            <Text style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]} numberOfLines={1}>{w.title}</Text>
+          </Pressable>
+          {open && <View style={styles.flowCloseSlot}><CloseButton title={w.title} onPress={() => onToggle(w.id)} /></View>}
+        </View>
 
         <Collapse open={open}>
-          <View style={styles.readout}>
+          <View style={styles.readout} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
             <Text style={[styles.readoutDay, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]}>{day.label}</Text>
             <Text style={[styles.readoutAmount, { color: t.colors.ink, fontFamily: t.fonts.numberSemibold }]}>{day.balance}</Text>
           </View>
@@ -192,6 +194,7 @@ const FlowWidgetCard = memo(function FlowWidgetCard({ widget: w, open, dim, onTo
             accessible={open}
             accessibilityRole="adjustable"
             accessibilityLabel="Día en Tu flujo"
+            accessibilityHint="Desliza arriba o abajo para cambiar de día"
             accessibilityValue={{ text: `${day.label}, ${day.balance.replace(/≈\s/, "aproximadamente ")}` }}
             accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
             onAccessibilityAction={(e) => {
@@ -213,7 +216,7 @@ const FlowWidgetCard = memo(function FlowWidgetCard({ widget: w, open, dim, onTo
       </View>
 
       <Collapse open={open} onHeight={onBodyHeight}>
-        <View style={styles.flowDay}>
+        <View style={styles.flowDay} accessibilityLiveRegion="polite">
           {day.items.length > 0
             ? <Rows rows={day.items} />
             : <Text style={[styles.note, { color: t.colors.muted, fontFamily: t.fonts.ui }]}>Nada este día.</Text>}
@@ -224,6 +227,22 @@ const FlowWidgetCard = memo(function FlowWidgetCard({ widget: w, open, dim, onTo
     </Dim>
   );
 });
+
+/** The × that closes an open widget: one size and target everywhere. */
+function CloseButton({ title, onPress }: { title: string; onPress: () => void }) {
+  const t = useV2Theme();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Cerrar ${title}`}
+      hitSlop={10}
+      style={[styles.close, { borderColor: t.colors.control }]}
+    >
+      <X size={14} color={t.colors.ink} strokeWidth={2.2} />
+    </Pressable>
+  );
+}
 
 /** A half widget opened: a full-width panel under its row, with a close button. */
 export const WidgetPanel = memo(function WidgetPanel({
@@ -355,7 +374,9 @@ const styles = StyleSheet.create({
   press: { flexGrow: 1, minHeight: 120, paddingHorizontal: 12, paddingTop: 14, paddingBottom: 12, alignItems: "center" },
   pressEdit: { paddingTop: 42 },
   flowWrap: { paddingHorizontal: 12, paddingTop: 14, paddingBottom: 12 },
-  flowClose: { position: "absolute", right: 0, width: 28, height: 28, borderRadius: 14, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
+  flowHead: { minHeight: 30, justifyContent: "center" },
+  flowTitle: { minHeight: 30, paddingHorizontal: 36 },
+  flowCloseSlot: { position: "absolute", right: 0, top: 0 },
   readout: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", paddingTop: 10, paddingHorizontal: 4 },
   readoutDay: { fontSize: 13 },
   readoutAmount: { fontSize: 16, fontVariant: ["tabular-nums"] },
