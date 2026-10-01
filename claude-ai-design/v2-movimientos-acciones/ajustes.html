@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ajustes v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@500;600&family=Bricolage+Grotesque:opsz,wght@12..96,600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@0.453.0/dist/umd/lucide.min.js"></script>
+<style>
+  :root { --bg:#E9E0CC; --card:#FFFCF5; --ink:#14160F; --muted:#4B463B; --line:#E6DDC9; --ctl:#8C7F63; --sunk:#EFE7D6; --btn:#14160F; --btn-ink:#FFFCF5;
+    --ok-x:#2E4A12; --ok-t:#CFE0A6; --ok-s:#4E7A1E; --warn-s:#B27800; --warn-t:#F6D98C; --warn-x:#5C3F00; --bad-x:#7A2410;
+    --ui:"Geist",system-ui,sans-serif; --mono:"Geist Mono",ui-monospace,monospace; --num:"Bricolage Grotesque",var(--ui);
+    --shadow:0 1px 2px rgba(60,48,20,.06),0 4px 14px rgba(60,48,20,.07); }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#DCD3BF; color:var(--ink); font-family:var(--ui); }
+  main { max-width:1560px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font:600 26px var(--ui); letter-spacing:-.02em; margin:0 0 6px; }
+  h2 { font:600 19px var(--ui); margin:36px 0 6px; }
+  p, li { font:400 14px/1.55 var(--ui); color:var(--muted); max-width:960px; }
+  b { color:var(--ink); }
+  .phones { display:flex; flex-wrap:wrap; gap:26px; margin-top:16px; }
+  .col { width:360px; }
+  .col h3 { font:600 15px var(--ui); margin:0 0 4px; }
+  .col p { font-size:13px; margin:0 0 10px; min-height:96px; }
+  .phone { width:360px; height:780px; border-radius:40px; background:var(--bg); position:relative; overflow:hidden; box-shadow:0 18px 50px rgba(40,30,10,.22), inset 0 0 0 7px #1d1d1b; }
+  .scr { position:absolute; inset:7px; border-radius:33px; overflow:hidden; background:var(--bg); }
+  .page { position:absolute; inset:0; overflow-y:auto; padding:48px 14px 24px; display:flex; flex-direction:column; gap:12px; }
+  .hd { display:flex; align-items:center; gap:10px; }
+  .sq { width:36px; height:36px; border-radius:10px; border:1.5px solid var(--ctl); display:grid; place-items:center; flex:none; }
+  .sq svg { width:18px; height:18px; }
+  .hd b { flex:1; font:600 20px var(--ui); text-align:center; }
+  .ph { width:36px; }
+  .card { background:var(--card); border-radius:18px; box-shadow:var(--shadow); }
+  .sec { font:600 11.5px var(--mono); letter-spacing:.05em; text-transform:uppercase; color:var(--muted); padding:6px 4px 0; }
+  .me { display:flex; align-items:center; gap:12px; padding:14px 16px; }
+  .me .av { width:46px; height:46px; border-radius:50%; background:var(--sunk); box-shadow:inset 0 0 0 1.5px var(--ctl); display:grid; place-items:center; font:600 15px var(--ui); color:var(--muted); }
+  .me div:nth-child(2) { flex:1; }
+  .me b { display:block; font:600 16px var(--ui); }
+  .me small { font:400 13px var(--ui); color:var(--muted); }
+  .row { display:flex; align-items:center; gap:12px; min-height:54px; padding:8px 14px; border-bottom:1px solid var(--line); }
+  .row:last-child { border-bottom:0; }
+  .ic { width:32px; height:32px; border-radius:9px; background:var(--sunk); display:grid; place-items:center; flex:none; }
+  .ic svg { width:17px; height:17px; }
+  .row .t { flex:1; min-width:0; }
+  .row .t b { display:block; font:500 15px var(--ui); }
+  .row .t small { display:block; font:400 12.5px var(--ui); color:var(--muted); }
+  .row .t small.warn { color:var(--warn-x); }
+  .row .v { font:600 13px var(--ui); color:var(--muted); }
+  .chev { width:16px; height:16px; color:var(--ctl); flex:none; }
+  .dots { display:flex; gap:4px; }
+  .dots span { width:8px; height:8px; border-radius:50%; }
+  .ok { background:var(--ok-s); } .wn { background:var(--warn-s); }
+  .quiet { text-align:center; font:600 14px var(--ui); color:var(--muted); padding:6px; }
+  .quiet.danger { color:var(--bad-x); }
+  .ver { text-align:center; font:500 11.5px var(--mono); color:var(--muted); }
+  .src { display:flex; align-items:center; gap:12px; padding:12px 14px; border-bottom:1px solid var(--line); }
+  .src:last-child { border-bottom:0; }
+  .src .t { flex:1; }
+  .src .t b { display:block; font:500 15px var(--ui); }
+  .src .t small { display:block; font:400 12.5px var(--ui); color:var(--muted); }
+  .st { font:600 11.5px var(--ui); padding:3px 8px; border-radius:99px; white-space:nowrap; }
+  .st.okk { background:var(--ok-t); color:var(--ok-x); }
+  .st.w { background:var(--warn-t); color:var(--warn-x); }
+  .alert { background:var(--warn-t); border-radius:16px; padding:12px 14px; display:flex; flex-direction:column; gap:8px; }
+  .alert b { font:600 14px var(--ui); }
+  .alert span { font:400 13px/1.45 var(--ui); color:var(--warn-x); }
+  .btn { height:42px; border-radius:10px; background:var(--btn); color:var(--btn-ink); display:grid; place-items:center; font:600 14px var(--ui); }
+  .btn-o { height:44px; border-radius:11px; border:1.5px solid var(--ctl); display:flex; align-items:center; justify-content:center; gap:8px; font:600 14px var(--ui); }
+  .btn-o svg { width:17px; height:17px; }
+  .opt { display:flex; align-items:center; gap:12px; padding:14px 16px; border-radius:14px; background:var(--card); box-shadow:var(--shadow); }
+  .opt.on { box-shadow:inset 0 0 0 2px var(--ink), var(--shadow); }
+  .opt .r { width:22px; height:22px; border-radius:50%; border:1.5px solid var(--ctl); display:grid; place-items:center; flex:none; }
+  .opt.on .r { background:var(--btn); border-color:var(--btn); }
+  .opt.on .r::after { content:""; width:8px; height:8px; border-radius:50%; background:var(--btn-ink); }
+  .opt .t b { display:block; font:600 15px var(--ui); }
+  .opt .t small { font:400 12.5px var(--ui); color:var(--muted); }
+  .money { background:var(--card); border-radius:16px; box-shadow:var(--shadow); padding:14px 16px; }
+  .money small { display:block; font:500 12.5px var(--ui); color:var(--muted); }
+  .money b { font:600 26px var(--num); letter-spacing:-.02em; }
+  .effect { font:500 12.5px/1.45 var(--ui); color:var(--muted); background:var(--sunk); border-radius:10px; padding:9px 11px; }
+  .priv { display:flex; gap:12px; padding:12px 14px; border-bottom:1px solid var(--line); }
+  .priv:last-child { border-bottom:0; }
+  .priv .ci { width:24px; height:24px; border-radius:50%; display:grid; place-items:center; flex:none; }
+  .priv .ci svg { width:14px; height:14px; }
+  .priv b { display:block; font:600 14px var(--ui); }
+  .priv small { font:400 13px/1.45 var(--ui); color:var(--muted); }
+  .counter { text-align:center; padding:14px; }
+  .counter b { font:600 15px var(--ui); }
+  .counter small { display:block; font:400 12.5px var(--ui); color:var(--muted); margin-top:4px; }
+  table { width:100%; max-width:1100px; border-collapse:collapse; background:var(--card); border-radius:14px; overflow:hidden; box-shadow:var(--shadow); font:400 13px/1.45 var(--ui); margin-top:10px; }
+  th, td { text-align:left; padding:8px 11px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font:600 12px var(--ui); color:var(--muted); background:var(--sunk); }
+  .q { background:var(--card); border-radius:14px; padding:14px 16px; box-shadow:var(--shadow); margin:10px 0; max-width:960px; font:400 14px/1.55 var(--ui); color:var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Ajustes</h1>
+  <p>Reached from the avatar on Inicio (S8-1). It builds on Claude Design's <b>Z Ajustes</b>, reorganized by <b>what you want to change</b>, plus what the use cases need that it didn't have: <b>Cuándo me pagan</b> and <b>Ahorro</b> (the inputs to your number), <b>Destinatarios</b> (S8-2), <b>Bloqueo</b> (K9), your profile and signing out. Plantillas and Ignorados (rare) go inside Fuentes. Apariencia, Tu plan and Privacidad stay as Claude Design drew them.</p>
+
+  <div class="phones">
+    <div class="col">
+      <h3>1 · Ajustes</h3>
+      <p>Four groups, in order of how much they affect your number: <b>Tu número</b> (what Disponible uses), <b>Lo que Zeta sabe</b> (destinatarios and categories), <b>Captura</b> (where the movements come from) and <b>La app</b>. Each row shows its current state, so you rarely need to open it.</p>
+      <div class="phone"><div class="scr"><div class="page">
+        <div class="hd"><span class="sq"><i data-lucide="chevron-left"></i></span><b>Ajustes</b><span class="ph"></span></div>
+        <div class="card me"><span class="av">LG</span><div><b>Laura Gómez</b><small>laura@gmail.com</small></div><i class="chev" data-lucide="chevron-right"></i></div>
+        <div class="sec">Tu número</div>
+        <div class="card">
+          <div class="row"><span class="ic"><i data-lucide="calendar-clock"></i></span><div class="t"><b>Cuándo me pagan</b><small>15 y 30 · $2.100.000</small></div><i class="chev" data-lucide="chevron-right"></i></div>
+          <div class="row"><span class="ic"><i data-lucide="piggy-bank"></i></span><div class="t"><b>Ahorro</b><small>$200.000 cada quincena</small></div><i class="chev" data-lucide="chevron-right"></i></div>
+          <div class="row"><span class="ic"><i data-lucide="wallet"></i></span><div class="t"><b>Mis cuentas</b><small>3 cuentan · 1 aparte · 2 deudas</small></div><i class="chev" data-lucide="chevron-right"></i></div>
+        </div>
+        <div class="sec">Lo que Zeta sabe</div>
+        <div class="card">
+          <div class="row"><span class="ic"><i data-lucide="users"></i></span><div class="t"><b>Destinatarios</b><small>38 comercios · 6 personas</small></div><i class="chev" data-lucide="chevron-right"></i></div>
+          <div class="row"><span class="ic"><i data-lucide="tag"></i></span><div class="t"><b>Categorías</b><small>25 categorías · 92% se ordena solo</small></div><i class="chev" data-lucide="chevron-right"></i></div>
+        </div>
+        <div class="sec">Captura</div>
+        <div class="card">
+          <div class="row"><span class="ic"><i data-lucide="link"></i></span><div class="t"><b>Fuentes</b><small class="warn">Gmail sin correos hace 3 días</small></div><span class="dots"><span class="ok"></span><span class="ok"></span><span class="ok"></span><span class="wn"></span></span><i class="chev" data-lucide="chevron-right"></i></div>
+        </div>
+        <div class="sec">La app</div>
+        <div class="card">
+          <div class="row"><span class="ic"><i data-lucide="sun"></i></span><div class="t"><b>Apariencia</b><small>Oliva · Sistema</small></div><i class="chev" data-lucide="chevron-right"></i></div>
+          <div class="row"><span class="ic"><i data-lucide="bell"></i></span><div class="t"><b>Avisos</b><small>Resumen el domingo</small></div><i class="chev" data-lucide="chevron-right"></i></div>
+          <div class="row"><span class="ic"><i data-lucide="lock"></i></span><div class="t"><b>Bloqueo</b><small>Face ID al abrir</small></div><i class="chev" data-lucide="chevron-right"></i></div>
+          <div class="row"><span class="ic"><i data-lucide="shield"></i></span><div class="t"><b>Privacidad</b><small>Qué leo y qué no · tus datos</small></div><i class="chev" data-lucide="chevron-right"></i></div>
+        </div>
+        <div class="card"><div class="row"><span class="ic"><i data-lucide="life-buoy"></i></span><div class="t"><b>Ayuda y reportar un problema</b></div><i class="chev" data-lucide="chevron-right"></i></div></div>
+        <div class="quiet">Cerrar sesión</div>
+        <div class="ver">Zeta 2.0 · v2</div>
+      </div></div></div>
+    </div>
+
+    <div class="col">
+      <h3>2 · Fuentes (where movements come from)</h3>
+      <p>Each source with its <b>status in words</b>, never just a dot. The one with a problem rises to the top with what to do. Extractos (PDF) live here too. Plantillas and Ignorados close the screen: they're for when something didn't come in right.</p>
+      <div class="phone"><div class="scr"><div class="page">
+        <div class="hd"><span class="sq"><i data-lucide="chevron-left"></i></span><b>Fuentes</b><span class="ph"></span></div>
+        <div class="alert"><b>Gmail no ha traído correos en 3 días</b><span>Normalmente llegan a diario. Puede ser el permiso.</span><div class="btn">Revisar conexión</div></div>
+        <div class="sec">Avisos del celular</div>
+        <div class="card">
+          <div class="src"><span class="ic"><i data-lucide="smartphone"></i></span><div class="t"><b>Bancolombia</b><small>Último: hoy 12:41</small></div><span class="st okk">Funciona</span></div>
+          <div class="src"><span class="ic"><i data-lucide="smartphone"></i></span><div class="t"><b>Nequi</b><small>Último: hoy 8:15</small></div><span class="st okk">Funciona</span></div>
+          <div class="src"><span class="ic"><i data-lucide="smartphone"></i></span><div class="t"><b>Nu</b><small>Último: ayer 19:30</small></div><span class="st okk">Funciona</span></div>
+        </div>
+        <div class="sec">Correo</div>
+        <div class="card">
+          <div class="src"><span class="ic"><i data-lucide="mail"></i></span><div class="t"><b>Gmail</b><small>Último: hace 3 días</small></div><span class="st w">Revisar</span></div>
+        </div>
+        <div class="sec">Extractos</div>
+        <div class="card">
+          <div class="src"><span class="ic"><i data-lucide="file-text"></i></span><div class="t"><b>Subir un extracto PDF</b><small>Corrige montos y llena huecos · 2 de 3 este mes</small></div><i class="chev" data-lucide="chevron-right"></i></div>
+        </div>
+        <div class="card">
+          <div class="src"><span class="ic"><i data-lucide="copy"></i></span><div class="t"><b>Plantillas</b><small>Formatos que aprendí: 14</small></div><i class="chev" data-lucide="chevron-right"></i></div>
+          <div class="src"><span class="ic"><i data-lucide="eye-off"></i></span><div class="t"><b>Ignorados</b><small>Avisos que descarté · rescatar uno</small></div><i class="chev" data-lucide="chevron-right"></i></div>
+        </div>
+        <div class="btn-o"><i data-lucide="plus"></i>Agregar una fuente</div>
+      </div></div></div>
+    </div>
+
+    <div class="col">
+      <h3>3 · Cuándo me pagan</h3>
+      <p>The onboarding question, now editable. Before saving it says <b>what changes</b> (the cycle and your number), following the "show the consequence" rule. The same pattern applies to Ahorro: amount + effect.</p>
+      <div class="phone"><div class="scr"><div class="page">
+        <div class="hd"><span class="sq"><i data-lucide="chevron-left"></i></span><b>Cuándo me pagan</b><span class="ph"></span></div>
+        <div class="opt on"><span class="r"></span><div class="t"><b>El 15 y el 30</b><small>Quincenal</small></div></div>
+        <div class="opt"><span class="r"></span><div class="t"><b>Una vez al mes</b><small>Elige el día</small></div></div>
+        <div class="opt"><span class="r"></span><div class="t"><b>Cada dos semanas</b><small>Desde un día de pago</small></div></div>
+        <div class="opt"><span class="r"></span><div class="t"><b>Varía</b><small>Freelance o por días · el ciclo es el mes</small></div></div>
+        <div class="money"><small>Te llega cada quincena</small><b>$2.100.000</b></div>
+        <div class="effect">Si lo cambias a mensual el día 30: tu ciclo pasa a ser <b>30 sep – 29 oct</b> y tu Disponible se recalcula con $4.200.000.</div>
+        <div class="btn" style="margin-top:auto">Guardar</div>
+      </div></div></div>
+    </div>
+
+    <div class="col">
+      <h3>4 · Privacidad (Claude Design, unchanged)</h3>
+      <p>Already designed: what Zeta reads, what it never reads and never asks for, the counter of discarded notifications, and your data (download / delete everything). It's here so you can see the whole flow; it doesn't change.</p>
+      <div class="phone"><div class="scr"><div class="page">
+        <div class="hd"><span class="sq"><i data-lucide="chevron-left"></i></span><b>Privacidad</b><span class="ph"></span></div>
+        <div class="card">
+          <div class="priv"><span class="ci" style="background:var(--ok-t);color:var(--ok-x)"><i data-lucide="check"></i></span><div><b>Leo</b><small>Avisos de Bancolombia, Nequi y Nu; SMS de 85540 y 891333; correos de bancos.</small></div></div>
+          <div class="priv"><span class="ci" style="background:var(--sunk)"><i data-lucide="x"></i></span><div><b>Nunca leo</b><small>Chats, fotos, otros correos, otras notificaciones.</small></div></div>
+          <div class="priv"><span class="ci" style="background:var(--sunk)"><i data-lucide="x"></i></span><div><b>Nunca pido</b><small>Claves del banco ni acceso para mover plata.</small></div></div>
+        </div>
+        <div class="card counter"><b>Hoy descartamos 214 avisos que no eran de tus bancos.</b><small>Solo miramos el remitente. No los guardamos ni los leemos.</small></div>
+        <div class="btn-o"><i data-lucide="download"></i>Descargar mis datos</div>
+        <div class="quiet danger">Borrar todo</div>
+      </div></div></div>
+    </div>
+  </div>
+
+  <h2>Every use case under Ajustes, with its place</h2>
+  <table>
+    <tr><th>Row</th><th>Cases</th><th>Other ways in</th><th>Milestone</th></tr>
+    <tr><td>Profile</td><td>A9 (sign-in), sign out</td><td>—</td><td>M1</td></tr>
+    <tr><td>Cuándo me pagan</td><td>A2, A3</td><td>Onboarding · Cómo sale tu número</td><td>M1 (the command exists)</td></tr>
+    <tr><td>Ahorro</td><td>I1, I2</td><td>Cómo sale › Ahorro · prompt on a new cycle</td><td>M1</td></tr>
+    <tr><td>Mis cuentas</td><td>A8, A13, B5, F1, F5</td><td>Mis cuentas widget · Cómo sale · Detalle (the account)</td><td>M1/M2</td></tr>
+    <tr><td>Destinatarios</td><td>D4–D6 (S8-2)</td><td>Detalle · Te deben · Revisar</td><td>M3</td></tr>
+    <tr><td>Categorías</td><td>D13, D17</td><td>Category picker › Nueva</td><td>M3</td></tr>
+    <tr><td>Fuentes (+ Plantillas, Ignorados, Extractos)</td><td>A7, K1–K4, C3, K11</td><td>Inicio line when a source fails · "Extracto listo" push</td><td>M2/M5/M6</td></tr>
+    <tr><td>Apariencia</td><td>K10</td><td>—</td><td>M1 (already exists in the gallery)</td></tr>
+    <tr><td>Avisos</td><td>K5</td><td>—</td><td>M7</td></tr>
+    <tr><td>Bloqueo</td><td>K9</td><td>—</td><td>already exists in v1</td></tr>
+    <tr><td>Privacidad</td><td>K6–K8</td><td>Onboarding (on granting permissions)</td><td>M7</td></tr>
+    <tr><td>Tu plan</td><td>K12</td><td>Paywall when you tap a Plus feature</td><td>v1.1 (hidden until then)</td></tr>
+    <tr><td>Ayuda y reportar</td><td>(v1 bug-report)</td><td>—</td><td>M1</td></tr>
+  </table>
+
+  <h2>To decide</h2>
+  <div class="q"><b>1. Plantillas and Ignorados inside Fuentes</b> (instead of top level as Claude Design has them). They're rare and their reason to exist is "something didn't come in right", which is Fuentes' problem.</div>
+  <div class="q"><b>2. Destinatarios and Categorías as two rows</b>, or one "Lo que Zeta sabe" that opens with both tabs? I propose two: they answer different questions ("who is this" vs "what kind of spending").</div>
+  <div class="q"><b>3. "Tu plan" hidden until v1.1</b>, when Plus exists (S5-1: don't build the gate before billing).</div>
+</main>
+<script>lucide.createIcons();</script>
+</body>
+</html>
