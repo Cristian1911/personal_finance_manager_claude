@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Detalle del Disponible: C + D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#E9E0CC; --card:#FFFCF5; --ink:#14160F; --ink2:#4B463B; --line:#E6DDC9; --ctl:#8C7F63; --sunk:#EFE7D6;
+    --ok-t:#CFE0A6; --ok-x:#2E4A12; --ok-s:#4E7A1E; --est:#D8CDB5; --shadow:0 3px 8px rgba(40,30,10,.10);
+    --ui:"Geist",system-ui,sans-serif;
+  }
+  :root[data-theme="dark"] {
+    --bg:#12130E; --card:#1F2119; --ink:#F3EFE3; --ink2:#B8B09C; --line:#2E3027; --ctl:#858270; --sunk:#2A2C22;
+    --ok-t:#2A3A14; --ok-x:#CFE39A; --ok-s:#8DB84A; --est:#5A5544; --shadow:none;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--ui); }
+  header.top { max-width:1300px; margin:0 auto; padding:24px 16px 8px; display:flex; flex-wrap:wrap; gap:12px 24px; align-items:flex-end; justify-content:space-between; }
+  h1 { margin:0; font-size:24px; font-weight:600; }
+  header.top p { margin:4px 0 0; color:var(--ink2); font-size:14px; max-width:720px; line-height:1.45; }
+  .toggle { display:flex; border:1.5px solid var(--ctl); border-radius:10px; overflow:hidden; }
+  .toggle button { font:600 14px var(--ui); padding:8px 14px; border:0; background:transparent; color:var(--ink); cursor:pointer; }
+  .toggle button[aria-pressed="true"] { background:var(--ink); color:var(--card); }
+  .grid { max-width:1300px; margin:0 auto; padding:16px; display:grid; grid-template-columns:repeat(auto-fill,minmax(360px,1fr)); gap:28px 20px; align-items:start; }
+  .state h2 { font-size:15px; margin:0 0 4px; font-weight:600; }
+  .state .why { font-size:13px; color:var(--ink2); margin:0 0 12px; line-height:1.45; min-height:38px; }
+  .phone { max-width:390px; background:var(--bg); border-radius:28px; padding:12px 14px 18px; border:1px solid var(--line); }
+  .money { font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+  .head { display:flex; align-items:center; gap:10px; margin:2px 0 12px; }
+  .head .who { flex:1; }
+  .head .who b { display:block; font:600 17px var(--ui); }
+  .head .who span { font:500 13px var(--ui); color:var(--ink2); }
+  .btn-o { height:36px; padding:0 12px; border-radius:10px; border:1.5px solid var(--ctl); display:flex; align-items:center; gap:6px; font:600 13px var(--ui); }
+  .btn-s { width:36px; height:36px; border-radius:10px; background:var(--ink); color:var(--card); display:flex; align-items:center; justify-content:center; font-size:15px; }
+
+  .hero { background:var(--ok-t); color:var(--ok-x); border-radius:24px; padding:16px 20px; box-shadow:var(--shadow); }
+  .hero .r1 { display:flex; justify-content:space-between; align-items:center; }
+  .pill { display:inline-flex; align-items:center; gap:7px; height:28px; padding:0 12px; border-radius:99px; background:var(--card); font:600 13px var(--ui); }
+  .pill i { width:8px; height:8px; border-radius:9px; background:var(--ok-s); }
+  .hero .pay { font:500 13px var(--ui); }
+  .hero .lbl { font:600 14px var(--ui); margin-top:14px; color:var(--ink); }
+  .hero .big { font:800 60px/1.02 var(--ui); letter-spacing:-.045em; color:var(--ink); margin-top:2px; }
+  .hero .r3 { display:flex; justify-content:space-between; margin-top:12px; font:500 13px var(--ui); }
+  .hero .r3 b { font:600 14px var(--ui); color:var(--ink); }
+  .hero .tap { display:flex; justify-content:center; margin-top:10px; font:600 12px var(--ui); color:var(--ok-x); gap:4px; }
+
+  .detail { background:var(--card); border-radius:18px; box-shadow:var(--shadow); padding:14px 16px 12px; margin-top:10px; }
+  .detail h3 { font:600 15px var(--ui); margin:0; }
+  .detail h3 .money { font-weight:600; }
+  .eat { height:20px; border-radius:7px; display:flex; overflow:hidden; gap:2px; margin:12px 0 6px; }
+  .cap { display:flex; justify-content:space-between; font:500 11.5px var(--ui); color:var(--ink2); }
+  .row { border-top:1px solid var(--line); padding:11px 0; }
+  .row:first-of-type { margin-top:10px; }
+  .row .top { display:flex; align-items:center; gap:10px; }
+  .sw { width:12px; height:12px; border-radius:3px; flex:none; }
+  .row .n { flex:1; font:500 14px var(--ui); }
+  .row .n small { display:block; color:var(--ink2); font:400 12px var(--ui); margin-top:1px; }
+  .row .v { font:600 14px var(--ui); }
+  .chev { width:26px; height:26px; border-radius:99px; border:1.5px solid var(--ctl); display:flex; align-items:center; justify-content:center; color:var(--ink); flex:none; }
+  .items { margin:9px 0 0 22px; padding:8px 10px; background:var(--sunk); border-radius:12px; display:grid; gap:7px; }
+  .items div { display:flex; justify-content:space-between; gap:10px; font:400 13px var(--ui); }
+  .items span:first-child { color:var(--ink2); }
+  .items .more { justify-content:center; font-weight:600; color:var(--ink); }
+  .items .more span { color:var(--ink) !important; }
+  .result { display:flex; align-items:center; gap:10px; margin-top:4px; padding:12px; border-radius:14px; background:var(--ok-t); }
+  .result .n { flex:1; font:600 15px var(--ui); color:var(--ink); }
+  .result .v { font:600 17px var(--ui); color:var(--ink); }
+  .ghost { height:120px; border-radius:18px; background:var(--card); box-shadow:var(--shadow); margin-top:10px; opacity:.55; display:flex; align-items:center; justify-content:center; font:600 13px var(--ui); color:var(--ink2); }
+</style>
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>Detalle del Disponible: C + D</h1>
+    <p>Tocas el número y debajo se abre: la barra de D ("De tus $X de este ciclo") y las filas de C que se despliegan. Mismos colores en barra y filas. Tocas el número otra vez y se cierra.</p>
+  </div>
+  <div class="toggle" role="group" aria-label="Tema">
+    <button type="button" aria-pressed="true" data-t="light">Claro</button>
+    <button type="button" aria-pressed="false" data-t="dark">Oscuro</button>
+  </div>
+</header>
+
+<main class="grid">
+  <section class="state">
+    <h2>1 · Cerrado (como hoy en el diseño)</h2>
+    <p class="why">El hero de Claude Design. Una pista pequeña invita a tocarlo.</p>
+    <div class="phone">
+      <div class="head"><div class="who"><b>Hola, Laura</b><span>Jueves 18 sep</span></div><span class="btn-o">⠿ Organizar</span><span class="btn-s">🎙</span></div>
+      <div class="hero">
+        <div class="r1"><span class="pill"><i></i>Vas bien</span><span class="pay">Te pagan en 12 días</span></div>
+        <div class="lbl">Disponible</div>
+        <div class="big money">$421.100</div>
+        <div class="r3"><span><b class="money">$35.000</b> al día</span><span class="money">+$2.100.000 cuando te paguen</span></div>
+        <div class="tap">Cómo sale ▾</div>
+      </div>
+      <div class="ghost">Tu flujo</div>
+    </div>
+  </section>
+
+  <section class="state">
+    <h2>2 · Abierto</h2>
+    <p class="why">La barra dice de un vistazo qué se lleva cada parte; las filas dan los montos.</p>
+    <div class="phone">
+      <div class="hero">
+        <div class="r1"><span class="pill"><i></i>Vas bien</span><span class="pay">Te pagan en 12 días</span></div>
+        <div class="lbl">Disponible</div>
+        <div class="big money">$421.100</div>
+        <div class="r3"><span><b class="money">$35.000</b> al día</span><span class="money">+$2.100.000 cuando te paguen</span></div>
+        <div class="tap">Ocultar ▴</div>
+      </div>
+      <div class="detail">
+        <h3>De tus <span class="money">$2.100.000</span> de este ciclo</h3>
+        <div class="eat">
+          <div style="flex:1378.9;background:var(--ink)"></div>
+          <div style="flex:200;background:var(--ink2)"></div>
+          <div style="flex:100;background:var(--est);box-shadow:inset 0 0 0 1.5px var(--ctl)"></div>
+          <div style="flex:421.1;background:var(--ok-s)"></div>
+        </div>
+        <div class="cap"><span>$0</span><span class="money">$2.100.000</span></div>
+        <div class="row"><div class="top"><span class="sw" style="background:var(--ink)"></span><span class="n">Por pagar<small>3 pagos antes del 30</small></span><span class="v money">$1.378.900</span><span class="chev"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div></div>
+        <div class="row"><div class="top"><span class="sw" style="background:var(--ink2)"></span><span class="n">Ahorro<small>Lo que separas cada ciclo</small></span><span class="v money">$200.000</span><span class="chev"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div></div>
+        <div class="row"><div class="top"><span class="sw" style="background:var(--est);box-shadow:inset 0 0 0 1.5px var(--ctl)"></span><span class="n">Gastado<small>12 movimientos desde el 15</small></span><span class="v money">$100.000</span><span class="chev"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div></div>
+        <div class="result"><span class="sw" style="background:var(--ok-s)"></span><span class="n">Te queda</span><span class="v money">$421.100</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="state">
+    <h2>3 · Una fila abierta</h2>
+    <p class="why">Por pagar muestra sus pagos; Gastado, lo último que salió y "Ver todos". Una fila abierta a la vez.</p>
+    <div class="phone">
+      <div class="detail" style="margin-top:0">
+        <h3>De tus <span class="money">$2.100.000</span> de este ciclo</h3>
+        <div class="eat">
+          <div style="flex:1378.9;background:var(--ink)"></div>
+          <div style="flex:200;background:var(--ink2)"></div>
+          <div style="flex:100;background:var(--est);box-shadow:inset 0 0 0 1.5px var(--ctl)"></div>
+          <div style="flex:421.1;background:var(--ok-s)"></div>
+        </div>
+        <div class="cap"><span>$0</span><span class="money">$2.100.000</span></div>
+        <div class="row"><div class="top"><span class="sw" style="background:var(--ink)"></span><span class="n">Por pagar<small>3 pagos antes del 30</small></span><span class="v money">$1.378.900</span><span class="chev"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 7.5 6 4.5 9 7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+          <div class="items">
+            <div><span>Arriendo · 19 sep</span><span class="money">$700.000</span></div>
+            <div><span>Tarjeta Nu · mínimo · 22 sep</span><span class="money">≈ $640.000</span></div>
+            <div><span>Netflix · 24 sep</span><span class="money">$38.900</span></div>
+          </div>
+        </div>
+        <div class="row"><div class="top"><span class="sw" style="background:var(--ink2)"></span><span class="n">Ahorro<small>Lo que separas cada ciclo</small></span><span class="v money">$200.000</span><span class="chev"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div></div>
+        <div class="row"><div class="top"><span class="sw" style="background:var(--est);box-shadow:inset 0 0 0 1.5px var(--ctl)"></span><span class="n">Gastado<small>12 movimientos desde el 15</small></span><span class="v money">$100.000</span><span class="chev"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 7.5 6 4.5 9 7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+          <div class="items">
+            <div><span>Rappi · hoy 12:41</span><span class="money">$32.000</span></div>
+            <div><span>Tostao · hoy 8:10</span><span class="money">$8.000</span></div>
+            <div><span>Éxito · ayer</span><span class="money">$45.000</span></div>
+            <div class="more"><span>Ver los 12 ›</span></div>
+          </div>
+        </div>
+        <div class="result"><span class="sw" style="background:var(--ok-s)"></span><span class="n">Te queda</span><span class="v money">$421.100</span></div>
+      </div>
+    </div>
+  </section>
+</main>
+<script>
+  for (const b of document.querySelectorAll(".toggle button")) {
+    b.addEventListener("click", () => {
+      document.documentElement.dataset.theme = b.dataset.t;
+      for (const o of document.querySelectorAll(".toggle button")) o.setAttribute("aria-pressed", String(o === b));
+    });
+  }
+</script>
+</body>
+</html>

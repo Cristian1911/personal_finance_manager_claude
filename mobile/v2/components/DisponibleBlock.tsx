@@ -1,127 +1,105 @@
-import { memo, useState } from "react";
-import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
+import { memo } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { ChevronDown, ChevronUp } from "lucide-react-native";
 import type { DisponibleBlockView } from "@zeta/shared";
 import { VERDICT_STATE } from "../tokens";
 import { useV2Theme } from "../theme/ThemeProvider";
+import { FittedAmount } from "./FittedAmount";
 
 /**
- * The fixed block on top of Inicio (S5-4): verdict pill, payday, the one big
- * number, one per-day line, "+$X cuando te paguen". Oliva tints the card with
- * the state; Nítido fills it solid. Only this number is heavy (S5-R).
- * All copy comes from disponibleBlockView (@zeta/shared).
+ * The fixed block on top of Inicio (S5-4, Claude Design "Z Disponible"):
+ * verdict pill, payday, the one big number, "$35.000 al día" and
+ * "+$X cuando te paguen". Tapping it opens how the number comes out
+ * (DisponibleDetail). Oliva tints the card with the state; Nítido fills it
+ * solid. Only this number is heavy (S5-R). All copy comes from
+ * disponibleBlockView (@zeta/shared).
  */
 export const DisponibleBlock = memo(function DisponibleBlock({
   view,
-  onPressSub,
+  open = false,
+  onToggle,
+  dimmed = false,
 }: {
   view: DisponibleBlockView;
-  onPressSub?: () => void;
+  open?: boolean;
+  onToggle?: () => void;
+  dimmed?: boolean;
 }) {
   const t = useV2Theme();
   const state = t.colors[VERDICT_STATE[view.state]];
   const solid = t.disponibleStyle === "solid";
   const fill = solid ? state.solid : state.tint;
   const accent = solid ? state.onSolid : state.text;
-  const number = solid ? state.onSolid : t.colors.ink;
+  const strong = solid ? state.onSolid : t.colors.ink;
+  const Chevron = open ? ChevronUp : ChevronDown;
 
   return (
-    <View style={[styles.block, { backgroundColor: fill }, !solid && t.shadow]}>
-      {/* One read-only group for screen readers; the sub line below stays its own button. */}
-      <View accessible accessibilityLabel={spokenLabel(view)}>
-        <View style={styles.top}>
-          <View
-            style={[
-              styles.pill,
-              solid ? { borderWidth: 1.5, borderColor: accent } : { backgroundColor: t.colors.card },
-            ]}
-          >
-            <View style={[styles.dot, { backgroundColor: accent }]} />
-            <Text style={[styles.pillText, { color: accent, fontFamily: t.fonts.uiSemibold }]}>{view.pill}</Text>
-          </View>
-          <Text style={[styles.payday, { color: accent, fontFamily: t.fonts.ui }]} numberOfLines={2}>
-            {view.payday}
-          </Text>
+    <Pressable
+      onPress={onToggle}
+      disabled={!onToggle}
+      accessibilityRole={onToggle ? "button" : "summary"}
+      accessibilityState={onToggle ? { expanded: open } : undefined}
+      accessibilityLabel={spokenLabel(view)}
+      accessibilityHint={onToggle ? (open ? "Oculta cómo sale tu número" : "Muestra cómo sale tu número") : undefined}
+      style={[styles.block, { backgroundColor: fill, opacity: dimmed ? 0.55 : 1 }, !solid && t.shadow]}
+    >
+      <View style={styles.top}>
+        <View style={[styles.pill, solid ? { borderWidth: 1.5, borderColor: accent } : { backgroundColor: t.colors.card }]}>
+          <View style={[styles.dot, { backgroundColor: solid ? accent : state.solid }]} />
+          <Text style={[styles.pillText, { color: accent, fontFamily: t.fonts.uiSemibold }]}>{view.pill}</Text>
         </View>
-
-        <Text style={[styles.eyebrow, { color: accent, fontFamily: t.fonts.mono }]}>DISPONIBLE</Text>
-        <FittedAmount full={view.amount} short={view.amountShort} color={number} fontFamily={t.fonts.number} />
-        <Text style={[styles.perDay, { color: accent, fontFamily: t.fonts.uiMedium }]}>{view.perDay}</Text>
-        {view.approxNote && (
-          <Text style={[styles.sub, { color: accent, fontFamily: t.fonts.ui }]}>~ {view.approxNote}</Text>
-        )}
+        <Text style={[styles.payday, { color: accent, fontFamily: t.fonts.uiMedium }]} numberOfLines={1}>
+          {view.payday}
+        </Text>
       </View>
-      {view.sub && (
-        <Pressable onPress={onPressSub} disabled={!onPressSub} accessibilityRole={onPressSub ? "button" : "text"} hitSlop={8}>
-          <Text style={[styles.sub, { color: accent, fontFamily: t.fonts.ui }]}>{view.sub}</Text>
-        </Pressable>
+
+      <Text style={[styles.label, { color: strong, fontFamily: t.fonts.uiSemibold }]}>Disponible</Text>
+      <FittedAmount full={view.amount} short={view.amountShort} color={strong} fontFamily={t.fonts.number} size={64} style={styles.number} />
+
+      <View style={styles.bottom}>
+        <Text style={[styles.meta, { color: accent, fontFamily: t.fonts.uiMedium }]}>
+          {view.perDayAmount && (
+            <Text style={{ color: strong, fontFamily: t.fonts.numberSemibold, fontSize: 14 }}>{view.perDayAmount} </Text>
+          )}
+          {view.perDayRest}
+        </Text>
+        {view.sub && <Text style={[styles.meta, { color: accent, fontFamily: t.fonts.uiMedium }]}>{view.sub}</Text>}
+      </View>
+      {view.approxNote && (
+        <Text style={[styles.meta, styles.approx, { color: accent, fontFamily: t.fonts.ui }]}>~ {view.approxNote}</Text>
       )}
-    </View>
+      {onToggle && (
+        <View style={styles.toggle}>
+          <Text style={[styles.toggleText, { color: accent, fontFamily: t.fonts.uiSemibold }]}>{open ? "Ocultar" : "Cómo sale"}</Text>
+          <Chevron size={14} color={accent} strokeWidth={2.4} />
+        </View>
+      )}
+    </Pressable>
   );
 });
 
 /** "~" and "−" read aloud the same way on every screen reader. */
-const spoken = (amount: string) => amount.replace("~", "aproximadamente ").replace("−", "menos ");
+const spoken = (amount: string) => amount.replace("~", "aproximadamente ").replace(/−/g, "menos ");
 
 function spokenLabel(v: DisponibleBlockView): string {
   const parts = [v.pill, `Disponible ${spoken(v.amount)}`, v.perDay, v.payday];
+  if (v.sub) parts.push(spoken(v.sub));
   if (v.approxNote) parts.push(v.approxNote);
   return `${parts.join(". ")}.`;
 }
 
-const NUMBER_SIZE = 56;
-const MIN_SCALE = 0.62;
-
-/**
- * Widget rule: the amount shrinks to fit (down to 62%) and is shortened
- * ("$14,4 M") only when the full amount can't fit at 62%. Measured by hand
- * instead of adjustsFontSizeToFit so iOS, Android and the web preview agree.
- * If even the short form doesn't fit it keeps shrinking (below 62%) rather
- * than clip: a readable number beats the floor.
- */
-function FittedAmount({ full, short, color, fontFamily }: { full: string; short: string; color: string; fontFamily: string }) {
-  const [box, setBox] = useState(0);
-  const [widths, setWidths] = useState<{ full: number; short: number }>({ full: 0, short: 0 });
-  const measure = (key: "full" | "short") => (e: LayoutChangeEvent) => {
-    const w = e.nativeEvent.layout.width;
-    setWidths((prev) => (prev[key] === w ? prev : { ...prev, [key]: w }));
-  };
-
-  const ready = box > 0 && widths.full > 0 && widths.short > 0;
-  const fullScale = ready ? Math.min(1, box / widths.full) : 1;
-  const useShort = ready && fullScale < MIN_SCALE;
-  const scale = useShort ? Math.min(1, box / widths.short) : fullScale;
-  const size = Math.floor(NUMBER_SIZE * scale);
-  const text = { color, fontFamily };
-
-  return (
-    <View style={styles.fit} onLayout={(e) => setBox(e.nativeEvent.layout.width)}>
-      <Text
-        style={[styles.number, text, { fontSize: size, lineHeight: Math.round(size * 1.14), opacity: ready ? 1 : 0 }]}
-        numberOfLines={1}
-      >
-        {useShort ? short : full}
-      </Text>
-      {/* Natural widths at full size, off-screen and invisible. */}
-      <View style={styles.measure} pointerEvents="none" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
-        <Text style={[styles.number, styles.measured, text]} onLayout={measure("full")}>{full}</Text>
-        <Text style={[styles.number, styles.measured, text]} onLayout={measure("short")}>{short}</Text>
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  block: { borderRadius: 22, paddingHorizontal: 18, paddingTop: 16, paddingBottom: 18 },
+  block: { borderRadius: 24, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 14 },
   top: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
-  pill: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 11, paddingVertical: 4, borderRadius: 999 },
-  dot: { width: 7, height: 7, borderRadius: 4 },
-  pillText: { fontSize: 14 },
-  payday: { fontSize: 14, flexShrink: 1, textAlign: "right" },
-  eyebrow: { fontSize: 12, letterSpacing: 1.2, marginTop: 14 },
-  number: { fontSize: 56, lineHeight: 64, letterSpacing: -1, marginTop: 4, fontVariant: ["tabular-nums"] },
-  fit: { overflow: "hidden" },
-  measure: { position: "absolute", top: 0, left: 0, width: 10_000, opacity: 0 },
-  measured: { alignSelf: "flex-start", marginTop: 0 },
-  perDay: { fontSize: 16, marginTop: 4 },
-  sub: { fontSize: 14, marginTop: 6 },
+  pill: { flexDirection: "row", alignItems: "center", gap: 7, height: 28, paddingHorizontal: 12, borderRadius: 999 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  pillText: { fontSize: 13 },
+  payday: { fontSize: 13, flexShrink: 1, textAlign: "right" },
+  label: { fontSize: 14, marginTop: 14 },
+  number: { letterSpacing: -2, marginTop: 2, fontVariant: ["tabular-nums"] },
+  bottom: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", columnGap: 10, rowGap: 4, marginTop: 12 },
+  meta: { fontSize: 13 },
+  approx: { marginTop: 6 },
+  toggle: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, marginTop: 10 },
+  toggleText: { fontSize: 12 },
 });

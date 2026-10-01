@@ -13,7 +13,7 @@ Cloud session scope (owner): Tasks 1–5, Task 6 Step 4 (gates) and Step 5 (revi
 | 3 Phone database | done | `8f6e397` |
 | 4 Local runner + self-test | done | `903b68b` |
 | 5 Debug screen | done | `e92ccf7` |
-| 6.1–6.3 Simulator | left for the local session | |
+| 6.1–6.3 Simulator | done in the local Mac session (2026-09-30, iOS 27 simulator) | — |
 | 6.4 Gates | done (run before and after the review fixes) | |
 | 6.5 Reviews | done; fixes applied | (review-fix commit) |
 
@@ -38,4 +38,4 @@ Cloud session scope (owner): Tasks 1–5, Task 6 Step 4 (gates) and Step 5 (revi
 - Task 1: the first cold run of the engine suite had 3 failures that did not reproduce in three later runs (57/57 each). Likely the default 5 s Vitest timeout on a cold PGlite start (each contract test boots a fresh PGlite). Pre-existing; watched in the gates.
 - Gates (after review fixes): `pnpm install` (lockfile unchanged), `pnpm --filter @zeta/shared test`, `pnpm build:web`, `mobile: npx tsc --noEmit`, `pnpm audit --audit-level high` (2 high, both ignored image-size advisories). Results in the session summary.
 - `superpowers:systematic-debugging` was not needed: no gate failed.
-- Left for the local Mac session: Task 6 Steps 1–3 (SQLCipher native build on the iOS simulator, v1 data check, debug flow with Autoprueba 9/9 screenshot), then Step 6 (PR).
+- Task 6 Steps 1–3 (local Mac, 2026-09-30, on `main` after #441): v1 opens its data; Autoprueba 9 de 9; Inicio three questions → $2.000.000, a $25.000 expense → $1.975.000; Simular clave perdida → "Bien". First run gave **8 de 9** ("legible sin clave"): the existing `mobile/ios/` predated `useSQLCipher` and `expo run:ios` doesn't re-run prebuild, so the build had plain SQLite. Fixed with `npx expo prebuild -p ios` + `pod install`; the self-test caught it as designed. Xcode 27 workarounds (scene delegate, deployment target, no Simulator.app) are in BACKLOG.
