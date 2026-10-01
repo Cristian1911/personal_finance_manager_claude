@@ -2,10 +2,13 @@ import {
   buildInicioWidgets,
   computeDisponible,
   disponibleDetailView,
+  flowScreenView,
   toDisponibleMovements,
   type CardSummary,
   type DisponibleDetailView,
+  type FlowScreenTab,
   type InicioWidget,
+  type InicioWidgetsInput,
   type Obligation,
   type PayCycle,
   type PersonOwing,
@@ -22,6 +25,11 @@ const TODAY = "2026-09-18";
 const CYCLE: PayCycle = {
   start: "2026-09-15", end: "2026-09-29", payday: "2026-09-15", nextPayday: "2026-09-30",
   days: 15, daysLeft: 12, startsOnExpectedDate: false, irregular: false,
+};
+/** The cycles around it, for the Tu flujo screen's Pasado and Próximo. */
+const CYCLES = {
+  prev: { ...CYCLE, start: "2026-08-30", end: "2026-09-14", payday: "2026-08-30", nextPayday: "2026-09-15", days: 16, daysLeft: 0 },
+  next: { ...CYCLE, start: "2026-09-30", end: "2026-10-14", payday: "2026-09-30", nextPayday: "2026-10-15", days: 15, daysLeft: 15 },
 };
 const DEBIT = "debit";
 const BILLS: Obligation[] = [
@@ -47,7 +55,7 @@ function widgets(c: {
   people?: PersonOwing[];
   cards?: CardSummary[];
   paidAgua?: boolean;
-}): { widgets: InicioWidget[]; detail: DisponibleDetailView } {
+}): { widgets: InicioWidget[]; detail: DisponibleDetailView; flow: FlowScreenTab[] } {
   const income = c.income ?? 2_100_000;
   const salary = tx("2026-09-15", income, "Nómina", "13:00", "INFLOW");
   const agua = tx("2026-09-16", AGUA.amount, "Acueducto", "14:00");
@@ -63,15 +71,20 @@ function widgets(c: {
     movements, obligations, savingsTarget: 200_000,
   });
   const counted = new Set([DEBIT]);
-  const widgets = buildInicioWidgets({
+  const input: InicioWidgetsInput = {
     today: TODAY, cycle: CYCLE, result, movements, counted, transactions, obligations,
     balances: [{ accountId: DEBIT, balance: c.balance ?? 2_000_000 }],
     people: c.people, cards: c.cards,
     youOwe: [{ name: "Mateo", amount: 50_000 }],
     balanceToday: c.balance ?? income - c.spends.reduce((s, t) => s + t.amount, 0),
     nextIncome: income,
-  });
-  return { widgets, detail: disponibleDetailView({ today: TODAY, cycle: CYCLE, result, obligations, movements, counted, transactions }) };
+    cycles: CYCLES,
+  };
+  return {
+    widgets: buildInicioWidgets(input),
+    detail: disponibleDetailView({ today: TODAY, cycle: CYCLE, result, obligations, movements, counted, transactions }),
+    flow: flowScreenView(input),
+  };
 }
 
 const people = (oldest: string): PersonOwing[] => [
@@ -115,4 +128,25 @@ export const WIDGET_CASES: { key: string; title: string; widgets: InicioWidget[]
     }),
   },
   { key: "negative", title: "Negativo", ...widgets({ spends: day(560_000, 60_000), obligations: LATER_BILLS }) },
+];
+
+/**
+ * The Tu flujo screen's four states (Claude Design "Z Flujo"): normal, red
+ * (runs out this cycle), big (a bill next cycle doesn't fit: amber + Apartar)
+ * and a selected day (Lunes 22 sep).
+ * "/v2-gallery?section=flujo&case=big" (tab=pasado|este|proximo optional).
+ */
+export const FLOW_TODAY = TODAY;
+export const FLOW_CASES: { key: string; tabs: FlowScreenTab[]; day: number | null }[] = [
+  { key: "normal", tabs: widgets({ spends: [tx("2026-09-16", 100_000, "Éxito", "19:30")] }).flow, day: null },
+  { key: "bad", tabs: widgets({ spends: [tx("2026-09-17", 400_000, "Falabella", "18:10")] }).flow, day: null },
+  {
+    key: "big",
+    tabs: widgets({
+      spends: [tx("2026-09-16", 100_000, "Éxito", "19:30")],
+      obligations: [...BILLS, { id: "mat", kind: "bill", label: "Matrícula", dueDate: "2026-10-09", amount: 2_400_000 }],
+    }).flow,
+    day: null,
+  },
+  { key: "dia", tabs: widgets({ spends: [tx("2026-09-16", 100_000, "Éxito", "19:30")] }).flow, day: 9 },
 ];

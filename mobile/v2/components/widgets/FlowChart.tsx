@@ -1,6 +1,6 @@
 import { memo, useMemo, useRef, useState } from "react";
 import { View } from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { Gesture, GestureDetector, type GestureType } from "react-native-gesture-handler";
 import Svg, { Circle, G, Line, Path, Rect } from "react-native-svg";
 import type { FlowDay } from "@zeta/shared";
 import { useV2Theme } from "../../theme/ThemeProvider";
@@ -21,6 +21,7 @@ export const FlowChart = memo(function FlowChart({
   height = 80,
   selectedIndex,
   onSelect,
+  blocks,
 }: {
   days: FlowDay[];
   todayIndex: number;
@@ -31,6 +32,8 @@ export const FlowChart = memo(function FlowChart({
   selectedIndex?: number;
   /** Tap or drag sideways to pick a day. Vertical drags stay with the page scroll. */
   onSelect?: (index: number) => void;
+  /** A gesture around the chart (the screen's cycle swipe) that waits for the chart's. */
+  blocks?: GestureType;
 }) {
   const [W, setW] = useState(0);
   const n = days.length;
@@ -50,8 +53,12 @@ export const FlowChart = memo(function FlowChart({
       .activeOffsetX([-6, 6]).failOffsetY([-10, 10])
       .onStart((e) => pickRef.current(e.x)).onUpdate((e) => pickRef.current(e.x));
     const tap = Gesture.Tap().runOnJS(true).enabled(enabled).onEnd((e) => pickRef.current(e.x));
+    if (blocks) {
+      pan.blocksExternalGesture(blocks);
+      tap.blocksExternalGesture(blocks);
+    }
     return Gesture.Race(pan, tap);
-  }, [enabled]);
+  }, [enabled, blocks]);
 
   return (
     <GestureDetector gesture={gesture}>
@@ -110,6 +117,9 @@ const ChartBody = memo(function ChartBody({ days, todayIndex, markIndex, bad, ge
 
   const future = bad ? t.colors.bad.solid : t.colors.ink;
   const mark = days[markIndex];
+  // A past cycle has today after its days (all solid), a next one before (all projected).
+  const hasToday = todayIndex >= 0 && todayIndex < n;
+  const ahead = Math.max(0, Math.min(n - 1, todayIndex));
 
   return (
     <Svg width={W} height={H} style={{ position: "absolute" }}>
@@ -119,7 +129,7 @@ const ChartBody = memo(function ChartBody({ days, todayIndex, markIndex, bad, ge
       <Path d={`${path(pts)} L${xs(n - 1).toFixed(1)} ${y0} L${xs(0).toFixed(1)} ${y0} Z`} fill={t.colors.ink} opacity={0.06} />
       {bad && (
         <Path
-          d={`${path(pts.slice(todayIndex).map(([x, y]) => [x, Math.max(y, y0)] as const))} L${xs(n - 1).toFixed(1)} ${y0} L${xs(todayIndex).toFixed(1)} ${y0} Z`}
+          d={`${path(pts.slice(ahead).map(([x, y]) => [x, Math.max(y, y0)] as const))} L${xs(n - 1).toFixed(1)} ${y0} L${xs(ahead).toFixed(1)} ${y0} Z`}
           fill={t.colors.bad.solid}
           opacity={0.22}
         />
@@ -155,9 +165,9 @@ const ChartBody = memo(function ChartBody({ days, todayIndex, markIndex, bad, ge
         }
         return bars.length ? <G key={d.date}>{bars}</G> : null;
       })}
-      <Line x1={xs(todayIndex)} x2={xs(todayIndex)} y1={0} y2={H} stroke={t.colors.muted} strokeWidth={1} strokeDasharray="2 3" />
-      <Path d={path(pts.slice(0, todayIndex + 1))} fill="none" stroke={t.colors.ink} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
-      <Path d={path(pts.slice(todayIndex))} fill="none" stroke={future} strokeWidth={2} strokeDasharray="5 4" strokeLinejoin="round" />
+      {hasToday && <Line x1={xs(todayIndex)} x2={xs(todayIndex)} y1={0} y2={H} stroke={t.colors.muted} strokeWidth={1} strokeDasharray="2 3" />}
+      {todayIndex >= 0 && <Path d={path(pts.slice(0, Math.min(todayIndex, n - 1) + 1))} fill="none" stroke={t.colors.ink} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />}
+      {todayIndex < n - 1 && <Path d={path(pts.slice(ahead))} fill="none" stroke={future} strokeWidth={2} strokeDasharray="5 4" strokeLinejoin="round" />}
       {mark && (
         <Circle cx={xs(markIndex)} cy={yB(mark.balance)} r={4.5} fill={t.colors.card} stroke={bad ? t.colors.bad.solid : t.colors.ink} strokeWidth={2} />
       )}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { Redirect, useLocalSearchParams } from "expo-router";
+import { Redirect, router, useLocalSearchParams } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { V2_DEBUG_ENABLED } from "../lib/v2/flags";
@@ -9,7 +9,8 @@ import { DisponibleDetail } from "../v2/components/DisponibleDetail";
 import { WidgetBody } from "../v2/components/widgets/WidgetCard";
 import { InicioWidgetGrid } from "../v2/components/widgets/InicioWidgetGrid";
 import { DISPONIBLE_CASES } from "../v2/gallery/disponible-cases";
-import { WIDGET_CASES } from "../v2/gallery/widget-cases";
+import { FLOW_CASES, FLOW_TODAY, WIDGET_CASES } from "../v2/gallery/widget-cases";
+import { FlowScreen } from "../v2/components/FlowScreen";
 import { useV2Fonts } from "../v2/theme/fonts";
 import { V2ThemeProvider, useV2Theme } from "../v2/theme/ThemeProvider";
 import type { ColorMode, ThemeName } from "../v2/tokens";
@@ -22,7 +23,7 @@ import type { DetailPartKey, InicioWidget } from "@zeta/shared";
  * Widgets: "/v2-gallery?section=widgets&case=red&open=hoy&detail=porPagar" (case, open and detail optional).
  */
 export default function V2GalleryRoute() {
-  const params = useLocalSearchParams<{ theme?: string; mode?: string; only?: string; section?: string; case?: string; open?: string; detail?: string }>();
+  const params = useLocalSearchParams<{ theme?: string; mode?: string; only?: string; section?: string; case?: string; open?: string; detail?: string; tab?: string }>();
   const [theme, setTheme] = useState<ThemeName>(params.theme === "nitido" ? "nitido" : "oliva");
   const [mode, setMode] = useState<ColorMode>(params.mode === "dark" ? "dark" : "light");
   const fontsReady = useV2Fonts();
@@ -31,12 +32,28 @@ export default function V2GalleryRoute() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
     <V2ThemeProvider name={theme} mode={mode}>
-      <Gallery
-        theme={theme} mode={mode} setTheme={setTheme} setMode={setMode} only={params.only}
-        section={params.section} widgetCase={params.case} open={params.open} detail={params.detail}
-      />
+      {params.section === "flujo" ? (
+        <FlowCase key={`${params.case}-${params.tab}`} caseKey={params.case} tab={params.tab} />
+      ) : (
+        <Gallery
+          theme={theme} mode={mode} setTheme={setTheme} setMode={setMode} only={params.only}
+          section={params.section} widgetCase={params.case} open={params.open} detail={params.detail}
+        />
+      )}
     </V2ThemeProvider>
     </GestureHandlerRootView>
+  );
+}
+
+/** The Tu flujo screen with gallery data (it's a whole screen, so it's shown alone). */
+function FlowCase({ caseKey, tab }: { caseKey?: string; tab?: string }) {
+  const c = FLOW_CASES.find((x) => x.key === caseKey) ?? FLOW_CASES[0];
+  const initialTab = tab === "pasado" || tab === "proximo" ? tab : "este";
+  return (
+    <FlowScreen
+      tabs={c.tabs} today={FLOW_TODAY} initialTab={initialTab} initialDay={c.day}
+      onBack={() => router.back()} onAdjust={() => undefined} onSetAside={() => undefined}
+    />
   );
 }
 
