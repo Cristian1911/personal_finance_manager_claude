@@ -39,7 +39,7 @@ export {
   type StoredTemplate,
   type StoredTransaction,
 } from "./movements";
-export { cycleLabel, disponibleBlockView, headerDate, shortDate, signedPesos, type DisponibleBlockView } from "./view";
+export { cycleLabel, disponibleBlockView, headerDate, parseAmount, shortDate, signedPesos, type DisponibleBlockView } from "./view";
 export {
   DETAIL_PAID_SHOWN,
   DETAIL_PENDING_SHOWN,

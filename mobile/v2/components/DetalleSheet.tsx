@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { toColombiaDateString } from "../../lib/utils/date";
 import { ChevronRight, FileText, Image as ImageIcon, Mail, Pencil, Smartphone, type LucideIcon } from "lucide-react-native";
-import type { DetalleSource, DetalleView } from "@zeta/shared";
+import { parseAmount, type DetalleSource, type DetalleView } from "@zeta/shared";
 import { useV2Theme } from "../theme/ThemeProvider";
 import { Sheet } from "./Sheet";
 
@@ -11,6 +12,7 @@ const SOURCE_ICON: Record<DetalleSource, LucideIcon> = {
   manual: Pencil, email: Mail, notification: Smartphone, pdf: FileText, screenshot: ImageIcon, other: FileText,
 };
 const toIso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
 
 /**
  * Detalle, design A (spec §3): facts on top (amount, name, source as an icon,
@@ -38,9 +40,12 @@ export function DetalleSheet({ detalle, onClose, onNote, onNotAMovement, onCount
   const noteOpenRef = useRef(false);
   const [fixing, setFixing] = useState(false);
   const [amountDraft, setAmountDraft] = useState("");
+  const amountStart = useRef("");
   const [dateDraft, setDateDraft] = useState<Date>(new Date());
+  // Android's picker is a dialog: mount it only while it's asked for (else it reopens on every render).
+  const [pickingDate, setPickingDate] = useState(false);
   useEffect(() => {
-    setNoteOpen(false); noteOpenRef.current = false; setFixing(false);
+    setNoteOpen(false); noteOpenRef.current = false; setFixing(false); setPickingDate(false);
   }, [detalle?.id]);
 
   const saveNote = () => {
@@ -50,23 +55,29 @@ export function DetalleSheet({ detalle, onClose, onNote, onNotAMovement, onCount
     const next = noteDraft.trim() || null;
     if (next !== d.note) onNote(next);
   };
-  const close = () => { saveNote(); onClose(); };
   const startFix = () => {
     if (!d?.manual) return;
-    setAmountDraft(String(d.raw.amount));
+    amountStart.current = String(d.raw.amount);
+    setAmountDraft(amountStart.current);
     setDateDraft(new Date(`${d.raw.date}T12:00:00`));
     setFixing(true);
   };
   const saveFix = () => {
-    if (!d) return;
-    const amount = Number(amountDraft.replace(/[^\d]/g, ""));
-    const date = toIso(dateDraft);
+    if (!d || !fixing) return;
     const fix: { amount?: number; date?: string } = {};
-    if (amount > 0 && amount !== d.raw.amount) fix.amount = amount;
+    // Only what the person changed: an untouched amount is never re-parsed.
+    if (amountDraft !== amountStart.current) {
+      const amount = parseAmount(amountDraft);
+      if (amount !== null && Math.abs(amount - d.raw.amount) > 0.001) fix.amount = amount;
+    }
+    const date = toIso(dateDraft);
     if (date !== d.raw.date) fix.date = date;
     setFixing(false);
+    setPickingDate(false);
     if (fix.amount !== undefined || fix.date !== undefined) onFix(fix);
   };
+  // Closing keeps what was typed, the note and the fix alike.
+  const close = () => { saveNote(); saveFix(); onClose(); };
 
   const Icon = d ? SOURCE_ICON[d.source] : Pencil;
   return (
@@ -79,7 +90,7 @@ export function DetalleSheet({ detalle, onClose, onNote, onNotAMovement, onCount
               onPress={startFix}
               disabled={!d.manual}
               accessibilityRole={d.manual ? "button" : undefined}
-              accessibilityLabel={`${d.title}, ${d.amount.replace(/−/g, "menos ").replace(/^\+/, "más ")}, ${d.facts}`}
+              accessibilityLabel={`${d.title}, ${d.amount.replace(/−/g, "menos ").replace(/^\+/, "más ")}, ${d.facts}${d.status ? `, ${d.status}` : ""}`}
               accessibilityHint={d.manual ? "Corrige el monto o la fecha" : undefined}
               style={styles.hero}
             >
@@ -102,21 +113,46 @@ export function DetalleSheet({ detalle, onClose, onNote, onNotAMovement, onCount
                 <TextInput
                   value={amountDraft}
                   onChangeText={setAmountDraft}
-                  keyboardType="number-pad"
+                  keyboardType="decimal-pad"
+                  autoFocus
+                  returnKeyType="done"
                   accessibilityLabel="Monto"
                   style={[styles.fixInput, { color: t.colors.ink, borderColor: t.colors.control, fontFamily: t.fonts.numberSemibold }]}
                 />
                 <Text style={[styles.fixLabel, { color: t.colors.muted, fontFamily: t.fonts.uiMedium }]}>Fecha</Text>
-                <DateTimePicker
-                  value={dateDraft}
-                  mode="date"
-                  display={Platform.OS === "ios" ? "compact" : "default"}
-                  maximumDate={new Date()}
-                  onChange={(_e, v) => v && setDateDraft(v)}
-                  accessibilityLabel="Fecha"
-                />
-                <Pressable onPress={saveFix} accessibilityRole="button" style={[styles.primaryM, { backgroundColor: t.colors.button }]}>
-                  <Text style={{ fontSize: 14, color: t.colors.onButton, fontFamily: t.fonts.uiSemibold }}>Guardar cambios</Text>
+                {Platform.OS === "ios" ? (
+                  <View style={styles.dateRow}>
+                    <DateTimePicker
+                      value={dateDraft}
+                      mode="date"
+                      display="compact"
+                      locale="es-CO"
+                      themeVariant={t.mode}
+                      accentColor={t.colors.button}
+                      maximumDate={new Date(`${toColombiaDateString()}T12:00:00`)}
+                      onChange={(_e, v) => v && setDateDraft(v)}
+                    />
+                  </View>
+                ) : (
+                  <Pressable
+                    onPress={() => setPickingDate(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Fecha: ${toIso(dateDraft)}. Cambiar`}
+                    style={[styles.fixInput, styles.dateButton, { borderColor: t.colors.control }]}
+                  >
+                    <Text style={{ fontSize: 15, color: t.colors.ink, fontFamily: t.fonts.uiSemibold }}>{toIso(dateDraft)}</Text>
+                  </Pressable>
+                )}
+                {Platform.OS !== "ios" && pickingDate && (
+                  <DateTimePicker
+                    value={dateDraft}
+                    mode="date"
+                    maximumDate={new Date(`${toColombiaDateString()}T12:00:00`)}
+                    onChange={(_e, v) => { setPickingDate(false); if (v) setDateDraft(v); }}
+                  />
+                )}
+                <Pressable onPress={saveFix} accessibilityRole="button" style={[styles.secondaryM, { borderColor: t.colors.control }]}>
+                  <Text style={{ fontSize: 14, color: t.colors.ink, fontFamily: t.fonts.uiSemibold }}>Guardar cambios</Text>
                 </Pressable>
               </View>
             )}
@@ -187,7 +223,9 @@ const styles = StyleSheet.create({
   fix: { borderRadius: 14, padding: 12, gap: 8 },
   fixLabel: { fontSize: 12 },
   fixInput: { height: 44, borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 12, fontSize: 18 },
-  primaryM: { height: 44, borderRadius: 11, alignItems: "center", justifyContent: "center", marginTop: 4 },
+  secondaryM: { height: 44, borderRadius: 11, borderWidth: 1.5, alignItems: "center", justifyContent: "center", marginTop: 4 },
+  dateRow: { minHeight: 44, alignSelf: "flex-start", justifyContent: "center" },
+  dateButton: { justifyContent: "center" },
   list: { borderWidth: 1, borderRadius: 16, overflow: "hidden" },
   row: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 50, paddingHorizontal: 14 },
   rowKey: { flex: 1, fontSize: 14 },

@@ -73,17 +73,23 @@ export default function MovimientosScreen() {
     return tx && data ? detalleView({ today: data.today, transaction: tx, accounts: data.accounts }) : null;
   }, [openId, data]);
 
-  const run = useCallback(async (type: CommandType, payload: unknown) => {
+  /** Runs a command and reloads; true when it was applied. */
+  const run = useCallback(async (type: CommandType, payload: unknown): Promise<boolean> => {
+    let applied = false;
     try {
       const { result } = await runLocalCommand({ type, userId, payload });
       if (result.status === "rejected") Alert.alert("No se pudo guardar", result.error ?? "Intenta de nuevo.");
+      applied = result.status === "applied";
     } catch (e) {
       console.warn("[v2 movimientos] command failed", e);
       Alert.alert("No se pudo guardar", "Intenta de nuevo.");
     }
     await reload();
+    return applied;
   }, [userId, reload]);
 
+  // One row open at a time; a new cycle, filter or search closes it.
+  const [openRow, setOpenRow] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; undo?: () => void } | null>(null);
 
   // "No es un movimiento": a manual entry is deleted, a bank one ignored — both with Deshacer.
@@ -91,18 +97,21 @@ export default function MovimientosScreen() {
     const tx = openId ? data?.transactions.find((x) => x.id === openId) : undefined;
     if (!tx || !detalle) return;
     setOpenId(null);
+    setOpenRow(null); // the row may be gone: nothing stays open (or dims the rest)
     if (detalle.manual) {
-      await run("deleteTransaction", { transactionId: tx.id } satisfies DeleteTransactionPayload);
+      if (!(await run("deleteTransaction", { transactionId: tx.id } satisfies DeleteTransactionPayload))) return;
+      // A clock that moved back since the capture must not make Deshacer fail.
+      const capturedAt = tx.createdAt && tx.createdAt < new Date().toISOString() ? tx.createdAt : undefined;
       setToast({
         message: `Borrado · ${detalle.title} ${detalle.amount}`,
         undo: () => void run("captureManualTransaction", {
           transactionId: tx.id, accountId: tx.accountId, amount: tx.amount, direction: tx.direction,
-          currencyCode: tx.currencyCode, date: tx.date, description: tx.description ?? detalle.title,
-          notes: tx.notes ?? null, ...(tx.createdAt ? { capturedAt: tx.createdAt } : {}),
+          currencyCode: tx.currencyCode, date: tx.date, description: tx.description?.trim() || detalle.title,
+          notes: tx.notes ?? null, ...(capturedAt ? { capturedAt } : {}),
         } satisfies CaptureManualTransactionPayload),
       });
     } else {
-      await run("setTransactionExcluded", { transactionId: tx.id, excluded: true } satisfies SetTransactionExcludedPayload);
+      if (!(await run("setTransactionExcluded", { transactionId: tx.id, excluded: true } satisfies SetTransactionExcludedPayload))) return;
       setToast({
         message: `Ignorado · ${detalle.title}`,
         undo: () => void run("setTransactionExcluded", { transactionId: tx.id, excluded: false } satisfies SetTransactionExcludedPayload),
@@ -111,8 +120,6 @@ export default function MovimientosScreen() {
   }, [openId, data, detalle, run]);
 
   const onRow = useCallback((id: string) => setOpenId(id), []);
-  // One row open at a time; a new cycle, filter or search closes it.
-  const [openRow, setOpenRow] = useState<string | null>(null);
   const onToggle = useCallback((id: string) => setOpenRow((o) => (o === id ? null : id)), []);
   useEffect(() => setOpenRow(null), [index, filter, search]);
   const back = useCallback(() => (router.canGoBack() ? router.back() : router.replace("/inicio" as never)), [router]);

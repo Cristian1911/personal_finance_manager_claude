@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Pressable, StyleSheet, Text } from "react-native";
+import { AccessibilityInfo, Pressable, StyleSheet, Text } from "react-native";
 import Animated, { useAnimatedStyle, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useV2Theme } from "../theme/ThemeProvider";
@@ -21,6 +21,8 @@ export function Toast({ message, action, onHide }: {
   hide.current = onHide;
   useEffect(() => {
     if (!message) return;
+    // iOS doesn't announce a view that appears late; Android uses the live region.
+    AccessibilityInfo.announceForAccessibility(action ? `${message}. ${action.label} disponible.` : message);
     const id = setTimeout(() => hide.current(), TOAST_MS);
     return () => clearTimeout(id);
   }, [message]);
@@ -34,7 +36,7 @@ export function Toast({ message, action, onHide }: {
     >
       <Text style={[styles.text, { color: t.colors.onButton, fontFamily: t.fonts.uiMedium }]} numberOfLines={2}>{message}</Text>
       {action && (
-        <Pressable onPress={() => { action.onPress(); onHide(); }} accessibilityRole="button" hitSlop={10}>
+        <Pressable onPress={() => { action.onPress(); onHide(); }} accessibilityRole="button" style={styles.actionHit}>
           <Text style={[styles.action, { color: t.colors.onButton, fontFamily: t.fonts.uiSemibold }]}>{action.label}</Text>
         </Pressable>
       )}
@@ -43,7 +45,8 @@ export function Toast({ message, action, onHide }: {
 }
 
 const styles = StyleSheet.create({
-  toast: { position: "absolute", left: 16, right: 16, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 13, flexDirection: "row", alignItems: "center", gap: 12 },
+  toast: { position: "absolute", left: 16, right: 16, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 4, flexDirection: "row", alignItems: "center", gap: 12 },
   text: { flex: 1, fontSize: 14 },
   action: { fontSize: 14, textDecorationLine: "underline" },
+  actionHit: { minHeight: 44, minWidth: 44, justifyContent: "center", alignItems: "center" },
 });

@@ -138,3 +138,16 @@ export function cycleLabel(cycle: { start: IsoDate; end: IsoDate }): string {
   const from = a.month === b.month && cycle.start.slice(0, 7) === cycle.end.slice(0, 7) ? `${a.day}` : `${a.day} ${a.month}`;
   return `Ciclo ${from} – ${b.day} ${b.month}`;
 }
+
+/**
+ * What a person typed as an amount: "25000", "25.000" and "25.000,50"
+ * (es-CO), or "12.5". Null when it isn't a positive amount.
+ */
+export function parseAmount(text: string): number | null {
+  const t = text.replace(/[\s$]/g, "");
+  if (!t) return null;
+  // ponytail: a dot followed by exactly 3 digits is a thousands separator (es-CO); a comma is the decimal mark.
+  const normalized = t.includes(",") ? t.replace(/\./g, "").replace(",", ".") : /\.\d{3}$/.test(t) ? t.replace(/\./g, "") : t;
+  const n = Number(normalized);
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : null;
+}
