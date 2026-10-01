@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Acciones de movimiento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@500;600&family=Bricolage+Grotesque:opsz,wght@12..96,600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #E9E0CC; --card: #FFFCF5; --ink: #14160F; --muted: #4B463B; --line: #E6DDC9;
+    --ctl: #8C7F63; --sunk: #EFE7D6; --btn: #14160F; --btn-ink: #FFFCF5; --scrim: rgba(20,22,15,.45);
+    --ok-x: #2E4A12; --ok-t: #CFE0A6; --bad-x: #7A2410; --warn-t: #F6D98C; --warn-x: #5C3F00;
+    --ui: "Geist", system-ui, sans-serif; --mono: "Geist Mono", ui-monospace, monospace; --num: "Bricolage Grotesque", var(--ui);
+    --shadow: 0 1px 2px rgba(60,48,20,.06), 0 4px 14px rgba(60,48,20,.07);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #DCD3BF; color: var(--ink); font-family: var(--ui); }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 32px 16px 64px; display: grid; grid-template-columns: 390px 1fr; gap: 40px; align-items: start; }
+  @media (max-width: 900px) { .wrap { grid-template-columns: 1fr; } }
+  h1 { font: 600 26px var(--ui); letter-spacing: -.02em; margin: 0 0 6px; }
+  h2 { font: 600 18px var(--ui); margin: 28px 0 10px; }
+  p, li { font: 400 14px/1.55 var(--ui); color: var(--muted); }
+  .lede { color: var(--ink); font-size: 15px; }
+
+  /* Phone */
+  .phone { position: sticky; top: 24px; width: 390px; max-width: 100%; height: 800px; border-radius: 44px; background: var(--bg); overflow: hidden; box-shadow: 0 20px 60px rgba(40,30,10,.25), inset 0 0 0 8px #1d1d1b; position: relative; }
+  .screen { position: absolute; inset: 8px; border-radius: 36px; overflow: hidden; background: var(--bg); }
+  .scroll { height: 100%; overflow-y: auto; padding: 54px 16px 40px; display: flex; flex-direction: column; gap: 12px; }
+  .title { display: flex; align-items: center; gap: 10px; padding: 0 4px; }
+  .sq { width: 36px; height: 36px; border-radius: 10px; border: 1.5px solid var(--ctl); display: grid; place-items: center; font-size: 16px; }
+  .title b { flex: 1; font: 600 26px var(--ui); letter-spacing: -.02em; }
+  .cycle { height: 46px; border-radius: 14px; background: var(--card); box-shadow: var(--shadow); display: flex; align-items: center; justify-content: space-between; padding: 0 14px; font: 600 14px var(--ui); }
+  .filters { display: flex; gap: 6px; }
+  .f { height: 32px; padding: 0 12px; border-radius: 9px; border: 1.5px solid var(--ctl); display: flex; align-items: center; font: 600 13px var(--ui); }
+  .f.on { background: var(--btn); color: var(--btn-ink); border-color: var(--btn); }
+  .day { display: flex; justify-content: space-between; font: 600 12px var(--mono); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); padding: 4px 4px 6px; }
+  .group { background: var(--card); border-radius: 18px; box-shadow: var(--shadow); padding: 0 14px; }
+  .row { border-bottom: 1px solid var(--line); cursor: pointer; }
+  .row:last-child { border-bottom: 0; }
+  .top { display: flex; align-items: center; gap: 12px; padding: 12px 0; }
+  .av { width: 38px; height: 38px; border-radius: 11px; background: var(--sunk); display: grid; place-items: center; font: 600 13px var(--ui); color: var(--muted); flex: none; }
+  .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+  .l1 { display: flex; align-items: baseline; gap: 10px; }
+  .l1 .n { flex: 1; min-width: 0; font: 500 15px var(--ui); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .amt { font: 600 15px var(--num); white-space: nowrap; }
+  .out { color: var(--bad-x); } .in { color: var(--ok-x); } .card, .neutral { color: var(--muted); }
+  .l2 { display: flex; align-items: center; gap: 6px; }
+  .chip { height: 22px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--ctl); display: inline-flex; align-items: center; font: 500 12px var(--ui); white-space: nowrap; }
+  .tag { height: 22px; padding: 0 7px; border-radius: 6px; background: var(--sunk); display: inline-flex; align-items: center; gap: 5px; font: 500 11px var(--mono); color: var(--muted); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+  .sp { flex: 1; }
+  /* expanded */
+  .x { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .26s cubic-bezier(.33,1,.68,1); }
+  .x > div { overflow: hidden; }
+  .row.open .x { grid-template-rows: 1fr; }
+  .row.open { background: linear-gradient(var(--card), var(--card)); }
+  .meta { font: 500 12px var(--mono); color: var(--muted); padding: 0 0 10px 50px; }
+  .trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0 0 14px; }
+  .tb { height: 44px; border-radius: 11px; border: 1.5px solid var(--ctl); display: flex; align-items: center; justify-content: center; gap: 6px; font: 600 13px var(--ui); background: transparent; color: var(--ink); cursor: pointer; }
+  .tb.set { background: var(--sunk); border-color: var(--ink); }
+  .tb small { font: 500 12px var(--ui); color: var(--muted); }
+  .dim .group .row:not(.open) { opacity: .45; transition: opacity .2s; }
+
+  /* sheet */
+  .scrim { position: absolute; inset: 0; background: var(--scrim); opacity: 0; pointer-events: none; transition: opacity .28s; z-index: 5; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--card); border-radius: 26px 26px 0 0; padding: 8px 20px 28px; transform: translateY(100%); transition: transform .28s cubic-bezier(.33,1,.68,1); max-height: 90%; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+  .screen.sheeted .scrim { opacity: 1; pointer-events: auto; }
+  .screen.sheeted .sheet { transform: translateY(0); }
+  .sheet > * { flex: none; }
+  .handle { width: 38px; height: 5px; border-radius: 3px; background: var(--ctl); align-self: center; }
+  .sh { display: flex; align-items: center; gap: 12px; }
+  .sh .av { width: 44px; height: 44px; border-radius: 13px; font-size: 14px; }
+  .sh b { font: 600 18px var(--ui); display: block; }
+  .sh span { font: 400 13px var(--ui); color: var(--muted); }
+  .sh .big { margin-left: auto; font: 600 22px var(--num); }
+  .lbl { font: 600 11px var(--mono); letter-spacing: .05em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .slot { min-height: 64px; border-radius: 12px; border: 1.5px solid var(--ctl); padding: 9px 11px; display: flex; flex-direction: column; justify-content: center; gap: 2px; font: 600 13px var(--ui); position: relative; }
+  .slot small { font: 500 12px var(--ui); color: var(--muted); }
+  .slot.set { background: var(--sunk); border-color: var(--ink); }
+  .slot.off { border-style: dashed; color: var(--muted); }
+  .ms { position: absolute; top: 7px; right: 8px; font: 600 9.5px var(--mono); color: var(--muted); background: var(--sunk); border-radius: 5px; padding: 2px 5px; }
+  .fix { display: flex; flex-direction: column; }
+  .fx { display: flex; align-items: center; min-height: 46px; border-top: 1px solid var(--line); gap: 10px; font: 500 14px var(--ui); }
+  .fx span:first-child { flex: 1; color: var(--muted); }
+  .fx .v { font-weight: 600; }
+  .fx .lock { font: 500 12px var(--mono); color: var(--muted); }
+  .src { font: 500 12px/1.45 var(--mono); color: var(--muted); background: var(--sunk); border-radius: 10px; padding: 10px 12px; }
+  .foot { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ghost { height: 46px; border-radius: 12px; border: 1.5px solid var(--ctl); display: grid; place-items: center; font: 600 14px var(--ui); }
+  .ghost.danger { color: var(--bad-x); }
+  .done { height: 50px; border-radius: 12px; background: var(--btn); color: var(--btn-ink); display: grid; place-items: center; font: 600 15px var(--ui); cursor: pointer; }
+
+  /* doc */
+  table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); font: 400 13px/1.45 var(--ui); }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font: 600 12px var(--ui); color: var(--muted); background: var(--sunk); }
+  td code { font: 500 12px var(--mono); }
+  .pill { font: 600 11px var(--mono); padding: 2px 6px; border-radius: 5px; background: var(--sunk); white-space: nowrap; }
+  .pill.now { background: var(--ok-t); color: var(--ok-x); }
+  .q { background: var(--card); border-radius: 14px; padding: 14px 16px; box-shadow: var(--shadow); margin-bottom: 10px; }
+  .q b { color: var(--ink); }
+  .hint { font: 500 12px var(--ui); color: var(--muted); text-align: center; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <div class="phone"><div class="screen" id="screen">
+      <div class="scroll" id="list"></div>
+      <div class="scrim" id="scrim"></div>
+      <div class="sheet" id="sheet"></div>
+    </div></div>
+    <div class="hint">Toca una fila para abrirla · toca <b>Más</b> para la hoja completa.</div>
+  </div>
+
+  <div>
+    <h1>Qué puedes hacer con un movimiento</h1>
+    <p class="lede">The current Zeta's pattern carried into v2. A tap opens the row in place with the three most common actions. <b>Más</b> opens the full sheet, where every action has a <b>fixed slot</b>: it changes state where it sits and never moves or disappears.</p>
+
+    <h2>Three levels</h2>
+    <p><b>1. Row (closed).</b> Name, amount, then the category (once M3 arrives) or a "No cuenta / Ignorado" chip, the time and the account.<br>
+    <b>2. Row open (tap).</b> One row open at a time, and the rest of the list dims. It shows where the movement came from and the trio <b>Categoría · Dividir · Más</b>. Category and splitting are what people do most right after spending. A slot with a value shows that value ("Domicilios", "Con Ana").<br>
+    <b>3. Más → Detalle sheet.</b> Everything else, in three blocks:
+    <ul>
+      <li><b>Qué fue</b>: a 2×3 grid of fixed slots.</li>
+      <li><b>Corregir</b>: rows for fixing data.</li>
+      <li><b>Al pie</b>: Ignorar / Eliminar.</li>
+    </ul>
+    A purchase and an income have different grids, but within each type the slots never move.</p>
+
+    <h2>Every action</h2>
+    <table>
+      <tr><th>Action</th><th>Where</th><th>What it does</th><th>Case</th><th>When</th></tr>
+      <tr><td><b>Categoría</b></td><td>Trio + slot</td><td>Picks the category. Then it asks "¿Siempre para Rappi?" (applies to that merchant from now on).</td><td>D1, D2</td><td><span class="pill">M3</span></td></tr>
+      <tr><td><b>Dividir</b> / Fue compartido</td><td>Trio + slot</td><td>Only your part counts as spending; the rest becomes "Te deben" from that person. In the same flow: who paid. "Pagó otra persona" turns it into Tú debes.</td><td>G1, G2, G9, G10</td><td><span class="pill">M4</span></td></tr>
+      <tr><td><b>Es préstamo</b></td><td>Slot</td><td>"Le prestaste" doesn't count as spending; it goes to Te deben.</td><td>G3</td><td><span class="pill">M4</span></td></tr>
+      <tr><td><b>Pagó…</b> (a fixed payment)</td><td>Slot</td><td>Links it to the bill it paid; Por pagar drops by that amount. Fixes a wrong guess.</td><td>E9</td><td><span class="pill">M4</span></td></tr>
+      <tr><td><b>Cuotas</b></td><td>Slot (cards only)</td><td>"¿A cuántas cuotas?" sets how much goes into the next bill.</td><td>C11</td><td><span class="pill">M4</span></td></tr>
+      <tr><td><b>Es a mi cuenta</b></td><td>Slot</td><td>A transfer between your own accounts: it isn't spending or income.</td><td>C7</td><td><span class="pill">M2</span></td></tr>
+      <tr><td><b>Es reembolso</b> (income)</td><td>Income slot</td><td>Undoes part of a purchase; it lowers what you spent.</td><td>C8</td><td><span class="pill">M3</span></td></tr>
+      <tr><td><b>Me pagaron</b> (income)</td><td>Income slot</td><td>Settles Te deben with that person, in full or in part.</td><td>G4, G5</td><td><span class="pill">M4</span></td></tr>
+      <tr><td><b>Nota</b></td><td>Corregir</td><td>Free text; search finds it.</td><td>—</td><td><span class="pill now">ya</span></td></tr>
+      <tr><td><b>Comercio</b></td><td>Corregir</td><td>Renames the merchant ("RAPPI*RAPPI COL" → Rappi), for all of its movements.</td><td>D5</td><td><span class="pill">M3</span></td></tr>
+      <tr><td><b>Monto · Fecha · Cuenta</b></td><td>Corregir</td><td>Fix a manual entry. On a bank movement they're locked ("Del banco"): the bank wins (S1-2). To correct one, use Ignorar.</td><td>D7</td><td><span class="pill">M1·b</span></td></tr>
+      <tr><td><b>Cuenta para Disponible</b></td><td>Corregir</td><td>Sí / No · why. Changes it for the whole account, after asking.</td><td>A13</td><td><span class="pill now">ya</span></td></tr>
+      <tr><td><b>Ignorar / Contar</b></td><td>Al pie</td><td>"Esto no es un movimiento": it stays listed but doesn't count.</td><td>D8</td><td><span class="pill now">ya</span></td></tr>
+      <tr><td><b>Eliminar</b></td><td>Al pie (manual entries only)</td><td>Deletes it, with "Deshacer" for 5 s. A bank movement can't be deleted, only ignored (the bank would bring it back).</td><td>D8, D15</td><td><span class="pill">M1·b</span></td></tr>
+    </table>
+    <p><span class="pill now">ya</span> works today (PR #445). <span class="pill">M1·b</span> fits in M1 (one more command each). The rest arrives with its milestone; until then its slot shows "Pronto" in the same place.</p>
+
+    <h2>To decide</h2>
+    <div class="q"><b>1. This changes a design rule.</b> Z Sistema says "Toda fila abre la misma hoja de detalle. Sin swipes ni modos de edición." With this design the row opens first and the sheet comes from <b>Más</b>. No swipes and no edit mode, so the spirit holds. It would be recorded as a new decision.</div>
+    <div class="q"><b>2. The trio.</b> Recommended: <b>Categoría · Dividir · Más</b>. Alternative, closer to today's Zeta: <b>Categoría · Comercio · Más</b>.</div>
+    <div class="q"><b>3. M1, before categories and Dividir exist.</b> (a) Build the open row now with <b>Nota · Ignorar · Más</b> and switch to the final trio in M3/M4. Or (b) keep "tap → sheet" (what #445 does) until M3 and build the trio then. Recommended: (b), so we don't teach a trio that changes later.</div>
+    <div class="q"><b>4. Fix manual entries (M1·b).</b> Should amount, date, account and Eliminar for manual entries go into M1? They're one command each (<code>editTransaction</code>, <code>deleteTransaction</code>) with tests on both databases.</div>
+  </div>
+</div>
+
+<script>
+const TX = [
+  { day: "Hoy · vie 18", total: "−$45.000", rows: [
+    { id: "rappi", i: "R", n: "Rappi", a: "−$32.000", t: "out", h: "12:41", k: "Banc ··4821", src: "Correo del banco · 18 sep 12:41", bank: true, cat: "Domicilios", split: null },
+    { id: "tostao", i: "T", n: "Tostao", a: "−$8.000", t: "out", h: "08:15", k: "Nequi", src: "Anotado a mano · 18 sep 8:15", bank: false, cat: null, split: "Con Ana · te debe $4.000", note: "con Ana" },
+    { id: "uber", i: "U", n: "Uber", a: "−$5.000", t: "card", h: "07:52", k: "Nu ··4398", src: "Notificación del banco · 18 sep 7:52", bank: true, cat: "Transporte", card: true },
+  ]},
+  { day: "Jue 17", total: "−$64.000", rows: [
+    { id: "exito", i: "É", n: "Éxito", a: "−$64.000", t: "out", h: "19:30", k: "Banc ··4821", src: "Correo del banco · 17 sep 19:30", bank: true, cat: "Mercado", bill: null },
+    { id: "caro", i: "C", n: "Caro", a: "$45.000", t: "neutral", h: "13:05", k: "Nequi", src: "Anotado a mano · 17 sep 13:05", bank: false, status: "Le prestaste", loan: "Te debe $45.000" },
+  ]},
+  { day: "Mar 15", total: "+$2.100.000", rows: [
+    { id: "sal", i: "S", n: "Salario", a: "+$2.100.000", t: "in", h: "06:02", k: "Banc ··4821", src: "Correo del banco · 15 sep 6:02", bank: true, cat: "Salario", inflow: true },
+  ]},
+];
+let open = null;
+const list = document.getElementById("list");
+const screen = document.getElementById("screen");
+const sheet = document.getElementById("sheet");
+
+function render() {
+  list.className = "scroll" + (open ? " dim" : "");
+  list.innerHTML = `
+    <div class="title"><span class="sq">‹</span><b>Movimientos</b><span class="sq">⌕</span></div>
+    <div class="cycle"><span>‹</span><span>Este ciclo · 15–29 sep</span><span style="color:var(--ctl)">›</span></div>
+    <div class="filters"><span class="f on">Todos</span><span class="f">Gastos</span><span class="f">Entradas</span><span class="f">Tarjetas</span></div>
+    ${TX.map(g => `<div><div class="day"><span>${g.day}</span><span>${g.total}</span></div><div class="group">
+      ${g.rows.map(r => row(r)).join("")}</div></div>`).join("")}`;
+  list.querySelectorAll(".row").forEach(el => el.querySelector(".top").onclick = () => { open = open === el.dataset.id ? null : el.dataset.id; render(); });
+  list.querySelectorAll("[data-more]").forEach(b => b.onclick = (e) => { e.stopPropagation(); showSheet(b.dataset.more); });
+}
+function row(r) {
+  const chip = r.status ? `<span class="chip">${r.status}</span>` : r.cat ? `<span class="chip">${r.cat}</span>` : "";
+  const trioCat = r.cat ? `<span class="tb set">${r.cat}</span>` : `<span class="tb">Categoría</span>`;
+  const trioSplit = r.inflow ? `<span class="tb">Me pagaron</span>` : r.split ? `<span class="tb set">Con Ana</span>` : `<span class="tb">Dividir</span>`;
+  return `<div class="row ${open === r.id ? "open" : ""}" data-id="${r.id}">
+    <div class="top"><div class="av">${r.i}</div><div class="body">
+      <div class="l1"><span class="n">${r.n}</span><span class="amt ${r.t}">${r.a}</span></div>
+      <div class="l2">${chip}<span class="sp"></span><span class="tag">${r.h}</span><span class="tag"><span class="dot"></span>${r.k}</span></div>
+    </div></div>
+    <div class="x"><div><div class="meta">${r.src}${r.note ? " · «" + r.note + "»" : ""}</div>
+      <div class="trio">${trioCat}${trioSplit}<button class="tb" data-more="${r.id}">Más ···</button></div></div></div>
+  </div>`;
+}
+function slot(label, value, ms, state) {
+  return `<div class="slot ${state || ""}">${ms ? `<span class="ms">${ms}</span>` : ""}${label}${value ? `<small>${value}</small>` : ""}</div>`;
+}
+function showSheet(id) {
+  const r = TX.flatMap(g => g.rows).find(x => x.id === id);
+  const grid = r.inflow
+    ? [slot("Categoría", r.cat, "M3", r.cat && "set"), slot("Es reembolso", null, "M3"), slot("Me pagaron", "Salda Te deben", "M4"), slot("Es a mi cuenta", null, "M2")]
+    : [slot("Categoría", r.cat, "M3", r.cat && "set"), slot("Dividir", r.split, "M4", r.split && "set"),
+       slot("Es préstamo", r.loan, "M4", r.loan && "set"), slot("Pagó…", "un pago fijo", "M4"),
+       r.card ? slot("Cuotas", "1 cuota", "M4") : slot("Cuotas", "Solo con tarjeta", "", "off"), slot("Es a mi cuenta", null, "M2")];
+  const lock = (v) => r.bank ? `<span class="lock">Del banco</span>` : `<span class="v">${v}</span>`;
+  sheet.innerHTML = `
+    <div class="handle"></div>
+    <div class="sh"><div class="av">${r.i}</div><div><b>${r.n}</b><span>${r.h} · ${r.k}</span></div><div class="big">${r.a.replace("+", "")}</div></div>
+    <div class="lbl">Qué fue</div>
+    <div class="grid">${grid.join("")}</div>
+    <div class="lbl">Corregir</div>
+    <div class="fix">
+      <div class="fx"><span>Nota</span><span class="v" style="text-decoration:underline">${r.note || "Agregar"}</span></div>
+      <div class="fx"><span>Comercio</span><span class="v">${r.n}</span><span class="ms" style="position:static">M3</span></div>
+      <div class="fx"><span>Monto · Fecha · Cuenta</span>${lock("Editar")}</div>
+      <div class="fx"><span>Cuenta para Disponible</span><span class="v">${r.t === "neutral" ? "No · le prestaste" : r.t === "card" ? "No · va a la factura" : "Sí"}</span></div>
+    </div>
+    <div class="src">${r.src}</div>
+    <div class="foot"><span class="ghost">Ignorar</span>${r.bank ? `<span class="ghost" style="color:var(--muted);border-style:dashed">Eliminar · solo a mano</span>` : `<span class="ghost danger">Eliminar</span>`}</div>
+    <div class="done" id="done">Listo</div>`;
+  screen.classList.add("sheeted");
+  document.getElementById("done").onclick = close;
+}
+function close() { screen.classList.remove("sheeted"); }
+document.getElementById("scrim").onclick = close;
+open = "rappi";
+render();
+</script>
+</body>
+</html>

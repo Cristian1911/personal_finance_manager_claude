@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Detalle de movimiento</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@500;600&family=Bricolage+Grotesque:opsz,wght@12..96,600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@0.453.0/dist/umd/lucide.min.js"></script>
+<style>
+  :root {
+    --bg: #E9E0CC; --card: #FFFCF5; --ink: #14160F; --muted: #4B463B; --line: #E6DDC9;
+    --ctl: #8C7F63; --sunk: #EFE7D6; --btn: #14160F; --btn-ink: #FFFCF5; --scrim: rgba(20,22,15,.45);
+    --ok-x: #2E4A12; --ok-t: #CFE0A6; --bad-x: #7A2410; --bad-t: #F4BFA8;
+    --ui: "Geist", system-ui, sans-serif; --mono: "Geist Mono", ui-monospace, monospace; --num: "Bricolage Grotesque", var(--ui);
+    --shadow: 0 1px 2px rgba(60,48,20,.06), 0 4px 14px rgba(60,48,20,.07);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #DCD3BF; color: var(--ink); font-family: var(--ui); }
+  main { max-width: 1320px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font: 600 26px var(--ui); letter-spacing: -.02em; margin: 0 0 6px; }
+  h2 { font: 600 19px var(--ui); margin: 40px 0 6px; }
+  p, li { font: 400 14px/1.55 var(--ui); color: var(--muted); max-width: 860px; }
+  b { color: var(--ink); }
+  .phones { display: flex; flex-wrap: wrap; gap: 28px; margin-top: 16px; }
+  .col { width: 360px; }
+  .col h3 { font: 600 15px var(--ui); margin: 0 0 4px; }
+  .col p { font-size: 13px; margin: 0 0 10px; min-height: 60px; }
+  .phone { width: 360px; height: 740px; border-radius: 40px; background: var(--bg); position: relative; overflow: hidden; box-shadow: 0 18px 50px rgba(40,30,10,.22), inset 0 0 0 7px #1d1d1b; }
+  .scr { position: absolute; inset: 7px; border-radius: 33px; overflow: hidden; background: var(--bg); }
+  .list { padding: 48px 14px 20px; display: flex; flex-direction: column; gap: 10px; }
+  .t { font: 600 24px var(--ui); letter-spacing: -.02em; padding: 0 4px; }
+  .day { display: flex; justify-content: space-between; font: 600 11.5px var(--mono); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); padding: 4px 4px 2px; }
+  .grp { background: var(--card); border-radius: 18px; box-shadow: var(--shadow); padding: 0 13px; }
+  .row { border-bottom: 1px solid var(--line); }
+  .row:last-child { border-bottom: 0; }
+  .top { display: flex; align-items: center; gap: 11px; padding: 11px 0; }
+  .av { width: 38px; height: 38px; border-radius: 11px; background: var(--sunk); display: grid; place-items: center; font: 600 13px var(--ui); color: var(--muted); flex: none; }
+  .bd { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+  .l1 { display: flex; align-items: baseline; gap: 8px; }
+  .l1 span:first-child { flex: 1; font: 500 15px var(--ui); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .amt { font: 600 15px var(--num); white-space: nowrap; }
+  .out { color: var(--bad-x); } .in { color: var(--ok-x); } .gray { color: var(--muted); }
+  .l2 { display: flex; gap: 6px; align-items: center; }
+  .chip { height: 22px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--ctl); display: inline-flex; align-items: center; font: 500 12px var(--ui); }
+  .tag { height: 22px; padding: 0 7px; border-radius: 6px; background: var(--sunk); display: inline-flex; align-items: center; gap: 5px; font: 500 11px var(--mono); color: var(--muted); }
+  .sp { flex: 1; }
+  .dimmed { opacity: .42; }
+  .quick { display: grid; grid-template-columns: 1fr 1fr 44px; gap: 8px; padding: 0 0 13px; }
+  .qb { height: 46px; border-radius: 11px; border: 1.5px solid var(--ctl); display: flex; flex-direction: column; justify-content: center; padding: 0 10px; min-width: 0; }
+  .qb small { font: 500 10.5px var(--ui); color: var(--muted); }
+  .qb span { font: 600 13px var(--ui); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .qb.empty span { color: var(--muted); }
+  .more { height: 46px; border-radius: 11px; border: 1.5px solid var(--ctl); display: grid; place-items: center; }
+  /* sheet */
+  .scrim { position: absolute; inset: 0; background: var(--scrim); }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--card); border-radius: 24px 24px 0 0; padding: 8px 18px 22px; display: flex; flex-direction: column; gap: 12px; }
+  .handle { width: 38px; height: 5px; border-radius: 3px; background: var(--ctl); align-self: center; }
+  .hero { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 4px; }
+  .hero .big { font: 600 32px var(--num); letter-spacing: -.01em; }
+  .hero .name { font: 600 16px var(--ui); }
+  .facts { display: flex; align-items: center; gap: 6px; justify-content: center; flex-wrap: wrap; font: 500 12px var(--mono); color: var(--muted); }
+  .facts i { width: 14px; height: 14px; }
+  .raw { font: 500 11.5px/1.4 var(--mono); color: var(--muted); background: var(--sunk); border-radius: 9px; padding: 8px 10px; }
+  .pill { height: 24px; padding: 0 10px; border-radius: 99px; display: inline-flex; align-items: center; font: 600 12px var(--ui); background: var(--sunk); color: var(--muted); }
+  .box { border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  .li { display: flex; align-items: center; gap: 10px; min-height: 50px; padding: 0 14px; border-bottom: 1px solid var(--line); font: 500 14px var(--ui); }
+  .li:last-child { border-bottom: 0; }
+  .li .k { flex: 1; color: var(--muted); }
+  .li .v { font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .li .v.empty { color: var(--muted); font-weight: 500; }
+  .li i.chev { width: 16px; height: 16px; color: var(--ctl); }
+  .ro .v { color: var(--muted); font-weight: 500; }
+  .quiet { display: flex; justify-content: center; gap: 22px; font: 600 13px var(--ui); color: var(--muted); }
+  .quiet span { text-decoration: underline; text-underline-offset: 3px; }
+  .quiet .danger { color: var(--bad-x); }
+  .done { height: 48px; border-radius: 12px; background: var(--btn); color: var(--btn-ink); display: grid; place-items: center; font: 600 15px var(--ui); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .big-btn { height: 58px; border-radius: 13px; border: 1.5px solid var(--ctl); display: flex; flex-direction: column; justify-content: center; padding: 0 12px; }
+  .big-btn small { font: 500 11px var(--ui); color: var(--muted); }
+  .big-btn span { font: 600 14px var(--ui); }
+  .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+  .seg span { height: 34px; padding: 0 12px; border-radius: 9px; border: 1.5px solid var(--ctl); display: flex; align-items: center; font: 600 13px var(--ui); }
+  .seg span.on { background: var(--btn); color: var(--btn-ink); border-color: var(--btn); }
+  .lbl { font: 600 11px var(--mono); letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+  .disc { height: 44px; display: flex; align-items: center; justify-content: center; gap: 6px; font: 600 13px var(--ui); color: var(--muted); }
+  /* triage */
+  table { width: 100%; max-width: 1100px; border-collapse: collapse; background: var(--card); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); font: 400 13px/1.45 var(--ui); margin-top: 10px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font: 600 12px var(--ui); color: var(--muted); background: var(--sunk); }
+  .keep { color: var(--ok-x); font-weight: 600; } .merge { color: #5C3F00; font-weight: 600; } .cut { color: var(--bad-x); font-weight: 600; }
+  .q { background: var(--card); border-radius: 14px; padding: 14px 16px; box-shadow: var(--shadow); margin: 10px 0; max-width: 860px; font: 400 14px/1.55 var(--ui); color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Detalle de movimiento: options</h1>
+  <p>Your four changes applied:</p>
+  <ul>
+    <li>Quick actions are <b>Categoría + Persona/Comercio</b>.</li>
+    <li>The source appears only in the detail, as an icon.</li>
+    <li>Facts at the top, actions at the bottom.</li>
+    <li>Nota is demoted.</li>
+  </ul>
+  <p>The big cut: what used to be six tiles (Dividir, Préstamo, Pagó…, A mi cuenta, Reembolso, Me pagaron) is now <b>one question, "Qué fue"</b>, because they're mutually exclusive answers.</p>
+
+  <h2>1 · The row (one design for all three options)</h2>
+  <div class="phones">
+    <div class="col">
+      <h3>Tap: the row opens with two quick actions</h3>
+      <p>No source line and no extra text: <b>Categoría</b>, <b>Comercio or Persona</b> (whichever applies; the label changes) and ⋯ for the detail. The rest of the list dims.</p>
+      <div class="phone"><div class="scr"><div class="list">
+        <div class="t">Movimientos</div>
+        <div class="day"><span>Hoy · vie 18</span><span>−$45.000</span></div>
+        <div class="grp">
+          <div class="row"><div class="top"><div class="av">R</div><div class="bd">
+            <div class="l1"><span>Rappi</span><span class="amt out">−$32.000</span></div>
+            <div class="l2"><span class="chip">Domicilios</span><span class="sp"></span><span class="tag">12:41</span><span class="tag">● Banc</span></div></div></div>
+            <div class="quick">
+              <div class="qb"><small>Categoría</small><span>Domicilios</span></div>
+              <div class="qb"><small>Comercio</small><span>Rappi</span></div>
+              <div class="more"><i data-lucide="more-horizontal"></i></div>
+            </div>
+          </div>
+          <div class="row dimmed"><div class="top"><div class="av">T</div><div class="bd">
+            <div class="l1"><span>Tostao</span><span class="amt out">−$8.000</span></div>
+            <div class="l2"><span class="chip">Café</span><span class="sp"></span><span class="tag">8:15</span><span class="tag">● Nequi</span></div></div></div></div>
+          <div class="row dimmed"><div class="top"><div class="av">U</div><div class="bd">
+            <div class="l1"><span>Uber</span><span class="amt gray">−$5.000</span></div>
+            <div class="l2"><span class="chip">Transporte</span><span class="sp"></span><span class="tag">7:52</span><span class="tag">● Nu</span></div></div></div></div>
+        </div>
+        <div class="day dimmed"><span>Jue 17</span><span>−$64.000</span></div>
+        <div class="grp dimmed">
+          <div class="row"><div class="top"><div class="av">N</div><div class="bd">
+            <div class="l1"><span>Nequi · Ana Gómez</span><span class="amt out">−$40.000</span></div>
+            <div class="l2"><span class="chip">Sin categoría</span><span class="sp"></span><span class="tag">13:05</span><span class="tag">● Nequi</span></div></div></div></div>
+        </div>
+      </div></div></div>
+    </div>
+    <div class="col">
+      <h3>A transfer to a person: Persona instead of Comercio</h3>
+      <p>When the counterparty is a person, the second action becomes <b>Persona</b>. Choosing Ana asks right away "¿Qué fue?": compartido, le prestaste, le pagaste. That covers Dividir and Préstamo without separate buttons.</p>
+      <div class="phone"><div class="scr"><div class="list">
+        <div class="t">Movimientos</div>
+        <div class="day"><span>Jue 17</span><span>−$40.000</span></div>
+        <div class="grp">
+          <div class="row"><div class="top"><div class="av">A</div><div class="bd">
+            <div class="l1"><span>Nequi · Ana Gómez</span><span class="amt out">−$40.000</span></div>
+            <div class="l2"><span class="chip">Sin categoría</span><span class="sp"></span><span class="tag">13:05</span><span class="tag">● Nequi</span></div></div></div>
+            <div class="quick">
+              <div class="qb empty"><small>Categoría</small><span>Elegir</span></div>
+              <div class="qb"><small>Persona</small><span>Ana Gómez</span></div>
+              <div class="more"><i data-lucide="more-horizontal"></i></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="scrim" style="top:300px;background:transparent"></div>
+      <div class="sheet" style="gap:10px">
+        <div class="handle"></div>
+        <div style="font:600 17px var(--ui);text-align:center">¿Qué fue con Ana?</div>
+        <div class="box">
+          <div class="li"><span class="k" style="color:var(--ink);font-weight:600">Fue compartido</span><span class="v empty">te debe una parte</span></div>
+          <div class="li"><span class="k" style="color:var(--ink);font-weight:600">Le prestaste</span><span class="v empty">te lo devuelve</span></div>
+          <div class="li"><span class="k" style="color:var(--ink);font-weight:600">Le pagaste algo</span><span class="v empty">es un gasto</span></div>
+          <div class="li"><span class="k" style="color:var(--ink);font-weight:600">Le devolviste</span><span class="v empty">saldas Tú debes</span></div>
+        </div>
+      </div></div></div>
+    </div>
+  </div>
+
+  <h2>2 · The detail (⋯): three options</h2>
+  <p>All three start with the same identity: amount, name, a line of facts with the source as an icon (✉ email · 🔔 notification · ✎ by hand · 📄 PDF), and the raw bank text when there is one. The difference is how they ask for the rest.</p>
+  <div class="phones">
+
+    <div class="col">
+      <h3>A · Lista (recommended)</h3>
+      <p>v1's hierarchy, cleaned up: one list of four rows, each answering one question. The rare actions are text links above Listo. Calm, and it scans like v1 without being v1.</p>
+      <div class="phone"><div class="scr"><div class="scrim"></div><div class="sheet">
+        <div class="handle"></div>
+        <div class="hero">
+          <div class="big">−$32.000</div>
+          <div class="name">Rappi</div>
+          <div class="facts"><i data-lucide="mail"></i>Correo · hoy 12:41 · Banc ··4821</div>
+        </div>
+        <div class="raw">Compra por $32.000 en RAPPI*RAPPI COLOMBIA 18/09 12:41. T.Deb *4821</div>
+        <div class="box">
+          <div class="li"><span class="k">Categoría</span><span class="v">Domicilios <i class="chev" data-lucide="chevron-right"></i></span></div>
+          <div class="li"><span class="k">Comercio</span><span class="v">Rappi <i class="chev" data-lucide="chevron-right"></i></span></div>
+          <div class="li"><span class="k">Qué fue</span><span class="v">Gasto <i class="chev" data-lucide="chevron-right"></i></span></div>
+          <div class="li"><span class="k">Nota</span><span class="v empty">Agregar <i class="chev" data-lucide="chevron-right"></i></span></div>
+        </div>
+        <div class="quiet"><span>No es un movimiento</span></div>
+        <div class="done">Listo</div>
+      </div></div></div>
+    </div>
+
+    <div class="col">
+      <h3>B · Preguntas</h3>
+      <p>"Qué fue" is visible as chips, so changing the kind is one tap with no extra screen. Category and Comercio are two big buttons. Fastest, but it shows more at once and the chips change between purchases and income.</p>
+      <div class="phone"><div class="scr"><div class="scrim"></div><div class="sheet">
+        <div class="handle"></div>
+        <div class="hero">
+          <div class="big">−$32.000</div>
+          <div class="name">Rappi</div>
+          <div class="facts"><i data-lucide="mail"></i>Correo · hoy 12:41 · Banc ··4821</div>
+        </div>
+        <div class="raw">Compra por $32.000 en RAPPI*RAPPI COLOMBIA 18/09 12:41. T.Deb *4821</div>
+        <div class="lbl">Qué fue</div>
+        <div class="seg"><span class="on">Gasto</span><span>Compartido</span><span>Préstamo</span><span>A mi cuenta</span><span>Pago fijo</span></div>
+        <div class="two">
+          <div class="big-btn"><small>Categoría</small><span>Domicilios</span></div>
+          <div class="big-btn"><small>Comercio</small><span>Rappi</span></div>
+        </div>
+        <div class="quiet"><span>Nota</span><span>No es un movimiento</span></div>
+        <div class="done">Listo</div>
+      </div></div></div>
+    </div>
+
+    <div class="col">
+      <h3>C · Mínimo</h3>
+      <p>Only the identity and "Qué fue" (category and comercio already live on the open row). Everything else sits behind "Más opciones". The least clutter, but the detail repeats little and hides things.</p>
+      <div class="phone"><div class="scr"><div class="scrim"></div><div class="sheet">
+        <div class="handle"></div>
+        <div class="hero">
+          <div class="big">−$32.000</div>
+          <div class="name">Rappi</div>
+          <div class="facts"><i data-lucide="mail"></i>Correo · hoy 12:41 · Banc ··4821</div>
+        </div>
+        <div class="raw">Compra por $32.000 en RAPPI*RAPPI COLOMBIA 18/09 12:41. T.Deb *4821</div>
+        <div class="box">
+          <div class="li"><span class="k">Qué fue</span><span class="v">Gasto <i class="chev" data-lucide="chevron-right"></i></span></div>
+        </div>
+        <div class="disc">Más opciones <i data-lucide="chevron-down" style="width:16px;height:16px"></i></div>
+        <div class="done">Listo</div>
+      </div></div></div>
+    </div>
+  </div>
+
+  <h2>3 · Which actions survive</h2>
+  <p>Critical pass over the 14 previous actions plus v1's. Rule: each one has to answer a question the person actually asks themselves about a movement.</p>
+  <table>
+    <tr><th>Action</th><th>Verdict</th><th>Why / where it lives</th></tr>
+    <tr><td>Categoría</td><td class="keep">Keep</td><td>The most common fix. Open row + detail. After picking: "¿Siempre para Rappi?" (only if it's a merchant).</td></tr>
+    <tr><td>Comercio / Persona</td><td class="keep">Keep</td><td>"Who it was with". Renaming a merchant and assigning a person use the same control. Choosing a person opens "¿Qué fue con Ana?".</td></tr>
+    <tr><td>Dividir, Préstamo, Pagó un pago fijo, A mi cuenta, Reembolso, Me pagaron</td><td class="merge">Merge → "Qué fue"</td><td>They're mutually exclusive answers about the <i>kind</i> of money. One control with options that depend on direction (gasto / entrada). Six tiles become one row.</td></tr>
+    <tr><td>Cuotas</td><td class="merge">Contextual</td><td>Only on card purchases. It appears in the list as "Cuotas · 1" only then. Revisar already asks it for purchases ≥ $300.000.</td></tr>
+    <tr><td>Nota</td><td class="keep">Keep, demoted</td><td>Last row (A) or a link (B). Search finds it.</td></tr>
+    <tr><td>Ignorar ("No es un movimiento")</td><td class="keep">Keep, quiet</td><td>A text link above Listo. The wording explains itself better than "Ignorar".</td></tr>
+    <tr><td>Eliminar</td><td class="merge">Merge into the same link</td><td>On a manual entry, "No es un movimiento" deletes it, with Deshacer for 5 s. On a bank movement it ignores it. One button, the right effect each time.</td></tr>
+    <tr><td>Fix amount / date / account</td><td class="merge">Manual entries only</td><td>Tapping the amount or the facts line of a manual entry edits them. Bank movements aren't editable (the bank wins), so there's no locked "Del banco" row to show.</td></tr>
+    <tr><td>Cuenta para Disponible (account toggle)</td><td class="cut">Cut from here</td><td>It's a setting of the account, not of a movement; it lives in Mis cuentas. Here it only shows as a status pill when it doesn't count ("No cuenta · va a la factura").</td></tr>
+    <tr><td>Hacer recurrente (v1)</td><td class="cut">Cut</td><td>v2 detects recurring payments and Revisar suggests them. "Pago fijo" under "Qué fue" covers linking one by hand.</td></tr>
+    <tr><td>Etiquetas (v1)</td><td class="cut">Cut</td><td>Tags are frozen in v2 (S2-4).</td></tr>
+    <tr><td>Editar datos / Editar todo (v1)</td><td class="cut">Cut</td><td>Two edit modes; v2 has no edit modes. Replaced by direct tapping on manual entries.</td></tr>
+  </table>
+
+  <h2>To decide</h2>
+  <div class="q"><b>1. The detail: A, B or C?</b> I recommend <b>A · Lista</b>. It's the one closest to what worked in v1, the actions sit at the bottom within thumb reach, and it doesn't change shape between purchases and income.</div>
+  <div class="q"><b>2. Merging Eliminar into "No es un movimiento"?</b> (it deletes manual entries and ignores bank ones). Or keep two separate links.</div>
+  <div class="q"><b>3. Moving the "Cuenta para Disponible" toggle out of the detail</b> (it's already in #445) and leaving only the status pill.</div>
+</main>
+<script>lucide.createIcons();</script>
+</body>
+</html>

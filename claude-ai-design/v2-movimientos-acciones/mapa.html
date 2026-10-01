@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mapa de interacción v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.min.js"></script>
+<style>
+  :root { --bg:#E9E0CC; --card:#FFFCF5; --ink:#14160F; --muted:#4B463B; --line:#E6DDC9; --sunk:#EFE7D6; --ok:#2E4A12; --okt:#CFE0A6; --warn:#5C3F00; --warnt:#F6D98C; --bad:#7A2410; --badt:#F4BFA8;
+    --ui:"Geist",system-ui,sans-serif; --mono:"Geist Mono",ui-monospace,monospace; --shadow:0 1px 2px rgba(60,48,20,.06),0 4px 14px rgba(60,48,20,.07); }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#DCD3BF; color:var(--ink); font-family:var(--ui); }
+  main { max-width:1180px; margin:0 auto; padding:32px 16px 72px; }
+  h1 { font:600 28px var(--ui); letter-spacing:-.02em; margin:0 0 6px; }
+  h2 { font:600 20px var(--ui); margin:44px 0 8px; }
+  h3 { font:600 15px var(--ui); margin:18px 0 6px; }
+  p, li { font:400 14px/1.6 var(--ui); color:var(--muted); max-width:900px; }
+  b { color:var(--ink); }
+  .card { background:var(--card); border-radius:16px; box-shadow:var(--shadow); padding:16px 18px; margin:10px 0; }
+  table { width:100%; border-collapse:collapse; background:var(--card); border-radius:14px; overflow:hidden; box-shadow:var(--shadow); font:400 13px/1.45 var(--ui); margin-top:10px; }
+  th, td { text-align:left; padding:8px 11px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font:600 12px var(--ui); color:var(--muted); background:var(--sunk); position:sticky; top:0; }
+  td.id { font:600 12px var(--mono); white-space:nowrap; }
+  .s { font:600 11px var(--mono); padding:2px 7px; border-radius:6px; white-space:nowrap; display:inline-block; }
+  .built { background:var(--okt); color:var(--ok); }
+  .plan { background:var(--sunk); color:var(--muted); }
+  .gap { background:var(--badt); color:var(--bad); }
+  .new { background:var(--warnt); color:var(--warn); }
+  .legend { display:flex; gap:14px; flex-wrap:wrap; font:500 13px var(--ui); color:var(--muted); align-items:center; }
+  .mermaid { background:var(--card); border-radius:16px; box-shadow:var(--shadow); padding:16px; overflow-x:auto; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:860px) { .grid2 { grid-template-columns:1fr; } }
+  .q { background:var(--card); border-radius:14px; padding:14px 16px; box-shadow:var(--shadow); margin:10px 0; font:400 14px/1.55 var(--ui); color:var(--muted); }
+  code { font:500 12.5px var(--mono); background:var(--sunk); padding:1px 5px; border-radius:5px; }
+  nav.toc a { font:500 13px var(--ui); color:var(--ink); margin-right:14px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Mapa de interacción v2</h1>
+  <p>Every screen, how you reach it and which use cases it serves, before designing any more screens in isolation. Sources: <code>11-use-cases.md</code>, <code>10-build-plan.md</code>, <code>12-decision-log.md</code>, the Claude Design screens and what's already built.</p>
+  <p class="legend"><span class="s built">built</span> already in v2 · <span class="s plan">planned</span> in the plan, with its milestone · <span class="s gap">gap</span> missing or unreachable · <span class="s new">proposal</span> new from this map</p>
+  <nav class="toc"><a href="#nav">1 · Navigation</a><a href="#pantallas">2 · Screens and entry points</a><a href="#dest">3 · Destinatarios</a><a href="#casos">4 · Use cases</a><a href="#huecos">5 · Gaps</a><a href="#decidir">6 · To decide</a></nav>
+
+  <h2 id="nav">1 · Navigation</h2>
+  <p>Proposal reconciling the plan and the design: the plan said <b>3 tabs + Ajustes from the avatar</b>, and Claude Design drew <b>5 tabs</b> (Inicio · Revisar · Pagos · Movimientos · Ajustes). I recommend <b>4 tabs</b> (Inicio · Movimientos · Pagos · Revisar) with Ajustes behind the avatar. Pagos is too frequent to hide (bills, cards, debts), and Ajustes is rare. Each arrow is a way in.</p>
+  <div class="mermaid">
+flowchart LR
+  subgraph TABS[Tabs]
+    INI[Inicio]
+    MOV[Movimientos]
+    PAG[Pagos]
+    REV[Revisar]
+  end
+  AV((Avatar)) --> AJ[Ajustes]
+  PLUS(("Botón +")) --> CAP[Anotar movimiento]
+  INI --> HERO[Cómo sale tu número]
+  INI --> FLU[Tu flujo]
+  INI --> CIC[Ciclos pasados]
+  INI --> WID[Widgets]
+  WID --> MOV
+  WID --> PAG
+  WID --> TD[Te deben · Tú debes]
+  WID --> CTA[Mis cuentas]
+  WID --> LIM[Límites]
+  HERO --> PAG
+  HERO --> MOV
+  MOV --> FILA[Fila abierta]
+  FILA --> CATP[Elegir categoría]
+  FILA --> DESTP[Elegir destinatario]
+  FILA --> DET[Detalle]
+  DET --> QF[Qué fue]
+  DET --> HD[Hoja de destinatario]
+  QF --> TD
+  QF --> PAG
+  HD --> MOV
+  PAG --> TARJ[Tarjeta / Crédito]
+  PAG --> PDET[Detalle del pago]
+  TD --> HD
+  CTA --> CUEN[Cuenta]
+  CUEN --> MOV
+  CUEN --> CUAD[Cuadrar saldo]
+  AJ --> CTA
+  AJ --> DESTL[Destinatarios]
+  AJ --> CATS[Categorías · Lo que Zeta sabe]
+  AJ --> FUE[Fuentes]
+  AJ --> PER[Cuándo me pagan · Ahorro]
+  AJ --> PRIV[Privacidad · Avisos · Apariencia]
+  DESTL --> HD
+  REV --> HD
+  REV --> CATP
+  </div>
+
+  <h2 id="pantallas">2 · Screens and entry points</h2>
+  <p>Rule: <b>every screen has at least two ways in</b>, one of them from somewhere you go every day (a tab, Inicio or a row). A screen with a single way in that's hidden in Ajustes doesn't exist for most people.</p>
+  <table>
+    <tr><th>Screen</th><th>How you get there</th><th>What you do there</th><th>Status</th></tr>
+    <tr><td><b>Inicio</b></td><td>Tab · app start</td><td>Disponible, verdict, widgets, Organizar</td><td><span class="s built">built</span></td></tr>
+    <tr><td><b>Cómo sale tu número</b></td><td>Tap on the Disponible block</td><td>Por pagar / Ahorro / Gastado and their movements</td><td><span class="s built">built</span></td></tr>
+    <tr><td><b>Tu flujo</b></td><td>Tu flujo widget › Ver completo · Pagos row › "Ver en tu flujo"</td><td>Pasado / Este / Próximo, read a day</td><td><span class="s built">built</span></td></tr>
+    <tr><td><b>Movimientos</b></td><td><b>Tab</b> · Últimos widget · Gastado (hero) · Cuenta › movimientos · Hoja de destinatario › movimientos</td><td>Cycle, filters, search, open a row</td><td><span class="s built">built (#445)</span> <span class="s gap">no tab, no account filter</span></td></tr>
+    <tr><td><b>Fila abierta</b></td><td>Tap on a row</td><td>Categoría · Destinatario · ⋯</td><td><span class="s new">proposal</span></td></tr>
+    <tr><td><b>Detalle</b></td><td>Row › ⋯ · Revisar card · <code>?id=</code> from a push</td><td>Facts, Categoría, Destinatario, Qué fue, Nota, "No es un movimiento"</td><td><span class="s built">first version</span> <span class="s new">redesign A</span></td></tr>
+    <tr><td><b>Hoja de destinatario</b></td><td>Tap the destinatario in Detalle · Ajustes › Destinatarios · Te deben › persona · Revisar ("¿Siempre?")</td><td>See everything from that one; patterns; category; policy; merge; for a person, what you owe each other</td><td><span class="s gap">M3, comercio only</span> <span class="s new">comercio + persona</span></td></tr>
+    <tr><td><b>Destinatarios</b> (list)</td><td>Ajustes › Destinatarios · "Ver todos" from Hoja de destinatario</td><td>Search, kind filter, create, merge</td><td><span class="s gap">not in the plan</span></td></tr>
+    <tr><td><b>Anotar movimiento</b></td><td><b>"+"</b> (Inicio, Movimientos) · voice · Shortcut</td><td>Amount → category/destinatario → account (C4, C5, C6, C13)</td><td><span class="s gap">no v2 screen</span> (today it goes to v1)</td></tr>
+    <tr><td><b>Pagos</b></td><td><b>Tab</b> · Próximo pago widget · Por pagar (hero) · Tarjeta widget</td><td>Este ciclo / Próximo / Deudas, mark paid, + add a payment</td><td><span class="s plan">M4</span></td></tr>
+    <tr><td><b>Tarjeta / Crédito</b></td><td>Pagos › Deudas · Tarjeta widget · Mis cuentas › card</td><td>Bill, cuotas, register a payment, pay-off</td><td><span class="s plan">M4</span></td></tr>
+    <tr><td><b>Te deben · Tú debes</b></td><td>Te deben widget · Qué fue › compartido/préstamo · Hoja de destinatario (persona)</td><td>Balance per person, register a payment, forgive, WhatsApp</td><td><span class="s plan">M4</span></td></tr>
+    <tr><td><b>Límites</b></td><td>Límites widget · Revisar (suggestion) · Ajustes</td><td>Create, change, see pace</td><td><span class="s plan">M4</span></td></tr>
+    <tr><td><b>Mis cuentas</b></td><td>Mis cuentas widget · Ajustes › Mis cuentas · Cómo sale › "¿de dónde sale?"</td><td>Balances, <b>+ Cuenta / Tarjeta / Crédito</b>, which ones count</td><td><span class="s gap">not designed</span> (A8, A13, B5, F1, F5)</td></tr>
+    <tr><td><b>Cuenta</b> (one)</td><td>Mis cuentas › row · Detalle (tap the account)</td><td>Balance, its movements, counts or not, edit, Cuadrar saldo (D14)</td><td><span class="s gap">not designed</span></td></tr>
+    <tr><td><b>Ciclos pasados</b></td><td>Inicio ‹ ciclo › · Tu flujo › Pasado</td><td>Result, the four lines, where the money went, movements</td><td><span class="s plan">M1 (pending)</span></td></tr>
+    <tr><td><b>Revisar</b></td><td><b>Tab</b> with a counter · push</td><td>Pending questions (category, duplicate, cuotas, unknown account, payment detected)</td><td><span class="s plan">M3</span></td></tr>
+    <tr><td><b>Ajustes</b></td><td>Avatar</td><td>Cuándo me pagan, Ahorro, Mis cuentas, Destinatarios, Categorías, Fuentes, Avisos, Privacidad, Apariencia</td><td><span class="s gap">no v2 screen</span></td></tr>
+  </table>
+
+  <h2 id="dest">3 · Destinatarios: comercio and persona, one system</h2>
+  <div class="grid2">
+    <div class="card">
+      <h3>What already exists (v1, same database)</h3>
+      <ul>
+        <li><code>destinatarios</code> with <b>kind</b> (comercio | persona), name, default category, notes.</li>
+        <li><code>destinatario_rules</code>: <b>several patterns</b> per destinatario (contains / exact, priority, the first match wins) and how many times it matched.</li>
+        <li><code>transactions.destinatario_id</code> saved per movement. Retroactive applying, suggestions for movements that repeat.</li>
+        <li><code>personal_debts.destinatario_id</code>: <b>debts already point to a person-destinatario</b>.</li>
+        <li>Recurring templates carry <code>destinatario_id</code>: the payment matcher anchors on destinatario + account.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>What v2 was missing</h3>
+      <ul>
+        <li>The v2 plan says "<b>merchant</b>" everywhere ("Hoja de comercio", <code>renameMerchant</code>, <code>mergeMerchants</code>, <code>merchant_policy</code>). <b>People were never designed as destinatarios.</b></li>
+        <li>So "Persona" got mixed up with debts. It isn't the same thing: <b>sending money to my sister</b> can be a gift, a payment for something, a loan or my share of something shared.</li>
+        <li><b>Correction:</b> the open row's quick action is <b>Destinatario</b> (comercio or persona). <i>What kind of money it was</i> (compartido, préstamo…) is the separate "Qué fue" question.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>How the destinatario works in v2 (proposal)</h3>
+  <table>
+    <tr><th>Moment</th><th>Comercio (Rappi)</th><th>Persona (Laura, my sister)</th></tr>
+    <tr><td>Recognize it</td><td>Pattern on the bank text: <code>RAPPI*</code></td><td>Pattern on the transfer: <code>NEQUI A LAURA GIRALDO</code>, <code>TRANSF LAURA G</code>, a phone number</td></tr>
+    <tr><td>First time</td><td>Haiku names it ("Rappi") if online; otherwise the bank text. Revisar: "¿Es Rappi?"</td><td>Revisar: "¿Quién es Laura Giraldo?" → <b>new person</b> or one you already have</td></tr>
+    <tr><td>From then on</td><td>Default category + policy (Siempre / Casi siempre / Pregúntame)</td><td>Optional default category (e.g. "Familia"). Policy: Pregúntame by default, since money with people varies</td></tr>
+    <tr><td>Patterns</td><td>Its payments repeat → suggests a <b>Pago fijo</b> (Netflix)</td><td>Its payments repeat → also <b>Pago fijo</b> (the monthly payment to your mom); its repayments → "¿Es lo que te debía?"</td></tr>
+    <tr><td>Its sheet</td><td>Total this cycle and average, movements, category, patterns, merge</td><td>The same, <b>plus</b> what you owe each other (Te deben / Tú debes) and "Registrar pago" when there's an open balance</td></tr>
+  </table>
+  <p>One sheet, one model, one picker. Kind changes two things only: whether the debt section appears, and the default policy. A person can't become a comercio by accident: the picker creates with the kind of the tab you're on (the v1 bug from PR #282).</p>
+
+  <h3>The destinatario picker (row and Detalle)</h3>
+  <p>Opens with search + two tabs <b>Comercios · Personas</b>, already on the tab matching the bank text (a transfer → Personas). At the top, the suggestion Zeta recognized. "+ Nuevo" creates it with the current tab's kind and saves the bank text as its <b>first pattern</b>. After you choose, one optional question: "¿Las de <i>NEQUI A LAURA G</i> son siempre Laura?" (Sí → pattern; past movements too).</p>
+
+  <h2 id="casos">4 · Use cases: where each one lives and how you get there</h2>
+  <p>Only the ones whose surface changes with this map, or that had no entry point. The rest keep what <code>11-use-cases.md</code> says.</p>
+  <table>
+    <tr><th>Case</th><th>What</th><th>Screen · way in</th><th>Status</th></tr>
+    <tr><td class="id">A8</td><td>Add my accounts and cards</td><td>Mis cuentas › + · Ajustes › Mis cuentas · Mis cuentas widget · onboarding</td><td><span class="s gap">Mis cuentas not designed</span></td></tr>
+    <tr><td class="id">A13</td><td>Choose which accounts count</td><td>Cuenta › "Cuenta para Disponible" (moves there from Detalle)</td><td><span class="s new">moves</span></td></tr>
+    <tr><td class="id">B5</td><td>Balance of each account</td><td>Mis cuentas · Mis cuentas widget</td><td><span class="s gap">not designed</span></td></tr>
+    <tr><td class="id">B11</td><td>Look at a past cycle</td><td>Inicio ‹ ciclo › · Tu flujo › Pasado · Movimientos ‹ ciclo ›</td><td><span class="s plan">M1 pending</span></td></tr>
+    <tr><td class="id">new</td><td><b>See the movements of one account</b></td><td>Cuenta › "Ver movimientos" → Movimientos filtered by that account (a removable chip)</td><td><span class="s gap">wasn't anywhere</span></td></tr>
+    <tr><td class="id">new</td><td><b>See everything from one destinatario</b></td><td>Hoja de destinatario (from Detalle, a person in Te deben, Ajustes)</td><td><span class="s new">proposal</span></td></tr>
+    <tr><td class="id">C4–C6, C13</td><td>Write down an expense / income by hand</td><td>"+" in Inicio and Movimientos → Anotar</td><td><span class="s gap">no v2 screen</span></td></tr>
+    <tr><td class="id">D1–D3</td><td>Category of one movement / that destinatario / the past ones</td><td>Open row · Detalle · Revisar</td><td><span class="s plan">M3</span></td></tr>
+    <tr><td class="id">D4–D6</td><td>Policy, rename, merge</td><td>Hoja de destinatario (comercio <b>and persona</b>)</td><td><span class="s new">extended to persona</span></td></tr>
+    <tr><td class="id">D7</td><td>Fix amount, date, account (manual entries)</td><td>Detalle: tap the amount / the facts line</td><td><span class="s new">proposal</span></td></tr>
+    <tr><td class="id">D8</td><td>"No es un movimiento" / delete</td><td>Detalle, the link above Listo</td><td><span class="s built">Ignorar built</span></td></tr>
+    <tr><td class="id">D14</td><td>Make it match my bank balance</td><td>Cuenta › Cuadrar saldo · Cómo sale › "¿Algo no cuadra?"</td><td><span class="s gap">no entry point today</span></td></tr>
+    <tr><td class="id">D15</td><td>Undo</td><td>Toast (5 s) after each action</td><td><span class="s gap">not built</span></td></tr>
+    <tr><td class="id">E9</td><td>Link to the payment it paid</td><td>Detalle › Qué fue › Pago fijo</td><td><span class="s plan">M4</span></td></tr>
+    <tr><td class="id">G1, G2, G9</td><td>Compartido / someone else paid</td><td>Detalle › Qué fue (asks who → person picker)</td><td><span class="s plan">M4</span></td></tr>
+    <tr><td class="id">G3, G5</td><td>Lent / registered a repayment</td><td>Te deben › persona · Hoja de destinatario (persona) · Qué fue › préstamo</td><td><span class="s plan">M4</span></td></tr>
+    <tr><td class="id">G4</td><td>Repayment detected</td><td>Revisar ("Laura te envió $80.000, ¿es lo que te debía?") using the person's patterns</td><td><span class="s plan">M3/M4</span></td></tr>
+  </table>
+
+  <h2 id="huecos">5 · Gaps found</h2>
+  <div class="card"><ol>
+    <li><b>Accounts.</b> Mis cuentas and Cuenta aren't designed, even though five use cases (A8, A13, B5, F1, F5) and D14 depend on them. Neither is "see the movements of an account".</li>
+    <li><b>Destinatarios.</b> They were only "comercio", and there's no list screen. Persona = destinatario, and debts already point to it.</li>
+    <li><b>Writing things down.</b> v2 has no screen for jotting down an expense, even though M1's acceptance is "a manual expense moves Disponible". Today it goes to v1.</li>
+    <li><b>Tabs.</b> The plan (3) and the design (5) disagree. Today Movimientos is only reachable from widgets.</li>
+    <li><b>Ajustes.</b> No v2 screen. Everything that lives "in Ajustes" (Cuándo me pagan, Ahorro, Fuentes…) has no way in yet.</li>
+    <li><b>Cuadrar saldo and Undo.</b> Planned, but with no designed way in or toast.</li>
+  </ol></div>
+
+  <h2 id="decidir">6 · To decide</h2>
+  <div class="q"><b>1. Tabs:</b> 4 (Inicio · Movimientos · Pagos · Revisar, Ajustes behind the avatar), 3 (the plan) or 5 (the design)? I recommend 4.</div>
+  <div class="q"><b>2. Destinatario = comercio + persona, one sheet and one picker</b>, with the debt section only for people. Do you approve it as a decision (it replaces "Hoja de comercio" in the plan)?</div>
+  <div class="q"><b>3. Accounts:</b> design <b>Mis cuentas + Cuenta</b> now, with "Ver movimientos" as a filter on Movimientos, and move the "Cuenta para Disponible" toggle there.</div>
+  <div class="q"><b>4. Order:</b> before more screens, do I take this map to Claude Design for the missing screens (Mis cuentas, Cuenta, Hoja de destinatario, picker, Anotar, Ajustes), or design them here as mockups first?</div>
+</main>
+<script>mermaid.initialize({ startOnLoad: true, theme: "base", themeVariables: { primaryColor: "#FFFCF5", primaryBorderColor: "#8C7F63", primaryTextColor: "#14160F", lineColor: "#8C7F63", fontFamily: "Geist" }, flowchart: { curve: "basis" } });</script>
+</body>
+</html>

@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mis cuentas v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@500;600&family=Bricolage+Grotesque:opsz,wght@12..96,600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@0.453.0/dist/umd/lucide.min.js"></script>
+<style>
+  :root { --bg:#E9E0CC; --card:#FFFCF5; --ink:#14160F; --muted:#4B463B; --line:#E6DDC9; --ctl:#8C7F63; --sunk:#EFE7D6; --btn:#14160F; --btn-ink:#FFFCF5; --scrim:rgba(20,22,15,.45);
+    --ok-x:#2E4A12; --bad-x:#7A2410; --ui:"Geist",system-ui,sans-serif; --mono:"Geist Mono",ui-monospace,monospace; --num:"Bricolage Grotesque",var(--ui);
+    --shadow:0 1px 2px rgba(60,48,20,.06),0 4px 14px rgba(60,48,20,.07); }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#DCD3BF; color:var(--ink); font-family:var(--ui); }
+  main { max-width:1560px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font:600 26px var(--ui); letter-spacing:-.02em; margin:0 0 6px; }
+  h2 { font:600 19px var(--ui); margin:36px 0 6px; }
+  p, li { font:400 14px/1.55 var(--ui); color:var(--muted); max-width:920px; }
+  b { color:var(--ink); }
+  .phones { display:flex; flex-wrap:wrap; gap:26px; margin-top:16px; }
+  .col { width:360px; }
+  .col h3 { font:600 15px var(--ui); margin:0 0 4px; }
+  .col p { font-size:13px; margin:0 0 10px; min-height:78px; }
+  .phone { width:360px; height:760px; border-radius:40px; background:var(--bg); position:relative; overflow:hidden; box-shadow:0 18px 50px rgba(40,30,10,.22), inset 0 0 0 7px #1d1d1b; }
+  .scr { position:absolute; inset:7px; border-radius:33px; overflow:hidden; background:var(--bg); }
+  .page { position:absolute; inset:0 0 84px; overflow-y:auto; padding:48px 14px 16px; display:flex; flex-direction:column; gap:12px; }
+  .hd { display:flex; align-items:center; gap:10px; }
+  .sq { width:36px; height:36px; border-radius:10px; border:1.5px solid var(--ctl); display:grid; place-items:center; flex:none; }
+  .sq i { width:18px; height:18px; }
+  .hd b { flex:1; font:600 20px var(--ui); text-align:center; }
+  .hd .ph { width:36px; }
+  .card { background:var(--card); border-radius:18px; box-shadow:var(--shadow); }
+  .sum { padding:14px 16px; text-align:center; }
+  .sum .k { font:500 13px var(--ui); color:var(--muted); }
+  .sum .v { font:600 28px var(--num); letter-spacing:-.02em; }
+  .sum .sub { display:flex; justify-content:center; gap:14px; font:500 12px var(--ui); color:var(--muted); margin-top:4px; }
+  .sec { font:600 11.5px var(--mono); letter-spacing:.05em; text-transform:uppercase; color:var(--muted); padding:4px 4px 0; display:flex; justify-content:space-between; }
+  .list { padding:0 14px; }
+  .acc { display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--line); }
+  .acc:last-child { border-bottom:0; }
+  .av { width:38px; height:38px; border-radius:11px; background:var(--sunk); display:grid; place-items:center; font:600 12px var(--ui); color:var(--muted); flex:none; }
+  .nm { flex:1; min-width:0; }
+  .nm div:first-child { font:500 15px var(--ui); }
+  .nm div:last-child { font:400 12px var(--ui); color:var(--muted); }
+  .amt { font:600 15px var(--num); text-align:right; }
+  .amt small { display:block; font:500 11.5px var(--ui); color:var(--muted); }
+  .chev { width:16px; height:16px; color:var(--ctl); }
+  .pill { font:600 11px var(--ui); padding:2px 7px; border-radius:99px; background:var(--sunk); color:var(--muted); }
+  .sw { width:44px; height:26px; border-radius:99px; padding:2px; display:flex; flex:none; }
+  .sw.on { background:var(--btn); justify-content:flex-end; }
+  .sw.off { border:1.5px solid var(--ctl); justify-content:flex-start; }
+  .sw span { width:20px; height:20px; border-radius:99px; }
+  .sw.on span { background:var(--btn-ink); } .sw.off span { background:var(--ctl); width:18px; height:18px; }
+  .btn-o { height:46px; border-radius:12px; border:1.5px solid var(--ctl); display:flex; align-items:center; justify-content:center; gap:8px; font:600 14px var(--ui); }
+  .btn-o i { width:18px; height:18px; }
+  .row { display:flex; align-items:center; gap:10px; min-height:50px; padding:0 16px; border-bottom:1px solid var(--line); font:500 14px var(--ui); }
+  .row:last-child { border-bottom:0; }
+  .row .k { flex:1; }
+  .row .k small { display:block; font:400 12px var(--ui); color:var(--muted); }
+  .hero2 { padding:16px; text-align:center; }
+  .hero2 .k { font:500 13px var(--ui); color:var(--muted); }
+  .hero2 .v { font:600 30px var(--num); letter-spacing:-.02em; }
+  .hero2 .s { font:500 12px var(--mono); color:var(--muted); margin-top:2px; }
+  .mv { display:flex; align-items:center; gap:11px; padding:10px 0; border-bottom:1px solid var(--line); }
+  .mv:last-child { border-bottom:0; }
+  .mv .av { width:34px; height:34px; border-radius:10px; }
+  .mv .n { flex:1; font:500 14px var(--ui); }
+  .mv .n small { display:block; font:400 12px var(--ui); color:var(--muted); }
+  .out { color:var(--bad-x); } .in { color:var(--ok-x); }
+  .see { height:44px; display:flex; align-items:center; justify-content:center; gap:4px; font:600 14px var(--ui); border-top:1px solid var(--line); }
+  .quiet { text-align:center; font:600 13px var(--ui); color:var(--muted); text-decoration:underline; text-underline-offset:3px; padding:4px; }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; }
+  .f { height:32px; padding:0 12px; border-radius:9px; border:1.5px solid var(--ctl); display:flex; align-items:center; gap:6px; font:600 13px var(--ui); }
+  .f.on { background:var(--btn); color:var(--btn-ink); border-color:var(--btn); }
+  .f i { width:14px; height:14px; }
+  .cyc { height:46px; border-radius:14px; background:var(--card); box-shadow:var(--shadow); display:flex; align-items:center; justify-content:space-between; padding:0 14px; font:600 14px var(--ui); }
+  .day { display:flex; justify-content:space-between; font:600 11.5px var(--mono); letter-spacing:.04em; text-transform:uppercase; color:var(--muted); padding:4px 4px 0; }
+  /* tab bar with FAB */
+  .tabs { position:absolute; left:0; right:0; bottom:0; height:84px; background:var(--card); border-top:1px solid var(--line); display:grid; grid-template-columns:1fr 1fr 72px 1fr 1fr; align-items:start; padding:8px 6px 0; }
+  .tab { display:flex; flex-direction:column; align-items:center; gap:3px; font:500 10.5px var(--ui); color:var(--muted); }
+  .tab .pl { width:54px; height:30px; border-radius:99px; display:grid; place-items:center; position:relative; }
+  .tab.on { color:var(--ink); font-weight:600; }
+  .tab.on .pl { background:var(--sunk); box-shadow:inset 0 0 0 1.5px var(--ink); }
+  .tab i { width:19px; height:19px; }
+  .badge { position:absolute; top:-2px; right:6px; min-width:16px; height:16px; border-radius:99px; background:var(--btn); color:var(--btn-ink); font:600 10px var(--ui); display:grid; place-items:center; padding:0 4px; }
+  .fab { width:58px; height:58px; border-radius:99px; background:var(--btn); color:var(--btn-ink); display:grid; place-items:center; margin:-22px auto 0; box-shadow:0 6px 16px rgba(20,22,15,.3); }
+  .fab i { width:26px; height:26px; }
+  /* sheet */
+  .scrim { position:absolute; inset:0; background:var(--scrim); }
+  .sheet { position:absolute; left:0; right:0; bottom:0; background:var(--card); border-radius:24px 24px 0 0; padding:8px 18px 26px; display:flex; flex-direction:column; gap:10px; }
+  .handle { width:38px; height:5px; border-radius:3px; background:var(--ctl); align-self:center; }
+  .opt { display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:1px solid var(--line); }
+  .opt:last-child { border-bottom:0; }
+  .opt .ic { width:38px; height:38px; border-radius:11px; background:var(--sunk); display:grid; place-items:center; }
+  .opt .ic i { width:18px; height:18px; }
+  .opt div:nth-child(2) { flex:1; }
+  .opt b { display:block; font:600 15px var(--ui); }
+  .opt small { font:400 12.5px var(--ui); color:var(--muted); }
+  .q { background:var(--card); border-radius:14px; padding:14px 16px; box-shadow:var(--shadow); margin:10px 0; max-width:920px; font:400 14px/1.55 var(--ui); color:var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Mis cuentas · Cuenta · ver sus movimientos</h1>
+  <p>Builds on the "Mis cuentas" screen in Claude Design's <b>Z Cuentas</b>, plus what the map showed was missing: cards and loans, getting into one account, its movements, and Cuadrar. Every screen carries the new bar: <b>4 tabs + a center "+"</b> that opens Anotar.</p>
+  <p><b>Ways in to Mis cuentas:</b> the Mis cuentas widget on Inicio · Ajustes › Mis cuentas · the Disponible detail ("¿De dónde sale?") · tapping the account inside a movement's Detalle.</p>
+
+  <div class="phones">
+    <!-- 1 Mis cuentas -->
+    <div class="col">
+      <h3>1 · Mis cuentas</h3>
+      <p>On top, what counts for your Disponible. Cuentas and Tarjetas/créditos stay apart, because their numbers mean different things (money you have vs money you owe). Each account's switch is the Claude Design one. Turning one off asks first.</p>
+      <div class="phone"><div class="scr">
+        <div class="page">
+          <div class="hd"><span class="sq"><i data-lucide="chevron-left"></i></span><b>Mis cuentas</b><span class="ph"></span></div>
+          <div class="card sum"><div class="k">Cuentan para tu Disponible</div><div class="v">$1.850.000</div>
+            <div class="sub"><span>Aparte $2.400.000</span><span>Debes $2.450.000</span></div></div>
+          <div class="sec"><span>Cuentas</span></div>
+          <div class="card list">
+            <div class="acc"><div class="av">B</div><div class="nm"><div>Bancolombia</div><div>Ahorros ··4821</div></div><div class="amt">$1.320.000</div><span class="sw on"><span></span></span></div>
+            <div class="acc"><div class="av">N</div><div class="nm"><div>Nequi</div><div>Cuenta</div></div><div class="amt">$330.000</div><span class="sw on"><span></span></span></div>
+            <div class="acc"><div class="av">$</div><div class="nm"><div>Efectivo</div><div>Lo que llevas encima</div></div><div class="amt">$200.000</div><span class="sw on"><span></span></span></div>
+            <div class="acc"><div class="av">Nu</div><div class="nm"><div>Ahorros Nu</div><div>Aparte</div></div><div class="amt">$2.400.000</div><span class="sw off"><span></span></span></div>
+          </div>
+          <div class="sec"><span>Tarjetas y créditos</span></div>
+          <div class="card list">
+            <div class="acc"><div class="av">Nu</div><div class="nm"><div>Tarjeta Nu</div><div>··4398 · corte 27 sep</div></div><div class="amt">$1.850.000<small>factura ≈ $480.000</small></div><i class="chev" data-lucide="chevron-right"></i></div>
+            <div class="acc"><div class="av">D</div><div class="nm"><div>Libre inversión</div><div>Davivienda · cuota 12 de 36</div></div><div class="amt">$600.000<small>cuota $98.000</small></div><i class="chev" data-lucide="chevron-right"></i></div>
+          </div>
+          <div class="btn-o"><i data-lucide="plus"></i>Agregar</div>
+        </div>
+        <div class="tabs">
+          <div class="tab on"><span class="pl"><i data-lucide="home"></i></span>Inicio</div>
+          <div class="tab"><span class="pl"><i data-lucide="list"></i></span>Movimientos</div>
+          <div><div class="fab"><i data-lucide="plus"></i></div></div>
+          <div class="tab"><span class="pl"><i data-lucide="calendar"></i></span>Pagos</div>
+          <div class="tab"><span class="pl"><i data-lucide="inbox"></i><span class="badge">4</span></span>Revisar</div>
+        </div>
+      </div></div>
+    </div>
+
+    <!-- 2 Cuenta -->
+    <div class="col">
+      <h3>2 · A cuenta (tap Bancolombia)</h3>
+      <p>Its balance with where it came from, whether it counts, and <b>Cuadrar</b> (D14: "my bank says something else"). Then its latest movements and "Ver los 47", which opens Movimientos filtered. Editing (name, type) and archiving are quiet at the end.</p>
+      <div class="phone"><div class="scr">
+        <div class="page">
+          <div class="hd"><span class="sq"><i data-lucide="chevron-left"></i></span><b>Bancolombia</b><span class="ph"></span></div>
+          <div class="card hero2"><div class="k">Saldo</div><div class="v">$1.320.000</div><div class="s">Ahorros ··4821 · con lo último de hoy 12:41</div></div>
+          <div class="card">
+            <div class="row"><span class="k">Cuenta para mi Disponible<small>Su saldo y sus movimientos mueven tu número</small></span><span class="sw on"><span></span></span></div>
+            <div class="row"><span class="k">Cuadrar con mi saldo real<small>Si tu banco dice otra cosa</small></span><i class="chev" data-lucide="chevron-right"></i></div>
+          </div>
+          <div class="sec"><span>Movimientos · este ciclo</span><span>−$96.000</span></div>
+          <div class="card list">
+            <div class="mv"><div class="av">R</div><div class="n">Rappi<small>Hoy 12:41 · Domicilios</small></div><div class="amt out">−$32.000</div></div>
+            <div class="mv"><div class="av">É</div><div class="n">Éxito<small>Ayer 19:30 · Mercado</small></div><div class="amt out">−$64.000</div></div>
+            <div class="mv"><div class="av">S</div><div class="n">Salario<small>15 sep · Ingreso</small></div><div class="amt in">+$2.100.000</div></div>
+            <div class="see">Ver los 47 movimientos <i class="chev" data-lucide="chevron-right"></i></div>
+          </div>
+          <div class="quiet">Editar cuenta</div>
+        </div>
+        <div class="tabs">
+          <div class="tab on"><span class="pl"><i data-lucide="home"></i></span>Inicio</div>
+          <div class="tab"><span class="pl"><i data-lucide="list"></i></span>Movimientos</div>
+          <div><div class="fab"><i data-lucide="plus"></i></div></div>
+          <div class="tab"><span class="pl"><i data-lucide="calendar"></i></span>Pagos</div>
+          <div class="tab"><span class="pl"><i data-lucide="inbox"></i><span class="badge">4</span></span>Revisar</div>
+        </div>
+      </div></div>
+    </div>
+
+    <!-- 3 Movimientos filtered -->
+    <div class="col">
+      <h3>3 · Ver los 47 → Movimientos with the account as a filter</h3>
+      <p>It isn't another list: it's Movimientos with a removable <b>Bancolombia ✕</b> chip. Search, cycles and Detalle work the same. The same chip appears from a destinatario's sheet ("Rappi ✕").</p>
+      <div class="phone"><div class="scr">
+        <div class="page">
+          <div class="hd" style="justify-content:space-between"><b style="text-align:left;font-size:24px">Movimientos</b><span class="sq"><i data-lucide="search"></i></span></div>
+          <div class="cyc"><span>‹</span><span>Este ciclo · 15–29 sep</span><span style="color:var(--ctl)">›</span></div>
+          <div class="chips"><span class="f on">Bancolombia <i data-lucide="x"></i></span><span class="f">Gastos</span><span class="f">Entradas</span></div>
+          <div class="day"><span>Hoy · vie 18</span><span>−$32.000</span></div>
+          <div class="card list">
+            <div class="mv"><div class="av">R</div><div class="n">Rappi<small>12:41 · Domicilios</small></div><div class="amt out">−$32.000</div></div>
+          </div>
+          <div class="day"><span>Jue 17</span><span>−$64.000</span></div>
+          <div class="card list">
+            <div class="mv"><div class="av">É</div><div class="n">Éxito<small>19:30 · Mercado</small></div><div class="amt out">−$64.000</div></div>
+          </div>
+          <div class="day"><span>Mar 15</span><span>+$2.100.000</span></div>
+          <div class="card list">
+            <div class="mv"><div class="av">S</div><div class="n">Salario<small>6:02 · Ingreso</small></div><div class="amt in">+$2.100.000</div></div>
+          </div>
+        </div>
+        <div class="tabs">
+          <div class="tab"><span class="pl"><i data-lucide="home"></i></span>Inicio</div>
+          <div class="tab on"><span class="pl"><i data-lucide="list"></i></span>Movimientos</div>
+          <div><div class="fab"><i data-lucide="plus"></i></div></div>
+          <div class="tab"><span class="pl"><i data-lucide="calendar"></i></span>Pagos</div>
+          <div class="tab"><span class="pl"><i data-lucide="inbox"></i><span class="badge">4</span></span>Revisar</div>
+        </div>
+      </div></div>
+    </div>
+
+    <!-- 4 Agregar -->
+    <div class="col">
+      <h3>4 · Agregar</h3>
+      <p>One button, four kinds. Each asks only what that kind needs: account → name + balance today; card → limit, cut and due day; loan → balance, cuota, day. Plus the shortcut <b>"Desde un extracto"</b> (A11), which creates it from the PDF.</p>
+      <div class="phone"><div class="scr">
+        <div class="page">
+          <div class="hd"><span class="sq"><i data-lucide="chevron-left"></i></span><b>Mis cuentas</b><span class="ph"></span></div>
+          <div class="card sum"><div class="k">Cuentan para tu Disponible</div><div class="v">$1.850.000</div></div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="handle"></div>
+          <div style="font:600 18px var(--ui);padding:4px 0">Agregar</div>
+          <div class="opt"><span class="ic"><i data-lucide="landmark"></i></span><div><b>Cuenta</b><small>Ahorros, corriente, Nequi, Daviplata</small></div><i class="chev" data-lucide="chevron-right"></i></div>
+          <div class="opt"><span class="ic"><i data-lucide="wallet"></i></span><div><b>Efectivo</b><small>Lo que llevas encima</small></div><i class="chev" data-lucide="chevron-right"></i></div>
+          <div class="opt"><span class="ic"><i data-lucide="credit-card"></i></span><div><b>Tarjeta de crédito</b><small>Cupo, día de corte y de pago</small></div><i class="chev" data-lucide="chevron-right"></i></div>
+          <div class="opt"><span class="ic"><i data-lucide="file-text"></i></span><div><b>Crédito o préstamo</b><small>Lo que debes, cuota y día</small></div><i class="chev" data-lucide="chevron-right"></i></div>
+          <div class="opt"><span class="ic"><i data-lucide="file-down"></i></span><div><b>Desde un extracto</b><small>Sube el PDF y la creamos con sus datos</small></div><i class="chev" data-lucide="chevron-right"></i></div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <h2>Navigation bar: 4 tabs + "+"</h2>
+  <p>Inicio · Movimientos · <b>+</b> · Pagos · Revisar (with a counter). The "+" is black (black = tap), sticks out of the bar like the v1 FAB and opens <b>Anotar</b>, with Dictar inside. Ajustes is reached from the avatar on Inicio. Mis cuentas, Cuenta and the destinatario sheet open <i>within</i> the tab you came from, so the bar stays visible and you can go back.</p>
+
+  <h2>To decide</h2>
+  <div class="q"><b>1. Cards and loans in Mis cuentas, or only in Pagos › Deudas?</b> I recommend both: Mis cuentas is "everything I have and owe", Pagos is "what I have to pay". Tapping a card here opens the same card screen as Pagos.</div>
+  <div class="q"><b>2. A switch on each row of the list</b> (as Claude Design drew it), or only inside the account? A row switch is fast, but it's easy to turn off by accident. With the confirmation it's safe.</div>
+  <div class="q"><b>3. "Saldo" with its origin</b> ("con lo último de hoy 12:41"): it says the balance is calculated from the last known balance plus the movements since. Clear enough, or "≈" when it isn't confirmed by the bank?</div>
+</main>
+<script>lucide.createIcons();</script>
+</body>
+</html>
