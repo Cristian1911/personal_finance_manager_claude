@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Redirect, useLocalSearchParams } from "expo-router";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { V2_DEBUG_ENABLED } from "../lib/v2/flags";
 import { DisponibleBlock } from "../v2/components/DisponibleBlock";
@@ -28,12 +29,14 @@ export default function V2GalleryRoute() {
   if (!V2_DEBUG_ENABLED) return <Redirect href="/" />;
   if (!fontsReady) return null;
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <V2ThemeProvider name={theme} mode={mode}>
       <Gallery
         theme={theme} mode={mode} setTheme={setTheme} setMode={setMode} only={params.only}
         section={params.section} widgetCase={params.case} open={params.open} detail={params.detail}
       />
     </V2ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
 

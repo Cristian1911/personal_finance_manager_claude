@@ -71,3 +71,10 @@ The owner reviewed the first build on device. Changes, all built:
   - drag to move, a size chip (allowed sizes per widget), remove, and an "Agregar widget" sheet (the other 7 catalog widgets listed as "Pronto");
   - saved in `local_state` (`inicio.layout`);
   - the voice button says "Pronto" until M6.
+- **R7 — Tu flujo reads a day inside the widget** (S5-2, the owner's prototype):
+  - Open, the chart becomes the control: a tap or a sideways drag picks a day, and a vertical drag still scrolls the page.
+  - The header shows "Sáb 19 sep ≈ $1.115.000".
+  - The day's items (Hecho / Pendiente / Esperado / Tu ritmo habitual) appear above the cycle totals.
+  - A tap on the chart never closes the card; × or the title row close it. Closed, the whole card opens it.
+  - Screen readers get the chart as an adjustable control (swipe to change day).
+  - The full Tu flujo screen (cycle tabs, swipe, the next cycle's amber warning) is still its own M1 item.

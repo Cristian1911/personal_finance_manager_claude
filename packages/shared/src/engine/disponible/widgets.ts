@@ -46,6 +46,18 @@ export interface FlowDay {
   edge: boolean;
   /** A card's statement cut (diamond). */
   cardCut: boolean;
+  /** What happens that day, for the selected-day list. */
+  items: FlowItem[];
+}
+
+/** One line of a Tu flujo day: "Arriendo · Pendiente · −$700.000". */
+export interface FlowItem {
+  id: string;
+  title: string;
+  /** Hecho / Pendiente / Esperado / Tu ritmo habitual. */
+  detail: string;
+  /** Signed: money in positive. */
+  amount: number;
 }
 
 export interface InicioWidgetRow {
@@ -219,16 +231,22 @@ export function flowChart(i: InicioWidgetsInput): Extract<InicioWidgetVisual, { 
     const date = addDays(first, k);
     return {
       date, balance: 0, income: 0, incomeExpected: 0, spent: 0, bill: 0, estimated: 0,
-      edge: date < cycle.start || date > cycle.end, cardCut: cuts.has(date),
+      edge: date < cycle.start || date > cycle.end, cardCut: cuts.has(date), items: [],
     };
   });
   const at = (d: IsoDate) => days[diffDays(first, d)];
 
+  const described = new Map(i.transactions.map((t) => [t.id, t.description?.trim() || null]));
   for (const m of i.movements) {
     if (!i.counted.has(m.accountId) || m.kind === "ignored" || m.date < first || m.date > today) continue;
     const day = at(m.date);
-    if (m.direction === "INFLOW") day.income = cents(day.income + m.amount);
+    const inflow = m.direction === "INFLOW";
+    if (inflow) day.income = cents(day.income + m.amount);
     else day.spent = cents(day.spent + m.amount);
+    day.items.push({
+      id: m.id, title: described.get(m.id) ?? (inflow ? "Ingreso" : "Gasto"),
+      detail: "Hecho", amount: inflow ? m.amount : -m.amount,
+    });
   }
   const due = new Map((i.obligations ?? []).map((o) => [o.id, o.dueDate]));
   for (const l of r.porPagar.lines) {
@@ -236,12 +254,19 @@ export function flowChart(i: InicioWidgetsInput): Extract<InicioWidgetVisual, { 
     if (!d || l.amount <= 0) continue;
     // Overdue or due today and still unpaid: it lands tomorrow (today's balance is what's real).
     const day = d > today ? d : addDays(today, 1);
-    if (day >= first && diffDays(first, day) < n) at(day).bill = cents(at(day).bill + l.amount);
+    if (day >= first && diffDays(first, day) < n) {
+      at(day).bill = cents(at(day).bill + l.amount);
+      at(day).items.push({ id: l.id, title: l.label, detail: d < day ? "Vencido · pendiente" : "Pendiente", amount: -l.amount });
+    }
   }
   if (cycle.nextPayday && cycle.nextPayday > today && i.nextIncome && diffDays(first, cycle.nextPayday) < n) {
     at(cycle.nextPayday).incomeExpected = i.nextIncome;
+    at(cycle.nextPayday).items.push({ id: "salary", title: "Salario", detail: "Esperado", amount: i.nextIncome });
   }
-  for (let k = todayIndex + 1; k < n; k++) days[k].estimated = pace;
+  for (let k = todayIndex + 1; k < n; k++) {
+    days[k].estimated = pace;
+    if (pace > 0) days[k].items.push({ id: "estimate", title: "Gasto diario estimado", detail: "Tu ritmo habitual", amount: -pace });
+  }
 
   days[todayIndex].balance = cents(i.balanceToday ?? r.disponible + r.porPagar.total + r.ahorro.total);
   for (let k = todayIndex - 1; k >= 0; k--) {
@@ -258,6 +283,20 @@ export function flowChart(i: InicioWidgetsInput): Extract<InicioWidgetVisual, { 
   let low = todayIndex;
   for (let k = todayIndex; k <= cycleEnd; k++) if (days[k].balance < days[low].balance) low = k;
   return { kind: "flow", days, todayIndex, markIndex: runOut >= 0 ? runOut : low, bad: runOut >= 0 };
+}
+
+const WEEKDAY = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+
+/** The selected day of Tu flujo: "Sáb 19 sep" and its end-of-day balance ("≈" once projected). */
+export function flowDayView(day: FlowDay, today: IsoDate): { label: string; balance: string; projected: boolean; items: InicioWidgetRow[] } {
+  const projected = day.date > today;
+  const weekday = WEEKDAY[new Date(`${day.date}T12:00:00Z`).getUTCDay()];
+  return {
+    label: `${weekday} ${shortDate(day.date)}${day.date === today ? " · hoy" : ""}`,
+    balance: `${projected ? APPROX : ""}${signedPesos(day.balance)}`,
+    projected,
+    items: day.items.map((it) => ({ id: it.id, title: it.title, detail: it.detail, amount: signedPesos(it.amount) })),
+  };
 }
 
 export function flujoWidget(i: InicioWidgetsInput): InicioWidget {

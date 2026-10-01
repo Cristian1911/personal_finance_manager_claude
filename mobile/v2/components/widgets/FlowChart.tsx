@@ -1,5 +1,6 @@
 import { memo, useState } from "react";
 import { View } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Svg, { Circle, G, Line, Path, Rect } from "react-native-svg";
 import type { FlowDay } from "@zeta/shared";
 import { useV2Theme } from "../../theme/ThemeProvider";
@@ -18,12 +19,18 @@ export const FlowChart = memo(function FlowChart({
   markIndex,
   bad,
   height = 80,
+  selectedIndex,
+  onSelect,
 }: {
   days: FlowDay[];
   todayIndex: number;
   markIndex: number;
   bad: boolean;
   height?: number;
+  /** The day being read (open widget); undefined = no selection drawn. */
+  selectedIndex?: number;
+  /** Tap or drag sideways to pick a day. Vertical drags stay with the page scroll. */
+  onSelect?: (index: number) => void;
 }) {
   const t = useV2Theme();
   const [W, setW] = useState(0);
@@ -58,14 +65,26 @@ export const FlowChart = memo(function FlowChart({
 
   const future = bad ? t.colors.bad.solid : t.colors.ink;
   const mark = days[markIndex];
+  const pick = (x: number) => {
+    if (!onSelect || W <= 0 || n === 0) return;
+    onSelect(Math.max(0, Math.min(n - 1, Math.floor(x / s))));
+  };
+  // Horizontal only: a vertical drag fails this gesture and the page scrolls.
+  const pan = Gesture.Pan().runOnJS(true).enabled(!!onSelect)
+    .activeOffsetX([-6, 6]).failOffsetY([-10, 10])
+    .onStart((e) => pick(e.x)).onUpdate((e) => pick(e.x));
+  const tap = Gesture.Tap().runOnJS(true).enabled(!!onSelect).onEnd((e) => pick(e.x));
+  const sel = selectedIndex != null && selectedIndex >= 0 && selectedIndex < n ? days[selectedIndex] : null;
 
   return (
+    <GestureDetector gesture={Gesture.Race(pan, tap)}>
     <View style={{ height: H, alignSelf: "stretch" }} onLayout={(e) => setW(e.nativeEvent.layout.width)} accessible={false}>
       {draw && (
         <Svg width={W} height={H}>
           {shades.map((r) => (
             <Rect key={r.x} x={r.x} y={0} width={r.w} height={H} rx={6} fill={t.colors.sunk} />
           ))}
+          {sel && <Rect x={selectedIndex! * s} y={0} width={s} height={H} rx={4} fill={t.colors.ink} opacity={0.08} />}
           <Path d={`${path(pts)} L${xs(n - 1).toFixed(1)} ${y0} L${xs(0).toFixed(1)} ${y0} Z`} fill={t.colors.ink} opacity={0.06} />
           {bad && (
             <Path
@@ -111,8 +130,12 @@ export const FlowChart = memo(function FlowChart({
           {mark && (
             <Circle cx={xs(markIndex)} cy={yB(mark.balance)} r={4.5} fill={t.colors.card} stroke={bad ? t.colors.bad.solid : t.colors.ink} strokeWidth={2} />
           )}
+          {sel && (
+            <Circle cx={xs(selectedIndex!)} cy={yB(sel.balance)} r={5} fill={sel.balance < 0 ? t.colors.bad.solid : t.colors.ink} stroke={t.colors.card} strokeWidth={2} />
+          )}
         </Svg>
       )}
     </View>
+    </GestureDetector>
   );
 });

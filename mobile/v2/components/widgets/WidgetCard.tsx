@@ -1,13 +1,14 @@
-import { memo } from "react";
+import { memo, useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import {
   ChartSpline, ChevronRight, Clock, CreditCard, Receipt, Sun, Users, X, type LucideIcon,
 } from "lucide-react-native";
-import type { InicioWidget, InicioWidgetKey, InicioWidgetLevel, InicioWidgetRow, WidgetActionId } from "@zeta/shared";
+import { flowDayView, type InicioWidget, type InicioWidgetKey, type InicioWidgetLevel, type InicioWidgetRow, type WidgetActionId } from "@zeta/shared";
 import { useV2Theme } from "../../theme/ThemeProvider";
 import { Collapse } from "../Collapse";
 import { Dim } from "../Dim";
 import { FittedAmount } from "../FittedAmount";
+import { FlowChart } from "./FlowChart";
 import { levelColors, WidgetVisualView } from "./visuals";
 
 export const WIDGET_ICONS: Record<InicioWidgetKey, LucideIcon> = {
@@ -41,6 +42,23 @@ export const WidgetCard = memo(function WidgetCard({
   /** Full widgets: the opened body's height, to scroll it into view. */
   onBodyHeight?: (height: number) => void;
 }) {
+  if (w.visual?.kind === "flow" && !editInset) {
+    return <FlowWidgetCard widget={w} open={open} dim={dim} onToggle={onToggle} onAction={onAction} onBodyHeight={onBodyHeight} />;
+  }
+  return <SummaryCard widget={w} open={open} dim={dim} onToggle={onToggle} onAction={onAction} editInset={editInset} onBodyHeight={onBodyHeight} />;
+});
+
+type CardProps = {
+  widget: InicioWidget;
+  open: boolean;
+  dim: boolean;
+  onToggle: (id: string) => void;
+  onAction?: (id: WidgetActionId) => void;
+  editInset?: boolean;
+  onBodyHeight?: (height: number) => void;
+};
+
+const SummaryCard = memo(function SummaryCard({ widget: w, open, dim, onToggle, onAction, editInset = false, onBodyHeight }: CardProps) {
   const t = useV2Theme();
   const Icon = WIDGET_ICONS[w.key];
   const full = w.size === "full";
@@ -117,6 +135,92 @@ export const WidgetCard = memo(function WidgetCard({
         </Collapse>
       )}
       {outline && <View pointerEvents="none" style={[styles.outline, outline]} />}
+    </Dim>
+  );
+});
+
+/**
+ * Tu flujo. Closed, the whole card opens it. Open, the chart reads a day (tap
+ * or drag sideways; for screen readers, adjustable) and only the title row or
+ * × close it — a tap on the chart never closes. The day's balance shows above
+ * the chart and its items below (S5-2, the owner's prototype).
+ */
+const FlowWidgetCard = memo(function FlowWidgetCard({ widget: w, open, dim, onToggle, onAction, onBodyHeight }: CardProps) {
+  const t = useV2Theme();
+  const visual = w.visual?.kind === "flow" ? w.visual : null;
+  const [selected, setSelected] = useState(visual?.todayIndex ?? 0);
+  // Every opening starts on today.
+  useEffect(() => {
+    if (open && visual) setSelected(visual.todayIndex);
+  }, [open, visual?.todayIndex]);
+  if (!visual) return null;
+  const n = visual.days.length;
+  const day = flowDayView(visual.days[Math.min(selected, n - 1)], visual.days[visual.todayIndex].date);
+  const red = w.attention?.level === "red";
+  const Icon = WIDGET_ICONS[w.key];
+
+  return (
+    <Dim on={dim} style={[styles.card, { backgroundColor: t.colors.card }, t.shadow]}>
+      <View style={styles.flowWrap}>
+        <Pressable
+          onPress={() => onToggle(w.id)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: open }}
+          accessibilityLabel={spokenLabel(w)}
+          accessibilityHint={open ? "Cierra Tu flujo" : dim ? "Cambia a este widget" : undefined}
+          style={styles.head}
+        >
+          <Icon size={16} color={t.colors.ink} strokeWidth={2} />
+          <Text style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]} numberOfLines={1}>{w.title}</Text>
+          {open && (
+            <View style={[styles.flowClose, { borderColor: t.colors.control }]} accessible={false}>
+              <X size={13} color={t.colors.ink} strokeWidth={2.2} />
+            </View>
+          )}
+        </Pressable>
+
+        <Collapse open={open}>
+          <View style={styles.readout}>
+            <Text style={[styles.readoutDay, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]}>{day.label}</Text>
+            <Text style={[styles.readoutAmount, { color: t.colors.ink, fontFamily: t.fonts.numberSemibold }]}>{day.balance}</Text>
+          </View>
+        </Collapse>
+
+        {/* Closed: a tap here opens. Open: the chart takes the touches. */}
+        <Pressable onPress={() => onToggle(w.id)} disabled={open} accessible={false} style={styles.flowChart}>
+          <View
+            accessible={open}
+            accessibilityRole="adjustable"
+            accessibilityLabel="Día en Tu flujo"
+            accessibilityValue={{ text: `${day.label}, ${day.balance.replace(/≈\s/, "aproximadamente ")}` }}
+            accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
+            onAccessibilityAction={(e) => {
+              const step = e.nativeEvent.actionName === "increment" ? 1 : -1;
+              setSelected((k) => Math.max(0, Math.min(n - 1, k + step)));
+            }}
+          >
+            <FlowChart
+              days={visual.days}
+              todayIndex={visual.todayIndex}
+              markIndex={visual.markIndex}
+              bad={visual.bad}
+              selectedIndex={open ? selected : undefined}
+              onSelect={open ? setSelected : undefined}
+            />
+          </View>
+          {w.attention && !open && <View style={styles.foot}><Chip level={w.attention.level} text={w.attention.reason} /></View>}
+        </Pressable>
+      </View>
+
+      <Collapse open={open} onHeight={onBodyHeight}>
+        <View style={styles.flowDay}>
+          {day.items.length > 0
+            ? <Rows rows={day.items} />
+            : <Text style={[styles.note, { color: t.colors.muted, fontFamily: t.fonts.ui }]}>Nada este día.</Text>}
+        </View>
+        <WidgetBody widget={w} onAction={onAction} />
+      </Collapse>
+      {red && <View pointerEvents="none" style={[styles.outline, { borderColor: t.colors.bad.solid, borderWidth: 1.5 }]} />}
     </Dim>
   );
 });
@@ -250,6 +354,13 @@ const styles = StyleSheet.create({
   outline: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, borderRadius: 18 },
   press: { flexGrow: 1, minHeight: 120, paddingHorizontal: 12, paddingTop: 14, paddingBottom: 12, alignItems: "center" },
   pressEdit: { paddingTop: 42 },
+  flowWrap: { paddingHorizontal: 12, paddingTop: 14, paddingBottom: 12 },
+  flowClose: { position: "absolute", right: 0, width: 28, height: 28, borderRadius: 14, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
+  readout: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", paddingTop: 10, paddingHorizontal: 4 },
+  readoutDay: { fontSize: 13 },
+  readoutAmount: { fontSize: 16, fontVariant: ["tabular-nums"] },
+  flowChart: { marginTop: 8, alignSelf: "stretch" },
+  flowDay: { paddingHorizontal: 16 },
   head: { height: 20, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, alignSelf: "stretch" },
   title: { fontSize: 13, flexShrink: 1 },
   middle: { flexGrow: 1, alignSelf: "stretch", alignItems: "center", justifyContent: "center", gap: 2, marginVertical: 8 },

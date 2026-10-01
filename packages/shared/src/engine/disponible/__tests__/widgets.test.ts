@@ -7,6 +7,7 @@ import {
   buildInicioWidgets,
   layoutOf,
   flowChart,
+  flowDayView,
   flujoWidget,
   hoyWidget,
   pagoWidget,
@@ -110,6 +111,20 @@ describe("Tu flujo", () => {
     expect(c.days[17]).toMatchObject({ date: "2026-09-30", incomeExpected: 2_100_000 });
     expect(c.bad).toBe(false);
     expect(c.days[c.markIndex].date).toBe("2026-09-29"); // lowest point before payday
+  });
+
+  it("a selected day reads as its date, end-of-day balance and items", () => {
+    const c = flowChart(input([tx("2026-09-16", 100_000, { description: "Éxito" })], { balanceToday: 2_000_000, nextIncome: 2_100_000 }));
+    const past = flowDayView(c.days[3], TODAY);
+    expect(past).toMatchObject({ label: "Mié 16 sep", projected: false });
+    expect(past.items).toEqual([{ id: expect.any(String), title: "Éxito", detail: "Hecho", amount: "−$100.000" }]);
+    expect(flowDayView(c.days[5], TODAY).label).toBe("Vie 18 sep · hoy");
+    const rent = flowDayView(c.days[6], TODAY);
+    expect(rent.balance).toBe("≈\u00a0$1.275.000");
+    expect(rent.items.map((x) => `${x.title}|${x.detail}|${x.amount}`)).toEqual([
+      "Arriendo|Pendiente|−$700.000", "Gasto diario estimado|Tu ritmo habitual|−$25.000",
+    ]);
+    expect(flowDayView(c.days[17], TODAY).items[0]).toMatchObject({ title: "Salario", detail: "Esperado", amount: "$2.100.000" });
   });
 
   it("red: the day the balance runs out (bills on their dates) and the per-day cut", () => {
