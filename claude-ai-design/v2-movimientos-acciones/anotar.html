@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anotar v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@500;600&family=Bricolage+Grotesque:opsz,wght@12..96,600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@0.453.0/dist/umd/lucide.min.js"></script>
+<style>
+  :root { --bg:#E9E0CC; --card:#FFFCF5; --ink:#14160F; --muted:#4B463B; --line:#E6DDC9; --ctl:#8C7F63; --sunk:#EFE7D6; --btn:#14160F; --btn-ink:#FFFCF5; --scrim:rgba(20,22,15,.45);
+    --ok-x:#2E4A12; --ok-t:#CFE0A6; --bad-x:#7A2410; --ui:"Geist",system-ui,sans-serif; --mono:"Geist Mono",ui-monospace,monospace; --num:"Bricolage Grotesque",var(--ui);
+    --shadow:0 1px 2px rgba(60,48,20,.06),0 4px 14px rgba(60,48,20,.07); }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#DCD3BF; color:var(--ink); font-family:var(--ui); }
+  main { max-width:1560px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font:600 26px var(--ui); letter-spacing:-.02em; margin:0 0 6px; }
+  h2 { font:600 19px var(--ui); margin:36px 0 6px; }
+  p, li { font:400 14px/1.55 var(--ui); color:var(--muted); max-width:940px; }
+  b { color:var(--ink); }
+  .phones { display:flex; flex-wrap:wrap; gap:26px; margin-top:16px; }
+  .col { width:360px; }
+  .col h3 { font:600 15px var(--ui); margin:0 0 4px; }
+  .col p { font-size:13px; margin:0 0 10px; min-height:96px; }
+  .phone { width:360px; height:760px; border-radius:40px; background:var(--bg); position:relative; overflow:hidden; box-shadow:0 18px 50px rgba(40,30,10,.22), inset 0 0 0 7px #1d1d1b; }
+  .scr { position:absolute; inset:7px; border-radius:33px; overflow:hidden; background:var(--bg); }
+  .scrim { position:absolute; inset:0; background:var(--scrim); }
+  .sheet { position:absolute; left:0; right:0; bottom:0; top:40px; background:var(--card); border-radius:24px 24px 0 0; padding:8px 14px 16px; display:flex; flex-direction:column; gap:10px; }
+  .handle { width:38px; height:5px; border-radius:3px; background:var(--ctl); align-self:center; }
+  .top { display:flex; align-items:center; gap:8px; }
+  .seg { flex:1; display:flex; padding:3px; border-radius:11px; background:var(--sunk); box-shadow:inset 0 0 0 1px var(--line); }
+  .seg span { flex:1; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; font:500 12.5px var(--ui); color:var(--muted); }
+  .seg span.on { background:var(--card); color:var(--ink); font-weight:600; box-shadow:var(--shadow); }
+  .x { width:34px; height:34px; border-radius:50%; border:1.5px solid var(--ctl); display:grid; place-items:center; flex:none; }
+  .x svg { width:15px; height:15px; }
+  .amount { text-align:center; padding:6px 0 0; }
+  .amount .v { font:600 44px var(--num); letter-spacing:-.02em; }
+  .amount .v.ph { color:var(--ctl); }
+  .impact { text-align:center; font:500 12.5px var(--ui); color:var(--muted); }
+  .impact b { font-weight:600; }
+  .fields { border:1px solid var(--line); border-radius:14px; overflow:hidden; }
+  .fld { display:flex; align-items:center; gap:10px; min-height:44px; padding:0 12px; border-bottom:1px solid var(--line); font:500 14px var(--ui); }
+  .fld:last-child { border-bottom:0; }
+  .fld .k { color:var(--muted); width:74px; flex:none; }
+  .fld .v { flex:1; font-weight:600; display:flex; align-items:center; gap:8px; min-width:0; }
+  .fld .v.ph { color:var(--ctl); font-weight:500; }
+  .fld svg.chev { width:15px; height:15px; color:var(--ctl); }
+  .ms { font:600 9.5px var(--mono); color:var(--muted); background:var(--sunk); border-radius:5px; padding:2px 5px; }
+  .recent { display:flex; gap:8px; overflow:hidden; }
+  .rc { display:flex; flex-direction:column; align-items:center; gap:4px; width:58px; font:500 11px var(--ui); color:var(--muted); text-align:center; }
+  .av { position:relative; width:40px; height:40px; background:var(--sunk); display:grid; place-items:center; font:600 12.5px var(--ui); color:var(--muted); }
+  .av.m { border-radius:12px; } .av.p { border-radius:50%; box-shadow:inset 0 0 0 1.5px var(--ctl); }
+  .av.sm { width:24px; height:24px; font-size:10px; }
+  .av.sm.m { border-radius:7px; }
+  .pad { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:auto; }
+  .pad span { height:46px; border-radius:11px; background:var(--sunk); display:grid; place-items:center; font:600 20px var(--num); }
+  .pad span svg { width:20px; height:20px; }
+  .save { height:50px; border-radius:12px; background:var(--btn); color:var(--btn-ink); display:grid; place-items:center; font:600 15px var(--ui); }
+  .save.off { background:var(--sunk); color:var(--ctl); }
+  .mic { display:flex; align-items:center; justify-content:center; gap:8px; height:40px; border-radius:11px; border:1.5px solid var(--ctl); font:600 13px var(--ui); }
+  .mic svg { width:16px; height:16px; }
+  .listen { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; text-align:center; }
+  .wave { display:flex; align-items:center; gap:5px; height:60px; }
+  .wave span { width:6px; border-radius:3px; background:var(--ink); }
+  .big-mic { width:84px; height:84px; border-radius:50%; background:var(--btn); color:var(--btn-ink); display:grid; place-items:center; box-shadow:0 0 0 10px var(--sunk); }
+  .big-mic svg { width:34px; height:34px; }
+  .heard { font:500 17px var(--ui); color:var(--ink); }
+  .hint { font:500 13px var(--ui); color:var(--muted); }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { height:32px; padding:0 11px; border-radius:9px; border:1.5px solid var(--ctl); display:flex; align-items:center; gap:6px; font:600 12.5px var(--ui); }
+  .chip.on { background:var(--btn); color:var(--btn-ink); border-color:var(--btn); }
+  .two { display:grid; grid-template-columns:1fr 34px 1fr; align-items:center; gap:6px; }
+  .acc { border:1.5px solid var(--ctl); border-radius:12px; padding:9px 10px; }
+  .acc small { display:block; font:500 11px var(--ui); color:var(--muted); }
+  .acc b { font:600 14px var(--ui); }
+  .acc span { display:block; font:500 12px var(--num); color:var(--muted); }
+  .arrow { display:grid; place-items:center; } .arrow svg { width:18px; height:18px; color:var(--muted); }
+  .note { font:500 12.5px/1.45 var(--ui); color:var(--muted); background:var(--sunk); border-radius:10px; padding:9px 11px; }
+  /* inicio behind */
+  .page { position:absolute; inset:0 0 84px; padding:48px 14px 16px; display:flex; flex-direction:column; gap:12px; }
+  .hero { background:#DDE6C3; border-radius:22px; padding:16px; }
+  .hero .k { font:600 13px var(--ui); color:var(--ok-x); }
+  .hero .v { font:700 46px var(--num); letter-spacing:-.03em; }
+  .hero .s { font:500 12.5px var(--ui); color:var(--ok-x); }
+  .toast { position:absolute; left:14px; right:14px; bottom:96px; background:var(--btn); color:var(--btn-ink); border-radius:14px; padding:12px 14px; display:flex; align-items:center; gap:10px; font:500 14px var(--ui); box-shadow:0 8px 24px rgba(20,22,15,.3); }
+  .toast b { color:var(--btn-ink); flex:1; font-weight:500; }
+  .toast span { font:600 14px var(--ui); text-decoration:underline; text-underline-offset:3px; }
+  .tabs { position:absolute; left:0; right:0; bottom:0; height:84px; background:var(--card); border-top:1px solid var(--line); display:grid; grid-template-columns:1fr 1fr 72px 1fr 1fr; align-items:start; padding:8px 6px 0; }
+  .tab { display:flex; flex-direction:column; align-items:center; gap:3px; font:500 10.5px var(--ui); color:var(--muted); }
+  .tab .pl { width:54px; height:30px; border-radius:99px; display:grid; place-items:center; }
+  .tab.on { color:var(--ink); font-weight:600; } .tab.on .pl { background:var(--sunk); box-shadow:inset 0 0 0 1.5px var(--ink); }
+  .tab svg { width:19px; height:19px; }
+  .fab { width:58px; height:58px; border-radius:99px; background:var(--btn); color:var(--btn-ink); display:grid; place-items:center; margin:-22px auto 0; box-shadow:0 6px 16px rgba(20,22,15,.3); }
+  .fab svg { width:26px; height:26px; }
+  table { width:100%; max-width:1100px; border-collapse:collapse; background:var(--card); border-radius:14px; overflow:hidden; box-shadow:var(--shadow); font:400 13px/1.45 var(--ui); margin-top:10px; }
+  th, td { text-align:left; padding:8px 11px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font:600 12px var(--ui); color:var(--muted); background:var(--sunk); }
+  .q { background:var(--card); border-radius:14px; padding:14px 16px; box-shadow:var(--shadow); margin:10px 0; max-width:940px; font:400 14px/1.55 var(--ui); color:var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Anotar: the center "+"</h1>
+  <p>For what Zeta doesn't capture on its own: cash, an income, money between your own accounts, something from the past. Goal: <b>the common case in two taps</b>. Amount first (the onboarding pad), then <i>who</i> (recent destinatarios, with the comercio/persona shapes), then Guardar. Everything else is already prefilled and gets changed only if needed.</p>
+  <p>As you type the amount, Anotar shows <b>how it leaves your Disponible</b> ("Te quedan $376.100 hasta el 30"). It's the question you ask yourself before spending, answered in the same gesture.</p>
+
+  <div class="phones">
+    <div class="col">
+      <h3>1 · Gasto (opens like this)</h3>
+      <p>The amount takes focus straight away. <b>Recientes</b> are your usual destinatarios: tapping one fills it in, along with its category and usual account. Cuenta and Fecha come prefilled (last cash account, today). Guardar lights up as soon as there's an amount.</p>
+      <div class="phone"><div class="scr">
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="handle"></div>
+          <div class="top"><div class="seg"><span class="on">Gasto</span><span>Ingreso</span><span>Entre cuentas</span></div><span class="x"><i data-lucide="x"></i></span></div>
+          <div class="amount"><div class="v">$45.000</div></div>
+          <div class="impact">Te quedan <b>$376.100</b> hasta el 30 · $31.300 al día</div>
+          <div class="recent">
+            <div class="rc"><span class="av m">T</span>Tostao</div>
+            <div class="rc"><span class="av m">É</span>Éxito</div>
+            <div class="rc"><span class="av p">LG</span>Laura</div>
+            <div class="rc"><span class="av m">C</span>Corral</div>
+            <div class="rc"><span class="av m" style="border:1.5px dashed var(--ctl);background:transparent"><i data-lucide="search" style="width:16px;height:16px"></i></span>Otro</div>
+          </div>
+          <div class="fields">
+            <div class="fld"><span class="k">En qué</span><span class="v ph">Almuerzo, taxi…</span></div>
+            <div class="fld"><span class="k">Categoría</span><span class="v ph">Elegir <span class="ms">M3</span></span></div>
+            <div class="fld"><span class="k">Cuenta</span><span class="v">Efectivo</span><i class="chev" data-lucide="chevron-right"></i></div>
+            <div class="fld"><span class="k">Fecha</span><span class="v">Hoy</span><i class="chev" data-lucide="chevron-right"></i></div>
+          </div>
+          <div class="pad">
+            <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span>
+            <span><i data-lucide="mic"></i></span><span>0</span><span><i data-lucide="delete"></i></span>
+          </div>
+          <div class="save">Guardar</div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="col">
+      <h3>2 · Dictar (the mic on the pad)</h3>
+      <p>"Almuerzo 45 mil en efectivo" fills amount, what and account. It runs on the phone with the offline parser (S4-4); if it doesn't understand, it leaves the text in "En qué" and you complete the rest. The Inicio mic leads here.</p>
+      <div class="phone"><div class="scr">
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="handle"></div>
+          <div class="top"><div class="seg"><span class="on">Gasto</span><span>Ingreso</span><span>Entre cuentas</span></div><span class="x"><i data-lucide="x"></i></span></div>
+          <div class="listen">
+            <div class="hint">Di algo como «almuerzo 45 mil en efectivo»</div>
+            <div class="wave"><span style="height:18px"></span><span style="height:38px"></span><span style="height:52px"></span><span style="height:30px"></span><span style="height:46px"></span><span style="height:22px"></span><span style="height:40px"></span><span style="height:14px"></span></div>
+            <div class="heard">«almuerzo cuarenta y cinco mil en efectivo»</div>
+            <div class="big-mic"><i data-lucide="mic"></i></div>
+            <div class="hint">Toca para terminar</div>
+          </div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="col">
+      <h3>3 · Guardado: back where you were</h3>
+      <p>It closes on its own and you see the effect: Disponible goes down at once (offline). A <b>Deshacer</b> lasts 5 s (D15). No confirmation screen: the number moving <i>is</i> the confirmation.</p>
+      <div class="phone"><div class="scr">
+        <div class="page">
+          <div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font:600 22px var(--ui)">Hola</div><div style="font:500 13px var(--ui);color:var(--muted)">Viernes 18 sep</div></div></div>
+          <div class="hero"><div class="k">● Vas bien</div><div class="v">$376.100</div><div class="s">$31.300 al día · hasta el 30</div></div>
+        </div>
+        <div class="toast"><i data-lucide="check" style="width:18px;height:18px"></i><b>Anotado · Almuerzo −$45.000</b><span>Deshacer</span></div>
+        <div class="tabs">
+          <div class="tab on"><span class="pl"><i data-lucide="home"></i></span>Inicio</div>
+          <div class="tab"><span class="pl"><i data-lucide="list"></i></span>Movimientos</div>
+          <div><div class="fab"><i data-lucide="plus"></i></div></div>
+          <div class="tab"><span class="pl"><i data-lucide="calendar"></i></span>Pagos</div>
+          <div class="tab"><span class="pl"><i data-lucide="inbox"></i></span>Revisar</div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="col">
+      <h3>4 · Ingreso</h3>
+      <p>The same pad. Instead of recientes: <b>what kind of income</b> it is, because that changes the number. An extra income adds to Disponible. "Me pagaron" asks who and settles Te deben. "Mi sueldo llegó" confirms the payday when Zeta didn't see it.</p>
+      <div class="phone"><div class="scr">
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="handle"></div>
+          <div class="top"><div class="seg"><span>Gasto</span><span class="on">Ingreso</span><span>Entre cuentas</span></div><span class="x"><i data-lucide="x"></i></span></div>
+          <div class="amount"><div class="v">$300.000</div></div>
+          <div class="impact">Tu Disponible sube a <b>$721.100</b></div>
+          <div class="chips"><span class="chip on">Ingreso extra</span><span class="chip">Me pagaron</span><span class="chip">Mi sueldo llegó</span></div>
+          <div class="fields">
+            <div class="fld"><span class="k">De qué</span><span class="v ph">Freelance, bono…</span></div>
+            <div class="fld"><span class="k">Cuenta</span><span class="v">Bancolombia</span><i class="chev" data-lucide="chevron-right"></i></div>
+            <div class="fld"><span class="k">Fecha</span><span class="v">Hoy</span><i class="chev" data-lucide="chevron-right"></i></div>
+          </div>
+          <div class="pad">
+            <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span>
+            <span><i data-lucide="mic"></i></span><span>0</span><span><i data-lucide="delete"></i></span>
+          </div>
+          <div class="save">Guardar</div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="col">
+      <h3>5 · Entre cuentas</h3>
+      <p>From → to, with the balances in view. The line underneath says the consequence before saving (Z Sistema rule): between two accounts that count, <b>nothing changes</b>; to a "aparte" account (savings), Disponible goes down; and from it, it goes up.</p>
+      <div class="phone"><div class="scr">
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="handle"></div>
+          <div class="top"><div class="seg"><span>Gasto</span><span>Ingreso</span><span class="on">Entre cuentas</span></div><span class="x"><i data-lucide="x"></i></span></div>
+          <div class="amount"><div class="v">$200.000</div></div>
+          <div class="two">
+            <div class="acc"><small>De</small><b>Bancolombia</b><span>$1.320.000</span></div>
+            <div class="arrow"><i data-lucide="arrow-right"></i></div>
+            <div class="acc"><small>A</small><b>Ahorros Nu</b><span>aparte</span></div>
+          </div>
+          <div class="note">Ahorros Nu no cuenta para tu Disponible: <b>baja a $221.100</b>. Si es tu ahorro del ciclo, lo cuento como Ahorro.</div>
+          <div class="fields">
+            <div class="fld"><span class="k">Fecha</span><span class="v">Hoy</span><i class="chev" data-lucide="chevron-right"></i></div>
+          </div>
+          <div class="pad">
+            <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span>
+            <span>000</span><span>0</span><span><i data-lucide="delete"></i></span>
+          </div>
+          <div class="save">Guardar</div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <h2>What's in and what isn't</h2>
+  <table>
+    <tr><th>Piece</th><th>Decision</th><th>Why</th></tr>
+    <tr><td>Amount + pad first</td><td>In</td><td>It's the only thing Zeta can't guess. The onboarding pad, already designed.</td></tr>
+    <tr><td>Impact on Disponible while typing</td><td>In</td><td>Zeta's main question, answered before spending ("¿Me alcanza?" / Flow 07 in v1, built in).</td></tr>
+    <tr><td>Recientes (destinatarios)</td><td>In</td><td>One tap fills who, category and account.</td></tr>
+    <tr><td>Categoría</td><td>In from M3</td><td>Until there are categories on the phone, it doesn't show.</td></tr>
+    <tr><td>Cuenta, Fecha</td><td>In, prefilled</td><td>Changed only when needed (C13, something from the past).</td></tr>
+    <tr><td>Dictar</td><td>In (mic on the pad)</td><td>C5. Offline parser; the Inicio mic leads here.</td></tr>
+    <tr><td>Compartido, préstamo, cuotas</td><td>Out of Anotar</td><td>That's "Qué fue" in the movement's Detalle, after saving. Anotar stays short.</td></tr>
+    <tr><td>Nota, pago recurrente, suscripción (v1)</td><td>Out</td><td>Nota in Detalle. Pagos fijos are created in Pagos or from the destinatario's sheet.</td></tr>
+    <tr><td>Confirmation screen</td><td>Out</td><td>The number moving + Deshacer (5 s) confirm it.</td></tr>
+  </table>
+
+  <h2>By milestone</h2>
+  <p><b>M1</b> (the number): Gasto and Ingreso with amount, en qué, cuenta, fecha, Guardar + Deshacer, and the impact on Disponible. That's what M1's acceptance asks for ("a manual expense moves Disponible"). <b>M2</b>: Entre cuentas (pairing transfers). <b>M3</b>: Categoría and Recientes by destinatario (they need destinatarios and categories synced). Dictar: the offline parser is ready to bring in when capture arrives (M5).</p>
+
+  <h2>To decide</h2>
+  <div class="q"><b>1. The impact line</b> ("Te quedan $376.100 hasta el 30") while you type. Does it stay? It's the most "Zeta" part of the screen, but it's one more line.</div>
+  <div class="q"><b>2. Three types on top</b> (Gasto · Ingreso · Entre cuentas), or only Gasto with "Ingreso" as a smaller switch? Spending is 90% of what gets written down by hand.</div>
+  <div class="q"><b>3. Without Recientes in M1</b> (there are no destinatarios on the phone yet), M1 shows a simple "En qué" field. Fine, or should destinatarios move up to M1?</div>
+</main>
+<script>lucide.createIcons();</script>
+</body>
+</html>
