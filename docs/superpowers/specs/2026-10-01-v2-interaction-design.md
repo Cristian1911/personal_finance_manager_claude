@@ -1,6 +1,6 @@
 # Zeta v2 — interaction design (navigation, movements, destinatarios, accounts, Anotar, Ajustes)
 
-**Date:** 2026-10-01 · **Status:** for owner review · **Decisions:** S8-1 … S8-9 in `docs/mlp/12-decision-log.md`
+**Date:** 2026-10-01 · **Status:** approved by the owner (2026-10-01) · **Decisions:** S8-1 … S8-9 in `docs/mlp/12-decision-log.md`
 **Mockups (source of truth for layout):** `claude-ai-design/v2-movimientos-acciones/` — `mapa.html`, `opciones.html` (Detalle A), `destinatarios.html`, `cuentas.html`, `anotar.html`, `ajustes.html`, `botones.html`.
 
 ## 1. Why this spec
@@ -113,11 +113,11 @@ Profile → **Tu número** (Cuándo me pagan, Ahorro, Mis cuentas) → **Lo que 
 - **M4:** Qué fue, persona balance block, pagos fijos list on the sheet, Pagos tab content.
 - **M6:** Dictar. **M7:** Avisos, Privacidad.
 
-## 12. Decisions this spec needs from the owner
+## 12. Owner decisions on this spec (S8-10)
 
-1. **Accounts in M1.** The phone's `accounts` table has no name (only id, balance, type), and sync arrives in M2. Proposal: phone schema v5 adds `name`, `mask` (last digits) and `institution_name` to the phone's `accounts` (same columns as the Postgres `accounts` view), and `createAccount` / `editAccount` run on the phone in M1, so Mis cuentas and Anotar's account field work offline; M2 sync merges with the server's accounts by id. Alternative: Mis cuentas waits for M2 and M1 uses a single "Efectivo/Cuenta" choice.
-2. **Open row in M1 with only ⋯.** Proposal above (no placeholders). Alternative: keep "tap → Detalle" in M1 and introduce the open row in M3 when it has its two quick actions.
-3. **Order of work after this spec:** update #445 (Detalle A, move the toggle, open row) → components (`Button` etc.) → tab bar + FAB + Anotar → accounts → Ajustes shell. Each a PR.
+1. **Accounts in M1:** phone schema v5 adds `name`, `mask` and `institution_name` to the phone's `accounts` (same columns as the Postgres view); `createAccount` / `editAccount` / `archiveAccount` run on the phone in M1; M2 sync merges by id.
+2. **Open row in M1 with only ⋯**, and Detalle A without the Categoría / Destinatario rows; they appear in their slot in M3. No greyed-out placeholders.
+3. **Order of work:** update #445 → shared components → tab bar + FAB + Anotar → accounts → Ajustes shell. One PR each.
 
 ## 13. Out of scope
 
