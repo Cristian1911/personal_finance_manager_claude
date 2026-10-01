@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Eye, EyeOff, Split, Users, type LucideIcon } from "lucide-react-native";
 import type { DetalleView } from "@zeta/shared";
 import { useV2Theme } from "../theme/ThemeProvider";
+import { Sheet } from "./Sheet";
 
 /**
  * Detalle (Claude Design "Z Cuentas", detalle): the same sheet for every
@@ -49,15 +50,9 @@ export function DetalleSheet({
   const close = () => { saveNote(); onClose(); };
 
   return (
-    <Modal visible={!!detalle} transparent animationType="slide" onRequestClose={close} statusBarTranslucent>
-      <Pressable style={[styles.scrim, { backgroundColor: t.colors.scrim }]} onPress={close} accessible={false} />
+    <Sheet open={!!detalle} onClose={close} style={[styles.sheet, { paddingBottom: insets.bottom + 20 }]}>
       {d && (
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.anchor} pointerEvents="box-none">
-          <View
-            style={[styles.sheet, { backgroundColor: t.colors.card, paddingBottom: insets.bottom + 20 }]}
-            accessibilityViewIsModal
-            onAccessibilityEscape={close}
-          >
+          <>
             <View style={[styles.handle, { backgroundColor: t.colors.control }]} />
             <View style={styles.head} accessible accessibilityRole="header" accessibilityLabel={`${d.title}, ${d.amount.replace(/−/g, "menos ").replace(/^\+/, "más ")}, ${d.subtitle}`}>
               <View style={[styles.avatar, { backgroundColor: t.colors.sunk }]}>
@@ -134,10 +129,9 @@ export function DetalleSheet({
             <Pressable onPress={close} accessibilityRole="button" style={[styles.done, { backgroundColor: t.colors.button }]}>
               <Text style={{ fontSize: 15, color: t.colors.onButton, fontFamily: t.fonts.uiSemibold }}>Listo</Text>
             </Pressable>
-          </View>
-        </KeyboardAvoidingView>
+          </>
       )}
-    </Modal>
+    </Sheet>
   );
 }
 
@@ -152,9 +146,7 @@ function Action({ icon: Icon, label, hint, onPress }: { icon: LucideIcon; label:
 }
 
 const styles = StyleSheet.create({
-  scrim: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
-  anchor: { flex: 1, justifyContent: "flex-end" },
-  sheet: { maxHeight: "92%", borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingTop: 8, paddingHorizontal: 20, gap: 12 },
+  sheet: { maxHeight: "92%", paddingTop: 8, paddingHorizontal: 20, gap: 12 },
   middle: { flexShrink: 1 },
   middleContent: { gap: 12 },
   handle: { width: 38, height: 5, borderRadius: 3, alignSelf: "center" },
