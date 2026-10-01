@@ -57,6 +57,7 @@ export const WidgetCard = memo(function WidgetCard({
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
         accessibilityLabel={spokenLabel(w)}
+        accessibilityHint={dim ? "Cambia a este widget" : undefined}
         // The action chip sits inside this button; screen readers get it as an action.
         accessibilityActions={firstAction && onAction ? [{ name: "action", label: firstAction.label }] : undefined}
         onAccessibilityAction={(e) => {

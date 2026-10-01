@@ -1,7 +1,7 @@
 import { Fragment, memo, useCallback, useMemo, useRef, useState } from "react";
 import { Animated as RNAnimated, PanResponder, Pressable, StyleSheet, Text, View, type LayoutRectangle } from "react-native";
 import Animated, { LinearTransition } from "react-native-reanimated";
-import { Collapse } from "../Collapse";
+import { Collapse, useMotionMs } from "../Collapse";
 import { Grip, X } from "lucide-react-native";
 import { WIDGET_SIZES, type InicioWidget, type InicioWidgetKey, type InicioWidgetSize, type WidgetActionId } from "@zeta/shared";
 import { useV2Theme } from "../../theme/ThemeProvider";
@@ -63,7 +63,11 @@ export const InicioWidgetGrid = memo(function InicioWidgetGrid({
   onAction?: (id: WidgetActionId) => void;
   editing?: GridEditing | null;
 }) {
-  const toggle = useCallback((id: string) => onOpenChange(open === id ? null : id), [onOpenChange, open]);
+  const motionMs = useMotionMs();
+  // Read through a ref so `toggle` stays the same function and memoized cards don't redraw.
+  const openRef = useRef(open);
+  openRef.current = open;
+  const toggle = useCallback((id: string) => onOpenChange(openRef.current === id ? null : id), [onOpenChange]);
   const close = useCallback(() => onOpenChange(null), [onOpenChange]);
   const rows = useMemo(() => packRows(widgets), [widgets]);
 
@@ -104,7 +108,7 @@ export const InicioWidgetGrid = memo(function InicioWidgetGrid({
         return (
           <Fragment key={rowKey}>
             <Animated.View
-              layout={editing ? LinearTransition.duration(240) : undefined}
+              layout={editing && motionMs ? LinearTransition.duration(240) : undefined}
               style={[styles.row, row.some((w) => w.id === dragging) && styles.lifted]}
               onLayout={(e) => {
                 const { y, height } = e.nativeEvent.layout;

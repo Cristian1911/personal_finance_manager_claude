@@ -17,7 +17,7 @@ import { useAppStore } from "../../lib/store";
 import { toColombiaDateString } from "../../lib/utils/date";
 import { DisponibleBlock } from "../../v2/components/DisponibleBlock";
 import { DisponibleDetail } from "../../v2/components/DisponibleDetail";
-import { COLLAPSE_EASING, COLLAPSE_MS, Collapse } from "../../v2/components/Collapse";
+import { COLLAPSE_EASING, Collapse, useMotionMs } from "../../v2/components/Collapse";
 import { Dim } from "../../v2/components/Dim";
 import { FirstRunQuestions } from "../../v2/components/FirstRunQuestions";
 import { InicioHeader } from "../../v2/components/InicioHeader";
@@ -83,6 +83,7 @@ export default function InicioScreen() {
     },
   );
   const { height: windowH } = useWindowDimensions();
+  const motionMs = useMotionMs();
   const reveal = useCallback((top: number, bottom: number) => {
     const margin = 16;
     const viewTop = scrollY.current + insets.top;
@@ -96,9 +97,17 @@ export default function InicioScreen() {
     scrollFrom.value = scrollY.current;
     scrollTarget.value = Math.max(0, to);
     scrollStep.value = 0;
-    scrollStep.value = withTiming(1, { duration: COLLAPSE_MS, easing: COLLAPSE_EASING });
-  }, [insets.top, insets.bottom, windowH, scrollFrom, scrollTarget, scrollStep]);
-  const revealInGrid = useCallback((top: number, bottom: number) => reveal(gridY.current + top, gridY.current + bottom), [reveal]);
+    scrollStep.value = withTiming(1, { duration: motionMs, easing: COLLAPSE_EASING });
+  }, [insets.top, insets.bottom, windowH, scrollFrom, scrollTarget, scrollStep, motionMs]);
+  // A widget opening while the detail closes: everything below moves up by the
+  // detail's height during the same animation, so aim where it will end.
+  const detailH = useRef(0);
+  const closingShift = useRef(0);
+  const revealInGrid = useCallback((top: number, bottom: number) => {
+    const shift = closingShift.current;
+    closingShift.current = 0;
+    reveal(gridY.current + top - shift, gridY.current + bottom - shift);
+  }, [reveal]);
 
   // Only the latest load may land (focus, answer and user changes can overlap), and
   // an unchanged result keeps the old objects so memoized widgets don't redraw.
@@ -164,8 +173,11 @@ export default function InicioScreen() {
   }, [openWidget]);
   const onOpenWidget = useCallback((id: string | null) => {
     setOpenWidget(id);
-    if (id) setDetailOpen(false);
-  }, []);
+    if (id && detailOpen) {
+      closingShift.current = detailH.current;
+      setDetailOpen(false);
+    }
+  }, [detailOpen]);
   const voice = useCallback(() => Alert.alert("Pronto", "Anotar con la voz llega en una próxima versión."), []);
 
   // ── Organizar ──
@@ -221,7 +233,7 @@ export default function InicioScreen() {
       <Animated.ScrollView
         ref={scroll}
         onScroll={(e) => { scrollY.current = e.nativeEvent.contentOffset.y; }}
-        scrollEventThrottle={32}
+        scrollEventThrottle={16}
         scrollEnabled={!dragging}
         contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 32, paddingHorizontal: 16, gap: 12 }}
         keyboardShouldPersistTaps="handled"
@@ -261,8 +273,9 @@ export default function InicioScreen() {
                 <Collapse
                   open={detailOpen && !editing}
                   onHeight={(h) => {
+                    detailH.current = h;
                     const top = blockY.current + detailY.current;
-                    if (detailOpen) reveal(top, top + h);
+                    reveal(top, top + h);
                   }}
                 >
                   <View style={styles.detailGap}>
@@ -271,7 +284,7 @@ export default function InicioScreen() {
                 </Collapse>
               </View>
             </View>
-            <Animated.View layout={editing ? LinearTransition.duration(240) : undefined} onLayout={(e) => { gridY.current = e.nativeEvent.layout.y; }}>
+            <Animated.View layout={editing && motionMs ? LinearTransition.duration(240) : undefined} onLayout={(e) => { gridY.current = e.nativeEvent.layout.y; }}>
               <InicioWidgetGrid
                 widgets={widgets}
                 open={editing ? null : openWidget}
