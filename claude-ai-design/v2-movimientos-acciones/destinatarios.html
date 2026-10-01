@@ -223,7 +223,7 @@
             <div class="bars"><span style="height:55%"></span><span style="height:80%"></span><span class="now" style="height:100%"></span></div></div>
           <div class="card">
             <div class="row"><span class="k">Categoría</span><span class="v">Domicilios · Siempre <i class="chev" data-lucide="chevron-right"></i></span></div>
-            <div class="row"><span class="k">Pago fijo</span><span class="v e">No es fijo</span></div>
+            <div class="row"><span class="k">Pagos fijos</span><span class="v e">Ninguno · <span style="color:var(--ink);font-weight:600">Agregar</span></span></div>
           </div>
           <div class="sec"><span>Lo reconozco por</span><span class="add"><i data-lucide="plus"></i>Agregar</span></div>
           <div class="card">
@@ -236,6 +236,36 @@
             <div class="see">Ver los 18 <i class="chev" data-lucide="chevron-right"></i></div>
           </div>
           <div class="quiet"><span>Renombrar</span><span>Unir con otro</span><span>Es una persona</span></div>
+        </div>
+        <div class="tabs">
+          <div class="tab"><span class="pl"><i data-lucide="home"></i></span>Inicio</div>
+          <div class="tab on"><span class="pl"><i data-lucide="list"></i></span>Movimientos</div>
+          <div><div class="fab"><i data-lucide="plus"></i></div></div>
+          <div class="tab"><span class="pl"><i data-lucide="calendar"></i></span>Pagos</div>
+          <div class="tab"><span class="pl"><i data-lucide="inbox"></i><span class="badge">4</span></span>Revisar</div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="col">
+      <h3>4b · A comercio with several pagos fijos (Google Play)</h3>
+      <p>One comercio, several <b>pagos fijos</b>: YouTube Premium, Google One, a game. Each has its own amount and day, and shows whether it's paid this cycle. When a Google Play charge arrives, Zeta links it by <b>destinatario + amount + day</b>. If two have the same amount, it asks in Revisar which one it was.</p>
+      <div class="phone"><div class="scr">
+        <div class="page">
+          <div class="hd"><span class="sq"><i data-lucide="chevron-left"></i></span><b></b><span class="ph"></span></div>
+          <div class="who"><span class="av m lg">G<span class="g"><i data-lucide="store"></i></span></span><div class="nm">Google Play</div><div class="kd"><i data-lucide="store"></i>Comercio · Suscripciones</div></div>
+          <div class="card"><div class="stats"><div><small>Este ciclo</small><b>$51.700</b><small>3 cobros</small></div><div><small>Al mes en fijos</small><b>$51.700</b><small>3 pagos fijos</small></div></div></div>
+          <div class="sec"><span>Pagos fijos · 3</span><span class="add"><i data-lucide="plus"></i>Agregar</span></div>
+          <div class="card">
+            <div class="row"><span class="k" style="color:var(--ink)">YouTube Premium<small style="display:block;font:400 12px var(--ui);color:var(--muted)">Día 3 · pagado ✓</small></span><span class="v">$26.900 <i class="chev" data-lucide="chevron-right"></i></span></div>
+            <div class="row"><span class="k" style="color:var(--ink)">Google One<small style="display:block;font:400 12px var(--ui);color:var(--muted)">Día 12 · pagado ✓</small></span><span class="v">$9.900 <i class="chev" data-lucide="chevron-right"></i></span></div>
+            <div class="row"><span class="k" style="color:var(--ink)">Royal Match<small style="display:block;font:400 12px var(--ui);color:var(--muted)">Día 20 · en 2 días</small></span><span class="v">$14.900 <i class="chev" data-lucide="chevron-right"></i></span></div>
+          </div>
+          <div class="card">
+            <div class="row"><span class="k">Categoría</span><span class="v">Suscripciones · Siempre <i class="chev" data-lucide="chevron-right"></i></span></div>
+          </div>
+          <div class="sec"><span>Lo reconozco por</span><span class="add"><i data-lucide="plus"></i>Agregar</span></div>
+          <div class="card"><div class="pat"><code>GOOGLE *</code><small>27 veces</small></div></div>
         </div>
         <div class="tabs">
           <div class="tab"><span class="pl"><i data-lucide="home"></i></span>Inicio</div>
@@ -312,7 +342,7 @@
     <li><b>Same model as v1:</b> <code>destinatarios.kind</code> (comercio | persona), <code>destinatario_rules</code> (patterns, priority, first match wins), <code>default_category_id</code>, <code>transactions.destinatario_id</code>. "Lo reconozco por" lists the rules with their <code>match_count</code>.</li>
     <li><b>Debts:</b> <code>personal_debts.destinatario_id</code> already points to the person. The "Te debe" block reads from there, so it's the same number as Te deben.</li>
     <li><b>Policy</b> (Siempre / Casi siempre / Pregúntame) is <code>merchant_policy</code> from the plan, extended to people. Default: comercio → Siempre once you choose a category; persona → Pregúntame.</li>
-    <li><b>Pago fijo:</b> recurring templates already carry <code>destinatario_id</code>; the sheet shows it when there is one and links to Pagos.</li>
+    <li><b>Pagos fijos (plural):</b> a destinatario can have <b>several</b> (v1 already supports this since the subscriptions work: N templates per merchant). Each template carries <code>destinatario_id</code>. A charge is linked by destinatario + amount (±tolerance) + day; if two of its pagos fijos fit the same charge, Revisar asks which one. Detalle › Qué fue › "Pago fijo" lists only that destinatario's. Each row opens the same "Detalle del pago" as Pagos.</li>
     <li><b>Changing the kind</b> ("Es una persona") keeps its patterns and movements; it only changes the shape, the default policy and whether the debt block appears.</li>
     <li><b>v2 commands:</b> <code>setDestinatario</code> (on a movement, with "siempre" → adds a rule and applies it to the past ones), <code>createDestinatario</code>, <code>renameDestinatario</code>, <code>mergeDestinatarios</code>, <code>setDestinatarioPolicy</code>, <code>addDestinatarioRule</code> / <code>removeDestinatarioRule</code>. These replace the plan's <code>renameMerchant</code>/<code>mergeMerchants</code>.</li>
   </ul>
