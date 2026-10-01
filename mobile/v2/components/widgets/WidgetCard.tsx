@@ -5,7 +5,7 @@ import {
 } from "lucide-react-native";
 import type { InicioWidget, InicioWidgetKey, InicioWidgetLevel, InicioWidgetRow, WidgetActionId } from "@zeta/shared";
 import { useV2Theme } from "../../theme/ThemeProvider";
-import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+import { Collapse } from "../Collapse";
 import { Dim } from "../Dim";
 import { FittedAmount } from "../FittedAmount";
 import { levelColors, WidgetVisualView } from "./visuals";
@@ -29,6 +29,7 @@ export const WidgetCard = memo(function WidgetCard({
   onToggle,
   onAction,
   editInset = false,
+  onBodyHeight,
 }: {
   widget: InicioWidget;
   open: boolean;
@@ -37,6 +38,8 @@ export const WidgetCard = memo(function WidgetCard({
   onAction?: (id: WidgetActionId) => void;
   /** Organizar: room on top for the drag handle and the size/remove buttons. */
   editInset?: boolean;
+  /** Full widgets: the opened body's height, to scroll it into view. */
+  onBodyHeight?: (height: number) => void;
 }) {
   const t = useV2Theme();
   const Icon = WIDGET_ICONS[w.key];
@@ -45,8 +48,6 @@ export const WidgetCard = memo(function WidgetCard({
     ? { borderColor: t.colors.bad.solid, borderWidth: 1.5 }
     : open && !full ? { borderColor: t.colors.ink, borderWidth: 2 } : null;
   const firstAction = w.empty ? w.actions[0] : undefined;
-  // Open in place with its rows below: the summary shrinks to the title row.
-  const headOnly = open && full && w.previewRows.length > 0 && !w.visual;
 
   return (
     <Dim on={dim} style={[styles.card, { backgroundColor: t.colors.card }, t.shadow]}>
@@ -61,14 +62,14 @@ export const WidgetCard = memo(function WidgetCard({
         onAccessibilityAction={(e) => {
           if (e.nativeEvent.actionName === "action" && firstAction && onAction) onAction(firstAction.id);
         }}
-        style={[styles.press, editInset && styles.pressEdit, headOnly && styles.pressHeadOnly]}
+        style={[styles.press, editInset && styles.pressEdit]}
       >
         <View style={styles.head}>
           <Icon size={16} color={t.colors.ink} strokeWidth={2} />
           <Text style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]} numberOfLines={1}>{w.title}</Text>
         </View>
 
-        {!headOnly && <View style={styles.middle}>
+        <View style={styles.middle}>
           {w.visual?.kind === "flow" ? (
             <WidgetVisualView visual={w.visual} />
           ) : (
@@ -88,12 +89,12 @@ export const WidgetCard = memo(function WidgetCard({
                 <Text style={[styles.hint, { color: t.colors.muted, fontFamily: t.fonts.uiMedium }]} numberOfLines={1}>{w.hint}</Text>
               )}
               {w.visual && <WidgetVisualView visual={w.visual} />}
-              {w.previewRows.length > 0 && !open && <Rows rows={w.previewRows} compact />}
+              {w.previewRows.length > 0 && <Rows rows={w.previewRows} compact />}
             </>
           )}
-        </View>}
+        </View>
 
-        {!headOnly && <View style={styles.foot}>
+        <View style={styles.foot}>
           {w.attention && <Chip level={w.attention.level} text={w.attention.reason} />}
           {!w.attention && firstAction && onAction && (
             <Pressable
@@ -107,12 +108,12 @@ export const WidgetCard = memo(function WidgetCard({
               </Text>
             </Pressable>
           )}
-        </View>}
+        </View>
       </Pressable>
-      {full && open && (
-        <Animated.View entering={FadeIn.duration(220).delay(60)} exiting={FadeOut.duration(120)}>
+      {full && (
+        <Collapse open={open} onHeight={onBodyHeight}>
           <WidgetBody widget={w} onAction={onAction} />
-        </Animated.View>
+        </Collapse>
       )}
       {outline && <View pointerEvents="none" style={[styles.outline, outline]} />}
     </Dim>
@@ -174,7 +175,7 @@ export const WidgetBody = memo(function WidgetBody({
           ))}
         </View>
       )}
-      {w.rows.length > 0 && <Rows rows={w.rows} />}
+      {w.rows.length > w.previewRows.length && <Rows rows={w.rows.slice(w.previewRows.length)} />}
       {w.note && <Text style={[styles.note, { color: t.colors.muted, fontFamily: t.fonts.ui }]}>{w.note}</Text>}
       {w.empty && w.actions.length > 0 && onAction && (
         <View style={styles.actions}>
@@ -248,7 +249,6 @@ const styles = StyleSheet.create({
   outline: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, borderRadius: 18 },
   press: { flexGrow: 1, minHeight: 120, paddingHorizontal: 12, paddingTop: 14, paddingBottom: 12, alignItems: "center" },
   pressEdit: { paddingTop: 42 },
-  pressHeadOnly: { minHeight: 0, paddingBottom: 0 },
   head: { height: 20, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, alignSelf: "stretch" },
   title: { fontSize: 13, flexShrink: 1 },
   middle: { flexGrow: 1, alignSelf: "stretch", alignItems: "center", justifyContent: "center", gap: 2, marginVertical: 8 },

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Animated, { FadeIn, FadeOut, LinearTransition } from "react-native-reanimated";
+import Animated, {
+  LinearTransition, scrollTo, useAnimatedReaction, useAnimatedRef, useSharedValue, withTiming,
+} from "react-native-reanimated";
 import { Lock, Plus } from "lucide-react-native";
 import {
   applyInicioLayout, headerDate, layoutOf, WIDGET_SIZES,
@@ -15,6 +17,7 @@ import { useAppStore } from "../../lib/store";
 import { toColombiaDateString } from "../../lib/utils/date";
 import { DisponibleBlock } from "../../v2/components/DisponibleBlock";
 import { DisponibleDetail } from "../../v2/components/DisponibleDetail";
+import { COLLAPSE_EASING, COLLAPSE_MS, Collapse } from "../../v2/components/Collapse";
 import { Dim } from "../../v2/components/Dim";
 import { FirstRunQuestions } from "../../v2/components/FirstRunQuestions";
 import { InicioHeader } from "../../v2/components/InicioHeader";
@@ -63,11 +66,22 @@ export default function InicioScreen() {
   const [dragging, setDragging] = useState(false);
   const editing = draft !== null;
 
-  // Scroll an opened view into sight: where the content scrolled to, how tall the
-  // screen is, and where the grid starts inside the content.
-  const scroll = useRef<ScrollView>(null);
+  // Scroll an opened view into sight, in step with its height animation (same
+  // duration and easing as Collapse), so it slides into place instead of jumping.
+  const scroll = useAnimatedRef<Animated.ScrollView>();
   const scrollY = useRef(0);
   const gridY = useRef(0);
+  const detailY = useRef(0);
+  const blockY = useRef(0);
+  const scrollFrom = useSharedValue(0);
+  const scrollTarget = useSharedValue(0);
+  const scrollStep = useSharedValue(1);
+  useAnimatedReaction(
+    () => scrollStep.value,
+    (p, prev) => {
+      if (prev !== null && p !== prev) scrollTo(scroll, 0, scrollFrom.value + (scrollTarget.value - scrollFrom.value) * p, false);
+    },
+  );
   const { height: windowH } = useWindowDimensions();
   const reveal = useCallback((top: number, bottom: number) => {
     const margin = 16;
@@ -78,8 +92,12 @@ export default function InicioScreen() {
     if (bottom > viewBottom - margin) to = Math.min(top - insets.top - margin, bottom - windowH + insets.bottom + margin);
     // Too high (scrolled past it): bring its top down.
     else if (top < viewTop + margin) to = top - insets.top - margin;
-    if (to !== null) scroll.current?.scrollTo({ y: Math.max(0, to), animated: true });
-  }, [insets.top, insets.bottom, windowH]);
+    if (to === null) return;
+    scrollFrom.value = scrollY.current;
+    scrollTarget.value = Math.max(0, to);
+    scrollStep.value = 0;
+    scrollStep.value = withTiming(1, { duration: COLLAPSE_MS, easing: COLLAPSE_EASING });
+  }, [insets.top, insets.bottom, windowH, scrollFrom, scrollTarget, scrollStep]);
   const revealInGrid = useCallback((top: number, bottom: number) => reveal(gridY.current + top, gridY.current + bottom), [reveal]);
 
   // Only the latest load may land (focus, answer and user changes can overlap), and
@@ -200,7 +218,7 @@ export default function InicioScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.bg }}>
-      <ScrollView
+      <Animated.ScrollView
         ref={scroll}
         onScroll={(e) => { scrollY.current = e.nativeEvent.contentOffset.y; }}
         scrollEventThrottle={32}
@@ -228,29 +246,32 @@ export default function InicioScreen() {
         {state?.status === "needs_setup" && <FirstRunQuestions onSubmit={answer} />}
         {ready && (
           <>
-            <Dim on={!!openWidget && !editing}>
-              <DisponibleBlock view={ready.view} open={detailOpen} onToggle={editing ? undefined : toggleDetail} dimmed={editing} />
-              {editing && (
-                <View style={[styles.fixed, { backgroundColor: t.colors.card }]} accessible accessibilityLabel="Fijo">
-                  <Lock size={12} color={t.colors.muted} />
-                  <Text style={{ color: t.colors.muted, fontFamily: t.fonts.uiSemibold, fontSize: 11 }}>Fijo</Text>
-                </View>
-              )}
-            </Dim>
-            {detailOpen && !editing && (
-              <Animated.View
-                entering={FadeIn.duration(240)}
-                exiting={FadeOut.duration(140)}
-                layout={LinearTransition.duration(240)}
-                onLayout={(e) => {
-                  const { y, height } = e.nativeEvent.layout;
-                  reveal(y, y + height);
-                }}
-              >
-                <DisponibleDetail detail={ready.detail} onSeeAll={onSeeAll} />
-              </Animated.View>
-            )}
-            <Animated.View layout={LinearTransition.duration(240)} onLayout={(e) => { gridY.current = e.nativeEvent.layout.y; }}>
+            {/* The number and how it comes out: one block, so a closed detail leaves no gap. */}
+            <View onLayout={(e) => { blockY.current = e.nativeEvent.layout.y; }}>
+              <Dim on={!!openWidget && !editing}>
+                <DisponibleBlock view={ready.view} open={detailOpen} onToggle={editing ? undefined : toggleDetail} dimmed={editing} />
+                {editing && (
+                  <View style={[styles.fixed, { backgroundColor: t.colors.card }]} accessible accessibilityLabel="Fijo">
+                    <Lock size={12} color={t.colors.muted} />
+                    <Text style={{ color: t.colors.muted, fontFamily: t.fonts.uiSemibold, fontSize: 11 }}>Fijo</Text>
+                  </View>
+                )}
+              </Dim>
+              <View onLayout={(e) => { detailY.current = e.nativeEvent.layout.y; }}>
+                <Collapse
+                  open={detailOpen && !editing}
+                  onHeight={(h) => {
+                    const top = blockY.current + detailY.current;
+                    if (detailOpen) reveal(top, top + h);
+                  }}
+                >
+                  <View style={styles.detailGap}>
+                    <DisponibleDetail detail={ready.detail} onSeeAll={onSeeAll} />
+                  </View>
+                </Collapse>
+              </View>
+            </View>
+            <Animated.View layout={editing ? LinearTransition.duration(240) : undefined} onLayout={(e) => { gridY.current = e.nativeEvent.layout.y; }}>
               <InicioWidgetGrid
                 widgets={widgets}
                 open={editing ? null : openWidget}
@@ -273,7 +294,7 @@ export default function InicioScreen() {
             )}
           </>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
       <AddWidgetSheet visible={adding} hidden={hiddenWidgets} onAdd={addWidget} onClose={() => setAdding(false)} />
     </View>
   );
@@ -281,6 +302,7 @@ export default function InicioScreen() {
 
 const styles = StyleSheet.create({
   error: { fontSize: 14 },
+  detailGap: { paddingTop: 12 },
   fixed: { position: "absolute", top: 12, right: 12, height: 24, paddingHorizontal: 9, borderRadius: 7, flexDirection: "row", alignItems: "center", gap: 4 },
   addButton: { height: 48, borderRadius: 12, borderWidth: 1.5, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
 });

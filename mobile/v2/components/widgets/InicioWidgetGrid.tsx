@@ -1,6 +1,7 @@
 import { Fragment, memo, useCallback, useMemo, useRef, useState } from "react";
 import { Animated as RNAnimated, PanResponder, Pressable, StyleSheet, Text, View, type LayoutRectangle } from "react-native";
-import Animated, { FadeInDown, FadeOut, LinearTransition } from "react-native-reanimated";
+import Animated, { LinearTransition } from "react-native-reanimated";
+import { Collapse } from "../Collapse";
 import { Grip, X } from "lucide-react-native";
 import { WIDGET_SIZES, type InicioWidget, type InicioWidgetKey, type InicioWidgetSize, type WidgetActionId } from "@zeta/shared";
 import { useV2Theme } from "../../theme/ThemeProvider";
@@ -69,6 +70,8 @@ export const InicioWidgetGrid = memo(function InicioWidgetGrid({
   // Where each widget sits in the grid, for dropping a dragged one and revealing the open one.
   const rowY = useRef(new Map<string, number>());
   const rowBox = useRef(new Map<string, { y: number; height: number }>());
+  /** Each widget's closed height, to know where an opening one will end. */
+  const closedH = useRef(new Map<string, number>());
   const cells = useRef(new Map<string, LayoutRectangle>());
   const [dragging, setDragging] = useState<string | null>(null);
   const ids = useRef<string[]>([]);
@@ -101,7 +104,7 @@ export const InicioWidgetGrid = memo(function InicioWidgetGrid({
         return (
           <Fragment key={rowKey}>
             <Animated.View
-              layout={LinearTransition.duration(240)}
+              layout={editing ? LinearTransition.duration(240) : undefined}
               style={[styles.row, row.some((w) => w.id === dragging) && styles.lifted]}
               onLayout={(e) => {
                 const { y, height } = e.nativeEvent.layout;
@@ -111,7 +114,7 @@ export const InicioWidgetGrid = memo(function InicioWidgetGrid({
                   if (c) cells.current.set(w.id, { ...c, y });
                 }
                 rowBox.current.set(rowKey, { y, height });
-                if (openFull) onReveal?.(y, y + height);
+                if (!openFull) for (const w of row) closedH.current.set(w.id, height);
               }}
             >
               {row.map((w) => (
@@ -139,24 +142,23 @@ export const InicioWidgetGrid = memo(function InicioWidgetGrid({
                       dim={dimAll || (!!openWidget && open !== w.id)}
                       onToggle={toggle}
                       onAction={onAction}
+                      onBodyHeight={(h) => {
+                        const y = rowBox.current.get(rowKey)?.y ?? 0;
+                        if (open === w.id) onReveal?.(y, y + (closedH.current.get(w.id) ?? 0) + h);
+                      }}
                     />
                   )}
                 </View>
               ))}
               {row.length === 1 && row[0].size === "half" && <View style={styles.cell} />}
             </Animated.View>
-            {openHalf && (
-              <Animated.View
-                entering={FadeInDown.duration(240)}
-                exiting={FadeOut.duration(140)}
-                layout={LinearTransition.duration(240)}
-                onLayout={(e) => {
-                  const { y, height } = e.nativeEvent.layout;
-                  onReveal?.(rowBox.current.get(rowKey)?.y ?? y, y + height);
-                }}
-              >
-                <WidgetPanel widget={openHalf} onClose={close} onAction={onAction} />
-              </Animated.View>
+            {row.some((w) => w.size === "half") && (
+              <HalfPanel
+                widget={openHalf}
+                onClose={close}
+                onAction={onAction}
+                onHeight={(top, h) => onReveal?.(rowBox.current.get(rowKey)?.y ?? top, top + h)}
+              />
             )}
           </Fragment>
         );
@@ -164,6 +166,35 @@ export const InicioWidgetGrid = memo(function InicioWidgetGrid({
     </View>
   );
 });
+
+/**
+ * The panel under a row of half widgets. It keeps showing the last widget
+ * while it closes, so the close animates a real height instead of vanishing.
+ */
+function HalfPanel({
+  widget,
+  onClose,
+  onAction,
+  onHeight,
+}: {
+  widget: InicioWidget | null;
+  onClose: () => void;
+  onAction?: (id: WidgetActionId) => void;
+  onHeight: (top: number, height: number) => void;
+}) {
+  const last = useRef<InicioWidget | null>(widget);
+  if (widget) last.current = widget;
+  const top = useRef(0);
+  const shown = widget ?? last.current;
+  return (
+    // The grid's gap lives inside the panel, so a closed panel takes no room at all.
+    <View style={styles.panelSlot} onLayout={(e) => { top.current = e.nativeEvent.layout.y; }}>
+      <Collapse open={!!widget} onHeight={(h) => { if (widget) onHeight(top.current, h); }}>
+        <View style={styles.panelGap}>{shown && <WidgetPanel widget={shown} onClose={onClose} onAction={onAction} />}</View>
+      </Collapse>
+    </View>
+  );
+}
 
 const keyOf = (id: string) => id.split(":")[0] as InicioWidgetKey;
 const FILL = { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 } as const;
@@ -270,6 +301,8 @@ const noop = () => undefined;
 
 const styles = StyleSheet.create({
   grid: { gap: 10 },
+  panelSlot: { marginTop: -10 },
+  panelGap: { paddingTop: 10 },
   row: { flexDirection: "row", gap: 10 },
   lifted: { zIndex: 10, elevation: 10 },
   cell: { flex: 1 },
