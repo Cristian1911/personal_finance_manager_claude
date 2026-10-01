@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { computeDisponible, type DisponibleInput } from "../disponible";
 import { computeVerdict } from "../verdict";
-import { cycleLabel, disponibleBlockView, shortMoney } from "../view";
+import { cycleLabel, disponibleBlockView, headerDate, shortMoney } from "../view";
 
 const CYCLE = { start: "2026-09-15", end: "2026-09-29", days: 15, daysLeft: 12 };
 
@@ -135,5 +135,12 @@ describe("cycleLabel", () => {
     expect(cycleLabel({ start: "2026-09-15", end: "2026-09-29" })).toBe("Ciclo 15 – 29 sep");
     expect(cycleLabel({ start: "2026-09-30", end: "2026-10-14" })).toBe("Ciclo 30 sep – 14 oct");
     expect(cycleLabel({ start: "2026-12-30", end: "2027-01-14" })).toBe("Ciclo 30 dic – 14 ene");
+  });
+});
+
+describe("headerDate", () => {
+  it("weekday, day and month in Spanish", () => {
+    expect(headerDate("2026-09-18")).toBe("Viernes 18 sep");
+    expect(headerDate("2026-10-01")).toBe("Jueves 1 oct");
   });
 });

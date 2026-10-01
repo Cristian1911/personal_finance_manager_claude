@@ -4,7 +4,7 @@ import { Redirect, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { V2_DEBUG_ENABLED } from "../lib/v2/flags";
 import { DisponibleBlock } from "../v2/components/DisponibleBlock";
-import { NumberBreakdown } from "../v2/components/NumberBreakdown";
+import { DisponibleDetail } from "../v2/components/DisponibleDetail";
 import { WidgetBody } from "../v2/components/widgets/WidgetCard";
 import { InicioWidgetGrid } from "../v2/components/widgets/InicioWidgetGrid";
 import { DISPONIBLE_CASES } from "../v2/gallery/disponible-cases";
@@ -12,15 +12,16 @@ import { WIDGET_CASES } from "../v2/gallery/widget-cases";
 import { useV2Fonts } from "../v2/theme/fonts";
 import { V2ThemeProvider, useV2Theme } from "../v2/theme/ThemeProvider";
 import type { ColorMode, ThemeName } from "../v2/tokens";
+import type { DetailPartKey } from "@zeta/shared";
 
 /**
  * v2 widget gallery (docs/mlp/13-widget-design-rules.md "Testing"): every
  * case × theme × light/dark. Widths 360/390/430 come from the web preview's
  * WIDTH (pnpm preview:web:shots "/v2-gallery?theme=nitido&mode=dark").
- * Widgets: "/v2-gallery?section=widgets&case=red&open=hoy" (case and open optional).
+ * Widgets: "/v2-gallery?section=widgets&case=red&open=hoy&detail=porPagar" (case, open and detail optional).
  */
 export default function V2GalleryRoute() {
-  const params = useLocalSearchParams<{ theme?: string; mode?: string; only?: string; section?: string; case?: string; open?: string }>();
+  const params = useLocalSearchParams<{ theme?: string; mode?: string; only?: string; section?: string; case?: string; open?: string; detail?: string }>();
   const [theme, setTheme] = useState<ThemeName>(params.theme === "nitido" ? "nitido" : "oliva");
   const [mode, setMode] = useState<ColorMode>(params.mode === "dark" ? "dark" : "light");
   const fontsReady = useV2Fonts();
@@ -30,7 +31,7 @@ export default function V2GalleryRoute() {
     <V2ThemeProvider name={theme} mode={mode}>
       <Gallery
         theme={theme} mode={mode} setTheme={setTheme} setMode={setMode} only={params.only}
-        section={params.section} widgetCase={params.case} open={params.open}
+        section={params.section} widgetCase={params.case} open={params.open} detail={params.detail}
       />
     </V2ThemeProvider>
   );
@@ -45,6 +46,7 @@ function Gallery(props: {
   section?: string;
   widgetCase?: string;
   open?: string;
+  detail?: string;
 }) {
   const t = useV2Theme();
   const insets = useSafeAreaInsets();
@@ -65,8 +67,7 @@ function Gallery(props: {
       {cases.map((c) => (
         <View key={c.key} style={{ gap: 10 }}>
           <Text style={[styles.caseTitle, { color: t.colors.muted, fontFamily: t.fonts.mono }]}>{c.title.toUpperCase()}</Text>
-          <DisponibleBlock view={c.view} onPressSub={() => undefined} />
-          {c.key === "ok" && <NumberBreakdown lines={c.view.breakdown} onPressDetail={() => undefined} />}
+          <DisponibleBlock view={c.view} onToggle={() => undefined} />
         </View>
       ))}
       {widgetCases.map((c) => (
@@ -74,6 +75,7 @@ function Gallery(props: {
           <Text style={[styles.caseTitle, { color: t.colors.muted, fontFamily: t.fonts.mono }]}>
             {`WIDGETS · ${c.title.toUpperCase()}`}
           </Text>
+          <DisponibleDetail detail={c.detail} initialOpen={(props.detail as DetailPartKey | undefined) ?? null} />
           <InicioWidgetGrid widgets={c.widgets} autoOpen={props.open ?? null} />
           {!props.open && (
             <>

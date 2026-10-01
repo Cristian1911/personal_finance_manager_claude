@@ -1,144 +1,212 @@
 import { memo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { ChartSpline, Clock, CreditCard, Receipt, Sun, Users, type LucideIcon } from "lucide-react-native";
-import type { InicioWidget, InicioWidgetKey, InicioWidgetLevel, InicioWidgetRow } from "@zeta/shared";
+import {
+  ChartSpline, ChevronRight, Clock, CreditCard, Receipt, Sun, Users, X, type LucideIcon,
+} from "lucide-react-native";
+import type { InicioWidget, InicioWidgetKey, InicioWidgetLevel, InicioWidgetRow, WidgetActionId } from "@zeta/shared";
 import { useV2Theme } from "../../theme/ThemeProvider";
 import { FittedAmount } from "../FittedAmount";
 import { levelColors, WidgetVisualView } from "./visuals";
 
-const ICONS: Record<InicioWidgetKey, LucideIcon> = {
+export const WIDGET_ICONS: Record<InicioWidgetKey, LucideIcon> = {
   flujo: ChartSpline, hoy: Sun, pago: Clock, teDeben: Users, tarjeta: CreditCard, ultimos: Receipt,
 };
 
 /**
- * One Inicio widget, collapsed (13-widget-design-rules.md): icon + title, one
- * value or visual, a ≤3-word hint, the attention chip at the bottom; red adds
- * a thin full outline (never a side stripe). Full widgets expand in place;
- * half widgets expand into InicioWidgetGrid's panel under their row.
+ * One Inicio widget (Claude Design "Z Widget", 13-widget-design-rules.md):
+ * title row, one value or visual (+ hint), the attention chip at the bottom,
+ * in a fixed 3-row layout so a row of widgets lines up. Red adds a thin full
+ * outline; the open half widget a 2px ink outline (never a side stripe).
+ * Empty widgets offer their first action. Full widgets open in place; half
+ * widgets open into WidgetPanel under their row.
  */
 export const WidgetCard = memo(function WidgetCard({
   widget: w,
   open,
   dim,
   onToggle,
+  onAction,
+  editInset = false,
 }: {
   widget: InicioWidget;
   open: boolean;
   dim: boolean;
   onToggle: (id: string) => void;
+  onAction?: (id: WidgetActionId) => void;
+  /** Organizar: room on top for the drag handle and the size/remove buttons. */
+  editInset?: boolean;
 }) {
   const t = useV2Theme();
-  const Icon = ICONS[w.key];
-  const red = w.attention?.level === "red";
+  const Icon = WIDGET_ICONS[w.key];
   const full = w.size === "full";
-  const outline = red
-    ? { borderColor: t.colors.bad.solid }
-    : open && !full ? { borderColor: t.colors.control } : { borderColor: "transparent" };
+  const outline = w.attention?.level === "red"
+    ? { borderColor: t.colors.bad.solid, borderWidth: 1.5 }
+    : open && !full ? { borderColor: t.colors.ink, borderWidth: 2 } : null;
+  const firstAction = w.empty ? w.actions[0] : undefined;
 
   return (
-    <View style={[styles.card, { backgroundColor: t.colors.card, opacity: dim ? 0.38 : 1 }, outline, t.shadow]}>
+    <View style={[styles.card, { backgroundColor: t.colors.card, opacity: dim ? 0.38 : 1 }, t.shadow]}>
       {/* The summary is one labelled button; the expanded body stays outside it so screen readers reach its rows. */}
       <Pressable
         onPress={() => onToggle(w.id)}
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
         accessibilityLabel={spokenLabel(w)}
-        style={styles.press}
+        style={[styles.press, editInset && styles.pressEdit]}
       >
         <View style={styles.head}>
-          <Icon size={16} color={t.colors.muted} strokeWidth={2} />
-          <Text style={[styles.title, { color: t.colors.muted, fontFamily: t.fonts.uiSemibold }]} numberOfLines={1}>
-            {w.title}
-          </Text>
+          <Icon size={16} color={t.colors.ink} strokeWidth={2} />
+          <Text style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]} numberOfLines={1}>{w.title}</Text>
         </View>
 
         <View style={styles.middle}>
-          {w.value && (
-            <FittedAmount
-              full={w.value}
-              short={w.valueShort ?? w.value}
-              color={t.colors.ink}
-              fontFamily={t.fonts.uiSemibold}
-              size={16}
-              align="center"
-              style={styles.value}
-            />
+          {w.visual?.kind === "flow" ? (
+            <WidgetVisualView visual={w.visual} />
+          ) : (
+            <>
+              {w.value && (
+                <FittedAmount
+                  full={w.value}
+                  short={w.valueShort ?? w.value}
+                  color={t.colors.ink}
+                  fontFamily={t.fonts.numberSemibold}
+                  size={24}
+                  align="center"
+                  style={styles.value}
+                />
+              )}
+              {w.hint && (
+                <Text style={[styles.hint, { color: t.colors.muted, fontFamily: t.fonts.uiMedium }]} numberOfLines={1}>{w.hint}</Text>
+              )}
+              {w.visual && <WidgetVisualView visual={w.visual} />}
+              {w.previewRows.length > 0 && !open && <Rows rows={w.previewRows} compact />}
+            </>
           )}
-          {w.visual && <WidgetVisualView visual={w.visual} />}
-          {w.caption && (
-            <Text style={[styles.caption, { color: t.colors.ink, fontFamily: t.fonts.ui }]}>{w.caption}</Text>
-          )}
-          {w.hint && (
-            <Text
-              style={[w.empty ? styles.emptyHint : styles.hint, { color: t.colors.muted, fontFamily: t.fonts.ui }]}
-              numberOfLines={2}
-            >
-              {w.hint}
-            </Text>
-          )}
-          {w.previewRows.length > 0 && !open && <Rows rows={w.previewRows} />}
         </View>
 
-        {w.attention && <Chip level={w.attention.level} text={w.attention.reason} />}
+        <View style={styles.foot}>
+          {w.attention && <Chip level={w.attention.level} text={w.attention.reason} />}
+          {!w.attention && firstAction && onAction && (
+            <Pressable
+              onPress={() => onAction(firstAction.id)}
+              accessibilityRole="button"
+              hitSlop={6}
+              style={[styles.actionChip, { borderColor: t.colors.control }]}
+            >
+              <Text style={[styles.actionChipText, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]} numberOfLines={1}>
+                {firstAction.label}
+              </Text>
+            </Pressable>
+          )}
+        </View>
       </Pressable>
-      {full && open && <WidgetBody widget={w} />}
+      {full && open && <WidgetBody widget={w} onAction={onAction} />}
+      {outline && <View pointerEvents="none" style={[styles.outline, outline]} />}
     </View>
   );
 });
 
-/** The expanded view: lead, rows, totals, note (13 §Content). */
-export const WidgetBody = memo(function WidgetBody({ widget: w }: { widget: InicioWidget }) {
+/** A half widget opened: a full-width panel under its row, with a close button. */
+export const WidgetPanel = memo(function WidgetPanel({
+  widget: w,
+  onClose,
+  onAction,
+}: {
+  widget: InicioWidget;
+  onClose: () => void;
+  onAction?: (id: WidgetActionId) => void;
+}) {
   const t = useV2Theme();
+  const Icon = WIDGET_ICONS[w.key];
   return (
-    <View style={styles.body}>
-      {w.lead && <Text style={[styles.lead, { color: t.colors.ink, fontFamily: t.fonts.ui }]}>{w.lead}</Text>}
-      {w.rows.length > 0 && <Rows rows={w.rows} />}
+    <View style={[styles.panel, { backgroundColor: t.colors.card }, t.shadow]} accessibilityLiveRegion="polite">
+      <View style={styles.panelHead}>
+        <Icon size={18} color={t.colors.ink} strokeWidth={2} />
+        <Text style={[styles.panelTitle, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]} accessibilityRole="header">{w.title}</Text>
+        <Pressable
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel={`Cerrar ${w.title}`}
+          hitSlop={8}
+          style={[styles.close, { borderColor: t.colors.control }]}
+        >
+          <X size={14} color={t.colors.ink} strokeWidth={2.2} />
+        </Pressable>
+      </View>
+      <WidgetBody widget={w} onAction={onAction} />
+    </View>
+  );
+});
+
+/** The expanded view: lead, rows, totals, note, empty-state actions, "Ver todo". */
+export const WidgetBody = memo(function WidgetBody({
+  widget: w,
+  onAction,
+}: {
+  widget: InicioWidget;
+  onAction?: (id: WidgetActionId) => void;
+}) {
+  const t = useV2Theme();
+  const chart = w.key === "flujo";
+  return (
+    <View style={[styles.body, chart && [styles.chartBody, { borderTopColor: t.colors.line }]]}>
+      {w.lead && <Text style={[styles.lead, { color: t.colors.ink, fontFamily: t.fonts.uiMedium }]}>{w.lead}</Text>}
       {w.totals.length > 0 && (
-        <View style={[styles.totals, { borderTopColor: t.colors.line }]}>
-          {w.totals.map((x, i) => {
-            const last = i === w.totals.length - 1;
-            return (
-              <View key={x.label} style={styles.rowLine}>
-                <Text style={[styles.rowTitle, styles.rowText, { color: last ? t.colors.ink : t.colors.muted, fontFamily: last ? t.fonts.uiSemibold : t.fonts.ui }]}>{x.label}</Text>
-                <Text style={[styles.amount, { color: t.colors.ink, fontFamily: last ? t.fonts.uiSemibold : t.fonts.ui }]}>{x.amount}</Text>
-              </View>
-            );
-          })}
+        <View style={styles.totals}>
+          {w.totals.map((x) => (
+            <View key={x.label} style={styles.total}>
+              <Text style={[styles.totalLabel, { color: t.colors.muted, fontFamily: t.fonts.uiMedium }]}>{x.label}</Text>
+              <Text style={[styles.totalValue, { color: t.colors.ink, fontFamily: t.fonts.numberSemibold }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.62}>{x.amount}</Text>
+            </View>
+          ))}
         </View>
       )}
+      {w.rows.length > 0 && <Rows rows={w.rows} />}
       {w.note && <Text style={[styles.note, { color: t.colors.muted, fontFamily: t.fonts.ui }]}>{w.note}</Text>}
+      {w.empty && w.actions.length > 0 && onAction && (
+        <View style={styles.actions}>
+          {w.actions.map((a, i) => (
+            <Pressable
+              key={a.id}
+              onPress={() => onAction(a.id)}
+              accessibilityRole="button"
+              style={[styles.action, i === 0 ? { backgroundColor: t.colors.button } : { borderWidth: 1.5, borderColor: t.colors.control }]}
+            >
+              <Text style={[styles.actionText, { color: i === 0 ? t.colors.onButton : t.colors.ink, fontFamily: t.fonts.uiSemibold }]}>{a.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
+      {w.seeAll && onAction && (
+        <Pressable onPress={() => onAction(w.seeAll!)} accessibilityRole="link" style={styles.seeAll}>
+          <Text style={[styles.seeAllText, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]}>Ver todo</Text>
+          <ChevronRight size={14} color={t.colors.ink} strokeWidth={2.2} />
+        </Pressable>
+      )}
     </View>
   );
 });
 
-function Rows({ rows }: { rows: InicioWidgetRow[] }) {
+function Rows({ rows, compact }: { rows: InicioWidgetRow[]; compact?: boolean }) {
   const t = useV2Theme();
   return (
     <View style={styles.rows}>
-      {rows.map((r) => (
-        <View key={r.id} style={styles.rowLine}>
+      {rows.map((r, i) => (
+        <View
+          key={r.id}
+          style={[styles.rowLine, !compact && { borderBottomWidth: 1, borderBottomColor: t.colors.line }, compact && i > 0 && { borderTopWidth: 1, borderTopColor: t.colors.line }]}
+          accessible
+          accessibilityLabel={`${r.title}${r.detail ? `, ${r.detail}` : ""}: ${spoken(r.amount)}${r.level === "red" ? ", crítico" : r.level === "amber" ? ", atención" : ""}`}
+        >
           <View style={styles.rowText}>
             <Text style={[styles.rowTitle, { color: t.colors.ink, fontFamily: t.fonts.uiMedium }]} numberOfLines={1}>{r.title}</Text>
-            {!!r.detail && (
-              <Text style={[styles.rowDetail, { color: t.colors.muted, fontFamily: t.fonts.ui }]} numberOfLines={1}>{r.detail}</Text>
-            )}
+            {!!r.detail && <Text style={[styles.rowDetail, { color: t.colors.muted, fontFamily: t.fonts.ui }]} numberOfLines={1}>{r.detail}</Text>}
           </View>
-          {r.level && <Dot level={r.level} />}
-          <Text style={[styles.amount, { color: t.colors.ink, fontFamily: t.fonts.ui }]}>{r.amount}</Text>
+          {r.level && <View style={[styles.dot, { backgroundColor: levelColors(t, r.level)!.solid }]} />}
+          <Text style={[styles.amount, { color: t.colors.ink, fontFamily: t.fonts.numberSemibold }]}>{r.amount}</Text>
         </View>
       ))}
     </View>
-  );
-}
-
-function Dot({ level }: { level: InicioWidgetLevel }) {
-  const t = useV2Theme();
-  return (
-    <View
-      accessible
-      accessibilityLabel={level === "red" ? "crítico" : "atención"}
-      style={[styles.dot, { backgroundColor: levelColors(t, level)!.solid }]}
-    />
   );
 }
 
@@ -157,33 +225,48 @@ const spoken = (s: string) => s.replace(/−/g, "menos ").replace(/≈\s/g, "apr
 function spokenLabel(w: InicioWidget): string {
   const parts = [w.title];
   if (w.value) parts.push(spoken(w.value));
-  if (w.caption) parts.push(w.caption);
   if (w.hint) parts.push(w.hint);
   if (w.attention) parts.push(w.attention.reason);
   return `${parts.map((p) => p.replace(/\.$/, "")).join(". ")}.`;
 }
 
 const styles = StyleSheet.create({
-  card: { flex: 1, borderRadius: 18, borderWidth: 1.5, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 12 },
-  press: { flexGrow: 1, alignItems: "center" },
-  head: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, alignSelf: "stretch" },
+  card: { flex: 1, borderRadius: 18 },
+  outline: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, borderRadius: 18 },
+  press: { flexGrow: 1, minHeight: 120, paddingHorizontal: 12, paddingTop: 14, paddingBottom: 12, alignItems: "center" },
+  pressEdit: { paddingTop: 42 },
+  head: { height: 20, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, alignSelf: "stretch" },
   title: { fontSize: 13, flexShrink: 1 },
-  middle: { flexGrow: 1, alignSelf: "stretch", alignItems: "center", gap: 6, marginTop: 10 },
-  value: { fontSize: 16, fontVariant: ["tabular-nums"] },
-  caption: { fontSize: 13, lineHeight: 18, textAlign: "center" },
-  hint: { fontSize: 10, textAlign: "center" },
-  emptyHint: { fontSize: 13, textAlign: "center" },
-  chip: { height: 24, paddingHorizontal: 10, borderRadius: 99, justifyContent: "center", marginTop: 10, maxWidth: "100%" },
+  middle: { flexGrow: 1, alignSelf: "stretch", alignItems: "center", justifyContent: "center", gap: 2, marginVertical: 8 },
+  value: { lineHeight: 32, letterSpacing: -0.4, fontVariant: ["tabular-nums"] },
+  hint: { fontSize: 12, lineHeight: 20, textAlign: "center", marginBottom: 2 },
+  foot: { minHeight: 24, alignItems: "center", justifyContent: "flex-end" },
+  chip: { height: 24, paddingHorizontal: 10, borderRadius: 99, justifyContent: "center", maxWidth: "100%" },
   chipText: { fontSize: 12 },
-  body: { alignSelf: "stretch", marginTop: 12, gap: 10 },
-  lead: { fontSize: 14, lineHeight: 20 },
-  rows: { alignSelf: "stretch", gap: 2 },
-  rowLine: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 5 },
-  rowText: { flex: 1 },
+  actionChip: { height: 28, paddingHorizontal: 10, borderRadius: 9, borderWidth: 1.5, justifyContent: "center", maxWidth: "100%" },
+  actionChipText: { fontSize: 12 },
+  panel: { borderRadius: 18, paddingBottom: 4 },
+  panelHead: { flexDirection: "row", alignItems: "center", gap: 8, paddingLeft: 16, paddingRight: 14, paddingTop: 14, paddingBottom: 4 },
+  panelTitle: { flex: 1, fontSize: 15 },
+  close: { width: 30, height: 30, borderRadius: 15, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
+  body: { paddingHorizontal: 16, paddingTop: 4 },
+  chartBody: { borderTopWidth: 1, marginHorizontal: 16, paddingHorizontal: 0, paddingTop: 10 },
+  lead: { fontSize: 14, lineHeight: 20, paddingTop: 6, paddingBottom: 4 },
+  totals: { flexDirection: "row", gap: 6, paddingVertical: 6 },
+  total: { flex: 1, alignItems: "center" },
+  totalLabel: { fontSize: 12 },
+  totalValue: { fontSize: 15, fontVariant: ["tabular-nums"] },
+  rows: { alignSelf: "stretch" },
+  rowLine: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10 },
+  rowText: { flex: 1, minWidth: 0 },
   rowTitle: { fontSize: 14 },
   rowDetail: { fontSize: 12, marginTop: 1 },
   amount: { fontSize: 14, fontVariant: ["tabular-nums"] },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  totals: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 6 },
-  note: { fontSize: 13, lineHeight: 18 },
+  note: { fontSize: 13, lineHeight: 18, paddingTop: 10 },
+  actions: { gap: 8, paddingTop: 10 },
+  action: { height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  actionText: { fontSize: 15 },
+  seeAll: { height: 46, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 },
+  seeAllText: { fontSize: 14 },
 });

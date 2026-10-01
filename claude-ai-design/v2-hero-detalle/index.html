@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Detalle del Disponible</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;800&family=Geist+Mono:wght@600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#E9E0CC; --card:#FFFCF5; --ink:#14160F; --ink2:#4B463B; --line:#E6DDC9; --ctl:#8C7F63; --sunk:#EFE7D6;
+    --ok-t:#CFE0A6; --ok-x:#2E4A12; --ok-s:#4E7A1E; --warn-t:#F6D98C; --warn-x:#5C3F00; --warn-s:#B27800;
+    --est:#D8CDB5; --shadow:0 3px 8px rgba(40,30,10,.10);
+    --ui:"Geist",system-ui,sans-serif; --mono:"Geist Mono",ui-monospace,monospace;
+  }
+  :root[data-theme="dark"] {
+    --bg:#12130E; --card:#1F2119; --ink:#F3EFE3; --ink2:#B8B09C; --line:#2E3027; --ctl:#858270; --sunk:#2A2C22;
+    --ok-t:#2A3A14; --ok-x:#CFE39A; --ok-s:#8DB84A; --warn-t:#3D2F0A; --warn-x:#F2CE74; --warn-s:#E0A626;
+    --est:#4A4636; --shadow:none;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--ui); }
+  header.top { max-width:1700px; margin:0 auto; padding:24px 16px 8px; display:flex; flex-wrap:wrap; gap:12px 24px; align-items:flex-end; justify-content:space-between; }
+  header.top h1 { margin:0; font-size:24px; font-weight:600; }
+  header.top p { margin:4px 0 0; color:var(--ink2); font-size:14px; max-width:720px; line-height:1.45; }
+  .toggle { display:flex; border:1.5px solid var(--ctl); border-radius:10px; overflow:hidden; }
+  .toggle button { font:600 14px var(--ui); padding:8px 14px; border:0; background:transparent; color:var(--ink); cursor:pointer; }
+  .toggle button[aria-pressed="true"] { background:var(--ink); color:var(--card); }
+  .grid { max-width:1700px; margin:0 auto; padding:16px; display:grid; grid-template-columns:repeat(auto-fill,minmax(360px,1fr)); gap:28px 20px; }
+  .opt h2 { font-size:16px; margin:0 0 4px; font-weight:600; }
+  .opt .why { font-size:13px; color:var(--ink2); margin:0 0 12px; line-height:1.45; min-height:56px; }
+  .phone { width:100%; max-width:390px; background:var(--bg); border-radius:28px; padding:14px 14px 18px; border:1px solid var(--line); }
+
+  /* Hero (Z Disponible) */
+  .hero { background:var(--ok-t); color:var(--ok-x); border-radius:24px; padding:16px 20px 16px; box-shadow:var(--shadow); }
+  .hero .row1 { display:flex; justify-content:space-between; align-items:center; }
+  .pill { display:inline-flex; align-items:center; gap:7px; height:28px; padding:0 12px; border-radius:99px; background:var(--card); font:600 13px var(--ui); }
+  .pill i { width:8px; height:8px; border-radius:9px; background:var(--ok-s); }
+  .hero .pay { font:500 13px var(--ui); }
+  .hero .lbl { font:600 14px var(--ui); margin-top:14px; color:var(--ink); }
+  .hero .big { font:800 60px/1.02 var(--ui); letter-spacing:-.045em; color:var(--ink); margin-top:2px; font-variant-numeric:tabular-nums; }
+  .hero .row3 { display:flex; justify-content:space-between; margin-top:12px; font:500 13px var(--ui); }
+  .hero .row3 b { font:600 14px var(--ui); color:var(--ink); }
+  .hide { display:flex; justify-content:center; align-items:center; gap:4px; margin-top:10px; font:600 13px var(--ui); color:var(--ink); }
+  .money { font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+  /* A — cascada dentro del hero */
+  .casc { margin-top:14px; border-top:1px solid rgba(20,22,15,.14); padding-top:12px; display:grid; grid-template-columns:auto 1fr auto; gap:9px 10px; align-items:center; }
+  :root[data-theme="dark"] .casc { border-top-color:rgba(243,239,227,.14); }
+  .casc .l { font:500 14px var(--ui); color:var(--ink); }
+  .casc .l small { display:block; font:400 12px var(--ui); color:var(--ok-x); opacity:.85; }
+  .casc .a { font:600 14px var(--ui); color:var(--ink); text-align:right; }
+  .track { height:10px; position:relative; }
+  .seg { position:absolute; top:0; height:10px; border-radius:3px; }
+  .eq { grid-column:1 / -1; border-top:1.5px solid var(--ink); margin:2px 0 0; }
+  .total .l, .total .a { font-weight:600; }
+
+  /* B — escalones */
+  .card { background:var(--card); border-radius:18px; box-shadow:var(--shadow); padding:14px 16px; margin-top:12px; }
+  .card h3 { font:600 15px var(--ui); margin:0 0 10px; }
+  .wf { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; align-items:end; height:170px; position:relative; }
+  .wf .col { position:relative; height:100%; }
+  .wf .bar { position:absolute; left:8%; right:8%; border-radius:4px; }
+  .wf .amt { position:absolute; left:-6px; right:-6px; text-align:center; font:600 11.5px var(--ui); }
+  .wf-labels { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin-top:6px; text-align:center; font:500 11.5px var(--ui); color:var(--ink2); }
+  .wf-labels .on { color:var(--ink); font-weight:600; }
+  .dash { position:absolute; left:0; right:0; border-top:1px dashed var(--ctl); }
+
+  /* C — cascada con detalle */
+  .step { border-bottom:1px solid var(--line); padding:10px 0; }
+  .step:last-child { border-bottom:0; }
+  .step .top { display:flex; align-items:center; gap:10px; }
+  .step .name { flex:1; font:500 14px var(--ui); }
+  .step .name small { display:block; color:var(--ink2); font:400 12px var(--ui); }
+  .step .v { font:600 14px var(--ui); }
+  .chev { width:22px; height:22px; border-radius:99px; border:1.5px solid var(--ctl); display:flex; align-items:center; justify-content:center; font-size:12px; color:var(--ink); flex:none; }
+  .items { margin:8px 0 2px 0; padding:8px 10px; background:var(--sunk); border-radius:12px; display:grid; gap:6px; }
+  .items div { display:flex; justify-content:space-between; font:400 13px var(--ui); }
+  .items span:first-child { color:var(--ink2); }
+  .thin { height:6px; border-radius:9px; background:var(--sunk); margin-top:8px; overflow:hidden; }
+  .thin > div { height:100%; border-radius:9px; }
+  .result { display:flex; align-items:center; gap:10px; margin-top:4px; padding:12px; border-radius:14px; background:var(--ok-t); }
+  .result .name { flex:1; font:600 15px var(--ui); color:var(--ink); }
+  .result .v { font:600 17px var(--ui); color:var(--ink); }
+
+  /* D — barra que se consume */
+  .eat { height:22px; border-radius:7px; display:flex; overflow:hidden; gap:2px; margin:10px 0 6px; }
+  .eat > div { height:100%; }
+  .eat-cap { display:flex; justify-content:space-between; font:500 12px var(--ui); color:var(--ink2); }
+  .legend { display:grid; gap:9px; margin-top:12px; }
+  .legend .it { display:flex; align-items:center; gap:10px; font:500 14px var(--ui); }
+  .sw { width:12px; height:12px; border-radius:3px; flex:none; }
+  .legend .it span.n { flex:1; }
+  .legend .it span.n small { color:var(--ink2); font:400 12px var(--ui); margin-left:6px; }
+  .note { font:400 12.5px var(--ui); color:var(--ink2); margin-top:12px; line-height:1.45; }
+</style>
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>Detalle del Disponible: cuatro cascadas</h1>
+    <p>Lo que se abre al tocar el número. Datos de Laura (ciclo 15–29 sep): le llegan $2.100.000, pagos pendientes $1.378.900, ahorro $200.000, ya salieron $100.000 → Disponible $421.100. Oliva afinada; prueba el modo oscuro.</p>
+  </div>
+  <div class="toggle" role="group" aria-label="Tema">
+    <button type="button" aria-pressed="true" data-t="light">Claro</button>
+    <button type="button" aria-pressed="false" data-t="dark">Oscuro</button>
+  </div>
+</header>
+
+<main class="grid">
+
+  <!-- A -->
+  <section class="opt">
+    <h2>A · Cascada dentro del hero</h2>
+    <p class="why">El hero crece hacia abajo y muestra la resta ahí mismo. Cada barra es la parte de lo que te llega; el resultado vuelve a ser el número grande. Cero navegación.</p>
+    <div class="phone">
+      <div class="hero">
+        <div class="row1"><span class="pill"><i></i>Vas bien</span><span class="pay">Te pagan en 12 días</span></div>
+        <div class="lbl">Disponible</div>
+        <div class="big money">$421.100</div>
+        <div class="row3"><span><b class="money">$35.000</b> al día</span><span class="money">+$2.100.000 cuando te paguen</span></div>
+        <div class="casc">
+          <span class="l">Te llegan</span>
+          <div class="track"><div class="seg" style="left:0;width:100%;background:var(--ink)"></div></div>
+          <span class="a money">$2.100.000</span>
+
+          <span class="l">− Por pagar<small>3 pagos antes del 30</small></span>
+          <div class="track"><div class="seg" style="left:0;width:65.7%;background:var(--ink);opacity:.55"></div></div>
+          <span class="a money">$1.378.900</span>
+
+          <span class="l">− Ahorro</span>
+          <div class="track"><div class="seg" style="left:65.7%;width:9.5%;background:var(--ink);opacity:.4"></div></div>
+          <span class="a money">$200.000</span>
+
+          <span class="l">− Ya salió<small>en 4 días</small></span>
+          <div class="track"><div class="seg" style="left:75.2%;width:4.8%;background:var(--ink);opacity:.28"></div></div>
+          <span class="a money">$100.000</span>
+
+          <div class="eq"></div>
+          <span class="l total">= Disponible</span>
+          <div class="track"><div class="seg" style="left:80%;width:20%;background:var(--ok-s)"></div></div>
+          <span class="a money total">$421.100</span>
+        </div>
+        <div class="hide">Ocultar ▴</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- B -->
+  <section class="opt">
+    <h2>B · Escalones</h2>
+    <p class="why">Un gráfico de cascada clásico en una tarjeta bajo el hero: la columna de lo que llega va bajando paso a paso hasta lo que te queda. Se entiende sin leer números.</p>
+    <div class="phone">
+      <div class="hero">
+        <div class="row1"><span class="pill"><i></i>Vas bien</span><span class="pay">Te pagan en 12 días</span></div>
+        <div class="lbl">Disponible</div>
+        <div class="big money">$421.100</div>
+        <div class="row3"><span><b class="money">$35.000</b> al día</span><span class="money">+$2.100.000 cuando te paguen</span></div>
+      </div>
+      <div class="card">
+        <h3>Así sale tu número</h3>
+        <div class="wf">
+          <div class="col"><div class="bar" style="bottom:0;height:86%;background:var(--ink)"></div><div class="amt money" style="bottom:88%">$2,1 M</div></div>
+          <div class="col"><div class="bar" style="bottom:29.5%;height:56.5%;background:var(--card);border:1.5px solid var(--ink)"></div><div class="amt money" style="bottom:88%">−$1,38 M</div></div>
+          <div class="col"><div class="bar" style="bottom:21.3%;height:8.2%;background:var(--ink2);opacity:.6"></div><div class="amt money" style="bottom:31.5%">−$200 mil</div></div>
+          <div class="col"><div class="bar" style="bottom:17.2%;height:4.1%;background:var(--ink2)"></div><div class="amt money" style="bottom:23.3%">−$100 mil</div></div>
+          <div class="col"><div class="bar" style="bottom:0;height:17.2%;background:var(--ok-s)"></div><div class="amt money" style="bottom:19.2%;color:var(--ink)">$421.100</div></div>
+          <div class="dash" style="bottom:86%"></div>
+        </div>
+        <div class="wf-labels"><span>Te llegan</span><span>Por pagar</span><span>Ahorro</span><span>Ya salió</span><span class="on">Disponible</span></div>
+        <p class="note">Toca una columna para ver qué hay adentro.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- C -->
+  <section class="opt">
+    <h2>C · Cascada con detalle</h2>
+    <p class="why">Filas que restan en orden, cada una se abre para mostrar qué la compone (los pagos, lo que salió). El resultado cierra en verde. Responde también "¿y eso de dónde sale?".</p>
+    <div class="phone">
+      <div class="hero">
+        <div class="row1"><span class="pill"><i></i>Vas bien</span><span class="pay">Te pagan en 12 días</span></div>
+        <div class="lbl">Disponible</div>
+        <div class="big money">$421.100</div>
+        <div class="row3"><span><b class="money">$35.000</b> al día</span><span class="money">+$2.100.000 cuando te paguen</span></div>
+      </div>
+      <div class="card">
+        <div class="step">
+          <div class="top"><span class="name">Te llegan este ciclo<small>Salario del 15</small></span><span class="v money">$2.100.000</span></div>
+          <div class="thin"><div style="width:100%;background:var(--ink)"></div></div>
+        </div>
+        <div class="step">
+          <div class="top"><span class="chev">▾</span><span class="name">− Por pagar<small>3 pagos antes del 30</small></span><span class="v money">$1.378.900</span></div>
+          <div class="items">
+            <div><span>Arriendo · 19 sep</span><span class="money">$700.000</span></div>
+            <div><span>Tarjeta Nu · mínimo · 22 sep</span><span class="money">≈ $640.000</span></div>
+            <div><span>Netflix · 24 sep</span><span class="money">$38.900</span></div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="top"><span class="chev">▸</span><span class="name">− Ahorro<small>Lo que separas cada ciclo</small></span><span class="v money">$200.000</span></div>
+        </div>
+        <div class="step">
+          <div class="top"><span class="chev">▸</span><span class="name">− Ya salió<small>12 movimientos desde el 15</small></span><span class="v money">$100.000</span></div>
+        </div>
+        <div class="result"><span class="name">= Te quedan para gastar</span><span class="v money">$421.100</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- D -->
+  <section class="opt">
+    <h2>D · La plata que se va comiendo</h2>
+    <p class="why">Una sola barra es tu salario; los compromisos se lo van comiendo en orden y el pedazo verde es lo que queda. Debajo, la lista con los mismos colores. Lo más visual, lo menos texto.</p>
+    <div class="phone">
+      <div class="hero">
+        <div class="row1"><span class="pill"><i></i>Vas bien</span><span class="pay">Te pagan en 12 días</span></div>
+        <div class="lbl">Disponible</div>
+        <div class="big money">$421.100</div>
+        <div class="row3"><span><b class="money">$35.000</b> al día</span><span class="money">+$2.100.000 cuando te paguen</span></div>
+      </div>
+      <div class="card">
+        <h3>De tus $2.100.000 de este ciclo</h3>
+        <div class="eat">
+          <div style="flex:1378.9;background:var(--ink)"></div>
+          <div style="flex:200;background:var(--ink2)"></div>
+          <div style="flex:100;background:var(--est)"></div>
+          <div style="flex:421.1;background:var(--ok-s)"></div>
+        </div>
+        <div class="eat-cap"><span>$0</span><span class="money">$2.100.000</span></div>
+        <div class="legend">
+          <div class="it"><span class="sw" style="background:var(--ink)"></span><span class="n">Por pagar<small>3 pagos</small></span><span class="money">$1.378.900</span></div>
+          <div class="it"><span class="sw" style="background:var(--ink2)"></span><span class="n">Ahorro</span><span class="money">$200.000</span></div>
+          <div class="it"><span class="sw" style="background:var(--est)"></span><span class="n">Ya salió<small>en 4 días</small></span><span class="money">$100.000</span></div>
+          <div class="it" style="font-weight:600"><span class="sw" style="background:var(--ok-s)"></span><span class="n">Te queda</span><span class="money">$421.100</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+<script>
+  for (const b of document.querySelectorAll(".toggle button")) {
+    b.addEventListener("click", () => {
+      document.documentElement.dataset.theme = b.dataset.t;
+      for (const o of document.querySelectorAll(".toggle button")) o.setAttribute("aria-pressed", String(o === b));
+    });
+  }
+</script>
+</body>
+</html>

@@ -35,16 +35,16 @@ function laura(spent: number, over: Partial<DisponibleInput> = {}): DisponibleIn
   };
 }
 
-function build(input: DisponibleInput, teDeben: number, nextPayday: string | null = "2026-09-30"): DisponibleBlockView {
+function build(input: DisponibleInput, nextIncome: number, nextPayday: string | null = "2026-09-30"): DisponibleBlockView {
   const r = computeDisponible(input);
   const v = computeVerdict({ disponible: r.disponible, perDay: r.perDay, startingPerDay: r.startingPerDay, nextPayday, now: NOW });
-  return disponibleBlockView({ result: r, verdict: v, today: TODAY, nextPayday, teDeben });
+  return disponibleBlockView({ result: r, verdict: v, today: TODAY, nextPayday, nextIncome });
 }
 
 export const DISPONIBLE_CASES: { key: string; title: string; view: DisponibleBlockView }[] = [
-  { key: "ok", title: "Vas bien", view: build(laura(100_000), 180_000) },
-  { key: "warn", title: "Cuidado", view: build(laura(250_000), 180_000) },
-  { key: "bad", title: "Te pasaste", view: build(laura(585_100), 180_000) },
+  { key: "ok", title: "Vas bien", view: build(laura(100_000), 2_100_000) },
+  { key: "warn", title: "Cuidado", view: build(laura(250_000), 2_100_000) },
+  { key: "bad", title: "Te pasaste", view: build(laura(585_100), 2_100_000) },
   {
     key: "approx", title: "Salario sin confirmar (~)",
     view: build(laura(100_000, { movements: laura(100_000).movements.slice(1) }), 0),
@@ -54,7 +54,7 @@ export const DISPONIBLE_CASES: { key: string; title: string; view: DisponibleBlo
     view: build(laura(100_000, {
       expectedIncomes: [{ id: "salary", label: "Salario", amount: 16_000_000, expectedDate: "2026-09-15" }],
       movements: [{ id: "s", accountId: "debit", date: "2026-09-15", amount: 16_000_000, direction: "INFLOW", kind: "salary", expectedIncomeId: "salary" }],
-    }), 1_250_000),
+    }), 16_000_000),
   },
   {
     key: "huge", title: "Monto que no cabe (se acorta)",

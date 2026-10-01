@@ -1,4 +1,4 @@
-import { diffDays, type IsoDate } from "./dates";
+import { dayOfWeek, diffDays, type IsoDate } from "./dates";
 import type { ApproxReason, DisponibleResult } from "./disponible";
 import { formatPesos, verdictMessage, type DisponibleVerdict, type DisponibleVerdictState } from "./verdict";
 
@@ -125,6 +125,9 @@ export function disponibleBlockView(input: {
 
 const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 const dayMonth = (d: IsoDate) => ({ day: Number(d.slice(8, 10)), month: MONTHS[Number(d.slice(5, 7)) - 1] });
+const WEEKDAYS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+/** Inicio's greeting line: "Jueves 18 sep". */
+export const headerDate = (d: IsoDate) => `${WEEKDAYS[dayOfWeek(d)]} ${dayMonth(d).day} ${dayMonth(d).month}`;
 /** "30 sep". */
 export const shortDate = (d: IsoDate) => `${dayMonth(d).day} ${dayMonth(d).month}`;
 

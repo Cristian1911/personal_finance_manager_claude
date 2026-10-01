@@ -1,8 +1,10 @@
 import {
   buildInicioWidgets,
   computeDisponible,
+  disponibleDetailView,
   toDisponibleMovements,
   type CardSummary,
+  type DisponibleDetailView,
   type InicioWidget,
   type Obligation,
   type PayCycle,
@@ -28,6 +30,8 @@ const BILLS: Obligation[] = [
   { id: "nf", kind: "bill", label: "Netflix", dueDate: "2026-09-24", amount: 38_900 },
 ];
 const LATER_BILLS: Obligation[] = BILLS.map((b) => ({ ...b, dueDate: b.dueDate.replace("-09-19", "-09-26") }));
+/** Paid on the 16th: shows struck through in Por pagar. */
+const AGUA: Obligation = { id: "agua", kind: "bill", label: "Agua", dueDate: "2026-09-16", amount: 62_000 };
 
 let n = 0;
 const tx = (date: string, amount: number, description: string, at?: string, direction: "INFLOW" | "OUTFLOW" = "OUTFLOW"): StoredTransaction => ({
@@ -42,25 +46,32 @@ function widgets(c: {
   balance?: number;
   people?: PersonOwing[];
   cards?: CardSummary[];
-}): InicioWidget[] {
+  paidAgua?: boolean;
+}): { widgets: InicioWidget[]; detail: DisponibleDetailView } {
   const income = c.income ?? 2_100_000;
   const salary = tx("2026-09-15", income, "Nómina", "13:00", "INFLOW");
-  const transactions = [salary, ...c.spends];
+  const agua = tx("2026-09-16", AGUA.amount, "Acueducto", "14:00");
+  const transactions = [salary, ...(c.paidAgua ? [agua] : []), ...c.spends];
   const movements = toDisponibleMovements({ transactions, accounts: [{ id: DEBIT, accountType: "CHECKING" }] })
-    .map((m) => (m.id === salary.id ? { ...m, kind: "salary" as const, expectedIncomeId: "salary" } : m));
-  const obligations = c.obligations ?? BILLS;
+    .map((m) => (m.id === salary.id ? { ...m, kind: "salary" as const, expectedIncomeId: "salary" }
+      : m.id === agua.id ? { ...m, kind: "payment" as const, obligationId: AGUA.id } : m));
+  const obligations = [...(c.paidAgua ? [AGUA] : []), ...(c.obligations ?? BILLS)];
   const result = computeDisponible({
     cycle: CYCLE, today: TODAY,
     accounts: [{ id: DEBIT, countsInDisponible: true }],
     expectedIncomes: [{ id: "salary", label: "Salario", amount: income, expectedDate: "2026-09-15" }],
     movements, obligations, savingsTarget: 200_000,
   });
-  return buildInicioWidgets({
-    today: TODAY, cycle: CYCLE, result, movements, counted: new Set([DEBIT]), transactions, obligations,
+  const counted = new Set([DEBIT]);
+  const widgets = buildInicioWidgets({
+    today: TODAY, cycle: CYCLE, result, movements, counted, transactions, obligations,
     balances: [{ accountId: DEBIT, balance: c.balance ?? 2_000_000 }],
     people: c.people, cards: c.cards,
     youOwe: [{ name: "Mateo", amount: 50_000 }],
+    balanceToday: c.balance ?? income - c.spends.reduce((s, t) => s + t.amount, 0),
+    nextIncome: income,
   });
+  return { widgets, detail: disponibleDetailView({ today: TODAY, cycle: CYCLE, result, obligations, movements, counted, transactions }) };
 }
 
 const people = (oldest: string): PersonOwing[] => [
@@ -78,30 +89,30 @@ const day = (spentBefore: number, spentToday: number) => [
   tx(TODAY, spentToday - Math.round(spentToday * 0.25), "Rappi", "17:41"),
 ];
 
-export const WIDGET_CASES: { key: string; title: string; widgets: InicioWidget[] }[] = [
+export const WIDGET_CASES: { key: string; title: string; widgets: InicioWidget[]; detail: DisponibleDetailView }[] = [
   {
     key: "normal", title: "Normal",
-    widgets: widgets({ spends: day(87_000, 13_000), obligations: LATER_BILLS, people: people("2026-09-10"), cards: [card()] }),
+    ...widgets({ spends: day(87_000, 13_000), obligations: LATER_BILLS, people: people("2026-09-10"), cards: [card()], paidAgua: true }),
   },
   {
     key: "amber", title: "Ámbar",
-    widgets: widgets({ spends: day(67_000, 33_000), people: people("2026-08-15"), cards: [card({ cutDate: "2026-09-20" })] }),
+    ...widgets({ spends: day(67_000, 33_000), people: people("2026-08-15"), cards: [card({ cutDate: "2026-09-20" })] }),
   },
   {
     key: "red", title: "Rojo",
-    widgets: widgets({
+    ...widgets({
       spends: day(359_000, 41_000), balance: 500_000, people: people("2026-07-20"),
       cards: [card({ dueDate: TODAY, cutDate: "2026-09-10" })],
     }),
   },
-  { key: "empty", title: "Primera semana (sin datos)", widgets: widgets({ spends: [], obligations: [] }) },
+  { key: "empty", title: "Primera semana (sin datos)", ...widgets({ spends: [], obligations: [] }) },
   {
     key: "long", title: "Montos largos",
-    widgets: widgets({
+    ...widgets({
       income: 16_000_000, spends: day(1_200_000, 950_000), obligations: LATER_BILLS,
       people: [{ id: "x", name: "Xiomara", amount: 14_250_000, since: "2026-09-10" }],
       cards: [card({ estimatedBill: 14_250_000, projectedAtCut: 15_100_000, totalOwed: 24_100_000 })],
     }),
   },
-  { key: "negative", title: "Negativo", widgets: widgets({ spends: day(560_000, 60_000), obligations: LATER_BILLS }) },
+  { key: "negative", title: "Negativo", ...widgets({ spends: day(560_000, 60_000), obligations: LATER_BILLS }) },
 ];
