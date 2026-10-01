@@ -99,6 +99,8 @@ export interface InicioWidget {
   actions: { id: WidgetActionId; label: string }[];
   /** "Ver todo ›" target, or null while that screen doesn't exist. */
   seeAll: WidgetActionId | null;
+  /** The link's words when "Ver todo" doesn't say where it goes. */
+  seeAllLabel?: string;
 }
 
 export type WidgetActionId =
@@ -378,6 +380,7 @@ export function flujoWidget(i: InicioWidgetsInput): InicioWidget {
   const o = flowOutlook(i, chart);
   w.visual = chart;
   w.seeAll = "see_flow";
+  w.seeAllLabel = "Ver Tu flujo completo";
   if (o.runOut) {
     w.attention = { level: "red", reason: `No llegas ${o.until}` };
     w.lead = `A tu ritmo te quedas sin plata ${o.runOut.when}${o.runOut.cut ? ` · gasta ${o.runOut.cut} menos al día` : ""}.`;
