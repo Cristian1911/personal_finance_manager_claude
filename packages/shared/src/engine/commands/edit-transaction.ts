@@ -2,6 +2,7 @@ import type { CommandEnvelope, CommandResult, StoragePort } from "../types";
 import { UUID_RE } from "../validate";
 import { MANUAL_CAPTURE_METHODS } from "./delete-transaction";
 import { isNewer } from "./field-version";
+import { isIsoDate, isMoney } from "./validate-money";
 
 export interface EditTransactionPayload {
   transactionId: string;
@@ -10,7 +11,6 @@ export interface EditTransactionPayload {
   accountId?: string;
 }
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const FIELDS = [
   { key: "amount", field: "amount" },
   { key: "date", field: "transaction_date" },
@@ -32,9 +32,8 @@ export async function editTransaction(
   const bad = (error: string): CommandResult => ({ status: "rejected", replayed: false, code: "invalid", error });
   if (!p || !UUID_RE.test(p.transactionId ?? "")) return bad("Identificador inválido.");
   if (p.amount === undefined && p.date === undefined && p.accountId === undefined) return bad("No hay nada que cambiar.");
-  if (p.amount !== undefined && (typeof p.amount !== "number" || !Number.isFinite(p.amount) || p.amount <= 0
-    || Math.abs(Math.round(p.amount * 100) - p.amount * 100) > 1e-6)) return bad("El monto debe ser mayor que cero.");
-  if (p.date !== undefined && (typeof p.date !== "string" || !DATE_RE.test(p.date))) return bad("Fecha inválida.");
+  if (p.amount !== undefined && (!isMoney(p.amount) || p.amount <= 0)) return bad("El monto debe ser mayor que cero.");
+  if (p.date !== undefined && !isIsoDate(p.date)) return bad("Fecha inválida.");
   if (p.accountId !== undefined && !UUID_RE.test(p.accountId)) return bad("Cuenta inválida.");
 
   const tx = await s.getTransaction(cmd.userId, p.transactionId);
@@ -60,7 +59,9 @@ export async function editTransaction(
 
   const sign = tx.direction === "OUTFLOW" ? -1 : 1;
   await s.updateTransactionFacts(cmd.userId, tx.id, next);
-  await s.adjustAccountBalance(cmd.userId, tx.accountId, -sign * tx.amount);
-  await s.adjustAccountBalance(cmd.userId, next.accountId, sign * next.amount);
+  if (!tx.isExcluded) { // an ignored movement isn't in any balance
+    await s.adjustAccountBalance(cmd.userId, tx.accountId, -sign * tx.amount);
+    await s.adjustAccountBalance(cmd.userId, next.accountId, sign * next.amount);
+  }
   return { status: "applied", replayed: false };
 }

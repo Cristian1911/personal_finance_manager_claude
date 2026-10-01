@@ -109,6 +109,8 @@ export interface TransactionRow {
   idempotencyKey: string;
   /** Capture instant, ISO-8601 UTC; null for rows from before phone schema v3. */
   createdAt: string | null;
+  /** Ignored ("no es un movimiento"): its amount is out of the account's balance, like on the web. */
+  isExcluded: boolean;
 }
 
 export interface FieldVersion {

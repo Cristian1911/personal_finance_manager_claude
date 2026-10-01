@@ -38,6 +38,17 @@ describe.each(DRIVERS)("setTransactionExcluded on %s", (_name, make) => {
     expect(await excludedNow(d)).toBe(false);
   });
 
+  it("ignoring takes it out of its account's balance; counting it again puts it back (like the web)", async () => {
+    const { s } = await setup();
+    expect((await s.getAccount(USER, ACCOUNT))?.currentBalance).toBe(75000);
+    await applyCommand(s, ignore("b1111111-1111-4111-8111-111111111111", "2026-09-18T16:00:00.000Z", true));
+    expect((await s.getAccount(USER, ACCOUNT))?.currentBalance).toBe(100000);
+    await applyCommand(s, ignore("b2222222-2222-4222-8222-222222222222", "2026-09-18T16:30:00.000Z", true)); // already ignored
+    expect((await s.getAccount(USER, ACCOUNT))?.currentBalance).toBe(100000);
+    await applyCommand(s, ignore("b3333333-3333-4333-8333-333333333333", "2026-09-18T17:00:00.000Z", false));
+    expect((await s.getAccount(USER, ACCOUNT))?.currentBalance).toBe(75000);
+  });
+
   it("keeps the latest choice when an older one arrives later", async () => {
     const { d, s } = await setup();
     await applyCommand(s, ignore("a3333333-3333-4333-8333-333333333333", "2026-09-18T17:00:00.000Z", true));

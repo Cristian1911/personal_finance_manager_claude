@@ -68,6 +68,21 @@ describe.each(DRIVERS)("editTransaction on %s", (_name, make) => {
     expect((await s.getAccount(USER, A))?.currentBalance).toBe(75000);
   });
 
+  it("editing an ignored movement moves no balance", async () => {
+    const s = await setup();
+    await applyCommand(s, { id: "c1111111-1111-4111-8111-111111111111", type: "setTransactionExcluded", userId: USER, deviceId: "phone-1", clientTs: "2026-09-18T15:30:00.000Z", payload: { transactionId: TX, excluded: true } });
+    await applyCommand(s, edit("c2222222-2222-4222-8222-222222222222", "2026-09-18T16:00:00.000Z", { amount: 40000, accountId: B }));
+    expect((await s.getAccount(USER, A))?.currentBalance).toBe(100000);
+    expect((await s.getAccount(USER, B))?.currentBalance).toBe(50000);
+  });
+
+  it("rejects an amount over the cap and an impossible date (they'd never replay on Postgres)", async () => {
+    const s = await setup();
+    const r = (p: Record<string, unknown>, id: string) => applyCommand(s, edit(id, "2026-09-18T16:00:00.000Z", p));
+    expect(await r({ amount: 1e16 }, "c3333333-3333-4333-8333-333333333333")).toMatchObject({ status: "rejected", code: "invalid" });
+    expect(await r({ date: "2026-02-30" }, "c4444444-4444-4444-8444-444444444444")).toMatchObject({ status: "rejected", code: "invalid" });
+  });
+
   it("never edits a bank movement (the bank's facts win)", async () => {
     const d = await make();
     await seedAccount(d, { id: A, userId: USER, balance: 100000 });

@@ -60,6 +60,14 @@ describe.each(DRIVERS)("deleteTransaction on %s", (_name, make) => {
     expect(r).toMatchObject({ status: "rejected", code: "invalid" });
   });
 
+  it("deleting an ignored movement doesn't touch the balance again", async () => {
+    const { s } = await setup();
+    await applyCommand(s, { id: "b4444444-4444-4444-8444-444444444444", type: "setTransactionExcluded", userId: USER, deviceId: "phone-1", clientTs: "2026-09-18T15:30:00.000Z", payload: { transactionId: TX, excluded: true } });
+    expect((await s.getAccount(USER, ACCOUNT))?.currentBalance).toBe(100000);
+    await applyCommand(s, del("b5555555-5555-4555-8555-555555555555"));
+    expect((await s.getAccount(USER, ACCOUNT))?.currentBalance).toBe(100000);
+  });
+
   it("never deletes a bank movement (it can only be ignored)", async () => {
     const { d, s } = await setup();
     await d.query(

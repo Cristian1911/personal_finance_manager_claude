@@ -68,7 +68,7 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
       const rows = await q<Record<string, unknown>>(
         `SELECT id, user_id, account_id, amount, currency_code, direction,
                 ${pg ? "transaction_date::text" : "transaction_date"} AS transaction_date,
-                clean_description, notes, capture_method, idempotency_key, created_at
+                clean_description, notes, capture_method, idempotency_key, created_at, is_excluded
            FROM transactions WHERE user_id = ? AND id = ?`,
         [userId, id]);
       const r = rows[0];
@@ -86,6 +86,8 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
         captureMethod: String(r.capture_method),
         idempotencyKey: String(r.idempotency_key),
         createdAt: r.created_at == null ? null : toIso(r.created_at),
+        // SQLite stores booleans as 0/1.
+        isExcluded: r.is_excluded === true || r.is_excluded === 1,
       };
     },
 

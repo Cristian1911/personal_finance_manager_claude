@@ -33,6 +33,11 @@ export async function setTransactionExcluded(
   }
 
   await s.updateTransactionExcluded(cmd.userId, p.transactionId, p.excluded);
+  // Like the web (toggleExclude): an ignored movement is out of its account's balance.
+  if (tx.isExcluded !== p.excluded) {
+    const effect = tx.direction === "OUTFLOW" ? -tx.amount : tx.amount;
+    await s.adjustAccountBalance(cmd.userId, tx.accountId, p.excluded ? -effect : effect);
+  }
   await s.setFieldVersion({
     userId: cmd.userId, entity: "transaction", entityId: p.transactionId,
     field: "is_excluded", clientTs: cmd.clientTs, commandId: cmd.id,

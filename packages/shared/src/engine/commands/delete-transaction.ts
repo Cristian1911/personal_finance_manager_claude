@@ -25,6 +25,7 @@ export async function deleteTransaction(
     return { status: "rejected", replayed: false, code: "invalid", error: "Solo se pueden borrar los movimientos que anotaste a mano." };
   }
   await s.deleteTransaction(cmd.userId, tx.id);
-  await s.adjustAccountBalance(cmd.userId, tx.accountId, tx.direction === "OUTFLOW" ? tx.amount : -tx.amount);
+  // An ignored movement's amount already left the balance when it was ignored.
+  if (!tx.isExcluded) await s.adjustAccountBalance(cmd.userId, tx.accountId, tx.direction === "OUTFLOW" ? tx.amount : -tx.amount);
   return { status: "applied", replayed: false };
 }

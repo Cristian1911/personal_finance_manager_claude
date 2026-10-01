@@ -11,7 +11,7 @@ const env = process.env;
 const enabled = Boolean(env.SUPABASE_DEV_DB_URL && env.SUPABASE_DEV_URL && env.SUPABASE_DEV_SECRET_KEY);
 
 // Remote DB (sa-east-1): each command is ~10 round trips, so allow more than the 5s default.
-describe.skipIf(!enabled)("engine on zeta-dev (real Postgres)", { timeout: 30_000 }, () => {
+describe.skipIf(!enabled)("engine on zeta-dev (real Postgres)", { timeout: 90_000 }, () => {
   const admin = enabled
     ? createClient(env.SUPABASE_DEV_URL!, env.SUPABASE_DEV_SECRET_KEY!, { auth: { persistSession: false } })
     : (null as never);
@@ -70,7 +70,10 @@ describe.skipIf(!enabled)("engine on zeta-dev (real Postgres)", { timeout: 30_00
     const ignore = (clientTs: string, excluded: boolean) => ({
       ...base, id: crypto.randomUUID(), type: "setTransactionExcluded" as const, clientTs, payload: { transactionId: txId, excluded },
     });
+    const counted = (await s.getAccount(userId, accountId))!.currentBalance;
     expect((await applyCommand(s, ignore("2026-09-18T17:00:00.000Z", true))).status).toBe("applied");
+    // Like the web's toggleExclude: an ignored movement leaves its account's balance.
+    expect((await s.getAccount(userId, accountId))!.currentBalance).toBe(counted + 25000);
     expect((await applyCommand(s, ignore("2026-09-18T16:00:00.000Z", false))).status).toBe("superseded");
     const after = await readInicioData(createUserScopedPgDriver(pool, userId), userId, "2026-09-01");
     expect(after.transactions.find((t) => t.id === txId)).toMatchObject({ isExcluded: true, notes: "nueva", amount: 25000 });
@@ -83,7 +86,8 @@ describe.skipIf(!enabled)("engine on zeta-dev (real Postgres)", { timeout: 30_00
     const gone = { ...base, id: crypto.randomUUID(), type: "deleteTransaction" as const, clientTs: "2026-09-18T18:30:00.000Z", payload: { transactionId: txId } };
     expect((await applyCommand(s, gone)).status).toBe("applied");
     expect(await s.getTransaction(userId, txId)).toBeNull();
-    expect((await s.getAccount(userId, accountId))!.currentBalance).toBe(before + 30000);
+    // It was ignored: its amount already left the balance, so deleting it refunds nothing.
+    expect((await s.getAccount(userId, accountId))!.currentBalance).toBe(before);
   });
 
   it("keeps both balance changes when two captures on one account run at the same time", async () => {
