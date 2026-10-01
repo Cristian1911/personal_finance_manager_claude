@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useLayoutEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import {
   ChartSpline, ChevronRight, Clock, CreditCard, Receipt, Sun, Users, X, type LucideIcon,
@@ -149,9 +149,10 @@ const FlowWidgetCard = memo(function FlowWidgetCard({ widget: w, open, dim, onTo
   const t = useV2Theme();
   const visual = w.visual?.kind === "flow" ? w.visual : null;
   const [selected, setSelected] = useState(visual?.todayIndex ?? 0);
-  // Back to today when it closes, so the next opening starts there without a stale frame.
-  useEffect(() => {
-    if (!open && visual) setSelected(visual.todayIndex);
+  // Every opening starts on today. Layout effect: reset before the first open frame
+  // paints; never on close, so the closing content (and its height) stays put.
+  useLayoutEffect(() => {
+    if (open && visual) setSelected(visual.todayIndex);
   }, [open, visual?.todayIndex]);
   const day = useMemo(() => {
     if (!visual) return null;
