@@ -24,8 +24,29 @@ export interface InicioWidgetAttention {
 export type InicioWidgetVisual =
   | { kind: "bar"; percent: number; level: InicioWidgetLevel | null }
   | { kind: "initials"; letters: string[] }
-  /** Day-by-day amounts; points after `todayIndex` are projected (dashed). */
-  | { kind: "line"; points: number[]; todayIndex: number };
+  /** Tu flujo (Z Grafico): one entry per day, the cycle plus 2 shaded days each side. */
+  | { kind: "flow"; days: FlowDay[]; todayIndex: number; markIndex: number; bad: boolean };
+
+/** A day of the Tu flujo chart. Up to today it's what happened; after, the projection. */
+export interface FlowDay {
+  date: IsoDate;
+  /** Counted balance at the end of the day. */
+  balance: number;
+  /** Money in that arrived (filled bar up). */
+  income: number;
+  /** Salary expected that day (outlined bar up). */
+  incomeExpected: number;
+  /** Money that left (filled bar down). */
+  spent: number;
+  /** Bills due that day, still unpaid (outlined bar down). */
+  bill: number;
+  /** Estimated everyday spending at this cycle's pace (light bar down). */
+  estimated: number;
+  /** Outside the cycle (shaded). */
+  edge: boolean;
+  /** A card's statement cut (diamond). */
+  cardCut: boolean;
+}
 
 export interface InicioWidgetRow {
   id: string;
@@ -50,8 +71,6 @@ export interface InicioWidget {
   valueShort: string | null;
   /** Collapsed: at most 3 muted words. */
   hint: string | null;
-  /** Collapsed sentence of full widgets that show a visual plus one line (Tu flujo). */
-  caption: string | null;
   visual: InicioWidgetVisual | null;
   /** Collapsed rows of full widgets (Últimos movimientos: 3). */
   previewRows: InicioWidgetRow[];
@@ -60,7 +79,15 @@ export interface InicioWidget {
   rows: InicioWidgetRow[];
   totals: { label: string; amount: string }[];
   note: string | null;
+  /** Empty state: what you can do to fill it (the app maps ids to screens). */
+  actions: { id: WidgetActionId; label: string }[];
+  /** "Ver todo ›" target, or null while that screen doesn't exist. */
+  seeAll: WidgetActionId | null;
 }
+
+export type WidgetActionId =
+  | "capture" | "add_bill" | "import_statement" | "split_purchase" | "lend" | "add_card"
+  | "see_movements" | "see_bills" | "see_people" | "see_accounts";
 
 /** Hoy turns amber at this share of today's allowance (the verdict's threshold). */
 export const HOY_AMBER_PERCENT = CUIDADO_PERCENT;
@@ -95,6 +122,9 @@ export interface CardSummary {
   totalOwed?: number | null;
 }
 
+/** Days shown on each side of the cycle in Tu flujo. */
+export const FLOW_EDGE_DAYS = 2;
+
 export interface InicioWidgetsInput {
   today: IsoDate;
   cycle: PayCycle;
@@ -110,6 +140,10 @@ export interface InicioWidgetsInput {
   people?: PersonOwing[];
   youOwe?: { name: string; amount: number }[];
   cards?: CardSummary[];
+  /** Counted balance now (Tu flujo's line); Disponible + Por pagar + Ahorro stands in when unknown. */
+  balanceToday?: number | null;
+  /** The salary expected on the next payday (Tu flujo's outlined bar). */
+  nextIncome?: number;
 }
 
 const cents = (n: number) => Math.round(n * 100) / 100;
@@ -129,18 +163,19 @@ function setValue(w: InicioWidget, amount: number, prefix = ""): void {
 
 function base(key: InicioWidgetKey, title: string, size: InicioWidgetSize): InicioWidget {
   return {
-    key, id: key, title, size, attention: null, empty: false, value: null, valueShort: null, hint: null, caption: null,
-    visual: null, previewRows: [], lead: null, rows: [], totals: [], note: null,
+    key, id: key, title, size, attention: null, empty: false, value: null, valueShort: null, hint: null,
+    visual: null, previewRows: [], lead: null, rows: [], totals: [], note: null, actions: [], seeAll: null,
   };
 }
 
 /** Colombian wall time "8:10" of an instant (no DST: always UTC−5). */
-function colombiaTime(iso: string): string {
+export function colombiaTime(iso: string): string {
   const d = new Date(new Date(iso).getTime() - 5 * 3_600_000);
   return `${d.getUTCHours()}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
 }
 
-function relativeDay(today: IsoDate, d: IsoDate): string {
+/** "Hoy", "Ayer" or "30 sep". */
+export function relativeDay(today: IsoDate, d: IsoDate): string {
   const n = diffDays(d, today);
   if (n === 0) return "Hoy";
   if (n === 1) return "Ayer";
@@ -160,42 +195,89 @@ function spendByDay(i: InicioWidgetsInput): Map<IsoDate, number> {
 
 // ── Tu flujo (mini) ──
 
+/** This cycle's everyday spending pace (spent so far ÷ days elapsed). */
+function spendingPace(i: InicioWidgetsInput): number {
+  const elapsed = diffDays(i.cycle.start, i.today) + 1;
+  const spent = sum([...spendByDay(i).values()]);
+  return elapsed > 0 ? Math.max(0, spent) / elapsed : 0;
+}
+
+/**
+ * Tu flujo's chart: the counted balance day by day, what came in and went
+ * out up to today, then the projection — expected salary, unpaid bills on
+ * their dates, everyday spending at this cycle's pace.
+ */
+export function flowChart(i: InicioWidgetsInput): Extract<InicioWidgetVisual, { kind: "flow" }> {
+  const { cycle, today, result: r } = i;
+  const first = addDays(cycle.start, -FLOW_EDGE_DAYS);
+  const n = diffDays(first, addDays(cycle.end, FLOW_EDGE_DAYS)) + 1;
+  // ponytail: one pace for every future day; weekday patterns come with real history.
+  const pace = Math.round(spendingPace(i));
+  const todayIndex = Math.max(0, Math.min(n - 1, diffDays(first, today)));
+  const cuts = new Set((i.cards ?? []).map((c) => c.cutDate).filter(Boolean));
+  const days: FlowDay[] = Array.from({ length: n }, (_, k) => {
+    const date = addDays(first, k);
+    return {
+      date, balance: 0, income: 0, incomeExpected: 0, spent: 0, bill: 0, estimated: 0,
+      edge: date < cycle.start || date > cycle.end, cardCut: cuts.has(date),
+    };
+  });
+  const at = (d: IsoDate) => days[diffDays(first, d)];
+
+  for (const m of i.movements) {
+    if (!i.counted.has(m.accountId) || m.kind === "ignored" || m.date < first || m.date > today) continue;
+    const day = at(m.date);
+    if (m.direction === "INFLOW") day.income = cents(day.income + m.amount);
+    else day.spent = cents(day.spent + m.amount);
+  }
+  const due = new Map((i.obligations ?? []).map((o) => [o.id, o.dueDate]));
+  for (const l of r.porPagar.lines) {
+    const d = due.get(l.id);
+    if (!d || l.amount <= 0) continue;
+    // Overdue or due today and still unpaid: it lands tomorrow (today's balance is what's real).
+    const day = d > today ? d : addDays(today, 1);
+    if (day >= first && diffDays(first, day) < n) at(day).bill = cents(at(day).bill + l.amount);
+  }
+  if (cycle.nextPayday && cycle.nextPayday > today && i.nextIncome && diffDays(first, cycle.nextPayday) < n) {
+    at(cycle.nextPayday).incomeExpected = i.nextIncome;
+  }
+  for (let k = todayIndex + 1; k < n; k++) days[k].estimated = pace;
+
+  days[todayIndex].balance = cents(i.balanceToday ?? r.disponible + r.porPagar.total + r.ahorro.total);
+  for (let k = todayIndex - 1; k >= 0; k--) {
+    const next = days[k + 1];
+    days[k].balance = cents(next.balance - next.income + next.spent);
+  }
+  for (let k = todayIndex + 1; k < n; k++) {
+    const d = days[k];
+    d.balance = cents(days[k - 1].balance + d.incomeExpected - d.bill - d.estimated);
+  }
+
+  const cycleEnd = diffDays(first, cycle.end);
+  const runOut = days.findIndex((d, k) => k >= todayIndex && k <= cycleEnd && d.balance < 0);
+  let low = todayIndex;
+  for (let k = todayIndex; k <= cycleEnd; k++) if (days[k].balance < days[low].balance) low = k;
+  return { kind: "flow", days, todayIndex, markIndex: runOut >= 0 ? runOut : low, bad: runOut >= 0 };
+}
+
 export function flujoWidget(i: InicioWidgetsInput): InicioWidget {
   const w = base("flujo", "Tu flujo", "full");
-  const { result: r, cycle, today } = i;
-  const byDay = spendByDay(i);
-  const elapsed = diffDays(cycle.start, today) + 1;
-  const spent = sum([...byDay.values()]);
-  const pace = elapsed > 0 ? Math.max(0, spent) / elapsed : 0;
+  const { result: r, today } = i;
+  const pace = spendingPace(i);
   const future = Math.max(0, r.daysLeft - 1);
-  // ponytail: straight-line pace from this cycle's spending; bills on their dates,
-  // the next cycle (amber) and drag-to-read come with the Tu flujo screen.
+  // ponytail: straight-line pace from this cycle's spending; the next cycle (amber)
+  // and drag-to-read come with the Tu flujo screen.
   const end = cents(r.disponible - pace * future);
-
-  const total = diffDays(cycle.start, cycle.end) + 1;
-  const todayIndex = Math.min(total - 1, Math.max(0, elapsed - 1));
-  const points: number[] = [];
-  for (let k = 0; k < total; k++) {
-    const d = addDays(cycle.start, k);
-    if (k <= todayIndex) {
-      // Back out what was spent after that day, so today lands exactly on Disponible.
-      let after = 0;
-      for (const [day, amount] of byDay) if (day > d && day <= today) after += amount;
-      points.push(cents(r.disponible + after));
-    } else {
-      points.push(cents(r.disponible - pace * (k - todayIndex)));
-    }
-  }
-  w.visual = { kind: "line", points, todayIndex };
+  const chart = flowChart(i);
+  w.visual = chart;
 
   const until = i.cycle.nextPayday ? `al ${dayNumber(i.cycle.nextPayday)}` : "a fin de mes";
-  if (end < 0) {
-    const runOut = pace > 0 && r.disponible > 0 ? addDays(today, Math.floor(r.disponible / pace) + 1) : today;
+  if (end < 0 || chart.bad) {
+    const runOut = chart.bad ? chart.days[chart.markIndex].date
+      : pace > 0 && r.disponible > 0 ? addDays(today, Math.floor(r.disponible / pace) + 1) : today;
     w.attention = { level: "red", reason: `No llegas ${until}` };
     const cut = future > 0 ? Math.ceil((pace - Math.max(0, r.disponible) / future) / 1000) * 1000 : 0;
-    w.caption = `A tu ritmo te quedas sin plata ${runOut <= today ? "hoy" : `el ${shortDate(runOut)}`}${cut > 0 ? ` · gasta ${APPROX}${formatPesos(cut)} menos al día` : ""}.`;
-  } else {
-    w.caption = `A tu ritmo terminas con ${signedPesos(end)}.`;
+    w.lead = `A tu ritmo te quedas sin plata ${runOut <= today ? "hoy" : `el ${shortDate(runOut)}`}${cut > 0 ? ` · gasta ${APPROX}${formatPesos(cut)} menos al día` : ""}.`;
   }
   w.totals = [
     { label: "Llega", amount: signedPesos(r.llega.total) },
@@ -227,6 +309,7 @@ export function hoyWidget(i: InicioWidgetsInput): InicioWidget {
     ? `Llevas ${formatPesos(spent)} de ${formatPesos(allowance)}. Mañana tendrás un poco menos por día.`
     : `Llevas ${formatPesos(spent)} de ${formatPesos(allowance)} hoy.`;
   w.rows = latest(i, (t) => t.date === i.today && t.direction === "OUTFLOW" && i.counted.has(t.accountId), 20);
+  w.seeAll = "see_movements";
   return w;
 }
 
@@ -243,7 +326,8 @@ export function pagoWidget(i: InicioWidgetsInput): InicioWidget {
   if (open.length === 0) {
     w.empty = true;
     w.hint = "Sin pagos aún";
-    w.lead = "Cuando agregues tus pagos fijos, aquí verás el próximo y cuánto falta.";
+    w.lead = "Agrega tus pagos fijos (arriendo, servicios, cuotas) y Zeta los resta antes de que lleguen.";
+    w.actions = [{ id: "add_bill", label: "Agregar pago fijo" }, { id: "import_statement", label: "Importar extracto" }];
     return w;
   }
 
@@ -261,6 +345,7 @@ export function pagoWidget(i: InicioWidgetsInput): InicioWidget {
   w.hint = `${next.line.label}, ${shortDate(next.dueDate)}`;
   const until = i.cycle.nextPayday ? ` antes del ${dayNumber(i.cycle.nextPayday)}` : "";
   w.lead = `Por pagar${until}: ${signedPesos(i.result.porPagar.total)}`;
+  w.seeAll = "see_bills";
   w.rows = open.map((o) => {
     const n = diffDays(i.today, o.dueDate);
     const risky = atRisk?.label === o.line.label && atRisk.dueDate === o.dueDate;
@@ -295,7 +380,8 @@ export function teDebenWidget(i: InicioWidgetsInput): InicioWidget {
   if (people.length === 0) {
     w.empty = true;
     w.hint = "Nadie te debe";
-    w.lead = "Cuando prestes plata o dividas una compra, aquí verás quién te debe.";
+    w.lead = "Cuando prestes plata o dividas una compra, aquí ves quién te debe y desde cuándo.";
+    w.actions = [{ id: "split_purchase", label: "Dividir una compra" }, { id: "lend", label: "Anotar un préstamo" }];
     return w;
   }
 
@@ -305,6 +391,7 @@ export function teDebenWidget(i: InicioWidgetsInput): InicioWidget {
   else if (oldest >= TE_DEBEN_AMBER_DAYS) w.attention = { level: "amber", reason: `Hace ${days(oldest)}` };
 
   setValue(w, sum(people.map((p) => p.amount)));
+  w.seeAll = "see_people";
   w.visual = { kind: "initials", letters: people.slice(0, 3).map((p) => (p.name.trim()[0] ?? "?").toUpperCase()) };
   w.rows = people.map((p) => {
     const n = age(p);
@@ -324,6 +411,7 @@ export function teDebenWidget(i: InicioWidgetsInput): InicioWidget {
 export function tarjetaWidget(i: InicioWidgetsInput, card: CardSummary): InicioWidget {
   const w = base("tarjeta", card.name, "half");
   w.id = `tarjeta:${card.accountId}`;
+  w.seeAll = "see_accounts";
   setValue(w, card.estimatedBill, APPROX);
   w.hint = "próxima factura";
   if (card.usedPercent != null) w.visual = { kind: "bar", percent: clampPercent(card.usedPercent), level: null };
@@ -356,6 +444,16 @@ export function tarjetaWidget(i: InicioWidgetsInput, card: CardSummary): InicioW
   return w;
 }
 
+/** No card with data yet: the slot teaches what it's for and how to fill it. */
+export function tarjetaEmptyWidget(): InicioWidget {
+  const w = base("tarjeta", "Tarjeta", "half");
+  w.empty = true;
+  w.hint = "Sin tarjetas aún";
+  w.lead = "Agrega tu tarjeta para ver tu próxima factura y cuándo pagarla. Comprar con tarjeta no baja tu Disponible; pagarla sí.";
+  w.actions = [{ id: "add_card", label: "Agregar tarjeta" }, { id: "import_statement", label: "Importar extracto" }];
+  return w;
+}
+
 // ── Últimos movimientos ──
 
 function latest(i: InicioWidgetsInput, keep: (t: StoredTransaction) => boolean, n: number): InicioWidgetRow[] {
@@ -383,8 +481,10 @@ export function ultimosWidget(i: InicioWidgetsInput): InicioWidget {
     w.empty = true;
     w.hint = "Sin movimientos aún";
     w.lead = "Lo que anotes o llegue de tu banco aparece aquí.";
+    w.actions = [{ id: "capture", label: "Anotar un gasto" }];
     return w;
   }
+  w.seeAll = "see_movements";
   w.previewRows = rows.slice(0, ULTIMOS_COLLAPSED);
   w.rows = rows;
   return w;
@@ -399,7 +499,7 @@ export function buildInicioWidgets(i: InicioWidgetsInput): InicioWidget[] {
     hoyWidget(i),
     pagoWidget(i),
     teDebenWidget(i),
-    ...(i.cards ?? []).map((c) => tarjetaWidget(i, c)),
+    ...(i.cards?.length ? i.cards.map((c) => tarjetaWidget(i, c)) : [tarjetaEmptyWidget()]),
     ultimosWidget(i),
   ];
 }
@@ -414,3 +514,54 @@ export function pickAutoOpen(widgets: InicioWidget[], lastDay: IsoDate | null, t
   const red = widgets.find((w) => w.attention?.level === "red");
   return (red ?? widgets.find((w) => w.attention?.level === "amber"))?.id ?? null;
 }
+
+// ── Organizar ──
+
+/** Allowed sizes per widget, smallest first (13 §Widget catalog). */
+export const WIDGET_SIZES: Record<InicioWidgetKey, InicioWidgetSize[]> = {
+  flujo: ["half", "full"],
+  hoy: ["half"],
+  pago: ["half", "full"],
+  teDeben: ["half"],
+  tarjeta: ["half", "full"],
+  ultimos: ["full"],
+};
+
+/** The user's Inicio: visible widgets in order with their size; `hidden` were removed. */
+export interface InicioLayout {
+  items: { id: string; size: InicioWidgetSize }[];
+  hidden: string[];
+}
+
+const keyOf = (id: string) => id.split(":")[0] as InicioWidgetKey;
+
+/**
+ * The default widgets arranged as the user left them. Widgets the layout
+ * doesn't know yet (a new card) keep their default place relative to the end;
+ * a size the widget doesn't allow falls back to its smallest. A full Próximo
+ * pago or Tarjeta also shows its next rows collapsed.
+ */
+export function applyInicioLayout(widgets: InicioWidget[], layout: InicioLayout | null): InicioWidget[] {
+  const byId = new Map(widgets.map((w) => [w.id, w]));
+  const hidden = new Set(layout?.hidden ?? []);
+  const placed = new Set<string>();
+  const out: InicioWidget[] = [];
+  const add = (w: InicioWidget, size: InicioWidgetSize) => {
+    const allowed = WIDGET_SIZES[keyOf(w.id)];
+    const s = allowed.includes(size) ? size : allowed[0];
+    const sized = s === w.size ? w : { ...w, size: s };
+    if (s === "full" && (w.key === "pago" || w.key === "tarjeta") && !w.empty) sized.previewRows = w.rows.slice(0, 3);
+    out.push(sized);
+    placed.add(w.id);
+  };
+  for (const item of layout?.items ?? []) {
+    const w = byId.get(item.id);
+    if (w && !hidden.has(w.id)) add(w, item.size);
+  }
+  for (const w of widgets) if (!placed.has(w.id) && !hidden.has(w.id)) add(w, w.size);
+  return out;
+}
+
+/** The layout a grid shows, for saving after Organizar. */
+export const layoutOf = (widgets: InicioWidget[], hidden: string[]): InicioLayout =>
+  ({ items: widgets.map((w) => ({ id: w.id, size: w.size })), hidden });

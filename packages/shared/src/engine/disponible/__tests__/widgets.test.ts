@@ -3,7 +3,10 @@ import type { PayCycle } from "../cycle";
 import { computeDisponible, type Obligation } from "../disponible";
 import { toDisponibleMovements, type StoredTransaction } from "../movements";
 import {
+  applyInicioLayout,
   buildInicioWidgets,
+  layoutOf,
+  flowChart,
   flujoWidget,
   hoyWidget,
   pagoWidget,
@@ -83,29 +86,43 @@ describe("Hoy", () => {
   });
 });
 
-describe("Tu flujo (mini)", () => {
-  it("normal: ends above zero at today's pace", () => {
+describe("Tu flujo", () => {
+  it("normal: no alert, totals end above zero at today's pace", () => {
     const w = flujoWidget(input([tx("2026-09-16", 100_000)]));
-    // pace 100.000 / 4 days = 25.000; 11 days after today → 421.100 − 275.000.
-    expect(w.caption).toBe("A tu ritmo terminas con $146.100.");
     expect(w.attention).toBeNull();
-    expect(w.visual).toMatchObject({ kind: "line", todayIndex: 3 });
-    const line = w.visual as { points: number[] };
-    expect(line.points).toHaveLength(15);
-    expect(line.points[3]).toBe(421_100);
-    expect(line.points[0]).toBe(521_100); // before the 16th's spend
+    expect(w.lead).toBeNull();
+    // pace 100.000 / 4 days = 25.000; 11 days after today → 421.100 − 275.000.
     expect(w.totals.map((t) => t.amount)).toEqual(["$2.100.000", "$1.953.900", "$146.100"]);
   });
 
-  it("red: runs out before payday, with the day and the per-day cut", () => {
-    const w = flujoWidget(input([tx("2026-09-17", 400_000)]));
-    expect(w.attention).toEqual({ level: "red", reason: "No llegas al 30" });
-    expect(w.caption).toBe("A tu ritmo te quedas sin plata el 20 sep · gasta ≈\u00a0$89.000 menos al día.");
+  it("chart: the cycle ± 2 shaded days, today's balance, bills on their dates, salary expected on payday", () => {
+    const c = flowChart(input([tx("2026-09-16", 100_000)], { balanceToday: 2_000_000, nextIncome: 2_100_000 }));
+    expect(c.days).toHaveLength(19); // 13 sep … 1 oct
+    expect(c.days[0]).toMatchObject({ date: "2026-09-13", edge: true });
+    expect(c.days[18]).toMatchObject({ date: "2026-10-01", edge: true });
+    expect(c.todayIndex).toBe(5);
+    expect(c.days[5].balance).toBe(2_000_000);
+    expect(c.days[2]).toMatchObject({ date: "2026-09-15", income: 2_100_000 });
+    expect(c.days[3]).toMatchObject({ date: "2026-09-16", spent: 100_000 });
+    // Before the salary the balance is backed out of what moved since.
+    expect(c.days[1].balance).toBe(0);
+    expect(c.days[6]).toMatchObject({ date: "2026-09-19", bill: 700_000, estimated: 25_000, balance: 1_275_000 });
+    expect(c.days[17]).toMatchObject({ date: "2026-09-30", incomeExpected: 2_100_000 });
+    expect(c.bad).toBe(false);
+    expect(c.days[c.markIndex].date).toBe("2026-09-29"); // lowest point before payday
   });
 
-  it("already below zero: runs out today", () => {
-    const w = flujoWidget(input([tx("2026-09-17", 600_000)]));
-    expect(w.caption).toMatch(/^A tu ritmo te quedas sin plata hoy · gasta/);
+  it("red: the day the balance runs out (bills on their dates) and the per-day cut", () => {
+    const w = flujoWidget(input([tx("2026-09-17", 400_000)]));
+    // $1.721.100 left today; Arriendo (19) and Tarjeta Nu (22) plus $100.000 a day empty it on the 22nd.
+    expect(w.attention).toEqual({ level: "red", reason: "No llegas al 30" });
+    expect(w.lead).toBe("A tu ritmo te quedas sin plata el 22 sep · gasta ≈\u00a0$89.000 menos al día.");
+    expect((w.visual as { bad: boolean }).bad).toBe(true);
+  });
+
+  it("already below zero today: runs out today", () => {
+    const w = flujoWidget(input([tx("2026-09-17", 600_000)], { balanceToday: -20_000 }));
+    expect(w.lead).toMatch(/^A tu ritmo te quedas sin plata hoy · gasta/);
   });
 });
 
@@ -201,6 +218,43 @@ describe("Últimos movimientos", () => {
   it("excluded rows never show", () => {
     const w = ultimosWidget(input([tx(TODAY, 9_000, { isExcluded: true, description: "Oculto" })]));
     expect(w.rows.map((r) => r.title)).not.toContain("Oculto");
+  });
+});
+
+describe("empty states offer actions", () => {
+  it("no cards: an empty Tarjeta with ways to add one; empty Próximo pago and Te deben too", () => {
+    const ws = buildInicioWidgets(input([], {}, []));
+    const byKey = Object.fromEntries(ws.map((w) => [w.key, w]));
+    expect(byKey.tarjeta).toMatchObject({ id: "tarjeta", empty: true, hint: "Sin tarjetas aún" });
+    expect(byKey.tarjeta.actions.map((a) => a.id)).toEqual(["add_card", "import_statement"]);
+    expect(byKey.pago.actions.map((a) => a.id)).toEqual(["add_bill", "import_statement"]);
+    expect(byKey.teDeben.actions.map((a) => a.id)).toEqual(["split_purchase", "lend"]);
+    expect(byKey.hoy.seeAll).toBe("see_movements");
+  });
+});
+
+describe("Organizar", () => {
+  const ws = () => buildInicioWidgets(input([tx("2026-09-17", 100_000)]));
+
+  it("no layout: the default", () => {
+    expect(applyInicioLayout(ws(), null).map((w) => w.id)).toEqual(ws().map((w) => w.id));
+  });
+
+  it("order, sizes and hidden widgets; unknown widgets keep their default place at the end", () => {
+    const out = applyInicioLayout(ws(), {
+      items: [{ id: "pago", size: "full" }, { id: "hoy", size: "full" }, { id: "flujo", size: "half" }],
+      hidden: ["teDeben"],
+    });
+    expect(out.map((w) => `${w.id}:${w.size}`)).toEqual([
+      "pago:full", "hoy:half", "flujo:half", "tarjeta:half", "ultimos:full",
+    ]);
+    // A full Próximo pago shows its next rows collapsed.
+    expect(out[0].previewRows.map((r) => r.title)).toEqual(["Arriendo", "Tarjeta Nu", "Netflix"]);
+  });
+
+  it("round-trips through layoutOf", () => {
+    const out = applyInicioLayout(ws(), { items: [{ id: "ultimos", size: "full" }], hidden: ["hoy"] });
+    expect(applyInicioLayout(ws(), layoutOf(out, ["hoy"])).map((w) => w.id)).toEqual(out.map((w) => w.id));
   });
 });
 

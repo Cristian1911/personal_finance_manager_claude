@@ -24,39 +24,39 @@ function laura(spent: number, over: Partial<DisponibleInput> = {}): DisponibleIn
   };
 }
 
-function view(spent: number, extra: { teDeben?: number; over?: Partial<DisponibleInput>; nextPayday?: string | null } = {}) {
+function view(spent: number, extra: { nextIncome?: number; over?: Partial<DisponibleInput>; nextPayday?: string | null } = {}) {
   const r = computeDisponible(laura(spent, extra.over));
   const nextPayday = extra.nextPayday === undefined ? "2026-09-30" : extra.nextPayday;
   const v = computeVerdict({
     disponible: r.disponible, perDay: r.perDay, startingPerDay: r.startingPerDay,
     nextPayday, now: "2026-09-18T15:00:00.000Z",
   });
-  return disponibleBlockView({ result: r, verdict: v, today: "2026-09-18", nextPayday, teDeben: extra.teDeben ?? 0 });
+  return disponibleBlockView({ result: r, verdict: v, today: "2026-09-18", nextPayday, nextIncome: extra.nextIncome ?? 0 });
 }
 
 describe("disponibleBlockView — the session-5 prototype lines", () => {
-  it("Vas bien: $421.100, $35.000 al día · 12 días, +$180.000 cuando te paguen", () => {
-    expect(view(100_000, { teDeben: 180_000 })).toMatchObject({
+  it("Vas bien: $421.100, $35.000 al día · 12 días, +$2.100.000 cuando te paguen", () => {
+    expect(view(100_000, { nextIncome: 2_100_000 })).toMatchObject({
       state: "vas_bien", pill: "Vas bien", payday: "Te pagan en 12 días",
-      amount: "$421.100", perDay: "$35.000 al día · 12 días", sub: "+$180.000 cuando te paguen", approxNote: null,
+      amount: "$421.100", perDay: "$35.000 al día · 12 días", perDayAmount: "$35.000", perDayRest: "al día", sub: "+$2.100.000 cuando te paguen", approxNote: null,
     });
   });
 
   it("Cuidado: $271.100, Máximo $22.500 al día para llegar al 30", () => {
-    expect(view(250_000, { teDeben: 180_000 })).toMatchObject({
+    expect(view(250_000, { nextIncome: 2_100_000 })).toMatchObject({
       state: "cuidado", pill: "Cuidado", amount: "$271.100",
-      perDay: "Máximo $22.500 al día para llegar al 30", sub: "+$180.000 cuando te paguen",
+      perDay: "Máximo $22.500 al día para llegar al 30", perDayAmount: null, perDayRest: "Máximo $22.500 al día para llegar al 30", sub: "+$2.100.000 cuando te paguen",
     });
   });
 
   it("Te pasaste: −$64.000, Lo restamos del próximo ciclo, Mira en qué se fue ›", () => {
-    expect(view(585_100, { teDeben: 180_000 })).toMatchObject({
+    expect(view(585_100, { nextIncome: 2_100_000 })).toMatchObject({
       state: "te_pasaste", pill: "Te pasaste", amount: "−$64.000",
       perDay: "Lo restamos del próximo ciclo", sub: "Mira en qué se fue ›",
     });
   });
 
-  it("no Te deben: no '+$X cuando te paguen' line", () => {
+  it("no next income (irregular): no '+$X cuando te paguen' line", () => {
     expect(view(100_000).sub).toBeNull();
   });
 
@@ -90,7 +90,7 @@ describe("disponibleBlockView — payday, approximations, edge days", () => {
   it("one day left says 'día'", () => {
     const r = computeDisponible(laura(100_000, { cycle: { ...CYCLE, daysLeft: 1 }, today: "2026-09-29" }));
     const v = computeVerdict({ disponible: r.disponible, perDay: r.perDay, startingPerDay: r.startingPerDay, nextPayday: "2026-09-30", now: "2026-09-29T15:00:00.000Z" });
-    expect(disponibleBlockView({ result: r, verdict: v, today: "2026-09-29", nextPayday: "2026-09-30", teDeben: 0 }).perDay).toBe("$421.100 al día · 1 día");
+    expect(disponibleBlockView({ result: r, verdict: v, today: "2026-09-29", nextPayday: "2026-09-30", nextIncome: 0 }).perDay).toBe("$421.100 al día · 1 día");
   });
 
   it("an approximate number gets a '~' and its reason; it's never hidden", () => {
@@ -105,7 +105,7 @@ describe("disponibleBlockView — payday, approximations, edge days", () => {
       disponible: r.disponible, perDay: r.perDay, startingPerDay: r.startingPerDay, nextPayday: "2026-09-30",
       billAtRisk: { label: "Arriendo", dueDate: "2026-09-19" }, now: "2026-09-18T15:00:00.000Z",
     });
-    expect(disponibleBlockView({ result: r, verdict: v, today: "2026-09-18", nextPayday: "2026-09-30", teDeben: 0 }).perDay)
+    expect(disponibleBlockView({ result: r, verdict: v, today: "2026-09-18", nextPayday: "2026-09-30", nextIncome: 0 }).perDay)
       .toBe("Tu saldo no alcanza para Arriendo, que vence el 19.");
   });
 });
