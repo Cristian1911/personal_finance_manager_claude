@@ -1,6 +1,7 @@
 import { captureManualTransaction } from "./commands/capture-manual-transaction";
 import { setAccountCountsInDisponible } from "./commands/set-account-counts-in-disponible";
 import { setCycleSettings } from "./commands/set-cycle-settings";
+import { deleteTransaction } from "./commands/delete-transaction";
 import { setTransactionExcluded } from "./commands/set-transaction-excluded";
 import { setTransactionNote } from "./commands/set-transaction-note";
 import type { HashFn } from "../utils/idempotency";
@@ -18,6 +19,7 @@ const HANDLERS: Partial<Record<CommandType, Handler>> = {
   captureManualTransaction,
   setTransactionNote,
   setTransactionExcluded,
+  deleteTransaction,
   setCycleSettings,
   setAccountCountsInDisponible,
 };

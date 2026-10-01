@@ -11,6 +11,7 @@ export {
 } from "./commands/capture-manual-transaction";
 export { setTransactionNote, type SetTransactionNotePayload } from "./commands/set-transaction-note";
 export { setTransactionExcluded, type SetTransactionExcludedPayload } from "./commands/set-transaction-excluded";
+export { MANUAL_CAPTURE_METHODS, deleteTransaction, type DeleteTransactionPayload } from "./commands/delete-transaction";
 export {
   setCycleSettings,
   validateSetCycleSettings,
