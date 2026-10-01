@@ -56,10 +56,11 @@ function MiniLine({ points, todayIndex }: { points: number[]; todayIndex: number
   const below = points.some((p) => p < 0);
   const lo = Math.min(...points, below ? 0 : Infinity);
   const hi = Math.max(...points);
-  const span = hi - lo || 1;
+  const span = hi - lo;
   const pad = 4;
   const x = (i: number) => pad + (i * (width - 2 * pad)) / Math.max(1, points.length - 1);
-  const y = (v: number) => pad + ((hi - v) * (LINE_HEIGHT - 2 * pad)) / span;
+  // A flat line (nothing spent yet) sits in the middle.
+  const y = (v: number) => (span === 0 ? LINE_HEIGHT / 2 : pad + ((hi - v) * (LINE_HEIGHT - 2 * pad)) / span);
   const path = (from: number, to: number) => points.slice(from, to + 1).map((v, k) => `${x(from + k)},${y(v)}`).join(" ");
   const future = below ? t.colors.bad.solid : t.colors.muted;
 

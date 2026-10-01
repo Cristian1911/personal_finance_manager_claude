@@ -151,7 +151,7 @@ function spokenLabel(w: InicioWidget): string {
   if (w.caption) parts.push(w.caption);
   if (w.hint) parts.push(w.hint);
   if (w.attention) parts.push(w.attention.reason);
-  return `${parts.join(". ")}.`;
+  return `${parts.map((p) => p.replace(/\.$/, "")).join(". ")}.`;
 }
 
 const styles = StyleSheet.create({
