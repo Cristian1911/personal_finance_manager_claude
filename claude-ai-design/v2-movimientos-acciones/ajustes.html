@@ -52,6 +52,8 @@
   .ok { background:var(--ok-s); } .wn { background:var(--warn-s); }
   .quiet { text-align:center; font:600 14px var(--ui); color:var(--muted); padding:6px; }
   .quiet.danger { color:var(--bad-x); }
+  .btn-d { height:46px; border-radius:12px; border:1.5px solid #C4452A; color:var(--bad-x); display:flex; align-items:center; justify-content:center; gap:8px; font:600 14px var(--ui); }
+  .btn-d svg { width:17px; height:17px; }
   .ver { text-align:center; font:500 11.5px var(--mono); color:var(--muted); }
   .src { display:flex; align-items:center; gap:12px; padding:12px 14px; border-bottom:1px solid var(--line); }
   .src:last-child { border-bottom:0; }
@@ -91,6 +93,7 @@
   th, td { text-align:left; padding:8px 11px; border-bottom:1px solid var(--line); vertical-align:top; }
   th { font:600 12px var(--ui); color:var(--muted); background:var(--sunk); }
   .q { background:var(--card); border-radius:14px; padding:14px 16px; box-shadow:var(--shadow); margin:10px 0; max-width:960px; font:400 14px/1.55 var(--ui); color:var(--muted); }
+  .page > *, .sheet > * { flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -128,7 +131,7 @@
           <div class="row"><span class="ic"><i data-lucide="shield"></i></span><div class="t"><b>Privacidad</b><small>Qué leo y qué no · tus datos</small></div><i class="chev" data-lucide="chevron-right"></i></div>
         </div>
         <div class="card"><div class="row"><span class="ic"><i data-lucide="life-buoy"></i></span><div class="t"><b>Ayuda y reportar un problema</b></div><i class="chev" data-lucide="chevron-right"></i></div></div>
-        <div class="quiet">Cerrar sesión</div>
+        <div class="btn-d"><i data-lucide="log-out"></i>Cerrar sesión</div>
         <div class="ver">Zeta 2.0 · v2</div>
       </div></div></div>
     </div>
@@ -188,7 +191,7 @@
         </div>
         <div class="card counter"><b>Hoy descartamos 214 avisos que no eran de tus bancos.</b><small>Solo miramos el remitente. No los guardamos ni los leemos.</small></div>
         <div class="btn-o"><i data-lucide="download"></i>Descargar mis datos</div>
-        <div class="quiet danger">Borrar todo</div>
+        <div class="btn-d"><i data-lucide="trash-2"></i>Borrar todo</div>
       </div></div></div>
     </div>
   </div>

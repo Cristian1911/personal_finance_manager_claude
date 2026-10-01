@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Botones v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@500;600&family=Bricolage+Grotesque:opsz,wght@12..96,600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@0.453.0/dist/umd/lucide.min.js"></script>
+<style>
+  :root { --bg:#E9E0CC; --card:#FFFCF5; --ink:#14160F; --muted:#4B463B; --line:#E6DDC9; --ctl:#8C7F63; --sunk:#EFE7D6; --btn:#14160F; --btn-ink:#FFFCF5;
+    --bad-s:#C4452A; --bad-x:#7A2410; --bad-t:#F4BFA8; --bad-on:#FFFFFF; --warn-t:#F6D98C;
+    --ui:"Geist",system-ui,sans-serif; --mono:"Geist Mono",ui-monospace,monospace; --num:"Bricolage Grotesque",var(--ui);
+    --shadow:0 1px 2px rgba(60,48,20,.06),0 4px 14px rgba(60,48,20,.07); }
+  .dark { --bg:#12130E; --card:#1F2119; --ink:#F3EFE3; --muted:#B8B09C; --line:#2E3027; --ctl:#858270; --sunk:#2A2C22; --btn:#F3EFE3; --btn-ink:#12130E;
+    --bad-s:#E0664A; --bad-x:#F4A58C; --bad-t:#43190F; --bad-on:#12130E; --shadow:none; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#DCD3BF; color:#14160F; font-family:var(--ui); }
+  main { max-width:1200px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font:600 26px var(--ui); letter-spacing:-.02em; margin:0 0 6px; }
+  h2 { font:600 19px var(--ui); margin:36px 0 6px; }
+  p, li { font:400 14px/1.55 var(--ui); color:#4B463B; max-width:900px; }
+  .boards { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:14px; }
+  @media (max-width:900px) { .boards { grid-template-columns:1fr; } }
+  .board { background:var(--bg); border-radius:22px; padding:18px; color:var(--ink); }
+  .board h3 { font:600 13px var(--mono); letter-spacing:.05em; text-transform:uppercase; color:var(--muted); margin:0 0 12px; }
+  .surface { background:var(--card); border-radius:18px; box-shadow:var(--shadow); padding:16px; display:flex; flex-direction:column; gap:14px; }
+  .line { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .tag { width:96px; font:600 11px var(--mono); color:var(--muted); text-transform:uppercase; letter-spacing:.04em; flex:none; }
+  /* the system */
+  .b { display:inline-flex; align-items:center; justify-content:center; gap:8px; font:600 15px var(--ui); border-radius:12px; padding:0 18px; white-space:nowrap; }
+  .b svg { width:18px; height:18px; }
+  .L { height:50px; min-width:200px; } .M { height:44px; font-size:14px; border-radius:11px; } .S { height:32px; font-size:13px; border-radius:9px; padding:0 12px; }
+  .pri { background:var(--btn); color:var(--btn-ink); }
+  .sec { border:1.5px solid var(--ctl); color:var(--ink); }
+  .txt { color:var(--muted); text-decoration:underline; text-underline-offset:3px; padding:0 6px; }
+  .des { border:1.5px solid var(--bad-s); color:var(--bad-x); }
+  .desf { background:var(--bad-s); color:var(--bad-on); }
+  .off { background:var(--sunk); color:var(--ctl); }
+  .sel { border:1.5px solid var(--ctl); color:var(--ink); }
+  .sel.on { background:var(--btn); color:var(--btn-ink); border-color:var(--btn); }
+  .icon { width:36px; height:36px; border-radius:10px; border:1.5px solid var(--ctl); display:inline-grid; place-items:center; color:var(--ink); }
+  .icon.c { border-radius:50%; width:32px; height:32px; }
+  .icon svg { width:18px; height:18px; }
+  .fab { width:58px; height:58px; border-radius:50%; background:var(--btn); color:var(--btn-ink); display:inline-grid; place-items:center; box-shadow:0 6px 16px rgba(20,22,15,.3); }
+  .fab svg { width:26px; height:26px; }
+  .seg { display:inline-flex; padding:3px; border-radius:11px; background:var(--sunk); box-shadow:inset 0 0 0 1px var(--line); }
+  .seg span { height:30px; padding:0 14px; border-radius:8px; display:flex; align-items:center; font:500 13px var(--ui); color:var(--muted); }
+  .seg span.on { background:var(--card); color:var(--ink); font-weight:600; box-shadow:var(--shadow); }
+  .pressed { transform:scale(.98); opacity:.85; }
+  .spin { width:16px; height:16px; border-radius:50%; border:2px solid currentColor; border-right-color:transparent; }
+  table { width:100%; border-collapse:collapse; background:#FFFCF5; border-radius:14px; overflow:hidden; box-shadow:0 1px 2px rgba(60,48,20,.06),0 4px 14px rgba(60,48,20,.07); font:400 13px/1.45 var(--ui); margin-top:10px; color:#14160F; }
+  th, td { text-align:left; padding:9px 12px; border-bottom:1px solid #E6DDC9; vertical-align:top; }
+  th { font:600 12px var(--ui); color:#4B463B; background:#EFE7D6; }
+  code { font:500 12px var(--mono); background:#EFE7D6; padding:1px 5px; border-radius:5px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Botones: one system for all of v2</h1>
+  <p>Seven types, three sizes, four states. They follow the v2 rule <b>black = tap, color = state</b>. Red is the only color a button can have, because it announces a <b>state</b>: what you're about to do can't be undone or ends something. Everything is tokens from <code>mobile/v2/tokens</code>, so Oliva/Nítido and light/dark come for free (both modes shown below).</p>
+
+  <div class="boards">
+    <div class="board"><h3>Oliva · claro</h3>
+      <div class="surface">
+        <div class="line"><span class="tag">Primario</span><span class="b L pri">Guardar</span></div>
+        <div class="line"><span class="tag">Secundario</span><span class="b M sec"><i data-lucide="plus"></i>Agregar una fuente</span></div>
+        <div class="line"><span class="tag">Texto</span><span class="b M txt">Editar cuenta</span><span class="b M txt">Renombrar</span></div>
+        <div class="line"><span class="tag">Destructivo</span><span class="b M des"><i data-lucide="log-out"></i>Cerrar sesión</span><span class="b M desf">Sí, borrar todo</span></div>
+        <div class="line"><span class="tag">Selector</span><span class="b S sel on">Todos</span><span class="b S sel">Gastos</span><span class="seg"><span class="on">Gasto</span><span>Ingreso</span></span></div>
+        <div class="line"><span class="tag">Ícono · FAB</span><span class="icon"><i data-lucide="chevron-left"></i></span><span class="icon c"><i data-lucide="x"></i></span><span class="fab"><i data-lucide="plus"></i></span></div>
+        <div class="line"><span class="tag">Estados</span><span class="b M pri pressed">Presionado</span><span class="b M off">Desactivado</span><span class="b M pri"><span class="spin"></span>Guardando</span></div>
+      </div>
+    </div>
+    <div class="board dark"><h3>Oliva · oscuro</h3>
+      <div class="surface">
+        <div class="line"><span class="tag">Primario</span><span class="b L pri">Guardar</span></div>
+        <div class="line"><span class="tag">Secundario</span><span class="b M sec"><i data-lucide="plus"></i>Agregar una fuente</span></div>
+        <div class="line"><span class="tag">Texto</span><span class="b M txt">Editar cuenta</span><span class="b M txt">Renombrar</span></div>
+        <div class="line"><span class="tag">Destructivo</span><span class="b M des"><i data-lucide="log-out"></i>Cerrar sesión</span><span class="b M desf">Sí, borrar todo</span></div>
+        <div class="line"><span class="tag">Selector</span><span class="b S sel on">Todos</span><span class="b S sel">Gastos</span><span class="seg"><span class="on">Gasto</span><span>Ingreso</span></span></div>
+        <div class="line"><span class="tag">Ícono · FAB</span><span class="icon"><i data-lucide="chevron-left"></i></span><span class="icon c"><i data-lucide="x"></i></span><span class="fab"><i data-lucide="plus"></i></span></div>
+        <div class="line"><span class="tag">Estados</span><span class="b M pri pressed">Presionado</span><span class="b M off">Desactivado</span><span class="b M pri"><span class="spin"></span>Guardando</span></div>
+      </div>
+    </div>
+  </div>
+
+  <h2>When to use each one</h2>
+  <table>
+    <tr><th>Type</th><th>Look</th><th>Use it for</th><th>Examples</th><th>Rule</th></tr>
+    <tr><td><b>Primario</b></td><td>Fill <code>button</code>, text <code>onButton</code></td><td>The action the screen exists for</td><td>Guardar, Listo, Registrar pago, Revisar conexión</td><td><b>One per screen</b> (or per card when it's its own task). It goes at the bottom, within thumb reach.</td></tr>
+    <tr><td><b>Secundario</b></td><td>1.5 outline <code>control</code>, text <code>ink</code></td><td>Real alternatives to the primary, or one-off additions</td><td>Agregar una fuente, Recordarle, Descargar mis datos, Solo esta</td><td>Next to a primary it's always "the other option". On its own, it's an addition.</td></tr>
+    <tr><td><b>Texto</b></td><td>Text <code>muted</code>, underlined</td><td>Rare or management actions</td><td>Editar cuenta, Renombrar, Unir con otro, "No es un movimiento"</td><td>Never for the main thing. If one is used a lot, it moves up to secundario.</td></tr>
+    <tr><td><b>Destructivo</b></td><td>Outline <code>bad.solid</code>, text <code>bad.text</code>; fill <code>bad.solid</code> only when confirming</td><td>What <b>can't be undone</b> or <b>ends something</b></td><td>Cerrar sesión, Borrar todo, Eliminar cuenta, Archivar</td><td>The outline sits in the screen; the red fill appears only on the confirmation that explains the consequence. <b>Anything with Deshacer isn't destructive</b> (it stays texto).</td></tr>
+    <tr><td><b>Selector</b></td><td>Off: outline. On: <code>button</code> fill. Segment: <code>sunk</code> track + <code>card</code> pill</td><td>Choosing a state, not doing something</td><td>Filters (Todos/Gastos), Gasto·Ingreso, Pasado·Este·Próximo, Comercios·Personas</td><td>Chips for filters that combine; segment for exclusive options (2 to 4).</td></tr>
+    <tr><td><b>Ícono</b></td><td>36 square r10 (header) · 32 circle (close ×)</td><td>Navigation and closing</td><td>Volver, Buscar, ×</td><td>Always with an accessible label ("Volver", "Cerrar Tu flujo"). hitSlop up to 44.</td></tr>
+    <tr><td><b>FAB</b></td><td>58 circle, <code>button</code> fill</td><td>Anotar</td><td>The "+" on the bar</td><td>Only one in the whole app.</td></tr>
+  </table>
+
+  <h2>Sizes and states</h2>
+  <table>
+    <tr><th>Size</th><th>Height</th><th>Where</th></tr>
+    <tr><td>L</td><td>50</td><td>The screen's or sheet's main action (Guardar, Listo)</td></tr>
+    <tr><td>M</td><td>44</td><td>Actions inside the page or a card (Registrar pago, Cerrar sesión, Agregar)</td></tr>
+    <tr><td>S</td><td>32 (+ hitSlop up to 44)</td><td>Selectors and chips</td></tr>
+  </table>
+  <p><b>States:</b> pressed (scale .98, opacity .85) · disabled (fill <code>sunk</code>, text <code>control</code>; never just a lower opacity) · loading (spinner + the label stays, so the button doesn't change size). Labels are a verb or an outcome ("Guardar", "Sí, borrar todo"), never "OK" or "Aceptar".</p>
+
+  <h2>What changes in the mockups</h2>
+  <ul>
+    <li><b>Ajustes:</b> "Cerrar sesión" goes from quiet text to <b>destructivo</b>. In Privacidad, "Borrar todo" too (its confirmation uses the red fill).</li>
+    <li><b>Mis cuentas:</b> a future "Archivar cuenta" will be destructivo; "Editar cuenta" stays texto.</li>
+    <li><b>Detalle:</b> "No es un movimiento" stays texto, because it has Deshacer for 5 s.</li>
+    <li><b>Destinatario sheet:</b> Renombrar / Unir / "Es una persona" stay texto; Registrar pago is primario, Recordarle secundario.</li>
+    <li><b>In code:</b> one <code>Button</code> component in <code>mobile/v2/components</code> with <code>variant</code> (primary · secondary · text · destructive) and <code>size</code> (L · M · S), plus <code>Chip</code>, <code>Segmented</code>, <code>IconButton</code>. Each screen uses these, never a loose style.</li>
+  </ul>
+</main>
+<script>lucide.createIcons();</script>
+</body>
+</html>
