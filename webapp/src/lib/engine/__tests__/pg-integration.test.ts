@@ -74,6 +74,16 @@ describe.skipIf(!enabled)("engine on zeta-dev (real Postgres)", { timeout: 30_00
     expect((await applyCommand(s, ignore("2026-09-18T16:00:00.000Z", false))).status).toBe("superseded");
     const after = await readInicioData(createUserScopedPgDriver(pool, userId), userId, "2026-09-01");
     expect(after.transactions.find((t) => t.id === txId)).toMatchObject({ isExcluded: true, notes: "nueva", amount: 25000 });
+
+    // Fix and delete a manual entry through the real view's INSTEAD OF triggers.
+    const fix = { ...base, id: crypto.randomUUID(), type: "editTransaction" as const, clientTs: "2026-09-18T18:00:00.000Z", payload: { transactionId: txId, amount: 30000, date: "2026-09-17" } };
+    expect((await applyCommand(s, fix)).status).toBe("applied");
+    expect(await s.getTransaction(userId, txId)).toMatchObject({ amount: 30000, transactionDate: "2026-09-17", captureMethod: "MANUAL_FORM" });
+    const before = (await s.getAccount(userId, accountId))!.currentBalance;
+    const gone = { ...base, id: crypto.randomUUID(), type: "deleteTransaction" as const, clientTs: "2026-09-18T18:30:00.000Z", payload: { transactionId: txId } };
+    expect((await applyCommand(s, gone)).status).toBe("applied");
+    expect(await s.getTransaction(userId, txId)).toBeNull();
+    expect((await s.getAccount(userId, accountId))!.currentBalance).toBe(before + 30000);
   });
 
   it("keeps both balance changes when two captures on one account run at the same time", async () => {
