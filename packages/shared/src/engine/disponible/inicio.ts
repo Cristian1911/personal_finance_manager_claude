@@ -7,7 +7,7 @@ import { isLiveTransaction, toDisponibleMovements, type OccurrenceLink, type Sto
 import { computeVerdict, type DisponibleVerdict, type DisponibleVerdictMemo } from "./verdict";
 import { disponibleBlockView, type DisponibleBlockView } from "./view";
 import { disponibleDetailView, type DisponibleDetailView } from "./detail";
-import { buildInicioWidgets, type CardSummary, type InicioWidget, type PersonOwing } from "./widgets";
+import { buildInicioWidgets, flowScreenView, type CardSummary, type FlowScreenTab, type InicioWidget, type InicioWidgetsInput, type PersonOwing } from "./widgets";
 
 /** An account as Inicio needs it; `countsInDisponible` is null when the user never chose. */
 export interface InicioAccount {
@@ -41,6 +41,8 @@ export type InicioState =
       /** What the Disponible block opens into. */
       detail: DisponibleDetailView;
       widgets: InicioWidget[];
+      /** The Tu flujo screen: Pasado, Este ciclo, Próximo. */
+      flow: FlowScreenTab[];
     };
 
 const isDebt = (type: string) => type === "CREDIT_CARD" || type === "LOAN";
@@ -97,12 +99,13 @@ export function buildInicio(input: {
     && (t.flowClass == null || t.flowClass === "INCOME")
     && t.amount * 100 >= SALARY_SHARE_PERCENT * income);
 
-  const cycle = computePayCycle({
+  const cycleOn = (day: IsoDate) => computePayCycle({
     schedule: toPaySchedule(schedule),
-    today,
+    today: day,
     holidays: input.holidays,
     salaryArrivals: big.map((t) => t.date),
   });
+  const cycle = cycleOn(today);
 
   // The balance told on the first day opens the cycle it falls in; later cycles start from the salary.
   const told = settings.balanceAnchor;
@@ -168,7 +171,7 @@ export function buildInicio(input: {
       .reduce((s, m) => s + (m.direction === "INFLOW" ? m.amount : -m.amount), 0)) * 100) / 100
     : input.accounts.filter((a) => counted.has(a.id)).reduce((s, a) => s + a.currentBalance, 0);
   const obligations: never[] = [];
-  const widgets = buildInicioWidgets({
+  const widgetsInput: InicioWidgetsInput = {
     today, cycle, result, movements, counted,
     transactions: input.transactions,
     obligations,
@@ -177,7 +180,10 @@ export function buildInicio(input: {
     cards: input.cards,
     balanceToday,
     nextIncome: irregular ? 0 : income,
-  });
+    cycles: { prev: cycleOn(addDays(cycle.start, -1)), next: cycleOn(addDays(cycle.end, 1)) },
+  };
+  const widgets = buildInicioWidgets(widgetsInput);
+  const flow = flowScreenView(widgetsInput);
   const detail = disponibleDetailView({ today, cycle, result, obligations, movements, counted, transactions: input.transactions });
-  return { status: "ready", cycle, result, verdict, view, detail, widgets };
+  return { status: "ready", cycle, result, verdict, view, detail, widgets, flow };
 }

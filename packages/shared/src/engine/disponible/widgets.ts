@@ -3,7 +3,7 @@ import { addDays, diffDays, type IsoDate } from "./dates";
 import type { DisponibleMovement, DisponibleResult, Obligation } from "./disponible";
 import type { StoredTransaction } from "./movements";
 import { BILL_RISK_DAYS, CUIDADO_PERCENT, findBillAtRisk, formatPesos } from "./verdict";
-import { shortDate, shortMoney, signedPesos } from "./view";
+import { cycleLabel, shortDate, shortMoney, signedPesos } from "./view";
 
 /**
  * Inicio's first six widgets (docs/mlp/13-widget-design-rules.md, spec
@@ -24,7 +24,11 @@ export interface InicioWidgetAttention {
 export type InicioWidgetVisual =
   | { kind: "bar"; percent: number; level: InicioWidgetLevel | null }
   | { kind: "initials"; letters: string[] }
-  /** Tu flujo (Z Grafico): one entry per day, the cycle plus 2 shaded days each side. */
+  /**
+   * Tu flujo (Z Grafico): one entry per day, the cycle plus 2 shaded days each side.
+   * `todayIndex` is past the days for a past cycle and negative for a next one;
+   * `markIndex` is −1 when there's nothing ahead to mark.
+   */
   | { kind: "flow"; days: FlowDay[]; todayIndex: number; markIndex: number; bad: boolean };
 
 /** A day of the Tu flujo chart. Up to today it's what happened; after, the projection. */
@@ -95,11 +99,13 @@ export interface InicioWidget {
   actions: { id: WidgetActionId; label: string }[];
   /** "Ver todo ›" target, or null while that screen doesn't exist. */
   seeAll: WidgetActionId | null;
+  /** The link's words when "Ver todo" doesn't say where it goes. */
+  seeAllLabel?: string;
 }
 
 export type WidgetActionId =
   | "capture" | "add_bill" | "import_statement" | "split_purchase" | "lend" | "add_card"
-  | "see_movements" | "see_bills" | "see_people" | "see_accounts";
+  | "see_movements" | "see_bills" | "see_people" | "see_accounts" | "see_flow";
 
 /** Hoy turns amber at this share of today's allowance (the verdict's threshold). */
 export const HOY_AMBER_PERCENT = CUIDADO_PERCENT;
@@ -156,6 +162,8 @@ export interface InicioWidgetsInput {
   balanceToday?: number | null;
   /** The salary expected on the next payday (Tu flujo's outlined bar). */
   nextIncome?: number;
+  /** The cycles around this one (the Tu flujo screen's Pasado and Próximo). */
+  cycles?: { prev: PayCycle; next: PayCycle };
 }
 
 const cents = (n: number) => Math.round(n * 100) / 100;
@@ -214,15 +222,28 @@ function spendingPace(i: InicioWidgetsInput): number {
   return elapsed > 0 ? Math.max(0, spent) / elapsed : 0;
 }
 
+/** The Tu flujo chart of one cycle: its days plus 2 shaded ones each side. */
+export type FlowVisual = Extract<InicioWidgetVisual, { kind: "flow" }>;
+
+/** Tu flujo's days from the last cycle's start to the next cycle's end (±2), anchored on today. */
+export interface FlowSeries {
+  first: IsoDate;
+  days: FlowDay[];
+  today: IsoDate;
+  pace: number;
+}
+
 /**
- * Tu flujo's chart: the counted balance day by day, what came in and went
- * out up to today, then the projection — expected salary, unpaid bills on
- * their dates, everyday spending at this cycle's pace.
+ * Tu flujo's balance day by day across the last, this and the next cycle:
+ * what came in and went out up to today, then the projection — expected
+ * salaries, unpaid bills on their dates, everyday spending at this cycle's pace.
  */
-export function flowChart(i: InicioWidgetsInput): Extract<InicioWidgetVisual, { kind: "flow" }> {
+export function flowSeries(i: InicioWidgetsInput): FlowSeries {
   const { cycle, today, result: r } = i;
-  const first = addDays(cycle.start, -FLOW_EDGE_DAYS);
-  const n = diffDays(first, addDays(cycle.end, FLOW_EDGE_DAYS)) + 1;
+  const from = i.cycles?.prev.start ?? cycle.start;
+  const to = i.cycles?.next.end ?? cycle.end;
+  const first = addDays(from, -FLOW_EDGE_DAYS);
+  const n = diffDays(first, addDays(to, FLOW_EDGE_DAYS)) + 1;
   // ponytail: one pace for every future day; weekday patterns come with real history.
   const pace = Math.round(spendingPace(i));
   const todayIndex = Math.max(0, Math.min(n - 1, diffDays(first, today)));
@@ -231,9 +252,10 @@ export function flowChart(i: InicioWidgetsInput): Extract<InicioWidgetVisual, { 
     const date = addDays(first, k);
     return {
       date, balance: 0, income: 0, incomeExpected: 0, spent: 0, bill: 0, estimated: 0,
-      edge: date < cycle.start || date > cycle.end, cardCut: cuts.has(date), items: [],
+      edge: false, cardCut: cuts.has(date), items: [],
     };
   });
+  const inWindow = (d: IsoDate) => d >= first && diffDays(first, d) < n;
   const at = (d: IsoDate) => days[diffDays(first, d)];
 
   const described = new Map(i.transactions.map((t) => [t.id, t.description?.trim() || null]));
@@ -248,24 +270,29 @@ export function flowChart(i: InicioWidgetsInput): Extract<InicioWidgetVisual, { 
       detail: "Hecho", amount: inflow ? m.amount : -m.amount,
     });
   }
+  const addBill = (id: string, label: string, dueDate: IsoDate, amount: number) => {
+    // Overdue or due today and still unpaid: it lands tomorrow (today's balance is what's real).
+    const day = dueDate > today ? dueDate : addDays(today, 1);
+    if (amount <= 0 || !inWindow(day)) return;
+    at(day).bill = cents(at(day).bill + amount);
+    at(day).items.push({ id, title: label, detail: dueDate < day ? "Vencido · pendiente" : "Pendiente", amount: -amount });
+  };
   const due = new Map((i.obligations ?? []).map((o) => [o.id, o.dueDate]));
   for (const l of r.porPagar.lines) {
     const d = due.get(l.id);
-    if (!d || l.amount <= 0) continue;
-    // Overdue or due today and still unpaid: it lands tomorrow (today's balance is what's real).
-    const day = d > today ? d : addDays(today, 1);
-    if (day >= first && diffDays(first, day) < n) {
-      at(day).bill = cents(at(day).bill + l.amount);
-      at(day).items.push({ id: l.id, title: l.label, detail: d < day ? "Vencido · pendiente" : "Pendiente", amount: -l.amount });
-    }
+    if (d) addBill(l.id, l.label, d, l.amount);
   }
-  if (cycle.nextPayday && cycle.nextPayday > today && i.nextIncome && diffDays(first, cycle.nextPayday) < n) {
-    at(cycle.nextPayday).incomeExpected = i.nextIncome;
-    at(cycle.nextPayday).items.push({ id: "salary", title: "Salario", detail: "Esperado", amount: i.nextIncome });
+  // Bills after this cycle (the next one's) aren't in Por pagar yet.
+  for (const o of i.obligations ?? []) if (o.dueDate > cycle.end) addBill(o.id, o.label, o.dueDate, o.amount);
+  const paydays = [cycle.nextPayday, i.cycles?.next.nextPayday].filter((d): d is IsoDate => !!d && d > today);
+  for (const d of new Set(paydays)) {
+    if (!i.nextIncome || !inWindow(d)) continue;
+    at(d).incomeExpected = i.nextIncome;
+    at(d).items.push({ id: `salary:${d}`, title: "Salario", detail: "Esperado", amount: i.nextIncome });
   }
   for (let k = todayIndex + 1; k < n; k++) {
     days[k].estimated = pace;
-    if (pace > 0) days[k].items.push({ id: "estimate", title: "Gasto diario estimado", detail: "Tu ritmo habitual", amount: -pace });
+    if (pace > 0) days[k].items.push({ id: `estimate:${days[k].date}`, title: "Gasto diario estimado", detail: "Tu ritmo habitual", amount: -pace });
   }
 
   days[todayIndex].balance = cents(i.balanceToday ?? r.disponible + r.porPagar.total + r.ahorro.total);
@@ -277,12 +304,33 @@ export function flowChart(i: InicioWidgetsInput): Extract<InicioWidgetVisual, { 
     const d = days[k];
     d.balance = cents(days[k - 1].balance + d.incomeExpected - d.bill - d.estimated);
   }
+  return { first, days, today, pace };
+}
 
-  const cycleEnd = diffDays(first, cycle.end);
-  const runOut = days.findIndex((d, k) => k >= todayIndex && k <= cycleEnd && d.balance < 0);
-  let low = todayIndex;
-  for (let k = todayIndex; k <= cycleEnd; k++) if (days[k].balance < days[low].balance) low = k;
+/**
+ * One cycle of the series. `todayIndex` falls outside the days for a past
+ * cycle (all solid) or a next one (all projected); the mark is the day the
+ * balance runs out, else the lowest point ahead (none for a past cycle).
+ */
+export function sliceFlow(s: FlowSeries, c: { start: IsoDate; end: IsoDate }): FlowVisual {
+  const first = addDays(c.start, -FLOW_EDGE_DAYS);
+  const from = Math.max(0, diffDays(s.first, first));
+  const days = s.days
+    .slice(from, diffDays(s.first, addDays(c.end, FLOW_EDGE_DAYS)) + 1)
+    .map((d) => ({ ...d, edge: d.date < c.start || d.date > c.end }));
+  const todayIndex = diffDays(days[0].date, s.today);
+  const cycleEnd = diffDays(days[0].date, c.end);
+  const ahead = Math.max(0, todayIndex);
+  if (ahead > cycleEnd) return { kind: "flow", days, todayIndex, markIndex: -1, bad: false };
+  const runOut = days.findIndex((d, k) => k >= ahead && k <= cycleEnd && d.balance < 0);
+  let low = ahead;
+  for (let k = ahead; k <= cycleEnd; k++) if (days[k].balance < days[low].balance) low = k;
   return { kind: "flow", days, todayIndex, markIndex: runOut >= 0 ? runOut : low, bad: runOut >= 0 };
+}
+
+/** Tu flujo's chart of this cycle (the Inicio widget). */
+export function flowChart(i: InicioWidgetsInput): FlowVisual {
+  return sliceFlow(flowSeries(i), i.cycle);
 }
 
 const WEEKDAY = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
@@ -299,31 +347,130 @@ export function flowDayView(day: FlowDay, today: IsoDate): { label: string; bala
   };
 }
 
-export function flujoWidget(i: InicioWidgetsInput): InicioWidget {
-  const w = base("flujo", "Tu flujo", "full");
+/**
+ * This cycle at today's pace: what you end with (Disponible minus the
+ * everyday spending still to come, so savings stay protected) and, when
+ * that or the balance runs out, the day and the per-day cut that fixes it.
+ */
+export function flowOutlook(i: InicioWidgetsInput, chart: FlowVisual = flowChart(i)) {
   const { result: r, today } = i;
   const pace = spendingPace(i);
   const future = Math.max(0, r.daysLeft - 1);
-  // ponytail: straight-line pace from this cycle's spending; the next cycle (amber)
-  // and drag-to-read come with the Tu flujo screen.
+  // ponytail: straight-line pace from this cycle's spending.
   const end = cents(r.disponible - pace * future);
-  const chart = flowChart(i);
-  w.visual = chart;
-
   const until = i.cycle.nextPayday ? `al ${dayNumber(i.cycle.nextPayday)}` : "a fin de mes";
-  if (end < 0 || chart.bad) {
-    const runOut = chart.bad ? chart.days[chart.markIndex].date
-      : pace > 0 && r.disponible > 0 ? addDays(today, Math.floor(r.disponible / pace) + 1) : today;
-    w.attention = { level: "red", reason: `No llegas ${until}` };
-    const cut = future > 0 ? Math.ceil((pace - Math.max(0, r.disponible) / future) / 1000) * 1000 : 0;
-    w.lead = `A tu ritmo te quedas sin plata ${runOut <= today ? "hoy" : `el ${shortDate(runOut)}`}${cut > 0 ? ` · gasta ${APPROX}${formatPesos(cut)} menos al día` : ""}.`;
-  }
-  w.totals = [
+  const totals = [
     { label: "Llega", amount: signedPesos(r.llega.total) },
     { label: "Sale", amount: signedPesos(cents(r.llega.total - end)) },
     { label: "Terminas con", amount: signedPesos(end) },
   ];
+  if (end >= 0 && !chart.bad) return { end, until, totals, runOut: null };
+  const day = chart.bad ? chart.days[chart.markIndex].date
+    : pace > 0 && r.disponible > 0 ? addDays(today, Math.floor(r.disponible / pace) + 1) : today;
+  const cut = future > 0 ? Math.ceil((pace - Math.max(0, r.disponible) / future) / 1000) * 1000 : 0;
+  return {
+    end, until, totals,
+    runOut: { when: day <= today ? "hoy" : `el ${shortDate(day)}`, cut: cut > 0 ? `${APPROX}${formatPesos(cut)}` : null },
+  };
+}
+
+export function flujoWidget(i: InicioWidgetsInput): InicioWidget {
+  const w = base("flujo", "Tu flujo", "full");
+  const chart = flowChart(i);
+  const o = flowOutlook(i, chart);
+  w.visual = chart;
+  w.seeAll = "see_flow";
+  w.seeAllLabel = "Ver Tu flujo completo";
+  if (o.runOut) {
+    w.attention = { level: "red", reason: `No llegas ${o.until}` };
+    w.lead = `A tu ritmo te quedas sin plata ${o.runOut.when}${o.runOut.cut ? ` · gasta ${o.runOut.cut} menos al día` : ""}.`;
+  }
+  w.totals = o.totals;
   return w;
+}
+
+// ── Tu flujo (screen) ──
+
+export type FlowTabKey = "pasado" | "este" | "proximo";
+
+/** One cycle on the Tu flujo screen (Z Flujo). */
+export interface FlowScreenTab {
+  key: FlowTabKey;
+  label: string;
+  /** "15 – 29 sep". */
+  range: string;
+  /** "Quedan 12 días", "Terminado", "Empieza el 30 sep". */
+  status: string;
+  chart: FlowVisual;
+  totals: { label: string; amount: string; bad: boolean }[];
+  /** Red card: this cycle runs out at today's pace. */
+  runOut: { title: string; body: string | null } | null;
+  /** Amber card: the next cycle doesn't reach (with Apartar). */
+  nextShort: { title: string; body: string } | null;
+}
+
+const SCREEN_TABS: Record<FlowTabKey, string> = { pasado: "Pasado", este: "Este ciclo", proximo: "Próximo" };
+const range = (c: { start: IsoDate; end: IsoDate }) => cycleLabel(c).replace(/^Ciclo /, "");
+const total = (label: string, n: number) => ({ label, amount: signedPesos(n), bad: n < 0 });
+const inCycle = (v: FlowVisual) => v.days.filter((d) => !d.edge);
+
+/**
+ * The Tu flujo screen: Pasado, Este ciclo and Próximo (only Este until the
+ * cycles around it are known). Este ciclo's totals are the widget's; the next
+ * cycle carries on from them (its salary in, its bills, pace and savings out),
+ * and falling short there warns in amber now, with a per-day amount to set aside.
+ */
+export function flowScreenView(i: InicioWidgetsInput): FlowScreenTab[] {
+  const series = flowSeries(i);
+  const chart = sliceFlow(series, i.cycle);
+  const o = flowOutlook(i, chart);
+  const este: FlowScreenTab = {
+    key: "este", label: SCREEN_TABS.este, range: range(i.cycle),
+    status: `Quedan ${days(Math.max(1, i.result.daysLeft))}`,
+    chart, totals: o.totals.map((t, k) => ({ ...t, bad: k === 2 && o.end < 0 })),
+    runOut: o.runOut && {
+      title: `A tu ritmo te quedas sin plata ${o.runOut.when}`,
+      body: o.runOut.cut ? `Gasta ${o.runOut.cut} menos al día y llegas ${o.until}.` : null,
+    },
+    nextShort: null,
+  };
+  if (!i.cycles) return [este];
+  const { prev, next } = i.cycles;
+
+  const past = sliceFlow(series, prev);
+  const pastDays = inCycle(past);
+  const pasado: FlowScreenTab = {
+    key: "pasado", label: SCREEN_TABS.pasado, range: range(prev), status: "Terminado", chart: past,
+    totals: [
+      total("Llegó", sum(pastDays.map((d) => d.income))),
+      total("Salió", sum(pastDays.map((d) => d.spent))),
+      total("Terminaste con", pastDays[pastDays.length - 1]?.balance ?? 0),
+    ],
+    runOut: null, nextShort: null,
+  };
+
+  const ahead = sliceFlow(series, next);
+  const nextDays = inCycle(ahead);
+  const llega = sum(nextDays.map((d) => d.incomeExpected));
+  const sale = sum([...nextDays.map((d) => d.bill + d.estimated), i.result.ahorro.total]);
+  const end = cents(Math.max(0, o.end) + llega - sale);
+  // No salary to count on (irregular income): the next month can't be judged ahead.
+  if (end < 0 && !i.cycle.irregular) {
+    const short = -end;
+    const bills = nextDays.flatMap((d) => d.items.filter((x) => x.detail === "Pendiente").map((x) => ({ ...x, date: d.date })));
+    const big = bills.sort((a, b) => a.amount - b.amount)[0];
+    const perDay = Math.ceil(short / Math.max(1, i.result.daysLeft) / 100) * 100;
+    este.nextShort = {
+      title: `El próximo ciclo no alcanza por ${APPROX}${formatPesos(short)}${big ? ` (${big.title}, ${shortDate(big.date)})` : ""}`,
+      body: `Si apartas ${formatPesos(perDay)} al día desde hoy, llegas.`,
+    };
+  }
+  const proximo: FlowScreenTab = {
+    key: "proximo", label: SCREEN_TABS.proximo, range: range(next), status: `Empieza el ${shortDate(next.start)}`,
+    chart: ahead, totals: [total("Llega", llega), total("Sale", sale), total("Terminas con", end)],
+    runOut: null, nextShort: este.nextShort,
+  };
+  return [pasado, este, proximo];
 }
 
 // ── Hoy ──

@@ -40,6 +40,7 @@ const ACTION_ROUTES: Record<WidgetActionId, string> = {
   see_bills: "/recurrentes",
   see_people: "/personas",
   see_accounts: "/accounts-list",
+  see_flow: "/flujo",
 };
 const DETAIL_ROUTES: Partial<Record<DetailPartKey, string>> = { porPagar: "/recurrentes", gastado: "/transactions" };
 

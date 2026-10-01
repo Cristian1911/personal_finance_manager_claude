@@ -8,6 +8,7 @@ import {
   layoutOf,
   flowChart,
   flowDayView,
+  flowScreenView,
   flujoWidget,
   hoyWidget,
   pagoWidget,
@@ -138,6 +139,74 @@ describe("Tu flujo", () => {
   it("already below zero today: runs out today", () => {
     const w = flujoWidget(input([tx("2026-09-17", 600_000)], { balanceToday: -20_000 }));
     expect(w.lead).toMatch(/^A tu ritmo te quedas sin plata hoy · gasta/);
+  });
+});
+
+describe("Tu flujo screen", () => {
+  const CYCLES = {
+    prev: { ...CYCLE, start: "2026-08-30", end: "2026-09-14", payday: "2026-08-30", nextPayday: "2026-09-15", days: 16, daysLeft: 0 },
+    next: { ...CYCLE, start: "2026-09-30", end: "2026-10-14", payday: "2026-09-30", nextPayday: "2026-10-15", days: 15, daysLeft: 15 },
+  };
+  const screen = (spends: StoredTransaction[], obligations = BILLS) =>
+    flowScreenView(input(spends, { balanceToday: 2_000_000, nextIncome: 2_100_000, cycles: CYCLES }, obligations));
+
+  it("three cycles; Este ciclo has the widget's totals", () => {
+    const tabs = screen([tx("2026-09-16", 100_000)]);
+    expect(tabs.map((t) => `${t.label}|${t.range}|${t.status}`)).toEqual([
+      "Pasado|30 ago – 14 sep|Terminado", "Este ciclo|15 – 29 sep|Quedan 12 días", "Próximo|30 sep – 14 oct|Empieza el 30 sep",
+    ]);
+    const w = flujoWidget(input([tx("2026-09-16", 100_000)]));
+    expect(tabs[1].totals.map((t) => t.amount)).toEqual(w.totals.map((t) => t.amount));
+    expect(tabs[1].nextShort).toBeNull();
+  });
+
+  it("past: all solid, no mark, the balance backed out of what moved", () => {
+    const [pasado] = screen([tx("2026-09-05", 50_000), tx("2026-09-16", 100_000)]);
+    const c = pasado.chart;
+    expect(c.days[0].date).toBe("2026-08-28");
+    expect(c.todayIndex).toBeGreaterThanOrEqual(c.days.length);
+    expect(c.markIndex).toBe(-1);
+    expect(c.days.filter((d) => d.edge).map((d) => d.date)).toEqual(["2026-08-28", "2026-08-29", "2026-09-15", "2026-09-16"]);
+    // 2.000.000 today, + 100.000 spent on the 16th, − 2.100.000 salary on the 15th.
+    expect(c.days.find((d) => d.date === "2026-09-14")!.balance).toBe(0);
+    expect(c.days.find((d) => d.date === "2026-09-04")!.balance).toBe(50_000);
+    expect(pasado.totals.map((t) => `${t.label} ${t.amount}`)).toEqual(["Llegó $0", "Salió $50.000", "Terminaste con $0"]);
+  });
+
+  it("next: all projected, its salary and the one after on the shaded edge", () => {
+    const proximo = screen([tx("2026-09-16", 100_000)])[2];
+    const c = proximo.chart;
+    expect(c.todayIndex).toBeLessThan(0);
+    expect(c.days[2]).toMatchObject({ date: "2026-09-30", incomeExpected: 2_100_000, edge: false });
+    expect(c.days[17]).toMatchObject({ date: "2026-10-15", incomeExpected: 2_100_000, edge: true });
+    expect(c.days[3].estimated).toBe(25_000);
+    // 146.100 left + 2.100.000 − (15 × 25.000 + 200.000 saved).
+    expect(proximo.totals.map((t) => t.amount)).toEqual(["$2.100.000", "$575.000", "$1.671.100"]);
+  });
+
+  it("amber: a big bill next cycle warns now, with the per-day amount to set aside", () => {
+    const tabs = screen([tx("2026-09-16", 100_000)], [...BILLS,
+      { id: "mat", kind: "bill", label: "Matrícula", dueDate: "2026-10-09", amount: 3_000_000 }]);
+    // 146.100 + 2.100.000 − (3.000.000 + 375.000 + 200.000) = −1.328.900; ÷ 12 days, up to $100.
+    expect(tabs[1].nextShort).toEqual({
+      title: "El próximo ciclo no alcanza por ≈\u00a0$1.328.900 (Matrícula, 9 oct)",
+      body: "Si apartas $110.800 al día desde hoy, llegas.",
+    });
+    expect(tabs[2].totals[2]).toMatchObject({ amount: "−$1.328.900", bad: true });
+    expect(tabs[2].chart.bad).toBe(true);
+  });
+
+  it("red: this cycle runs out, with the cut that gets you to payday", () => {
+    const este = flowScreenView(input([tx("2026-09-17", 400_000)], { cycles: CYCLES }))[1];
+    expect(este.runOut).toEqual({
+      title: "A tu ritmo te quedas sin plata el 22 sep",
+      body: "Gasta ≈\u00a0$89.000 menos al día y llegas al 30.",
+    });
+    expect(este.totals[2].bad).toBe(true);
+  });
+
+  it("without the cycles around it, only Este ciclo", () => {
+    expect(flowScreenView(input([])).map((t) => t.key)).toEqual(["este"]);
   });
 });
 

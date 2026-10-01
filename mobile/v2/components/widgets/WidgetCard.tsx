@@ -166,7 +166,8 @@ const FlowWidgetCard = memo(function FlowWidgetCard({ widget: w, open, dim, onTo
 
   return (
     <Dim on={dim} style={[styles.card, { backgroundColor: t.colors.card }, t.shadow]}>
-      <View style={styles.flowWrap}>
+      {/* Closed: the whole card opens it (no dead gaps). Open: only the title row and × close. */}
+      <Pressable onPress={() => onToggle(w.id)} disabled={open} accessible={false} style={styles.flowWrap}>
         <View style={styles.flowHead}>
           <Pressable
             onPress={() => onToggle(w.id)}
@@ -189,8 +190,8 @@ const FlowWidgetCard = memo(function FlowWidgetCard({ widget: w, open, dim, onTo
           </View>
         </Collapse>
 
-        {/* Closed: a tap here opens. Open: the chart takes the touches. */}
-        <Pressable onPress={() => onToggle(w.id)} disabled={open} accessible={false} style={styles.flowChart}>
+        {/* Open: the chart takes the touches. */}
+        <View style={styles.flowChart}>
           <View
             accessible={open}
             accessibilityRole="adjustable"
@@ -213,8 +214,8 @@ const FlowWidgetCard = memo(function FlowWidgetCard({ widget: w, open, dim, onTo
             />
           </View>
           {w.attention && !open && <View style={styles.foot}><Chip level={w.attention.level} text={w.attention.reason} /></View>}
-        </Pressable>
-      </View>
+        </View>
+      </Pressable>
 
       <Collapse open={open} onHeight={onBodyHeight}>
         <View style={styles.flowDay} accessibilityLiveRegion="polite">
@@ -318,7 +319,7 @@ export const WidgetBody = memo(function WidgetBody({
       )}
       {w.seeAll && onAction && (
         <Pressable onPress={() => onAction(w.seeAll!)} accessibilityRole="link" style={styles.seeAll}>
-          <Text style={[styles.seeAllText, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]}>Ver todo</Text>
+          <Text style={[styles.seeAllText, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]}>{w.seeAllLabel ?? "Ver todo"}</Text>
           <ChevronRight size={14} color={t.colors.ink} strokeWidth={2.2} />
         </Pressable>
       )}

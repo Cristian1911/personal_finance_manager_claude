@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CycleSettings } from "../../types";
-import { buildInicio, type InicioAccount } from "../inicio";
+import { buildInicio, inicioSince, type InicioAccount } from "../inicio";
 import type { StoredTransaction } from "../movements";
 
 const DEBIT = "debit";
@@ -161,5 +161,18 @@ describe("buildInicio — verdict memory", () => {
     expect(r.verdict.raw).toBe("vas_bien");
     expect(r.verdict.state).toBe("cuidado");
     expect(r.verdict.memo.better?.state).toBe("vas_bien");
+  });
+});
+
+describe("buildInicio — Tu flujo screen", () => {
+  it("reads the whole past cycle: its first shaded day is inside Inicio's lookback (monthly, last day of a long month)", () => {
+    const today = "2026-08-31";
+    const r = build(today, [tx("2026-07-10", 80_000)], {
+      settings: settings({ schedule: { kind: "monthly", paydays: [1] }, balanceAnchor: { balance: 900_000, at: "2026-08-03T14:00:00.000Z" } }),
+    });
+    expect(r.flow.map((t) => t.key)).toEqual(["pasado", "este", "proximo"]);
+    expect(r.flow[0].chart.days[0].date >= inicioSince(today)).toBe(true);
+    expect(r.flow[0].chart.days.some((d) => d.spent === 80_000)).toBe(true);
+    expect(r.flow[2].range).toMatch(/sep/);
   });
 });
