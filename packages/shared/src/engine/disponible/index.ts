@@ -59,12 +59,12 @@ export {
   type InicioWidget,
   type InicioWidgetsInput,
   type PersonOwing,
-  type WidgetAttention,
-  type WidgetKey,
-  type WidgetLevel,
-  type WidgetRow,
-  type WidgetSize,
-  type WidgetVisual,
+  type InicioWidgetAttention,
+  type InicioWidgetKey,
+  type InicioWidgetLevel,
+  type InicioWidgetRow,
+  type InicioWidgetSize,
+  type InicioWidgetVisual,
 } from "./widgets";
 export {
   INICIO_LOOKBACK_DAYS,

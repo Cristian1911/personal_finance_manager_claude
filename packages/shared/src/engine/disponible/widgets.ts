@@ -11,37 +11,37 @@ import { shortDate, signedPesos } from "./view";
  * string, visual value and alert is decided here; the phone only draws.
  */
 
-export type WidgetKey = "flujo" | "hoy" | "pago" | "teDeben" | "tarjeta" | "ultimos";
-export type WidgetSize = "half" | "full";
-export type WidgetLevel = "amber" | "red";
+export type InicioWidgetKey = "flujo" | "hoy" | "pago" | "teDeben" | "tarjeta" | "ultimos";
+export type InicioWidgetSize = "half" | "full";
+export type InicioWidgetLevel = "amber" | "red";
 
 /** The centered chip: a reason of at most 4 words. Red also gets a full outline. */
-export interface WidgetAttention {
-  level: WidgetLevel;
+export interface InicioWidgetAttention {
+  level: InicioWidgetLevel;
   reason: string;
 }
 
-export type WidgetVisual =
-  | { kind: "bar"; percent: number; level: WidgetLevel | null }
+export type InicioWidgetVisual =
+  | { kind: "bar"; percent: number; level: InicioWidgetLevel | null }
   | { kind: "initials"; letters: string[] }
   /** Day-by-day amounts; points after `todayIndex` are projected (dashed). */
   | { kind: "line"; points: number[]; todayIndex: number };
 
-export interface WidgetRow {
+export interface InicioWidgetRow {
   id: string;
   title: string;
   detail: string;
   amount: string;
-  level?: WidgetLevel | null;
+  level?: InicioWidgetLevel | null;
 }
 
 export interface InicioWidget {
-  key: WidgetKey;
+  key: InicioWidgetKey;
   /** Unique on the grid (one Tarjeta per card). */
   id: string;
   title: string;
-  size: WidgetSize;
-  attention: WidgetAttention | null;
+  size: InicioWidgetSize;
+  attention: InicioWidgetAttention | null;
   /** Nothing to show yet (first week, no data): the hint says why. */
   empty: boolean;
   /** Collapsed: one primary value (semibold, auto-fit), or null. */
@@ -50,12 +50,12 @@ export interface InicioWidget {
   hint: string | null;
   /** Collapsed sentence of full widgets that show a visual plus one line (Tu flujo). */
   caption: string | null;
-  visual: WidgetVisual | null;
+  visual: InicioWidgetVisual | null;
   /** Collapsed rows of full widgets (Últimos movimientos: 3). */
-  previewRows: WidgetRow[];
+  previewRows: InicioWidgetRow[];
   // ── Expanded ──
   lead: string | null;
-  rows: WidgetRow[];
+  rows: InicioWidgetRow[];
   totals: { label: string; amount: string }[];
   note: string | null;
 }
@@ -114,10 +114,12 @@ const cents = (n: number) => Math.round(n * 100) / 100;
 const sum = (xs: number[]) => cents(xs.reduce((a, b) => a + b, 0));
 const floorTo100 = (n: number) => Math.floor(n / 100) * 100;
 const clampPercent = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
+/** "≈" never wraps away from its amount. */
+const APPROX = "≈\u00a0";
 const days = (n: number) => `${n} ${n === 1 ? "día" : "días"}`;
 const dayNumber = (d: IsoDate) => Number(d.slice(8, 10));
 
-function base(key: WidgetKey, title: string, size: WidgetSize): InicioWidget {
+function base(key: InicioWidgetKey, title: string, size: InicioWidgetSize): InicioWidget {
   return {
     key, id: key, title, size, attention: null, empty: false, value: null, hint: null, caption: null,
     visual: null, previewRows: [], lead: null, rows: [], totals: [], note: null,
@@ -183,7 +185,7 @@ export function flujoWidget(i: InicioWidgetsInput): InicioWidget {
     const runOut = pace > 0 && r.disponible > 0 ? addDays(today, Math.floor(r.disponible / pace) + 1) : today;
     w.attention = { level: "red", reason: `No llegas ${until}` };
     const cut = future > 0 ? Math.ceil((pace - Math.max(0, r.disponible) / future) / 1000) * 1000 : 0;
-    w.caption = `A tu ritmo te quedas sin plata el ${shortDate(runOut)}${cut > 0 ? ` · gasta ≈ ${formatPesos(cut)} menos al día` : ""}.`;
+    w.caption = `A tu ritmo te quedas sin plata ${runOut <= today ? "hoy" : `el ${shortDate(runOut)}`}${cut > 0 ? ` · gasta ${APPROX}${formatPesos(cut)} menos al día` : ""}.`;
   } else {
     w.caption = `A tu ritmo terminas con ${signedPesos(end)}.`;
   }
@@ -206,7 +208,7 @@ export function hoyWidget(i: InicioWidgetsInput): InicioWidget {
   const left = cents(allowance - spent);
   const percent = allowance > 0 ? (spent * 100) / allowance : spent > 0 ? 101 : 0;
 
-  let level: WidgetLevel | null = null;
+  let level: InicioWidgetLevel | null = null;
   if (spent > 0 && percent > 100) level = "red";
   else if (spent > 0 && percent >= HOY_AMBER_PERCENT) level = "amber";
   w.attention = level === "red" ? { level, reason: "Te pasaste hoy" } : level ? { level, reason: "Casi al tope" } : null;
@@ -247,7 +249,7 @@ export function pagoWidget(i: InicioWidgetsInput): InicioWidget {
   if (atRisk) w.attention = { level: "red", reason: "No alcanza" };
   else if (inDays <= BILL_RISK_DAYS) w.attention = { level: "amber", reason: whenLabel(inDays) };
 
-  w.value = `${next.line.estimated ? "≈ " : ""}${signedPesos(next.line.amount)}`;
+  w.value = `${next.line.estimated ? APPROX : ""}${signedPesos(next.line.amount)}`;
   w.hint = `${next.line.label}, ${shortDate(next.dueDate)}`;
   const until = i.cycle.nextPayday ? ` antes del ${dayNumber(i.cycle.nextPayday)}` : "";
   w.lead = `Por pagar${until}: ${signedPesos(i.result.porPagar.total)}`;
@@ -258,7 +260,7 @@ export function pagoWidget(i: InicioWidgetsInput): InicioWidget {
       id: o.line.id,
       title: o.line.label,
       detail: shortDate(o.dueDate),
-      amount: `${o.line.estimated ? "≈ " : ""}${signedPesos(o.line.amount)}`,
+      amount: `${o.line.estimated ? APPROX : ""}${signedPesos(o.line.amount)}`,
       level: risky ? "red" : n <= BILL_RISK_DAYS ? "amber" : null,
     };
   });
@@ -314,7 +316,7 @@ export function teDebenWidget(i: InicioWidgetsInput): InicioWidget {
 export function tarjetaWidget(i: InicioWidgetsInput, card: CardSummary): InicioWidget {
   const w = base("tarjeta", card.name, "half");
   w.id = `tarjeta:${card.accountId}`;
-  w.value = `≈ ${signedPesos(card.estimatedBill)}`;
+  w.value = `${APPROX}${signedPesos(card.estimatedBill)}`;
   w.hint = "próxima factura";
   if (card.usedPercent != null) w.visual = { kind: "bar", percent: clampPercent(card.usedPercent), level: null };
 
@@ -327,8 +329,8 @@ export function tarjetaWidget(i: InicioWidgetsInput, card: CardSummary): InicioW
     }
   }
 
-  const atCut = card.projectedAtCut != null ? ` · al corte ≈ ${signedPesos(card.projectedAtCut)} si sigues a este ritmo` : "";
-  w.lead = `≈ ${signedPesos(card.estimatedBill)}${atCut}. Comprar con tarjeta no baja tu Disponible; pagarla sí.`;
+  const atCut = card.projectedAtCut != null ? ` · al corte ${APPROX}${signedPesos(card.projectedAtCut)} si sigues a este ritmo` : "";
+  w.lead = `${APPROX}${signedPesos(card.estimatedBill)}${atCut}. Comprar con tarjeta no baja tu Disponible; pagarla sí.`;
   if (card.minimum != null) {
     w.rows.push({
       id: "minimum", title: "Pago mínimo",
@@ -348,7 +350,7 @@ export function tarjetaWidget(i: InicioWidgetsInput, card: CardSummary): InicioW
 
 // ── Últimos movimientos ──
 
-function latest(i: InicioWidgetsInput, keep: (t: StoredTransaction) => boolean, n: number): WidgetRow[] {
+function latest(i: InicioWidgetsInput, keep: (t: StoredTransaction) => boolean, n: number): InicioWidgetRow[] {
   // Only live rows (toDisponibleMovements dropped excluded and merged ones).
   const at = new Map(i.movements.map((m) => [m.id, m.at ?? ""]));
   return i.transactions

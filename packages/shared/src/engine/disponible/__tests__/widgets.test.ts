@@ -100,7 +100,12 @@ describe("Tu flujo (mini)", () => {
   it("red: runs out before payday, with the day and the per-day cut", () => {
     const w = flujoWidget(input([tx("2026-09-17", 400_000)]));
     expect(w.attention).toEqual({ level: "red", reason: "No llegas al 30" });
-    expect(w.caption).toBe("A tu ritmo te quedas sin plata el 20 sep · gasta ≈ $89.000 menos al día.");
+    expect(w.caption).toBe("A tu ritmo te quedas sin plata el 20 sep · gasta ≈\u00a0$89.000 menos al día.");
+  });
+
+  it("already below zero: runs out today", () => {
+    const w = flujoWidget(input([tx("2026-09-17", 600_000)]));
+    expect(w.caption).toMatch(/^A tu ritmo te quedas sin plata hoy · gasta/);
   });
 });
 
@@ -113,7 +118,7 @@ describe("Próximo pago", () => {
     expect(w.lead).toBe("Por pagar antes del 30: $1.378.900");
     expect(w.rows.map((r) => [r.title, r.amount, r.level])).toEqual([
       ["Arriendo", "$700.000", "amber"],
-      ["Tarjeta Nu", "≈ $640.000", null],
+      ["Tarjeta Nu", "≈\u00a0$640.000", null],
       ["Netflix", "$38.900", null],
     ]);
   });
@@ -162,10 +167,10 @@ describe("Tarjeta", () => {
 
   it("estimated bill + credit used; amber 2 days before the cut", () => {
     const w = tarjetaWidget(input([]), card);
-    expect(w).toMatchObject({ id: "tarjeta:nu", title: "Tarjeta Nu", value: "≈ $480.000", hint: "próxima factura" });
+    expect(w).toMatchObject({ id: "tarjeta:nu", title: "Tarjeta Nu", value: "≈\u00a0$480.000", hint: "próxima factura" });
     expect(w.visual).toEqual({ kind: "bar", percent: 37, level: null });
     expect(w.attention).toEqual({ level: "amber", reason: "Corte en 2 días" });
-    expect(w.lead).toBe("≈ $480.000 · al corte ≈ $620.000 si sigues a este ritmo. Comprar con tarjeta no baja tu Disponible; pagarla sí.");
+    expect(w.lead).toBe("≈\u00a0$480.000 · al corte ≈\u00a0$620.000 si sigues a este ritmo. Comprar con tarjeta no baja tu Disponible; pagarla sí.");
     expect(w.rows.map((r) => r.title)).toEqual(["Pago mínimo", "Debes en total"]);
   });
 

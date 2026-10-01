@@ -9,24 +9,28 @@ import { useV2UserId } from "../../lib/v2/user";
 import { DisponibleBlock } from "../../v2/components/DisponibleBlock";
 import { FirstRunQuestions } from "../../v2/components/FirstRunQuestions";
 import { NumberBreakdown } from "../../v2/components/NumberBreakdown";
+import { InicioWidgetGrid } from "../../v2/components/widgets/InicioWidgetGrid";
 import { useV2Theme } from "../../v2/theme/ThemeProvider";
 
 /**
  * v2 Inicio (M1): the Disponible block from the phone's own database, or the
- * first-run questions until they're answered. Reloads whenever the screen
- * comes back into focus, so a movement captured elsewhere shows at once.
- * Widgets and alerts come in later M1 PRs.
+ * first-run questions until they're answered, then the first six widgets
+ * with their alerts. Reloads whenever the screen comes back into focus, so a
+ * movement captured elsewhere shows at once.
  */
 export default function InicioScreen() {
   const t = useV2Theme();
   const insets = useSafeAreaInsets();
   const userId = useV2UserId();
   const [state, setState] = useState<InicioState | null>(null);
+  const [autoOpen, setAutoOpen] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     try {
-      setState(await loadInicio(userId));
+      const loaded = await loadInicio(userId);
+      setState(loaded.state);
+      if (loaded.autoOpen) setAutoOpen(loaded.autoOpen);
       setError(null);
     } catch (e) {
       console.warn("[v2 inicio] load failed", e);
@@ -80,6 +84,7 @@ export default function InicioScreen() {
         <>
           <DisponibleBlock view={state.view} />
           <NumberBreakdown lines={state.view.breakdown} />
+          <InicioWidgetGrid widgets={state.widgets} autoOpen={autoOpen} />
         </>
       )}
     </ScrollView>
