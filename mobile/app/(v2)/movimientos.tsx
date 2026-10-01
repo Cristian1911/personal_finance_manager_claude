@@ -11,7 +11,9 @@ import {
   type MovimientoTone,
   type MovimientosFilter,
   type MovimientosGroup,
-  type SetAccountCountsInDisponiblePayload,
+  type CaptureManualTransactionPayload,
+  type DeleteTransactionPayload,
+  type EditTransactionPayload,
   type SetTransactionExcludedPayload,
   type SetTransactionNotePayload,
 } from "@zeta/shared";
@@ -19,6 +21,7 @@ import { runLocalCommand } from "../../lib/v2/engine/run-local";
 import { loadMovimientos, type LoadedMovimientos } from "../../lib/v2/movimientos/load";
 import { useV2UserId } from "../../lib/v2/user";
 import { DetalleSheet } from "../../v2/components/DetalleSheet";
+import { Toast } from "../../v2/components/Toast";
 import { useV2Theme } from "../../v2/theme/ThemeProvider";
 
 /**
@@ -79,18 +82,31 @@ export default function MovimientosScreen() {
     await reload();
   }, [userId, reload]);
 
-  const onAccountCounts = useCallback((accountId: string, counts: boolean) => {
-    Alert.alert(
-      counts ? "¿Quieres que esta cuenta cuente?" : "¿Quieres que esta cuenta deje de contar?",
-      counts
-        ? "Su saldo y todos sus movimientos vuelven a mover tu Disponible."
-        : "Su saldo y todos sus movimientos dejan de mover tu Disponible. Sirve para ahorros o plata aparte.",
-      [
-        { text: "Cancelar", style: "cancel" },
-        { text: counts ? "Que cuente" : "Que no cuente", onPress: () => void run("setAccountCountsInDisponible", { accountId, counts } satisfies SetAccountCountsInDisponiblePayload) },
-      ],
-    );
-  }, [run]);
+  const [toast, setToast] = useState<{ message: string; undo?: () => void } | null>(null);
+
+  // "No es un movimiento": a manual entry is deleted, a bank one ignored — both with Deshacer.
+  const notAMovement = useCallback(async () => {
+    const tx = openId ? data?.transactions.find((x) => x.id === openId) : undefined;
+    if (!tx || !detalle) return;
+    setOpenId(null);
+    if (detalle.manual) {
+      await run("deleteTransaction", { transactionId: tx.id } satisfies DeleteTransactionPayload);
+      setToast({
+        message: `Borrado · ${detalle.title} ${detalle.amount}`,
+        undo: () => void run("captureManualTransaction", {
+          transactionId: tx.id, accountId: tx.accountId, amount: tx.amount, direction: tx.direction,
+          currencyCode: tx.currencyCode, date: tx.date, description: tx.description ?? detalle.title,
+          notes: tx.notes ?? null, ...(tx.createdAt ? { capturedAt: tx.createdAt } : {}),
+        } satisfies CaptureManualTransactionPayload),
+      });
+    } else {
+      await run("setTransactionExcluded", { transactionId: tx.id, excluded: true } satisfies SetTransactionExcludedPayload);
+      setToast({
+        message: `Ignorado · ${detalle.title}`,
+        undo: () => void run("setTransactionExcluded", { transactionId: tx.id, excluded: false } satisfies SetTransactionExcludedPayload),
+      });
+    }
+  }, [openId, data, detalle, run]);
 
   const onRow = useCallback((id: string) => setOpenId(id), []);
   const back = useCallback(() => (router.canGoBack() ? router.back() : router.replace("/inicio" as never)), [router]);
@@ -186,9 +202,14 @@ export default function MovimientosScreen() {
         detalle={detalle}
         onClose={() => setOpenId(null)}
         onNote={(notes) => detalle && void run("setTransactionNote", { transactionId: detalle.id, notes } satisfies SetTransactionNotePayload)}
-        onExcluded={(excluded) => detalle && void run("setTransactionExcluded", { transactionId: detalle.id, excluded } satisfies SetTransactionExcludedPayload)}
-        onAccountCounts={onAccountCounts}
-        onSoon={(what) => Alert.alert("Pronto", `${what} llega con Te deben en una próxima versión.`)}
+        onNotAMovement={() => void notAMovement()}
+        onCountAgain={() => detalle && void run("setTransactionExcluded", { transactionId: detalle.id, excluded: false } satisfies SetTransactionExcludedPayload)}
+        onFix={(fix) => detalle && void run("editTransaction", { transactionId: detalle.id, ...fix } satisfies EditTransactionPayload)}
+      />
+      <Toast
+        message={toast?.message ?? null}
+        action={toast?.undo ? { label: "Deshacer", onPress: toast.undo } : undefined}
+        onHide={() => setToast(null)}
       />
     </View>
   );
