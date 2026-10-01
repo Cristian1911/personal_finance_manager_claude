@@ -5,6 +5,8 @@ import {
 } from "lucide-react-native";
 import type { InicioWidget, InicioWidgetKey, InicioWidgetLevel, InicioWidgetRow, WidgetActionId } from "@zeta/shared";
 import { useV2Theme } from "../../theme/ThemeProvider";
+import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+import { Dim } from "../Dim";
 import { FittedAmount } from "../FittedAmount";
 import { levelColors, WidgetVisualView } from "./visuals";
 
@@ -43,9 +45,11 @@ export const WidgetCard = memo(function WidgetCard({
     ? { borderColor: t.colors.bad.solid, borderWidth: 1.5 }
     : open && !full ? { borderColor: t.colors.ink, borderWidth: 2 } : null;
   const firstAction = w.empty ? w.actions[0] : undefined;
+  // Open in place with its rows below: the summary shrinks to the title row.
+  const headOnly = open && full && w.previewRows.length > 0 && !w.visual;
 
   return (
-    <View style={[styles.card, { backgroundColor: t.colors.card, opacity: dim ? 0.38 : 1 }, t.shadow]}>
+    <Dim on={dim} style={[styles.card, { backgroundColor: t.colors.card }, t.shadow]}>
       {/* The summary is one labelled button; the expanded body stays outside it so screen readers reach its rows. */}
       <Pressable
         onPress={() => onToggle(w.id)}
@@ -57,14 +61,14 @@ export const WidgetCard = memo(function WidgetCard({
         onAccessibilityAction={(e) => {
           if (e.nativeEvent.actionName === "action" && firstAction && onAction) onAction(firstAction.id);
         }}
-        style={[styles.press, editInset && styles.pressEdit]}
+        style={[styles.press, editInset && styles.pressEdit, headOnly && styles.pressHeadOnly]}
       >
         <View style={styles.head}>
           <Icon size={16} color={t.colors.ink} strokeWidth={2} />
           <Text style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]} numberOfLines={1}>{w.title}</Text>
         </View>
 
-        <View style={styles.middle}>
+        {!headOnly && <View style={styles.middle}>
           {w.visual?.kind === "flow" ? (
             <WidgetVisualView visual={w.visual} />
           ) : (
@@ -87,9 +91,9 @@ export const WidgetCard = memo(function WidgetCard({
               {w.previewRows.length > 0 && !open && <Rows rows={w.previewRows} compact />}
             </>
           )}
-        </View>
+        </View>}
 
-        <View style={styles.foot}>
+        {!headOnly && <View style={styles.foot}>
           {w.attention && <Chip level={w.attention.level} text={w.attention.reason} />}
           {!w.attention && firstAction && onAction && (
             <Pressable
@@ -103,11 +107,15 @@ export const WidgetCard = memo(function WidgetCard({
               </Text>
             </Pressable>
           )}
-        </View>
+        </View>}
       </Pressable>
-      {full && open && <WidgetBody widget={w} onAction={onAction} />}
+      {full && open && (
+        <Animated.View entering={FadeIn.duration(220).delay(60)} exiting={FadeOut.duration(120)}>
+          <WidgetBody widget={w} onAction={onAction} />
+        </Animated.View>
+      )}
       {outline && <View pointerEvents="none" style={[styles.outline, outline]} />}
-    </View>
+    </Dim>
   );
 });
 
@@ -240,6 +248,7 @@ const styles = StyleSheet.create({
   outline: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, borderRadius: 18 },
   press: { flexGrow: 1, minHeight: 120, paddingHorizontal: 12, paddingTop: 14, paddingBottom: 12, alignItems: "center" },
   pressEdit: { paddingTop: 42 },
+  pressHeadOnly: { minHeight: 0, paddingBottom: 0 },
   head: { height: 20, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, alignSelf: "stretch" },
   title: { fontSize: 13, flexShrink: 1 },
   middle: { flexGrow: 1, alignSelf: "stretch", alignItems: "center", justifyContent: "center", gap: 2, marginVertical: 8 },

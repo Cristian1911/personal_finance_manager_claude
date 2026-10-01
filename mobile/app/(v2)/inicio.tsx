@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, LayoutAnimation, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useReducedMotion } from "react-native-reanimated";
+import Animated, { FadeIn, FadeOut, LinearTransition } from "react-native-reanimated";
 import { Lock, Plus } from "lucide-react-native";
 import {
   applyInicioLayout, headerDate, layoutOf, WIDGET_SIZES,
@@ -15,6 +15,7 @@ import { useAppStore } from "../../lib/store";
 import { toColombiaDateString } from "../../lib/utils/date";
 import { DisponibleBlock } from "../../v2/components/DisponibleBlock";
 import { DisponibleDetail } from "../../v2/components/DisponibleDetail";
+import { Dim } from "../../v2/components/Dim";
 import { FirstRunQuestions } from "../../v2/components/FirstRunQuestions";
 import { InicioHeader } from "../../v2/components/InicioHeader";
 import { AddWidgetSheet } from "../../v2/components/widgets/AddWidgetSheet";
@@ -52,7 +53,8 @@ export default function InicioScreen() {
   const userId = useV2UserId();
   const fullName = useAppStore((s) => s.profile?.full_name ?? null);
   const [state, setState] = useState<InicioState | null>(null);
-  const [autoOpen, setAutoOpen] = useState<string | null>(null);
+  /** The one view open on Inicio: a widget's id, or the Disponible detail. */
+  const [openWidget, setOpenWidget] = useState<string | null>(null);
   const [layout, setLayout] = useState<InicioLayout | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -60,10 +62,25 @@ export default function InicioScreen() {
   const [adding, setAdding] = useState(false);
   const [dragging, setDragging] = useState(false);
   const editing = draft !== null;
-  const reduceMotion = useReducedMotion();
-  const animate = useCallback(() => {
-    if (!reduceMotion) LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-  }, [reduceMotion]);
+
+  // Scroll an opened view into sight: where the content scrolled to, how tall the
+  // screen is, and where the grid starts inside the content.
+  const scroll = useRef<ScrollView>(null);
+  const scrollY = useRef(0);
+  const gridY = useRef(0);
+  const { height: windowH } = useWindowDimensions();
+  const reveal = useCallback((top: number, bottom: number) => {
+    const margin = 16;
+    const viewTop = scrollY.current + insets.top;
+    const viewBottom = scrollY.current + windowH - insets.bottom;
+    let to: number | null = null;
+    // Too low: lift it so it ends on screen, never past its own top.
+    if (bottom > viewBottom - margin) to = Math.min(top - insets.top - margin, bottom - windowH + insets.bottom + margin);
+    // Too high (scrolled past it): bring its top down.
+    else if (top < viewTop + margin) to = top - insets.top - margin;
+    if (to !== null) scroll.current?.scrollTo({ y: Math.max(0, to), animated: true });
+  }, [insets.top, insets.bottom, windowH]);
+  const revealInGrid = useCallback((top: number, bottom: number) => reveal(gridY.current + top, gridY.current + bottom), [reveal]);
 
   // Only the latest load may land (focus, answer and user changes can overlap), and
   // an unchanged result keeps the old objects so memoized widgets don't redraw.
@@ -82,7 +99,7 @@ export default function InicioScreen() {
         setState(loaded.state);
       }
       setLayout((prev) => (JSON.stringify(prev) === JSON.stringify(loaded.layout) ? prev : loaded.layout));
-      if (loaded.autoOpen) setAutoOpen(loaded.autoOpen);
+      if (loaded.autoOpen) setOpenWidget(loaded.autoOpen);
       setError(null);
     } catch (e) {
       if (id !== request.current) return;
@@ -122,15 +139,21 @@ export default function InicioScreen() {
     const route = DETAIL_ROUTES[key];
     if (route) router.push(route as never);
   }, [router]);
+  // One open view at a time: tapping the number while a widget is open just closes it.
   const toggleDetail = useCallback(() => {
-    animate();
-    setDetailOpen((o) => !o);
-  }, [animate]);
+    if (openWidget) setOpenWidget(null);
+    else setDetailOpen((o) => !o);
+  }, [openWidget]);
+  const onOpenWidget = useCallback((id: string | null) => {
+    setOpenWidget(id);
+    if (id) setDetailOpen(false);
+  }, []);
   const voice = useCallback(() => Alert.alert("Pronto", "Anotar con la voz llega en una próxima versión."), []);
 
   // ── Organizar ──
   const startOrganizing = useCallback(() => {
     setDetailOpen(false);
+    setOpenWidget(null);
     setDraft(layoutOf(widgets, layout?.hidden ?? []));
   }, [widgets, layout]);
   const finishOrganizing = useCallback(() => {
@@ -147,7 +170,6 @@ export default function InicioScreen() {
     if (!draft) return null;
     return {
       onMove: (id, targetId) => {
-        animate();
         setDraft((d) => {
           if (!d) return d;
           const items = d.items.filter((x) => x.id !== id);
@@ -161,27 +183,27 @@ export default function InicioScreen() {
         });
       },
       onResize: (id, size) => {
-        animate();
         setDraft((d) => d && { ...d, items: d.items.map((x) => (x.id === id ? { ...x, size } : x)) });
       },
       onRemove: (id) => {
-        animate();
         setDraft((d) => d && { items: d.items.filter((x) => x.id !== id), hidden: [...d.hidden, id] });
       },
       onDragging: setDragging,
     };
-  }, [draft, animate]);
+  }, [draft]);
   const addWidget = useCallback((id: string) => {
-    animate();
     const key = id.split(":")[0] as InicioWidgetKey;
     setDraft((d) => d && { items: [...d.items, { id, size: WIDGET_SIZES[key][0] }], hidden: d.hidden.filter((h) => h !== id) });
-  }, [animate]);
+  }, []);
 
   const firstName = fullName?.trim().split(/\s+/)[0] ?? null;
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.bg }}>
       <ScrollView
+        ref={scroll}
+        onScroll={(e) => { scrollY.current = e.nativeEvent.contentOffset.y; }}
+        scrollEventThrottle={32}
         scrollEnabled={!dragging}
         contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 32, paddingHorizontal: 16, gap: 12 }}
         keyboardShouldPersistTaps="handled"
@@ -206,7 +228,7 @@ export default function InicioScreen() {
         {state?.status === "needs_setup" && <FirstRunQuestions onSubmit={answer} />}
         {ready && (
           <>
-            <View>
+            <Dim on={!!openWidget && !editing}>
               <DisponibleBlock view={ready.view} open={detailOpen} onToggle={editing ? undefined : toggleDetail} dimmed={editing} />
               {editing && (
                 <View style={[styles.fixed, { backgroundColor: t.colors.card }]} accessible accessibilityLabel="Fijo">
@@ -214,9 +236,31 @@ export default function InicioScreen() {
                   <Text style={{ color: t.colors.muted, fontFamily: t.fonts.uiSemibold, fontSize: 11 }}>Fijo</Text>
                 </View>
               )}
-            </View>
-            {detailOpen && !editing && <DisponibleDetail detail={ready.detail} onSeeAll={onSeeAll} />}
-            <InicioWidgetGrid widgets={widgets} autoOpen={editing ? null : autoOpen} onAction={onAction} editing={editingHandlers} />
+            </Dim>
+            {detailOpen && !editing && (
+              <Animated.View
+                entering={FadeIn.duration(240)}
+                exiting={FadeOut.duration(140)}
+                layout={LinearTransition.duration(240)}
+                onLayout={(e) => {
+                  const { y, height } = e.nativeEvent.layout;
+                  reveal(y, y + height);
+                }}
+              >
+                <DisponibleDetail detail={ready.detail} onSeeAll={onSeeAll} />
+              </Animated.View>
+            )}
+            <Animated.View layout={LinearTransition.duration(240)} onLayout={(e) => { gridY.current = e.nativeEvent.layout.y; }}>
+              <InicioWidgetGrid
+                widgets={widgets}
+                open={editing ? null : openWidget}
+                onOpenChange={onOpenWidget}
+                onReveal={revealInGrid}
+                dimAll={detailOpen && !editing}
+                onAction={onAction}
+                editing={editingHandlers}
+              />
+            </Animated.View>
             {editing && (
               <Pressable
                 onPress={() => setAdding(true)}

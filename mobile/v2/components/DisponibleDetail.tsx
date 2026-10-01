@@ -1,6 +1,6 @@
 import { memo, useCallback, useState } from "react";
-import { LayoutAnimation, Pressable, StyleSheet, Text, View } from "react-native";
-import { useReducedMotion } from "react-native-reanimated";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from "react-native-reanimated";
 import { ChevronDown, ChevronUp } from "lucide-react-native";
 import type { DetailPart, DetailPartKey, DisponibleDetailView } from "@zeta/shared";
 import { useV2Theme } from "../theme/ThemeProvider";
@@ -35,12 +35,8 @@ export const DisponibleDetail = memo(function DisponibleDetail({
   initialOpen?: DetailPartKey | null;
 }) {
   const t = useV2Theme();
-  const reduceMotion = useReducedMotion();
   const [open, setOpen] = useState<DetailPartKey | null>(initialOpen);
-  const toggle = useCallback((key: DetailPartKey) => {
-    if (!reduceMotion) LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setOpen((o) => (o === key ? null : key));
-  }, [reduceMotion]);
+  const toggle = useCallback((key: DetailPartKey) => setOpen((o) => (o === key ? null : key)), []);
 
   const rows = detail.parts.filter((p) => p.key !== "queda");
   const result = detail.result;
@@ -78,6 +74,7 @@ export const DisponibleDetail = memo(function DisponibleDetail({
         <PartRow key={p.key} part={p} open={open === p.key} onToggle={toggle} onSeeAll={onSeeAll} />
       ))}
 
+      <Animated.View layout={LinearTransition.duration(240)}>
       <Pressable
         onPress={() => toggle("queda")}
         accessibilityRole="button"
@@ -95,9 +92,12 @@ export const DisponibleDetail = memo(function DisponibleDetail({
           <Text style={[styles.resultAmount, { color: t.colors.ink, fontFamily: t.fonts.numberSemibold }]}>{result.amount}</Text>
         </View>
         {resultOpen && (
-          <Text style={[styles.resultSub, { color: resultTone.text, fontFamily: t.fonts.uiMedium }]}>{result.sub}</Text>
+          <Animated.Text entering={FadeIn.duration(200)} style={[styles.resultSub, { color: resultTone.text, fontFamily: t.fonts.uiMedium }]}>
+            {result.sub}
+          </Animated.Text>
         )}
       </Pressable>
+      </Animated.View>
     </View>
   );
 });
@@ -117,7 +117,7 @@ function PartRow({
   const c = partColor(t, p.key);
   const Chevron = open ? ChevronUp : ChevronDown;
   return (
-    <View style={[styles.rowWrap, { borderTopColor: t.colors.line }]}>
+    <Animated.View layout={LinearTransition.duration(240)} style={[styles.rowWrap, { borderTopColor: t.colors.line }]}>
       {/* The glow is on this wrapper; the items sit outside the row's button so screen readers reach them. */}
       <View style={[styles.row, open && [styles.glow, { backgroundColor: t.colors.sunk, borderColor: c.outline ?? c.fill, shadowColor: c.outline ?? c.fill }]]}>
         <Pressable
@@ -139,7 +139,11 @@ function PartRow({
         </Pressable>
 
         {open && (
-          <View style={[styles.items, { backgroundColor: t.colors.card }]}>
+          <Animated.View
+            entering={FadeInDown.duration(220)}
+            exiting={FadeOut.duration(120)}
+            style={[styles.items, { backgroundColor: t.colors.card }]}
+          >
             {p.items.length === 0 && (
               <Text style={[styles.itemText, { color: t.colors.muted, fontFamily: t.fonts.ui }]}>Nada por aquí todavía.</Text>
             )}
@@ -159,10 +163,10 @@ function PartRow({
                 <Text style={[styles.itemText, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]}>{p.more}</Text>
               </Pressable>
             )}
-          </View>
+          </Animated.View>
         )}
       </View>
-    </View>
+    </Animated.View>
   );
 }
 

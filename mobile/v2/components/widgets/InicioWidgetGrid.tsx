@@ -1,6 +1,6 @@
-import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Animated, LayoutAnimation, PanResponder, Pressable, StyleSheet, Text, View, type LayoutRectangle } from "react-native";
-import { useReducedMotion } from "react-native-reanimated";
+import { Fragment, memo, useCallback, useMemo, useRef, useState } from "react";
+import { Animated as RNAnimated, PanResponder, Pressable, StyleSheet, Text, View, type LayoutRectangle } from "react-native";
+import Animated, { FadeInDown, FadeOut, LinearTransition } from "react-native-reanimated";
 import { Grip, X } from "lucide-react-native";
 import { WIDGET_SIZES, type InicioWidget, type InicioWidgetKey, type InicioWidgetSize, type WidgetActionId } from "@zeta/shared";
 import { useV2Theme } from "../../theme/ThemeProvider";
@@ -36,44 +36,39 @@ export interface GridEditing {
 }
 
 /**
- * Inicio's 2-column widget grid. One widget open at a time: a half widget
- * opens a full-width panel under its row and dims its neighbour; a full
- * widget opens in place. `autoOpen` (the most critical, once a day) opens
- * itself. With `editing` (Organizar) each widget shows a drag handle, its
+ * Inicio's 2-column widget grid. One widget open at a time (the screen holds
+ * which): a half widget opens a full-width panel under its row, a full widget
+ * opens in place; everything else fades so the open one has the focus, and
+ * `onReveal` reports where the open block sits so the screen can scroll it
+ * into view. With `editing` (Organizar) each widget shows a drag handle, its
  * size and a remove button instead of opening.
  */
 export const InicioWidgetGrid = memo(function InicioWidgetGrid({
   widgets,
-  autoOpen,
+  open,
+  onOpenChange,
+  onReveal,
+  dimAll = false,
   onAction,
   editing,
 }: {
   widgets: InicioWidget[];
-  autoOpen?: string | null;
+  open: string | null;
+  onOpenChange: (id: string | null) => void;
+  /** Top and bottom (grid coordinates) of the open widget plus its panel. */
+  onReveal?: (top: number, bottom: number) => void;
+  /** Something outside the grid is open: fade every widget. */
+  dimAll?: boolean;
   onAction?: (id: WidgetActionId) => void;
   editing?: GridEditing | null;
 }) {
-  const [open, setOpen] = useState<string | null>(() => autoOpen ?? null);
-  const reduceMotion = useReducedMotion();
-  useEffect(() => {
-    if (autoOpen) setOpen(autoOpen);
-  }, [autoOpen]);
-  useEffect(() => {
-    if (editing) setOpen(null);
-  }, [editing]);
-
-  const toggle = useCallback((id: string) => {
-    if (!reduceMotion) LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setOpen((o) => (o === id ? null : id));
-  }, [reduceMotion]);
-  const close = useCallback(() => {
-    if (!reduceMotion) LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setOpen(null);
-  }, [reduceMotion]);
+  const toggle = useCallback((id: string) => onOpenChange(open === id ? null : id), [onOpenChange, open]);
+  const close = useCallback(() => onOpenChange(null), [onOpenChange]);
   const rows = useMemo(() => packRows(widgets), [widgets]);
 
-  // Where each widget sits in the grid, for dropping a dragged one.
+  // Where each widget sits in the grid, for dropping a dragged one and revealing the open one.
   const rowY = useRef(new Map<string, number>());
+  const rowBox = useRef(new Map<string, { y: number; height: number }>());
   const cells = useRef(new Map<string, LayoutRectangle>());
   const [dragging, setDragging] = useState<string | null>(null);
   const ids = useRef<string[]>([]);
@@ -95,21 +90,28 @@ export const InicioWidgetGrid = memo(function InicioWidgetGrid({
     return best;
   }, []);
 
+  const openWidget = open ? widgets.find((w) => w.id === open) ?? null : null;
+
   return (
     <View style={styles.grid}>
       {rows.map((row) => {
+        const rowKey = row.map((w) => w.id).join("+");
         const openHalf = !editing ? row.find((w) => w.size === "half" && w.id === open) ?? null : null;
+        const openFull = !editing && row.length === 1 && row[0].size === "full" && row[0].id === open;
         return (
-          <Fragment key={row.map((w) => w.id).join("+")}>
-            <View
+          <Fragment key={rowKey}>
+            <Animated.View
+              layout={LinearTransition.duration(240)}
               style={[styles.row, row.some((w) => w.id === dragging) && styles.lifted]}
               onLayout={(e) => {
-                const y = e.nativeEvent.layout.y;
+                const { y, height } = e.nativeEvent.layout;
                 for (const w of row) {
                   rowY.current.set(w.id, y);
                   const c = cells.current.get(w.id);
                   if (c) cells.current.set(w.id, { ...c, y });
                 }
+                rowBox.current.set(rowKey, { y, height });
+                if (openFull) onReveal?.(y, y + height);
               }}
             >
               {row.map((w) => (
@@ -131,13 +133,31 @@ export const InicioWidgetGrid = memo(function InicioWidgetGrid({
                       nextId={ids.current[ids.current.indexOf(w.id) + 1] ?? null}
                     />
                   ) : (
-                    <WidgetCard widget={w} open={open === w.id} dim={!!openHalf && openHalf.id !== w.id} onToggle={toggle} onAction={onAction} />
+                    <WidgetCard
+                      widget={w}
+                      open={open === w.id}
+                      dim={dimAll || (!!openWidget && open !== w.id)}
+                      onToggle={toggle}
+                      onAction={onAction}
+                    />
                   )}
                 </View>
               ))}
               {row.length === 1 && row[0].size === "half" && <View style={styles.cell} />}
-            </View>
-            {openHalf && <WidgetPanel widget={openHalf} onClose={close} onAction={onAction} />}
+            </Animated.View>
+            {openHalf && (
+              <Animated.View
+                entering={FadeInDown.duration(240)}
+                exiting={FadeOut.duration(140)}
+                layout={LinearTransition.duration(240)}
+                onLayout={(e) => {
+                  const { y, height } = e.nativeEvent.layout;
+                  onReveal?.(rowBox.current.get(rowKey)?.y ?? y, y + height);
+                }}
+              >
+                <WidgetPanel widget={openHalf} onClose={close} onAction={onAction} />
+              </Animated.View>
+            )}
           </Fragment>
         );
       })}
@@ -165,7 +185,7 @@ const EditableCell = memo(function EditableCell({
   nextId: string | null;
 }) {
   const t = useV2Theme();
-  const pan = useRef(new Animated.ValueXY()).current;
+  const pan = useRef(new RNAnimated.ValueXY()).current;
   const [active, setActive] = useState(false);
   // The responder is created once; it reads the latest callbacks from here.
   const latest = useRef({ editing, onDrag, dropTarget });
@@ -191,7 +211,7 @@ const EditableCell = memo(function EditableCell({
         latest.current.onDrag(w.id);
         latest.current.editing.onDragging(true);
       },
-      onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], { useNativeDriver: false }),
+      onPanResponderMove: RNAnimated.event([null, { dx: pan.x, dy: pan.y }], { useNativeDriver: false }),
       onPanResponderRelease: (_, g) => end(latest.current.dropTarget(w.id, g.dx, g.dy)),
       onPanResponderTerminate: () => end(null),
     });
@@ -202,7 +222,7 @@ const EditableCell = memo(function EditableCell({
   const sizeLabel = w.size === "full" ? "Completo" : "½ ancho";
 
   return (
-    <Animated.View style={[styles.editCell, { transform: pan.getTranslateTransform() }, active && styles.dragged]}>
+    <RNAnimated.View style={[styles.editCell, { transform: pan.getTranslateTransform() }, active && styles.dragged]}>
       <View pointerEvents="none" style={styles.editCell} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
         <WidgetCard widget={w} open={false} dim={false} onToggle={noop} editInset />
       </View>
@@ -242,7 +262,7 @@ const EditableCell = memo(function EditableCell({
           <X size={12} color={t.colors.ink} strokeWidth={2.2} />
         </Pressable>
       </View>
-    </Animated.View>
+    </RNAnimated.View>
   );
 });
 

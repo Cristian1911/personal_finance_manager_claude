@@ -12,7 +12,7 @@ import { WIDGET_CASES } from "../v2/gallery/widget-cases";
 import { useV2Fonts } from "../v2/theme/fonts";
 import { V2ThemeProvider, useV2Theme } from "../v2/theme/ThemeProvider";
 import type { ColorMode, ThemeName } from "../v2/tokens";
-import type { DetailPartKey } from "@zeta/shared";
+import type { DetailPartKey, InicioWidget } from "@zeta/shared";
 
 /**
  * v2 widget gallery (docs/mlp/13-widget-design-rules.md "Testing"): every
@@ -76,7 +76,7 @@ function Gallery(props: {
             {`WIDGETS · ${c.title.toUpperCase()}`}
           </Text>
           <DisponibleDetail detail={c.detail} initialOpen={(props.detail as DetailPartKey | undefined) ?? null} />
-          <InicioWidgetGrid widgets={c.widgets} autoOpen={props.open ?? null} />
+          <GalleryGrid widgets={c.widgets} initialOpen={props.open ?? null} />
           {!props.open && (
             <>
               <Text style={[styles.caseTitle, { color: t.colors.muted, fontFamily: t.fonts.mono }]}>ABIERTOS</Text>
@@ -92,6 +92,11 @@ function Gallery(props: {
       ))}
     </ScrollView>
   );
+}
+
+function GalleryGrid({ widgets, initialOpen }: { widgets: InicioWidget[]; initialOpen: string | null }) {
+  const [open, setOpen] = useState<string | null>(initialOpen);
+  return <InicioWidgetGrid widgets={widgets} open={open} onOpenChange={setOpen} />;
 }
 
 function Segment<T extends string>({ options, value, onChange }: { options: [T, string][]; value: T; onChange: (v: T) => void }) {
