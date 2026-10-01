@@ -107,6 +107,7 @@ export {
 export {
   detalleView,
   movimientosView,
+  type DetalleSource,
   type DetalleView,
   type MovimientoRow,
   type MovimientoTone,

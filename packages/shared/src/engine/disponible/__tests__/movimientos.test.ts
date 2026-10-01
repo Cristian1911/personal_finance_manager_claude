@@ -67,19 +67,25 @@ describe("Movimientos", () => {
 });
 
 describe("Detalle", () => {
-  it("a spend: when, account, counts, note and where it came from", () => {
-    expect(detalleView({ today: TODAY, transaction: TXS[1], accounts: ACCOUNTS })).toEqual({
-      id: TXS[1].id, initial: "T", title: "Tostao", subtitle: "Hoy 8:15 · Cuenta", amount: "−$8.000", tone: "out",
-      counts: { value: "Sí", accountId: "banc", accountToggle: "on" },
-      note: "con Ana", source: "Anotado a mano · 18 sep 8:15", excluded: false,
+  const view = (t: StoredTransaction) => detalleView({ today: TODAY, transaction: t, accounts: ACCOUNTS });
+
+  it("a manual spend: source, facts, editable, counts (no status)", () => {
+    expect(view(TXS[1])).toEqual({
+      id: TXS[1].id, initial: "T", title: "Tostao", amount: "−$8.000", tone: "out",
+      source: "manual", facts: "A mano · hoy 8:15 · Cuenta", status: null,
+      note: "con Ana", excluded: false, manual: true, raw: { amount: 8000, date: "2026-09-18" },
     });
   });
 
-  it("why it doesn't count: ignored, a card, or an account left out", () => {
-    const counts = (t: StoredTransaction) => detalleView({ today: TODAY, transaction: t, accounts: ACCOUNTS }).counts;
-    expect(counts(TXS[4])).toEqual({ value: "No · lo ignoraste", accountId: "banc", accountToggle: null });
-    expect(counts(TXS[2])).toMatchObject({ value: "No · va a la factura", accountToggle: null });
-    expect(counts(TXS[6])).toMatchObject({ value: "No · esta cuenta no cuenta", accountToggle: "off" });
-    expect(detalleView({ today: TODAY, transaction: TXS[3], accounts: ACCOUNTS }).subtitle).toBe("Ayer 12:41 · Cuenta");
+  it("a bank movement can't be fixed or deleted, and says where it came from", () => {
+    const bank = { ...TXS[0], captureMethod: "EMAIL_IMPORT" };
+    expect(view(bank)).toMatchObject({ source: "email", facts: "Correo · hoy 12:41 · Cuenta", manual: false });
+  });
+
+  it("says why it doesn't count", () => {
+    expect(view(TXS[4]).status).toBe("No cuenta · lo ignoraste");
+    expect(view(TXS[2]).status).toBe("No cuenta · va a la factura");
+    expect(view(TXS[6]).status).toBe("No cuenta · esa cuenta está aparte");
+    expect(view(TXS[3]).facts).toBe("A mano · ayer 12:41 · Cuenta");
   });
 });

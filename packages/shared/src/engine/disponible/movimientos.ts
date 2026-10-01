@@ -1,10 +1,11 @@
+import { MANUAL_CAPTURE_METHODS } from "../commands/delete-transaction";
 import { defaultCountsInDisponible } from "../commands/set-account-counts-in-disponible";
 import type { PayCycle } from "./cycle";
 import { diffDays, dayOfWeek, type IsoDate } from "./dates";
 import type { InicioAccount } from "./inicio";
 import type { StoredTransaction } from "./movements";
 import { formatPesos } from "./verdict";
-import { cycleLabel, shortDate, signedPesos } from "./view";
+import { cycleLabel, signedPesos } from "./view";
 import { colombiaTime, relativeDay } from "./widgets";
 
 /**
@@ -51,20 +52,25 @@ export interface MovimientosView {
   empty: string | null;
 }
 
+export type DetalleSource = "manual" | "email" | "notification" | "pdf" | "screenshot" | "other";
+
 export interface DetalleView {
   id: string;
   initial: string;
   title: string;
-  /** "Hoy 12:41 · Cuenta". */
-  subtitle: string;
   amount: string;
   tone: MovimientoTone;
-  /** "Cuenta para Disponible": Sí / No · why; `accountToggle` when the answer is the account's. */
-  counts: { value: string; accountId: string; accountToggle: "on" | "off" | null };
+  source: DetalleSource;
+  /** "Correo · hoy 12:41 · Cuenta" */
+  facts: string;
+  /** Only when it doesn't count: "No cuenta · va a la factura", "No cuenta · lo ignoraste". */
+  status: string | null;
   note: string | null;
-  /** Where it came from: "Anotado a mano · 18 sep 12:41". */
-  source: string;
   excluded: boolean;
+  /** Written down by hand: amount and date can be fixed; "No es un movimiento" deletes it. */
+  manual: boolean;
+  /** Raw values for the fix form. */
+  raw: { amount: number; date: IsoDate };
 }
 
 const FILTERS: { key: MovimientosFilter; label: string }[] = [
@@ -75,11 +81,14 @@ const FILTERS: { key: MovimientosFilter; label: string }[] = [
 ];
 const WEEKDAY = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
 const ACCOUNT_LABEL: Record<string, string> = { CREDIT_CARD: "Tarjeta", LOAN: "Préstamo", CASH: "Efectivo", SAVINGS: "Ahorros" };
-const SOURCE: Record<string, string> = {
-  MANUAL_FORM: "Anotado a mano", TEXT_QUICK_CAPTURE: "Anotado a mano",
-  PDF_IMPORT: "Extracto PDF", EMAIL_PDF_IMPORT: "Extracto PDF por correo",
-  EMAIL_IMPORT: "Correo del banco", NOTIFICATION: "Notificación del banco",
-  OCR_BATCH: "Captura de pantalla", OCR_SINGLE: "Captura de pantalla",
+const SOURCE_OF: Record<string, DetalleSource> = {
+  MANUAL_FORM: "manual", TEXT_QUICK_CAPTURE: "manual",
+  EMAIL_IMPORT: "email", NOTIFICATION: "notification",
+  PDF_IMPORT: "pdf", EMAIL_PDF_IMPORT: "pdf",
+  OCR_BATCH: "screenshot", OCR_SINGLE: "screenshot",
+};
+const SOURCE_WORD: Record<DetalleSource, string> = {
+  manual: "A mano", email: "Correo", notification: "Notificación", pdf: "Extracto", screenshot: "Captura", other: "Registrado",
 };
 const isDebt = (type: string) => type === "CREDIT_CARD" || type === "LOAN";
 const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -191,28 +200,28 @@ export function movimientosView(input: {
   };
 }
 
-/** The Detalle sheet of one movement (the same sheet for every row). */
+/** The Detalle sheet of one movement, design A (the same sheet for every row). */
 export function detalleView(input: { today: IsoDate; transaction: StoredTransaction; accounts: InicioAccount[] }): DetalleView {
   const { today, transaction: t } = input;
   const a = accountsById(input.accounts).get(t.accountId);
   const tone = toneOf(t, a);
   const title = titleOf(t);
-  const time = t.createdAt ? colombiaTime(t.createdAt) : null;
-  const when = `${relativeDay(today, t.date)}${time ? ` ${time}` : ""}`;
-  const account = a?.label ?? "Cuenta";
+  const source = SOURCE_OF[t.captureMethod ?? ""] ?? "other";
+  const time = t.createdAt ? ` ${colombiaTime(t.createdAt)}` : "";
+  const when = relativeDay(today, t.date);
+  const facts = `${SOURCE_WORD[source]} · ${when === "Hoy" || when === "Ayer" ? when.toLowerCase() : when}${time} · ${a?.label ?? "Cuenta"}`;
 
-  let counts: DetalleView["counts"];
-  if (t.isExcluded) counts = { value: "No · lo ignoraste", accountId: t.accountId, accountToggle: null };
-  else if (!a || isDebt(a.type)) counts = { value: `No · ${a?.type === "LOAN" ? "es un préstamo" : "va a la factura"}`, accountId: t.accountId, accountToggle: null };
-  else counts = { value: a.counts ? "Sí" : "No · esta cuenta no cuenta", accountId: t.accountId, accountToggle: a.counts ? "on" : "off" };
+  let status: string | null = null;
+  if (t.isExcluded) status = "No cuenta · lo ignoraste";
+  else if (!a || isDebt(a.type)) status = `No cuenta · ${a?.type === "LOAN" ? "es un préstamo" : "va a la factura"}`;
+  else if (!a.counts) status = "No cuenta · esa cuenta está aparte";
 
-  const captured = t.createdAt ? `${shortDate(t.date)} ${colombiaTime(t.createdAt)}` : shortDate(t.date);
   return {
     id: t.id, initial: title.charAt(0).toUpperCase(), title,
-    subtitle: `${when} · ${account}`,
-    amount: amountOf(t, tone), tone, counts,
+    amount: amountOf(t, tone), tone, source, facts, status,
     note: t.notes?.trim() || null,
-    source: `${SOURCE[t.captureMethod ?? ""] ?? "Registrado"} · ${captured}`,
     excluded: !!t.isExcluded,
+    manual: MANUAL_CAPTURE_METHODS.has(t.captureMethod ?? ""),
+    raw: { amount: t.amount, date: t.date },
   };
 }
