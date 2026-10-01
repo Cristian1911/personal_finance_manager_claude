@@ -97,9 +97,20 @@ export {
 } from "./widgets";
 export {
   INICIO_LOOKBACK_DAYS,
+  MOVIMIENTOS_CYCLES,
   SALARY_SHARE_PERCENT,
   buildInicio,
   inicioSince,
   type InicioAccount,
   type InicioState,
 } from "./inicio";
+export {
+  detalleView,
+  movimientosView,
+  type DetalleView,
+  type MovimientoRow,
+  type MovimientoTone,
+  type MovimientosFilter,
+  type MovimientosGroup,
+  type MovimientosView,
+} from "./movimientos";

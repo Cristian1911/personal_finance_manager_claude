@@ -85,3 +85,11 @@ CREATE TABLE bill_reservations (
 export const SQLITE_CAPTURE_TIME_SCHEMA = `
 ALTER TABLE transactions ADD COLUMN created_at TEXT;
 `;
+
+/**
+ * Phone schema version 4: Ignorar in Detalle ("esto no es un movimiento",
+ * D8). Same column as Postgres transactions.is_excluded; 0/1 here.
+ */
+export const SQLITE_EXCLUDED_SCHEMA = `
+ALTER TABLE transactions ADD COLUMN is_excluded INTEGER NOT NULL DEFAULT 0;
+`;

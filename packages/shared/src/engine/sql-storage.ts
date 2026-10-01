@@ -85,6 +85,11 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
       await q("UPDATE transactions SET notes = ? WHERE user_id = ? AND id = ?", [notes, userId, id]);
     },
 
+    async updateTransactionExcluded(userId, id, excluded) {
+      // SQLite stores booleans as 0/1.
+      await q("UPDATE transactions SET is_excluded = ? WHERE user_id = ? AND id = ?", [pg ? excluded : excluded ? 1 : 0, userId, id]);
+    },
+
     async getFieldVersion(userId, entity, entityId, field) {
       const rows = await q<{ client_ts: unknown; command_id: string }>(
         "SELECT client_ts, command_id FROM field_versions WHERE user_id = ? AND entity = ? AND entity_id = ? AND field = ?",

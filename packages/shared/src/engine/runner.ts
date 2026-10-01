@@ -1,6 +1,7 @@
 import { captureManualTransaction } from "./commands/capture-manual-transaction";
 import { setAccountCountsInDisponible } from "./commands/set-account-counts-in-disponible";
 import { setCycleSettings } from "./commands/set-cycle-settings";
+import { setTransactionExcluded } from "./commands/set-transaction-excluded";
 import { setTransactionNote } from "./commands/set-transaction-note";
 import type { HashFn } from "../utils/idempotency";
 import type { CommandEnvelope, CommandResult, CommandType, StoragePort } from "./types";
@@ -16,6 +17,7 @@ type Handler = (s: StoragePort, cmd: CommandEnvelope<never>, opts: EngineOptions
 const HANDLERS: Partial<Record<CommandType, Handler>> = {
   captureManualTransaction,
   setTransactionNote,
+  setTransactionExcluded,
   setCycleSettings,
   setAccountCountsInDisponible,
 };

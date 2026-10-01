@@ -2,6 +2,7 @@
 export type CommandType =
   | "captureManualTransaction"
   | "setTransactionNote"
+  | "setTransactionExcluded"
   | "setCycleSettings"
   | "setAccountCountsInDisponible";
 
@@ -131,6 +132,7 @@ export interface StoragePort {
   insertTransaction(row: TransactionInsert): Promise<void>;
   getTransaction(userId: string, id: string): Promise<TransactionRow | null>;
   updateTransactionNotes(userId: string, id: string, notes: string | null): Promise<void>;
+  updateTransactionExcluded(userId: string, id: string, excluded: boolean): Promise<void>;
   getFieldVersion(userId: string, entity: string, entityId: string, field: string): Promise<FieldVersion | null>;
   setFieldVersion(v: FieldVersionWrite): Promise<void>;
   getCycleSettings(userId: string): Promise<CycleSettings | null>;

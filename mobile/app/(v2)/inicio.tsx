@@ -36,13 +36,13 @@ const ACTION_ROUTES: Record<WidgetActionId, string> = {
   split_purchase: "/personas",
   lend: "/personas",
   add_card: "/account/create",
-  see_movements: "/transactions",
+  see_movements: "/movimientos",
   see_bills: "/recurrentes",
   see_people: "/personas",
   see_accounts: "/accounts-list",
   see_flow: "/flujo",
 };
-const DETAIL_ROUTES: Partial<Record<DetailPartKey, string>> = { porPagar: "/recurrentes", gastado: "/transactions" };
+const DETAIL_ROUTES: Partial<Record<DetailPartKey, string>> = { porPagar: "/recurrentes", gastado: "/movimientos" };
 
 /**
  * v2 Inicio (M1, Claude Design "Z Inicio"): greeting, the Disponible block

@@ -27,6 +27,9 @@ export const SALARY_SHARE_PERCENT = 50;
 /** How far back Inicio reads: a cycle is at most a month, plus an early salary. */
 export const INICIO_LOOKBACK_DAYS = 70;
 
+/** Cycles Movimientos can step back through (S1-3: the phone keeps the last 3). */
+export const MOVIMIENTOS_CYCLES = 3;
+
 /** The first movement date Inicio needs for `today`. */
 export const inicioSince = (today: IsoDate): IsoDate => addDays(today, -INICIO_LOOKBACK_DAYS);
 
@@ -43,6 +46,8 @@ export type InicioState =
       widgets: InicioWidget[];
       /** The Tu flujo screen: Pasado, Este ciclo, Próximo. */
       flow: FlowScreenTab[];
+      /** Movimientos' cycles, newest first: this one and those the phone still holds whole (up to 3, S1-3). */
+      cycles: PayCycle[];
     };
 
 const isDebt = (type: string) => type === "CREDIT_CARD" || type === "LOAN";
@@ -184,6 +189,12 @@ export function buildInicio(input: {
   };
   const widgets = buildInicioWidgets(widgetsInput);
   const flow = flowScreenView(widgetsInput);
+  const cycles = [cycle];
+  while (cycles.length < MOVIMIENTOS_CYCLES) {
+    const before = cycleOn(addDays(cycles[cycles.length - 1].start, -1));
+    if (before.start < inicioSince(today)) break;
+    cycles.push(before);
+  }
   const detail = disponibleDetailView({ today, cycle, result, obligations, movements, counted, transactions: input.transactions });
-  return { status: "ready", cycle, result, verdict, view, detail, widgets, flow };
+  return { status: "ready", cycle, result, verdict, view, detail, widgets, flow, cycles };
 }
