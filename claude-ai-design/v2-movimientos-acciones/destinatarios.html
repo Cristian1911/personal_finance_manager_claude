@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Destinatarios v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@500;600&family=Bricolage+Grotesque:opsz,wght@12..96,600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@0.453.0/dist/umd/lucide.min.js"></script>
+<style>
+  :root { --bg:#E9E0CC; --card:#FFFCF5; --ink:#14160F; --muted:#4B463B; --line:#E6DDC9; --ctl:#8C7F63; --sunk:#EFE7D6; --btn:#14160F; --btn-ink:#FFFCF5; --scrim:rgba(20,22,15,.45);
+    --ok-x:#2E4A12; --ok-t:#CFE0A6; --bad-x:#7A2410; --ui:"Geist",system-ui,sans-serif; --mono:"Geist Mono",ui-monospace,monospace; --num:"Bricolage Grotesque",var(--ui);
+    --shadow:0 1px 2px rgba(60,48,20,.06),0 4px 14px rgba(60,48,20,.07); }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#DCD3BF; color:var(--ink); font-family:var(--ui); }
+  main { max-width:1560px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font:600 26px var(--ui); letter-spacing:-.02em; margin:0 0 6px; }
+  h2 { font:600 19px var(--ui); margin:36px 0 6px; }
+  p, li { font:400 14px/1.55 var(--ui); color:var(--muted); max-width:940px; }
+  b { color:var(--ink); }
+  .phones { display:flex; flex-wrap:wrap; gap:26px; margin-top:16px; }
+  .col { width:360px; }
+  .col h3 { font:600 15px var(--ui); margin:0 0 4px; }
+  .col p { font-size:13px; margin:0 0 10px; min-height:96px; }
+  .phone { width:360px; height:760px; border-radius:40px; background:var(--bg); position:relative; overflow:hidden; box-shadow:0 18px 50px rgba(40,30,10,.22), inset 0 0 0 7px #1d1d1b; }
+  .scr { position:absolute; inset:7px; border-radius:33px; overflow:hidden; background:var(--bg); }
+  .page { position:absolute; inset:0 0 84px; overflow-y:auto; padding:48px 14px 16px; display:flex; flex-direction:column; gap:12px; }
+  .page.full { bottom:0; }
+  .hd { display:flex; align-items:center; gap:10px; }
+  .sq { width:36px; height:36px; border-radius:10px; border:1.5px solid var(--ctl); display:grid; place-items:center; flex:none; }
+  .sq i { width:18px; height:18px; }
+  .hd b { flex:1; font:600 20px var(--ui); text-align:center; }
+  .ph { width:36px; }
+  .card { background:var(--card); border-radius:18px; box-shadow:var(--shadow); }
+  .list { padding:0 14px; }
+  .sec { font:600 11.5px var(--mono); letter-spacing:.05em; text-transform:uppercase; color:var(--muted); padding:4px 4px 0; display:flex; justify-content:space-between; }
+
+  /* the two avatar shapes */
+  .av { position:relative; width:38px; height:38px; background:var(--sunk); display:grid; place-items:center; font:600 12.5px var(--ui); color:var(--muted); flex:none; }
+  .av.m { border-radius:11px; }                 /* comercio: squircle */
+  .av.p { border-radius:50%; box-shadow:inset 0 0 0 1.5px var(--ctl); } /* persona: circle, outlined */
+  .av .g { position:absolute; right:-4px; bottom:-4px; width:17px; height:17px; border-radius:50%; background:var(--card); box-shadow:0 0 0 1.5px var(--line); display:grid; place-items:center; }
+  .av .g svg { width:10px; height:10px; color:var(--muted); }
+  .av.lg { width:64px; height:64px; font-size:20px; }
+  .av.lg.m { border-radius:18px; }
+  .av.lg .g { width:24px; height:24px; right:-5px; bottom:-5px; }
+  .av.lg .g svg { width:13px; height:13px; }
+
+  .mv { display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:1px solid var(--line); }
+  .mv:last-child { border-bottom:0; }
+  .mv .n { flex:1; min-width:0; font:500 15px var(--ui); }
+  .mv .n small { display:block; font:400 12px var(--ui); color:var(--muted); }
+  .amt { font:600 15px var(--num); white-space:nowrap; }
+  .out { color:var(--bad-x); } .in { color:var(--ok-x); } .gray { color:var(--muted); }
+  .day { display:flex; justify-content:space-between; font:600 11.5px var(--mono); letter-spacing:.04em; text-transform:uppercase; color:var(--muted); padding:4px 4px 0; }
+
+  /* sheet */
+  .scrim { position:absolute; inset:0; background:var(--scrim); }
+  .sheet { position:absolute; left:0; right:0; bottom:0; background:var(--card); border-radius:24px 24px 0 0; padding:8px 16px 22px; display:flex; flex-direction:column; gap:10px; }
+  .handle { width:38px; height:5px; border-radius:3px; background:var(--ctl); align-self:center; }
+  .raw { font:500 11.5px/1.4 var(--mono); color:var(--muted); background:var(--sunk); border-radius:9px; padding:8px 10px; }
+  .search { height:42px; border-radius:11px; border:1.5px solid var(--ctl); display:flex; align-items:center; gap:8px; padding:0 12px; font:500 14px var(--ui); color:var(--muted); }
+  .search i { width:16px; height:16px; }
+  .seg { display:flex; padding:3px; border-radius:11px; background:var(--sunk); box-shadow:inset 0 0 0 1px var(--line); }
+  .seg span { flex:1; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:6px; font:500 13px var(--ui); color:var(--muted); }
+  .seg span.on { background:var(--card); color:var(--ink); font-weight:600; box-shadow:var(--shadow); }
+  .seg i { width:14px; height:14px; }
+  .opt { display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid var(--line); }
+  .opt:last-child { border-bottom:0; }
+  .opt .n { flex:1; font:500 15px var(--ui); }
+  .opt .n small { display:block; font:400 12px var(--ui); color:var(--muted); }
+  .sugg { font:600 11px var(--ui); color:var(--ok-x); background:var(--ok-t); padding:2px 7px; border-radius:99px; }
+  .new { display:flex; align-items:center; gap:12px; padding:9px 0; font:600 14px var(--ui); }
+  .new .plus { width:38px; height:38px; border-radius:50%; border:1.5px dashed var(--ctl); display:grid; place-items:center; }
+  .new .plus i { width:16px; height:16px; }
+  .ask { background:var(--sunk); border-radius:14px; padding:12px 14px; display:flex; flex-direction:column; gap:10px; }
+  .ask b { font:600 15px var(--ui); }
+  .ask .btns { display:flex; gap:8px; }
+  .ask .btns span { flex:1; height:42px; border-radius:10px; display:grid; place-items:center; font:600 14px var(--ui); }
+  .yes { background:var(--btn); color:var(--btn-ink); } .no { border:1.5px solid var(--ctl); }
+
+  /* destinatario sheet */
+  .who { display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; padding:4px 0 2px; }
+  .who .nm { font:600 22px var(--ui); letter-spacing:-.01em; }
+  .who .kd { font:500 13px var(--ui); color:var(--muted); display:flex; align-items:center; gap:6px; }
+  .who .kd i { width:14px; height:14px; }
+  .stats { display:grid; grid-template-columns:1fr 1fr; padding:12px 6px; text-align:center; }
+  .stats div:first-child { border-right:1px solid var(--line); }
+  .stats small { display:block; font:500 12px var(--ui); color:var(--muted); }
+  .stats b { font:600 18px var(--num); }
+  .bars { display:flex; align-items:flex-end; gap:6px; height:38px; padding:0 18px 12px; }
+  .bars span { flex:1; background:var(--est, #CDBF9F); border-radius:3px 3px 0 0; }
+  .bars span.now { background:var(--muted); }
+  .bal { padding:14px 16px; display:flex; flex-direction:column; gap:10px; }
+  .bal .top { display:flex; align-items:baseline; justify-content:space-between; }
+  .bal .top span { font:500 13px var(--ui); color:var(--muted); }
+  .bal .top b { font:600 22px var(--num); }
+  .bal .btns { display:flex; gap:8px; }
+  .bal .btns span { flex:1; height:40px; border-radius:10px; border:1.5px solid var(--ctl); display:flex; align-items:center; justify-content:center; gap:6px; font:600 13px var(--ui); }
+  .bal .btns span.pri { background:var(--btn); color:var(--btn-ink); border-color:var(--btn); }
+  .bal .btns i { width:15px; height:15px; }
+  .row { display:flex; align-items:center; gap:10px; min-height:48px; padding:0 16px; border-bottom:1px solid var(--line); font:500 14px var(--ui); }
+  .row:last-child { border-bottom:0; }
+  .row .k { flex:1; color:var(--muted); }
+  .row .v { font-weight:600; display:flex; align-items:center; gap:6px; }
+  .row .v.e { color:var(--muted); font-weight:500; }
+  .chev { width:16px; height:16px; color:var(--ctl); }
+  .pat { display:flex; align-items:center; gap:8px; min-height:40px; padding:0 16px; border-bottom:1px solid var(--line); }
+  .pat:last-child { border-bottom:0; }
+  .pat code { flex:1; font:500 12px var(--mono); }
+  .pat small { font:500 11.5px var(--ui); color:var(--muted); }
+  .add { color:var(--ink); font:600 13px var(--ui); display:flex; align-items:center; gap:6px; }
+  .add i { width:14px; height:14px; }
+  .see { height:44px; display:flex; align-items:center; justify-content:center; gap:4px; font:600 14px var(--ui); border-top:1px solid var(--line); }
+  .quiet { display:flex; justify-content:center; gap:18px; font:600 13px var(--ui); color:var(--muted); padding:2px 0 6px; }
+  .quiet span { text-decoration:underline; text-underline-offset:3px; }
+
+  /* tab bar */
+  .tabs { position:absolute; left:0; right:0; bottom:0; height:84px; background:var(--card); border-top:1px solid var(--line); display:grid; grid-template-columns:1fr 1fr 72px 1fr 1fr; align-items:start; padding:8px 6px 0; }
+  .tab { display:flex; flex-direction:column; align-items:center; gap:3px; font:500 10.5px var(--ui); color:var(--muted); }
+  .tab .pl { width:54px; height:30px; border-radius:99px; display:grid; place-items:center; position:relative; }
+  .tab.on { color:var(--ink); font-weight:600; }
+  .tab.on .pl { background:var(--sunk); box-shadow:inset 0 0 0 1.5px var(--ink); }
+  .tab i { width:19px; height:19px; }
+  .badge { position:absolute; top:-2px; right:6px; min-width:16px; height:16px; border-radius:99px; background:var(--btn); color:var(--btn-ink); font:600 10px var(--ui); display:grid; place-items:center; padding:0 4px; }
+  .fab { width:58px; height:58px; border-radius:99px; background:var(--btn); color:var(--btn-ink); display:grid; place-items:center; margin:-22px auto 0; box-shadow:0 6px 16px rgba(20,22,15,.3); }
+  .fab i { width:26px; height:26px; }
+  .q { background:var(--card); border-radius:14px; padding:14px 16px; box-shadow:var(--shadow); margin:10px 0; max-width:940px; font:400 14px/1.55 var(--ui); color:var(--muted); }
+  .legend { display:flex; gap:28px; align-items:center; margin:14px 0 4px; }
+  .legend div { display:flex; align-items:center; gap:10px; font:500 14px var(--ui); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Destinatarios: comercio and persona</h1>
+  <p>One system (decision S8-2). The <b>who</b> of a movement is a destinatario: a comercio or a persona, with the same patterns, category and sheet. <b>What kind of money it was</b> (compartido, préstamo…) is the separate "Qué fue" question.</p>
+  <div class="legend">
+    <div><span class="av m">R<span class="g"><i data-lucide="store"></i></span></span>Comercio: rounded square + store</div>
+    <div><span class="av p">LG<span class="g"><i data-lucide="user"></i></span></span>Persona: circle with an outline + person, two initials</div>
+  </div>
+  <p>Shape does the work, without color (color = state, S5-R). The glyph backs it up at small sizes and for people who don't notice the shape. A persona shows <b>two initials</b> (like a contact); a comercio shows one.</p>
+
+  <div class="phones">
+    <div class="col">
+      <h3>1 · In Movimientos you can already tell them apart</h3>
+      <p>The movement's avatar is its destinatario's avatar. A transfer to Laura looks like a person; Rappi looks like a store. A movement without a destinatario uses the generic square with the first letter of the bank text.</p>
+      <div class="phone"><div class="scr">
+        <div class="page">
+          <div class="hd" style="justify-content:space-between"><b style="text-align:left;font-size:24px">Movimientos</b><span class="sq"><i data-lucide="search"></i></span></div>
+          <div class="day"><span>Hoy · vie 18</span><span>−$120.000</span></div>
+          <div class="card list">
+            <div class="mv"><span class="av m">R<span class="g"><i data-lucide="store"></i></span></span><div class="n">Rappi<small>12:41 · Domicilios</small></div><div class="amt out">−$32.000</div></div>
+            <div class="mv"><span class="av p">LG<span class="g"><i data-lucide="user"></i></span></span><div class="n">Laura Giraldo<small>11:05 · Familia</small></div><div class="amt out">−$80.000</div></div>
+            <div class="mv"><span class="av m">T<span class="g"><i data-lucide="store"></i></span></span><div class="n">Tostao<small>8:15 · Café</small></div><div class="amt out">−$8.000</div></div>
+          </div>
+          <div class="day"><span>Jue 17</span><span>+$45.000</span></div>
+          <div class="card list">
+            <div class="mv"><span class="av p">JP<span class="g"><i data-lucide="user"></i></span></span><div class="n">Juan Pérez<small>13:05 · te pagó</small></div><div class="amt in">+$45.000</div></div>
+            <div class="mv"><span class="av m" style="font-size:11px">T</span><div class="n">TRANSF 300…4567<small>9:40 · sin destinatario</small></div><div class="amt out">−$20.000</div></div>
+          </div>
+        </div>
+        <div class="tabs">
+          <div class="tab"><span class="pl"><i data-lucide="home"></i></span>Inicio</div>
+          <div class="tab on"><span class="pl"><i data-lucide="list"></i></span>Movimientos</div>
+          <div><div class="fab"><i data-lucide="plus"></i></div></div>
+          <div class="tab"><span class="pl"><i data-lucide="calendar"></i></span>Pagos</div>
+          <div class="tab"><span class="pl"><i data-lucide="inbox"></i><span class="badge">4</span></span>Revisar</div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="col">
+      <h3>2 · The picker: "¿Quién es?"</h3>
+      <p>Opens from the open row (the Destinatario quick action) or from Detalle. It shows the bank text it's working from. It's already on the <b>Personas</b> tab because it's a transfer (Comercios for a card purchase). At the top, what Zeta recognized, then recent ones, then "+ Nueva persona" prefilled.</p>
+      <div class="phone"><div class="scr">
+        <div class="page full"></div>
+        <div class="scrim"></div>
+        <div class="sheet" style="top:96px">
+          <div class="handle"></div>
+          <div style="font:600 18px var(--ui);text-align:center">¿Quién es?</div>
+          <div class="raw">TRANSF NEQUI A LAURA G 300•••4567 · −$80.000</div>
+          <div class="search"><i data-lucide="search"></i>Buscar</div>
+          <div class="seg"><span><i data-lucide="store"></i>Comercios</span><span class="on"><i data-lucide="user"></i>Personas</span></div>
+          <div class="list" style="padding:0">
+            <div class="opt"><span class="av p">LG<span class="g"><i data-lucide="user"></i></span></span><div class="n">Laura Giraldo<small>Te enviaste 4 veces</small></div><span class="sugg">Coincide</span></div>
+            <div class="opt"><span class="av p">JP<span class="g"><i data-lucide="user"></i></span></span><div class="n">Juan Pérez<small>Te debe $180.000</small></div></div>
+            <div class="opt"><span class="av p">MG<span class="g"><i data-lucide="user"></i></span></span><div class="n">Mamá<small>Pago fijo · día 5</small></div></div>
+            <div class="new"><span class="plus"><i data-lucide="plus"></i></span>Nueva persona «Laura G»</div>
+          </div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="col">
+      <h3>3 · After choosing: it learns, once</h3>
+      <p>A single question turns the bank text into a <b>pattern</b> for that destinatario. "Sí" also applies it to the past ones (shown as "y 3 anteriores"). For a persona there's no category question: money with people varies. A comercio also gets "¿Siempre Domicilios?".</p>
+      <div class="phone"><div class="scr">
+        <div class="page full"></div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="handle"></div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <span class="av p">LG<span class="g"><i data-lucide="user"></i></span></span>
+            <div style="flex:1"><div style="font:600 16px var(--ui)">Laura Giraldo</div><div style="font:400 13px var(--ui);color:var(--muted)">Asignada a este movimiento</div></div>
+            <i data-lucide="check" style="width:20px;height:20px"></i>
+          </div>
+          <div class="ask">
+            <b>¿Las transferencias «NEQUI A LAURA G» son siempre Laura?</b>
+            <span style="font:400 13px var(--ui);color:var(--muted)">Así las reconozco solas. También las 3 anteriores.</span>
+            <div class="btns"><span class="no">Solo esta</span><span class="yes">Sí, siempre</span></div>
+          </div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="col">
+      <h3>4 · A comercio's sheet (tap "Rappi")</h3>
+      <p>Facts first: how much this cycle and how often, a bar per cycle the phone holds. Then what you can tune: category and policy, the <b>patterns</b> it's recognized by, and its pago fijo if it has one. Movements with "Ver los 18" (Movimientos filtered). The rare actions sit quiet at the end.</p>
+      <div class="phone"><div class="scr">
+        <div class="page">
+          <div class="hd"><span class="sq"><i data-lucide="chevron-left"></i></span><b></b><span class="ph"></span></div>
+          <div class="who"><span class="av m lg">R<span class="g"><i data-lucide="store"></i></span></span><div class="nm">Rappi</div><div class="kd"><i data-lucide="store"></i>Comercio · Domicilios</div></div>
+          <div class="card"><div class="stats"><div><small>Este ciclo</small><b>$148.000</b><small>6 veces</small></div><div><small>Por ciclo</small><b>≈ $120.000</b><small>últimos 3</small></div></div>
+            <div class="bars"><span style="height:55%"></span><span style="height:80%"></span><span class="now" style="height:100%"></span></div></div>
+          <div class="card">
+            <div class="row"><span class="k">Categoría</span><span class="v">Domicilios · Siempre <i class="chev" data-lucide="chevron-right"></i></span></div>
+            <div class="row"><span class="k">Pago fijo</span><span class="v e">No es fijo</span></div>
+          </div>
+          <div class="sec"><span>Lo reconozco por</span><span class="add"><i data-lucide="plus"></i>Agregar</span></div>
+          <div class="card">
+            <div class="pat"><code>RAPPI*</code><small>42 veces</small></div>
+            <div class="pat"><code>RAPPI COLOMBIA</code><small>6 veces</small></div>
+          </div>
+          <div class="sec"><span>Movimientos</span></div>
+          <div class="card list">
+            <div class="mv"><span class="av m">R<span class="g"><i data-lucide="store"></i></span></span><div class="n">Hoy 12:41<small>Bancolombia</small></div><div class="amt out">−$32.000</div></div>
+            <div class="see">Ver los 18 <i class="chev" data-lucide="chevron-right"></i></div>
+          </div>
+          <div class="quiet"><span>Renombrar</span><span>Unir con otro</span><span>Es una persona</span></div>
+        </div>
+        <div class="tabs">
+          <div class="tab"><span class="pl"><i data-lucide="home"></i></span>Inicio</div>
+          <div class="tab on"><span class="pl"><i data-lucide="list"></i></span>Movimientos</div>
+          <div><div class="fab"><i data-lucide="plus"></i></div></div>
+          <div class="tab"><span class="pl"><i data-lucide="calendar"></i></span>Pagos</div>
+          <div class="tab"><span class="pl"><i data-lucide="inbox"></i><span class="badge">4</span></span>Revisar</div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="col">
+      <h3>5 · A persona's sheet (tap "Laura")</h3>
+      <p>The same sheet, with one extra block at the top: <b>what you owe each other</b>, and its two actions (register a payment, remind by WhatsApp). When you're square, that block shrinks to one line. Its stats count both directions: what you sent and what you received.</p>
+      <div class="phone"><div class="scr">
+        <div class="page">
+          <div class="hd"><span class="sq"><i data-lucide="chevron-left"></i></span><b></b><span class="ph"></span></div>
+          <div class="who"><span class="av p lg">LG<span class="g"><i data-lucide="user"></i></span></span><div class="nm">Laura Giraldo</div><div class="kd"><i data-lucide="user"></i>Persona · Familia</div></div>
+          <div class="card bal">
+            <div class="top"><span>Te debe</span><b>$80.000</b></div>
+            <div style="font:400 12.5px var(--ui);color:var(--muted)">Mercado compartido · hace 12 días</div>
+            <div class="btns"><span class="pri"><i data-lucide="check"></i>Registrar pago</span><span><i data-lucide="message-circle"></i>Recordarle</span></div>
+          </div>
+          <div class="card"><div class="stats"><div><small>Le enviaste</small><b>$250.000</b><small>este ciclo</small></div><div><small>Te envió</small><b>$45.000</b><small>este ciclo</small></div></div></div>
+          <div class="card">
+            <div class="row"><span class="k">Categoría</span><span class="v">Familia · Pregúntame <i class="chev" data-lucide="chevron-right"></i></span></div>
+          </div>
+          <div class="sec"><span>Lo reconozco por</span><span class="add"><i data-lucide="plus"></i>Agregar</span></div>
+          <div class="card">
+            <div class="pat"><code>NEQUI A LAURA G</code><small>4 veces</small></div>
+            <div class="pat"><code>300•••4567</code><small>teléfono</small></div>
+          </div>
+          <div class="quiet"><span>Renombrar</span><span>Unir con otra</span><span>Es un comercio</span></div>
+        </div>
+        <div class="tabs">
+          <div class="tab"><span class="pl"><i data-lucide="home"></i></span>Inicio</div>
+          <div class="tab on"><span class="pl"><i data-lucide="list"></i></span>Movimientos</div>
+          <div><div class="fab"><i data-lucide="plus"></i></div></div>
+          <div class="tab"><span class="pl"><i data-lucide="calendar"></i></span>Pagos</div>
+          <div class="tab"><span class="pl"><i data-lucide="inbox"></i><span class="badge">4</span></span>Revisar</div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="col">
+      <h3>6 · The list (Ajustes › Destinatarios)</h3>
+      <p>The same Comercios · Personas tabs as the picker. Each row says how often you deal with it, and for people, the open balance. From here you create, merge and fix. It isn't a daily screen: the daily way in is tapping the destinatario on a movement.</p>
+      <div class="phone"><div class="scr">
+        <div class="page">
+          <div class="hd"><span class="sq"><i data-lucide="chevron-left"></i></span><b>Destinatarios</b><span class="sq"><i data-lucide="plus"></i></span></div>
+          <div class="search"><i data-lucide="search"></i>Buscar</div>
+          <div class="seg"><span><i data-lucide="store"></i>Comercios · 38</span><span class="on"><i data-lucide="user"></i>Personas · 6</span></div>
+          <div class="card list">
+            <div class="mv"><span class="av p">JP<span class="g"><i data-lucide="user"></i></span></span><div class="n">Juan Pérez<small>Te debe $180.000</small></div><i class="chev" data-lucide="chevron-right"></i></div>
+            <div class="mv"><span class="av p">LG<span class="g"><i data-lucide="user"></i></span></span><div class="n">Laura Giraldo<small>Te debe $80.000 · 4 este ciclo</small></div><i class="chev" data-lucide="chevron-right"></i></div>
+            <div class="mv"><span class="av p">MG<span class="g"><i data-lucide="user"></i></span></span><div class="n">Mamá<small>Pago fijo · día 5</small></div><i class="chev" data-lucide="chevron-right"></i></div>
+            <div class="mv"><span class="av p">CR<span class="g"><i data-lucide="user"></i></span></span><div class="n">Caro Ruiz<small>Le debes $45.000</small></div><i class="chev" data-lucide="chevron-right"></i></div>
+            <div class="mv"><span class="av p">AN<span class="g"><i data-lucide="user"></i></span></span><div class="n">Ana<small>A paz y salvo</small></div><i class="chev" data-lucide="chevron-right"></i></div>
+          </div>
+        </div>
+        <div class="tabs">
+          <div class="tab on"><span class="pl"><i data-lucide="home"></i></span>Inicio</div>
+          <div class="tab"><span class="pl"><i data-lucide="list"></i></span>Movimientos</div>
+          <div><div class="fab"><i data-lucide="plus"></i></div></div>
+          <div class="tab"><span class="pl"><i data-lucide="calendar"></i></span>Pagos</div>
+          <div class="tab"><span class="pl"><i data-lucide="inbox"></i><span class="badge">4</span></span>Revisar</div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <h2>How it works underneath (no new tables)</h2>
+  <ul>
+    <li><b>Same model as v1:</b> <code>destinatarios.kind</code> (comercio | persona), <code>destinatario_rules</code> (patterns, priority, first match wins), <code>default_category_id</code>, <code>transactions.destinatario_id</code>. "Lo reconozco por" lists the rules with their <code>match_count</code>.</li>
+    <li><b>Debts:</b> <code>personal_debts.destinatario_id</code> already points to the person. The "Te debe" block reads from there, so it's the same number as Te deben.</li>
+    <li><b>Policy</b> (Siempre / Casi siempre / Pregúntame) is <code>merchant_policy</code> from the plan, extended to people. Default: comercio → Siempre once you choose a category; persona → Pregúntame.</li>
+    <li><b>Pago fijo:</b> recurring templates already carry <code>destinatario_id</code>; the sheet shows it when there is one and links to Pagos.</li>
+    <li><b>Changing the kind</b> ("Es una persona") keeps its patterns and movements; it only changes the shape, the default policy and whether the debt block appears.</li>
+    <li><b>v2 commands:</b> <code>setDestinatario</code> (on a movement, with "siempre" → adds a rule and applies it to the past ones), <code>createDestinatario</code>, <code>renameDestinatario</code>, <code>mergeDestinatarios</code>, <code>setDestinatarioPolicy</code>, <code>addDestinatarioRule</code> / <code>removeDestinatarioRule</code>. These replace the plan's <code>renameMerchant</code>/<code>mergeMerchants</code>.</li>
+  </ul>
+
+  <h2>To decide</h2>
+  <div class="q"><b>1. The shapes:</b> squircle + store for comercio, outlined circle + person for persona, with 1 vs 2 initials. Does it work for you, or would you rather have a real photo/logo later (for example a contact's picture)?</div>
+  <div class="q"><b>2. Whether a person gets a category:</b> I propose an optional one (e.g. Familia) with "Pregúntame" by default. The alternative is that money with people never has a category and is grouped as "Personas".</div>
+  <div class="q"><b>3. Who can be a destinatario:</b> beyond comercios and personas, are there others? E.g. "Arrendador", "Colegio", "EPS". I'd treat them as comercios (a company or institution) and keep only two kinds.</div>
+</main>
+<script>lucide.createIcons();</script>
+</body>
+</html>
