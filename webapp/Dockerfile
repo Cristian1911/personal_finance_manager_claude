@@ -11,6 +11,8 @@ FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY webapp/package.json ./webapp/package.json
 COPY packages/shared/package.json ./packages/shared/package.json
+# pnpm applies the root package.json's patchedDependencies on every install.
+COPY patches ./patches
 RUN --mount=type=secret,id=npm_token \
     set -eu; \
     printf "registry=https://registry.npmjs.org/\n@types:registry=https://registry.npmjs.org/\nalways-auth=false\n" > .npmrc; \
