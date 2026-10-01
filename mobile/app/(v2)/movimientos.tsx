@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useDeferredValue, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -57,9 +57,11 @@ export default function MovimientosScreen() {
   }, [userId, router]);
   useFocusEffect(useCallback(() => { void reload(); }, [reload]));
 
+  // Typing stays at full speed; the list catches up a frame later.
+  const search = useDeferredValue(query);
   const view = useMemo(
-    () => data && movimientosView({ today: data.today, transactions: data.transactions, accounts: data.accounts, cycles: data.cycles, index, filter, query }),
-    [data, index, filter, query],
+    () => data && movimientosView({ today: data.today, transactions: data.transactions, accounts: data.accounts, cycles: data.cycles, index, filter, query: search }),
+    [data, index, filter, search],
   );
   const detalle = useMemo(() => {
     const tx = openId && data?.transactions.find((x) => x.id === openId);
@@ -67,14 +69,19 @@ export default function MovimientosScreen() {
   }, [openId, data]);
 
   const run = useCallback(async (type: CommandType, payload: unknown) => {
-    const { result } = await runLocalCommand({ type, userId, payload });
-    if (result.status === "rejected") Alert.alert("No se pudo guardar", result.error ?? "Intenta de nuevo.");
+    try {
+      const { result } = await runLocalCommand({ type, userId, payload });
+      if (result.status === "rejected") Alert.alert("No se pudo guardar", result.error ?? "Intenta de nuevo.");
+    } catch (e) {
+      console.warn("[v2 movimientos] command failed", e);
+      Alert.alert("No se pudo guardar", "Intenta de nuevo.");
+    }
     await reload();
   }, [userId, reload]);
 
   const onAccountCounts = useCallback((accountId: string, counts: boolean) => {
     Alert.alert(
-      counts ? "¿Que esta cuenta cuente?" : "¿Que esta cuenta deje de contar?",
+      counts ? "¿Quieres que esta cuenta cuente?" : "¿Quieres que esta cuenta deje de contar?",
       counts
         ? "Su saldo y todos sus movimientos vuelven a mover tu Disponible."
         : "Su saldo y todos sus movimientos dejan de mover tu Disponible. Sirve para ahorros o plata aparte.",
@@ -86,6 +93,7 @@ export default function MovimientosScreen() {
   }, [run]);
 
   const onRow = useCallback((id: string) => setOpenId(id), []);
+  const back = useCallback(() => (router.canGoBack() ? router.back() : router.replace("/inicio" as never)), [router]);
   const tone = useMemo(() => toneColors(t), [t]);
 
   if (!view) {
@@ -94,7 +102,7 @@ export default function MovimientosScreen() {
         {error ? (
           <>
             <Text style={{ color: t.colors.bad.text, fontFamily: t.fonts.uiMedium, textAlign: "center" }} accessibilityRole="alert">{error}</Text>
-            <Pressable onPress={() => router.back()} accessibilityRole="button" style={[styles.ghost, { borderColor: t.colors.control }]}>
+            <Pressable onPress={back} accessibilityRole="button" style={[styles.ghost, { borderColor: t.colors.control }]}>
               <Text style={{ color: t.colors.ink, fontFamily: t.fonts.uiSemibold, fontSize: 14 }}>Volver</Text>
             </Pressable>
           </>
@@ -106,7 +114,7 @@ export default function MovimientosScreen() {
   const header = (
     <View style={styles.headerBlock}>
       <View style={styles.titleRow}>
-        <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Volver" hitSlop={6} style={[styles.square, { borderColor: t.colors.control }]}>
+        <Pressable onPress={back} accessibilityRole="button" accessibilityLabel="Volver" hitSlop={6} style={[styles.square, { borderColor: t.colors.control }]}>
           <ChevronLeft size={18} color={t.colors.ink} strokeWidth={2.2} />
         </Pressable>
         <Text style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]} accessibilityRole="header">Movimientos</Text>
@@ -191,6 +199,12 @@ const toneColors = (t: ReturnType<typeof useV2Theme>): ToneColors => ({
   out: t.colors.bad.text, in: t.colors.ok.text, card: t.colors.muted, neutral: t.colors.muted,
 });
 
+// The view is rebuilt on every keystroke and after every edit, so memo compares content:
+// only the rows (and day totals) that changed redraw.
+const sameRow = (a: MovimientoRow, b: MovimientoRow) =>
+  a.id === b.id && a.title === b.title && a.amount === b.amount && a.tone === b.tone
+  && a.status === b.status && a.time === b.time && a.account === b.account;
+
 const DayGroup = memo(function DayGroup({ group, tone, onRow }: { group: MovimientosGroup; tone: ToneColors; onRow: (id: string) => void }) {
   const t = useV2Theme();
   return (
@@ -206,7 +220,8 @@ const DayGroup = memo(function DayGroup({ group, tone, onRow }: { group: Movimie
       </View>
     </View>
   );
-});
+}, (p, n) => p.tone === n.tone && p.onRow === n.onRow && p.group.label === n.group.label && p.group.total === n.group.total
+  && p.group.rows.length === n.group.rows.length && p.group.rows.every((r, i) => sameRow(r, n.group.rows[i])));
 
 const Row = memo(function Row({ row: r, color, last, onPress }: { row: MovimientoRow; color: string; last: boolean; onPress: (id: string) => void }) {
   const t = useV2Theme();
@@ -240,13 +255,13 @@ const Row = memo(function Row({ row: r, color, last, onPress }: { row: Movimient
           )}
           <View style={[styles.tag, { backgroundColor: t.colors.sunk }]}>
             <View style={[styles.dot, { backgroundColor: t.colors.muted }]} />
-            <Text style={[styles.tagText, { color: t.colors.muted, fontFamily: t.fonts.mono }]}>{r.account}</Text>
+            <Text style={[styles.tagText, { color: t.colors.muted, fontFamily: t.fonts.mono }]} numberOfLines={1}>{r.account}</Text>
           </View>
         </View>
       </View>
     </Pressable>
   );
-});
+}, (p, n) => sameRow(p.row, n.row) && p.color === n.color && p.last === n.last && p.onPress === n.onPress);
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16, padding: 24 },
@@ -269,10 +284,10 @@ const styles = StyleSheet.create({
   rowBody: { flex: 1, minWidth: 0, gap: 6 },
   rowTop: { flexDirection: "row", alignItems: "baseline", gap: 10 },
   rowTitle: { flex: 1, minWidth: 0, fontSize: 15 },
-  rowAmount: { fontSize: 15, fontVariant: ["tabular-nums"] },
+  rowAmount: { flexShrink: 0, fontSize: 15, fontVariant: ["tabular-nums"] },
   rowMeta: { flexDirection: "row", alignItems: "center", gap: 6, minWidth: 0 },
   status: { flexShrink: 1, height: 22, paddingHorizontal: 8, borderRadius: 6, borderWidth: 1, justifyContent: "center" },
-  tag: { height: 22, paddingHorizontal: 7, borderRadius: 6, flexDirection: "row", alignItems: "center", gap: 5 },
+  tag: { flexShrink: 1, height: 22, paddingHorizontal: 7, borderRadius: 6, flexDirection: "row", alignItems: "center", gap: 5 },
   tagText: { fontSize: 11 },
   dot: { width: 6, height: 6, borderRadius: 3 },
 });

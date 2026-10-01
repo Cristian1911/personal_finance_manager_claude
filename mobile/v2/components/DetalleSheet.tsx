@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Eye, EyeOff, Split, Users, type LucideIcon } from "lucide-react-native";
 import type { DetalleView } from "@zeta/shared";
@@ -31,40 +31,54 @@ export function DetalleSheet({
   const insets = useSafeAreaInsets();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
-  useEffect(() => setEditing(false), [detalle?.id]);
+  // The note saves once: submit, blur or closing the sheet, whichever comes first.
+  const editingRef = useRef(false);
+  // The last movement shown stays drawn while the sheet slides away.
+  const last = useRef<DetalleView | null>(null);
+  if (detalle) last.current = detalle;
+  const d = detalle ?? last.current;
+  useEffect(() => { setEditing(false); editingRef.current = false; setDraft(""); }, [detalle?.id]);
 
-  const d = detalle;
   const saveNote = () => {
+    if (!editingRef.current) return;
+    editingRef.current = false;
     setEditing(false);
     const next = draft.trim() || null;
     if (d && next !== d.note) onNote(next);
   };
+  const close = () => { saveNote(); onClose(); };
 
   return (
-    <Modal visible={!!d} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={[styles.scrim, { backgroundColor: t.colors.scrim }]} onPress={onClose} accessible={false} />
+    <Modal visible={!!detalle} transparent animationType="slide" onRequestClose={close} statusBarTranslucent>
+      <Pressable style={[styles.scrim, { backgroundColor: t.colors.scrim }]} onPress={close} accessible={false} />
       {d && (
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.anchor} pointerEvents="box-none">
-          <View style={[styles.sheet, { backgroundColor: t.colors.card, paddingBottom: insets.bottom + 20 }]} accessibilityViewIsModal>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.anchor} pointerEvents="box-none">
+          <View
+            style={[styles.sheet, { backgroundColor: t.colors.card, paddingBottom: insets.bottom + 20 }]}
+            accessibilityViewIsModal
+            onAccessibilityEscape={close}
+          >
             <View style={[styles.handle, { backgroundColor: t.colors.control }]} />
-            <View style={styles.head} accessible accessibilityLabel={`${d.title}, ${d.amount.replace(/−/g, "menos ").replace(/^\+/, "más ")}, ${d.subtitle}`}>
+            <View style={styles.head} accessible accessibilityRole="header" accessibilityLabel={`${d.title}, ${d.amount.replace(/−/g, "menos ").replace(/^\+/, "más ")}, ${d.subtitle}`}>
               <View style={[styles.avatar, { backgroundColor: t.colors.sunk }]}>
                 <Text style={{ fontSize: 14, color: t.colors.muted, fontFamily: t.fonts.uiSemibold }}>{d.initial}</Text>
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={{ fontSize: 18, color: t.colors.ink, fontFamily: t.fonts.uiSemibold }} numberOfLines={1} accessibilityRole="header">{d.title}</Text>
+                <Text style={{ fontSize: 18, color: t.colors.ink, fontFamily: t.fonts.uiSemibold }} numberOfLines={1}>{d.title}</Text>
                 <Text style={{ fontSize: 13, color: t.colors.muted, fontFamily: t.fonts.ui }}>{d.subtitle}</Text>
               </View>
               <Text style={{ fontSize: 22, color: t.colors.ink, fontFamily: t.fonts.numberSemibold, fontVariant: ["tabular-nums"] }}>{d.amount}</Text>
             </View>
 
+            <ScrollView style={styles.middle} contentContainerStyle={styles.middleContent} keyboardShouldPersistTaps="handled" bounces={false}>
             <View>
               <Pressable
                 disabled={!d.counts.accountToggle}
                 onPress={() => onAccountCounts(d.counts.accountId, d.counts.accountToggle !== "on")}
-                accessibilityRole={d.counts.accountToggle ? "button" : undefined}
+                accessibilityRole={d.counts.accountToggle ? "switch" : undefined}
+                accessibilityState={d.counts.accountToggle ? { checked: d.counts.accountToggle === "on" } : undefined}
                 accessibilityLabel={`Cuenta para Disponible: ${d.counts.value}`}
-                accessibilityHint={d.counts.accountToggle ? "Cambia si esta cuenta cuenta para Disponible" : undefined}
+                accessibilityHint={d.counts.accountToggle ? "Cambia si esta cuenta suma a tu Disponible" : undefined}
                 style={[styles.row, { borderTopColor: t.colors.line }]}
               >
                 <Text style={[styles.rowLabel, { color: t.colors.muted, fontFamily: t.fonts.uiMedium }]}>Cuenta para Disponible</Text>
@@ -88,7 +102,7 @@ export function DetalleSheet({
                   />
                 ) : (
                   <Pressable
-                    onPress={() => { setDraft(d.note ?? ""); setEditing(true); }}
+                    onPress={() => { setDraft(d.note ?? ""); editingRef.current = true; setEditing(true); }}
                     accessibilityRole="button"
                     accessibilityLabel={d.note ? `Nota: ${d.note}. Editar` : "Agregar nota"}
                     hitSlop={8}
@@ -115,7 +129,9 @@ export function DetalleSheet({
               />
             </View>
 
-            <Pressable onPress={onClose} accessibilityRole="button" style={[styles.done, { backgroundColor: t.colors.button }]}>
+            </ScrollView>
+
+            <Pressable onPress={close} accessibilityRole="button" style={[styles.done, { backgroundColor: t.colors.button }]}>
               <Text style={{ fontSize: 15, color: t.colors.onButton, fontFamily: t.fonts.uiSemibold }}>Listo</Text>
             </Pressable>
           </View>
@@ -138,7 +154,9 @@ function Action({ icon: Icon, label, hint, onPress }: { icon: LucideIcon; label:
 const styles = StyleSheet.create({
   scrim: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   anchor: { flex: 1, justifyContent: "flex-end" },
-  sheet: { borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingTop: 8, paddingHorizontal: 20, gap: 12 },
+  sheet: { maxHeight: "92%", borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingTop: 8, paddingHorizontal: 20, gap: 12 },
+  middle: { flexShrink: 1 },
+  middleContent: { gap: 12 },
   handle: { width: 38, height: 5, borderRadius: 3, alignSelf: "center" },
   head: { flexDirection: "row", alignItems: "center", gap: 12 },
   avatar: { width: 44, height: 44, borderRadius: 13, alignItems: "center", justifyContent: "center" },
@@ -146,8 +164,8 @@ const styles = StyleSheet.create({
   rowLabel: { flex: 1, fontSize: 14 },
   rowValue: { fontSize: 14 },
   underline: { textDecorationLine: "underline" },
-  noteValue: { maxWidth: "60%" },
-  noteInput: { flex: 1.4, height: 36, borderWidth: 1.5, borderRadius: 9, paddingHorizontal: 10, fontSize: 14 },
+  noteValue: { maxWidth: "60%", minHeight: 44, justifyContent: "center" },
+  noteInput: { flex: 1.4, height: 44, borderWidth: 1.5, borderRadius: 9, paddingHorizontal: 10, fontSize: 14 },
   source: { fontSize: 12, lineHeight: 17, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, overflow: "hidden" },
   actions: { flexDirection: "row", gap: 8 },
   action: { flex: 1, height: 62, borderRadius: 12, borderWidth: 1.5, alignItems: "center", justifyContent: "center", gap: 4 },

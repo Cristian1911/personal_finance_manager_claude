@@ -65,6 +65,15 @@ describe.skipIf(!enabled)("engine on zeta-dev (real Postgres)", { timeout: 30_00
     expect((await applyCommand(s, newer)).status).toBe("applied");
     expect((await applyCommand(s, older)).status).toBe("superseded");
     expect((await s.getTransaction(userId, txId))?.notes).toBe("nueva");
+
+    // Ignorar (Detalle): through the view's INSTEAD OF UPDATE trigger, latest choice wins.
+    const ignore = (clientTs: string, excluded: boolean) => ({
+      ...base, id: crypto.randomUUID(), type: "setTransactionExcluded" as const, clientTs, payload: { transactionId: txId, excluded },
+    });
+    expect((await applyCommand(s, ignore("2026-09-18T17:00:00.000Z", true))).status).toBe("applied");
+    expect((await applyCommand(s, ignore("2026-09-18T16:00:00.000Z", false))).status).toBe("superseded");
+    const after = await readInicioData(createUserScopedPgDriver(pool, userId), userId, "2026-09-01");
+    expect(after.transactions.find((t) => t.id === txId)).toMatchObject({ isExcluded: true, notes: "nueva", amount: 25000 });
   });
 
   it("keeps both balance changes when two captures on one account run at the same time", async () => {
