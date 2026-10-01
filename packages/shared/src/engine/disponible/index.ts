@@ -39,7 +39,33 @@ export {
   type StoredTemplate,
   type StoredTransaction,
 } from "./movements";
-export { cycleLabel, disponibleBlockView, type DisponibleBlockView } from "./view";
+export { cycleLabel, disponibleBlockView, shortDate, signedPesos, type DisponibleBlockView } from "./view";
+export {
+  CARD_CUT_SOON_DAYS,
+  HOY_AMBER_PERCENT,
+  TE_DEBEN_AMBER_DAYS,
+  TE_DEBEN_RED_DAYS,
+  ULTIMOS_COLLAPSED,
+  ULTIMOS_EXPANDED,
+  buildInicioWidgets,
+  flujoWidget,
+  hoyWidget,
+  pagoWidget,
+  pickAutoOpen,
+  tarjetaWidget,
+  teDebenWidget,
+  ultimosWidget,
+  type CardSummary,
+  type InicioWidget,
+  type InicioWidgetsInput,
+  type PersonOwing,
+  type WidgetAttention,
+  type WidgetKey,
+  type WidgetLevel,
+  type WidgetRow,
+  type WidgetSize,
+  type WidgetVisual,
+} from "./widgets";
 export {
   INICIO_LOOKBACK_DAYS,
   SALARY_SHARE_PERCENT,

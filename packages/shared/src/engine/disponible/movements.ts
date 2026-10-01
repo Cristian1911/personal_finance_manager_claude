@@ -24,6 +24,8 @@ export interface StoredTransaction {
   /** The effective class: flow_class_override ?? flow_class. */
   flowClass: string | null;
   captureMethod?: string | null;
+  /** clean_description: what Últimos movimientos shows. */
+  description?: string | null;
   status?: string | null;
   isExcluded?: boolean | null;
   /** Merged into another row (a duplicate): that row counts instead. */

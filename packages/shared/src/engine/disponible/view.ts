@@ -38,7 +38,8 @@ const APPROX_NOTE: Record<ApproxReason, string> = {
 };
 
 /** A real minus sign, like the prototype: "−$64.000". */
-const money = (n: number) => (n < 0 ? `−${formatPesos(-n)}` : formatPesos(n));
+export const signedPesos = (n: number) => (n < 0 ? `−${formatPesos(-n)}` : formatPesos(n));
+const money = signedPesos;
 /** "$14,4 M" (one decimal, comma, dropped when ",0"); under a million the full amount. */
 export function shortMoney(n: number): string {
   const abs = Math.abs(n);
@@ -113,6 +114,8 @@ export function disponibleBlockView(input: {
 
 const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 const dayMonth = (d: IsoDate) => ({ day: Number(d.slice(8, 10)), month: MONTHS[Number(d.slice(5, 7)) - 1] });
+/** "30 sep". */
+export const shortDate = (d: IsoDate) => `${dayMonth(d).day} ${dayMonth(d).month}`;
 
 /** Inicio's header: "Ciclo 15 – 29 sep", or "Ciclo 30 sep – 14 oct" across months. */
 export function cycleLabel(cycle: { start: IsoDate; end: IsoDate }): string {

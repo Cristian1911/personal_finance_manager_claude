@@ -34,7 +34,7 @@ export async function readInicioData(driver: SqlDriver, userId: string, since: s
   const txRows = await q<Record<string, unknown>>(
     `SELECT id, account_id, amount, currency_code, direction,
             ${pg ? "transaction_date::text" : "transaction_date"} AS transaction_date,
-            capture_method, created_at
+            capture_method, created_at, clean_description
        FROM transactions
       WHERE user_id = ? AND transaction_date >= ?
       ORDER BY transaction_date, id`,
@@ -59,6 +59,7 @@ export async function readInicioData(driver: SqlDriver, userId: string, since: s
       currencyCode: String(r.currency_code),
       captureMethod: (r.capture_method as string | null) ?? null,
       createdAt: r.created_at == null ? null : toIso(r.created_at),
+      description: (r.clean_description as string | null) ?? null,
       // The phone's v2 tables have no flow class yet: the classifier treats
       // unclassified rows like the web (outflow = spend, inflow = income).
       flowClass: null,

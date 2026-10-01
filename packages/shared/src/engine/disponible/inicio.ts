@@ -6,6 +6,7 @@ import { computeDisponible, type DisponibleResult, type ExpectedIncome } from ".
 import { isLiveTransaction, toDisponibleMovements, type OccurrenceLink, type StoredTransaction } from "./movements";
 import { computeVerdict, type DisponibleVerdict, type DisponibleVerdictMemo } from "./verdict";
 import { disponibleBlockView, type DisponibleBlockView } from "./view";
+import { buildInicioWidgets, type CardSummary, type InicioWidget, type PersonOwing } from "./widgets";
 
 /** An account as Inicio needs it; `countsInDisponible` is null when the user never chose. */
 export interface InicioAccount {
@@ -36,6 +37,7 @@ export type InicioState =
       result: DisponibleResult;
       verdict: DisponibleVerdict;
       view: DisponibleBlockView;
+      widgets: InicioWidget[];
     };
 
 const isDebt = (type: string) => type === "CREDIT_CARD" || type === "LOAN";
@@ -67,6 +69,10 @@ export function buildInicio(input: {
   memo?: DisponibleVerdictMemo | null;
   /** Te deben total: shown beside the number, never added. */
   teDeben?: number;
+  /** Who owes you (Te deben widget); none on the phone until people sync (M4). */
+  people?: PersonOwing[];
+  /** Cards with statement data (one Tarjeta widget each); none on the phone until M2. */
+  cards?: CardSummary[];
 }): InicioState {
   const { settings, today } = input;
   const schedule = settings?.schedule;
@@ -153,5 +159,13 @@ export function buildInicio(input: {
     memo: input.memo,
   });
   const view = disponibleBlockView({ result, verdict, today, nextPayday: cycle.nextPayday, teDeben: input.teDeben ?? 0 });
-  return { status: "ready", cycle, result, verdict, view };
+  const widgets = buildInicioWidgets({
+    today, cycle, result, movements, counted,
+    transactions: input.transactions,
+    obligations: [],
+    balances: input.accounts.filter((a) => counted.has(a.id)).map((a) => ({ accountId: a.id, balance: a.currentBalance })),
+    people: input.people,
+    cards: input.cards,
+  });
+  return { status: "ready", cycle, result, verdict, view, widgets };
 }
