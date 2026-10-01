@@ -1,5 +1,6 @@
 import { Fragment, memo, useCallback, useEffect, useMemo, useState } from "react";
 import { LayoutAnimation, StyleSheet, Text, View } from "react-native";
+import { useReducedMotion } from "react-native-reanimated";
 import type { InicioWidget } from "@zeta/shared";
 import { useV2Theme } from "../../theme/ThemeProvider";
 import { WidgetBody, WidgetCard } from "./WidgetCard";
@@ -38,15 +39,16 @@ export const InicioWidgetGrid = memo(function InicioWidgetGrid({
   autoOpen?: string | null;
 }) {
   const t = useV2Theme();
-  const [open, setOpen] = useState<string | null>(null);
+  const [open, setOpen] = useState<string | null>(() => autoOpen ?? null);
+  const reduceMotion = useReducedMotion();
   useEffect(() => {
     if (autoOpen) setOpen(autoOpen);
   }, [autoOpen]);
 
   const toggle = useCallback((id: string) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    if (!reduceMotion) LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setOpen((o) => (o === id ? null : id));
-  }, []);
+  }, [reduceMotion]);
   const rows = useMemo(() => packRows(widgets), [widgets]);
 
   return (
@@ -64,7 +66,7 @@ export const InicioWidgetGrid = memo(function InicioWidgetGrid({
               {row.length === 1 && row[0].size === "half" && <View style={styles.cell} />}
             </View>
             {openHalf && (
-              <View style={[styles.panel, { backgroundColor: t.colors.card }, t.shadow]}>
+              <View style={[styles.panel, { backgroundColor: t.colors.card }, t.shadow]} accessibilityLiveRegion="polite">
                 <Text style={[styles.panelTitle, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]} accessibilityRole="header">
                   {openHalf.title}
                 </Text>

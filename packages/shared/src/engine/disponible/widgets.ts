@@ -3,7 +3,7 @@ import { addDays, diffDays, type IsoDate } from "./dates";
 import type { DisponibleMovement, DisponibleResult, Obligation } from "./disponible";
 import type { StoredTransaction } from "./movements";
 import { BILL_RISK_DAYS, CUIDADO_PERCENT, findBillAtRisk, formatPesos } from "./verdict";
-import { shortDate, signedPesos } from "./view";
+import { shortDate, shortMoney, signedPesos } from "./view";
 
 /**
  * Inicio's first six widgets (docs/mlp/13-widget-design-rules.md, spec
@@ -46,6 +46,8 @@ export interface InicioWidget {
   empty: boolean;
   /** Collapsed: one primary value (semibold, auto-fit), or null. */
   value: string | null;
+  /** "$14,3 M": drawn only when `value` can't fit at 62% (13 §Visual); equals `value` under a million. */
+  valueShort: string | null;
   /** Collapsed: at most 3 muted words. */
   hint: string | null;
   /** Collapsed sentence of full widgets that show a visual plus one line (Tu flujo). */
@@ -119,9 +121,15 @@ const APPROX = "≈\u00a0";
 const days = (n: number) => `${n} ${n === 1 ? "día" : "días"}`;
 const dayNumber = (d: IsoDate) => Number(d.slice(8, 10));
 
+/** Sets the collapsed value and its short form ("≈ $14,3 M"). */
+function setValue(w: InicioWidget, amount: number, prefix = ""): void {
+  w.value = `${prefix}${signedPesos(amount)}`;
+  w.valueShort = `${prefix}${shortMoney(amount)}`;
+}
+
 function base(key: InicioWidgetKey, title: string, size: InicioWidgetSize): InicioWidget {
   return {
-    key, id: key, title, size, attention: null, empty: false, value: null, hint: null, caption: null,
+    key, id: key, title, size, attention: null, empty: false, value: null, valueShort: null, hint: null, caption: null,
     visual: null, previewRows: [], lead: null, rows: [], totals: [], note: null,
   };
 }
@@ -213,7 +221,7 @@ export function hoyWidget(i: InicioWidgetsInput): InicioWidget {
   else if (spent > 0 && percent >= HOY_AMBER_PERCENT) level = "amber";
   w.attention = level === "red" ? { level, reason: "Te pasaste hoy" } : level ? { level, reason: "Casi al tope" } : null;
 
-  w.value = signedPesos(left);
+  setValue(w, left);
   w.visual = { kind: "bar", percent: clampPercent(percent), level };
   w.lead = level === "red"
     ? `Llevas ${formatPesos(spent)} de ${formatPesos(allowance)}. Mañana tendrás un poco menos por día.`
@@ -249,7 +257,7 @@ export function pagoWidget(i: InicioWidgetsInput): InicioWidget {
   if (atRisk) w.attention = { level: "red", reason: "No alcanza" };
   else if (inDays <= BILL_RISK_DAYS) w.attention = { level: "amber", reason: whenLabel(inDays) };
 
-  w.value = `${next.line.estimated ? APPROX : ""}${signedPesos(next.line.amount)}`;
+  setValue(w, next.line.amount, next.line.estimated ? APPROX : "");
   w.hint = `${next.line.label}, ${shortDate(next.dueDate)}`;
   const until = i.cycle.nextPayday ? ` antes del ${dayNumber(i.cycle.nextPayday)}` : "";
   w.lead = `Por pagar${until}: ${signedPesos(i.result.porPagar.total)}`;
@@ -296,7 +304,7 @@ export function teDebenWidget(i: InicioWidgetsInput): InicioWidget {
   if (oldest >= TE_DEBEN_RED_DAYS) w.attention = { level: "red", reason: `Hace ${days(oldest)}` };
   else if (oldest >= TE_DEBEN_AMBER_DAYS) w.attention = { level: "amber", reason: `Hace ${days(oldest)}` };
 
-  w.value = signedPesos(sum(people.map((p) => p.amount)));
+  setValue(w, sum(people.map((p) => p.amount)));
   w.visual = { kind: "initials", letters: people.slice(0, 3).map((p) => (p.name.trim()[0] ?? "?").toUpperCase()) };
   w.rows = people.map((p) => {
     const n = age(p);
@@ -316,7 +324,7 @@ export function teDebenWidget(i: InicioWidgetsInput): InicioWidget {
 export function tarjetaWidget(i: InicioWidgetsInput, card: CardSummary): InicioWidget {
   const w = base("tarjeta", card.name, "half");
   w.id = `tarjeta:${card.accountId}`;
-  w.value = `${APPROX}${signedPesos(card.estimatedBill)}`;
+  setValue(w, card.estimatedBill, APPROX);
   w.hint = "próxima factura";
   if (card.usedPercent != null) w.visual = { kind: "bar", percent: clampPercent(card.usedPercent), level: null };
 

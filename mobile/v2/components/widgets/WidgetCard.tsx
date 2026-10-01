@@ -36,50 +36,53 @@ export const WidgetCard = memo(function WidgetCard({
     : open && !full ? { borderColor: t.colors.control } : { borderColor: "transparent" };
 
   return (
-    <Pressable
-      onPress={() => onToggle(w.id)}
-      accessibilityRole="button"
-      accessibilityState={{ expanded: open }}
-      accessibilityLabel={spokenLabel(w)}
-      style={[styles.card, { backgroundColor: t.colors.card, opacity: dim ? 0.38 : 1 }, outline, t.shadow]}
-    >
-      <View style={styles.head}>
-        <Icon size={16} color={t.colors.muted} strokeWidth={2} />
-        <Text style={[styles.title, { color: t.colors.muted, fontFamily: t.fonts.uiSemibold }]} numberOfLines={1}>
-          {w.title}
-        </Text>
-      </View>
-
-      <View style={styles.middle}>
-        {w.value && (
-          <FittedAmount
-            full={w.value}
-            short={w.value}
-            color={t.colors.ink}
-            fontFamily={t.fonts.uiSemibold}
-            size={16}
-            align="center"
-            style={styles.value}
-          />
-        )}
-        {w.visual && <WidgetVisualView visual={w.visual} />}
-        {w.caption && (
-          <Text style={[styles.caption, { color: t.colors.ink, fontFamily: t.fonts.ui }]}>{w.caption}</Text>
-        )}
-        {w.hint && (
-          <Text
-            style={[w.empty ? styles.emptyHint : styles.hint, { color: t.colors.muted, fontFamily: t.fonts.ui }]}
-            numberOfLines={2}
-          >
-            {w.hint}
+    <View style={[styles.card, { backgroundColor: t.colors.card, opacity: dim ? 0.38 : 1 }, outline, t.shadow]}>
+      {/* The summary is one labelled button; the expanded body stays outside it so screen readers reach its rows. */}
+      <Pressable
+        onPress={() => onToggle(w.id)}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        accessibilityLabel={spokenLabel(w)}
+        style={styles.press}
+      >
+        <View style={styles.head}>
+          <Icon size={16} color={t.colors.muted} strokeWidth={2} />
+          <Text style={[styles.title, { color: t.colors.muted, fontFamily: t.fonts.uiSemibold }]} numberOfLines={1}>
+            {w.title}
           </Text>
-        )}
-        {w.previewRows.length > 0 && !open && <Rows rows={w.previewRows} />}
-      </View>
+        </View>
 
-      {w.attention && <Chip level={w.attention.level} text={w.attention.reason} />}
+        <View style={styles.middle}>
+          {w.value && (
+            <FittedAmount
+              full={w.value}
+              short={w.valueShort ?? w.value}
+              color={t.colors.ink}
+              fontFamily={t.fonts.uiSemibold}
+              size={16}
+              align="center"
+              style={styles.value}
+            />
+          )}
+          {w.visual && <WidgetVisualView visual={w.visual} />}
+          {w.caption && (
+            <Text style={[styles.caption, { color: t.colors.ink, fontFamily: t.fonts.ui }]}>{w.caption}</Text>
+          )}
+          {w.hint && (
+            <Text
+              style={[w.empty ? styles.emptyHint : styles.hint, { color: t.colors.muted, fontFamily: t.fonts.ui }]}
+              numberOfLines={2}
+            >
+              {w.hint}
+            </Text>
+          )}
+          {w.previewRows.length > 0 && !open && <Rows rows={w.previewRows} />}
+        </View>
+
+        {w.attention && <Chip level={w.attention.level} text={w.attention.reason} />}
+      </Pressable>
       {full && open && <WidgetBody widget={w} />}
-    </Pressable>
+    </View>
   );
 });
 
@@ -130,7 +133,13 @@ function Rows({ rows }: { rows: InicioWidgetRow[] }) {
 
 function Dot({ level }: { level: InicioWidgetLevel }) {
   const t = useV2Theme();
-  return <View style={[styles.dot, { backgroundColor: levelColors(t, level)!.solid }]} accessibilityLabel={level === "red" ? "crítico" : "atención"} />;
+  return (
+    <View
+      accessible
+      accessibilityLabel={level === "red" ? "crítico" : "atención"}
+      style={[styles.dot, { backgroundColor: levelColors(t, level)!.solid }]}
+    />
+  );
 }
 
 function Chip({ level, text }: { level: InicioWidgetLevel; text: string }) {
@@ -143,7 +152,7 @@ function Chip({ level, text }: { level: InicioWidgetLevel; text: string }) {
   );
 }
 
-const spoken = (s: string) => s.replace("−", "menos ").replace(/≈\s/, "aproximadamente ");
+const spoken = (s: string) => s.replace(/−/g, "menos ").replace(/≈\s/g, "aproximadamente ");
 
 function spokenLabel(w: InicioWidget): string {
   const parts = [w.title];
@@ -155,7 +164,8 @@ function spokenLabel(w: InicioWidget): string {
 }
 
 const styles = StyleSheet.create({
-  card: { flex: 1, borderRadius: 18, borderWidth: 1.5, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 12, alignItems: "center" },
+  card: { flex: 1, borderRadius: 18, borderWidth: 1.5, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 12 },
+  press: { flexGrow: 1, alignItems: "center" },
   head: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, alignSelf: "stretch" },
   title: { fontSize: 13, flexShrink: 1 },
   middle: { flexGrow: 1, alignSelf: "stretch", alignItems: "center", gap: 6, marginTop: 10 },

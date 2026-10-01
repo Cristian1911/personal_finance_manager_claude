@@ -155,6 +155,7 @@ describe("Te deben", () => {
     const w = teDebenWidget(input([], { people: [{ id: "x", name: "Xi", amount: 14_250_000, since: "2026-07-20" }] }));
     expect(w.attention).toEqual({ level: "red", reason: "Hace 60 días" });
     expect(w.value).toBe("$14.250.000");
+    expect(w.valueShort).toBe("$14,3 M");
   });
 
   it("empty", () => {

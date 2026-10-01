@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -26,13 +26,26 @@ export default function InicioScreen() {
   const [autoOpen, setAutoOpen] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Only the latest load may land (focus, answer and user changes can overlap), and
+  // an unchanged result keeps the old objects so memoized widgets don't redraw.
+  const request = useRef(0);
+  const lastJson = useRef("");
+  useEffect(() => () => void request.current++, []);
+
   const reload = useCallback(async () => {
+    const id = ++request.current;
     try {
       const loaded = await loadInicio(userId);
-      setState(loaded.state);
+      if (id !== request.current) return;
+      const json = JSON.stringify(loaded.state);
+      if (json !== lastJson.current) {
+        lastJson.current = json;
+        setState(loaded.state);
+      }
       if (loaded.autoOpen) setAutoOpen(loaded.autoOpen);
       setError(null);
     } catch (e) {
+      if (id !== request.current) return;
       console.warn("[v2 inicio] load failed", e);
       setError("No pudimos cargar tu número. Intenta de nuevo.");
     }

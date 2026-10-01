@@ -26,7 +26,7 @@ function Bar({ percent, level }: { percent: number; level: InicioWidgetLevel | n
   const fill = levelColors(t, level)?.solid ?? t.colors.muted;
   return (
     <View style={[styles.track, { backgroundColor: t.colors.sunk }]}>
-      <View style={[styles.fill, { width: `${percent}%`, backgroundColor: fill }]} />
+      <View style={[styles.fill, { width: `${Math.max(0, Math.min(100, percent))}%`, backgroundColor: fill }]} />
     </View>
   );
 }
@@ -50,9 +50,11 @@ function Initials({ letters }: { letters: string[] }) {
 const LINE_HEIGHT = 44;
 
 /** Day-by-day amounts: solid up to today, dashed after; a red zero line when it goes below $0. */
-function MiniLine({ points, todayIndex }: { points: number[]; todayIndex: number }) {
+function MiniLine({ points, todayIndex: rawToday }: { points: number[]; todayIndex: number }) {
   const t = useV2Theme();
   const [width, setWidth] = useState(0);
+  if (points.length === 0) return null;
+  const todayIndex = Math.max(0, Math.min(points.length - 1, rawToday));
   const below = points.some((p) => p < 0);
   const lo = Math.min(...points, below ? 0 : Infinity);
   const hi = Math.max(...points);

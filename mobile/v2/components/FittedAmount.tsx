@@ -34,10 +34,13 @@ export function FittedAmount({
     setWidths((prev) => (prev[key] === w ? prev : { ...prev, [key]: w }));
   };
 
-  const ready = box > 0 && widths.full > 0 && widths.short > 0;
+  // Under a million the short form is the same text: measure it once.
+  const same = full === short;
+  const shortWidth = same ? widths.full : widths.short;
+  const ready = box > 0 && widths.full > 0 && shortWidth > 0;
   const fullScale = ready ? Math.min(1, box / widths.full) : 1;
-  const useShort = ready && fullScale < MIN_SCALE;
-  const scale = useShort ? Math.min(1, box / widths.short) : fullScale;
+  const useShort = ready && !same && fullScale < MIN_SCALE;
+  const scale = useShort ? Math.min(1, box / shortWidth) : fullScale;
   const fontSize = Math.floor(size * scale);
   const text = [style, { color, fontFamily }];
 
@@ -52,7 +55,7 @@ export function FittedAmount({
       {/* Natural widths at full size, off-screen and invisible. */}
       <View style={styles.measure} pointerEvents="none" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
         <Text style={[text, styles.measured, { fontSize: size }]} onLayout={measure("full")}>{full}</Text>
-        <Text style={[text, styles.measured, { fontSize: size }]} onLayout={measure("short")}>{short}</Text>
+        {!same && <Text style={[text, styles.measured, { fontSize: size }]} onLayout={measure("short")}>{short}</Text>}
       </View>
     </View>
   );
