@@ -40,6 +40,7 @@ export async function editTransaction(
   const tx = await s.getTransaction(cmd.userId, p.transactionId);
   if (!tx) return { status: "rejected", replayed: false, code: "not_found", error: "Movimiento no encontrado." };
   if (!MANUAL_CAPTURE_METHODS.has(tx.captureMethod)) return bad("Los datos del banco no se pueden cambiar; puedes ignorar el movimiento.");
+  if (tx.transferGroupId) return bad("Para cambiar un movimiento entre cuentas, bórralo y anótalo de nuevo.");
   if (p.accountId !== undefined && !(await s.getAccount(cmd.userId, p.accountId))) {
     return { status: "rejected", replayed: false, code: "not_found", error: "Cuenta no encontrada." };
   }

@@ -15,6 +15,8 @@ export interface CaptureManualTransactionPayload {
   notes?: string | null;
   /** Deshacer: the original capture instant, so a re-created movement keeps its time. Not after clientTs. */
   capturedAt?: string;
+  /** Anotar's kind: Gasto → SPEND, Ingreso → INCOME (v1 flow classes). */
+  flowClass?: "SPEND" | "INCOME" | null;
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -32,6 +34,7 @@ export function validateCaptureManualTransaction(p: CaptureManualTransactionPayl
   if (typeof p.description !== "string" || p.description.trim() === "") return "Escribe una descripción.";
   if (p.description.length > 200) return "La descripción es muy larga.";
   if (p.notes != null && (typeof p.notes !== "string" || p.notes.length > 500)) return "La nota es muy larga.";
+  if (p.flowClass != null && p.flowClass !== "SPEND" && p.flowClass !== "INCOME") return "Tipo de movimiento inválido.";
   return null;
 }
 
@@ -78,6 +81,7 @@ export async function captureManualTransaction(
     notes: p.notes ?? null,
     captureMethod: "MANUAL_FORM",
     idempotencyKey,
+    flowClass: p.flowClass ?? null,
     // When it was captured on the device, not when the server replays it: a
     // movement on the first-cycle balance's day lands before or after it the same everywhere.
     createdAt: p.capturedAt ?? cmd.clientTs,

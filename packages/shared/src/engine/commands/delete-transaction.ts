@@ -25,8 +25,12 @@ export async function deleteTransaction(
   if (!MANUAL_CAPTURE_METHODS.has(tx.captureMethod)) {
     return { status: "rejected", replayed: false, code: "invalid", error: "Solo se pueden borrar los movimientos que anotaste a mano." };
   }
-  await s.deleteTransaction(cmd.userId, tx.id);
-  // An ignored movement's amount already left the balance when it was ignored.
-  if (!tx.isExcluded) await moveBalance(s, cmd.userId, tx.accountId, tx.direction === "OUTFLOW" ? tx.amount : -tx.amount);
-  return { status: "applied", replayed: false };
+  // Entre cuentas: both legs go together, or the money would vanish from one side.
+  const rows = tx.transferGroupId ? await s.getTransferLegs(cmd.userId, tx.transferGroupId) : [tx];
+  for (const row of rows) {
+    await s.deleteTransaction(cmd.userId, row.id);
+    // An ignored movement's amount already left the balance when it was ignored.
+    if (!row.isExcluded) await moveBalance(s, cmd.userId, row.accountId, row.direction === "OUTFLOW" ? row.amount : -row.amount);
+  }
+  return { status: "applied", replayed: false, data: { deleted: rows.map((r) => r.id) } };
 }

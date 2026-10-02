@@ -1,5 +1,5 @@
 import { toDialect, toIso, toJson, toNumber } from "./sql";
-import type { CommandResult, CycleSettingsPatch, SqlDriver, StoragePort, StoredPaySchedule } from "./types";
+import type { CommandResult, CycleSettingsPatch, SqlDriver, StoragePort, StoredPaySchedule, TransactionRow } from "./types";
 
 /**
  * The single SQL implementation of StoragePort. Table and column names match
@@ -90,9 +90,13 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
 
     async insertTransaction(t) {
       await q(
-        "INSERT INTO transactions (id, user_id, account_id, amount, currency_code, direction, transaction_date, clean_description, notes, capture_method, idempotency_key, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        `INSERT INTO transactions (id, user_id, account_id, amount, currency_code, direction, transaction_date, clean_description,
+                                   notes, capture_method, idempotency_key, created_at, flow_class, flow_class_version, transfer_group_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [t.id, t.userId, t.accountId, t.amount, t.currencyCode, t.direction, t.transactionDate,
-          t.cleanDescription, t.notes, t.captureMethod, t.idempotencyKey, t.createdAt],
+          t.cleanDescription, t.notes, t.captureMethod, t.idempotencyKey, t.createdAt,
+          // The real table requires a version whenever a class is set; 0 = set by hand.
+          t.flowClass ?? null, t.flowClass ? 0 : null, t.transferGroupId ?? null],
       );
     },
 
@@ -101,28 +105,22 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
       const rows = await q<Record<string, unknown>>(
         `SELECT id, user_id, account_id, amount, currency_code, direction,
                 ${pg ? "transaction_date::text" : "transaction_date"} AS transaction_date,
-                clean_description, notes, capture_method, idempotency_key, created_at, is_excluded
+                clean_description, notes, capture_method, idempotency_key, created_at, is_excluded, transfer_group_id
            FROM transactions WHERE user_id = ? AND id = ?`,
         [userId, id]);
-      const r = rows[0];
-      if (!r) return null;
-      return {
-        id: String(r.id),
-        userId: String(r.user_id),
-        accountId: String(r.account_id),
-        amount: toNumber(r.amount),
-        currencyCode: String(r.currency_code),
-        direction: r.direction as "INFLOW" | "OUTFLOW",
-        transactionDate: String(r.transaction_date),
-        cleanDescription: (r.clean_description as string | null) ?? null,
-        notes: (r.notes as string | null) ?? null,
-        captureMethod: String(r.capture_method),
-        idempotencyKey: String(r.idempotency_key),
-        createdAt: r.created_at == null ? null : toIso(r.created_at),
-        // SQLite stores booleans as 0/1.
-        isExcluded: r.is_excluded === true || r.is_excluded === 1,
-      };
+      return rows[0] ? txRow(rows[0]) : null;
     },
+
+    async getTransferLegs(userId, groupId) {
+      const rows = await q<Record<string, unknown>>(
+        `SELECT id, user_id, account_id, amount, currency_code, direction,
+                ${pg ? "transaction_date::text" : "transaction_date"} AS transaction_date,
+                clean_description, notes, capture_method, idempotency_key, created_at, is_excluded, transfer_group_id
+           FROM transactions WHERE user_id = ? AND transfer_group_id = ? ORDER BY direction DESC, id`,
+        [userId, groupId]);
+      return rows.map(txRow);
+    },
+
 
     async deleteTransaction(userId, id) {
       await q("DELETE FROM transactions WHERE user_id = ? AND id = ?", [userId, id]);
@@ -227,4 +225,25 @@ function cycleSettingsColumns(p: CycleSettingsPatch): Record<string, unknown> {
   }
   if (p.bigPurchaseThreshold !== undefined) c.big_purchase_threshold = p.bigPurchaseThreshold;
   return c;
+}
+
+/** A transactions row as the engine reads it. */
+function txRow(r: Record<string, unknown>): TransactionRow {
+  return {
+    id: String(r.id),
+    userId: String(r.user_id),
+    accountId: String(r.account_id),
+    amount: toNumber(r.amount),
+    currencyCode: String(r.currency_code),
+    direction: r.direction as "INFLOW" | "OUTFLOW",
+    transactionDate: String(r.transaction_date),
+    cleanDescription: (r.clean_description as string | null) ?? null,
+    notes: (r.notes as string | null) ?? null,
+    captureMethod: String(r.capture_method),
+    idempotencyKey: String(r.idempotency_key),
+    createdAt: r.created_at == null ? null : toIso(r.created_at),
+    // SQLite stores booleans as 0/1.
+    isExcluded: r.is_excluded === true || r.is_excluded === 1,
+    transferGroupId: (r.transfer_group_id as string | null) ?? null,
+  };
 }

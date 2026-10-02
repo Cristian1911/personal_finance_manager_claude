@@ -109,3 +109,13 @@ ALTER TABLE accounts ADD COLUMN cutoff_day INTEGER CHECK (cutoff_day BETWEEN 1 A
 ALTER TABLE accounts ADD COLUMN payment_day INTEGER CHECK (payment_day BETWEEN 1 AND 31);
 ALTER TABLE accounts ADD COLUMN monthly_payment REAL;
 `;
+
+/**
+ * Phone schema version 6: Anotar's Ingreso / Entre cuentas. A hand-set flow
+ * class (with its version, 0) and the transfer group both legs share.
+ */
+export const SQLITE_TRANSFER_SCHEMA = `
+ALTER TABLE transactions ADD COLUMN flow_class TEXT;
+ALTER TABLE transactions ADD COLUMN flow_class_version INTEGER;
+ALTER TABLE transactions ADD COLUMN transfer_group_id TEXT;
+`;

@@ -9,7 +9,8 @@ export type CommandType =
   | "setAccountCountsInDisponible"
   | "createAccount"
   | "editAccount"
-  | "archiveAccount";
+  | "archiveAccount"
+  | "captureTransfer";
 
 /**
  * One user action. `id` is created on the device (UUID) and makes replays
@@ -117,6 +118,10 @@ export interface TransactionInsert {
   notes: string | null;
   captureMethod: "MANUAL_FORM";
   idempotencyKey: string;
+  /** Set by hand (Anotar): stored with flow_class_version 0 (v1 FLOW_CLASS_HAND_SET_VERSION). */
+  flowClass?: string | null;
+  /** Both legs of an Entre cuentas share it. */
+  transferGroupId?: string | null;
   /** Capture instant (the command's clientTs), ISO-8601 UTC. */
   createdAt: string;
 }
@@ -138,6 +143,8 @@ export interface TransactionRow {
   createdAt: string | null;
   /** Ignored ("no es un movimiento"): its amount is out of the account's balance, like on the web. */
   isExcluded: boolean;
+  /** Entre cuentas: shared by both legs. */
+  transferGroupId: string | null;
 }
 
 export interface FieldVersion {
@@ -173,6 +180,8 @@ export interface StoragePort {
   updateTransactionNotes(userId: string, id: string, notes: string | null): Promise<void>;
   updateTransactionExcluded(userId: string, id: string, excluded: boolean): Promise<void>;
   deleteTransaction(userId: string, id: string): Promise<void>;
+  /** The legs of an Entre cuentas, oldest first. */
+  getTransferLegs(userId: string, transferGroupId: string): Promise<TransactionRow[]>;
   updateTransactionFacts(userId: string, id: string, facts: { amount: number; transactionDate: string; accountId: string }): Promise<void>;
   getFieldVersion(userId: string, entity: string, entityId: string, field: string): Promise<FieldVersion | null>;
   setFieldVersion(v: FieldVersionWrite): Promise<void>;

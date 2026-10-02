@@ -34,7 +34,7 @@ export async function readInicioData(driver: SqlDriver, userId: string, since: s
   const txRows = await q<Record<string, unknown>>(
     `SELECT id, account_id, amount, currency_code, direction,
             ${pg ? "transaction_date::text" : "transaction_date"} AS transaction_date,
-            capture_method, created_at, clean_description, notes, is_excluded
+            capture_method, created_at, clean_description, notes, is_excluded, flow_class, transfer_group_id
        FROM transactions
       WHERE user_id = ? AND transaction_date >= ?
       ORDER BY transaction_date, id`,
@@ -68,9 +68,10 @@ export async function readInicioData(driver: SqlDriver, userId: string, since: s
       notes: (r.notes as string | null) ?? null,
       // SQLite stores booleans as 0/1.
       isExcluded: r.is_excluded === true || r.is_excluded === 1,
-      // The phone's v2 tables have no flow class yet: the classifier treats
-      // unclassified rows like the web (outflow = spend, inflow = income).
-      flowClass: null,
+      // Only hand-set classes for now (Anotar); unclassified rows read like the web
+      // (outflow = spend, inflow = income). ponytail: no flow_class_override yet.
+      flowClass: (r.flow_class as string | null) ?? null,
+      transferGroupId: (r.transfer_group_id as string | null) ?? null,
     })),
   };
 }
