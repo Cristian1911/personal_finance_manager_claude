@@ -22,7 +22,8 @@
 - **Mis cuentas + Cuenta + Agregar.**
 - **Pagos fijos, minimal:** add, list, mark paid, auto-link by amount + date window (needed so Por pagar is real).
 - **Ajustes:** Tu número (Cuándo me pagan, Ahorro, Mis cuentas), Fuentes (email forwarding), Apariencia, Bloqueo, Privacidad (incl. **Borrar mi cuenta**, required by Apple), Ayuda, Cerrar sesión.
-- **Not at launch:** categories (M3), destinatarios UI (M3), Revisar, Te deben, Límites, Pagos tab content beyond the minimal list, PDF import, Android notifications, Shortcuts, Plus.
+- **Last, before submit (S9-6):** **categories** (25 + seeding, the picker, "¿Siempre para X?"), **destinatarios** (picker, sheet, comercio/persona), **PDF import** (the existing parser service → v2 commands). Revisar and Te deben if time allows. All reuse v1 code.
+- **Not at launch:** Límites, Pagos tab content beyond the minimal list, Android notifications, Shortcuts, Plus.
 
 ## 3. Sync, launch-sized
 
@@ -43,8 +44,8 @@
 
 ## 6. Making zeta-dev production
 
-- Remove test users and demo data; keep the schema. Integration tests stop running against it (move them to a new dev branch database / local later).
-- Backups: enable daily backups / PITR on the project.
+- Checked 2026-10-02: no auth users and every public table empty (no system categories seeded either). Integration tests create and delete a temporary user per run; move them to a separate dev database before real users arrive.
+- Backups: not while the owner is the only user (S9-6); turn on before the public launch.
 - Auth: providers (Google, Apple, email) configured on zeta-dev — **the owner's Google work targets this project**: Supabase → Auth → Google client ids; Google Cloud OAuth clients (Android SHA-1 of the Play signing key + upload key; iOS; web) pointing at `https://gmqgfdijdfvltwiiqbug.supabase.co/auth/v1/callback`; Apple Services ID return URL to the same callback.
 - RLS on every table (already applied by the migrations); `pnpm audit` and the mobile security review before submit.
 - The app build for Oct 20 points `EXPO_PUBLIC_SUPABASE_URL` at zeta-dev and turns v2 on by default.
@@ -63,6 +64,7 @@ A one-time import per user, opt-in from Ajustes: "Traer mis datos de la versión
 | Oct 9–12 | Anotar (Gasto, Ingreso, Entre cuentas) + Dictar. Pagos fijos minimal. | 6, 7 |
 | Oct 12–15 | Email capture (route + `captureBankEmail` + Fuentes setup). Onboarding v2. | 8, 9 |
 | Oct 15–17 | Ajustes shell (incl. Borrar mi cuenta). v2 default; v1 hidden. | 10, 11 |
+| As time allows, before Oct 20 | Categories → destinatarios → PDF import (S9-6), reusing v1 code. | 12–14 |
 | Oct 17–19 | Full walk on iPhone + Android, store screenshots and listing, privacy labels updated (new data flows: email forwarding). | — |
 | **Oct 20** | **Submit** (App Store; Play closed track → production when approved). | — |
 | Oct 20–Nov 10 | Growth (WhatsApp, community, social, ads when Android is public) + fixes. | — |
@@ -74,4 +76,4 @@ Each PR: plan → TDD → gates → reviews → owner check on a device. Merge t
 - **Google Play production access** (rejected twice) gates public Android regardless of v2. Round 3 must run in parallel (owner).
 - **Sign-in on the new backend** must work on both platforms before any test user can try v2.
 - **Store review** of a big update: Apple may ask about data handling (email forwarding). Privacy labels and the Privacidad screen must match.
-- **Scope:** if a week slips, cut in this order: Entre cuentas → Dictar → email capture (manual-only launch still works).
+- **Scope:** the owner wants categories, destinatarios and PDF in the launch; they're scheduled last. If time runs short, cut first: Entre cuentas → Dictar; then decide with the owner between email capture and the S9-6 items.
