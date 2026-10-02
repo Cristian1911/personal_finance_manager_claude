@@ -14,6 +14,7 @@ import { runLocalCommand } from "../../lib/v2/engine/run-local";
 import { loadInicio, saveInicioLayout } from "../../lib/v2/inicio/load";
 import { useV2UserId } from "../../lib/v2/user";
 import { useAuth } from "../../lib/auth";
+import { openAnotar } from "../../lib/v2/anotar/open";
 import { FAB_OVERHANG } from "../../v2/components/TabBar";
 import { toColombiaDateString } from "../../lib/utils/date";
 import { DisponibleBlock } from "../../v2/components/DisponibleBlock";
@@ -32,7 +33,7 @@ import { useV2Changes } from "../../lib/v2/changes";
  * (they write to the v1 data, which reaches v2 with M2's sync).
  */
 const ACTION_ROUTES: Record<WidgetActionId, string> = {
-  capture: "/capture",
+  capture: "anotar",
   add_bill: "/recurrentes/new",
   import_statement: "/import",
   split_purchase: "/personas",
@@ -169,7 +170,11 @@ export default function InicioScreen() {
     return ready ? ready.widgets.filter((w) => hidden.has(w.id)) : [];
   }, [ready, draft, layout]);
 
-  const onAction = useCallback((id: WidgetActionId) => router.push(ACTION_ROUTES[id] as never), [router]);
+  const onAction = useCallback((id: WidgetActionId) => {
+    const route = ACTION_ROUTES[id];
+    if (route === "anotar") openAnotar();
+    else router.push(route as never);
+  }, [router]);
   const onSeeAll = useCallback((key: DetailPartKey) => {
     const route = DETAIL_ROUTES[key];
     if (route) router.push(route as never);
@@ -186,7 +191,8 @@ export default function InicioScreen() {
       setDetailOpen(false);
     }
   }, [detailOpen]);
-  const voice = useCallback(() => Alert.alert("Pronto", "Anotar con la voz llega en una próxima versión."), []);
+  // The Inicio mic leads to Anotar › Dictar (S8-1).
+  const voice = useCallback(() => openAnotar({ dictar: true }), []);
 
   // ── Organizar ──
   const startOrganizing = useCallback(() => {

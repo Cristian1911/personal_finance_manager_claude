@@ -1,14 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from "expo-speech-recognition";
+import { Mic, Square } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
-import { amountTyping, anotarPreview, formatPesos, isDebtAccountType, parseAmount } from "@zeta/shared";
+import { amountTyping, anotarPreview, dictado, formatPesos, isDebtAccountType, parseAmount } from "@zeta/shared";
 import { loadAnotar, rememberAnotarAccount, type LoadedAnotar } from "../../lib/v2/anotar/load";
 import { notifyV2Change } from "../../lib/v2/changes";
+import type { AnotarPrefill } from "../../lib/v2/anotar/open";
 import { runLocalCommand } from "../../lib/v2/engine/run-local";
 import { toColombiaDateString } from "../../lib/utils/date";
 import { useV2Theme } from "../theme/ThemeProvider";
-import { Button } from "./Button";
+import { Button, IconButton } from "./Button";
 import { Chip, Segmented } from "./Chip";
 import { Sheet } from "./Sheet";
 
@@ -36,8 +39,9 @@ const yesterday = (today: string) => {
  * typing, then only what the kind needs. Guardar closes; the number moving
  * plus Deshacer (toast) is the confirmation.
  */
-export function AnotarSheet({ open, userId, onClose, onSaved, onAddAccount }: {
+export function AnotarSheet({ open, prefill, userId, onClose, onSaved, onAddAccount }: {
   open: boolean;
+  prefill?: AnotarPrefill | null;
   userId: string;
   onClose: () => void;
   onSaved: (saved: AnotarSaved) => void;
@@ -55,15 +59,19 @@ export function AnotarSheet({ open, userId, onClose, onSaved, onAddAccount }: {
   const [date, setDate] = useState(toColombiaDateString());
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Dictar: what's being heard, while listening.
+  const [heard, setHeard] = useState<string | null>(null);
+  const dataRef = useRef<LoadedAnotar | null>(null);
+  dataRef.current = data;
 
   // Fresh every time it opens: today's date, the last account used.
   useEffect(() => {
     if (!open) return;
-    setKind("gasto");
+    setKind(prefill?.kind ?? "gasto");
     setIncomeKind("extra");
     setAmountText("");
     setWhat("");
-    setToAccountId(null);
+    setToAccountId(prefill?.toAccountId ?? null);
     setDate(toColombiaDateString());
     setError(null);
     setSaving(false);
@@ -71,11 +79,42 @@ export function AnotarSheet({ open, userId, onClose, onSaved, onAddAccount }: {
       setData(d);
       const counted = d.accounts.find((a) => !isDebtAccountType(a.accountType));
       setAccountId(d.lastAccountId ?? counted?.id ?? d.accounts[0]?.id ?? null);
+      if (prefill?.dictar && d.accounts.length > 0) void listen();
     }).catch((e) => {
       console.warn("[v2 anotar] load failed", e);
       setError("No pudimos cargar tus cuentas. Intenta de nuevo.");
     });
-  }, [open, userId]);
+  }, [open, userId, prefill]);
+
+  // ── Dictar (S8-9): on-device speech → v1's offline parser → the fields ──
+  useSpeechRecognitionEvent("result", (e) => {
+    const said = e.results[0]?.transcript ?? "";
+    setHeard(said);
+    if (e.isFinal) fill(said);
+  });
+  useSpeechRecognitionEvent("end", () => setHeard(null));
+  useSpeechRecognitionEvent("error", (e) => {
+    setHeard(null);
+    if (e.error !== "no-speech" && e.error !== "aborted") setError(e.error === "not-allowed" ? "Zeta no tiene permiso para el micrófono." : "No pude escucharte. Intenta de nuevo.");
+  });
+  const fill = (said: string) => {
+    const d = dictado(said, dataRef.current?.accounts ?? []);
+    if (d.kind !== kind && kind !== "entre") setKind(d.kind);
+    if (d.amount) setAmountText(amountTyping(String(d.amount).replace(".", ",")));
+    if (d.what) setWhat(d.what);
+    if (d.accountId) setAccountId(d.accountId);
+  };
+  async function listen() {
+    setError(null);
+    const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    if (!perm.granted) return Alert.alert("Permiso de micrófono", "Actívalo en los Ajustes del teléfono para dictar.");
+    if (!ExpoSpeechRecognitionModule.isRecognitionAvailable()) return setError("Dictar no está disponible en este teléfono.");
+    // On-device only (privacy labels): audio never leaves the phone.
+    ExpoSpeechRecognitionModule.start({ lang: "es-CO", interimResults: true, continuous: false, requiresOnDeviceRecognition: true, addsPunctuation: false });
+    setHeard("");
+  }
+  const stopListening = () => { try { ExpoSpeechRecognitionModule.stop(); } catch { /* already stopped */ } };
+  useEffect(() => { if (!open) stopListening(); }, [open]);
 
   const amount = parseAmount(amountText) ?? 0;
   const accounts = data?.accounts ?? [];
@@ -163,6 +202,8 @@ export function AnotarSheet({ open, userId, onClose, onSaved, onAddAccount }: {
       ) : (
         <>
           <Segmented options={KINDS} value={kind} onChange={(k) => { setKind(k); setError(null); }} />
+          <View style={styles.amountRow}>
+          <View style={styles.micSlot} />
           <TextInput
             value={amountText}
             onChangeText={(v) => { setAmountText(amountTyping(v)); setError(null); }}
@@ -173,8 +214,17 @@ export function AnotarSheet({ open, userId, onClose, onSaved, onAddAccount }: {
             accessibilityLabel="Monto"
             style={[styles.amount, { color: t.colors.ink, fontFamily: t.fonts.numberSemibold }]}
           />
-          <Text accessibilityLiveRegion="polite" style={[styles.preview, { color: preview?.tone === "bad" ? t.colors.bad.text : t.colors.muted, fontFamily: t.fonts.uiMedium }]}>
-            {preview?.line ?? " "}
+          <View style={styles.micSlot}>
+            <IconButton
+              label={heard != null ? "Terminar de dictar" : "Dictar"}
+              round
+              onPress={heard != null ? stopListening : () => void listen()}
+              icon={heard != null ? <Square size={14} color={t.colors.ink} fill={t.colors.ink} /> : <Mic size={17} color={t.colors.ink} />}
+            />
+          </View>
+          </View>
+          <Text accessibilityLiveRegion="polite" style={[styles.preview, { color: heard == null && preview?.tone === "bad" ? t.colors.bad.text : t.colors.muted, fontFamily: t.fonts.uiMedium }]}>
+            {heard != null ? (heard ? `«${heard}»` : "Di algo como «almuerzo 45 mil en efectivo»") : preview?.line ?? " "}
           </Text>
 
           <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} keyboardShouldPersistTaps="handled">
@@ -224,7 +274,9 @@ const styles = StyleSheet.create({
   handle: { width: 38, height: 5, borderRadius: 3, alignSelf: "center" },
   title: { fontSize: 19, textAlign: "center" },
   none: { gap: 16, paddingVertical: 12 },
-  amount: { fontSize: 40, textAlign: "center", fontVariant: ["tabular-nums"], paddingVertical: 4 },
+  amountRow: { flexDirection: "row", alignItems: "center" },
+  micSlot: { width: 44, alignItems: "center" },
+  amount: { flex: 1, fontSize: 40, textAlign: "center", fontVariant: ["tabular-nums"], paddingVertical: 4 },
   preview: { fontSize: 13.5, textAlign: "center", minHeight: 20 },
   body: { flexShrink: 1 },
   bodyContent: { gap: 10, paddingBottom: 4 },

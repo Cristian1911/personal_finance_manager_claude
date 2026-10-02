@@ -1,4 +1,6 @@
 import { isDebtAccountType } from "../../utils/account-balance";
+import { parseQuickCaptureText } from "../../utils/quick-capture";
+import type { InicioAccount } from "./inicio";
 import { buildInicio } from "./inicio";
 import type { StoredTransaction } from "./movements";
 import { formatPesos } from "./verdict";
@@ -76,5 +78,47 @@ export function anotarPreview(input: InicioInput, draft: AnotarDraft): AnotarPre
   return {
     line: `Te quedan ${formatPesos(after.result.disponible)} · ${after.view.perDay}`,
     tone: after.result.disponible < 0 ? "bad" : "neutral",
+  };
+}
+
+export interface Dictado {
+  kind: "gasto" | "ingreso";
+  amount: number | null;
+  what: string;
+  accountId: string | null;
+}
+
+const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+/**
+ * Dictar (S8-9): what the person said → Anotar's fields, with v1's offline
+ * parser. An account named in the sentence ("en efectivo", "con la tarjeta
+ * nu") is picked, longest name first. What can't be read goes to En qué.
+ */
+export function dictado(text: string, accounts: InicioAccount[], now: Date = new Date()): Dictado {
+  const said = fold(text);
+  const named = [...accounts]
+    .filter((a) => a.name?.trim())
+    .sort((a, b) => (b.name!.length - a.name!.length))
+    .find((a) => said.includes(fold(a.name!.trim())));
+  let r = parseQuickCaptureText(text, { now });
+  // Most of what people dictate is a spend and says so without a verb ("almuerzo 45 mil").
+  // (account_id is always "missing" there: the parser never picks one.)
+  if (!r.success && r.missing_fields.includes("direction") && !r.missing_fields.includes("amount")) {
+    r = parseQuickCaptureText(`gasté ${text}`, { now });
+  }
+  if (!r.success) return { kind: "gasto", amount: null, what: text.trim(), accountId: named?.id ?? null };
+  // En qué without the verb we added and without the account it named ("en efectivo").
+  let what = r.data.description.replace(/^gast[eé]\s+/i, "");
+  if (named) {
+    const name = fold(named.name!.trim()).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    what = what.replace(new RegExp(`\\s*(?:\\b(?:en|con|de|del|desde)\\s+)?(?:\\b(?:la|el|mi)\\s+)?${name}\\b`, "i"), "");
+  }
+  what = what.trim();
+  return {
+    kind: r.data.direction === "INFLOW" ? "ingreso" : "gasto",
+    amount: r.data.amount > 0 ? r.data.amount : null,
+    what: what ? what[0].toUpperCase() + what.slice(1) : "",
+    accountId: named?.id ?? null,
   };
 }

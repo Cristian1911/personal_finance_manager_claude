@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CycleSettings } from "../../types";
-import { anotarPreview } from "../anotar";
+import { anotarPreview, dictado } from "../anotar";
 import type { InicioAccount } from "../inicio";
 
 // Semimonthly 15/30; $1.500.000 told on the 16th; today the 18th (12 days left).
@@ -58,5 +58,23 @@ describe("anotarPreview (the effect line while you type, S8-9)", () => {
   it("nothing to say without an amount or before the first-run questions", () => {
     expect(anotarPreview(base, { kind: "gasto", amount: 0, accountId: "Bancolombia" })).toBeNull();
     expect(anotarPreview({ ...base, settings: null }, { kind: "gasto", amount: 10, accountId: "Bancolombia" })).toBeNull();
+  });
+});
+
+describe("dictado (Dictar fills Anotar)", () => {
+  const accts = [acc("Bancolombia", "SAVINGS"), acc("Efectivo", "CASH"), acc("Tarjeta Nu", "CREDIT_CARD")];
+  it("amount, what and the account it names", () => {
+    expect(dictado("almuerzo 45 mil en efectivo", accts, new Date("2026-09-18T15:00:00Z"))).toMatchObject({
+      kind: "gasto", amount: 45_000, what: "Almuerzo", accountId: "Efectivo",
+    });
+  });
+  it("an income said as such", () => {
+    expect(dictado("me pagaron 300 mil del freelance", accts, new Date("2026-09-18T15:00:00Z"))).toMatchObject({ kind: "ingreso", amount: 300_000 });
+  });
+  it("names the card even with accents or case", () => {
+    expect(dictado("taxi 20000 con la tarjeta nu", accts, new Date("2026-09-18T15:00:00Z"))?.accountId).toBe("Tarjeta Nu");
+  });
+  it("what it couldn't read goes to En qué", () => {
+    expect(dictado("no sé qué compré", accts, new Date("2026-09-18T15:00:00Z"))).toEqual({ kind: "gasto", amount: null, what: "no sé qué compré", accountId: null });
   });
 });

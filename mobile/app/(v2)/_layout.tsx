@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Redirect, Tabs, useRouter } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { V2_DEBUG_ENABLED } from "../../lib/v2/flags";
 import { useV2UserId } from "../../lib/v2/user";
+import { onOpenAnotar, type AnotarPrefill } from "../../lib/v2/anotar/open";
 import { AnotarSheet, type AnotarSaved } from "../../v2/components/AnotarSheet";
 import { FAB_OVERHANG, TAB_BAR_HEIGHT, TabBar } from "../../v2/components/TabBar";
 import { Toast } from "../../v2/components/Toast";
@@ -34,14 +35,15 @@ function V2Tabs() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const userId = useV2UserId();
-  const [anotar, setAnotar] = useState(false);
+  const [anotar, setAnotar] = useState<AnotarPrefill | null>(null);
+  useEffect(() => onOpenAnotar(setAnotar), []);
   const [toast, setToast] = useState<AnotarSaved | null>(null);
   return (
     <View style={{ flex: 1 }}>
     <Tabs
       backBehavior="history"
       screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: t.colors.bg } }}
-      tabBar={(props) => <TabBar {...props} onAdd={() => setAnotar(true)} />}
+      tabBar={(props) => <TabBar {...props} onAdd={() => setAnotar({})} />}
     >
       <Tabs.Screen name="inicio" />
       <Tabs.Screen name="movimientos" />
@@ -52,9 +54,10 @@ function V2Tabs() {
       <Tabs.Screen name="cuenta" options={{ href: null }} />
     </Tabs>
     <AnotarSheet
-      open={anotar}
+      open={!!anotar}
+      prefill={anotar}
       userId={userId}
-      onClose={() => setAnotar(false)}
+      onClose={() => setAnotar(null)}
       onSaved={setToast}
       onAddAccount={() => router.navigate({ pathname: "/cuentas", params: { add: "cuenta" } } as never)}
     />

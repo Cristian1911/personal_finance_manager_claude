@@ -117,12 +117,15 @@ function parseAmountToken(token: string): number | null {
 }
 
 function extractAmount(input: string): { amount: number | null; rawMatch: string | null } {
+  // "mil" before "m" (and whole words): "300 mil" was read as "300 m" = 300 millones.
   const amountRegex =
-    /(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d+)?|\d+(?:[.,]\d+)?(?:\s?(?:k|m|mil)))/i;
-  const match = input.match(amountRegex);
-  if (!match) return { amount: null, rawMatch: null };
-  const amount = parseAmountToken(match[0]);
-  return { amount, rawMatch: match[0] };
+    /(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d+)?|\d+(?:[.,]\d+)?(?:\s?(?:mil|k|m)\b)?)/gi;
+  const candidates = [...input.matchAll(amountRegex)].map((m) => m[0]);
+  if (candidates.length === 0) return { amount: null, rawMatch: null };
+  // A plain small number is often a date ("el 15"): prefer one with a suffix,
+  // thousands separators or at least 3 digits.
+  const raw = candidates.find((c) => /[a-z]|[.,]\d{3}|\d{3}/i.test(c)) ?? candidates[0];
+  return { amount: parseAmountToken(raw), rawMatch: raw };
 }
 
 function extractDirection(normalized: string): TransactionDirection | null {

@@ -8,6 +8,7 @@ import { runLocalCommand } from "../../lib/v2/engine/run-local";
 import { loadAccount, loadCuentas, type LoadedCuentas } from "../../lib/v2/cuentas/load";
 import { loadMovimientos } from "../../lib/v2/movimientos/load";
 import { useV2UserId } from "../../lib/v2/user";
+import { openAnotar } from "../../lib/v2/anotar/open";
 import { AccountSheet, type AccountForm } from "../../v2/components/AccountSheet";
 import { Button, IconButton } from "../../v2/components/Button";
 import { ConfirmSheet } from "../../v2/components/ConfirmSheet";
@@ -125,6 +126,10 @@ export default function CuentaScreen() {
           <Text style={{ fontSize: 13, color: t.colors.muted, fontFamily: t.fonts.ui }}>{facts ? row.sub.split(" · ")[0] : row.sub}</Text>
           {facts ? <Text style={{ fontSize: 13, color: t.colors.muted, fontFamily: t.fonts.ui, textAlign: "center" }}>{facts}</Text> : null}
         </View>
+
+        {debt && (
+          <Button label={account.accountType === "CREDIT_CARD" ? "Pagar tarjeta" : "Pagar cuota"} onPress={() => openAnotar({ kind: "entre", toAccountId: account.id })} />
+        )}
 
         {row.canCount && (
           <View style={[styles.card, styles.switchRow, { backgroundColor: t.colors.card }, t.shadow]}>
