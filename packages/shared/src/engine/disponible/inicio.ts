@@ -17,6 +17,10 @@ export interface InicioAccount {
   accountType: string;
   institutionName?: string | null;
   mask?: string | null;
+  /** Cards: the statement's cut day. */
+  cutoffDay?: number | null;
+  /** Loans: the cuota. */
+  monthlyPayment?: number | null;
   currentBalance: number;
   countsInDisponible: boolean | null;
 }
@@ -50,6 +54,8 @@ export type InicioState =
       widgets: InicioWidget[];
       /** The Tu flujo screen: Pasado, Este ciclo, Próximo. */
       flow: FlowScreenTab[];
+      /** Counted money now: the balance told plus what moved since, else the counted accounts (Mis cuentas' header). */
+      balanceToday: number;
       /** Movimientos' cycles, newest first: this one and those the phone still holds whole (up to 3, S1-3). */
       cycles: PayCycle[];
     };
@@ -200,5 +206,5 @@ export function buildInicio(input: {
     cycles.push(before);
   }
   const detail = disponibleDetailView({ today, cycle, result, obligations, movements, counted, transactions: input.transactions });
-  return { status: "ready", cycle, result, verdict, view, detail, widgets, flow, cycles };
+  return { status: "ready", cycle, result, verdict, view, detail, widgets, flow, cycles, balanceToday };
 }

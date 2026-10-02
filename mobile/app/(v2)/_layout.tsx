@@ -39,6 +39,8 @@ function V2Tabs() {
       <Tabs.Screen name="pagos" />
       <Tabs.Screen name="revisar" />
       <Tabs.Screen name="flujo" options={{ href: null }} />
+      <Tabs.Screen name="cuentas" options={{ href: null }} />
+      <Tabs.Screen name="cuenta" options={{ href: null }} />
     </Tabs>
   );
 }

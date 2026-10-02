@@ -39,7 +39,7 @@ export default function MovimientosScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const userId = useV2UserId();
-  const params = useLocalSearchParams<{ id?: string }>();
+  const params = useLocalSearchParams<{ id?: string; account?: string }>();
   const [data, setData] = useState<LoadedMovimientos | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [index, setIndex] = useState(0);
@@ -69,8 +69,8 @@ export default function MovimientosScreen() {
   // Typing stays at full speed; the list catches up a frame later.
   const search = useDeferredValue(query);
   const view = useMemo(
-    () => data && movimientosView({ today: data.today, transactions: data.transactions, accounts: data.accounts, cycles: data.cycles, index, filter, query: search }),
-    [data, index, filter, search],
+    () => data && movimientosView({ today: data.today, transactions: data.transactions, accounts: data.accounts, cycles: data.cycles, index, filter, query: search, accountId: params.account ?? null }),
+    [data, index, filter, search, params.account],
   );
   const detalle = useMemo(() => {
     const tx = openId && data?.transactions.find((x) => x.id === openId);
@@ -185,6 +185,9 @@ export default function MovimientosScreen() {
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
+        {view.account && (
+          <Chip label={`${view.account.label}  ✕`} on onPress={() => router.setParams({ account: undefined })} accessibilityLabel={`Solo ${view.account.label}. Quitar filtro`} />
+        )}
         {view.filters.map((f) => <Chip key={f.key} label={f.label} on={f.on} onPress={() => setFilter(f.key)} />)}
       </ScrollView>
     </View>

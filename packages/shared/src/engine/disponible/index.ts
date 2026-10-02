@@ -115,3 +115,4 @@ export {
   type MovimientosGroup,
   type MovimientosView,
 } from "./movimientos";
+export { cuentasView, type CuentaRow, type CuentasView } from "./cuentas";

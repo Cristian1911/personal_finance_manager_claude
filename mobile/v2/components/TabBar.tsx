@@ -3,6 +3,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useKeyboardState } from "react-native-keyboard-controller";
 import { Calendar, Home, Inbox, List, Plus, type LucideIcon } from "lucide-react-native";
 import { useV2Theme } from "../theme/ThemeProvider";
+import { Tap } from "./Tap";
 
 /** The bar (S8-1): Inicio · Movimientos · (+) · Pagos · Revisar. */
 export const V2_TABS: readonly { name: string; title: string; icon: LucideIcon }[] = [
@@ -16,7 +17,7 @@ export const V2_TABS: readonly { name: string; title: string; icon: LucideIcon }
 export const FAB_OVERHANG = 22;
 
 /** Secondary screens open inside the tab they belong to; that tab stays lit. */
-const PARENT_TAB: Record<string, string> = { flujo: "inicio" };
+const PARENT_TAB: Record<string, string> = { flujo: "inicio", cuentas: "inicio", cuenta: "inicio" };
 
 export function TabBar({ state, navigation, onAdd }: {
   state: { routes: { name: string }[]; index: number };
@@ -58,11 +59,11 @@ export function TabBar({ state, navigation, onAdd }: {
       {tab(0)}
       {tab(1)}
       <View style={styles.fabSlot}>
-        <Pressable
+        <Tap
           onPress={onAdd}
           accessibilityRole="button"
           accessibilityLabel="Anotar"
-          style={({ pressed }) => [
+          style={(pressed) => [
             styles.fab,
             { backgroundColor: t.colors.button },
             // Lifted off the bar in light themes; dark themes have no shadows.
@@ -70,7 +71,7 @@ export function TabBar({ state, navigation, onAdd }: {
             pressed && { transform: [{ scale: 0.96 }] }]}
         >
           <Plus size={26} color={t.colors.onButton} strokeWidth={2.4} />
-        </Pressable>
+        </Tap>
       </View>
       {tab(2)}
       {tab(3)}

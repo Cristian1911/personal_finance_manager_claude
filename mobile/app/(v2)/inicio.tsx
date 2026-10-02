@@ -36,11 +36,11 @@ const ACTION_ROUTES: Record<WidgetActionId, string> = {
   import_statement: "/import",
   split_purchase: "/personas",
   lend: "/personas",
-  add_card: "/account/create",
+  add_card: "/cuentas?add=tarjeta",
   see_movements: "/movimientos",
   see_bills: "/recurrentes",
   see_people: "/personas",
-  see_accounts: "/accounts-list",
+  see_accounts: "/cuentas",
   see_flow: "/flujo",
 };
 const DETAIL_ROUTES: Partial<Record<DetailPartKey, string>> = { porPagar: "/recurrentes", gastado: "/movimientos" };

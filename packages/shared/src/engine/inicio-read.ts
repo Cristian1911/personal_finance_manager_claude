@@ -22,7 +22,7 @@ export async function readInicioData(driver: SqlDriver, userId: string, since: s
   const settings = await createSqlStorage(driver).getCycleSettings(userId);
 
   const accountRows = await q<Record<string, unknown>>(
-    `SELECT a.id, a.name, a.account_type, a.institution_name, a.mask, a.current_balance, s.counts_in_disponible
+    `SELECT a.id, a.name, a.account_type, a.institution_name, a.mask, a.current_balance, a.cutoff_day, a.monthly_payment, s.counts_in_disponible
        FROM accounts a
        LEFT JOIN account_settings s ON s.user_id = a.user_id AND s.account_id = a.id
       WHERE a.user_id = ? AND a.is_active = ?
@@ -50,6 +50,8 @@ export async function readInicioData(driver: SqlDriver, userId: string, since: s
       institutionName: (r.institution_name as string | null) ?? null,
       mask: (r.mask as string | null) ?? null,
       currentBalance: toNumber(r.current_balance),
+      cutoffDay: r.cutoff_day == null ? null : toNumber(r.cutoff_day),
+      monthlyPayment: r.monthly_payment == null ? null : toNumber(r.monthly_payment),
       // SQLite stores booleans as 0/1.
       countsInDisponible: r.counts_in_disponible == null ? null : r.counts_in_disponible === true || r.counts_in_disponible === 1,
     })),

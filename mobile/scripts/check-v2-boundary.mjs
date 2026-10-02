@@ -14,13 +14,15 @@ V2_DIRS.forEach((d) => walk(join(root, d)));
 
 const bad = [];
 for (const f of files) {
+  // NativeWind's Pressable drops style functions on native (renders unstyled): use v2/components/Tap.
+  if (/style=\{\(\{\s*pressed/.test(readFileSync(f, "utf8"))) bad.push(`${relative(root, f)} → Pressable style function (use Tap)`);
   for (const [, spec] of readFileSync(f, "utf8").matchAll(/(?:from|import\(|require\()\s*["'](\.{1,2}\/[^"']+)["']/g)) {
     const target = relative(root, resolve(dirname(f), spec));
     if (!isV2(target) && !ALLOWED.some((a) => target === a || target.startsWith(a + "/"))) bad.push(`${relative(root, f)} → ${target}`);
   }
 }
 if (bad.length) {
-  console.error("v2 imports v1 code (allowed: " + ALLOWED.join(", ") + "):\n  " + bad.join("\n  "));
+  console.error("v2 boundary (v1 imports allowed only from " + ALLOWED.join(", ") + "; no Pressable style functions):\n  " + bad.join("\n  "));
   process.exit(1);
 }
 console.log(`v2 boundary ok (${files.length} files)`);

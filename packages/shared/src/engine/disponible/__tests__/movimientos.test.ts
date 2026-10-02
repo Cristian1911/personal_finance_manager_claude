@@ -58,6 +58,14 @@ describe("Movimientos", () => {
     expect(view({ filter: "tarjetas", index: 1 }).empty).toBe("Nada con ese filtro en este ciclo.");
   });
 
+  it("one account's movements (Cuenta › Ver todos), with a chip to remove the filter", () => {
+    const v = view({ accountId: "nu", accounts: [...ACCOUNTS.slice(0, 1), { ...ACCOUNTS[1], name: "Tarjeta Nu" }, ACCOUNTS[2]] });
+    expect(v.groups.flatMap((g) => g.rows.map((r) => r.title))).toEqual(["Uber"]);
+    expect(v.account).toEqual({ id: "nu", label: "Tarjeta Nu" });
+    expect(v.groups[0].rows[0].account).toBe("Tarjeta Nu");
+    expect(view().account).toBeNull();
+  });
+
   it("steps back to the last cycle the phone holds", () => {
     const v = view({ index: 1 });
     expect(v.cycle).toBe("Ciclo pasado · 30 ago–14 sep");

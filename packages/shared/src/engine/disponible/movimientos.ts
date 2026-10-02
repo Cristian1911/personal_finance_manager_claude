@@ -50,6 +50,8 @@ export interface MovimientosView {
   groups: MovimientosGroup[];
   /** Why the list is empty, or null. */
   empty: string | null;
+  /** The account the list is narrowed to (a removable chip), or null. */
+  account: { id: string; label: string } | null;
 }
 
 export type DetalleSource = "manual" | "email" | "notification" | "pdf" | "screenshot" | "other";
@@ -102,7 +104,7 @@ function accountsById(accounts: InicioAccount[]): Map<string, Account> {
   return new Map(accounts.map((a) => [a.id, {
     type: a.accountType,
     counts: !isDebt(a.accountType) && (a.countsInDisponible ?? defaultCountsInDisponible(a.accountType)),
-    label: ACCOUNT_LABEL[a.accountType] ?? "Cuenta",
+    label: a.name?.trim() || (ACCOUNT_LABEL[a.accountType] ?? "Cuenta"),
   }]));
 }
 
@@ -144,6 +146,8 @@ export function movimientosView(input: {
   index: number;
   filter: MovimientosFilter;
   query: string;
+  /** Only this account's movements (Cuenta › Ver todos). */
+  accountId?: string | null;
 }): MovimientosView {
   const { today, cycles, filter } = input;
   const index = Math.max(0, Math.min(cycles.length - 1, input.index));
@@ -154,6 +158,7 @@ export function movimientosView(input: {
   const inCycle = input.transactions.filter((t) => t.date >= c.start && t.date <= c.end && !t.reconciledIntoTransactionId);
   const shown = inCycle.filter((t) => {
     const a = accounts.get(t.accountId);
+    if (input.accountId && t.accountId !== input.accountId) return false;
     if (filter === "gastos" && t.direction !== "OUTFLOW") return false;
     if (filter === "entradas" && t.direction !== "INFLOW") return false;
     if (filter === "tarjetas" && a?.type !== "CREDIT_CARD") return false;
@@ -195,8 +200,9 @@ export function movimientosView(input: {
     groups,
     empty: groups.length > 0 ? null
       : q ? `Nada con «${input.query.trim()}».`
-      : filter !== "todos" ? "Nada con ese filtro en este ciclo."
+      : filter !== "todos" || input.accountId ? "Nada con ese filtro en este ciclo."
       : "No hay movimientos en este ciclo.",
+    account: input.accountId ? { id: input.accountId, label: accounts.get(input.accountId)?.label ?? "Cuenta" } : null,
   };
 }
 

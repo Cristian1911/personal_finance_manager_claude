@@ -67,6 +67,8 @@ describe("buildInicio — the first cycle starts from the balance told", () => {
     expect(r.view.amount).toBe("$1.200.000");
     expect(r.view.perDay).toBe("$100.000 al día · 12 días");
     expect(r.verdict.state).toBe("vas_bien");
+    // Counted money now (Mis cuentas' header): the balance told minus what left the debit after it.
+    expect(r.balanceToday).toBe(1_400_000);
   });
 
   it("a movement captured later the same day counts", () => {
