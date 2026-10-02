@@ -69,6 +69,38 @@ describe.each(DRIVERS)("categorías y destinatarios on %s", (_name, make) => {
     expect(await row(T2)).toMatchObject({ destinatarioId: LAURA });
   });
 
+  it("correcting who it is moves the remembered text to the new destinatario (one rule per text)", async () => {
+    const s = await setup();
+    const OTHER = "77777777-7777-4777-8777-777777777777";
+    await applyCommand(s, cmd("createDestinatario", { destinatarioId: LAURA, name: "Laura Gómez", kind: "person" }));
+    await applyCommand(s, cmd("createDestinatario", { destinatarioId: OTHER, name: "Laura Martínez", kind: "person" }));
+    await applyCommand(s, spend(T1, "TRANSFERENCIA A LAURA G"));
+    await applyCommand(s, cmd("setTransactionDestinatario", { transactionId: T1, destinatarioId: LAURA, remember: true }));
+    expect(await applyCommand(s, cmd("setTransactionDestinatario", { transactionId: T1, destinatarioId: OTHER, remember: true })))
+      .toMatchObject({ status: "applied" });
+    await applyCommand(s, spend(T2, "TRANSFERENCIA A LAURA G"));
+    expect(await row(T2)).toMatchObject({ destinatarioId: OTHER });
+  });
+
+  it("a short text like 'Pan' isn't remembered (it would match 'empanadas')", async () => {
+    const s = await setup();
+    await applyCommand(s, cmd("createDestinatario", { destinatarioId: LAURA, name: "Laura Gómez", kind: "person" }));
+    await applyCommand(s, spend(T1, "Pan"));
+    await applyCommand(s, cmd("setTransactionDestinatario", { transactionId: T1, destinatarioId: LAURA, remember: true }));
+    await applyCommand(s, spend(T2, "Empanadas"));
+    expect(await row(T2)).toMatchObject({ destinatarioId: null });
+  });
+
+  it("the category follows the destinatario unless chosen by hand: clearing or switching drops the old default", async () => {
+    const s = await setup();
+    await applyCommand(s, cmd("createDestinatario", { destinatarioId: RAPPI, name: "Rappi", kind: "merchant", defaultCategoryId: DOMICILIOS }));
+    await applyCommand(s, spend(T1, "algo"));
+    await applyCommand(s, cmd("setTransactionDestinatario", { transactionId: T1, destinatarioId: RAPPI }));
+    expect(await row(T1)).toMatchObject({ categoryId: DOMICILIOS });
+    await applyCommand(s, cmd("setTransactionDestinatario", { transactionId: T1, destinatarioId: null }));
+    expect(await row(T1)).toMatchObject({ destinatarioId: null, categoryId: null });
+  });
+
   it("'¿Siempre Domicilios para Rappi?' sets the default and fixes the past, except what the user chose by hand", async () => {
     const s = await setup();
     await applyCommand(s, cmd("createDestinatario", { destinatarioId: RAPPI, name: "Rappi", kind: "merchant", pattern: "rappi" }));

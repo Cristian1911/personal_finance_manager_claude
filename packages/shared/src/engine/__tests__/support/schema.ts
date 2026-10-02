@@ -41,6 +41,8 @@ CREATE TABLE destinatario_rules (
   match_type text NOT NULL, pattern text NOT NULL, priority int NOT NULL DEFAULT 100,
   match_count int NOT NULL DEFAULT 0, last_matched_at timestamptz, created_at timestamptz NOT NULL DEFAULT now()
 );
+-- As on Supabase (20260310044637): one rule per text per user.
+CREATE UNIQUE INDEX destinatario_rules_user_pattern ON destinatario_rules (user_id, lower(pattern));
 CREATE TABLE commands (
   id uuid NOT NULL, user_id uuid NOT NULL, device_id text NOT NULL,
   type text NOT NULL, client_ts timestamptz NOT NULL, payload_enc bytea,

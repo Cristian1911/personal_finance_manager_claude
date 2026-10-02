@@ -53,6 +53,22 @@ describe("sync snapshot (S9-4 pull: the server's rows replace the phone's)", () 
     expect(JSON.stringify(snapshot)).not.toContain("Ajeno");
   });
 
+  it("a category chosen by hand on another phone survives '¿Siempre…?' run on this one after a pull", async () => {
+    const pg = await serverWithData();
+    const s = createSqlStorage(pg);
+    const TX = "55555555-5555-4555-8555-555555555555";
+    const D = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const MERCADO = "c2000000-0000-4000-8000-000000000001";
+    const DOMICILIOS = "c2000000-0000-4000-8000-000000000003";
+    await applyCommand(s, cmd("createDestinatario", { destinatarioId: D, name: "Tienda", kind: "merchant" }));
+    await applyCommand(s, cmd("setTransactionDestinatario", { transactionId: TX, destinatarioId: D }));
+    await applyCommand(s, cmd("setTransactionCategory", { transactionId: TX, categoryId: MERCADO }));
+    const phone = await createSqlJsDriver();
+    await applySnapshot(phone, USER, JSON.parse(JSON.stringify(await readSnapshot(pg, USER, "2026-09-01"))), "2026-09-01");
+    await applyCommand(createSqlStorage(phone), { ...cmd("setDestinatarioCategory", { destinatarioId: D, categoryId: DOMICILIOS, applyToPast: true }), clientTs: "2026-10-02T16:00:00.000Z" });
+    expect((await createSqlStorage(phone).getTransaction(USER, TX))?.categoryId).toBe(MERCADO);
+  });
+
   it("a row the phone holds outside the window, now inside it on the server, doesn't break the pull", async () => {
     const pg = await serverWithData();
     const phone = await createSqlJsDriver();

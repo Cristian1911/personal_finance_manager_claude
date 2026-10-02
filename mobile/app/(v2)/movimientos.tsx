@@ -115,8 +115,11 @@ export default function MovimientosScreen() {
   // Categoría · Destinatario (S8-3), from the open row.
   const onCategory = useCallback((r: MovimientoRow) => setLabeling({ row: r, what: "category" }), []);
   const onDestinatario = useCallback((r: MovimientoRow) => setLabeling({ row: r, what: "destinatario" }), []);
+  // The pick runs once the sheet is gone: iOS drops an Alert raised while it's dismissing.
+  const afterLabel = useRef<(() => void) | null>(null);
+  const closeLabel = useCallback((then: () => void) => { afterLabel.current = then; setLabeling(null); }, []);
+  const labelClosed = useCallback(() => { const next = afterLabel.current; afterLabel.current = null; next?.(); }, []);
   const pickCategory = useCallback(async (r: MovimientoRow, categoryId: string | null) => {
-    setLabeling(null);
     if (!(await run("setTransactionCategory", { transactionId: r.id, categoryId }))) return;
     const d = r.destinatario && data?.destinatarios.find((x) => x.id === r.destinatario!.id);
     const cat = categoryById(categoryId);
@@ -127,7 +130,8 @@ export default function MovimientosScreen() {
       if (!(await run("setDestinatarioCategory", { destinatarioId: d.id, categoryId: cat.id, applyToPast: true }))) return;
       setToast({
         message: `Desde ahora, ${d.name} es ${cat.name}`,
-        undo: () => void run("setDestinatarioCategory", { destinatarioId: d.id, categoryId: null }),
+        // Also un-fills the past it filled (hand-picked categories are never touched).
+        undo: () => void run("setDestinatarioCategory", { destinatarioId: d.id, categoryId: null, applyToPast: true }),
       });
     } else {
       // It already had another one: this may be a one-off, so ask.
@@ -138,11 +142,9 @@ export default function MovimientosScreen() {
     }
   }, [run, data]);
   const pickDestinatario = useCallback(async (r: MovimientoRow, id: string) => {
-    setLabeling(null);
     await run("setTransactionDestinatario", { transactionId: r.id, destinatarioId: id, remember: true });
   }, [run]);
   const createDestinatario = useCallback(async (r: MovimientoRow, name: string, kind: "merchant" | "person") => {
-    setLabeling(null);
     const destinatarioId = Crypto.randomUUID().toLowerCase();
     const pattern = r.description ? patternFrom(r.description) : null;
     if (!(await run("createDestinatario", { destinatarioId, name, kind, pattern }))) return;
@@ -277,8 +279,9 @@ export default function MovimientosScreen() {
         open={labeling?.what === "category"}
         direction={labeling?.row.direction ?? "OUTFLOW"}
         current={labeling?.row.categoryId ?? null}
-        onPick={(id) => labeling && void pickCategory(labeling.row, id)}
+        onPick={(id) => { const r = labeling?.row; if (r) closeLabel(() => void pickCategory(r, id)); }}
         onClose={() => setLabeling(null)}
+        onClosed={labelClosed}
       />
       <DestinatarioSheet
         open={labeling?.what === "destinatario"}
@@ -286,9 +289,10 @@ export default function MovimientosScreen() {
         suggestedKind={labeling?.row.destinatario?.kind ?? (/transf|nequi|daviplata|bre-?b/i.test(labeling?.row.description ?? "") ? "person" : "merchant")}
         text={labeling?.row.description ? patternFrom(labeling.row.description) : ""}
         current={labeling?.row.destinatario?.id ?? null}
-        onPick={(id) => labeling && void pickDestinatario(labeling.row, id)}
-        onCreate={(name, kind) => labeling && void createDestinatario(labeling.row, name, kind)}
+        onPick={(id) => { const r = labeling?.row; if (r) closeLabel(() => void pickDestinatario(r, id)); }}
+        onCreate={(name, kind) => { const r = labeling?.row; if (r) closeLabel(() => void createDestinatario(r, name, kind)); }}
         onClose={() => setLabeling(null)}
+        onClosed={labelClosed}
       />
     </View>
   );
@@ -304,7 +308,8 @@ const toneColors = (t: ReturnType<typeof useV2Theme>): ToneColors => ({
 const sameRow = (a: MovimientoRow, b: MovimientoRow) =>
   a.id === b.id && a.title === b.title && a.amount === b.amount && a.tone === b.tone
   && a.status === b.status && a.time === b.time && a.account === b.account
-  && a.categoryId === b.categoryId && a.destinatario?.id === b.destinatario?.id;
+  && a.categoryId === b.categoryId && a.description === b.description && a.direction === b.direction
+  && a.destinatario?.id === b.destinatario?.id && a.destinatario?.name === b.destinatario?.name && a.destinatario?.kind === b.destinatario?.kind;
 
 type LabelHandler = (r: MovimientoRow) => void;
 const DayGroup = memo(function DayGroup({ group, tone, openRow, onToggle, onMore, onCategory, onDestinatario }: {
@@ -421,7 +426,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12 },
   actions: { flexDirection: "row", alignItems: "center", gap: 8, paddingBottom: 12 },
   more: { width: 44, height: 44, borderRadius: 11, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
-  avatar: { width: 38, height: 38, borderRadius: 11, alignItems: "center", justifyContent: "center" },
   rowBody: { flex: 1, minWidth: 0, gap: 6 },
   rowTop: { flexDirection: "row", alignItems: "baseline", gap: 10 },
   rowTitle: { flex: 1, minWidth: 0, fontSize: 15 },

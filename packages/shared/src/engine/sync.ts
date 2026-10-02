@@ -65,6 +65,9 @@ SYNC_TABLES.push(
     name: "destinatario_rules",
     cols: { id: T, user_id: T, destinatario_id: T, match_type: T, pattern: T, priority: N, match_count: N, last_matched_at: TS, created_at: TS },
   },
+  // Which fields the user chose (and when): without it, a reinstalled or second phone would let
+  // "¿Siempre…?" overwrite a category picked by hand until the next pull.
+  { name: "field_versions", cols: { user_id: T, entity: T, entity_id: T, field: T, client_ts: TS, command_id: T } },
 );
 
 export type Snapshot = Record<string, Record<string, unknown>[]>;

@@ -19,6 +19,9 @@ export function patternFrom(text: string): string {
   return cleanDescription(text).slice(0, 60);
 }
 
+/** Long enough to be remembered as a "contains" rule: "Pan" would match "empanadas". */
+const rememberable = (pattern: string) => pattern.replace(/[^\p{L}\p{N}]/gu, "").length >= 4;
+
 /**
  * On capture: the first destinatario rule the text matches (v1's matcher,
  * exact before contains, by priority) gives the movement its destinatario
@@ -64,7 +67,7 @@ export async function createDestinatario(s: StoragePort, cmd: CommandEnvelope<Cr
   if (await s.getDestinatario(cmd.userId, p.destinatarioId)) return { status: "duplicate", replayed: false, data: { destinatarioId: p.destinatarioId } };
   await s.insertDestinatario({ id: p.destinatarioId, userId: cmd.userId, name: p.name.trim(), kind: p.kind, defaultCategoryId: p.defaultCategoryId ?? null }, cmd.clientTs);
   const pattern = p.pattern?.trim();
-  if (pattern) await s.addDestinatarioRule(cmd.userId, await ruleId(p.destinatarioId, pattern, opts.hash), p.destinatarioId, pattern, cmd.clientTs);
+  if (pattern && rememberable(pattern)) await s.addDestinatarioRule(cmd.userId, await ruleId(p.destinatarioId, pattern, opts.hash), p.destinatarioId, pattern, cmd.clientTs);
   return { status: "applied", replayed: false, data: { destinatarioId: p.destinatarioId } };
 }
 
@@ -88,11 +91,12 @@ export async function setTransactionDestinatario(
   if (current && isNewer(current, cmd.clientTs, cmd.id)) return { status: "superseded", replayed: false };
   const patch: { destinatario_id: string | null; category_id?: string | null } = { destinatario_id: p.destinatarioId };
   const userCategory = await s.getFieldVersion(cmd.userId, "transaction", tx.id, "category_id");
-  if (!userCategory && d?.defaultCategoryId) patch.category_id = d.defaultCategoryId;
+  // Not chosen by hand: the category came from the destinatario, so it follows it (cleared → none).
+  if (!userCategory) patch.category_id = d?.defaultCategoryId ?? null;
   await s.updateTransactionLabels(cmd.userId, tx.id, patch);
   await s.setFieldVersion({ userId: cmd.userId, entity: "transaction", entityId: tx.id, field: "destinatario_id", clientTs: cmd.clientTs, commandId: cmd.id });
   const pattern = tx.cleanDescription ? patternFrom(tx.cleanDescription) : "";
-  if (p.remember && d && pattern) await s.addDestinatarioRule(cmd.userId, await ruleId(d.id, pattern, opts.hash), d.id, pattern, cmd.clientTs);
+  if (p.remember && d && rememberable(pattern)) await s.addDestinatarioRule(cmd.userId, await ruleId(d.id, pattern, opts.hash), d.id, pattern, cmd.clientTs);
   return { status: "applied", replayed: false };
 }
 

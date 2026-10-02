@@ -246,6 +246,22 @@ describe.skipIf(!enabled)("engine on zeta-dev (real Postgres)", { timeout: 90_00
     expect(await s.getTransaction(userId, tx)).toMatchObject({ destinatarioId: rappi, categoryId: domicilios });
     expect((await applyCommand(s, { ...base, id: crypto.randomUUID(), type: "setTransactionCategory", clientTs: at(),
       payload: { transactionId: tx, categoryId: "c2000000-0000-4000-8000-000000000001" } })).status).toBe("applied");
+    expect(await s.getTransaction(userId, tx)).toMatchObject({ categoryId: "c2000000-0000-4000-8000-000000000001" });
+    // Remembering a text another destinatario already has moves the rule (unique per user on Supabase).
+    const other = crypto.randomUUID();
+    await applyCommand(s, { ...base, id: crypto.randomUUID(), type: "createDestinatario", clientTs: at(),
+      payload: { destinatarioId: other, name: "Otro prueba", kind: "merchant" } });
+    const tx2 = crypto.randomUUID();
+    await applyCommand(s, { ...base, id: crypto.randomUUID(), type: "captureManualTransaction", clientTs: at(),
+      payload: { transactionId: tx2, accountId, amount: 9000, direction: "OUTFLOW", currencyCode: "COP", date: "2026-10-02", description: "Tienda prueba" } });
+    for (const d of [rappi, other]) {
+      expect((await applyCommand(s, { ...base, id: crypto.randomUUID(), type: "setTransactionDestinatario", clientTs: at(),
+        payload: { transactionId: tx2, destinatarioId: d, remember: true } })).status).toBe("applied");
+    }
+    // The default category through the encrypted view's trigger, applied to the past not chosen by hand.
+    expect((await applyCommand(s, { ...base, id: crypto.randomUUID(), type: "setDestinatarioCategory", clientTs: at(),
+      payload: { destinatarioId: other, categoryId: domicilios, applyToPast: true } })).status).toBe("applied");
+    expect(await s.getTransaction(userId, tx2)).toMatchObject({ destinatarioId: other, categoryId: domicilios });
     const data = await readInicioData(createUserScopedPgDriver(pool, userId), userId, "2026-09-01");
     expect(data.destinatarios.find((d) => d.id === rappi)).toMatchObject({ name: "Rappi prueba", kind: "merchant" });
     const [raw] = (await pool.query("SELECT name FROM destinatarios_enc WHERE id = $1", [rappi]).catch(() => ({ rows: [{ name: null }] }))).rows;

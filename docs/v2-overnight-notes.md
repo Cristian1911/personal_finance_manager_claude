@@ -62,8 +62,13 @@ the tests talk to zeta-dev only. To undo anything, close its PR (and the ones ab
 - **D16. The category picker** shows the 25 grouped (Comida, Transporte, Hogar, Ocio, Finanzas); groups of one go
   together under "Otras". Only categories for the movement's direction (gastos vs Salario/Otros ingresos). Tapping
   the current one clears it. Detalle doesn't show category/destinatario yet — the open row already does.
+- **D17. Texts shorter than 4 letters aren't remembered** ("Pan" would match "empanadas"). Correcting who a text
+  belongs to moves its rule to the new destinatario (one rule per text, as Supabase already enforces).
 
 ## Things only you can do
+
+- **Deploy the server before the phone build** whenever sync tables change: a new phone build pulling from an old
+  server fails every pull ("Snapshot without destinatarios" / "field_versions").
 
 1. **Production web server env** (for sync to work from real phones): add `V2_SUPABASE_URL`, `V2_SUPABASE_PUBLISHABLE_KEY`,
    `V2_DATABASE_URL` to the VPS `.env` (docker-compose.prod.yml already passes them through, #sync PR). Without them

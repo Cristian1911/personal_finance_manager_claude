@@ -211,9 +211,15 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
     },
 
     async addDestinatarioRule(userId, id, destinatarioId, pattern, at) {
-      const existing = await q<{ id: string }>(
-        "SELECT id FROM destinatario_rules WHERE user_id = ? AND destinatario_id = ? AND lower(pattern) = lower(?)", [userId, destinatarioId, pattern]);
-      if (existing.length) return;
+      // One rule per text per user (unique on Supabase): a correction moves it to the new destinatario.
+      const existing = await q<{ id: string; destinatario_id: string }>(
+        "SELECT id, destinatario_id FROM destinatario_rules WHERE user_id = ? AND lower(pattern) = lower(?)", [userId, pattern]);
+      if (existing.length) {
+        if (existing[0].destinatario_id !== destinatarioId) {
+          await q("UPDATE destinatario_rules SET destinatario_id = ? WHERE user_id = ? AND id = ?", [destinatarioId, userId, existing[0].id]);
+        }
+        return;
+      }
       await q(
         "INSERT INTO destinatario_rules (id, user_id, destinatario_id, match_type, pattern, priority, created_at) VALUES (?, ?, ?, 'contains', ?, 100, ?)",
         [id, userId, destinatarioId, pattern, at],

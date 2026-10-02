@@ -163,4 +163,5 @@ CREATE TABLE destinatario_rules (
   priority INTEGER NOT NULL DEFAULT 100, match_count INTEGER NOT NULL DEFAULT 0, last_matched_at TEXT,
   created_at TEXT
 );
+CREATE UNIQUE INDEX destinatario_rules_user_pattern ON destinatario_rules (user_id, lower(pattern));
 `;

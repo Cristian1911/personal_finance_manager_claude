@@ -10,8 +10,9 @@ import { Sheet } from "./Sheet";
 import { Tap } from "./Tap";
 
 /** Categoría (S8-3): the 25, by group; only those for the movement's direction. */
-export function CategorySheet({ open, direction, current, onPick, onClose }: {
+export function CategorySheet({ open, direction, current, onPick, onClose, onClosed }: {
   open: boolean;
+  onClosed?: () => void;
   direction: "INFLOW" | "OUTFLOW";
   current: string | null;
   onPick: (categoryId: string | null) => void;
@@ -30,7 +31,7 @@ export function CategorySheet({ open, direction, current, onPick, onClose }: {
     return [...out.filter((g) => g.items.length > 1), ...(otras.length ? [{ group: "Otras", items: otras }] : [])];
   }, [direction]);
   return (
-    <Sheet open={open} onClose={onClose} style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
+    <Sheet open={open} onClose={onClose} onClosed={onClosed} style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
       <View style={[styles.handle, { backgroundColor: t.colors.line }]} />
       <Text accessibilityRole="header" style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]}>Categoría</Text>
       <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ gap: 12, paddingBottom: 4 }}>
@@ -54,8 +55,9 @@ export interface DestinatarioOption { id: string; name: string; kind: "merchant"
  * "+ Nuevo «…»" created with the tab's kind (decision: kind is written on
  * create, not only filtered). The movement's text prefills the search.
  */
-export function DestinatarioSheet({ open, options, suggestedKind, text, current, onPick, onCreate, onClose }: {
+export function DestinatarioSheet({ open, options, suggestedKind, text, current, onPick, onCreate, onClose, onClosed }: {
   open: boolean;
+  onClosed?: () => void;
   options: DestinatarioOption[];
   suggestedKind: "merchant" | "person";
   /** The movement's text, cleaned: the default name for a new one. */
@@ -80,8 +82,10 @@ export function DestinatarioSheet({ open, options, suggestedKind, text, current,
   const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
   const shown = options.filter((o) => o.kind === kind && (!query.trim() || fold(o.name).includes(fold(query.trim()))));
   const newName = (query.trim() || titleCase(text)).slice(0, 60);
+  // One with that exact name already exists: pick it, don't offer a second "Rappi".
+  const exists = options.some((o) => o.kind === kind && fold(o.name) === fold(newName));
   return (
-    <Sheet open={open} onClose={onClose} style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
+    <Sheet open={open} onClose={onClose} onClosed={onClosed} style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
       <View style={[styles.handle, { backgroundColor: t.colors.line }]} />
       <Text accessibilityRole="header" style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]}>¿Quién es?</Text>
       <Segmented options={[{ key: "merchant", label: "Comercios" }, { key: "person", label: "Personas" }] as const} value={kind} onChange={setKind} />
@@ -94,11 +98,11 @@ export function DestinatarioSheet({ open, options, suggestedKind, text, current,
         style={[styles.input, { color: t.colors.ink, borderColor: t.colors.control, fontFamily: t.fonts.uiSemibold }]}
       />
       <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ paddingBottom: 4 }} keyboardShouldPersistTaps="handled">
-        {newName ? (
+        {newName && !exists ? (
           <Tap
             onPress={() => onCreate(newName, kind)}
             accessibilityRole="button"
-            accessibilityLabel={`Nuevo ${kind === "person" ? "persona" : "comercio"}: ${newName}`}
+            accessibilityLabel={`${kind === "person" ? "Nueva persona" : "Nuevo comercio"}: ${newName}`}
             style={(pressed) => [styles.row, pressed && { backgroundColor: t.colors.sunk }]}
           >
             <View style={[styles.plus, { borderColor: t.colors.control }]}><Plus size={16} color={t.colors.ink} /></View>
