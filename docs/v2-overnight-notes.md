@@ -147,7 +147,8 @@ the tests talk to zeta-dev only. To undo anything, close its PR (and the ones ab
 
 None: Inicio's "Importar extracto" opens Mis cuentas' PDF picker; Te deben's buttons (Dividir una compra, Anotar un
 préstamo, Ver todo) say "Muy pronto" instead of opening v1 screens that write v1's data. The Tarjeta widget reads
-the cards (next bill = purchases of its period, due date, cut, total owed).
+the cards: the first bill still pending, minus what's paid on it (never an old one); a card without its payment
+day says "Falta el día de pago". The "Muy pronto" is a plain system alert for now (not themed).
 
 - **D24. A card's bill in Disponible is what you bought in its period (D11), not the statement's minimum.** The spec
   (S3-6) says minimum by default; the statement's minimum isn't stored yet. Decide: keep "the whole bill" (safer

@@ -2,7 +2,7 @@ import { defaultCountsInDisponible } from "../commands/set-account-counts-in-dis
 import type { CycleSettings, StoredPaySchedule } from "../types";
 import { computePayCycle, EARLY_ARRIVAL_DAYS, LATE_ARRIVAL_DAYS, type PayCycle, type PaySchedule } from "./cycle";
 import { addDays, colombiaDate, diffDays, type IsoDate } from "./dates";
-import { computeDisponible, type DisponibleResult, type ExpectedIncome, type Obligation } from "./disponible";
+import { computeDisponible, type DisponibleResult, type ExpectedIncome } from "./disponible";
 import { isLiveTransaction, toDisponibleMovements, type OccurrenceLink, type StoredTransaction } from "./movements";
 import { computeVerdict, type DisponibleVerdict, type DisponibleVerdictMemo } from "./verdict";
 import { disponibleBlockView, type DisponibleBlockView } from "./view";
@@ -219,7 +219,7 @@ export function buildInicio(input: {
     obligations,
     balances: input.accounts.filter((a) => counted.has(a.id)).map((a) => ({ accountId: a.id, balance: a.currentBalance })),
     people: input.people,
-    cards: input.cards ?? cardsFrom(input.accounts, obligations, today),
+    cards: input.cards ?? cardsFrom(input.accounts, bills.items, today),
     balanceToday,
     nextIncome: irregular ? 0 : income,
     cycles: { prev: cycleOn(addDays(cycle.start, -1)), next: cycleOn(addDays(cycle.end, 1)) },
@@ -237,21 +237,23 @@ export function buildInicio(input: {
 }
 
 /**
- * The Tarjeta widget's cards, from the accounts and the bills Pagos already
- * computes (D11: the next bill = what was bought in its statement period).
- * Usage, minimum and the at-cut projection come with the statement later.
+ * The Tarjeta widget's cards, from the accounts and Pagos' bills (D11: the next
+ * bill = what was bought in its statement period). The bill shown is the first
+ * one still pending, minus what's paid on it — never an old one. Usage, minimum
+ * and the at-cut projection come with the statement later.
  */
-function cardsFrom(accounts: InicioAccount[], obligations: Obligation[], today: IsoDate): CardSummary[] {
+function cardsFrom(accounts: InicioAccount[], items: BillItem[], today: IsoDate): CardSummary[] {
   return accounts.filter((a) => a.accountType === "CREDIT_CARD").map((a) => {
-    const bills = obligations.filter((o) => o.accountId === a.id && o.kind === "card_bill").sort((x, y) => x.dueDate.localeCompare(y.dueDate));
-    const bill = bills.find((o) => o.dueDate >= today) ?? bills[bills.length - 1];
+    const pending = items.find((b) => b.kind === "card" && b.accountId === a.id && b.status === "pending");
+    const cutDay = a.cutoffDay ?? a.paymentDay;
     return {
       accountId: a.id,
       name: a.name?.trim() || "Tarjeta",
-      estimatedBill: bill ? Math.max(0, bill.amount - (bill.paidBefore ?? 0)) : 0,
-      cutDate: a.cutoffDay ? nextDay(today, a.cutoffDay) : null,
-      dueDate: bill?.dueDate ?? null,
+      estimatedBill: pending ? Math.max(0, Math.round((pending.amount - pending.paid) * 100) / 100) : 0,
+      cutDate: cutDay ? nextDay(today, cutDay) : null,
+      dueDate: pending?.dueDate ?? null,
       totalOwed: a.currentBalance,
+      missingPaymentDay: !a.paymentDay,
     };
   });
 }
@@ -265,5 +267,5 @@ function nextDay(today: IsoDate, day: number): IsoDate {
     if (d >= today) return d;
     [y, m] = m === 12 ? [y + 1, 1] : [y, m + 1];
   }
-  return today;
+  return today; // unreachable: next month always has the day (clamped)
 }

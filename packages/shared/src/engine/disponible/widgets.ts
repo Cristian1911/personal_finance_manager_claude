@@ -138,6 +138,8 @@ export interface CardSummary {
   dueDate?: IsoDate | null;
   minimum?: number | null;
   totalOwed?: number | null;
+  /** No payment day yet: there's no bill to show (Pagos needs it). */
+  missingPaymentDay?: boolean;
 }
 
 /** Days shown on each side of the cycle in Tu flujo. */
@@ -606,6 +608,12 @@ export function tarjetaWidget(i: InicioWidgetsInput, card: CardSummary): InicioW
   const w = base("tarjeta", card.name, "half");
   w.id = `tarjeta:${card.accountId}`;
   w.seeAll = "see_accounts";
+  if (card.missingPaymentDay) {
+    w.hint = "Falta el día de pago";
+    w.lead = "Agrega el día de corte y de pago en Mis cuentas para ver tu próxima factura y cuándo pagarla.";
+    w.actions = [{ id: "import_statement", label: "Importar extracto" }];
+    return w;
+  }
   setValue(w, card.estimatedBill, APPROX);
   w.hint = "próxima factura";
   if (card.usedPercent != null) w.visual = { kind: "bar", percent: clampPercent(card.usedPercent), level: null };

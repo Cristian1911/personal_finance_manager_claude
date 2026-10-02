@@ -66,6 +66,32 @@ describe("buildInicio — the Tarjeta widget reads the cards", () => {
     expect(w!.lead).toContain("300.000");
     expect(r.widgets.some((x) => x.empty && x.id.startsWith("tarjeta"))).toBe(false);
   });
+
+  const card = { id: CARD, name: "Visa", accountType: "CREDIT_CARD", currentBalance: 0, countsInDisponible: null, cutoffDay: 27, paymentDay: 12 };
+  const tarjeta = (r: ReturnType<typeof build>) => {
+    if (r.status !== "ready") throw new Error(r.status);
+    return r.widgets.find((x) => x.id === `tarjeta:${CARD}`)!;
+  };
+
+  it("a bill paid this cycle isn't shown as owed (no red on its due day)", () => {
+    const r = build("2026-10-12", [
+      tx("2026-09-17", 300_000, "OUTFLOW", { accountId: CARD }),
+      tx("2026-10-01", 300_000, "INFLOW", { accountId: CARD }), // paid
+    ], { accounts: [ACCOUNTS[0], card] });
+    const w = tarjeta(r);
+    expect(w.lead).not.toContain("300.000");
+    expect(w.attention).toBeFalsy();
+  });
+
+  it("after the due date with nothing new bought, no old bill comes back as 'Pago vencido'", () => {
+    const r = build("2026-10-20", [tx("2026-09-17", 300_000, "OUTFLOW", { accountId: CARD })], { accounts: [ACCOUNTS[0], card] });
+    expect(tarjeta(r).attention?.reason ?? "").not.toBe("Pago vencido");
+  });
+
+  it("a card without its payment day asks for it instead of showing ≈ $0", () => {
+    const r = build("2026-09-18", [], { accounts: [ACCOUNTS[0], { ...card, cutoffDay: null, paymentDay: null }] });
+    expect(tarjeta(r)).toMatchObject({ hint: "Falta el día de pago" });
+  });
 });
 
 describe("buildInicio — the first cycle starts from the balance told", () => {
