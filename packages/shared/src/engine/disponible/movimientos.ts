@@ -81,7 +81,7 @@ export interface DetalleView {
   /** Written down by hand: amount and date can be fixed; "No es un movimiento" deletes it. */
   manual: boolean;
   /** Raw values for the fix form. */
-  raw: { amount: number; date: IsoDate };
+  raw: { amount: number; date: IsoDate; description: string; time: string | null };
 }
 
 const FILTERS: { key: MovimientosFilter; label: string }[] = [
@@ -244,6 +244,6 @@ export function detalleView(input: { today: IsoDate; transaction: StoredTransact
     note: t.notes?.trim() || null,
     excluded: !!t.isExcluded,
     manual: MANUAL_CAPTURE_METHODS.has(t.captureMethod ?? ""),
-    raw: { amount: t.amount, date: t.date },
+    raw: { amount: t.amount, date: t.date, description: t.description?.trim() ?? "", time: movementTime(t, colombiaTime)?.padStart(5, "0") ?? null },
   };
 }

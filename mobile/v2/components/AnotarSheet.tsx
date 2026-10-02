@@ -4,7 +4,7 @@ import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from "expo-spe
 import { Mic, Square } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
-import { MANUAL_SALARY_DESCRIPTION, amountTyping, anotarPreview, dictado, formatPesos, isDebtAccountType, parseAmount } from "@zeta/shared";
+import { MANUAL_SALARY_DESCRIPTION, amountTyping, anotarPreview, dictado, formatPesos, yaEsta, isDebtAccountType, parseAmount } from "@zeta/shared";
 import { loadAnotar, rememberAnotarAccount, type LoadedAnotar } from "../../lib/v2/anotar/load";
 import { notifyV2Change } from "../../lib/v2/changes";
 import type { AnotarPrefill } from "../../lib/v2/anotar/open";
@@ -138,6 +138,10 @@ export function AnotarSheet({ open, prefill, userId, onClose, onSaved, onAddAcco
   const preview = useMemo(() => (data && from
     ? anotarPreview({ ...data.input, today: data.input.today }, { kind, amount, accountId: from.id, toAccountId, date })
     : null), [data, from, kind, amount, toAccountId, date]);
+  // "Ya está: Ifood −$32.000 · hoy 03:26. ¿Es otro?" — the bank's email, or the same thing anotado twice.
+  const repeated = useMemo(() => (data && from
+    ? yaEsta(data.input.transactions, data.input.today, { kind, amount, accountId: from.id, date })
+    : null), [data, from, kind, amount, date]);
 
   // "Mi sueldo" keeps a fixed description (Inicio recognizes the salary by it); its "De qué" goes to the note.
   const salary = kind === "ingreso" && incomeKind === "sueldo";
@@ -253,6 +257,9 @@ export function AnotarSheet({ open, prefill, userId, onClose, onSaved, onAddAcco
           <Text accessibilityLiveRegion="polite" style={[styles.preview, { color: heard == null && preview?.tone === "bad" ? t.colors.bad.text : t.colors.muted, fontFamily: t.fonts.uiMedium }]}>
             {heard != null ? (heard ? `«${heard}»` : "Di algo como «almuerzo 45 mil en efectivo»") : preview?.line ?? " "}
           </Text>
+          {heard == null && repeated && (
+            <Text accessibilityLiveRegion="polite" style={[styles.preview, { color: t.colors.warn.text, fontFamily: t.fonts.uiMedium }]}>{repeated}</Text>
+          )}
 
           <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} keyboardShouldPersistTaps="handled">
             {kind === "ingreso" && (

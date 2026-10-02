@@ -46,9 +46,11 @@ CURRENCY_RE = re.compile(r"Moneda:\s*(PESOS|DOLARES|DÓLARES)", re.IGNORECASE)
 ESTADO_CURRENCY_RE = re.compile(
     r"ESTADO DE CUENTA EN\s*:\s*(PESOS|DOLARES|DÓLARES)", re.IGNORECASE
 )
-# Period pattern: "31 ago - 30 sep. 2025" (standalone, not requiring "Periodo facturado")
+# Period pattern: "31 ago - 30 sep. 2025" (standalone, not requiring "Periodo facturado").
+# Across the new year Bancolombia writes both years: "30 dic. 2025 - 31 ene. 2026".
 PERIOD_DATE_RE = re.compile(
     r"(\d{1,2})\s+(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)\.?"
+    r"(?:\s+(\d{4}))?"
     r"\s*[-–]\s*"
     r"(\d{1,2})\s+(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)\.?"
     r"\s+(\d{4})",
@@ -141,14 +143,15 @@ def _parse_period(text: str) -> tuple[date | None, date | None]:
 
     from_day = int(match.group(1))
     from_month = SPANISH_MONTHS.get(match.group(2).lower().rstrip("."), 0)
-    to_day = int(match.group(3))
-    to_month = SPANISH_MONTHS.get(match.group(4).lower().rstrip("."), 0)
-    year = int(match.group(5))
+    to_day = int(match.group(4))
+    to_month = SPANISH_MONTHS.get(match.group(5).lower().rstrip("."), 0)
+    year = int(match.group(6))
 
     if not from_month or not to_month:
         return None, None
 
-    from_year = year if from_month <= to_month else year - 1
+    # The start's own year when written; else the year before when the period crosses January.
+    from_year = int(match.group(3)) if match.group(3) else (year if from_month <= to_month else year - 1)
     return date(from_year, from_month, from_day), date(year, to_month, to_day)
 
 

@@ -22,8 +22,8 @@ describe.skipIf(!enabled)("v2 bank email on zeta-dev", { timeout: 90_000 }, () =
   const key = `u_t${Date.now().toString(36)}`.slice(0, 10);
   const to = [`${key}@ingest.test`];
   let seq = 0;
-  const run = (type: string, payload: unknown) => applyCommand(createSqlStorage(createUserScopedPgDriver(pool, userId)), {
-    id: crypto.randomUUID(), type: type as never, userId, deviceId: "test", clientTs: new Date(Date.now() + ++seq * 1000).toISOString(), payload,
+  const run = (type: string, payload: unknown, clientTs = new Date(Date.now() + ++seq * 1000).toISOString()) => applyCommand(createSqlStorage(createUserScopedPgDriver(pool, userId)), {
+    id: crypto.randomUUID(), type: type as never, userId, deviceId: "test", clientTs, payload,
   });
   const balance = async () => Number((await pool.query("SELECT current_balance FROM accounts_enc WHERE id = $1", [accountId])).rows[0].current_balance);
 
@@ -32,7 +32,7 @@ describe.skipIf(!enabled)("v2 bank email on zeta-dev", { timeout: 90_000 }, () =
     const { data, error } = await admin.auth.admin.createUser({ email: `email-${Date.now()}@zeta-dev.test`, password: crypto.randomUUID(), email_confirm: true });
     if (error) throw error;
     userId = data.user.id;
-    expect((await run("createAccount", { accountId, accountType: "SAVINGS", name: "Bancolombia", mask: "0735", currencyCode: "COP", balance: 500_000 })).status).toBe("applied");
+    expect((await run("createAccount", { accountId, accountType: "SAVINGS", name: "Bancolombia", mask: "0735", currencyCode: "COP", balance: 500_000 }, "2026-03-01T12:00:00.000Z")).status).toBe("applied"); // told on March 1: the alerts come after
     await createUserScopedPgDriver(pool, userId).query(
       toDialect("INSERT INTO email_ingest_addresses (user_id, address_key, is_active, auto_import) VALUES (?, ?, ?, ?)", "postgres"), [userId, key, true, true]);
   });

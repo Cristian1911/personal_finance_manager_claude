@@ -11,6 +11,7 @@ import { runLocalCommand } from "../../lib/v2/engine/run-local";
 import { loadPagos, type LoadedPagos } from "../../lib/v2/pagos/load";
 import { useV2UserId } from "../../lib/v2/user";
 import { toColombiaDateString } from "../../lib/utils/date";
+import { ProfileButton } from "../../v2/components/ProfileButton";
 import { Button, IconButton } from "../../v2/components/Button";
 import { Chip } from "../../v2/components/Chip";
 import { ConfirmSheet } from "../../v2/components/ConfirmSheet";
@@ -85,7 +86,7 @@ export default function PagosScreen() {
   }, []);
 
   if (data === null) {
-    return <EmptyState title="Pagos" message="Responde las tres preguntas de Inicio y aquí vas a ver lo que tienes que pagar antes de tu próximo pago." />;
+    return <EmptyState title="Pagos" profile message="Responde las tres preguntas de Inicio y aquí vas a ver lo que tienes que pagar antes de tu próximo pago." />;
   }
 
   const list = (v: PagosView, muted = false) => (
@@ -122,6 +123,7 @@ export default function PagosScreen() {
         <View style={styles.titleRow}>
           <Text accessibilityRole="header" style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]}>Pagos</Text>
           <IconButton label="Agregar pago fijo" onPress={() => setAdding(true)} icon={<Plus size={18} color={t.colors.ink} strokeWidth={2.2} />} />
+          <ProfileButton />
         </View>
 
         {data && (data.now.rows.length > 0 || data.next.rows.length > 0) && (

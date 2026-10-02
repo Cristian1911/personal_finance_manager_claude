@@ -3,6 +3,8 @@ export type CommandType =
   | "captureManualTransaction"
   | "captureBankTransaction"
   | "resolveBankDuplicate"
+  | "anchorStatementBalance"
+  | "recordStatement"
   | "setTransactionNote"
   | "setTransactionExcluded"
   | "deleteTransaction"
@@ -165,7 +167,7 @@ export interface TransactionInsert {
   transactionTime?: string | null;
   merchantName?: string | null;
   sourcePattern?: string | null;
-  provider?: "MANUAL" | "EMAIL";
+  provider?: "MANUAL" | "EMAIL" | "OCR";
   /** PENDING = held for Revisar (a possible duplicate of `reconciledIntoTransactionId`); doesn't count. */
   status?: "POSTED" | "PENDING";
   reconciledIntoTransactionId?: string | null;
@@ -211,6 +213,16 @@ export interface TransactionRow {
   status: string;
 }
 
+/** One bank statement's numbers (statement_snapshots). */
+export interface StatementSnapshotRow {
+  id: string; userId: string; accountId: string;
+  periodFrom: string | null; periodTo: string | null;
+  finalBalance: number | null; totalPaymentDue: number | null; minimumPayment: number | null;
+  paymentDueDate: string | null; interestRate: number | null; currencyCode: string; transactionCount: number;
+  /** How the debt moved in the period (month-to-month tracking). */
+  previousBalance?: number | null; purchases?: number | null; interestCharged?: number | null;
+}
+
 /** A comercio or persona (S8-2). */
 export interface DestinatarioRow {
   id: string;
@@ -254,6 +266,8 @@ export interface StoragePort {
   setReconciliation(userId: string, id: string, intoId: string | null, status: "POSTED" | "PENDING"): Promise<void>;
   /** Bank movements held for Revisar because they may be `twinId`. */
   listHeldFor(userId: string, twinId: string): Promise<TransactionRow[]>;
+  /** What a bank statement said (by id: account + currency + period). */
+  upsertStatementSnapshot(row: StatementSnapshotRow, at: string): Promise<void>;
   updateTransactionFlow(userId: string, id: string, f: { flowClass: string | null; flowClassVersion: number | null; transferGroupId: string | null }): Promise<void>;
   getTransaction(userId: string, id: string): Promise<TransactionRow | null>;
   updateTransactionNotes(userId: string, id: string, notes: string | null): Promise<void>;
@@ -282,7 +296,7 @@ export interface StoragePort {
   listTransactionsByDestinatario(userId: string, destinatarioId: string): Promise<TransactionRow[]>;
   /** The legs of an Entre cuentas, oldest first. */
   getTransferLegs(userId: string, transferGroupId: string): Promise<TransactionRow[]>;
-  updateTransactionFacts(userId: string, id: string, facts: { amount: number; transactionDate: string; accountId: string }): Promise<void>;
+  updateTransactionFacts(userId: string, id: string, facts: { amount: number; transactionDate: string; accountId: string; cleanDescription: string | null; transactionTime: string | null }): Promise<void>;
   getFieldVersion(userId: string, entity: string, entityId: string, field: string): Promise<FieldVersion | null>;
   setFieldVersion(v: FieldVersionWrite): Promise<void>;
   getCycleSettings(userId: string): Promise<CycleSettings | null>;

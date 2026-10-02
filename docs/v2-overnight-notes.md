@@ -16,7 +16,8 @@ the tests talk to zeta-dev only. To undo anything, close its PR (and the ones ab
 | #451 | `feat/v2-ajustes` | Ajustes: tu número, apariencia, ayuda, cerrar sesión, borrar mi cuenta | Open |
 | #452 | `feat/v2-onboarding` | First run: when you get paid, where your money is, fixed payments | Open |
 | #453 | `feat/v2-categorias` | The 25 categories, destinatarios (comercios/personas), matched on capture; Categoría · ¿Quién? on the open row | Open, reviewed, fixes in |
-| (next) | `feat/v2-email` | Bank emails: forwarding address, Bancolombia alerts as commands (merge / hold / new), Revisar "¿Es el mismo?", Correos del banco | In review |
+| #454 | `feat/v2-email` | Bank emails: forwarding address, Bancolombia alerts as commands (merge / hold / new), Revisar "¿Es el mismo?", Correos del banco | Open, reviewed, fixes in |
+| #455 | `feat/v2-pdf` | Subir un extracto (PDF): statements as commands, unknown accounts offered, balance anchored at the cut | Open, reviewed, fixes in |
 
 ## Decisions I took for you (simplest option; change any)
 
@@ -80,6 +81,42 @@ the tests talk to zeta-dev only. To undo anything, close its PR (and the ones ab
   Every email outcome is logged in `email_ingest_logs` with v1's statuses (the template-drift replay covers v2).
   Known gaps: merging a fixed payment's movement re-stamps its paid date to the merge time; the `From` header can
   be spoofed (same as v1 — only Bancolombia's sender is accepted, so a fake alert is the risk, not data loss).
+- **D22. Subir un extracto (PDF)** lives in Mis cuentas. Zeta's server reads the PDF; a statement whose account it
+  knows (kind + last 4) goes there; an unknown one asks: Crear «Bancolombia tarjeta ••7706» (default), "Es <cuenta>",
+  or No importar (D1, never silent). Rows merge with emails and what you anotaste (the statement is the highest
+  tier); the account is set to the statement's final balance at its cut plus what moved after it; a new card learns
+  its cut day, payment day and limit. Uploading the same PDF again changes nothing. Not in yet: rows in another
+  currency (USD sections), investments, saved PDF passwords (asked each time), the "¿Es el mismo?" for statement vs
+  anotado with different words (held to Revisar, same as email).
+- **D24 (owner): a card's bill in Disponible is the statement's minimum.** Imports keep each card/loan statement in
+  `statement_snapshots` (v1's table, through its encrypted view): minimum, due date, what you owe, rate. With it,
+  Pagos and Disponible count the minimum on the bank's due date; before a statement, the estimate (≈ purchases of
+  the period) stays. The Tarjeta widget adds "Desde el corte: $X · va a tu próxima factura".
+- **D26. Importing a statement always shows it first** (owner): what you owe, minimum, due date, rate, interest if you
+  pay only the minimum for 12 months (v1's projection), period and count; an account Zeta didn't recognize shows
+  "No reconocimos esta tarjeta" with no default choice; after importing, a summary of everything done (new /
+  already there / for Revisar, balance set, minimum counted, days learned). A card's balance is its
+  total_payment_due, like v1 (Bancolombia's card statements have no summary balance).
+- **D25. Statements import on the phone (owner's call).** The server only reads the PDF (`/api/v2/parse-pdf`, one
+  request, no database); the phone matches the statements to its accounts and runs the import as its own commands
+  against SQLite — instant, like anotar — and sync replays them on the server in the background (20 per request).
+  Next: a statement that arrives by email is parsed by the server and waits as JSON; Revisar shows "Llegó tu
+  extracto · Importar" and the same local flow runs, no upload, offline.
+- **Database region (decide before launch):** the VPS is in Boston and zeta-dev in São Paulo: 121 ms per query, ~2 s
+  per synced command on the server. Create the v2 production project in us-east-1 (or move the VPS) — see the chat.
+- **D23. Every account knows "as of when" its balance is true**: when you told it (Agregar), or the end of a
+  statement's cut day. Bank movements from before that instant are already inside it: they show up in Movimientos
+  but don't move the balance, and an older statement never re-anchors a newer balance. So a new user who adds
+  "Bancolombia: $1.000.000" today and then uploads September gets September's movements and categories without
+  their balance changing. A card created *from* its statement takes the statement's balance at the cut.
+- **Statement questions:** "Crear" is the default only when you have no account of that kind; with one, Zeta
+  assumes it's that one; with several, you choose (a second "Bancolombia" would count everything twice). A USD
+  section of a card statement is shown as "Zeta aún no lleva otras monedas" and never touches the COP card.
+- **Speed (check on the VPS):** each statement row is ~15 database round trips. From here (159 ms to sa-east-1) a
+  4-row statement took ~20 s. If the VPS is far from São Paulo, a 60-row statement will be slow; then batch the
+  rule and template lookups per import.
+- **Statements land by date in Disponible:** a bank row without a time is placed by its date, so last month's
+  statement doesn't count as spent after your starting balance (fixed in the engine, applies to emails too).
 
 ## Things only you can do
 
@@ -124,8 +161,14 @@ the tests talk to zeta-dev only. To undo anything, close its PR (and the ones ab
 
 ## Still pointing at v1 screens (fixed as each v2 screen lands)
 
-Inicio widget buttons: `import_statement` (/import), `split_purchase`, `lend`, `see_people` (/personas). The Tarjeta widget
-doesn't read accounts yet ("Sin tarjetas aún" even with a card).
+None: Inicio's "Importar extracto" opens Mis cuentas' PDF picker; Te deben's buttons (Dividir una compra, Anotar un
+préstamo, Ver todo) say "Muy pronto" instead of opening v1 screens that write v1's data. The Tarjeta widget reads
+the cards: the first bill still pending, minus what's paid on it (never an old one); a card without its payment
+day says "Falta el día de pago". The "Muy pronto" is a plain system alert for now (not themed).
+
+- **D24. A card's bill in Disponible is what you bought in its period (D11), not the statement's minimum.** The spec
+  (S3-6) says minimum by default; the statement's minimum isn't stored yet. Decide: keep "the whole bill" (safer
+  number) or switch to the minimum once statements bring it.
 
 ## Pre-existing, not mine
 

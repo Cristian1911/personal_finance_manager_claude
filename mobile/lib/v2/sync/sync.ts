@@ -6,7 +6,9 @@ import { getV2Database } from "../engine/database";
 import { V2_LOCAL_USER } from "../user";
 
 const API = process.env.EXPO_PUBLIC_API_URL ?? "";
-const BATCH = 50;
+// ponytail: ~2 s per command on the server while it sits far from its database (Boston ↔ São Paulo): 20 stays well
+// under nginx's 180 s. Raise it once they are close.
+const BATCH = 20;
 /** After this many failed tries a command is set aside ('dead') so it can't block everything after it. */
 export const MAX_ATTEMPTS = 5;
 

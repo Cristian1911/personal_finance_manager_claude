@@ -41,7 +41,7 @@ describe("Movimientos", () => {
       "Hoy · vie 18|−$45.000", "Ayer · jue 17|−$64.000", "Mar 15|+$2.100.000",
     ]);
     expect(v.groups[0].rows.map((r) => `${r.title}|${r.amount}|${r.tone}|${r.time}|${r.account}`)).toEqual([
-      "Rappi|−$32.000|out|12:41|Cuenta", "Tostao|−$8.000|out|8:15|Cuenta", "Uber|−$5.000|card|7:52|Tarjeta",
+      "Rappi|−$32.000|out|12:41|Cuenta", "Tostao|−$8.000|out|08:15|Cuenta", "Uber|−$5.000|card|07:52|Tarjeta",
     ]);
     const row = (title: string) => v.groups.flatMap((g) => g.rows).find((r) => r.title === title);
     expect(row("Caro")).toMatchObject({ title: "Caro", amount: "$45.000", tone: "neutral", status: "Ignorado" });
@@ -93,8 +93,8 @@ describe("Detalle", () => {
   it("a manual spend: source, facts, editable, counts (no status)", () => {
     expect(view(TXS[1])).toEqual({
       id: TXS[1].id, initial: "T", title: "Tostao", amount: "−$8.000", tone: "out",
-      source: "manual", facts: "A mano · hoy 8:15 · Cuenta", status: null,
-      note: "con Ana", excluded: false, manual: true, raw: { amount: 8000, date: "2026-09-18" },
+      source: "manual", facts: "A mano · hoy 08:15 · Cuenta", status: null,
+      note: "con Ana", excluded: false, manual: true, raw: { amount: 8000, date: "2026-09-18", description: "Tostao", time: "08:15" },
     });
   });
 

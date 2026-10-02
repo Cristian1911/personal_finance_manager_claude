@@ -7,7 +7,8 @@ import type { TransactionCaptureMethod } from "../../types/domain";
 import type { EngineOptions } from "../runner";
 import type { CommandEnvelope, CommandResult, StoragePort, TransactionRow } from "../types";
 import { UUID_RE } from "../validate";
-import { moveBalance } from "./balance";
+import { balanceAsOf, colombiaInstant, moveBalance } from "./balance";
+import { labelTarget } from "./reconciled";
 import { matchOnCapture } from "./categorias";
 import { autoLinkPayment, relinkPayment } from "./pagos";
 import { isIsoDate, isMoney } from "./validate-money";
@@ -20,7 +21,7 @@ import { isIsoDate, isMoney } from "./validate-money";
 export interface CaptureBankTransactionPayload {
   transactionId: string;
   accountId: string;
-  source: "EMAIL";
+  source: "EMAIL" | "PDF";
   amount: number;
   direction: "INFLOW" | "OUTFLOW";
   currencyCode: string;
@@ -34,9 +35,17 @@ export interface CaptureBankTransactionPayload {
   merchantName?: string | null;
   /** The parser's alert family ("compra_debito", "transferencia"…), evidence for the flow class. */
   sourcePattern?: string | null;
+  /** PDF: the nth identical row in its statement (two equal transfers the same day are two movements). */
+  occurrence?: number;
+  /** PDF cuotas: the purchase price, and which cuota this row is. */
+  originalAmount?: number | null;
+  installmentCurrent?: number | null;
+  installmentTotal?: number | null;
 }
 
-const METHOD: Record<CaptureBankTransactionPayload["source"], TransactionCaptureMethod> = { EMAIL: "EMAIL_IMPORT" };
+const METHOD: Record<CaptureBankTransactionPayload["source"], TransactionCaptureMethod> = { EMAIL: "EMAIL_IMPORT", PDF: "PDF_IMPORT" };
+const PROVIDER = { EMAIL: "EMAIL", PDF: "OCR" } as const;
+const posInt = (v: unknown) => typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= 1000;
 /** ±3 days: the date tolerance of scoreReconciliationCandidate. */
 const WINDOW_DAYS = 3;
 
@@ -53,6 +62,9 @@ function validate(p: CaptureBankTransactionPayload): string | null {
   if (typeof p.description !== "string" || !p.description.trim() || p.description.length > 200) return "Descripción inválida.";
   if (p.merchantName != null && (typeof p.merchantName !== "string" || p.merchantName.length > 200)) return "Comercio inválido.";
   if (p.sourcePattern != null && (typeof p.sourcePattern !== "string" || p.sourcePattern.length > 40)) return "Tipo de alerta inválido.";
+  if (p.occurrence != null && !posInt(p.occurrence)) return "Ocurrencia inválida.";
+  if (p.originalAmount != null && (!isMoney(p.originalAmount) || p.originalAmount <= 0)) return "Monto original inválido.";
+  if ((p.installmentCurrent != null && !posInt(p.installmentCurrent)) || (p.installmentTotal != null && !posInt(p.installmentTotal))) return "Cuota inválida.";
   return null;
 }
 
@@ -93,10 +105,14 @@ export async function captureBankTransaction(
     return { status: "duplicate", replayed: false, data: { transactionId: p.transactionId } };
   }
 
-  // Exactly v1's email key (route.ts): provider, date, amount, the bank's line.
-  const idempotencyKey = await computeIdempotencyKey({
-    provider: p.source, transactionDate: p.date, amount: p.amount, rawDescription: p.rawLine,
-  }, opts.hash);
+  // Exactly v1's keys. Email (route.ts): provider, date, amount, the bank's line. Statement
+  // (importTransactions): provider OCR, occN past the first identical row, the purchase price, the cuota.
+  const idempotencyKey = await computeIdempotencyKey(p.source === "EMAIL"
+    ? { provider: "EMAIL", transactionDate: p.date, amount: p.amount, rawDescription: p.rawLine }
+    : {
+      provider: "OCR", providerTransactionId: (p.occurrence ?? 1) > 1 ? `occ${p.occurrence}` : undefined,
+      transactionDate: p.date, amount: p.originalAmount ?? p.amount, rawDescription: p.rawLine, installmentCurrent: p.installmentCurrent ?? null,
+    }, opts.hash);
   const same = await s.findTransactionByIdempotencyKey(cmd.userId, idempotencyKey);
   if (same) return { status: "duplicate", replayed: false, data: { transactionId: same.id } };
 
@@ -108,6 +124,7 @@ export async function captureBankTransaction(
   const { bestMatch } = findReconciliationCandidates({
     account_id: p.accountId, amount: p.amount, direction: p.direction, transaction_date: p.date, raw_description: p.rawLine,
     capture_method: method, transaction_time: p.time ?? null, source_pattern: p.sourcePattern ?? null, currency_code: p.currencyCode,
+    original_amount: p.originalAmount ?? null, installment_current: p.installmentCurrent ?? null,
   }, candidates.map(asCandidate));
   const twin = bestMatch && bestMatch.decision !== "NO_MATCH" ? candidates.find((c) => c.id === bestMatch.candidateId) : undefined;
   const twinTier = twin ? getCaptureTier(twin.captureMethod as TransactionCaptureMethod) : tier;
@@ -128,7 +145,7 @@ export async function captureBankTransaction(
     transactionDate: p.date,
     cleanDescription: p.description.trim(),
     notes: null,
-    captureMethod: method as "EMAIL_IMPORT",
+    captureMethod: method as "EMAIL_IMPORT" | "PDF_IMPORT",
     idempotencyKey,
     flowClass,
     flowClassVersion: FLOW_CLASS_RULES_VERSION,
@@ -139,7 +156,7 @@ export async function captureBankTransaction(
     transactionTime: p.time ?? null,
     merchantName: p.merchantName ?? null,
     sourcePattern: p.sourcePattern ?? null,
-    provider: p.source,
+    provider: PROVIDER[p.source],
     status: held ? "PENDING" : "POSTED",
     reconciledIntoTransactionId: held?.id ?? null,
     createdAt: cmd.clientTs,
@@ -156,7 +173,10 @@ export async function captureBankTransaction(
 
 /** A movement that counts on its own: the balance and bill detection, like any capture. */
 async function post(s: StoragePort, cmd: CommandEnvelope, row: TransactionRow, opts: EngineOptions) {
-  await moveBalance(s, cmd.userId, row.accountId, signed(row));
+  // Before the instant the balance is true as of (told, or a statement's cut): already inside it.
+  // Without a time, a row is placed at the start of its day.
+  const asOf = await balanceAsOf(s, cmd.userId, row.accountId);
+  if (!asOf || colombiaInstant(row.transactionDate, row.transactionTime ?? undefined) > asOf) await moveBalance(s, cmd.userId, row.accountId, signed(row));
   await autoLinkPayment(s, cmd.userId, row, cmd.clientTs, opts);
 }
 
@@ -169,6 +189,8 @@ export async function releaseHeld(s: StoragePort, cmd: CommandEnvelope, held: Tr
 /** The bank's row becomes the movement `twin` was: twin stops counting, its choices and bill move over. */
 async function takeOver(s: StoragePort, cmd: CommandEnvelope, bank: TransactionRow, twin: TransactionRow, opts: EngineOptions) {
   await s.setReconciliation(cmd.userId, twin.id, bank.id, "POSTED");
+  // Bank movements held because they might be the twin now wait on this row (answered once, counted once).
+  for (const h of await s.listHeldFor(cmd.userId, twin.id)) await s.setReconciliation(cmd.userId, h.id, bank.id, "PENDING");
   // An Entre cuentas leg stays a transfer; a class set by hand (Anotar's Gasto/Ingreso, version 0) is the user's word.
   const hand = twin.flowClassVersion === 0 && twin.flowClass;
   if (twin.transferGroupId || hand) {
@@ -206,8 +228,16 @@ export async function resolveBankDuplicate(
   const row = await s.getTransaction(cmd.userId, p.transactionId);
   if (!row) return { status: "rejected", replayed: false, code: "not_found", error: "Movimiento no encontrado." };
   if (row.status !== "PENDING") return { status: "rejected", replayed: false, code: "invalid", error: "Ya respondiste esto." };
-  const twin = row.reconciledIntoTransactionId ? await s.getTransaction(cmd.userId, row.reconciledIntoTransactionId) : null;
-  // The twin may be gone (deleted, or merged elsewhere) since: then it's simply a new movement.
+  const found = row.reconciledIntoTransactionId ? await s.getTransaction(cmd.userId, row.reconciledIntoTransactionId) : null;
+  // The twin may have been merged since (the statement took it over): the answer is about the row it became.
+  const twin = found ? await labelTarget(s, cmd.userId, found) : null;
+  // "Es el mismo" as a statement's row (higher): this one is its duplicate and stops waiting, counted never.
+  if (p.same && twin && !twin.reconciledIntoTransactionId
+    && getCaptureTier(twin.captureMethod as TransactionCaptureMethod) < getCaptureTier(row.captureMethod as TransactionCaptureMethod)) {
+    await s.setReconciliation(cmd.userId, row.id, twin.id, "POSTED");
+    return { status: "applied", replayed: false };
+  }
+  // The twin may be gone (deleted) since: then it's simply a new movement.
   if (p.same && twin && !twin.reconciledIntoTransactionId) {
     await s.setReconciliation(cmd.userId, row.id, null, "POSTED");
     await takeOver(s, cmd, { ...row, status: "POSTED", reconciledIntoTransactionId: null }, twin, opts);

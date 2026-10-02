@@ -1,6 +1,8 @@
 import { archiveAccount, createAccount, editAccount } from "./commands/accounts";
 import { captureManualTransaction } from "./commands/capture-manual-transaction";
 import { captureBankTransaction, resolveBankDuplicate } from "./commands/capture-bank-transaction";
+import { anchorStatementBalance } from "./commands/anchor-statement-balance";
+import { recordStatement } from "./commands/record-statement";
 import { captureTransfer } from "./commands/capture-transfer";
 import { createDestinatario, setDestinatarioCategory, setTransactionCategory, setTransactionDestinatario } from "./commands/categorias";
 import { archivePagoFijo, createPagoFijo, editPagoFijo, setOccurrenceStatus } from "./commands/pagos";
@@ -25,6 +27,8 @@ const HANDLERS: Partial<Record<CommandType, Handler>> = {
   captureManualTransaction,
   captureBankTransaction,
   resolveBankDuplicate,
+  anchorStatementBalance,
+  recordStatement,
   setTransactionNote,
   setTransactionExcluded,
   deleteTransaction,
