@@ -16,6 +16,7 @@ the tests talk to zeta-dev only. To undo anything, close its PR (and the ones ab
 | #451 | `feat/v2-ajustes` | Ajustes: tu número, apariencia, ayuda, cerrar sesión, borrar mi cuenta | Open |
 | #452 | `feat/v2-onboarding` | First run: when you get paid, where your money is, fixed payments | Open |
 | #453 | `feat/v2-categorias` | The 25 categories, destinatarios (comercios/personas), matched on capture; Categoría · ¿Quién? on the open row | Open, reviewed, fixes in |
+| (next) | `feat/v2-email` | Bank emails: forwarding address, Bancolombia alerts as commands (merge / hold / new), Revisar "¿Es el mismo?", Correos del banco | In review |
 
 ## Decisions I took for you (simplest option; change any)
 
@@ -76,6 +77,9 @@ the tests talk to zeta-dev only. To undo anything, close its PR (and the ones ab
   Bank rows show the bank's time (3:31), not when the email arrived.
 - **Not built yet (email):** an alert from a card no account has (unknown last 4) is skipped and logged; D1 wants a
   Revisar card "agregar como nueva / es de…". Attachments (statement PDFs by email) are ignored by v2 for now.
+  Every email outcome is logged in `email_ingest_logs` with v1's statuses (the template-drift replay covers v2).
+  Known gaps: merging a fixed payment's movement re-stamps its paid date to the merge time; the `From` header can
+  be spoofed (same as v1 — only Bancolombia's sender is accepted, so a fake alert is the risk, not data loss).
 
 ## Things only you can do
 

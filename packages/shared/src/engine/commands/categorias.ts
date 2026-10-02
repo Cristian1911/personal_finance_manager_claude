@@ -1,3 +1,4 @@
+import { labelTarget } from "./reconciled";
 import { sha256 } from "../../utils/idempotency";
 import { cleanDescription, matchDestinatario } from "../../utils/destinatario-matcher";
 import { isV2Category } from "../categories";
@@ -38,11 +39,13 @@ export async function setTransactionCategory(s: StoragePort, cmd: CommandEnvelop
   const p = cmd.payload;
   if (!p || !UUID_RE.test(p.transactionId ?? "")) return bad("Identificador inválido.");
   if (p.categoryId !== null && (typeof p.categoryId !== "string" || !isV2Category(p.categoryId))) return bad("Categoría inválida.");
-  if (!(await s.getTransaction(cmd.userId, p.transactionId))) return bad("Movimiento no encontrado.", "not_found");
-  const current = await s.getFieldVersion(cmd.userId, "transaction", p.transactionId, "category_id");
+  const found = await s.getTransaction(cmd.userId, p.transactionId);
+  if (!found) return bad("Movimiento no encontrado.", "not_found");
+  const id = (await labelTarget(s, cmd.userId, found)).id;
+  const current = await s.getFieldVersion(cmd.userId, "transaction", id, "category_id");
   if (current && isNewer(current, cmd.clientTs, cmd.id)) return { status: "superseded", replayed: false };
-  await s.updateTransactionLabels(cmd.userId, p.transactionId, { category_id: p.categoryId });
-  await s.setFieldVersion({ userId: cmd.userId, entity: "transaction", entityId: p.transactionId, field: "category_id", clientTs: cmd.clientTs, commandId: cmd.id });
+  await s.updateTransactionLabels(cmd.userId, id, { category_id: p.categoryId });
+  await s.setFieldVersion({ userId: cmd.userId, entity: "transaction", entityId: id, field: "category_id", clientTs: cmd.clientTs, commandId: cmd.id });
   return { status: "applied", replayed: false };
 }
 
@@ -83,8 +86,9 @@ export async function setTransactionDestinatario(
 ): Promise<CommandResult> {
   const p = cmd.payload;
   if (!p || !UUID_RE.test(p.transactionId ?? "") || (p.destinatarioId !== null && !UUID_RE.test(p.destinatarioId ?? ""))) return bad("Identificador inválido.");
-  const tx = await s.getTransaction(cmd.userId, p.transactionId);
-  if (!tx) return bad("Movimiento no encontrado.", "not_found");
+  const found = await s.getTransaction(cmd.userId, p.transactionId);
+  if (!found) return bad("Movimiento no encontrado.", "not_found");
+  const tx = await labelTarget(s, cmd.userId, found);
   const d = p.destinatarioId ? await s.getDestinatario(cmd.userId, p.destinatarioId) : null;
   if (p.destinatarioId && !d) return bad("Destinatario no encontrado.", "not_found");
   const current = await s.getFieldVersion(cmd.userId, "transaction", tx.id, "destinatario_id");

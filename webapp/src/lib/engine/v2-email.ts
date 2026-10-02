@@ -16,8 +16,16 @@ const BANK_SENDERS = [
 ];
 
 export type V2EmailOutcome =
-  | "no_address" | "gmail_verification" | "sender_rejected" | "not_a_movement"
+  | "no_address" | "gmail_verification" | "sender_rejected" | "not_a_movement" | "rate_limited"
   | "unknown_account" | "applied" | "duplicate" | "rejected";
+
+/** Same daily cap per user as the web app. */
+const PER_DAY = 100;
+/** v1's log statuses, so the parse_failed corpus replay (template drift) covers v2 too. */
+const LOG_STATUS: Partial<Record<V2EmailOutcome, string>> = {
+  applied: "imported", duplicate: "duplicate", sender_rejected: "sender_rejected", rate_limited: "rate_limited",
+  not_a_movement: "parse_failed", unknown_account: "parse_failed", rejected: "parse_failed",
+};
 
 /** A stable UUID from text: Resend redelivers the same email id, which must land on the same movement. */
 function uuidFrom(text: string): string {
@@ -47,6 +55,14 @@ export async function processV2Email(pool: Pool, email: {
   // Not a v2 address (the web app's, or unknown): not ours to log.
   if (!address) return { outcome: "no_address" };
   const userId = address.user_id;
+  const log = async (outcome: V2EmailOutcome, error: string | null = null) => {
+    const status = LOG_STATUS[outcome];
+    if (!status) return;
+    await pool.query(
+      "INSERT INTO email_ingest_logs (user_id, email_ingest_id, from_address, status, raw_body, error_message) VALUES ($1, $2, $3, $4, $5, $6)",
+      [userId, address.id, email.from.slice(0, 300), status, body.slice(0, 800) || null, error],
+    ).catch((e: Error) => console.error("[v2 email] log failed", e.message));
+  };
   const driver = createUserScopedPgDriver(pool, userId);
   const body = email.text || (email.html ? stripHtml(email.html) : "");
   const from = (email.from.toLowerCase().match(/<([^>]+)>/)?.[1] ?? email.from.toLowerCase()).trim();
@@ -60,10 +76,25 @@ export async function processV2Email(pool: Pool, email: {
     }
     return { outcome: "gmail_verification" };
   }
-  if (!BANK_SENDERS.includes(from)) return { outcome: "sender_rejected" };
+  if (!BANK_SENDERS.includes(from)) {
+    await log("sender_rejected", `Remitente no permitido: ${from}`);
+    return { outcome: "sender_rejected" };
+  }
+  const { rows: [today] } = await pool.query<{ n: string }>(
+    "SELECT count(*) AS n FROM email_ingest_logs WHERE user_id = $1 AND created_at >= date_trunc('day', now())", [userId]);
+  if (Number(today.n) >= PER_DAY) {
+    await log("rate_limited");
+    return { outcome: "rate_limited" };
+  }
 
   const parsed = body.trim() ? parseBancolombiaEmail(body) : null;
-  if (!parsed) return { outcome: "not_a_movement" };
+  if (!parsed) {
+    await log("not_a_movement", "No es una alerta de movimiento reconocida");
+    return { outcome: "not_a_movement" };
+  }
+  // A bank alert came through: forwarding works, Gmail's confirmation link is no longer needed.
+  await driver.query(toDialect("UPDATE email_ingest_addresses SET gmail_verification_url = NULL WHERE user_id = ? AND id = ? AND gmail_verification_url IS NOT NULL", "postgres"),
+    [userId, address.id]);
 
   const accounts = await driver.query<{ id: string; account_type: AccountType; mask: string | null; debit_card_mask: string | null; currency_code: CurrencyCode }>(
     toDialect("SELECT id, account_type, mask, debit_card_mask, currency_code FROM accounts WHERE user_id = ? AND is_active = ?", "postgres"), [userId, true]);
@@ -71,7 +102,10 @@ export async function processV2Email(pool: Pool, email: {
   const candidates = accounts.map((a) => ({ ...a, debit_card_mask: a.debit_card_mask ?? a.mask }));
   const accountId = resolveSuggestedEmailAccountId({ accounts: candidates, parsed, defaultAccountId: address.account_id });
   // ponytail: an unknown card's movement isn't captured yet; D1 wants a Revisar card (add / assign).
-  if (!accountId) return { outcome: "unknown_account" };
+  if (!accountId) {
+    await log("unknown_account", `Sin cuenta para ${parsed.card_type} *${parsed.card_last4}`);
+    return { outcome: "unknown_account" };
+  }
   const account = accounts.find((a) => a.id === accountId)!;
 
   const description = parsed.merchant ?? parsed.destination ?? parsed.raw_line;
@@ -98,5 +132,6 @@ export async function processV2Email(pool: Pool, email: {
   });
   // A redelivery replays the stored answer: nothing was applied twice.
   const outcome = result.status === "duplicate" || result.replayed ? "duplicate" : result.status === "applied" ? "applied" : "rejected";
+  await log(outcome, result.status === "rejected" ? (result.error ?? "Rechazado") : null);
   return { outcome, result };
 }

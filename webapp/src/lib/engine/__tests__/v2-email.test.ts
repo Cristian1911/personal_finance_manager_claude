@@ -65,6 +65,12 @@ describe.skipIf(!enabled)("v2 bank email on zeta-dev", { timeout: 90_000 }, () =
     expect(await process(pool, { emailId: "e-5", from: BANK, to, text: ALERT.replace("*0735", "*9999"), html: null })).toMatchObject({ outcome: "unknown_account" });
   });
 
+  it("logs what it couldn't capture (v1's statuses, for the template-drift replay)", async () => {
+    const { rows } = await pool.query("SELECT status, error_message FROM email_ingest_logs WHERE user_id = $1 ORDER BY created_at", [userId]);
+    expect(rows.map((r) => r.status)).toEqual(expect.arrayContaining(["imported", "duplicate", "sender_rejected", "parse_failed"]));
+    expect(rows.find((r) => r.error_message?.includes("*9999"))).toBeTruthy();
+  });
+
   it("keeps Gmail's forwarding confirmation link for the phone", async () => {
     const link = "https://mail.google.com/mail/vf-abc123";
     expect(await process(pool, { emailId: "e-6", from: "forwarding-noreply@google.com", to, text: `Confirma: ${link}`, html: null })).toMatchObject({ outcome: "gmail_verification" });

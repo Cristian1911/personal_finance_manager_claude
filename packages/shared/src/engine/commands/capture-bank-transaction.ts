@@ -111,16 +111,13 @@ export async function captureBankTransaction(
   }, candidates.map(asCandidate));
   const twin = bestMatch && bestMatch.decision !== "NO_MATCH" ? candidates.find((c) => c.id === bestMatch.candidateId) : undefined;
   const twinTier = twin ? getCaptureTier(twin.captureMethod as TransactionCaptureMethod) : tier;
-  if (twin && bestMatch!.decision === "AUTO_MERGE" && twinTier < tier) {
-    return { status: "duplicate", replayed: false, data: { transactionId: twin.id } };
-  }
+  // The statement (higher) already has it, strongly or weakly: it's the authority, this is a duplicate.
+  if (twin && twinTier < tier) return { status: "duplicate", replayed: false, data: { transactionId: twin.id } };
   const replaces = twin && bestMatch!.decision === "AUTO_MERGE" && twinTier > tier ? twin : undefined;
-  const held = twin && bestMatch!.decision === "REVIEW" && twinTier !== tier ? twin : undefined;
+  const held = twin && bestMatch!.decision === "REVIEW" && twinTier > tier ? twin : undefined;
 
   const matched = await matchOnCapture(s, cmd.userId, p.merchantName ?? p.description);
   const { flowClass } = classifyFlow({ direction: p.direction, accountType: account.accountType, description: p.description, sourcePattern: p.sourcePattern ?? null });
-  // A class set by hand (Anotar's Gasto/Ingreso, version 0) is the user's word; the rules' otherwise.
-  const handClass = replaces?.flowClass ?? null;
   await s.insertTransaction({
     id: p.transactionId,
     userId: cmd.userId,
@@ -133,9 +130,9 @@ export async function captureBankTransaction(
     notes: null,
     captureMethod: method as "EMAIL_IMPORT",
     idempotencyKey,
-    flowClass: handClass ?? flowClass,
-    flowClassVersion: handClass ? 0 : FLOW_CLASS_RULES_VERSION,
-    transferGroupId: replaces?.transferGroupId ?? null,
+    flowClass,
+    flowClassVersion: FLOW_CLASS_RULES_VERSION,
+    transferGroupId: null,
     categoryId: matched.categoryId,
     destinatarioId: matched.destinatarioId,
     rawDescription: p.rawLine,
@@ -163,20 +160,36 @@ async function post(s: StoragePort, cmd: CommandEnvelope, row: TransactionRow, o
   await autoLinkPayment(s, cmd.userId, row, cmd.clientTs, opts);
 }
 
+/** A held movement that turns out to be its own (Revisar's "No, son dos", or its twin was deleted): it counts. */
+export async function releaseHeld(s: StoragePort, cmd: CommandEnvelope, held: TransactionRow, opts: EngineOptions = {}) {
+  await s.setReconciliation(cmd.userId, held.id, null, "POSTED");
+  await post(s, cmd, { ...held, status: "POSTED", reconciledIntoTransactionId: null }, opts);
+}
+
 /** The bank's row becomes the movement `twin` was: twin stops counting, its choices and bill move over. */
 async function takeOver(s: StoragePort, cmd: CommandEnvelope, bank: TransactionRow, twin: TransactionRow, opts: EngineOptions) {
   await s.setReconciliation(cmd.userId, twin.id, bank.id, "POSTED");
+  // An Entre cuentas leg stays a transfer; a class set by hand (Anotar's Gasto/Ingreso, version 0) is the user's word.
+  const hand = twin.flowClassVersion === 0 && twin.flowClass;
+  if (twin.transferGroupId || hand) {
+    await s.updateTransactionFlow(cmd.userId, bank.id, {
+      flowClass: hand ? twin.flowClass : bank.flowClass, flowClassVersion: hand ? 0 : bank.flowClassVersion,
+      transferGroupId: twin.transferGroupId ?? bank.transferGroupId,
+    });
+  }
+  // "No es un movimiento" was your choice: the bank's row stays ignored (and out of the balance).
+  if (twin.isExcluded) await s.updateTransactionExcluded(cmd.userId, bank.id, true);
   await s.updateTransactionLabels(cmd.userId, bank.id, {
     category_id: twin.categoryId ?? bank.categoryId, destinatario_id: twin.destinatarioId ?? bank.destinatarioId,
   });
   if (twin.notes) await s.updateTransactionNotes(cmd.userId, bank.id, twin.notes);
   // Your choices stay yours on the new row: their versions travel with them.
-  for (const field of ["category_id", "destinatario_id", "notes"]) {
+  for (const field of ["category_id", "destinatario_id", "notes", "is_excluded"]) {
     const v = await s.getFieldVersion(cmd.userId, "transaction", twin.id, field);
     if (v) await s.setFieldVersion({ userId: cmd.userId, entity: "transaction", entityId: bank.id, field, clientTs: v.clientTs, commandId: v.commandId });
   }
-  // Only the difference: the twin already moved the balance (unless ignored).
-  await moveBalance(s, cmd.userId, bank.accountId, signed(bank) - (twin.isExcluded ? 0 : signed(twin)));
+  // Only the difference: the twin already moved the balance. Ignored, neither is in it.
+  if (!twin.isExcluded) await moveBalance(s, cmd.userId, bank.accountId, signed(bank) - signed(twin));
   await relinkPayment(s, cmd.userId, twin.id, bank.id, cmd.clientTs, opts);
 }
 
@@ -194,10 +207,12 @@ export async function resolveBankDuplicate(
   if (!row) return { status: "rejected", replayed: false, code: "not_found", error: "Movimiento no encontrado." };
   if (row.status !== "PENDING") return { status: "rejected", replayed: false, code: "invalid", error: "Ya respondiste esto." };
   const twin = row.reconciledIntoTransactionId ? await s.getTransaction(cmd.userId, row.reconciledIntoTransactionId) : null;
-  await s.setReconciliation(cmd.userId, row.id, null, "POSTED");
-  const bank = { ...row, status: "POSTED", reconciledIntoTransactionId: null };
   // The twin may be gone (deleted, or merged elsewhere) since: then it's simply a new movement.
-  if (p.same && twin && !twin.reconciledIntoTransactionId) await takeOver(s, cmd, bank, twin, opts);
-  else await post(s, cmd, bank, opts);
+  if (p.same && twin && !twin.reconciledIntoTransactionId) {
+    await s.setReconciliation(cmd.userId, row.id, null, "POSTED");
+    await takeOver(s, cmd, { ...row, status: "POSTED", reconciledIntoTransactionId: null }, twin, opts);
+  } else {
+    await releaseHeld(s, cmd, row, opts);
+  }
   return { status: "applied", replayed: false };
 }

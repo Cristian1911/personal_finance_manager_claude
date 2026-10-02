@@ -8,7 +8,8 @@ export interface PosibleDuplicado {
   id: string;
   /** "¿Es el mismo que anotaste?" — both sides, as the user wrote / the bank said them. */
   banco: { title: string; amount: string; date: string; account: string };
-  tuyo: { title: string; amount: string; date: string };
+  /** Null when what you anotaste isn't on the phone anymore: then it's only "¿cuenta?". */
+  tuyo: { title: string; amount: string; date: string } | null;
 }
 
 /** Revisar's possible duplicates, newest first. */
@@ -26,9 +27,9 @@ export function posiblesDuplicados(
   });
   return transactions
     .filter((t) => t.status === "PENDING" && t.reconciledIntoTransactionId)
-    .flatMap((t) => {
+    .map((t) => {
       const twin = byId.get(t.reconciledIntoTransactionId!);
-      return twin ? [{ id: t.id, banco: { ...side(t), account: label.get(t.accountId) ?? "Cuenta" }, tuyo: side(twin) }] : [];
+      return { id: t.id, banco: { ...side(t), account: label.get(t.accountId) ?? "Cuenta" }, tuyo: twin ? side(twin) : null };
     })
     .sort((a, b) => (byId.get(b.id)!.date < byId.get(a.id)!.date ? -1 : 1));
 }

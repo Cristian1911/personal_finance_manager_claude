@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { processV2Email } from "@/lib/engine/v2-email";
 import { v2Config, v2Pool } from "@/lib/engine/v2-server";
@@ -11,7 +12,11 @@ export async function POST(request: Request) {
   const cfg = v2Config();
   if (!cfg) return NextResponse.json({ error: "v2 no está configurado" }, { status: 503 });
   const raw = await request.text();
-  if (!(await verifySvix(request, raw))) return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+  if (!(await verifySvix(request, raw))) {
+    // Loud: a wrong or missing RESEND_WEBHOOK_SECRET_V2 would otherwise drop every email quietly.
+    console.error("[v2 email] signature check failed — is RESEND_WEBHOOK_SECRET_V2 this endpoint's secret?");
+    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+  }
   let event: { type?: string; data?: { email_id: string; from: string; to: string[]; created_at?: string } };
   try {
     event = JSON.parse(raw);
@@ -35,11 +40,14 @@ async function verifySvix(request: Request, body: string): Promise<boolean> {
   const ts = request.headers.get("svix-timestamp");
   const sigs = request.headers.get("svix-signature");
   if (!id || !ts || !sigs) return false;
+  // Svix's tolerance: a replayed old delivery is refused.
+  if (!/^\d+$/.test(ts) || Math.abs(Date.now() / 1000 - Number(ts)) > 300) return false;
   const bytes = Uint8Array.from(atob(secret.startsWith("whsec_") ? secret.slice(6) : secret), (c) => c.charCodeAt(0));
   const key = await crypto.subtle.importKey("raw", bytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const mac = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${id}.${ts}.${body}`));
   const expected = "v1," + btoa(String.fromCharCode(...new Uint8Array(mac)));
-  return sigs.split(" ").some((s) => s === expected);
+  const want = Buffer.from(expected);
+  return sigs.split(" ").some((s) => { const got = Buffer.from(s); return got.length === want.length && timingSafeEqual(got, want); });
 }
 
 async function fetchContent(emailId: string): Promise<{ text: string | null; html: string | null } | null> {

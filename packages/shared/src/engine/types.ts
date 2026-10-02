@@ -200,6 +200,8 @@ export interface TransactionRow {
   categoryId: string | null;
   destinatarioId: string | null;
   flowClass: string | null;
+  /** 0 = set by hand (Anotar); otherwise the rules version that classified it. */
+  flowClassVersion: number | null;
   rawDescription: string | null;
   /** "HH:mm" when the bank said it. */
   transactionTime: string | null;
@@ -250,6 +252,9 @@ export interface StoragePort {
   /** Same account, dates in [from, to], not already merged away: what a bank row may be a duplicate of. */
   listReconciliationCandidates(userId: string, accountId: string, from: string, to: string): Promise<TransactionRow[]>;
   setReconciliation(userId: string, id: string, intoId: string | null, status: "POSTED" | "PENDING"): Promise<void>;
+  /** Bank movements held for Revisar because they may be `twinId`. */
+  listHeldFor(userId: string, twinId: string): Promise<TransactionRow[]>;
+  updateTransactionFlow(userId: string, id: string, f: { flowClass: string | null; flowClassVersion: number | null; transferGroupId: string | null }): Promise<void>;
   getTransaction(userId: string, id: string): Promise<TransactionRow | null>;
   updateTransactionNotes(userId: string, id: string, notes: string | null): Promise<void>;
   updateTransactionExcluded(userId: string, id: string, excluded: boolean): Promise<void>;

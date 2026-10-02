@@ -20,7 +20,9 @@ describe("posiblesDuplicados (Revisar: ¿Es el mismo que anotaste?)", () => {
     }]);
   });
 
-  it("skips a held movement whose twin isn't on the phone", () => {
-    expect(posiblesDuplicados([tx("b", { status: "PENDING", reconciledIntoTransactionId: "gone" })], [])).toEqual([]);
+  it("still lists a held movement whose twin isn't on the phone (it must not stay invisible)", () => {
+    expect(posiblesDuplicados([tx("b", { status: "PENDING", reconciledIntoTransactionId: "gone" })], [])).toEqual([
+      expect.objectContaining({ id: "b", tuyo: null }),
+    ]);
   });
 });

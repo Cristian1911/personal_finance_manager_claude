@@ -1,3 +1,4 @@
+import { HELD_ERROR, isHeld, isMerged } from "./reconciled";
 import type { CommandEnvelope, CommandResult, StoragePort } from "../types";
 import { UUID_RE } from "../validate";
 import { MANUAL_CAPTURE_METHODS } from "./delete-transaction";
@@ -42,6 +43,9 @@ export async function editTransaction(
 
   const tx = await s.getTransaction(cmd.userId, p.transactionId);
   if (!tx) return { status: "rejected", replayed: false, code: "not_found", error: "Movimiento no encontrado." };
+  // Merged into the bank's row (a phone that hadn't pulled yet): the bank's facts stand, nothing moves twice.
+  if (isMerged(tx)) return { status: "superseded", replayed: false };
+  if (isHeld(tx)) return { status: "rejected", replayed: false, code: "invalid", error: HELD_ERROR };
   if (!MANUAL_CAPTURE_METHODS.has(tx.captureMethod)) return bad("Los datos del banco no se pueden cambiar; puedes ignorar el movimiento.");
   if (tx.transferGroupId) return bad("Para cambiar un movimiento entre cuentas, bórralo y anótalo de nuevo.");
   if (p.accountId !== undefined && !(await s.getAccount(cmd.userId, p.accountId))) {

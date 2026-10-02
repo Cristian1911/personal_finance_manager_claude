@@ -47,6 +47,7 @@ export default function RevisarScreen() {
   const userId = useV2UserId();
   const [problems, setProblems] = useState<SyncProblem[]>([]);
   const [dups, setDups] = useState<PosibleDuplicado[]>([]);
+  const [busy, setBusy] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     setProblems(await syncProblems(userId).catch(() => []));
@@ -69,6 +70,7 @@ export default function RevisarScreen() {
   }, [problems, reload]);
 
   const answer = useCallback(async (id: string, same: boolean) => {
+    setBusy(id);
     try {
       const { result } = await runLocalCommand({ type: "resolveBankDuplicate", userId, payload: { transactionId: id, same } });
       if (result.status === "rejected") Alert.alert("No se pudo guardar", result.error ?? "Intenta de nuevo.");
@@ -77,6 +79,7 @@ export default function RevisarScreen() {
       Alert.alert("No se pudo guardar", "Intenta de nuevo.");
     }
     await reload();
+    setBusy(null);
   }, [userId, reload]);
 
   if (problems.length === 0 && dups.length === 0) {
@@ -98,14 +101,17 @@ export default function RevisarScreen() {
         <Text accessibilityRole="header" style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]}>Revisar</Text>
         {dups.map((d) => (
           <View key={d.id} style={[styles.card, styles.dup, { backgroundColor: t.colors.card }, t.shadow]}>
-            <Text style={{ fontSize: 17, color: t.colors.ink, fontFamily: t.fonts.uiSemibold, textAlign: "center" }}>¿Es el mismo movimiento?</Text>
-            {line("TU BANCO", d.banco)}
-            {line("ANOTASTE", d.tuyo)}
-            <Text style={{ fontSize: 13, lineHeight: 18, color: t.colors.muted, fontFamily: t.fonts.uiMedium, textAlign: "center" }}>
-              Mientras respondes, solo cuenta lo que anotaste.
+            <Text style={{ fontSize: 17, color: t.colors.ink, fontFamily: t.fonts.uiSemibold, textAlign: "center" }}>
+              {d.tuyo ? "¿Es el mismo movimiento?" : "Un movimiento de tu banco"}
             </Text>
-            <Button label="Sí, es el mismo" onPress={() => void answer(d.id, true)} />
-            <Button label="No, son dos" variant="secondary" onPress={() => void answer(d.id, false)} />
+            {line("TU BANCO", d.banco)}
+            {d.tuyo && line("ANOTASTE", d.tuyo)}
+            <Text style={{ fontSize: 13, lineHeight: 18, color: t.colors.muted, fontFamily: t.fonts.uiMedium, textAlign: "center" }}>
+              {d.tuyo ? "Mientras respondes, solo cuenta lo que anotaste." : "Lo que anotaste ya no está. ¿Lo cuentas?"}
+            </Text>
+            {d.tuyo && <Button label="Sí, es el mismo" disabled={busy !== null} loading={busy === d.id} onPress={() => void answer(d.id, true)} />}
+            <Button label={d.tuyo ? "No, son dos" : "Contarlo"} variant={d.tuyo ? "secondary" : "primary"} disabled={busy !== null}
+              onPress={() => void answer(d.id, false)} />
           </View>
         ))}
         {problems.length > 0 && (

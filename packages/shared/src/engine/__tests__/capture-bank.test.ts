@@ -110,6 +110,60 @@ describe.each(DRIVERS)("captureBankTransaction (bank emails, tier 2) on %s", (_n
     expect(await applyCommand(s, cmd("resolveBankDuplicate", { transactionId: BANK, same: false }))).toMatchObject({ status: "rejected" });
   });
 
+  it("after a merge, the phone's late edits of what you anotaste never move money twice; labels reach the bank's row", async () => {
+    const s = await setup();
+    await applyCommand(s, manual(32_000));
+    await applyCommand(s, email());
+    // Sent by the phone before it pulled the merge.
+    expect(await applyCommand(s, cmd("editTransaction", { transactionId: MANUAL, amount: 35_000 }))).toMatchObject({ status: "superseded" });
+    expect(await applyCommand(s, cmd("setTransactionExcluded", { transactionId: MANUAL, excluded: true }))).toMatchObject({ status: "superseded" });
+    expect(await applyCommand(s, cmd("deleteTransaction", { transactionId: MANUAL }))).toMatchObject({ status: "superseded" });
+    expect((await s.getAccount(USER, DEBIT))?.currentBalance).toBe(968_000);
+    await applyCommand(s, cmd("setTransactionCategory", { transactionId: MANUAL, categoryId: MERCADO }));
+    await applyCommand(s, cmd("setTransactionNote", { transactionId: MANUAL, notes: "con Ana" }));
+    expect(await s.getTransaction(USER, BANK)).toMatchObject({ categoryId: MERCADO, notes: "con Ana" });
+  });
+
+  it("a held movement can't be ignored or edited before Revisar answers; deleting its twin makes it count", async () => {
+    const s = await setup();
+    await applyCommand(s, manual(32_000, "Almuerzo"));
+    await applyCommand(s, email({ rawLine: "Bancolombia: Compraste $32.000,00 en CREPES Y WAFFLES", description: "CREPES Y WAFFLES" }));
+    expect(await applyCommand(s, cmd("setTransactionExcluded", { transactionId: BANK, excluded: true }))).toMatchObject({ status: "rejected" });
+    expect((await s.getAccount(USER, DEBIT))?.currentBalance).toBe(968_000);
+    await applyCommand(s, cmd("deleteTransaction", { transactionId: MANUAL }));
+    expect((await counted()).map((t) => t.id)).toEqual([BANK]);
+    expect((await s.getAccount(USER, DEBIT))?.currentBalance).toBe(968_000);
+  });
+
+  it("merging into what you ignored keeps it ignored (your choice survives)", async () => {
+    const s = await setup();
+    await applyCommand(s, manual(32_000));
+    await applyCommand(s, cmd("setTransactionExcluded", { transactionId: MANUAL, excluded: true }));
+    await applyCommand(s, email());
+    expect(await s.getTransaction(USER, BANK)).toMatchObject({ isExcluded: true });
+    expect((await s.getAccount(USER, DEBIT))?.currentBalance).toBe(1_000_000);
+  });
+
+  it("'Sí, es el mismo' with an Entre cuentas leg keeps it a transfer", async () => {
+    const s = await setup();
+    await applyCommand(s, cmd("captureTransfer", {
+      transferGroupId: RAPPI, fromTransactionId: MANUAL, toTransactionId: RENT, fromAccountId: DEBIT, toAccountId: CARD, amount: 32_000, currencyCode: "COP", date: "2026-10-02",
+    }));
+    expect(await applyCommand(s, email({ rawLine: "Bancolombia: Transferiste $32.000,00 a la cuenta *8812", description: "Cuenta *8812", sourcePattern: "transferencia" })))
+      .toMatchObject({ data: { heldFor: MANUAL } });
+    await applyCommand(s, cmd("resolveBankDuplicate", { transactionId: BANK, same: true }));
+    expect(await s.getTransaction(USER, BANK)).toMatchObject({ transferGroupId: RAPPI, reconciledIntoTransactionId: null });
+    expect((await s.getAccount(USER, DEBIT))?.currentBalance).toBe(968_000);
+  });
+
+  it("an email that weakly matches the statement's own row (PDF, higher) is a duplicate", async () => {
+    const s = await setup();
+    await s.insertTransaction({ id: MANUAL, userId: USER, accountId: DEBIT, amount: 32_000, currencyCode: "COP", direction: "OUTFLOW", transactionDate: "2026-10-02",
+      cleanDescription: "COMPRA EN TIENDA", notes: null, captureMethod: "PDF_IMPORT", idempotencyKey: "pdf-1", createdAt: "2026-10-02T15:00:00.000Z" });
+    expect(await applyCommand(s, email({ rawLine: "Bancolombia: Compraste $32.000,00 en CREPES Y WAFFLES", description: "CREPES Y WAFFLES" })))
+      .toMatchObject({ status: "duplicate", data: { transactionId: MANUAL } });
+  });
+
   it("two real purchases of the same amount the same day (two emails) are two movements", async () => {
     const s = await setup();
     await applyCommand(s, email({ time: "08:10", rawLine: `${RAW} 08:10` }));
