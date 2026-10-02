@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { isPdfEncrypted } from "@/lib/email-ingest/pdf-handler";
-import { importStatements, planStatements, type StatementChoice } from "@/lib/engine/v2-statement";
-import { v2Config, v2Pool, v2User } from "@/lib/engine/v2-server";
+import { v2Config, v2User } from "@/lib/engine/v2-server";
 import type { ParseResponse } from "@/types/import";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -12,10 +11,10 @@ const PARSER_ERRORS: Record<string, string> = {
 };
 
 /**
- * Subir un extracto (S9-3): the phone sends the PDF; the parser reads it.
- * Without `choices`, a statement whose account isn't known comes back as a
- * question (D1: create it, pick one, or skip) and nothing is imported; with
- * them, every row becomes a command and the phone pulls the result.
+ * Subir un extracto (S9-3): the phone sends the PDF, the parser reads it, the
+ * statements go back as they are. No database here: the phone matches them to
+ * its accounts and runs the import as commands locally (instant, offline-first);
+ * sync replays them on the server in the background.
  */
 export async function POST(request: Request) {
   const cfg = v2Config();
@@ -33,12 +32,6 @@ export async function POST(request: Request) {
   if (!(file instanceof Blob) || file.size === 0) return NextResponse.json({ error: "Falta el PDF." }, { status: 400 });
   if (file.size > MAX_FILE_SIZE) return NextResponse.json({ error: "El PDF pesa más de 10 MB." }, { status: 400 });
   const password = (form.get("password") as string | null) || null;
-  let choices: StatementChoice[] | null = null;
-  const rawChoices = form.get("choices");
-  if (typeof rawChoices === "string") {
-    try { choices = JSON.parse(rawChoices); } catch { return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 }); }
-    if (!Array.isArray(choices)) return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
-  }
 
   const bytes = new Uint8Array(await file.arrayBuffer());
   if (isPdfEncrypted(bytes) && !password) {
@@ -68,11 +61,5 @@ export async function POST(request: Request) {
   const { statements } = (await res.json()) as ParseResponse;
   if (!statements?.length) return NextResponse.json({ error: "No encontramos movimientos en este PDF." }, { status: 422 });
 
-  const pool = v2Pool(cfg.databaseUrl);
-  const plans = await planStatements(pool, user.id, statements);
-  if (!choices && plans.some((p) => !p.accountId && p.suggested)) {
-    return NextResponse.json({ needs: plans }, { headers: { "Cache-Control": "no-store" } });
-  }
-  const results = await importStatements(pool, user.id, statements, choices ?? []);
-  return NextResponse.json({ results }, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json({ statements }, { headers: { "Cache-Control": "no-store" } });
 }

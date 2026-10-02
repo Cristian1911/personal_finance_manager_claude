@@ -4,6 +4,8 @@ import type { InicioTemplate } from "../inicio-read";
 import type { OccurrenceRow } from "../types";
 import { PAID_TOLERANCE_PERCENT, type Obligation } from "./disponible";
 import type { InicioAccount } from "./inicio";
+import type { CardStatement } from "../inicio-read";
+import { calendarDayDiff } from "../../utils/occurrence-matching";
 import { occurrencesToCycleInputs, type OccurrenceLink, type StoredOccurrence, type StoredTransaction } from "./movements";
 import { formatPesos } from "./verdict";
 import { shortDate } from "./view";
@@ -68,6 +70,8 @@ export function cycleBills(i: {
   cycleStart?: string;
   /** Which accounts count for Disponible: a bill paid from any other was paid "elsewhere". */
   counts?: (accountId: string) => boolean;
+  /** Card statements: the bill becomes the statement's minimum (D24). */
+  statements?: CardStatement[];
 }): { items: BillItem[]; obligations: Obligation[]; occurrenceLinks: OccurrenceLink[] } {
   const stored = new Map(i.occurrences.map((o) => [`${o.templateId}:${o.date}`, o]));
   const items: BillItem[] = [];
@@ -142,20 +146,29 @@ export function cycleBills(i: {
         since = addDays(due, -15);
         until = addDays(due, 14);
       }
+      // D24: once the statement is in, the bill is its minimum, due on the bank's date (it moves on weekends).
+      let dueDate = due;
+      let estimated = card;
+      const statement = card ? (i.statements ?? []).find((s) => s.accountId === a.id && Math.abs(calendarDayDiff(s.dueDate, due)) <= 7) : undefined;
+      if (statement?.minimum != null) {
+        amount = statement.minimum;
+        dueDate = statement.dueDate;
+        estimated = false;
+      }
       if (amount <= 0) continue;
       const paidBefore = sum(into(a.id, since, addDays(i.from, -1)), "INFLOW");
       const paidAll = sum(into(a.id, since, until), "INFLOW");
-      const id = `${card ? "card" : "loan"}:${due}`;
+      const id = `${card ? "card" : "loan"}:${dueDate}`;
       // Not "estimated" for Disponible: that rule settles a bill on any payment, and a small
       // payment toward the card must lower what's left, not erase it.
       obligations.push({
-        id, kind: card ? "card_bill" : "loan", label: a.name || (card ? "Tarjeta" : "Crédito"), dueDate: due, amount, accountId: a.id,
+        id, kind: card ? "card_bill" : "loan", label: a.name || (card ? "Tarjeta" : "Crédito"), dueDate, amount, accountId: a.id,
         ...(paidBefore > 0 ? { paidBefore } : {}),
       });
       items.push({
-        id, kind: card ? "card" : "loan", title: a.name || (card ? "Tarjeta" : "Crédito"), dueDate: due, amount,
+        id, kind: card ? "card" : "loan", title: a.name || (card ? "Tarjeta" : "Crédito"), dueDate, amount,
         paid: Math.min(amount, paidAll), status: paidAll * 100 >= PAID_TOLERANCE_PERCENT * amount ? "paid" : "pending",
-        accountId: a.id, ...(card ? { estimated: true } : {}),
+        accountId: a.id, ...(card ? { estimated } : {}),
       });
     }
   }

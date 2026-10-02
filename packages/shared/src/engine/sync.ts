@@ -69,6 +69,14 @@ SYNC_TABLES.push(
   // Which fields the user chose (and when): without it, a reinstalled or second phone would let
   // "¿Siempre…?" overwrite a category picked by hand until the next pull.
   { name: "field_versions", cols: { user_id: T, entity: T, entity_id: T, field: T, client_ts: TS, command_id: T } },
+  {
+    name: "statement_snapshots",
+    cols: {
+      id: T, user_id: T, account_id: T, period_from: D, period_to: D, final_balance: N, total_payment_due: N, minimum_payment: N,
+      payment_due_date: D, interest_rate: N, currency_code: T, transaction_count: N,
+      previous_balance: N, purchases_and_charges: N, interest_charged: N, imported_count: N, skipped_count: N, created_at: TS, updated_at: TS,
+    },
+  },
 );
 
 export type Snapshot = Record<string, Record<string, unknown>[]>;

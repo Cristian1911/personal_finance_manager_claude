@@ -25,6 +25,8 @@ export async function runLocalCommand(input: {
   type: CommandType;
   userId: string;
   payload: unknown;
+  /** A batch (a statement's rows): the caller notifies once at the end with notifyLocalWrite(). */
+  quiet?: boolean;
 }): Promise<{ command: CommandEnvelope; result: CommandResult }> {
   const { driver } = await getV2Database();
   const command: CommandEnvelope = {
@@ -36,8 +38,13 @@ export async function runLocalCommand(input: {
     payload: input.payload,
   };
   const result = await applyAndEnqueue(driver, command, { hash: expoSha256 });
-  if (result.status !== "rejected") for (const l of written) l();
+  if (result.status !== "rejected" && !input.quiet) for (const l of written) l();
   return { command, result };
+}
+
+/** After a quiet batch: tell the screens (and sync) once. */
+export function notifyLocalWrite(): void {
+  for (const l of written) l();
 }
 
 /** Sends an existing command again (debug: proves replays are no-ops). */
