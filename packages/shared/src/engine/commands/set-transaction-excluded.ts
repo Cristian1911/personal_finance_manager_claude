@@ -1,6 +1,7 @@
 import type { CommandEnvelope, CommandResult, StoragePort } from "../types";
 import { UUID_RE } from "../validate";
 import { isNewer } from "./field-version";
+import { moveBalance } from "./balance";
 
 export interface SetTransactionExcludedPayload {
   transactionId: string;
@@ -36,7 +37,7 @@ export async function setTransactionExcluded(
   // Like the web (toggleExclude): an ignored movement is out of its account's balance.
   if (tx.isExcluded !== p.excluded) {
     const effect = tx.direction === "OUTFLOW" ? -tx.amount : tx.amount;
-    await s.adjustAccountBalance(cmd.userId, tx.accountId, p.excluded ? -effect : effect);
+    await moveBalance(s, cmd.userId, tx.accountId, p.excluded ? -effect : effect);
   }
   await s.setFieldVersion({
     userId: cmd.userId, entity: "transaction", entityId: p.transactionId,

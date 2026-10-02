@@ -1,5 +1,6 @@
 import type { CommandEnvelope, CommandResult, StoragePort } from "../types";
 import { UUID_RE } from "../validate";
+import { moveBalance } from "./balance";
 
 /** Movements the user wrote down; bank movements are only ever ignored. */
 export const MANUAL_CAPTURE_METHODS: ReadonlySet<string> = new Set(["MANUAL_FORM", "TEXT_QUICK_CAPTURE"]);
@@ -26,6 +27,6 @@ export async function deleteTransaction(
   }
   await s.deleteTransaction(cmd.userId, tx.id);
   // An ignored movement's amount already left the balance when it was ignored.
-  if (!tx.isExcluded) await s.adjustAccountBalance(cmd.userId, tx.accountId, tx.direction === "OUTFLOW" ? tx.amount : -tx.amount);
+  if (!tx.isExcluded) await moveBalance(s, cmd.userId, tx.accountId, tx.direction === "OUTFLOW" ? tx.amount : -tx.amount);
   return { status: "applied", replayed: false };
 }

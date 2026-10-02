@@ -2,6 +2,7 @@ import { computeIdempotencyKey } from "../../utils/idempotency";
 import type { EngineOptions } from "../runner";
 import type { CommandEnvelope, CommandResult, StoragePort } from "../types";
 import { UUID_RE, isIsoUtc } from "../validate";
+import { moveBalance } from "./balance";
 
 export interface CaptureManualTransactionPayload {
   transactionId: string;
@@ -81,6 +82,6 @@ export async function captureManualTransaction(
     // movement on the first-cycle balance's day lands before or after it the same everywhere.
     createdAt: p.capturedAt ?? cmd.clientTs,
   });
-  await s.adjustAccountBalance(cmd.userId, p.accountId, p.direction === "OUTFLOW" ? -p.amount : p.amount);
+  await moveBalance(s, cmd.userId, p.accountId, p.direction === "OUTFLOW" ? -p.amount : p.amount);
   return { status: "applied", replayed: false, data: { transactionId: p.transactionId } };
 }

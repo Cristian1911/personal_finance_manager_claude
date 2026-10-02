@@ -3,6 +3,7 @@ import { UUID_RE } from "../validate";
 import { MANUAL_CAPTURE_METHODS } from "./delete-transaction";
 import { isNewer } from "./field-version";
 import { isIsoDate, isMoney } from "./validate-money";
+import { moveBalance } from "./balance";
 
 export interface EditTransactionPayload {
   transactionId: string;
@@ -60,8 +61,8 @@ export async function editTransaction(
   const sign = tx.direction === "OUTFLOW" ? -1 : 1;
   await s.updateTransactionFacts(cmd.userId, tx.id, next);
   if (!tx.isExcluded) { // an ignored movement isn't in any balance
-    await s.adjustAccountBalance(cmd.userId, tx.accountId, -sign * tx.amount);
-    await s.adjustAccountBalance(cmd.userId, next.accountId, sign * next.amount);
+    await moveBalance(s, cmd.userId, tx.accountId, -sign * tx.amount);
+    await moveBalance(s, cmd.userId, next.accountId, sign * next.amount);
   }
   return { status: "applied", replayed: false };
 }
