@@ -49,3 +49,4 @@ export { readInicioData, type InicioData, type InicioTemplate } from "./inicio-r
 export { SYNC_TABLES, applySnapshot, readSnapshot, type Snapshot } from "./sync";
 export { V2_CATEGORIES, categoryById, isV2Category, type V2Category } from "./categories";
 export { createDestinatario, patternFrom, setDestinatarioCategory, setTransactionCategory, setTransactionDestinatario, type CreateDestinatarioPayload } from "./commands/categorias";
+export { planStatements, statementCommands, statementResult, statementLastFour, type StatementInput, type StatementAccount, type StatementPlan, type StatementChoice, type StatementWork, type StatementStep, type StatementResult } from "./statements";

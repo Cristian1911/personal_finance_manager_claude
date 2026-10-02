@@ -5,7 +5,7 @@ import { useV2Theme } from "../theme/ThemeProvider";
 import { Tap } from "./Tap";
 
 /** Your initials, top-left of every tab: Ajustes from anywhere (Inicio's is part of its greeting). */
-export function ProfileButton({ size = 36 }: { size?: number }) {
+export function ProfileButton({ size = 40 }: { size?: number }) {
   const t = useV2Theme();
   const router = useRouter();
   const meta = useAuth().session?.user.user_metadata as { full_name?: string; name?: string } | undefined;

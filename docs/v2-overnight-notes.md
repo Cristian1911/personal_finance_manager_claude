@@ -88,6 +88,13 @@ the tests talk to zeta-dev only. To undo anything, close its PR (and the ones ab
   its cut day, payment day and limit. Uploading the same PDF again changes nothing. Not in yet: rows in another
   currency (USD sections), investments, saved PDF passwords (asked each time), the "¿Es el mismo?" for statement vs
   anotado with different words (held to Revisar, same as email).
+- **D25. Statements import on the phone (owner's call).** The server only reads the PDF (`/api/v2/parse-pdf`, one
+  request, no database); the phone matches the statements to its accounts and runs the import as its own commands
+  against SQLite — instant, like anotar — and sync replays them on the server in the background (20 per request).
+  Next: a statement that arrives by email is parsed by the server and waits as JSON; Revisar shows "Llegó tu
+  extracto · Importar" and the same local flow runs, no upload, offline.
+- **Database region (decide before launch):** the VPS is in Boston and zeta-dev in São Paulo: 121 ms per query, ~2 s
+  per synced command on the server. Create the v2 production project in us-east-1 (or move the VPS) — see the chat.
 - **D23. Every account knows "as of when" its balance is true**: when you told it (Agregar), or the end of a
   statement's cut day. Bank movements from before that instant are already inside it: they show up in Movimientos
   but don't move the balance, and an older statement never re-anchors a newer balance. So a new user who adds
