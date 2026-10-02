@@ -66,7 +66,7 @@ export async function readInicioData(driver: SqlDriver, userId: string, since: s
     `SELECT id, account_id, amount, currency_code, direction,
             ${pg ? "transaction_date::text" : "transaction_date"} AS transaction_date,
             capture_method, created_at, clean_description, notes, is_excluded, flow_class, transfer_group_id, category_id, destinatario_id,
-            reconciled_into_transaction_id, status
+            reconciled_into_transaction_id, status, ${pg ? "transaction_time::text" : "transaction_time"} AS transaction_time
        FROM transactions
       WHERE user_id = ? AND transaction_date >= ?
       ORDER BY transaction_date, id`,
@@ -131,6 +131,7 @@ export async function readInicioData(driver: SqlDriver, userId: string, since: s
       // Merged into the bank's row: it no longer counts (movements.ts).
       reconciledIntoTransactionId: (r.reconciled_into_transaction_id as string | null) ?? null,
       status: r.status == null ? null : String(r.status),
+      time: (r.transaction_time as string | null) ?? null,
     })),
   };
 }

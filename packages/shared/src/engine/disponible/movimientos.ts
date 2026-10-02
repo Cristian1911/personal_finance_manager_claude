@@ -5,7 +5,7 @@ import { diffDays, dayOfWeek, type IsoDate } from "./dates";
 import type { InicioAccount } from "./inicio";
 import type { StoredTransaction } from "./movements";
 import { formatPesos } from "./verdict";
-import { cycleLabel, signedPesos } from "./view";
+import { movementTime, readableName, cycleLabel, signedPesos } from "./view";
 import { colombiaTime, relativeDay } from "./widgets";
 import { categoryById } from "../categories";
 
@@ -104,7 +104,7 @@ const SOURCE_WORD: Record<DetalleSource, string> = {
 const isDebt = (type: string) => type === "CREDIT_CARD" || type === "LOAN";
 const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-const titleOf = (t: StoredTransaction) => t.description?.trim() || (t.direction === "INFLOW" ? "Entrada" : "Gasto");
+const titleOf = (t: StoredTransaction) => readableName(t.description?.trim() || (t.direction === "INFLOW" ? "Entrada" : "Gasto"));
 const range = (c: { start: IsoDate; end: IsoDate }) => cycleLabel(c).replace(/^Ciclo /, "").replace(" – ", "–");
 
 interface Account { type: string; counts: boolean; label: string }
@@ -190,7 +190,7 @@ export function movimientosView(input: {
     const destinatario = (t.destinatarioId && who.get(t.destinatarioId)) || null;
     const title = destinatario?.name ?? titleOf(t);
     const amount = amountOf(t, tone);
-    const time = t.createdAt ? colombiaTime(t.createdAt) : null;
+    const time = movementTime(t, colombiaTime);
     const status = statusOf(t, a);
     const account = a?.label ?? "Cuenta";
     const category = categoryById(t.categoryId)?.name ?? null;
@@ -229,7 +229,7 @@ export function detalleView(input: { today: IsoDate; transaction: StoredTransact
   const tone = toneOf(t, a);
   const title = titleOf(t);
   const source = SOURCE_OF[t.captureMethod ?? ""] ?? "other";
-  const time = t.createdAt ? ` ${colombiaTime(t.createdAt)}` : "";
+  const time = movementTime(t, colombiaTime) ? ` ${movementTime(t, colombiaTime)}` : "";
   const when = relativeDay(today, t.date);
   const facts = `${SOURCE_WORD[source]} · ${when === "Hoy" || when === "Ayer" ? when.toLowerCase() : when}${time} · ${a?.label ?? "Cuenta"}`;
 

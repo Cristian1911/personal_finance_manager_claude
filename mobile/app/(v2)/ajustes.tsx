@@ -101,6 +101,8 @@ export default function AjustesScreen() {
           {row("Ahorro por ciclo", settings?.savingsPerCycle ? formatPesos(settings.savingsPerCycle) : "Nada", () => setEditing(true), "Lo que apartas antes de calcular tu número")}
           {divider}
           {row("Mis cuentas", null, () => router.push("/cuentas" as never))}
+          {divider}
+          {row("Correos del banco", null, () => router.push("/correos" as never), "Tus movimientos se anotan solos con las alertas de Bancolombia")}
         </>)}
 
         {section("APARIENCIA")}

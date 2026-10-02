@@ -66,6 +66,11 @@ describe("Movimientos", () => {
     expect(view().account).toBeNull();
   });
 
+  it("a bank movement shows the bank's time and a readable name (not ALL CAPS)", () => {
+    const v = view({ transactions: [tx("2026-09-18", 15_000, "DUNKIN DONUTS", { time: "03:31:00", createdAt: "2026-09-18T09:08:00.000Z" })] });
+    expect(v.groups[0].rows[0]).toMatchObject({ title: "Dunkin Donuts", time: "03:31" });
+  });
+
   it("a movement shows its destinatario's name and its category; search finds both", () => {
     const rappi = { id: "d-rappi", name: "Rappi", kind: "merchant" as const };
     const txs = [tx("2026-09-18", 32_000, "COMPRA RAPPI COLOMBIA", { destinatarioId: "d-rappi", categoryId: "c2000000-0000-4000-8000-000000000003" })];

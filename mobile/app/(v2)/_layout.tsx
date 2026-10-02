@@ -56,6 +56,7 @@ function V2Tabs() {
       <Tabs.Screen name="cuentas" options={{ href: null }} />
       <Tabs.Screen name="cuenta" options={{ href: null }} />
       <Tabs.Screen name="ajustes" options={{ href: null }} />
+      <Tabs.Screen name="correos" options={{ href: null }} />
     </Tabs>
     <AnotarSheet
       open={!!anotar}

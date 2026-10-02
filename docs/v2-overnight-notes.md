@@ -64,8 +64,26 @@ the tests talk to zeta-dev only. To undo anything, close its PR (and the ones ab
   the current one clears it. Detalle doesn't show category/destinatario yet — the open row already does.
 - **D17. Texts shorter than 4 letters aren't remembered** ("Pan" would match "empanadas"). Correcting who a text
   belongs to moves its rule to the new destinatario (one rule per text, as Supabase already enforces).
+- **D18. One "últimos 4" per account.** On a savings account it matches the account's alerts (Cta *1234) and its
+  debit card's (T.Deb *0735). If you have both numbers, put the card's; account-number alerts then need the Revisar
+  card that isn't built yet (see below). A second field can come if this bites.
+- **D19. A bank email that may be something you anotaste is held, not counted, until you answer** in Revisar ("¿Es
+  el mismo movimiento?" · Sí, es el mismo / No, son dos). S1-2 says weak matches are never resolved alone; holding
+  keeps Disponible right in the common case (it was the same purchase). Strong matches (same amount + same place)
+  merge on their own: the bank's row takes over and keeps your category, destinatario and note.
+- **D20. Emails reach the phone when you open Zeta** (sync on foreground). A push that wakes the sync comes later.
+- **D21. Bank names are shown readable**: "DUNKIN DONUTS" → "Dunkin Donuts", "CREPES Y WAFFLES" → "Crepes y Waffles".
+  Bank rows show the bank's time (3:31), not when the email arrived.
+- **Not built yet (email):** an alert from a card no account has (unknown last 4) is skipped and logged; D1 wants a
+  Revisar card "agregar como nueva / es de…". Attachments (statement PDFs by email) are ignored by v2 for now.
 
 ## Things only you can do
+
+- **Bank emails for v2:** in Resend, add a webhook endpoint `https://<app domain>/api/v2/email` for `email.received`
+  and put its signing secret in the VPS `.env` as `RESEND_WEBHOOK_SECRET_V2` (falls back to `RESEND_WEBHOOK_SECRET`).
+  The v2 route ignores the web app's addresses; the web app's route will log v2 addresses as "No active ingest
+  address" (harmless noise in `email_ingest_logs`). If the VPS DB role for v2 isn't `postgres`, it needs SELECT on
+  `email_ingest_addresses_enc` (to route an email to its user).
 
 - **Deploy the server before the phone build** whenever sync tables change: a new phone build pulling from an old
   server fails every pull ("Snapshot without destinatarios" / "field_versions").
