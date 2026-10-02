@@ -45,3 +45,4 @@ export {
 } from "./commands/set-account-counts-in-disponible";
 export * from "./disponible";
 export { readInicioData, type InicioData, type InicioTemplate } from "./inicio-read";
+export { SYNC_TABLES, applySnapshot, readSnapshot, type Snapshot } from "./sync";
