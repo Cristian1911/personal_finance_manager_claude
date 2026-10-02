@@ -218,6 +218,18 @@ describe.skipIf(!enabled)("engine on zeta-dev (real Postgres)", { timeout: 90_00
     const [raw] = (await pool.query("SELECT merchant_name FROM recurring_transaction_templates_enc WHERE id = $1", [template])).rows;
     expect(Buffer.from(raw.merchant_name).toString("utf8")).not.toContain("Internet prueba");
     expect((await s.getTemplate(userId, template))?.name).toBe("Internet prueba");
+
+    // Edit, skip and archive through the view's UPDATE trigger.
+    const at = () => new Date(Date.now() + 1000).toISOString();
+    expect((await applyCommand(s, { ...base, id: crypto.randomUUID(), type: "editPagoFijo", clientTs: at(), payload: { templateId: template, amount: 109900, name: "Internet hogar" } })).status).toBe("applied");
+    expect(await s.getTemplate(userId, template)).toMatchObject({ amount: 109900, name: "Internet hogar" });
+    const nextMonth = new Date(`${due}T12:00:00Z`);
+    nextMonth.setUTCMonth(nextMonth.getUTCMonth() + 1);
+    const nextDue = nextMonth.toISOString().slice(0, 10);
+    expect((await applyCommand(s, { ...base, id: crypto.randomUUID(), type: "setOccurrenceStatus", clientTs: at(), payload: { templateId: template, date: nextDue, status: "skipped" } })).status).toBe("applied");
+    expect(await s.getOccurrence(userId, template, nextDue)).toMatchObject({ status: "skipped" });
+    expect((await applyCommand(s, { ...base, id: crypto.randomUUID(), type: "archivePagoFijo", clientTs: at(), payload: { templateId: template, archived: true } })).status).toBe("applied");
+    expect((await s.getTemplate(userId, template))?.isActive).toBe(false);
   });
 
   it("stores the command payload encrypted, never as plain text", async () => {

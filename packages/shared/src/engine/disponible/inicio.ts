@@ -152,6 +152,7 @@ export function buildInicio(input: {
   const bills = cycleBills({
     from: cycle.start, to: nextCycle.end, templates: input.templates ?? [], occurrences: input.occurrences ?? [],
     accounts: input.accounts, transactions: input.transactions,
+    cycleStart: cycle.start, counts: (id) => counted.has(id),
   });
   occurrenceLinks.push(...bills.occurrenceLinks);
   const dueNow = bills.obligations.filter((o) => o.dueDate <= cycle.end);

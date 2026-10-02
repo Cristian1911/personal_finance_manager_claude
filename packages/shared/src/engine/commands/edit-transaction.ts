@@ -4,6 +4,8 @@ import { MANUAL_CAPTURE_METHODS } from "./delete-transaction";
 import { isNewer } from "./field-version";
 import { isIsoDate, isMoney } from "./validate-money";
 import { moveBalance } from "./balance";
+import type { EngineOptions } from "../runner";
+import { autoLinkPayment, unlinkPayment } from "./pagos";
 
 export interface EditTransactionPayload {
   transactionId: string;
@@ -28,6 +30,7 @@ const FIELDS = [
 export async function editTransaction(
   s: StoragePort,
   cmd: CommandEnvelope<EditTransactionPayload>,
+  opts: EngineOptions = {},
 ): Promise<CommandResult> {
   const p = cmd.payload;
   const bad = (error: string): CommandResult => ({ status: "rejected", replayed: false, code: "invalid", error });
@@ -64,6 +67,9 @@ export async function editTransaction(
   if (!tx.isExcluded) { // an ignored movement isn't in any balance
     await moveBalance(s, cmd.userId, tx.accountId, -sign * tx.amount);
     await moveBalance(s, cmd.userId, next.accountId, sign * next.amount);
+    // New amount, date or account: check again which bill it pays.
+    await unlinkPayment(s, cmd.userId, tx.id, cmd.clientTs, opts);
+    await autoLinkPayment(s, cmd.userId, { ...tx, ...next }, cmd.clientTs, opts);
   }
   return { status: "applied", replayed: false };
 }

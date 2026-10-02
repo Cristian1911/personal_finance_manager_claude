@@ -77,9 +77,12 @@ export function anotarPreview(input: InicioInput, draft: AnotarDraft): AnotarPre
   extra = [leg("preview", from.id, income ? "INFLOW" : "OUTFLOW", income ? "INCOME" : "SPEND")];
   // Bill detection, as Guardar will do it: a spend that matches a pending fixed
   // payment pays it, so it doesn't lower Disponible a second time.
-  const bill = income ? undefined : before.bills.find((b) => b.kind === "fijo" && b.status === "pending"
-    && Math.abs(calendarDayDiff(date, b.dueDate)) <= OCCURRENCE_AUTO_LINK_DAY_WINDOW
-    && occurrenceAmountMatches(b.amount, draft.amount, false));
+  // Same choice as Guardar's detection: that account (if the bill has one), the closest date.
+  const bill = income ? undefined : before.bills
+    .filter((b) => b.kind === "fijo" && b.status === "pending" && (!b.accountId || b.accountId === from.id)
+      && Math.abs(calendarDayDiff(date, b.dueDate)) <= OCCURRENCE_AUTO_LINK_DAY_WINDOW
+      && occurrenceAmountMatches(b.amount, draft.amount, false))
+    .sort((a, b) => Math.abs(calendarDayDiff(date, a.dueDate)) - Math.abs(calendarDayDiff(date, b.dueDate)))[0];
   const occurrences = bill
     ? [...(input.occurrences ?? []), { templateId: bill.templateId!, date: bill.dueDate, expectedAmount: bill.amount, status: "paid" as const, transactionId: "preview", linkedManually: false }]
     : input.occurrences;

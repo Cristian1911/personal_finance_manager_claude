@@ -3,12 +3,14 @@ import { applyCommand } from "../runner";
 import { createSqlStorage } from "../sql-storage";
 import { readInicioData } from "../inicio-read";
 import type { CommandEnvelope, CommandType, SqlDriver } from "../types";
+import { toDialect } from "../sql";
 import { DRIVERS, seedAccount } from "./support/drivers";
 
 const USER = "11111111-1111-4111-8111-111111111111";
 const DEBIT = "22222222-2222-4222-8222-222222222222";
 const RENT = "33333333-3333-4333-8333-333333333333";
 const TX = "44444444-4444-4444-8444-444444444444";
+const OTHER_ACCOUNT = "77777777-7777-4777-8777-777777777777";
 
 let seq = 0;
 const cmd = (type: CommandType, payload: unknown, clientTs = "2026-10-02T15:00:00.000Z"): CommandEnvelope => ({
@@ -103,5 +105,55 @@ describe.each(DRIVERS)("Pagos fijos on %s", (_name, make) => {
     expect((await read()).templates[0]).toMatchObject({ amount: 1_300_000, label: "Arriendo apto" });
     await applyCommand(s, cmd("archivePagoFijo", { templateId: RENT, archived: true }, "2026-10-03T11:00:00.000Z"));
     expect((await read()).templates[0]).toMatchObject({ isActive: false });
+  });
+});
+
+describe.each(DRIVERS)("Pagos fijos, review fixes, on %s", (_name, make) => {
+  let driver: SqlDriver;
+  async function setup() {
+    driver = await make();
+    await seedAccount(driver, { id: DEBIT, userId: USER, balance: 3_000_000 });
+    await seedAccount(driver, { id: OTHER_ACCOUNT, userId: USER, balance: 3_000_000 });
+    return createSqlStorage(driver);
+  }
+  const occ = async (s: Awaited<ReturnType<typeof setup>>) => s.getOccurrence(USER, RENT, "2026-10-05");
+
+  it("ignoring the payment puts the bill back to pending; counting it again pays it again", async () => {
+    const s = await setup();
+    await applyCommand(s, cmd("createPagoFijo", arriendo));
+    await applyCommand(s, spend(1_200_000, "2026-10-05"));
+    await applyCommand(s, cmd("setTransactionExcluded", { transactionId: TX, excluded: true }, "2026-10-03T10:00:00.000Z"));
+    expect(await occ(s)).toMatchObject({ status: "pending", transactionId: null });
+    await applyCommand(s, cmd("setTransactionExcluded", { transactionId: TX, excluded: false }, "2026-10-03T11:00:00.000Z"));
+    expect(await occ(s)).toMatchObject({ status: "paid", transactionId: TX });
+  });
+
+  it("fixing a payment's amount re-checks it", async () => {
+    const s = await setup();
+    await applyCommand(s, cmd("createPagoFijo", arriendo));
+    await applyCommand(s, spend(1_000_000, "2026-10-05"));
+    expect(await occ(s)).toBeNull();
+    await applyCommand(s, cmd("editTransaction", { transactionId: TX, amount: 1_200_000 }, "2026-10-03T10:00:00.000Z"));
+    expect(await occ(s)).toMatchObject({ status: "paid", transactionId: TX });
+  });
+
+  it("a bill tied to an account is only paid from that account", async () => {
+    const s = await setup();
+    await applyCommand(s, cmd("createPagoFijo", arriendo));
+    await applyCommand(s, cmd("captureManualTransaction", {
+      transactionId: TX, accountId: OTHER_ACCOUNT, amount: 1_200_000, direction: "OUTFLOW", currencyCode: "COP", date: "2026-10-05", description: "Otra cosa",
+    }));
+    expect(await occ(s)).toBeNull();
+  });
+
+  it("after the amount is edited, a spend of the new amount pays the server's stale pending row", async () => {
+    const s = await setup();
+    await applyCommand(s, cmd("createPagoFijo", arriendo));
+    // The server's trigger had generated the row with the old amount.
+    await driver.query(toDialect("INSERT INTO recurring_occurrences (id, user_id, template_id, occurrence_date, expected_amount, status) VALUES (?, ?, ?, '2026-10-05', 1200000, 'pending')", driver.dialect),
+      ["99999999-9999-4999-8999-999999999999", USER, RENT]);
+    await applyCommand(s, cmd("editPagoFijo", { templateId: RENT, amount: 1_300_000 }, "2026-10-03T10:00:00.000Z"));
+    await applyCommand(s, spend(1_300_000, "2026-10-05"));
+    expect(await occ(s)).toMatchObject({ status: "paid", transactionId: TX });
   });
 });

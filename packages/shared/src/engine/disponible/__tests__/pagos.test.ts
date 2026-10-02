@@ -47,16 +47,19 @@ describe("cycleBills: what has to be paid in a window (S8 Pagos, spec §4)", () 
     expect(bills.items).toEqual([]);
   });
 
-  it("a card bill: what you owed at the cut (27 sep), due on the 12th, estimated", () => {
-    // After the cut: a purchase of 100.000 (not in this bill).
-    const bills = cycleBills({ ...window, templates: [], occurrences: [], accounts: [card], transactions: [tx("card", "2026-09-30", 100_000, "OUTFLOW")] });
+  it("a card bill: what was bought in its statement period (cut 27 sep), due on the 12th, estimated", () => {
+    // In the period: 500.000. After the cut: 100.000 (next bill).
+    const bills = cycleBills({ ...window, templates: [], occurrences: [], accounts: [card], transactions: [
+      tx("card", "2026-09-15", 500_000, "OUTFLOW"), tx("card", "2026-09-30", 100_000, "OUTFLOW"),
+    ] });
     expect(bills.items).toEqual([expect.objectContaining({ kind: "card", title: "Tarjeta Nu", dueDate: "2026-10-12", amount: 500_000, estimated: true, accountId: "card" })]);
-    expect(bills.obligations[0]).toMatchObject({ id: "card:2026-10-12", kind: "card_bill", amount: 500_000, estimated: true, accountId: "card" });
+    expect(bills.obligations[0]).toMatchObject({ id: "card:2026-10-12", kind: "card_bill", amount: 500_000, accountId: "card" });
   });
 
   it("a card payment before the window started counts as paid toward that bill", () => {
-    const bills = cycleBills({ ...window, templates: [], occurrences: [], accounts: [card], transactions: [tx("card", "2026-09-29", 200_000, "INFLOW")] });
-    // Owed at the cut: 600.000 + 200.000 paid after it = 800.000; 200.000 already paid.
+    const bills = cycleBills({ ...window, templates: [], occurrences: [], accounts: [card], transactions: [
+      tx("card", "2026-09-15", 800_000, "OUTFLOW"), tx("card", "2026-09-29", 200_000, "INFLOW"),
+    ] });
     expect(bills.obligations[0]).toMatchObject({ amount: 800_000, paidBefore: 200_000 });
     expect(bills.items[0]).toMatchObject({ amount: 800_000, paid: 200_000, status: "pending" });
   });
@@ -84,5 +87,30 @@ describe("pagosView (the Pagos tab)", () => {
   it("past its date and unpaid says so", () => {
     const bills = cycleBills({ ...window, templates: [rent], occurrences: [], accounts: [], transactions: [] });
     expect(pagosView({ today: "2026-10-06", bills: bills.items }).rows[0]).toMatchObject({ sub: "Venció el 5 oct", tone: "warn" });
+  });
+});
+
+describe("cycleBills — review fixes", () => {
+  it("the card bill is what was bought with the card in that statement period, not all the debt", () => {
+    // Cut 27: the bill due 12 oct covers 28 aug–27 sep. Old debt (told when the card was added) isn't this bill.
+    const c = { ...card, currentBalance: 3_000_000 };
+    const bills = cycleBills({ ...window, templates: [], occurrences: [], accounts: [c], transactions: [
+      tx("card", "2026-08-20", 900_000, "OUTFLOW"), tx("card", "2026-09-10", 120_000, "OUTFLOW"), tx("card", "2026-09-26", 80_000, "OUTFLOW"),
+      tx("card", "2026-09-30", 50_000, "OUTFLOW"),
+    ] });
+    expect(bills.items[0]).toMatchObject({ kind: "card", dueDate: "2026-10-12", amount: 200_000 });
+  });
+
+  it("a loan cuota paid late doesn't also pay the next one", () => {
+    const bills = cycleBills({ from: "2026-10-01", to: "2026-11-15", templates: [], occurrences: [], accounts: [loan],
+      transactions: [tx("loan", "2026-10-19", 98_000, "INFLOW")] });
+    expect(bills.items.map((b) => [b.dueDate, b.status])).toEqual([["2026-10-08", "paid"], ["2026-11-08", "pending"]]);
+  });
+
+  it("after the amount is edited, a pending bill uses the new amount", () => {
+    const bills = cycleBills({ ...window, templates: [{ ...rent, amount: 1_300_000 }],
+      occurrences: [{ templateId: "rent", date: "2026-10-05", expectedAmount: 1_200_000, status: "pending", transactionId: null, linkedManually: false }],
+      accounts: [], transactions: [] });
+    expect(bills.items[0].amount).toBe(1_300_000);
   });
 });

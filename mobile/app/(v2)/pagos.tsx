@@ -13,6 +13,7 @@ import { useV2UserId } from "../../lib/v2/user";
 import { toColombiaDateString } from "../../lib/utils/date";
 import { Button, IconButton } from "../../v2/components/Button";
 import { Chip } from "../../v2/components/Chip";
+import { ConfirmSheet } from "../../v2/components/ConfirmSheet";
 import { EmptyState } from "../../v2/components/EmptyState";
 import { Sheet } from "../../v2/components/Sheet";
 import { Tap } from "../../v2/components/Tap";
@@ -36,6 +37,7 @@ export default function PagosScreen() {
   const [open, setOpen] = useState<PagoRow | null>(null);
   const [adding, setAdding] = useState(false);
   const afterClose = useRef<(() => void) | null>(null);
+  const [archiving, setArchiving] = useState<PagoRow | null>(null);
 
   const reload = useCallback(async () => {
     try {
@@ -77,7 +79,7 @@ export default function PagosScreen() {
     const owed = Math.round((row.item.amount - row.item.paid) * 100) / 100;
     // iOS can't present Anotar's modal while this sheet's is still closing: open it once it's gone.
     afterClose.current = () => {
-      if (row.kind === "fijo") openAnotar({ kind: "gasto", amount: owed, what: row.title });
+      if (row.kind === "fijo") openAnotar({ kind: "gasto", amount: owed, what: row.title, accountId: row.item.accountId ?? null });
       else openAnotar({ kind: "entre", toAccountId: row.item.accountId, amount: owed });
     };
   }, []);
@@ -95,7 +97,6 @@ export default function PagosScreen() {
           <Tap
             key={r.id}
             onPress={() => setOpen(r)}
-            disabled={muted}
             accessibilityRole="button"
             accessibilityLabel={`${r.title}, ${r.amount}, ${r.sub}`}
             style={(pressed) => [styles.row, i > 0 && { borderTopWidth: 1, borderTopColor: t.colors.line }, pressed && { opacity: 0.7 }]}
@@ -162,11 +163,21 @@ export default function PagosScreen() {
 
       <PagoSheet row={open} onClose={() => setOpen(null)} onPay={pay} onStatus={setStatus}
         onClosed={() => { const next = afterClose.current; afterClose.current = null; next?.(); }}
-        onArchive={async (row) => {
-          setOpen(null);
-          const problem = await run("archivePagoFijo", { templateId: row.item.templateId, archived: true });
+        onArchive={(row) => { afterClose.current = () => setArchiving(row); setOpen(null); }}
+      />
+      <ConfirmSheet
+        open={!!archiving}
+        title={`¿Ya no pagas ${archiving?.title}?`}
+        consequence="Deja de apartarse de tu Disponible desde ahora y no aparece en los próximos ciclos. Lo que ya pagaste se queda en Movimientos."
+        confirmLabel="Ya no lo pago"
+        destructive
+        onConfirm={async () => {
+          const row = archiving;
+          setArchiving(null);
+          const problem = row && (await run("archivePagoFijo", { templateId: row.item.templateId, archived: true }));
           if (problem) Alert.alert("No se pudo guardar", problem);
         }}
+        onCancel={() => setArchiving(null)}
       />
       <AddPagoFijoSheet open={adding} accounts={data?.accounts ?? []} onClose={() => setAdding(false)}
         onSave={async (p) => {
@@ -203,7 +214,7 @@ function PagoSheet({ row, onClose, onClosed, onPay, onStatus, onArchive }: {
           <Text style={{ fontSize: 15, textAlign: "center", color: t.colors.muted, fontFamily: t.fonts.uiMedium }}>{r.amount} · {r.sub}</Text>
           {r.item.estimated && r.status === "pending" && (
             <Text style={{ fontSize: 13, lineHeight: 19, textAlign: "center", color: t.colors.muted, fontFamily: t.fonts.ui }}>
-              Es lo que debías al corte. Cuando llegue el extracto, Zeta usa el valor exacto.
+              Es lo que compraste con la tarjeta en ese corte. Si el corte no ha llegado, puede subir.
             </Text>
           )}
           <View style={{ gap: 4, marginTop: 8 }}>

@@ -56,10 +56,13 @@ async function occurrenceId(templateId: string, date: string, hash: HashFn = sha
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-5${h.slice(13, 16)}-8${h.slice(17, 20)}-${h.slice(20, 32)}`;
 }
 
+/** What a due date is expected to cost: the stored amount once acted on, else the template's (it may have been edited). */
+const expectedOf = (t: TemplateRow, stored: OccurrenceRow | null) => (stored && stored.status !== "pending" ? stored.expectedAmount : t.amount);
+
 async function writeOccurrence(s: StoragePort, userId: string, t: TemplateRow, row: Omit<OccurrenceRow, "templateId" | "expectedAmount">, at: string, opts: EngineOptions) {
   const current = await s.getOccurrence(userId, t.id, row.date);
   await s.upsertOccurrence(userId, await occurrenceId(t.id, row.date, opts.hash), {
-    templateId: t.id, expectedAmount: current?.expectedAmount ?? t.amount, ...row,
+    templateId: t.id, expectedAmount: expectedOf(t, current), ...row,
   }, at);
 }
 
@@ -73,10 +76,12 @@ export async function autoLinkPayment(s: StoragePort, userId: string, tx: Transa
   const w = OCCURRENCE_AUTO_LINK_DAY_WINDOW;
   let best: { t: TemplateRow; date: string; diff: number } | null = null;
   for (const t of await s.listTemplates(userId, "OUTFLOW")) {
+    // A bill tied to an account is paid from that account only.
+    if (t.accountId && t.accountId !== tx.accountId) continue;
     for (const date of occurrenceDates(t, addDays(tx.transactionDate, -w), addDays(tx.transactionDate, w))) {
       const stored = await s.getOccurrence(userId, t.id, date);
       if (stored && stored.status !== "pending") continue;
-      if (!occurrenceAmountMatches(stored?.expectedAmount ?? t.amount, tx.amount, false)) continue;
+      if (!occurrenceAmountMatches(expectedOf(t, stored), tx.amount, false)) continue;
       const diff = Math.abs(calendarDayDiff(tx.transactionDate, date));
       if (!best || diff < best.diff) best = { t, date, diff };
     }

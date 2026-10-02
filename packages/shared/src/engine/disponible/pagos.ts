@@ -1,5 +1,4 @@
 import { isDebtAccountType } from "../../utils/account-balance";
-import { DEBT_PAYMENT_COVER_LOOKAHEAD_DAYS } from "../../utils/occurrence-matching";
 import { occurrenceDates } from "../commands/pagos";
 import type { InicioTemplate } from "../inicio-read";
 import type { OccurrenceRow } from "../types";
@@ -65,6 +64,10 @@ export function cycleBills(i: {
   occurrences: OccurrenceRow[];
   accounts: InicioAccount[];
   transactions: StoredTransaction[];
+  /** Disponible's cycle start: a bill paid before it was paid "before". */
+  cycleStart?: string;
+  /** Which accounts count for Disponible: a bill paid from any other was paid "elsewhere". */
+  counts?: (accountId: string) => boolean;
 }): { items: BillItem[]; obligations: Obligation[]; occurrenceLinks: OccurrenceLink[] } {
   const stored = new Map(i.occurrences.map((o) => [`${o.templateId}:${o.date}`, o]));
   const items: BillItem[] = [];
@@ -79,9 +82,13 @@ export function cycleBills(i: {
       // An archived payment only keeps the dates someone already acted on.
       if (!t.isActive && !o) continue;
       const status = o?.status ?? "pending";
-      const amount = o?.expectedAmount ?? t.amount;
+      // Pending uses the template's amount (it may have been edited since the row was generated).
+      const amount = o && o.status !== "pending" ? o.expectedAmount : t.amount;
       occurrences.push({ id: key, templateId: t.id, date, amount, status, transactionId: o?.transactionId ?? null });
-      items.push({ id: key, kind: "fijo", title: t.label || "Pago fijo", dueDate: date, amount, paid: status === "paid" ? amount : 0, status, templateId: t.id });
+      items.push({
+        id: key, kind: "fijo", title: t.label || "Pago fijo", dueDate: date, amount, paid: status === "paid" ? amount : 0, status, templateId: t.id,
+        ...(t.accountId ? { accountId: t.accountId } : {}),
+      });
     }
   }
   const fromTemplates = occurrencesToCycleInputs({
@@ -90,6 +97,18 @@ export function cycleBills(i: {
     transactions: i.transactions,
   });
   const obligations: Obligation[] = [...fromTemplates.obligations];
+  // A bill paid with a card, from an account apart, or before this cycle began is
+  // already settled here: Disponible would never see that movement pay it, and
+  // keeping it in Por pagar would subtract it twice (the card bill carries it later).
+  const byId = new Map(i.transactions.map((t) => [t.id, t]));
+  const occurrenceLinks = fromTemplates.occurrenceLinks.filter((l) => {
+    const t = byId.get(l.transactionId);
+    const elsewhere = !t || (i.counts && !i.counts(t.accountId)) || (i.cycleStart && t.date < i.cycleStart);
+    if (!elsewhere) return true;
+    const o = obligations.find((x) => x.id === l.occurrenceId);
+    if (o) o.paidBefore = o.amount;
+    return false;
+  });
 
   // ── Tarjetas y créditos ──
   const into = (accountId: string, from: string, to: string) => i.transactions
@@ -100,26 +119,38 @@ export function cycleBills(i: {
     for (const due of monthDays(a.paymentDay!, i.from, i.to)) {
       let amount: number;
       let since: string;
+      let until: string;
       if (card) {
         // The statement cut before this due date: same month if it comes first, else the month before.
         const [y, m] = [Number(due.slice(0, 4)), Number(due.slice(5, 7))];
         const cutDay = a.cutoffDay ?? a.paymentDay!;
-        const cut = cutDay < a.paymentDay! ? ymd(y, m, cutDay) : ymd(m === 1 ? y - 1 : y, m === 1 ? 12 : m - 1, cutDay);
-        const after = into(a.id, addDays(cut, 1), "9999-12-31");
-        // Owed at the cut = owed now − purchases since + payments since.
-        amount = cents(a.currentBalance - sum(after, "OUTFLOW") + sum(after, "INFLOW"));
+        const prevMonth = (yy: number, mm: number) => (mm === 1 ? [yy - 1, 12] : [yy, mm - 1]);
+        const [cy, cm] = cutDay < a.paymentDay! ? [y, m] : prevMonth(y, m);
+        const cut = ymd(cy, cm, cutDay);
+        const [py, pm] = prevMonth(cy, cm);
+        // This bill = what was bought with the card in its statement period (owner note D11): debt from
+        // before (told when the card was added, or earlier statements) is debt, not this bill.
+        amount = sum(into(a.id, addDays(ymd(py, pm, cutDay), 1), cut), "OUTFLOW");
         since = addDays(cut, 1);
+        // Payments after the next cut belong to the next bill.
+        const [ny, nm] = cm === 12 ? [cy + 1, 1] : [cy, cm + 1];
+        until = ymd(ny, nm, cutDay);
       } else {
         amount = a.monthlyPayment ?? 0;
-        since = addDays(due, -DEBT_PAYMENT_COVER_LOOKAHEAD_DAYS);
+        // Each cuota's own window (±15 days, months don't overlap): a late payment pays
+        // its own cuota and never also the next one.
+        since = addDays(due, -15);
+        until = addDays(due, 14);
       }
       if (amount <= 0) continue;
       const paidBefore = sum(into(a.id, since, addDays(i.from, -1)), "INFLOW");
-      const paidAll = sum(into(a.id, since, "9999-12-31"), "INFLOW");
+      const paidAll = sum(into(a.id, since, until), "INFLOW");
       const id = `${card ? "card" : "loan"}:${due}`;
+      // Not "estimated" for Disponible: that rule settles a bill on any payment, and a small
+      // payment toward the card must lower what's left, not erase it.
       obligations.push({
         id, kind: card ? "card_bill" : "loan", label: a.name || (card ? "Tarjeta" : "Crédito"), dueDate: due, amount, accountId: a.id,
-        ...(paidBefore > 0 ? { paidBefore } : {}), ...(card ? { estimated: true } : {}),
+        ...(paidBefore > 0 ? { paidBefore } : {}),
       });
       items.push({
         id, kind: card ? "card" : "loan", title: a.name || (card ? "Tarjeta" : "Crédito"), dueDate: due, amount,
@@ -130,7 +161,7 @@ export function cycleBills(i: {
   }
 
   items.sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.id.localeCompare(b.id));
-  return { items, obligations, occurrenceLinks: fromTemplates.occurrenceLinks };
+  return { items, obligations, occurrenceLinks };
 }
 
 export interface PagoRow {

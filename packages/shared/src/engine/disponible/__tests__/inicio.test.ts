@@ -213,3 +213,37 @@ describe("buildInicio — Pagos (promised money is subtracted before it's paid)"
     expect(r.result.disponible).toBe(before.result.disponible);
   });
 });
+
+describe("buildInicio — Pagos edge cases (review)", () => {
+  const bill = (startDate: string, amount = 500_000) => ({
+    id: "rent", label: "Arriendo", amount, direction: "OUTFLOW" as const, frequency: "MONTHLY",
+    startDate, endDate: null, accountId: null, isActive: true,
+  });
+  const paid = (date: string, transactionId: string) =>
+    [{ templateId: "rent", date, expectedAmount: 500_000, status: "paid" as const, transactionId, linkedManually: false }];
+
+  it("a bill paid with the card is settled now (the card bill carries it later), not subtracted twice", () => {
+    const onCard = tx("2026-09-20", 500_000, "OUTFLOW", { id: "c1", accountId: CARD });
+    const r = build("2026-09-21", [onCard], { templates: [bill("2026-09-20")], occurrences: paid("2026-09-20", "c1") });
+    const baseline = build("2026-09-21", []);
+    expect(r.result.disponible).toBe(baseline.result.disponible);
+  });
+
+  it("a bill due early in the cycle but paid just before it started is settled", () => {
+    // Cycle 30 sep–14 oct; rent due 1 oct, paid 29 sep (previous cycle).
+    const early = tx("2026-09-29", 500_000, "OUTFLOW", { id: "p1" });
+    const r = build("2026-10-05", [tx("2026-09-30", 2_100_000, "INFLOW"), early], { templates: [bill("2026-09-01")], occurrences: paid("2026-10-01", "p1") });
+    const baseline = build("2026-10-05", [tx("2026-09-30", 2_100_000, "INFLOW")]);
+    expect(r.result.disponible).toBe(baseline.result.disponible);
+  });
+
+  it("a small payment toward the card bill doesn't erase the rest of it", () => {
+    const card = { ...ACCOUNTS[1], name: "Tarjeta", cutoffDay: 10, paymentDay: 25 };
+    const purchases = [tx("2026-09-05", 500_000, "OUTFLOW", { accountId: CARD })];
+    const withBill = build("2026-09-18", purchases, { accounts: [ACCOUNTS[0], { ...card, currentBalance: 500_000 }] });
+    const partial = build("2026-09-18", [...purchases, tx("2026-09-17", 10_000, "OUTFLOW", { id: "pay", transferGroupId: "g" }), tx("2026-09-17", 10_000, "INFLOW", { id: "payin", accountId: CARD, transferGroupId: "g" })],
+      { accounts: [ACCOUNTS[0], { ...card, currentBalance: 490_000 }] });
+    // Paying 10.000 lowers what's left to pay by 10.000; the money left the debit: Disponible doesn't jump up.
+    expect(partial.result.porPagar.total).toBe(withBill.result.porPagar.total - 10_000);
+  });
+});
