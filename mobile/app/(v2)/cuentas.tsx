@@ -23,7 +23,7 @@ const ADD_KINDS: AddKind[] = ["cuenta", "efectivo", "tarjeta", "credito"];
 /**
  * Mis cuentas (S8-4, cuentas.html §1): what counts for Disponible on top,
  * money you have apart from money you owe, a switch per account that asks
- * first, and Agregar. `?add=tarjeta` opens Agregar on that kind.
+ * first, and Agregar. `?add=tarjeta` opens Agregar on that kind; `?add=extracto` the PDF picker.
  */
 export default function CuentasScreen() {
   const t = useV2Theme();
@@ -54,11 +54,16 @@ export default function CuentasScreen() {
   useV2Changes(() => void reload());
   useFocusEffect(useCallback(() => {
     void reload();
-    const k = params.add as AddKind | undefined;
-    if (k && ADD_KINDS.includes(k)) {
+    const k = params.add as AddKind | "extracto" | undefined;
+    if (k === "extracto") {
+      // Inicio's "Importar extracto": straight to the picker.
+      router.setParams({ add: undefined });
+      void pickPdf();
+    } else if (k && ADD_KINDS.includes(k)) {
       setAdding({ kind: k });
       router.setParams({ add: undefined });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reload, params.add, router]));
 
   const add = useCallback(async (f: AccountForm): Promise<string | null> => {

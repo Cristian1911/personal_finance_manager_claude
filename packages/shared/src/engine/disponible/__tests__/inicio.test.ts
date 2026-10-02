@@ -53,6 +53,21 @@ describe("buildInicio — first run", () => {
   });
 });
 
+describe("buildInicio — the Tarjeta widget reads the cards", () => {
+  it("a card with its days shows its next bill (purchases of its period), due date and what you owe", () => {
+    const card = { id: CARD, name: "Visa", accountType: "CREDIT_CARD", currentBalance: 900_000, countsInDisponible: null, cutoffDay: 27, paymentDay: 12 };
+    const r = build("2026-09-18", [tx("2026-09-17", 300_000, "OUTFLOW", { accountId: CARD }), tx("2026-08-20", 50_000, "OUTFLOW", { accountId: CARD })],
+      { accounts: [ACCOUNTS[0], card] });
+    if (r.status !== "ready") throw new Error(r.status);
+    const w = r.widgets.find((x) => x.id === `tarjeta:${CARD}`);
+    expect(w).toMatchObject({ title: "Visa", hint: "próxima factura" });
+    // Cut on the 27th → this bill is Aug 28–Sep 27 (the 300.000), due Oct 12.
+    expect(w!.rows).toEqual(expect.arrayContaining([expect.objectContaining({ id: "total", amount: "$900.000" })]));
+    expect(w!.lead).toContain("300.000");
+    expect(r.widgets.some((x) => x.empty && x.id.startsWith("tarjeta"))).toBe(false);
+  });
+});
+
 describe("buildInicio — the first cycle starts from the balance told", () => {
   it("balance − Ahorro − what went out after it; card purchases don't count", () => {
     const r = build("2026-09-18", [

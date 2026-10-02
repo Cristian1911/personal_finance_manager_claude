@@ -17,7 +17,7 @@ the tests talk to zeta-dev only. To undo anything, close its PR (and the ones ab
 | #452 | `feat/v2-onboarding` | First run: when you get paid, where your money is, fixed payments | Open |
 | #453 | `feat/v2-categorias` | The 25 categories, destinatarios (comercios/personas), matched on capture; Categoría · ¿Quién? on the open row | Open, reviewed, fixes in |
 | #454 | `feat/v2-email` | Bank emails: forwarding address, Bancolombia alerts as commands (merge / hold / new), Revisar "¿Es el mismo?", Correos del banco | Open, reviewed, fixes in |
-| (next) | `feat/v2-pdf` | Subir un extracto (PDF): statements as commands, unknown accounts offered, balance anchored at the cut | In review |
+| #455 | `feat/v2-pdf` | Subir un extracto (PDF): statements as commands, unknown accounts offered, balance anchored at the cut | Open, reviewed, fixes in |
 
 ## Decisions I took for you (simplest option; change any)
 
@@ -145,8 +145,13 @@ the tests talk to zeta-dev only. To undo anything, close its PR (and the ones ab
 
 ## Still pointing at v1 screens (fixed as each v2 screen lands)
 
-Inicio widget buttons: `import_statement` (/import), `split_purchase`, `lend`, `see_people` (/personas). The Tarjeta widget
-doesn't read accounts yet ("Sin tarjetas aún" even with a card).
+None: Inicio's "Importar extracto" opens Mis cuentas' PDF picker; Te deben's buttons (Dividir una compra, Anotar un
+préstamo, Ver todo) say "Muy pronto" instead of opening v1 screens that write v1's data. The Tarjeta widget reads
+the cards (next bill = purchases of its period, due date, cut, total owed).
+
+- **D24. A card's bill in Disponible is what you bought in its period (D11), not the statement's minimum.** The spec
+  (S3-6) says minimum by default; the statement's minimum isn't stored yet. Decide: keep "the whole bill" (safer
+  number) or switch to the minimum once statements bring it.
 
 ## Pre-existing, not mine
 
