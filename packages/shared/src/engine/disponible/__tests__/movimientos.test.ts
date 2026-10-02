@@ -41,7 +41,7 @@ describe("Movimientos", () => {
       "Hoy · vie 18|−$45.000", "Ayer · jue 17|−$64.000", "Mar 15|+$2.100.000",
     ]);
     expect(v.groups[0].rows.map((r) => `${r.title}|${r.amount}|${r.tone}|${r.time}|${r.account}`)).toEqual([
-      "Rappi|−$32.000|out|12:41|Cuenta", "Tostao|−$8.000|out|8:15|Cuenta", "Uber|−$5.000|card|7:52|Tarjeta",
+      "Rappi|−$32.000|out|12:41|Cuenta", "Tostao|−$8.000|out|08:15|Cuenta", "Uber|−$5.000|card|07:52|Tarjeta",
     ]);
     const row = (title: string) => v.groups.flatMap((g) => g.rows).find((r) => r.title === title);
     expect(row("Caro")).toMatchObject({ title: "Caro", amount: "$45.000", tone: "neutral", status: "Ignorado" });
@@ -66,6 +66,19 @@ describe("Movimientos", () => {
     expect(view().account).toBeNull();
   });
 
+  it("a bank movement shows the bank's time and a readable name (not ALL CAPS)", () => {
+    const v = view({ transactions: [tx("2026-09-18", 15_000, "DUNKIN DONUTS", { time: "03:31:00", createdAt: "2026-09-18T09:08:00.000Z" })] });
+    expect(v.groups[0].rows[0]).toMatchObject({ title: "Dunkin Donuts", time: "03:31" });
+  });
+
+  it("a movement shows its destinatario's name and its category; search finds both", () => {
+    const rappi = { id: "d-rappi", name: "Rappi", kind: "merchant" as const };
+    const txs = [tx("2026-09-18", 32_000, "COMPRA RAPPI COLOMBIA", { destinatarioId: "d-rappi", categoryId: "c2000000-0000-4000-8000-000000000003" })];
+    const v = view({ transactions: txs, destinatarios: [rappi] });
+    expect(v.groups[0].rows[0]).toMatchObject({ title: "Rappi", category: "Domicilios", categoryId: "c2000000-0000-4000-8000-000000000003", destinatario: rappi });
+    expect(view({ transactions: txs, destinatarios: [rappi], query: "domicil" }).groups).toHaveLength(1);
+  });
+
   it("steps back to the last cycle the phone holds", () => {
     const v = view({ index: 1 });
     expect(v.cycle).toBe("Ciclo pasado · 30 ago–14 sep");
@@ -80,8 +93,8 @@ describe("Detalle", () => {
   it("a manual spend: source, facts, editable, counts (no status)", () => {
     expect(view(TXS[1])).toEqual({
       id: TXS[1].id, initial: "T", title: "Tostao", amount: "−$8.000", tone: "out",
-      source: "manual", facts: "A mano · hoy 8:15 · Cuenta", status: null,
-      note: "con Ana", excluded: false, manual: true, raw: { amount: 8000, date: "2026-09-18" },
+      source: "manual", facts: "A mano · hoy 08:15 · Cuenta", status: null,
+      note: "con Ana", excluded: false, manual: true, raw: { amount: 8000, date: "2026-09-18", description: "Tostao", time: "08:15" },
     });
   });
 

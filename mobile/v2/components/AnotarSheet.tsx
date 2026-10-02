@@ -4,7 +4,7 @@ import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from "expo-spe
 import { Mic, Square } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
-import { MANUAL_SALARY_DESCRIPTION, amountTyping, anotarPreview, dictado, formatPesos, isDebtAccountType, parseAmount } from "@zeta/shared";
+import { MANUAL_SALARY_DESCRIPTION, amountTyping, anotarPreview, dictado, formatPesos, yaEsta, isDebtAccountType, parseAmount } from "@zeta/shared";
 import { loadAnotar, rememberAnotarAccount, type LoadedAnotar } from "../../lib/v2/anotar/load";
 import { notifyV2Change } from "../../lib/v2/changes";
 import type { AnotarPrefill } from "../../lib/v2/anotar/open";
@@ -62,6 +62,8 @@ export function AnotarSheet({ open, prefill, userId, onClose, onSaved, onAddAcco
   // Dictar: what's being heard, while listening.
   const [heard, setHeard] = useState<string | null>(null);
   const dataRef = useRef<LoadedAnotar | null>(null);
+  // What to do once the sheet is fully gone (iOS can't present another modal before that).
+  const afterClose = useRef<(() => void) | null>(null);
   dataRef.current = data;
 
   // Fresh every time it opens: today's date, the last account used.
@@ -69,8 +71,8 @@ export function AnotarSheet({ open, prefill, userId, onClose, onSaved, onAddAcco
     if (!open) return;
     setKind(prefill?.kind ?? "gasto");
     setIncomeKind("extra");
-    setAmountText("");
-    setWhat("");
+    setAmountText(prefill?.amount ? amountTyping(String(prefill.amount).replace(".", ",")) : "");
+    setWhat(prefill?.what ?? "");
     setToAccountId(prefill?.toAccountId ?? null);
     setDate(toColombiaDateString());
     setError(null);
@@ -78,7 +80,8 @@ export function AnotarSheet({ open, prefill, userId, onClose, onSaved, onAddAcco
     loadAnotar(userId).then((d) => {
       setData(d);
       const counted = d.accounts.find((a) => !isDebtAccountType(a.accountType));
-      setAccountId(d.lastAccountId ?? counted?.id ?? d.accounts[0]?.id ?? null);
+      const wanted = prefill?.accountId && d.accounts.some((a) => a.id === prefill.accountId) ? prefill.accountId : null;
+      setAccountId(wanted ?? d.lastAccountId ?? counted?.id ?? d.accounts[0]?.id ?? null);
       if (prefill?.dictar && d.accounts.length > 0) void listen();
     }).catch((e) => {
       console.warn("[v2 anotar] load failed", e);
@@ -135,6 +138,10 @@ export function AnotarSheet({ open, prefill, userId, onClose, onSaved, onAddAcco
   const preview = useMemo(() => (data && from
     ? anotarPreview({ ...data.input, today: data.input.today }, { kind, amount, accountId: from.id, toAccountId, date })
     : null), [data, from, kind, amount, toAccountId, date]);
+  // "Ya está: Ifood −$32.000 · hoy 03:26. ¿Es otro?" — the bank's email, or the same thing anotado twice.
+  const repeated = useMemo(() => (data && from
+    ? yaEsta(data.input.transactions, data.input.today, { kind, amount, accountId: from.id, date })
+    : null), [data, from, kind, amount, date]);
 
   // "Mi sueldo" keeps a fixed description (Inicio recognizes the salary by it); its "De qué" goes to the note.
   const salary = kind === "ingreso" && incomeKind === "sueldo";
@@ -207,7 +214,8 @@ export function AnotarSheet({ open, prefill, userId, onClose, onSaved, onAddAcco
   const today = toColombiaDateString();
 
   return (
-    <Sheet open={open} onClose={onClose} style={[styles.sheet, { paddingBottom: insets.bottom + 12 }]}>
+    <Sheet open={open} onClose={onClose} onClosed={() => { const next = afterClose.current; afterClose.current = null; next?.(); }}
+      style={[styles.sheet, { paddingBottom: insets.bottom + 12 }]}>
       <View style={[styles.handle, { backgroundColor: t.colors.line }]} />
       {data && accounts.length === 0 ? (
         <View style={styles.none}>
@@ -215,7 +223,7 @@ export function AnotarSheet({ open, prefill, userId, onClose, onSaved, onAddAcco
           <Text style={{ fontSize: 15, lineHeight: 22, textAlign: "center", color: t.colors.muted, fontFamily: t.fonts.ui }}>
             Para anotar necesitas al menos una cuenta o tu efectivo. Así Zeta sabe de dónde sale y qué cuenta para tu número.
           </Text>
-          <Button label="Agregar cuenta" onPress={() => { onClose(); onAddAccount(); }} />
+          <Button label="Agregar cuenta" onPress={() => { afterClose.current = onAddAccount; onClose(); }} />
         </View>
       ) : (
         <>
@@ -249,6 +257,9 @@ export function AnotarSheet({ open, prefill, userId, onClose, onSaved, onAddAcco
           <Text accessibilityLiveRegion="polite" style={[styles.preview, { color: heard == null && preview?.tone === "bad" ? t.colors.bad.text : t.colors.muted, fontFamily: t.fonts.uiMedium }]}>
             {heard != null ? (heard ? `«${heard}»` : "Di algo como «almuerzo 45 mil en efectivo»") : preview?.line ?? " "}
           </Text>
+          {heard == null && repeated && (
+            <Text accessibilityLiveRegion="polite" style={[styles.preview, { color: t.colors.warn.text, fontFamily: t.fonts.uiMedium }]}>{repeated}</Text>
+          )}
 
           <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} keyboardShouldPersistTaps="handled">
             {kind === "ingreso" && (

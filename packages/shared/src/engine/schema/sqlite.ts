@@ -119,3 +119,86 @@ ALTER TABLE transactions ADD COLUMN flow_class TEXT;
 ALTER TABLE transactions ADD COLUMN flow_class_version INTEGER;
 ALTER TABLE transactions ADD COLUMN transfer_group_id TEXT;
 `;
+
+/**
+ * Phone schema version 7: Pagos fijos. Same columns as the Supabase
+ * recurring tables. Occurrences are computed from the template; a row is
+ * stored only when its status changes, keyed by (template, date) like the
+ * server's unique constraint (the server generates its own rows by trigger).
+ */
+export const SQLITE_RECURRING_SCHEMA = `
+CREATE TABLE recurring_transaction_templates (
+  id TEXT PRIMARY KEY, user_id TEXT NOT NULL, account_id TEXT,
+  amount REAL NOT NULL, currency_code TEXT NOT NULL DEFAULT 'COP', direction TEXT NOT NULL,
+  frequency TEXT NOT NULL, day_of_month INTEGER, start_date TEXT NOT NULL, end_date TEXT,
+  merchant_name TEXT, description TEXT, is_active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT, updated_at TEXT
+);
+CREATE TABLE recurring_occurrences (
+  id TEXT PRIMARY KEY, user_id TEXT NOT NULL, template_id TEXT NOT NULL,
+  occurrence_date TEXT NOT NULL, expected_amount REAL NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'skipped')),
+  transaction_id TEXT, paid_at TEXT, skipped_at TEXT, linked_manually INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT,
+  UNIQUE (template_id, occurrence_date)
+);
+`;
+
+/**
+ * Phone schema version 8: categories and destinatarios (S8-2, S9-6). Same
+ * columns as the Supabase tables; the 25 categories are built into the app.
+ */
+export const SQLITE_CATEGORIES_SCHEMA = `
+ALTER TABLE transactions ADD COLUMN category_id TEXT;
+ALTER TABLE transactions ADD COLUMN destinatario_id TEXT;
+CREATE TABLE destinatarios (
+  id TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('merchant', 'person')),
+  default_category_id TEXT, is_active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT, updated_at TEXT
+);
+CREATE TABLE destinatario_rules (
+  id TEXT PRIMARY KEY, user_id TEXT NOT NULL, destinatario_id TEXT NOT NULL,
+  match_type TEXT NOT NULL CHECK (match_type IN ('contains', 'exact')), pattern TEXT NOT NULL,
+  priority INTEGER NOT NULL DEFAULT 100, match_count INTEGER NOT NULL DEFAULT 0, last_matched_at TEXT,
+  created_at TEXT
+);
+CREATE UNIQUE INDEX destinatario_rules_user_pattern ON destinatario_rules (user_id, lower(pattern));
+`;
+
+/**
+ * Bank captures (phone schema version 9): what the bank said (text, time,
+ * merchant, alert family) and which row a reconciled movement became.
+ * Same columns as the Supabase transactions view.
+ */
+export const SQLITE_BANK_SCHEMA = `
+ALTER TABLE transactions ADD COLUMN raw_description TEXT;
+ALTER TABLE transactions ADD COLUMN transaction_time TEXT;
+ALTER TABLE transactions ADD COLUMN merchant_name TEXT;
+ALTER TABLE transactions ADD COLUMN source_pattern TEXT;
+ALTER TABLE transactions ADD COLUMN reconciled_into_transaction_id TEXT;
+ALTER TABLE transactions ADD COLUMN provider TEXT NOT NULL DEFAULT 'MANUAL';
+ALTER TABLE transactions ADD COLUMN status TEXT NOT NULL DEFAULT 'POSTED';
+`;
+
+/**
+ * Bank statements (phone schema version 10): what each statement said — the
+ * card's minimum, due date, balance and rate (D24: Disponible counts the
+ * minimum). Columns as the Supabase statement_snapshots view.
+ */
+export const SQLITE_STATEMENTS_SCHEMA = `
+CREATE TABLE statement_snapshots (
+  id TEXT PRIMARY KEY, user_id TEXT NOT NULL, account_id TEXT NOT NULL,
+  period_from TEXT, period_to TEXT, final_balance REAL, total_payment_due REAL, minimum_payment REAL,
+  payment_due_date TEXT, interest_rate REAL, currency_code TEXT NOT NULL DEFAULT 'COP',
+  transaction_count INTEGER NOT NULL DEFAULT 0, imported_count INTEGER NOT NULL DEFAULT 0, skipped_count INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT, updated_at TEXT
+);
+`;
+
+/** Phone schema version 11: each statement's movement of the debt (month-to-month tracking). */
+export const SQLITE_STATEMENTS_DETAIL_SCHEMA = `
+ALTER TABLE statement_snapshots ADD COLUMN previous_balance REAL;
+ALTER TABLE statement_snapshots ADD COLUMN purchases_and_charges REAL;
+ALTER TABLE statement_snapshots ADD COLUMN interest_charged REAL;
+`;

@@ -9,6 +9,8 @@ import { runLocalCommand } from "../../lib/v2/engine/run-local";
 import { loadCuentas, type LoadedCuentas } from "../../lib/v2/cuentas/load";
 import { useV2UserId } from "../../lib/v2/user";
 import { AccountSheet, type AccountForm, type AddKind } from "../../v2/components/AccountSheet";
+import { ExtractoSheet } from "../../v2/components/ExtractoSheet";
+import * as DocumentPicker from "expo-document-picker";
 import { Avatar } from "../../v2/components/Avatar";
 import { Button, IconButton } from "../../v2/components/Button";
 import { ConfirmSheet } from "../../v2/components/ConfirmSheet";
@@ -20,7 +22,7 @@ const ADD_KINDS: AddKind[] = ["cuenta", "efectivo", "tarjeta", "credito"];
 /**
  * Mis cuentas (S8-4, cuentas.html §1): what counts for Disponible on top,
  * money you have apart from money you owe, a switch per account that asks
- * first, and Agregar. `?add=tarjeta` opens Agregar on that kind.
+ * first, and Agregar. `?add=tarjeta` opens Agregar on that kind; `?add=extracto` the PDF picker.
  */
 export default function CuentasScreen() {
   const t = useV2Theme();
@@ -30,6 +32,13 @@ export default function CuentasScreen() {
   const params = useLocalSearchParams<{ add?: string }>();
   const [data, setData] = useState<LoadedCuentas | null>(null);
   const [adding, setAdding] = useState<{ kind: AddKind | null } | null>(null);
+  // Subir un extracto: the system picker first (a modal of its own), then the sheet with the file.
+  const [pdf, setPdf] = useState<{ uri: string; name: string } | null>(null);
+  const pickPdf = async () => {
+    const r = await DocumentPicker.getDocumentAsync({ type: "application/pdf", copyToCacheDirectory: true });
+    const f = r.canceled ? null : r.assets[0];
+    if (f) setPdf({ uri: f.uri, name: f.name });
+  };
   const [toggle, setToggle] = useState<CuentaRow | null>(null);
 
   const reload = useCallback(async () => {
@@ -44,11 +53,16 @@ export default function CuentasScreen() {
   useV2Changes(() => void reload());
   useFocusEffect(useCallback(() => {
     void reload();
-    const k = params.add as AddKind | undefined;
-    if (k && ADD_KINDS.includes(k)) {
+    const k = params.add as AddKind | "extracto" | undefined;
+    if (k === "extracto") {
+      // Inicio's "Importar extracto": straight to the picker.
+      router.setParams({ add: undefined });
+      void pickPdf();
+    } else if (k && ADD_KINDS.includes(k)) {
       setAdding({ kind: k });
       router.setParams({ add: undefined });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reload, params.add, router]));
 
   const add = useCallback(async (f: AccountForm): Promise<string | null> => {
@@ -103,6 +117,8 @@ export default function CuentasScreen() {
             <Text style={[styles.amount, { color: t.colors.ink, fontFamily: t.fonts.numberSemibold }]}>{r.amount}</Text>
           </Pressable>
           {r.canCount ? (
+            // iOS 27's switch reports a taller frame than it draws: a centered box keeps it on the row's midline.
+            <View style={styles.switchBox}>
             <Switch
               value={r.counts}
               onValueChange={() => setToggle(r)}
@@ -111,6 +127,7 @@ export default function CuentasScreen() {
               thumbColor={t.colors.card}
               ios_backgroundColor={t.colors.sunk}
             />
+            </View>
           ) : (
             <ChevronRight size={16} color={t.colors.control} />
           )}
@@ -162,8 +179,10 @@ export default function CuentasScreen() {
           </>
         )}
         {!empty && v && <Button label="Agregar" variant="secondary" onPress={() => setAdding({ kind: null })} icon={<Plus size={16} color={t.colors.ink} />} />}
+        {v && <Button label="Subir un extracto (PDF)" variant="text" onPress={() => void pickPdf()} style={{ alignSelf: "center" }} />}
       </ScrollView>
 
+      <ExtractoSheet file={pdf} userId={userId} onClose={() => setPdf(null)} />
       <AccountSheet open={!!adding} mode="add" initialKind={adding?.kind ?? null} onSave={add} onClose={() => setAdding(null)} />
       <ConfirmSheet
         open={!!toggle}
@@ -187,6 +206,7 @@ const styles = StyleSheet.create({
   section: { fontSize: 11, letterSpacing: 0.6, paddingHorizontal: 4, marginTop: 6 },
   card: { borderRadius: 18, paddingHorizontal: 14 },
   row: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 64 },
+  switchBox: { height: 64, justifyContent: "center", alignItems: "center" },
   rowMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12 },
   rowBody: { flex: 1, minWidth: 0, gap: 3 },
   amount: { fontSize: 15, fontVariant: ["tabular-nums"] },

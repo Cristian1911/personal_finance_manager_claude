@@ -1,9 +1,13 @@
 import { isDebtAccountType } from "../../utils/account-balance";
 import { defaultCountsInDisponible } from "../commands/set-account-counts-in-disponible";
+import { calendarDayDiff, occurrenceAmountMatches, OCCURRENCE_AUTO_LINK_DAY_WINDOW } from "../../utils/occurrence-matching";
 import { parseQuickCaptureText } from "../../utils/quick-capture";
 import type { InicioAccount } from "./inicio";
 import { buildInicio } from "./inicio";
-import type { StoredTransaction } from "./movements";
+import { isLiveTransaction, type StoredTransaction } from "./movements";
+import { diffDays, type IsoDate } from "./dates";
+import { movementTime, readableName, signedPesos } from "./view";
+import { colombiaTime, relativeDay } from "./widgets";
 import { formatPesos } from "./verdict";
 
 export interface AnotarDraft {
@@ -38,7 +42,7 @@ export function anotarPreview(input: InicioInput, draft: AnotarDraft): AnotarPre
   // Money out of an account you have can't go below zero without saying so
   // (not when its balance was never given: $0 there means "no sé").
   const out = draft.kind !== "ingreso" && !isDebtAccountType(from.accountType);
-  if (out && from.currentBalance > 0 && draft.amount > from.currentBalance) {
+  if (out && from.currentBalance !== 0 && draft.amount > from.currentBalance) {
     const left = formatPesos(from.currentBalance - draft.amount).replace("-", "−");
     return { line: `${name(from)} tiene ${formatPesos(from.currentBalance)}: quedaría en ${left}.`, tone: "bad" };
   }
@@ -74,8 +78,22 @@ export function anotarPreview(input: InicioInput, draft: AnotarDraft): AnotarPre
   if (!counts(from)) return { line: `${name(from)} no cuenta para tu Disponible: no cambia.`, tone: "neutral" };
   const income = draft.kind === "ingreso";
   extra = [leg("preview", from.id, income ? "INFLOW" : "OUTFLOW", income ? "INCOME" : "SPEND")];
-  const after = buildInicio({ ...input, transactions: [...input.transactions, ...extra] });
+  // Bill detection, as Guardar will do it: a spend that matches a pending fixed
+  // payment pays it, so it doesn't lower Disponible a second time.
+  // Same choice as Guardar's detection: that account (if the bill has one), the closest date.
+  const bill = income ? undefined : before.bills
+    .filter((b) => b.kind === "fijo" && b.status === "pending" && (!b.accountId || b.accountId === from.id)
+      && Math.abs(calendarDayDiff(date, b.dueDate)) <= OCCURRENCE_AUTO_LINK_DAY_WINDOW
+      && occurrenceAmountMatches(b.amount, draft.amount, false))
+    .sort((a, b) => Math.abs(calendarDayDiff(date, a.dueDate)) - Math.abs(calendarDayDiff(date, b.dueDate)))[0];
+  const occurrences = bill
+    ? [...(input.occurrences ?? []), { templateId: bill.templateId!, date: bill.dueDate, expectedAmount: bill.amount, status: "paid" as const, transactionId: "preview", linkedManually: false }]
+    : input.occurrences;
+  const after = buildInicio({ ...input, occurrences, transactions: [...input.transactions, ...extra] });
   if (after.status !== "ready") return null;
+  if (bill && Math.abs(after.result.disponible - before.result.disponible) < 0.005) {
+    return { line: `Pagas ${bill.title}: ya estaba apartado, tu Disponible no cambia.`, tone: "neutral" };
+  }
   if (income) return { line: `Tu Disponible sube a ${formatPesos(after.result.disponible)}`, tone: "neutral" };
   return {
     line: `Te quedan ${formatPesos(after.result.disponible)} · ${after.view.perDay}`,
@@ -123,4 +141,25 @@ export function dictado(text: string, accounts: InicioAccount[], now: Date = new
     what: what ? what[0].toUpperCase() + what.slice(1) : "",
     accountId: named?.id ?? null,
   };
+}
+
+/**
+ * "Ya está": a movement of the same amount, same account and direction, a day
+ * around the one you're anotando (the bank's email that already came, or the
+ * same thing anotado twice). Asked, never blocked: two equal coffees are real.
+ */
+export function yaEsta(
+  transactions: StoredTransaction[], today: IsoDate,
+  draft: Pick<AnotarDraft, "kind" | "amount" | "accountId" | "date">,
+): string | null {
+  if (draft.kind === "entre" || !(draft.amount > 0)) return null;
+  const date = draft.date ?? today;
+  const direction = draft.kind === "ingreso" ? "INFLOW" : "OUTFLOW";
+  const same = transactions
+    .filter((t) => isLiveTransaction(t) && t.accountId === draft.accountId && t.direction === direction
+      && Math.abs(t.amount - draft.amount) < 0.005 && Math.abs(diffDays(t.date, date)) <= 1)
+    .sort((a, b) => b.date.localeCompare(a.date) || (movementTime(b, colombiaTime) ?? "").localeCompare(movementTime(a, colombiaTime) ?? ""))[0];
+  if (!same) return null;
+  const when = [relativeDay(today, same.date).toLowerCase(), movementTime(same, colombiaTime)].filter(Boolean).join(" ");
+  return `Ya está: ${readableName(same.description?.trim() || "un movimiento")} ${signedPesos(direction === "OUTFLOW" ? -same.amount : same.amount)} · ${when}. ¿Es otro?`;
 }

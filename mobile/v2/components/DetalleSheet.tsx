@@ -28,7 +28,7 @@ export function DetalleSheet({ detalle, onClose, onNote, onNotAMovement, onCount
   onNote: (notes: string | null) => void;
   onNotAMovement: () => void;
   onCountAgain: () => void;
-  onFix: (fix: { amount?: number; date?: string }) => void;
+  onFix: (fix: { amount?: number; date?: string; description?: string; time?: string }) => void;
 }) {
   const t = useV2Theme();
   const insets = useSafeAreaInsets();
@@ -43,6 +43,9 @@ export function DetalleSheet({ detalle, onClose, onNote, onNotAMovement, onCount
   const [amountDraft, setAmountDraft] = useState("");
   const amountStart = useRef("");
   const [dateDraft, setDateDraft] = useState<Date>(new Date());
+  const [nameDraft, setNameDraft] = useState("");
+  const [timeDraft, setTimeDraft] = useState<Date>(new Date());
+  const [pickingTime, setPickingTime] = useState(false);
   // Android's picker is a dialog: mount it only while it's asked for (else it reopens on every render).
   const [pickingDate, setPickingDate] = useState(false);
   useEffect(() => {
@@ -61,11 +64,13 @@ export function DetalleSheet({ detalle, onClose, onNote, onNotAMovement, onCount
     amountStart.current = String(d.raw.amount);
     setAmountDraft(amountStart.current);
     setDateDraft(new Date(`${d.raw.date}T12:00:00`));
+    setNameDraft(d.raw.description);
+    setTimeDraft(atTime(d.raw.time));
     setFixing(true);
   };
   const saveFix = () => {
     if (!d || !fixing) return;
-    const fix: { amount?: number; date?: string } = {};
+    const fix: { amount?: number; date?: string; description?: string; time?: string } = {};
     // Only what the person changed: an untouched amount is never re-parsed.
     if (amountDraft !== amountStart.current) {
       const amount = parseAmount(amountDraft);
@@ -73,9 +78,14 @@ export function DetalleSheet({ detalle, onClose, onNote, onNotAMovement, onCount
     }
     const date = toIso(dateDraft);
     if (date !== d.raw.date) fix.date = date;
+    const name = nameDraft.trim();
+    if (name && name !== d.raw.description) fix.description = name;
+    const time = hhmm(timeDraft);
+    if (time !== d.raw.time) fix.time = time;
     setFixing(false);
     setPickingDate(false);
-    if (fix.amount !== undefined || fix.date !== undefined) onFix(fix);
+    setPickingTime(false);
+    if (Object.keys(fix).length) onFix(fix);
   };
   // Closing keeps what was typed, the note and the fix alike.
   const close = () => { saveNote(); saveFix(); onClose(); };
@@ -92,7 +102,7 @@ export function DetalleSheet({ detalle, onClose, onNote, onNotAMovement, onCount
               disabled={!d.manual}
               accessibilityRole={d.manual ? "button" : undefined}
               accessibilityLabel={`${d.title}, ${d.amount.replace(/−/g, "menos ").replace(/^\+/, "más ")}, ${d.facts}${d.status ? `, ${d.status}` : ""}`}
-              accessibilityHint={d.manual ? "Corrige el monto o la fecha" : undefined}
+              accessibilityHint={d.manual ? "Corrige el nombre, el monto, la fecha o la hora" : undefined}
               style={styles.hero}
             >
               <Text style={[styles.amount, { color: t.colors.ink, fontFamily: t.fonts.numberSemibold }]}>{d.amount}</Text>
@@ -110,19 +120,27 @@ export function DetalleSheet({ detalle, onClose, onNote, onNotAMovement, onCount
 
             {fixing && (
               <View style={[styles.fix, { backgroundColor: t.colors.sunk }]}>
+                <Text style={[styles.fixLabel, { color: t.colors.muted, fontFamily: t.fonts.uiMedium }]}>Nombre</Text>
+                <TextInput
+                  value={nameDraft}
+                  onChangeText={setNameDraft}
+                  maxLength={200}
+                  returnKeyType="done"
+                  accessibilityLabel="Nombre"
+                  style={[styles.fixInput, { color: t.colors.ink, borderColor: t.colors.control, fontFamily: t.fonts.uiSemibold }]}
+                />
                 <Text style={[styles.fixLabel, { color: t.colors.muted, fontFamily: t.fonts.uiMedium }]}>Monto</Text>
                 <TextInput
                   value={amountDraft}
                   onChangeText={setAmountDraft}
                   keyboardType="decimal-pad"
-                  autoFocus
                   returnKeyType="done"
                   accessibilityLabel="Monto"
                   style={[styles.fixInput, { color: t.colors.ink, borderColor: t.colors.control, fontFamily: t.fonts.numberSemibold }]}
                 />
-                <Text style={[styles.fixLabel, { color: t.colors.muted, fontFamily: t.fonts.uiMedium }]}>Fecha</Text>
+                <Text style={[styles.fixLabel, { color: t.colors.muted, fontFamily: t.fonts.uiMedium }]}>Fecha y hora</Text>
                 {Platform.OS === "ios" ? (
-                  <View style={styles.dateRow}>
+                  <View style={[styles.dateRow, { flexDirection: "row", gap: 8 }]}>
                     <DateTimePicker
                       value={dateDraft}
                       mode="date"
@@ -132,6 +150,16 @@ export function DetalleSheet({ detalle, onClose, onNote, onNotAMovement, onCount
                       accentColor={t.colors.button}
                       maximumDate={new Date(`${toColombiaDateString()}T12:00:00`)}
                       onChange={(_e, v) => v && setDateDraft(v)}
+                    />
+                    <DateTimePicker
+                      value={timeDraft}
+                      mode="time"
+                      display="compact"
+                      locale="es-CO"
+                      themeVariant={t.mode}
+                      accentColor={t.colors.button}
+                      onChange={(_e, v) => v && setTimeDraft(v)}
+                      accessibilityLabel="Hora"
                     />
                   </View>
                 ) : (
@@ -143,6 +171,23 @@ export function DetalleSheet({ detalle, onClose, onNote, onNotAMovement, onCount
                   >
                     <Text style={{ fontSize: 15, color: t.colors.ink, fontFamily: t.fonts.uiSemibold }}>{toIso(dateDraft)}</Text>
                   </Pressable>
+                )}
+                {Platform.OS !== "ios" && (
+                  <Pressable
+                    onPress={() => setPickingTime(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Hora: ${hhmm(timeDraft)}. Cambiar`}
+                    style={[styles.fixInput, styles.dateButton, { borderColor: t.colors.control }]}
+                  >
+                    <Text style={{ fontSize: 15, color: t.colors.ink, fontFamily: t.fonts.uiSemibold }}>{hhmm(timeDraft)}</Text>
+                  </Pressable>
+                )}
+                {Platform.OS !== "ios" && pickingTime && (
+                  <DateTimePicker
+                    value={timeDraft}
+                    mode="time"
+                    onChange={(_e, v) => { setPickingTime(false); if (v) setTimeDraft(v); }}
+                  />
                 )}
                 {Platform.OS !== "ios" && pickingDate && (
                   <DateTimePicker
@@ -224,3 +269,12 @@ const styles = StyleSheet.create({
   rowValue: { flexDirection: "row", alignItems: "center", gap: 6, maxWidth: "65%", minHeight: 44 },
   noteInput: { flex: 1.4, height: 44, borderWidth: 1.5, borderRadius: 9, paddingHorizontal: 10, fontSize: 14 },
 });
+
+/** "07:45" from a picked time (the phone's clock is Colombia's). */
+const hhmm = (d: Date) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+/** A Date at "HH:mm" today, for the time picker; now when unknown. */
+function atTime(time: string | null): Date {
+  const d = new Date();
+  if (time) d.setHours(Number(time.slice(0, 2)), Number(time.slice(3, 5)), 0, 0);
+  return d;
+}
