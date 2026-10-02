@@ -211,13 +211,13 @@ export default function MovimientosScreen() {
   const header = (
     <View style={styles.headerBlock}>
       <View style={styles.titleRow}>
-        <ProfileButton />
         <Text style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]} accessibilityRole="header">Movimientos</Text>
         <IconButton
           onPress={() => { setSearching((s) => !s); setQuery(""); }}
           label={searching ? "Cerrar búsqueda" : "Buscar"}
           icon={searching ? <X size={16} color={t.colors.ink} strokeWidth={2.2} /> : <Search size={17} color={t.colors.ink} strokeWidth={2} />}
         />
+        <ProfileButton />
       </View>
 
       {searching && (

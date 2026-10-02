@@ -100,8 +100,8 @@ export default function RevisarScreen() {
     <View style={{ flex: 1, backgroundColor: t.colors.bg }}>
       <ScrollView contentContainerStyle={[styles.page, { paddingTop: insets.top + 8 }]}>
         <View style={styles.titleRow}>
-          <ProfileButton />
           <Text accessibilityRole="header" style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]}>Revisar</Text>
+          <ProfileButton />
         </View>
         {dups.map((d) => (
           <View key={d.id} style={[styles.card, styles.dup, { backgroundColor: t.colors.card }, t.shadow]}>
@@ -142,7 +142,7 @@ export default function RevisarScreen() {
 const styles = StyleSheet.create({
   page: { paddingHorizontal: 16, paddingBottom: 40, gap: 12 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 4, paddingTop: 4 },
-  title: { fontSize: 26, letterSpacing: -0.5 },
+  title: { flex: 1, fontSize: 26, letterSpacing: -0.5 },
   card: { borderRadius: 18, paddingHorizontal: 14 },
   dup: { paddingVertical: 16, gap: 12 },
   side: { gap: 2 },

@@ -121,9 +121,9 @@ export default function PagosScreen() {
     <View style={{ flex: 1, backgroundColor: t.colors.bg }}>
       <ScrollView contentContainerStyle={[styles.page, { paddingTop: insets.top + 8 }]}>
         <View style={styles.titleRow}>
-          <ProfileButton />
           <Text accessibilityRole="header" style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]}>Pagos</Text>
           <IconButton label="Agregar pago fijo" onPress={() => setAdding(true)} icon={<Plus size={18} color={t.colors.ink} strokeWidth={2.2} />} />
+          <ProfileButton />
         </View>
 
         {data && (data.now.rows.length > 0 || data.next.rows.length > 0) && (
