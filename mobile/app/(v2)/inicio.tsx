@@ -25,6 +25,7 @@ import { InicioHeader } from "../../v2/components/InicioHeader";
 import { AddWidgetSheet } from "../../v2/components/widgets/AddWidgetSheet";
 import { InicioWidgetGrid, type GridEditing } from "../../v2/components/widgets/InicioWidgetGrid";
 import { useV2Theme } from "../../v2/theme/ThemeProvider";
+import { useV2Changes } from "../../lib/v2/changes";
 
 /**
  * Where a widget action goes. Until the v2 screens exist, the v1 ones
@@ -140,6 +141,8 @@ export default function InicioScreen() {
     }
   }, [userId]);
 
+  // Anotar and Deshacer change the data without moving focus.
+  useV2Changes(() => void reload());
   useFocusEffect(
     useCallback(() => {
       void reload();

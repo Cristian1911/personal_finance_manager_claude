@@ -39,7 +39,7 @@ export {
   type StoredTemplate,
   type StoredTransaction,
 } from "./movements";
-export { amountInput, cycleLabel, disponibleBlockView, headerDate, parseAmount, shortDate, signedPesos, type DisponibleBlockView } from "./view";
+export { amountInput, amountTyping, cycleLabel, disponibleBlockView, headerDate, parseAmount, shortDate, signedPesos, type DisponibleBlockView } from "./view";
 export {
   DETAIL_PAID_SHOWN,
   DETAIL_PENDING_SHOWN,
@@ -116,3 +116,4 @@ export {
   type MovimientosView,
 } from "./movimientos";
 export { cuentasView, type CuentaRow, type CuentasView } from "./cuentas";
+export { anotarPreview, type AnotarDraft, type AnotarPreview } from "./anotar";

@@ -13,6 +13,7 @@ import { Button, IconButton } from "../../v2/components/Button";
 import { ConfirmSheet } from "../../v2/components/ConfirmSheet";
 import { EmptyState } from "../../v2/components/EmptyState";
 import { useV2Theme } from "../../v2/theme/ThemeProvider";
+import { useV2Changes } from "../../lib/v2/changes";
 
 const PREVIEW_ROWS = 3;
 
@@ -45,6 +46,8 @@ export default function CuentaScreen() {
       Alert.alert("No pudimos cargar la cuenta", "Intenta de nuevo.");
     }
   }, [userId, id]);
+  // Anotar and Deshacer change the data without moving focus.
+  useV2Changes(() => void reload());
   useFocusEffect(useCallback(() => { void reload(); }, [reload]));
 
   const row = cuentas && [...cuentas.view.cuentas, ...cuentas.view.deudas].find((r) => r.id === id);

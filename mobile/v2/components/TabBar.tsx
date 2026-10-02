@@ -16,6 +16,9 @@ export const V2_TABS: readonly { name: string; title: string; icon: LucideIcon }
 /** How far the "+" sticks up over the bar (screens keep content clear of it). */
 export const FAB_OVERHANG = 22;
 
+/** The bar's height above the safe area's inset (padding 8 + tab 48). */
+export const TAB_BAR_HEIGHT = 56;
+
 /** Secondary screens open inside the tab they belong to; that tab stays lit. */
 const PARENT_TAB: Record<string, string> = { flujo: "inicio", cuentas: "inicio", cuenta: "inicio" };
 

@@ -13,6 +13,7 @@ import { Avatar } from "../../v2/components/Avatar";
 import { Button, IconButton } from "../../v2/components/Button";
 import { ConfirmSheet } from "../../v2/components/ConfirmSheet";
 import { useV2Theme } from "../../v2/theme/ThemeProvider";
+import { useV2Changes } from "../../lib/v2/changes";
 
 const ADD_KINDS: AddKind[] = ["cuenta", "efectivo", "tarjeta", "credito"];
 
@@ -39,6 +40,8 @@ export default function CuentasScreen() {
       Alert.alert("No pudimos cargar tus cuentas", "Intenta de nuevo.");
     }
   }, [userId]);
+  // Anotar and Deshacer change the data without moving focus.
+  useV2Changes(() => void reload());
   useFocusEffect(useCallback(() => {
     void reload();
     const k = params.add as AddKind | undefined;

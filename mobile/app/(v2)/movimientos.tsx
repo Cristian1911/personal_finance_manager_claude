@@ -28,6 +28,7 @@ import { DetalleSheet } from "../../v2/components/DetalleSheet";
 import { Dim } from "../../v2/components/Dim";
 import { Toast } from "../../v2/components/Toast";
 import { useV2Theme } from "../../v2/theme/ThemeProvider";
+import { useV2Changes } from "../../lib/v2/changes";
 
 /**
  * v2 Movimientos (M1, Claude Design "Z Cuentas", movs): one cycle at a time,
@@ -64,6 +65,8 @@ export default function MovimientosScreen() {
       setError("No pudimos cargar tus movimientos. Intenta de nuevo.");
     }
   }, [userId]);
+  // Anotar and Deshacer change the data without moving focus.
+  useV2Changes(() => void reload());
   useFocusEffect(useCallback(() => { void reload(); }, [reload]));
 
   // Typing stays at full speed; the list catches up a frame later.
