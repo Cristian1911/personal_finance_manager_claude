@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { computeDisponible, type DisponibleInput } from "../disponible";
 import { computeVerdict } from "../verdict";
-import { cycleLabel, disponibleBlockView, headerDate, parseAmount, shortMoney } from "../view";
+import { amountInput, cycleLabel, disponibleBlockView, headerDate, parseAmount, shortMoney } from "../view";
 
 const CYCLE = { start: "2026-09-15", end: "2026-09-29", days: 15, daysLeft: 12 };
 
@@ -143,6 +143,14 @@ describe("headerDate", () => {
     expect(headerDate("2026-09-18")).toBe("Viernes 18 sep");
     expect(headerDate("2026-10-01")).toBe("Jueves 1 oct");
   });
+});
+
+describe("amountInput (a stored amount back in an input)", () => {
+  it.each([[3_000_000, "3.000.000"], [452_318.47, "452.318,47"], [98_000.5, "98.000,50"], [12, "12"]])("%d → %s, and reads back", (n, text) => {
+    expect(amountInput(n)).toBe(text);
+    expect(parseAmount(text)).toBe(n);
+  });
+  it("nothing stored → empty", () => expect(amountInput(null)).toBe(""));
 });
 
 describe("parseAmount (what the person types in a fix)", () => {

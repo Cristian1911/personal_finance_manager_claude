@@ -49,6 +49,7 @@ export default function CuentasScreen() {
   }, [reload, params.add, router]));
 
   const add = useCallback(async (f: AccountForm): Promise<string | null> => {
+    // A throw here reaches AccountSheet's save, which shows "No se pudo guardar".
     const { result } = await runLocalCommand({
       type: "createAccount",
       userId,
@@ -67,8 +68,13 @@ export default function CuentasScreen() {
 
   const setCounts = useCallback(async (row: CuentaRow) => {
     setToggle(null);
-    const { result } = await runLocalCommand({ type: "setAccountCountsInDisponible", userId, payload: { accountId: row.id, counts: !row.counts } });
-    if (result.status === "rejected") Alert.alert("No se pudo cambiar", result.error ?? "");
+    try {
+      const { result } = await runLocalCommand({ type: "setAccountCountsInDisponible", userId, payload: { accountId: row.id, counts: !row.counts } });
+      if (result.status === "rejected") Alert.alert("No se pudo cambiar", result.error ?? "");
+    } catch (e) {
+      console.warn("[v2 cuentas] switch failed", e);
+      Alert.alert("No se pudo cambiar", "Intenta de nuevo.");
+    }
     await reload();
   }, [userId, reload]);
 
@@ -119,10 +125,10 @@ export default function CuentasScreen() {
           <IconButton label="Agregar cuenta" onPress={() => setAdding({ kind: null })} icon={<Plus size={18} color={t.colors.ink} strokeWidth={2.2} />} />
         </View>
 
-        {v?.counted && (
+        {(v?.counted || v?.apart || v?.owed) && (
           <View style={[styles.summary, { backgroundColor: t.colors.card }, t.shadow]}>
             <Text style={{ fontSize: 13, color: t.colors.muted, fontFamily: t.fonts.uiMedium }}>Cuentan para tu Disponible</Text>
-            <Text accessibilityLiveRegion="polite" style={{ fontSize: 28, color: t.colors.ink, fontFamily: t.fonts.numberSemibold, fontVariant: ["tabular-nums"] }}>{v.counted}</Text>
+            <Text accessibilityLiveRegion="polite" style={{ fontSize: 28, color: t.colors.ink, fontFamily: t.fonts.numberSemibold, fontVariant: ["tabular-nums"] }}>{v.counted ?? "$0"}</Text>
             {(v.apart || v.owed) && (
               <Text style={{ fontSize: 13, color: t.colors.muted, fontFamily: t.fonts.ui }}>
                 {[v.apart && `Aparte ${v.apart}`, v.owed && `Debes ${v.owed}`].filter(Boolean).join(" · ")}

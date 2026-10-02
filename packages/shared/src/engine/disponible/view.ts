@@ -143,6 +143,13 @@ export function cycleLabel(cycle: { start: IsoDate; end: IsoDate }): string {
  * What a person typed as an amount: "25000", "25.000" and "25.000,50"
  * (es-CO), or "12.5". Null when it isn't a positive amount.
  */
+/** A stored amount as an es-CO input value that parseAmount reads back: 452318.47 → "452.318,47". */
+export function amountInput(n: number | null | undefined): string {
+  if (n == null) return "";
+  const [int, dec] = n.toFixed(2).split(".");
+  return int.replace(/\B(?=(\d{3})+(?!\d))/g, ".") + (dec === "00" ? "" : `,${dec}`);
+}
+
 export function parseAmount(text: string): number | null {
   const t = text.replace(/[\s$]/g, "");
   if (!t) return null;

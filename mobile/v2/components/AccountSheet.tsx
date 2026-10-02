@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, type KeyboardTypeOptions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Banknote, ChevronRight, CreditCard, Landmark, Wallet, type LucideIcon } from "lucide-react-native";
-import { parseAmount, type AccountRow } from "@zeta/shared";
+import { amountInput, parseAmount, type AccountRow } from "@zeta/shared";
 import { useV2Theme } from "../theme/ThemeProvider";
 import { Button } from "./Button";
 import { Segmented } from "./Chip";
@@ -36,7 +36,6 @@ export interface AccountForm {
   monthlyPayment: number | null;
 }
 
-const money = (n: number | null | undefined) => (n == null ? "" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, "."));
 const day = (s: string) => (s.trim() === "" ? null : Number(s));
 
 /**
@@ -78,10 +77,10 @@ export function AccountSheet({ open, mode, initialKind, account, onSave, onClose
     setBank(a?.institutionName ?? "");
     setMask(a?.mask ?? "");
     setBalance("");
-    setLimit(money(a?.creditLimit));
+    setLimit(amountInput(a?.creditLimit));
     setCutoff(a?.cutoffDay ? String(a.cutoffDay) : "");
     setPayDay(a?.paymentDay ? String(a.paymentDay) : "");
-    setCuota(money(a?.monthlyPayment));
+    setCuota(amountInput(a?.monthlyPayment));
     setError(null);
     setSaving(false);
   }, [open, account, initialKind]);
@@ -89,6 +88,7 @@ export function AccountSheet({ open, mode, initialKind, account, onSave, onClose
   const pick = (k: AddKind) => {
     setKind(k);
     if (k === "efectivo" && !name) setName("Efectivo");
+    else if (k !== "efectivo" && name === "Efectivo") setName("");
   };
 
   const save = async () => {
@@ -98,9 +98,19 @@ export function AccountSheet({ open, mode, initialKind, account, onSave, onClose
     if (mode === "add" && balance.trim() !== "" && parsedBalance == null && balance.trim() !== "0") {
       return setError("Escribe el saldo en pesos, por ejemplo 1.200.000.");
     }
+    // An amount that doesn't read as one is an error, never a silent "nothing".
     const opt = (s: string) => (s.trim() === "" ? null : parseAmount(s));
+    for (const [label, s] of [["El cupo", limit], ["La cuota", cuota]] as const) {
+      if (s.trim() !== "" && opt(s) == null) return setError(`${label} no es un monto: escríbelo como 1.200.000.`);
+    }
+    for (const [label, s] of [["El día de corte", cutoff], ["El día de pago", payDay]] as const) {
+      const d = day(s);
+      if (d != null && !(Number.isInteger(d) && d >= 1 && d <= 31)) return setError(`${label} va del 1 al 31.`);
+    }
     setSaving(true);
-    const problem = await onSave({
+    let problem: string | null;
+    try {
+      problem = await onSave({
       accountType,
       name: name.trim(),
       institutionName: bank.trim() || null,
@@ -110,8 +120,13 @@ export function AccountSheet({ open, mode, initialKind, account, onSave, onClose
       cutoffDay: kind === "tarjeta" ? day(cutoff) : null,
       paymentDay: kind === "tarjeta" || kind === "credito" ? day(payDay) : null,
       monthlyPayment: kind === "credito" ? opt(cuota) : null,
-    });
-    setSaving(false);
+      });
+    } catch (e) {
+      console.warn("[v2 account sheet] save failed", e);
+      problem = "No se pudo guardar. Intenta de nuevo.";
+    } finally {
+      setSaving(false);
+    }
     if (problem) setError(problem);
   };
 

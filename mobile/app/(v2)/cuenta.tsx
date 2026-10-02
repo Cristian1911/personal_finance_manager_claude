@@ -11,6 +11,7 @@ import { useV2UserId } from "../../lib/v2/user";
 import { AccountSheet, type AccountForm } from "../../v2/components/AccountSheet";
 import { Button, IconButton } from "../../v2/components/Button";
 import { ConfirmSheet } from "../../v2/components/ConfirmSheet";
+import { EmptyState } from "../../v2/components/EmptyState";
 import { useV2Theme } from "../../v2/theme/ThemeProvider";
 
 const PREVIEW_ROWS = 3;
@@ -52,27 +53,52 @@ export default function CuentaScreen() {
     : null, [mov, id]);
   const rows = preview?.groups.flatMap((g) => g.rows.map((r) => ({ ...r, day: g.label }))) ?? [];
 
+  /** Runs a command; returns the Spanish problem, or null when it went through. */
   const run = useCallback(async (type: "editAccount" | "archiveAccount" | "setAccountCountsInDisponible", payload: unknown) => {
-    const { result } = await runLocalCommand({ type, userId, payload });
-    if (result.status === "rejected") Alert.alert("No se pudo guardar", result.error ?? "");
+    let problem: string | null = null;
+    try {
+      const { result } = await runLocalCommand({ type, userId, payload });
+      if (result.status === "rejected") problem = result.error ?? "No se pudo guardar.";
+    } catch (e) {
+      console.warn("[v2 cuenta] command failed", e);
+      problem = "No se pudo guardar. Intenta de nuevo.";
+    }
     await reload();
-    return result.status === "rejected" ? (result.error ?? "No se pudo guardar.") : null;
+    return problem;
   }, [userId, reload]);
+  const runOrAlert = useCallback(async (type: "archiveAccount" | "setAccountCountsInDisponible", payload: unknown) => {
+    const problem = await run(type, payload);
+    if (problem) Alert.alert("No se pudo guardar", problem);
+    return problem;
+  }, [run]);
 
   const save = useCallback(async (f: AccountForm) => {
     if (!account) return null;
-    const problem = await run("editAccount", {
-      accountId: account.id, name: f.name, institutionName: f.institutionName, mask: f.mask,
-      ...(account.accountType === "CREDIT_CARD" ? { creditLimit: f.creditLimit, cutoffDay: f.cutoffDay, paymentDay: f.paymentDay } : {}),
-      ...(account.accountType === "LOAN" ? { monthlyPayment: f.monthlyPayment, paymentDay: f.paymentDay } : {}),
-    });
+    // Only what changed: each field is versioned on its own, so an untouched
+    // field must not overwrite an edit made on another device.
+    const card = account.accountType === "CREDIT_CARD";
+    const loan = account.accountType === "LOAN";
+    const next: Record<string, unknown> = { name: f.name, institutionName: f.institutionName, mask: f.mask };
+    if (card) Object.assign(next, { creditLimit: f.creditLimit, cutoffDay: f.cutoffDay, paymentDay: f.paymentDay });
+    if (loan) Object.assign(next, { monthlyPayment: f.monthlyPayment, paymentDay: f.paymentDay });
+    const changed = Object.fromEntries(Object.entries(next).filter(([k, v]) => (account as unknown as Record<string, unknown>)[k] !== v));
+    if (Object.keys(changed).length === 0) {
+      setEditing(false);
+      return null;
+    }
+    const problem = await run("editAccount", { accountId: account.id, ...changed });
     if (!problem) setEditing(false);
     return problem;
   }, [account, run]);
 
   const back = () => (router.canGoBack() ? router.back() : router.navigate("/cuentas" as never));
   if (!account || !row) {
-    return <View style={{ flex: 1, backgroundColor: t.colors.bg }} />;
+    // Still loading, or archived / not on this phone: say so, with a way out.
+    return cuentas ? (
+      <EmptyState title="Cuenta" message="Esta cuenta ya no está en Mis cuentas.">
+        <Button label="Volver" variant="secondary" size="M" onPress={back} />
+      </EmptyState>
+    ) : <View style={{ flex: 1, backgroundColor: t.colors.bg }} />;
   }
   const debt = row.isDebt;
   const facts = [
@@ -150,7 +176,7 @@ export default function CuentaScreen() {
           ? `Su saldo de ${row.amount} sale de tu Disponible y sus gastos dejan de restarlo. Sus movimientos siguen en Movimientos.`
           : `Su saldo de ${row.amount} entra a tu Disponible y sus gastos lo restan.`}
         confirmLabel={row.counts ? "Dejar de contarla" : "Contarla"}
-        onConfirm={() => { setConfirm(null); void run("setAccountCountsInDisponible", { accountId: account.id, counts: !row.counts }); }}
+        onConfirm={() => { setConfirm(null); void runOrAlert("setAccountCountsInDisponible", { accountId: account.id, counts: !row.counts }); }}
         onCancel={() => setConfirm(null)}
       />
       <ConfirmSheet
@@ -163,7 +189,7 @@ export default function CuentaScreen() {
         destructive
         onConfirm={async () => {
           setConfirm(null);
-          if (!(await run("archiveAccount", { accountId: account.id, archived: true }))) back();
+          if (!(await runOrAlert("archiveAccount", { accountId: account.id, archived: true }))) back();
         }}
         onCancel={() => setConfirm(null)}
       />
