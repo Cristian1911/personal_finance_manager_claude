@@ -101,6 +101,8 @@ export default function AjustesScreen() {
           {row("Ahorro por ciclo", settings?.savingsPerCycle ? formatPesos(settings.savingsPerCycle) : "Nada", () => setEditing(true), "Lo que apartas antes de calcular tu número")}
           {divider}
           {row("Mis cuentas", null, () => router.push("/cuentas" as never))}
+          {divider}
+          {row("Correos del banco", null, () => router.push("/correos" as never), "Tus movimientos se anotan solos con las alertas de Bancolombia")}
         </>)}
 
         {section("APARIENCIA")}
@@ -247,7 +249,8 @@ const styles = StyleSheet.create({
   profile: { flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 4, paddingVertical: 8 },
   section: { fontSize: 11, letterSpacing: 0.6, paddingHorizontal: 4, marginTop: 8 },
   card: { borderRadius: 18, paddingHorizontal: 14, overflow: "hidden" },
-  row: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 52 },
+  // Full width inside the card (the card clips the corners): the pressed tint fills the row, not a box inside it.
+  row: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 52, marginHorizontal: -14, paddingHorizontal: 14 },
   sheet: { maxHeight: "90%", paddingTop: 8, paddingHorizontal: 20, gap: 12 },
   handle: { width: 38, height: 5, borderRadius: 3, alignSelf: "center" },
   sheetTitle: { fontSize: 19, textAlign: "center" },

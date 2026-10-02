@@ -172,3 +172,10 @@ export async function setOccurrenceStatus(s: StoragePort, cmd: CommandEnvelope<S
   await s.setFieldVersion({ userId: cmd.userId, entity: "recurring_template", entityId: t.id, field: `occurrence:${p.date}`, clientTs: cmd.clientTs, commandId: cmd.id });
   return { status: "applied", replayed: false };
 }
+
+/** A movement merged into the bank's row: the bills it paid are paid by the bank's row now. */
+export async function relinkPayment(s: StoragePort, userId: string, fromTxId: string, toTxId: string, at: string, opts: EngineOptions = {}): Promise<void> {
+  for (const o of await s.findOccurrencesByTransaction(userId, fromTxId)) {
+    await s.upsertOccurrence(userId, await occurrenceId(o.templateId, o.date, opts.hash), { ...o, transactionId: toTxId }, at);
+  }
+}

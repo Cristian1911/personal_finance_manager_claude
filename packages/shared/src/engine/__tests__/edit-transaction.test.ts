@@ -35,6 +35,15 @@ describe.each(DRIVERS)("editTransaction on %s", (_name, make) => {
     expect((await s.getAccount(USER, A))?.currentBalance).toBe(68000);
   });
 
+  it("renames it and sets its time; the balance doesn't move, the time places it", async () => {
+    const s = await setup();
+    expect((await applyCommand(s, edit("a5555555-5555-4555-8555-555555555555", "2026-09-18T16:00:00.000Z", { description: "Tostao Calle 85", time: "07:45" }))).status).toBe("applied");
+    expect(await s.getTransaction(USER, TX)).toMatchObject({ cleanDescription: "Tostao Calle 85", transactionTime: "07:45" });
+    expect((await s.getAccount(USER, A))?.currentBalance).toBe(75000);
+    expect((await applyCommand(s, edit("a6666666-6666-4666-8666-666666666666", "2026-09-18T16:01:00.000Z", { time: "25:00" }))).status).toBe("rejected");
+    expect((await applyCommand(s, edit("a7777777-7777-4777-8777-777777777777", "2026-09-18T16:02:00.000Z", { description: "  " }))).status).toBe("rejected");
+  });
+
   it("fixing the date keeps the balance", async () => {
     const s = await setup();
     await applyCommand(s, edit("a2222222-2222-4222-8222-222222222222", "2026-09-18T16:00:00.000Z", { date: "2026-09-17" }));

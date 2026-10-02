@@ -4,7 +4,10 @@ import { calendarDayDiff, occurrenceAmountMatches, OCCURRENCE_AUTO_LINK_DAY_WIND
 import { parseQuickCaptureText } from "../../utils/quick-capture";
 import type { InicioAccount } from "./inicio";
 import { buildInicio } from "./inicio";
-import type { StoredTransaction } from "./movements";
+import { isLiveTransaction, type StoredTransaction } from "./movements";
+import { diffDays, type IsoDate } from "./dates";
+import { movementTime, readableName, signedPesos } from "./view";
+import { colombiaTime, relativeDay } from "./widgets";
 import { formatPesos } from "./verdict";
 
 export interface AnotarDraft {
@@ -138,4 +141,25 @@ export function dictado(text: string, accounts: InicioAccount[], now: Date = new
     what: what ? what[0].toUpperCase() + what.slice(1) : "",
     accountId: named?.id ?? null,
   };
+}
+
+/**
+ * "Ya está": a movement of the same amount, same account and direction, a day
+ * around the one you're anotando (the bank's email that already came, or the
+ * same thing anotado twice). Asked, never blocked: two equal coffees are real.
+ */
+export function yaEsta(
+  transactions: StoredTransaction[], today: IsoDate,
+  draft: Pick<AnotarDraft, "kind" | "amount" | "accountId" | "date">,
+): string | null {
+  if (draft.kind === "entre" || !(draft.amount > 0)) return null;
+  const date = draft.date ?? today;
+  const direction = draft.kind === "ingreso" ? "INFLOW" : "OUTFLOW";
+  const same = transactions
+    .filter((t) => isLiveTransaction(t) && t.accountId === draft.accountId && t.direction === direction
+      && Math.abs(t.amount - draft.amount) < 0.005 && Math.abs(diffDays(t.date, date)) <= 1)
+    .sort((a, b) => b.date.localeCompare(a.date) || (movementTime(b, colombiaTime) ?? "").localeCompare(movementTime(a, colombiaTime) ?? ""))[0];
+  if (!same) return null;
+  const when = [relativeDay(today, same.date).toLowerCase(), movementTime(same, colombiaTime)].filter(Boolean).join(" ");
+  return `Ya está: ${readableName(same.description?.trim() || "un movimiento")} ${signedPesos(direction === "OUTFLOW" ? -same.amount : same.amount)} · ${when}. ¿Es otro?`;
 }

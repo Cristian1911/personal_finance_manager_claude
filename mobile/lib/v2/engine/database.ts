@@ -5,6 +5,9 @@ import {
   SQLITE_TRANSFER_SCHEMA,
   SQLITE_RECURRING_SCHEMA,
   SQLITE_CATEGORIES_SCHEMA,
+  SQLITE_BANK_SCHEMA,
+  SQLITE_STATEMENTS_SCHEMA,
+  SQLITE_STATEMENTS_DETAIL_SCHEMA,
   SQLITE_CAPTURE_TIME_SCHEMA,
   SQLITE_EXCLUDED_SCHEMA,
   SQLITE_ENGINE_SCHEMA,
@@ -44,6 +47,12 @@ const MIGRATIONS: string[] = [
   SQLITE_RECURRING_SCHEMA,
   // 8: categories and destinatarios.
   SQLITE_CATEGORIES_SCHEMA,
+  // 9: bank captures (email): the bank's text and time, merged / held rows.
+  SQLITE_BANK_SCHEMA,
+  // 10: bank statements' numbers (the card's minimum, D24).
+  SQLITE_STATEMENTS_SCHEMA,
+  // 11: how each statement moved the debt (month-to-month).
+  SQLITE_STATEMENTS_DETAIL_SCHEMA,
 ];
 
 export interface V2Database {

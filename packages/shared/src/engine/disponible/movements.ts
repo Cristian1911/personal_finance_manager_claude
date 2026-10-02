@@ -62,6 +62,9 @@ function captureInstant(t: StoredTransaction): string | undefined {
     const d = new Date(`${t.date}T${hhmmss}${COLOMBIA_OFFSET}`);
     if (!Number.isNaN(d.getTime())) return d.toISOString();
   }
+  // A bank row (statement, email) happened on its date, not when it was imported: without a
+  // time, it's placed by date. Only what you anotaste happened when you captured it.
+  if (t.captureMethod && t.captureMethod !== "MANUAL_FORM" && t.captureMethod !== "TEXT_QUICK_CAPTURE") return undefined;
   return t.createdAt ? new Date(t.createdAt).toISOString() : undefined;
 }
 

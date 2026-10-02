@@ -32,12 +32,6 @@ export const InicioHeader = memo(function InicioHeader({
   const sub = editing ? "Arrastra para mover · toca el tamaño" : date;
   return (
     <View style={styles.row}>
-      {!editing && onProfile && (
-        <Pressable onPress={onProfile} accessibilityRole="button" accessibilityLabel="Ajustes" hitSlop={4}
-          style={[styles.avatar, { backgroundColor: t.colors.sunk, borderColor: t.colors.control }]}>
-          <Text style={{ fontSize: 13, color: t.colors.ink, fontFamily: t.fonts.uiSemibold }}>{initials || "Z"}</Text>
-        </Pressable>
-      )}
       <View style={styles.text}>
         <Text style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]} accessibilityRole="header" numberOfLines={1}>{title}</Text>
         <Text style={[styles.sub, { color: t.colors.muted, fontFamily: t.fonts.uiMedium }]} numberOfLines={1}>{sub}</Text>
@@ -63,6 +57,13 @@ export const InicioHeader = memo(function InicioHeader({
           >
             <Mic size={18} color={t.colors.onButton} />
           </Pressable>
+          {/* Ajustes is a place, not "back": top right on every tab (the left is for going back). */}
+          {onProfile && (
+            <Pressable onPress={onProfile} accessibilityRole="button" accessibilityLabel="Ajustes" hitSlop={4}
+              style={[styles.avatar, { backgroundColor: t.colors.sunk, borderColor: t.colors.control }]}>
+              <Text style={{ fontSize: 13, color: t.colors.ink, fontFamily: t.fonts.uiSemibold }}>{initials || "Z"}</Text>
+            </Pressable>
+          )}
         </>
       )}
     </View>

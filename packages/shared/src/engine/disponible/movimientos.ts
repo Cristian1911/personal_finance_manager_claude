@@ -5,7 +5,7 @@ import { diffDays, dayOfWeek, type IsoDate } from "./dates";
 import type { InicioAccount } from "./inicio";
 import type { StoredTransaction } from "./movements";
 import { formatPesos } from "./verdict";
-import { cycleLabel, signedPesos } from "./view";
+import { movementTime, readableName, cycleLabel, signedPesos } from "./view";
 import { colombiaTime, relativeDay } from "./widgets";
 import { categoryById } from "../categories";
 
@@ -81,7 +81,7 @@ export interface DetalleView {
   /** Written down by hand: amount and date can be fixed; "No es un movimiento" deletes it. */
   manual: boolean;
   /** Raw values for the fix form. */
-  raw: { amount: number; date: IsoDate };
+  raw: { amount: number; date: IsoDate; description: string; time: string | null };
 }
 
 const FILTERS: { key: MovimientosFilter; label: string }[] = [
@@ -104,7 +104,7 @@ const SOURCE_WORD: Record<DetalleSource, string> = {
 const isDebt = (type: string) => type === "CREDIT_CARD" || type === "LOAN";
 const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-const titleOf = (t: StoredTransaction) => t.description?.trim() || (t.direction === "INFLOW" ? "Entrada" : "Gasto");
+const titleOf = (t: StoredTransaction) => readableName(t.description?.trim() || (t.direction === "INFLOW" ? "Entrada" : "Gasto"));
 const range = (c: { start: IsoDate; end: IsoDate }) => cycleLabel(c).replace(/^Ciclo /, "").replace(" – ", "–");
 
 interface Account { type: string; counts: boolean; label: string }
@@ -190,7 +190,7 @@ export function movimientosView(input: {
     const destinatario = (t.destinatarioId && who.get(t.destinatarioId)) || null;
     const title = destinatario?.name ?? titleOf(t);
     const amount = amountOf(t, tone);
-    const time = t.createdAt ? colombiaTime(t.createdAt) : null;
+    const time = movementTime(t, colombiaTime);
     const status = statusOf(t, a);
     const account = a?.label ?? "Cuenta";
     const category = categoryById(t.categoryId)?.name ?? null;
@@ -229,7 +229,7 @@ export function detalleView(input: { today: IsoDate; transaction: StoredTransact
   const tone = toneOf(t, a);
   const title = titleOf(t);
   const source = SOURCE_OF[t.captureMethod ?? ""] ?? "other";
-  const time = t.createdAt ? ` ${colombiaTime(t.createdAt)}` : "";
+  const time = movementTime(t, colombiaTime) ? ` ${movementTime(t, colombiaTime)}` : "";
   const when = relativeDay(today, t.date);
   const facts = `${SOURCE_WORD[source]} · ${when === "Hoy" || when === "Ayer" ? when.toLowerCase() : when}${time} · ${a?.label ?? "Cuenta"}`;
 
@@ -244,6 +244,6 @@ export function detalleView(input: { today: IsoDate; transaction: StoredTransact
     note: t.notes?.trim() || null,
     excluded: !!t.isExcluded,
     manual: MANUAL_CAPTURE_METHODS.has(t.captureMethod ?? ""),
-    raw: { amount: t.amount, date: t.date },
+    raw: { amount: t.amount, date: t.date, description: t.description?.trim() ?? "", time: movementTime(t, colombiaTime)?.padStart(5, "0") ?? null },
   };
 }
