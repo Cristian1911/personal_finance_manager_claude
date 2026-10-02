@@ -69,9 +69,36 @@ describe.skipIf(!enabled)("v2 sync routes on zeta-dev", { timeout: 90_000 }, () 
     expect(body.failed).toMatchObject({ error: "El servidor aún no conoce este cambio" });
   });
 
+  it("Borrar mi cuenta: delete_user_account removes the user and all their v2 rows", async () => {
+    const email = `delete-${Date.now()}@zeta-dev.test`;
+    const password = crypto.randomUUID();
+    const created = await admin.auth.admin.createUser({ email, password, email_confirm: true });
+    if (created.error) throw created.error;
+    const id = created.data.user.id;
+    const client = createClient(env.SUPABASE_DEV_URL!, env.SUPABASE_DEV_PUBLISHABLE_KEY!, { auth: { persistSession: false } });
+    const signIn = await client.auth.signInWithPassword({ email, password });
+    if (signIn.error) throw signIn.error;
+    const res = await POST(new Request("http://x/api/v2/commands", {
+      method: "POST", headers: { authorization: `Bearer ${signIn.data.session!.access_token}`, "content-type": "application/json" },
+      body: JSON.stringify({ commands: [{ id: crypto.randomUUID(), type: "createAccount", userId: id, deviceId: "d", clientTs: new Date().toISOString(),
+        payload: { accountId: crypto.randomUUID(), accountType: "CASH", name: "Borrar", currencyCode: "COP", balance: 1 } }] }),
+    }));
+    expect(res.status).toBe(200);
+    const { error } = await client.rpc("delete_user_account");
+    expect(error).toBeNull();
+    expect((await admin.auth.admin.getUserById(id)).data.user).toBeNull();
+    const { Pool } = await import("pg");
+    const pool = new Pool({ connectionString: env.SUPABASE_DEV_DB_URL, max: 1 });
+    const left = await pool.query("SELECT (SELECT count(*) FROM accounts_enc WHERE user_id = $1) + (SELECT count(*) FROM commands WHERE user_id = $1) AS n", [id]);
+    await pool.end();
+    expect(Number(left.rows[0].n)).toBe(0);
+  });
+
   it("refuses commands for someone else, and requests without a valid token", async () => {
     expect((await post({ commands: [cmd("createAccount", {}, { userId: crypto.randomUUID() })] })).status).toBe(403);
     expect((await post({ commands: [cmd("createAccount", {})] }, "Bearer nope")).status).toBe(401);
     expect((await post({ commands: [] })).status).toBe(400);
+    // Bank movements only come from the server.
+    expect((await post({ commands: [cmd("captureBankTransaction", {})] })).status).toBe(403);
   });
 });

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { CycleSettings } from "../../types";
-import { anotarPreview, dictado } from "../anotar";
+import { anotarPreview, dictado, yaEsta } from "../anotar";
 import type { InicioAccount } from "../inicio";
+import type { StoredTransaction } from "../movements";
 
 // Semimonthly 15/30; $1.500.000 told on the 16th; today the 18th (12 days left).
 const settings: CycleSettings = {
@@ -111,5 +112,20 @@ describe("anotarPreview and Pagos: paying a bill that's already set aside", () =
   it("a different amount is a normal spend", () => {
     expect(anotarPreview({ ...base, templates: [rent], occurrences: [] }, { kind: "gasto", amount: 80_000, accountId: "Bancolombia" })?.line)
       .toMatch(/^Te quedan/);
+  });
+});
+
+describe("yaEsta (Anotar: 'Ya está' before saving a second copy)", () => {
+  const t = (id: string, over: Partial<StoredTransaction>): StoredTransaction => ({
+    id, accountId: "debit", date: "2026-10-02", amount: 32_000, direction: "OUTFLOW", currencyCode: "COP", flowClass: null, ...over,
+  });
+  it("finds the bank's email (or the same thing anotado) of that amount, account and day", () => {
+    const line = yaEsta([t("e", { description: "IFOOD", captureMethod: "EMAIL_IMPORT", time: "03:26" })], "2026-10-02",
+      { kind: "gasto", amount: 32_000, accountId: "debit" });
+    expect(line).toBe("Ya está: Ifood −$32.000 · hoy 03:26. ¿Es otro?");
+  });
+  it("nothing for another amount, account, direction, an ignored one, or two days away", () => {
+    const txs = [t("a", { amount: 31_000 }), t("b", { accountId: "cash" }), t("c", { direction: "INFLOW" }), t("d", { isExcluded: true }), t("e", { date: "2026-09-29" })];
+    expect(yaEsta(txs, "2026-10-02", { kind: "gasto", amount: 32_000, accountId: "debit" })).toBeNull();
   });
 });

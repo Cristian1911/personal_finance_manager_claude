@@ -16,15 +16,30 @@ export interface InicioTemplate {
   isActive: boolean;
 }
 
+/** A card or loan statement's numbers, for Disponible and the Tarjeta widget. */
+export interface CardStatement {
+  accountId: string;
+  cutDate: string | null;
+  dueDate: string;
+  minimum: number | null;
+  totalDue: number | null;
+  /** E.A., in percent. */
+  rate: number | null;
+}
+
 export interface InicioData {
   settings: CycleSettings | null;
   /** Fixed payments (all, archived included: their past occurrences still show). */
   templates: InicioTemplate[];
   /** Occurrences whose status changed from the computed "pending". */
   occurrences: OccurrenceRow[];
+  /** Comercios and personas (pickers, Movimientos). */
+  destinatarios: { id: string; name: string; kind: "merchant" | "person"; defaultCategoryId: string | null }[];
   accounts: InicioAccount[];
   /** Movements dated on or after `since`, as the classifier reads them. */
   transactions: StoredTransaction[];
+  /** Card/loan statements due on or after `since` (D24: the minimum counts). */
+  statements: CardStatement[];
 }
 
 /**
@@ -63,15 +78,37 @@ export async function readInicioData(driver: SqlDriver, userId: string, since: s
   const txRows = await q<Record<string, unknown>>(
     `SELECT id, account_id, amount, currency_code, direction,
             ${pg ? "transaction_date::text" : "transaction_date"} AS transaction_date,
-            capture_method, created_at, clean_description, notes, is_excluded, flow_class, transfer_group_id
+            capture_method, created_at, clean_description, notes, is_excluded, flow_class, transfer_group_id, category_id, destinatario_id,
+            reconciled_into_transaction_id, status, ${pg ? "transaction_time::text" : "transaction_time"} AS transaction_time
        FROM transactions
       WHERE user_id = ? AND transaction_date >= ?
       ORDER BY transaction_date, id`,
     [userId, since],
   );
 
+  const destinatarioRows = await q<Record<string, unknown>>(
+    "SELECT id, name, kind, default_category_id FROM destinatarios WHERE user_id = ? AND is_active = ? ORDER BY name, id",
+    [userId, pg ? true : 1],
+  );
+
+  const statementRows = await q<Record<string, unknown>>(
+    `SELECT account_id, ${pg ? "period_to::text" : "period_to"} AS period_to, ${pg ? "payment_due_date::text" : "payment_due_date"} AS payment_due_date,
+            minimum_payment, total_payment_due, interest_rate
+       FROM statement_snapshots WHERE user_id = ? AND payment_due_date >= ? AND currency_code = 'COP' ORDER BY payment_due_date`,
+    [userId, since],
+  );
+
   return {
     settings,
+    statements: statementRows.map((r) => ({
+      accountId: String(r.account_id), cutDate: (r.period_to as string | null) ?? null, dueDate: String(r.payment_due_date),
+      minimum: r.minimum_payment == null ? null : toNumber(r.minimum_payment),
+      totalDue: r.total_payment_due == null ? null : toNumber(r.total_payment_due),
+      rate: r.interest_rate == null ? null : toNumber(r.interest_rate),
+    })),
+    destinatarios: destinatarioRows.map((r) => ({
+      id: String(r.id), name: String(r.name), kind: r.kind as "merchant" | "person", defaultCategoryId: (r.default_category_id as string | null) ?? null,
+    })),
     templates: templateRows.map((r) => ({
       id: String(r.id), label: String(r.merchant_name ?? ""), amount: toNumber(r.amount),
       direction: r.direction as "INFLOW" | "OUTFLOW", frequency: String(r.frequency),
@@ -115,6 +152,12 @@ export async function readInicioData(driver: SqlDriver, userId: string, since: s
       // (outflow = spend, inflow = income). ponytail: no flow_class_override yet.
       flowClass: (r.flow_class as string | null) ?? null,
       transferGroupId: (r.transfer_group_id as string | null) ?? null,
+      categoryId: (r.category_id as string | null) ?? null,
+      destinatarioId: (r.destinatario_id as string | null) ?? null,
+      // Merged into the bank's row: it no longer counts (movements.ts).
+      reconciledIntoTransactionId: (r.reconciled_into_transaction_id as string | null) ?? null,
+      status: r.status == null ? null : String(r.status),
+      time: (r.transaction_time as string | null) ?? null,
     })),
   };
 }

@@ -5,7 +5,8 @@ import { dirname, join, relative, resolve } from "node:path";
 
 const root = resolve(dirname(new URL(import.meta.url).pathname), "..");
 const V2_DIRS = ["app/(v2)", "v2", "lib/v2", "app/v2-gallery.tsx"];
-const ALLOWED = ["lib/auth", "lib/utils/date", "lib/supabase"];
+// lib/constants/urls: legal links and the support email (constants, no v1 UI or data).
+const ALLOWED = ["lib/auth", "lib/utils/date", "lib/supabase", "lib/constants/urls"];
 const isV2 = (p) => V2_DIRS.some((d) => p === d || p.startsWith(d + "/") || p.startsWith(d.replace(/\.tsx$/, "")));
 
 const files = [];

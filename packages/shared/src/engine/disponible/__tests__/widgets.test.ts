@@ -230,6 +230,12 @@ describe("Próximo pago", () => {
     expect(w.rows[0].level).toBe("red");
   });
 
+  it("nothing due this cycle but a bill coming next: says so, doesn't ask to add bills", () => {
+    const w = pagoWidget(input([], {}, [{ id: "r", kind: "bill", label: "Arriendo", dueDate: "2026-10-05", amount: 700_000 }]));
+    expect(w).toMatchObject({ empty: false, value: null, hint: "Nada antes del 30", lead: "Lo siguiente: Arriendo, 5 oct, $700.000", seeAll: "see_bills" });
+    expect(w.actions).toEqual([]);
+  });
+
   it("empty: no bills on the phone yet", () => {
     const w = pagoWidget(input([], {}, []));
     expect(w).toMatchObject({ empty: true, value: null, hint: "Sin pagos aún", attention: null });
