@@ -26,11 +26,12 @@ describe.skipIf(!enabled)("engine on zeta-dev (real Postgres)", { timeout: 90_00
     });
     if (error) throw error;
     userId = data.user.id;
-    const d = createUserScopedPgDriver(pool, userId);
-    await d.query(
-      toDialect("INSERT INTO accounts (id, user_id, name, account_type, currency_code, current_balance) VALUES (?, ?, ?, 'CHECKING', 'COP', 100000)", "postgres"),
-      [accountId, userId, "Cuenta motor"],
-    );
+    // Through the command, so the encrypted view's INSERT trigger accepts what Agregar sends.
+    const created = await applyCommand(createSqlStorage(createUserScopedPgDriver(pool, userId)), {
+      id: crypto.randomUUID(), type: "createAccount", userId, deviceId: "integration", clientTs: "2026-09-18T14:00:00.000Z",
+      payload: { accountId, accountType: "CHECKING", name: "Cuenta motor", institutionName: "Bancolombia", mask: "4821", currencyCode: "COP", balance: 100000 },
+    });
+    if (created.status !== "applied") throw new Error(JSON.stringify(created));
   });
 
   afterAll(async () => {
@@ -124,6 +125,37 @@ describe.skipIf(!enabled)("engine on zeta-dev (real Postgres)", { timeout: 90_00
     });
     expect(counts.status).toBe("applied");
     expect(await s.getAccountSetting(userId, accountId)).toEqual({ countsInDisponible: false });
+  });
+
+  it("creates, edits and archives an account through the encrypted view", async () => {
+    const s = createSqlStorage(createUserScopedPgDriver(pool, userId));
+    expect(await s.getAccount(userId, accountId)).toMatchObject({ name: "Cuenta motor", institutionName: "Bancolombia", mask: "4821", isActive: true });
+    const card = crypto.randomUUID();
+    const base = { userId, deviceId: "integration" };
+    expect((await applyCommand(s, {
+      ...base, id: crypto.randomUUID(), type: "createAccount", clientTs: "2026-10-02T15:00:00.000Z",
+      payload: { accountId: card, accountType: "CREDIT_CARD", name: "Tarjeta Nu", mask: "4398", currencyCode: "COP", balance: 480000, creditLimit: 3000000, cutoffDay: 27, paymentDay: 12 },
+    })).status).toBe("applied");
+    expect((await applyCommand(s, {
+      ...base, id: crypto.randomUUID(), type: "editAccount", clientTs: "2026-10-02T16:00:00.000Z",
+      payload: { accountId: card, name: "Nu", paymentDay: 15 },
+    })).status).toBe("applied");
+    expect(await s.getAccount(userId, card)).toMatchObject({ name: "Nu", mask: "4398", currentBalance: 480000, creditLimit: 3000000, cutoffDay: 27, paymentDay: 15 });
+    // A card purchase raises what you owe.
+    await applyCommand(s, {
+      ...base, id: crypto.randomUUID(), type: "captureManualTransaction", clientTs: "2026-10-02T16:30:00.000Z",
+      payload: { transactionId: crypto.randomUUID(), accountId: card, amount: 20000, direction: "OUTFLOW", currencyCode: "COP", date: "2026-10-02", description: "Compra tarjeta" },
+    });
+    expect((await s.getAccount(userId, card))?.currentBalance).toBe(500000);
+    expect((await applyCommand(s, {
+      ...base, id: crypto.randomUUID(), type: "archiveAccount", clientTs: "2026-10-02T17:00:00.000Z", payload: { accountId: card, archived: true },
+    })).status).toBe("applied");
+    const data = await readInicioData(createUserScopedPgDriver(pool, userId), userId, "2026-09-01");
+    expect(data.accounts.map((a) => a.id)).not.toContain(card);
+    // Name and last digits are stored encrypted.
+    const [raw] = await pool.query("SELECT name, mask FROM accounts_enc WHERE id = $1", [card]).then((r) => r.rows as { name: Buffer; mask: Buffer }[]);
+    expect(Buffer.from(raw.mask).toString("utf8")).not.toContain("4398");
+    expect(raw.name.length).toBeGreaterThan(20);
   });
 
   it("stores the command payload encrypted, never as plain text", async () => {

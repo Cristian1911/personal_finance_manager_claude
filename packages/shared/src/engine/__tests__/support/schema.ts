@@ -1,7 +1,7 @@
-import { SQLITE_CAPTURE_TIME_SCHEMA, SQLITE_ENGINE_SCHEMA, SQLITE_EXCLUDED_SCHEMA, SQLITE_SETTINGS_SCHEMA } from "../../schema/sqlite";
+import { SQLITE_ACCOUNTS_SCHEMA, SQLITE_CAPTURE_TIME_SCHEMA, SQLITE_ENGINE_SCHEMA, SQLITE_EXCLUDED_SCHEMA, SQLITE_SETTINGS_SCHEMA } from "../../schema/sqlite";
 
 /** The phone's full schema: every version in order. */
-export const SQLITE_SCHEMA = SQLITE_ENGINE_SCHEMA + SQLITE_SETTINGS_SCHEMA + SQLITE_CAPTURE_TIME_SCHEMA + SQLITE_EXCLUDED_SCHEMA;
+export const SQLITE_SCHEMA = SQLITE_ENGINE_SCHEMA + SQLITE_SETTINGS_SCHEMA + SQLITE_CAPTURE_TIME_SCHEMA + SQLITE_EXCLUDED_SCHEMA + SQLITE_ACCOUNTS_SCHEMA;
 
 // Same logical tables in both dialects; names and columns match the real
 // Supabase views (`accounts`, `transactions`) and new tables (`commands`,
@@ -14,7 +14,11 @@ CREATE FUNCTION zeta_encrypt(plaintext text) RETURNS bytea
 CREATE TABLE accounts_enc (
   id uuid PRIMARY KEY, user_id uuid NOT NULL,
   account_type text NOT NULL DEFAULT 'CHECKING',
-  current_balance numeric(15,2) NOT NULL DEFAULT 0
+  current_balance numeric(15,2) NOT NULL DEFAULT 0,
+  -- Plain text here; on Supabase name/institution_name/mask are encrypted behind the view.
+  name text NOT NULL DEFAULT '', institution_name text, mask text,
+  currency_code text NOT NULL DEFAULT 'COP', is_active boolean NOT NULL DEFAULT true,
+  credit_limit numeric(15,2), cutoff_day smallint, payment_day smallint, monthly_payment numeric(15,2)
 );
 CREATE VIEW accounts AS SELECT * FROM accounts_enc;
 CREATE TABLE transactions (

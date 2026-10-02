@@ -6,7 +6,10 @@ export type CommandType =
   | "deleteTransaction"
   | "editTransaction"
   | "setCycleSettings"
-  | "setAccountCountsInDisponible";
+  | "setAccountCountsInDisponible"
+  | "createAccount"
+  | "editAccount"
+  | "archiveAccount";
 
 /**
  * One user action. `id` is created on the device (UUID) and makes replays
@@ -48,9 +51,33 @@ export interface SqlDriver {
 export interface AccountRow {
   id: string;
   userId: string;
+  name: string;
   /** CHECKING, SAVINGS, CASH, INVESTMENT, CREDIT_CARD, LOAN, OTHER. */
   accountType: string;
+  institutionName: string | null;
+  /** Last 4 digits. */
+  mask: string | null;
+  currencyCode: string;
+  /** Money you have; on a card or loan, what you owe. */
   currentBalance: number;
+  /** False once archived: out of Mis cuentas and pickers, its movements stay. */
+  isActive: boolean;
+  creditLimit: number | null;
+  cutoffDay: number | null;
+  paymentDay: number | null;
+  monthlyPayment: number | null;
+}
+
+/** The details a user can fix on an account (editAccount), by column. */
+export interface AccountDetailsPatch {
+  name?: string;
+  institution_name?: string | null;
+  mask?: string | null;
+  credit_limit?: number | null;
+  cutoff_day?: number | null;
+  payment_day?: number | null;
+  monthly_payment?: number | null;
+  is_active?: boolean;
 }
 
 /** When the user gets paid (mirrors PaySchedule in disponible/cycle.ts, as stored). */
@@ -137,6 +164,8 @@ export interface StoragePort {
   findCommand(userId: string, id: string): Promise<{ id: string; result: CommandResult } | null>;
   recordCommand(cmd: CommandEnvelope, result: CommandResult): Promise<void>;
   getAccount(userId: string, id: string): Promise<AccountRow | null>;
+  insertAccount(row: Omit<AccountRow, "isActive">): Promise<void>;
+  updateAccountDetails(userId: string, id: string, patch: AccountDetailsPatch): Promise<void>;
   adjustAccountBalance(userId: string, id: string, delta: number): Promise<void>;
   findTransactionByIdempotencyKey(userId: string, key: string): Promise<{ id: string } | null>;
   insertTransaction(row: TransactionInsert): Promise<void>;

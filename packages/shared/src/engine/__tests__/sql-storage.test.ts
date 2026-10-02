@@ -15,7 +15,10 @@ describe.each(DRIVERS)("createSqlStorage on %s", (_name, make) => {
     await seedAccount(d, { id: ACCOUNT, userId: USER, balance: 100000 });
     const s = createSqlStorage(d);
     await s.adjustAccountBalance(USER, ACCOUNT, -25000.5);
-    expect(await s.getAccount(USER, ACCOUNT)).toEqual({ id: ACCOUNT, userId: USER, accountType: "CHECKING", currentBalance: 74999.5 });
+    expect(await s.getAccount(USER, ACCOUNT)).toEqual({
+      id: ACCOUNT, userId: USER, name: "", accountType: "CHECKING", institutionName: null, mask: null, currencyCode: "COP",
+      currentBalance: 74999.5, isActive: true, creditLimit: null, cutoffDay: null, paymentDay: null, monthlyPayment: null,
+    });
     expect(await s.getAccount(USER, "99999999-9999-4999-8999-999999999999")).toBeNull();
     expect(await s.getAccount(OTHER_USER, ACCOUNT)).toBeNull();
   });

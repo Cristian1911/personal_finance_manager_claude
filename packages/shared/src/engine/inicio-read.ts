@@ -22,12 +22,12 @@ export async function readInicioData(driver: SqlDriver, userId: string, since: s
   const settings = await createSqlStorage(driver).getCycleSettings(userId);
 
   const accountRows = await q<Record<string, unknown>>(
-    `SELECT a.id, a.account_type, a.current_balance, s.counts_in_disponible
+    `SELECT a.id, a.name, a.account_type, a.institution_name, a.mask, a.current_balance, s.counts_in_disponible
        FROM accounts a
        LEFT JOIN account_settings s ON s.user_id = a.user_id AND s.account_id = a.id
-      WHERE a.user_id = ?
+      WHERE a.user_id = ? AND a.is_active = ?
       ORDER BY a.id`,
-    [userId],
+    [userId, pg ? true : 1],
   );
 
   // Dates as text on Postgres: a JS Date would shift the day with the time zone.
@@ -45,7 +45,10 @@ export async function readInicioData(driver: SqlDriver, userId: string, since: s
     settings,
     accounts: accountRows.map((r) => ({
       id: String(r.id),
+      name: String(r.name ?? ""),
       accountType: String(r.account_type),
+      institutionName: (r.institution_name as string | null) ?? null,
+      mask: (r.mask as string | null) ?? null,
       currentBalance: toNumber(r.current_balance),
       // SQLite stores booleans as 0/1.
       countsInDisponible: r.counts_in_disponible == null ? null : r.counts_in_disponible === true || r.counts_in_disponible === 1,

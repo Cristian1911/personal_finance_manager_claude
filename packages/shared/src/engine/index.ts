@@ -2,7 +2,7 @@ export * from "./types";
 export { toDialect } from "./sql";
 export { createSqlStorage } from "./sql-storage";
 export { applyCommand, type EngineOptions } from "./runner";
-export { SQLITE_CAPTURE_TIME_SCHEMA, SQLITE_ENGINE_SCHEMA, SQLITE_EXCLUDED_SCHEMA, SQLITE_SETTINGS_SCHEMA } from "./schema/sqlite";
+export { SQLITE_ACCOUNTS_SCHEMA, SQLITE_CAPTURE_TIME_SCHEMA, SQLITE_ENGINE_SCHEMA, SQLITE_EXCLUDED_SCHEMA, SQLITE_SETTINGS_SCHEMA } from "./schema/sqlite";
 export { OUTBOX_SCHEMA, applyAndEnqueue } from "./outbox";
 export {
   captureManualTransaction,
@@ -13,6 +13,14 @@ export { setTransactionNote, type SetTransactionNotePayload } from "./commands/s
 export { setTransactionExcluded, type SetTransactionExcludedPayload } from "./commands/set-transaction-excluded";
 export { MANUAL_CAPTURE_METHODS, deleteTransaction, type DeleteTransactionPayload } from "./commands/delete-transaction";
 export { editTransaction, type EditTransactionPayload } from "./commands/edit-transaction";
+export {
+  archiveAccount,
+  createAccount,
+  editAccount,
+  type ArchiveAccountPayload,
+  type CreateAccountPayload,
+  type EditAccountPayload,
+} from "./commands/accounts";
 export {
   setCycleSettings,
   validateSetCycleSettings,

@@ -93,3 +93,19 @@ ALTER TABLE transactions ADD COLUMN created_at TEXT;
 export const SQLITE_EXCLUDED_SCHEMA = `
 ALTER TABLE transactions ADD COLUMN is_excluded INTEGER NOT NULL DEFAULT 0;
 `;
+
+/**
+ * Phone schema version 5: what an account is called and its card/loan details
+ * (Mis cuentas, Agregar). Same columns as the Supabase `accounts` view.
+ */
+export const SQLITE_ACCOUNTS_SCHEMA = `
+ALTER TABLE accounts ADD COLUMN name TEXT NOT NULL DEFAULT '';
+ALTER TABLE accounts ADD COLUMN institution_name TEXT;
+ALTER TABLE accounts ADD COLUMN mask TEXT;
+ALTER TABLE accounts ADD COLUMN currency_code TEXT NOT NULL DEFAULT 'COP';
+ALTER TABLE accounts ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE accounts ADD COLUMN credit_limit REAL;
+ALTER TABLE accounts ADD COLUMN cutoff_day INTEGER CHECK (cutoff_day BETWEEN 1 AND 31);
+ALTER TABLE accounts ADD COLUMN payment_day INTEGER CHECK (payment_day BETWEEN 1 AND 31);
+ALTER TABLE accounts ADD COLUMN monthly_payment REAL;
+`;

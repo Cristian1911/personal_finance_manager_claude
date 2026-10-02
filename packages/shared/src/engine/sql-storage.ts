@@ -31,12 +31,45 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
     },
 
     async getAccount(userId, id) {
-      const rows = await q<{ id: string; user_id: string; account_type: string; current_balance: unknown }>(
-        "SELECT id, user_id, account_type, current_balance FROM accounts WHERE user_id = ? AND id = ?", [userId, id]);
+      const rows = await q<Record<string, unknown>>(
+        `SELECT id, user_id, name, account_type, institution_name, mask, currency_code, current_balance, is_active,
+                credit_limit, cutoff_day, payment_day, monthly_payment
+           FROM accounts WHERE user_id = ? AND id = ?`, [userId, id]);
       const r = rows[0];
+      const num = (v: unknown) => (v == null ? null : toNumber(v));
       return r
-        ? { id: String(r.id), userId: String(r.user_id), accountType: String(r.account_type), currentBalance: toNumber(r.current_balance) }
+        ? {
+          id: String(r.id), userId: String(r.user_id), name: String(r.name ?? ""), accountType: String(r.account_type),
+          institutionName: (r.institution_name as string | null) ?? null, mask: (r.mask as string | null) ?? null,
+          currencyCode: String(r.currency_code), currentBalance: toNumber(r.current_balance),
+          // SQLite stores booleans as 0/1.
+          isActive: r.is_active === true || r.is_active === 1,
+          creditLimit: num(r.credit_limit), cutoffDay: num(r.cutoff_day), paymentDay: num(r.payment_day), monthlyPayment: num(r.monthly_payment),
+        }
         : null;
+    },
+
+    async insertAccount(a) {
+      // Through the `accounts` view on Postgres: its trigger encrypts name, institution and mask.
+      await q(
+        `INSERT INTO accounts (id, user_id, name, account_type, institution_name, mask, currency_code, current_balance,
+                               credit_limit, cutoff_day, payment_day, monthly_payment)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [a.id, a.userId, a.name, a.accountType, a.institutionName, a.mask, a.currencyCode, a.currentBalance,
+          a.creditLimit, a.cutoffDay, a.paymentDay, a.monthlyPayment],
+      );
+    },
+
+    async updateAccountDetails(userId, id, patch) {
+      const cols = Object.keys(patch) as (keyof typeof patch)[];
+      if (cols.length === 0) return;
+      // ponytail: the view's UPDATE trigger rewrites current_balance from its snapshot; a balance delta
+      // committed by another transaction in between would be lost. Commands per user run one at a time today;
+      // write accounts_enc directly (encrypting there) if the server ever applies them concurrently.
+      await q(
+        `UPDATE accounts SET ${cols.map((c) => `${c} = ?`).join(", ")} WHERE user_id = ? AND id = ?`,
+        [...cols.map((c) => (c === "is_active" && !pg ? (patch[c] ? 1 : 0) : patch[c])), userId, id],
+      );
     },
 
     async adjustAccountBalance(userId, id, delta) {

@@ -12,7 +12,11 @@ import { buildInicioWidgets, flowScreenView, type CardSummary, type FlowScreenTa
 /** An account as Inicio needs it; `countsInDisponible` is null when the user never chose. */
 export interface InicioAccount {
   id: string;
+  /** Empty for accounts created before names existed (phone schema < 5). */
+  name?: string;
   accountType: string;
+  institutionName?: string | null;
+  mask?: string | null;
   currentBalance: number;
   countsInDisponible: boolean | null;
 }

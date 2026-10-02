@@ -1,3 +1,4 @@
+import { archiveAccount, createAccount, editAccount } from "./commands/accounts";
 import { captureManualTransaction } from "./commands/capture-manual-transaction";
 import { setAccountCountsInDisponible } from "./commands/set-account-counts-in-disponible";
 import { setCycleSettings } from "./commands/set-cycle-settings";
@@ -24,6 +25,9 @@ const HANDLERS: Partial<Record<CommandType, Handler>> = {
   editTransaction,
   setCycleSettings,
   setAccountCountsInDisponible,
+  createAccount,
+  editAccount,
+  archiveAccount,
 };
 
 /**

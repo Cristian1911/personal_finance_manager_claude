@@ -1,6 +1,7 @@
 import * as SQLite from "expo-sqlite";
 import {
   OUTBOX_SCHEMA,
+  SQLITE_ACCOUNTS_SCHEMA,
   SQLITE_CAPTURE_TIME_SCHEMA,
   SQLITE_EXCLUDED_SCHEMA,
   SQLITE_ENGINE_SCHEMA,
@@ -32,6 +33,8 @@ const MIGRATIONS: string[] = [
   SQLITE_CAPTURE_TIME_SCHEMA + LOCAL_STATE_SCHEMA,
   // 4: Ignorar in Detalle (transactions.is_excluded).
   SQLITE_EXCLUDED_SCHEMA,
+  // 5: account names and card/loan details (Mis cuentas, Agregar).
+  SQLITE_ACCOUNTS_SCHEMA,
 ];
 
 export interface V2Database {
