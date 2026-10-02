@@ -67,6 +67,8 @@ describe.skipIf(!enabled)("v2 sync routes on zeta-dev", { timeout: 90_000 }, () 
     const body = await (await post({ commands: [cmd("someFutureCommand", {})] })).json();
     expect(body.results).toEqual([]);
     expect(body.failed).toMatchObject({ error: "El servidor aún no conoce este cambio" });
+  });
+
   it("Borrar mi cuenta: delete_user_account removes the user and all their v2 rows", async () => {
     const email = `delete-${Date.now()}@zeta-dev.test`;
     const password = crypto.randomUUID();
