@@ -1,7 +1,7 @@
 import { computeIdempotencyKey } from "../../utils/idempotency";
 import type { EngineOptions } from "../runner";
 import type { CommandEnvelope, CommandResult, StoragePort } from "../types";
-import { UUID_RE } from "../validate";
+import { UUID_RE, isIsoUtc } from "../validate";
 
 export interface CaptureManualTransactionPayload {
   transactionId: string;
@@ -12,6 +12,8 @@ export interface CaptureManualTransactionPayload {
   date: string;
   description: string;
   notes?: string | null;
+  /** Deshacer: the original capture instant, so a re-created movement keeps its time. Not after clientTs. */
+  capturedAt?: string;
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -40,6 +42,9 @@ export async function captureManualTransaction(
   const p = cmd.payload;
   const error = validateCaptureManualTransaction(p);
   if (error) return { status: "rejected", replayed: false, code: "invalid", error };
+  if (p.capturedAt !== undefined && (!isIsoUtc(p.capturedAt) || p.capturedAt > cmd.clientTs)) {
+    return { status: "rejected", replayed: false, code: "invalid", error: "Hora de captura inválida." };
+  }
 
   const account = await s.getAccount(cmd.userId, p.accountId);
   if (!account) return { status: "rejected", replayed: false, code: "not_found", error: "Cuenta no encontrada." };
@@ -74,7 +79,7 @@ export async function captureManualTransaction(
     idempotencyKey,
     // When it was captured on the device, not when the server replays it: a
     // movement on the first-cycle balance's day lands before or after it the same everywhere.
-    createdAt: cmd.clientTs,
+    createdAt: p.capturedAt ?? cmd.clientTs,
   });
   await s.adjustAccountBalance(cmd.userId, p.accountId, p.direction === "OUTFLOW" ? -p.amount : p.amount);
   return { status: "applied", replayed: false, data: { transactionId: p.transactionId } };

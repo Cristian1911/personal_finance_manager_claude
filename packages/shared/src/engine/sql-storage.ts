@@ -64,8 +64,12 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
     },
 
     async getTransaction(userId, id) {
+      // date as text on Postgres: a JS Date would shift the day with the time zone.
       const rows = await q<Record<string, unknown>>(
-        "SELECT id, user_id, account_id, amount, direction, clean_description, notes, idempotency_key FROM transactions WHERE user_id = ? AND id = ?",
+        `SELECT id, user_id, account_id, amount, currency_code, direction,
+                ${pg ? "transaction_date::text" : "transaction_date"} AS transaction_date,
+                clean_description, notes, capture_method, idempotency_key, created_at, is_excluded
+           FROM transactions WHERE user_id = ? AND id = ?`,
         [userId, id]);
       const r = rows[0];
       if (!r) return null;
@@ -74,15 +78,35 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
         userId: String(r.user_id),
         accountId: String(r.account_id),
         amount: toNumber(r.amount),
+        currencyCode: String(r.currency_code),
         direction: r.direction as "INFLOW" | "OUTFLOW",
+        transactionDate: String(r.transaction_date),
         cleanDescription: (r.clean_description as string | null) ?? null,
         notes: (r.notes as string | null) ?? null,
+        captureMethod: String(r.capture_method),
         idempotencyKey: String(r.idempotency_key),
+        createdAt: r.created_at == null ? null : toIso(r.created_at),
+        // SQLite stores booleans as 0/1.
+        isExcluded: r.is_excluded === true || r.is_excluded === 1,
       };
+    },
+
+    async deleteTransaction(userId, id) {
+      await q("DELETE FROM transactions WHERE user_id = ? AND id = ?", [userId, id]);
+    },
+
+    async updateTransactionFacts(userId, id, f) {
+      await q("UPDATE transactions SET amount = ?, transaction_date = ?, account_id = ? WHERE user_id = ? AND id = ?",
+        [f.amount, f.transactionDate, f.accountId, userId, id]);
     },
 
     async updateTransactionNotes(userId, id, notes) {
       await q("UPDATE transactions SET notes = ? WHERE user_id = ? AND id = ?", [notes, userId, id]);
+    },
+
+    async updateTransactionExcluded(userId, id, excluded) {
+      // SQLite stores booleans as 0/1.
+      await q("UPDATE transactions SET is_excluded = ? WHERE user_id = ? AND id = ?", [pg ? excluded : excluded ? 1 : 0, userId, id]);
     },
 
     async getFieldVersion(userId, entity, entityId, field) {

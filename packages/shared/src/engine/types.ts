@@ -2,6 +2,9 @@
 export type CommandType =
   | "captureManualTransaction"
   | "setTransactionNote"
+  | "setTransactionExcluded"
+  | "deleteTransaction"
+  | "editTransaction"
   | "setCycleSettings"
   | "setAccountCountsInDisponible";
 
@@ -96,10 +99,18 @@ export interface TransactionRow {
   userId: string;
   accountId: string;
   amount: number;
+  currencyCode: string;
   direction: "INFLOW" | "OUTFLOW";
+  /** YYYY-MM-DD. */
+  transactionDate: string;
   cleanDescription: string | null;
   notes: string | null;
+  captureMethod: string;
   idempotencyKey: string;
+  /** Capture instant, ISO-8601 UTC; null for rows from before phone schema v3. */
+  createdAt: string | null;
+  /** Ignored ("no es un movimiento"): its amount is out of the account's balance, like on the web. */
+  isExcluded: boolean;
 }
 
 export interface FieldVersion {
@@ -131,6 +142,9 @@ export interface StoragePort {
   insertTransaction(row: TransactionInsert): Promise<void>;
   getTransaction(userId: string, id: string): Promise<TransactionRow | null>;
   updateTransactionNotes(userId: string, id: string, notes: string | null): Promise<void>;
+  updateTransactionExcluded(userId: string, id: string, excluded: boolean): Promise<void>;
+  deleteTransaction(userId: string, id: string): Promise<void>;
+  updateTransactionFacts(userId: string, id: string, facts: { amount: number; transactionDate: string; accountId: string }): Promise<void>;
   getFieldVersion(userId: string, entity: string, entityId: string, field: string): Promise<FieldVersion | null>;
   setFieldVersion(v: FieldVersionWrite): Promise<void>;
   getCycleSettings(userId: string): Promise<CycleSettings | null>;

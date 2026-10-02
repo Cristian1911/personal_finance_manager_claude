@@ -1,9 +1,10 @@
 import { memo } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChartPie, DollarSign, Gauge, Landmark, Plane, Plus, Store, Wallet, X, type LucideIcon } from "lucide-react-native";
 import type { InicioWidget } from "@zeta/shared";
 import { useV2Theme } from "../../theme/ThemeProvider";
+import { Sheet } from "../Sheet";
 import { WIDGET_ICONS } from "./WidgetCard";
 
 /** The question each widget answers (13 §Widget catalog). */
@@ -42,9 +43,7 @@ export const AddWidgetSheet = memo(function AddWidgetSheet({
   const t = useV2Theme();
   const insets = useSafeAreaInsets();
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={[styles.scrim, { backgroundColor: t.colors.scrim }]} onPress={onClose} accessible={false} />
-      <View style={[styles.sheet, { backgroundColor: t.colors.card, paddingBottom: insets.bottom + 20 }]}>
+    <Sheet open={visible} onClose={onClose} style={[styles.sheet, { paddingBottom: insets.bottom + 20 }]}>
         <View style={[styles.handle, { backgroundColor: t.colors.control }]} />
         <View style={styles.head}>
           <Text style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]} accessibilityRole="header">Agregar widget</Text>
@@ -78,8 +77,7 @@ export const AddWidgetSheet = memo(function AddWidgetSheet({
             </Row>
           ))}
         </ScrollView>
-      </View>
-    </Modal>
+    </Sheet>
   );
 });
 
@@ -102,8 +100,7 @@ function Row({ icon: Icon, title, question, muted, children }: {
 }
 
 const styles = StyleSheet.create({
-  scrim: { flex: 1 },
-  sheet: { borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingHorizontal: 20, paddingTop: 8, maxHeight: "80%" },
+  sheet: { paddingHorizontal: 20, paddingTop: 8, maxHeight: "80%" },
   handle: { width: 38, height: 5, borderRadius: 3, alignSelf: "center", marginBottom: 10 },
   head: { flexDirection: "row", alignItems: "center" },
   title: { flex: 1, fontSize: 20 },

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { computeDisponible, type DisponibleInput } from "../disponible";
 import { computeVerdict } from "../verdict";
-import { cycleLabel, disponibleBlockView, headerDate, shortMoney } from "../view";
+import { cycleLabel, disponibleBlockView, headerDate, parseAmount, shortMoney } from "../view";
 
 const CYCLE = { start: "2026-09-15", end: "2026-09-29", days: 15, daysLeft: 12 };
 
@@ -142,5 +142,21 @@ describe("headerDate", () => {
   it("weekday, day and month in Spanish", () => {
     expect(headerDate("2026-09-18")).toBe("Viernes 18 sep");
     expect(headerDate("2026-10-01")).toBe("Jueves 1 oct");
+  });
+});
+
+describe("parseAmount (what the person types in a fix)", () => {
+  it("reads es-CO thousands and decimals, and plain numbers", () => {
+    expect(parseAmount("25000")).toBe(25000);
+    expect(parseAmount("25.000")).toBe(25000);
+    expect(parseAmount("$ 25.000")).toBe(25000);
+    expect(parseAmount("25.000,50")).toBe(25000.5);
+    expect(parseAmount("12.5")).toBe(12.5);
+    expect(parseAmount("12,5")).toBe(12.5);
+  });
+  it("rejects empty, zero and nonsense", () => {
+    expect(parseAmount("")).toBeNull();
+    expect(parseAmount("0")).toBeNull();
+    expect(parseAmount("abc")).toBeNull();
   });
 });

@@ -26,6 +26,8 @@ export interface StoredTransaction {
   captureMethod?: string | null;
   /** clean_description: what Últimos movimientos shows. */
   description?: string | null;
+  /** The user's note (Detalle). */
+  notes?: string | null;
   status?: string | null;
   isExcluded?: boolean | null;
   /** Merged into another row (a duplicate): that row counts instead. */

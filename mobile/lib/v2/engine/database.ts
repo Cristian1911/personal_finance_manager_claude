@@ -2,6 +2,7 @@ import * as SQLite from "expo-sqlite";
 import {
   OUTBOX_SCHEMA,
   SQLITE_CAPTURE_TIME_SCHEMA,
+  SQLITE_EXCLUDED_SCHEMA,
   SQLITE_ENGINE_SCHEMA,
   SQLITE_SETTINGS_SCHEMA,
   type SqlDriver,
@@ -29,6 +30,8 @@ const MIGRATIONS: string[] = [
   SQLITE_SETTINGS_SCHEMA,
   // 3: when each movement was captured (Inicio's first-cycle anchor) + phone-only state.
   SQLITE_CAPTURE_TIME_SCHEMA + LOCAL_STATE_SCHEMA,
+  // 4: Ignorar in Detalle (transactions.is_excluded).
+  SQLITE_EXCLUDED_SCHEMA,
 ];
 
 export interface V2Database {

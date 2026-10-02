@@ -10,6 +10,12 @@
 
 ---
 
+## v2 Movimientos — pendientes de PR #445 (2026-10-01)
+- **Antes de M2 (sync + `/api/v2/commands`): guardas de vínculos en `deleteTransaction` / `editTransaction`.** Hoy no miran `personal_debt_id`, `split_group_id`, `transfer_group_id`, ocurrencias pagadas (`recurring_occurrences.transaction_id`, ON DELETE SET NULL) ni hijos reconciliados. En Postgres el DELETE cascada `personal_debt_allocations` y deja la ocurrencia "pagada" sin movimiento. Opción mínima: rechazar con mensaje y ofrecer Ignorar; o portar la limpieza de `webapp/src/actions/transactions.ts:1659-1750`. Inalcanzable mientras el teléfono no tenga filas de la web.
+- **PR 4 (cuentas): `editTransaction` no valida la moneda** al mover un movimiento a otra cuenta; tampoco refresca `amount_in_base_currency`. Agregar la moneda a las cuentas del teléfono y rechazar cruces.
+- **"Cuenta para Disponible" sin UI en v2** hasta que llegue Mis cuentas (PR 4): el switch salió de Detalle (S8-4).
+- **Menores diferidos (revisión final):** el Toast debería llevar un id (dos borrados iguales en 5 s no reinician el temporizador); el Toast no se desvanece al salir; Deshacer re-captura como `MANUAL_FORM` aunque fuera `TEXT_QUICK_CAPTURE`; una nota a medio escribir se pierde si se toca "No es un movimiento"; faltan pruebas edit → delete → Deshacer y balance tras edit en zeta-dev; el gesto para corregir (tocar el monto) no tiene pista visual.
+
 ## v2 Tu flujo — pendientes (2026-10-01, PRs #442 / #443)
 - **Apartar dice "Pronto"**: `createReservation` necesita la plantilla del pago (`bill_reservations.recurring_template_id NOT NULL`) y las plantillas llegan al teléfono en M4. Cuando lleguen: el botón crea la reserva (comando + contract tests en ambos adaptadores) y la tarjeta ámbar desaparece al cubrir el faltante.
 - **"Ver qué ajustar" abre Movimientos v1** hasta que exista Límites (M4).
