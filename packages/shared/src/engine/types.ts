@@ -3,6 +3,7 @@ export type CommandType =
   | "captureManualTransaction"
   | "captureBankTransaction"
   | "resolveBankDuplicate"
+  | "anchorStatementBalance"
   | "setTransactionNote"
   | "setTransactionExcluded"
   | "deleteTransaction"
@@ -165,7 +166,7 @@ export interface TransactionInsert {
   transactionTime?: string | null;
   merchantName?: string | null;
   sourcePattern?: string | null;
-  provider?: "MANUAL" | "EMAIL";
+  provider?: "MANUAL" | "EMAIL" | "OCR";
   /** PENDING = held for Revisar (a possible duplicate of `reconciledIntoTransactionId`); doesn't count. */
   status?: "POSTED" | "PENDING";
   reconciledIntoTransactionId?: string | null;

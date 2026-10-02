@@ -3,7 +3,7 @@ import { applyCommand, createSqlStorage, type CommandEnvelope, type CommandResul
 import { createUserScopedPgDriver } from "@/lib/engine/pg-driver";
 import { v2Config, v2Pool, v2User } from "@/lib/engine/v2-server";
 
-const SERVER_ONLY = new Set<string>(["captureBankTransaction"]);
+const SERVER_ONLY = new Set<string>(["captureBankTransaction", "anchorStatementBalance"]);
 
 const MAX_BATCH = 100;
 const MAX_BODY_BYTES = 1_000_000;

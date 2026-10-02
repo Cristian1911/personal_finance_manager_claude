@@ -9,6 +9,9 @@ import { runLocalCommand } from "../../lib/v2/engine/run-local";
 import { loadCuentas, type LoadedCuentas } from "../../lib/v2/cuentas/load";
 import { useV2UserId } from "../../lib/v2/user";
 import { AccountSheet, type AccountForm, type AddKind } from "../../v2/components/AccountSheet";
+import { ExtractoSheet } from "../../v2/components/ExtractoSheet";
+import * as DocumentPicker from "expo-document-picker";
+import { syncV2 } from "../../lib/v2/sync/sync";
 import { Avatar } from "../../v2/components/Avatar";
 import { Button, IconButton } from "../../v2/components/Button";
 import { ConfirmSheet } from "../../v2/components/ConfirmSheet";
@@ -30,6 +33,13 @@ export default function CuentasScreen() {
   const params = useLocalSearchParams<{ add?: string }>();
   const [data, setData] = useState<LoadedCuentas | null>(null);
   const [adding, setAdding] = useState<{ kind: AddKind | null } | null>(null);
+  // Subir un extracto: the system picker first (a modal of its own), then the sheet with the file.
+  const [pdf, setPdf] = useState<{ uri: string; name: string } | null>(null);
+  const pickPdf = async () => {
+    const r = await DocumentPicker.getDocumentAsync({ type: "application/pdf", copyToCacheDirectory: true });
+    const f = r.canceled ? null : r.assets[0];
+    if (f) setPdf({ uri: f.uri, name: f.name });
+  };
   const [toggle, setToggle] = useState<CuentaRow | null>(null);
 
   const reload = useCallback(async () => {
@@ -162,8 +172,10 @@ export default function CuentasScreen() {
           </>
         )}
         {!empty && v && <Button label="Agregar" variant="secondary" onPress={() => setAdding({ kind: null })} icon={<Plus size={16} color={t.colors.ink} />} />}
+        {v && <Button label="Subir un extracto (PDF)" variant="text" onPress={() => void pickPdf()} style={{ alignSelf: "center" }} />}
       </ScrollView>
 
+      <ExtractoSheet file={pdf} onClose={() => setPdf(null)} onImported={() => void syncV2(userId)} />
       <AccountSheet open={!!adding} mode="add" initialKind={adding?.kind ?? null} onSave={add} onClose={() => setAdding(null)} />
       <ConfirmSheet
         open={!!toggle}

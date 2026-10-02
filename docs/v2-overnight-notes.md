@@ -17,6 +17,7 @@ the tests talk to zeta-dev only. To undo anything, close its PR (and the ones ab
 | #452 | `feat/v2-onboarding` | First run: when you get paid, where your money is, fixed payments | Open |
 | #453 | `feat/v2-categorias` | The 25 categories, destinatarios (comercios/personas), matched on capture; Categoría · ¿Quién? on the open row | Open, reviewed, fixes in |
 | #454 | `feat/v2-email` | Bank emails: forwarding address, Bancolombia alerts as commands (merge / hold / new), Revisar "¿Es el mismo?", Correos del banco | Open, reviewed, fixes in |
+| (next) | `feat/v2-pdf` | Subir un extracto (PDF): statements as commands, unknown accounts offered, balance anchored at the cut | In review |
 
 ## Decisions I took for you (simplest option; change any)
 
@@ -80,6 +81,18 @@ the tests talk to zeta-dev only. To undo anything, close its PR (and the ones ab
   Every email outcome is logged in `email_ingest_logs` with v1's statuses (the template-drift replay covers v2).
   Known gaps: merging a fixed payment's movement re-stamps its paid date to the merge time; the `From` header can
   be spoofed (same as v1 — only Bancolombia's sender is accepted, so a fake alert is the risk, not data loss).
+- **D22. Subir un extracto (PDF)** lives in Mis cuentas. Zeta's server reads the PDF; a statement whose account it
+  knows (kind + last 4) goes there; an unknown one asks: Crear «Bancolombia tarjeta ••7706» (default), "Es <cuenta>",
+  or No importar (D1, never silent). Rows merge with emails and what you anotaste (the statement is the highest
+  tier); the account is set to the statement's final balance at its cut plus what moved after it; a new card learns
+  its cut day, payment day and limit. Uploading the same PDF again changes nothing. Not in yet: rows in another
+  currency (USD sections), investments, saved PDF passwords (asked each time), the "¿Es el mismo?" for statement vs
+  anotado with different words (held to Revisar, same as email).
+- **Speed (check on the VPS):** each statement row is ~15 database round trips. From here (159 ms to sa-east-1) a
+  4-row statement took ~20 s. If the VPS is far from São Paulo, a 60-row statement will be slow; then batch the
+  rule and template lookups per import.
+- **Statements land by date in Disponible:** a bank row without a time is placed by its date, so last month's
+  statement doesn't count as spent after your starting balance (fixed in the engine, applies to emails too).
 
 ## Things only you can do
 

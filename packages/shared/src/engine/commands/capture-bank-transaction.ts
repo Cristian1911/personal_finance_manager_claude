@@ -20,7 +20,7 @@ import { isIsoDate, isMoney } from "./validate-money";
 export interface CaptureBankTransactionPayload {
   transactionId: string;
   accountId: string;
-  source: "EMAIL";
+  source: "EMAIL" | "PDF";
   amount: number;
   direction: "INFLOW" | "OUTFLOW";
   currencyCode: string;
@@ -34,9 +34,17 @@ export interface CaptureBankTransactionPayload {
   merchantName?: string | null;
   /** The parser's alert family ("compra_debito", "transferencia"…), evidence for the flow class. */
   sourcePattern?: string | null;
+  /** PDF: the nth identical row in its statement (two equal transfers the same day are two movements). */
+  occurrence?: number;
+  /** PDF cuotas: the purchase price, and which cuota this row is. */
+  originalAmount?: number | null;
+  installmentCurrent?: number | null;
+  installmentTotal?: number | null;
 }
 
-const METHOD: Record<CaptureBankTransactionPayload["source"], TransactionCaptureMethod> = { EMAIL: "EMAIL_IMPORT" };
+const METHOD: Record<CaptureBankTransactionPayload["source"], TransactionCaptureMethod> = { EMAIL: "EMAIL_IMPORT", PDF: "PDF_IMPORT" };
+const PROVIDER = { EMAIL: "EMAIL", PDF: "OCR" } as const;
+const posInt = (v: unknown) => typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= 1000;
 /** ±3 days: the date tolerance of scoreReconciliationCandidate. */
 const WINDOW_DAYS = 3;
 
@@ -53,6 +61,9 @@ function validate(p: CaptureBankTransactionPayload): string | null {
   if (typeof p.description !== "string" || !p.description.trim() || p.description.length > 200) return "Descripción inválida.";
   if (p.merchantName != null && (typeof p.merchantName !== "string" || p.merchantName.length > 200)) return "Comercio inválido.";
   if (p.sourcePattern != null && (typeof p.sourcePattern !== "string" || p.sourcePattern.length > 40)) return "Tipo de alerta inválido.";
+  if (p.occurrence != null && !posInt(p.occurrence)) return "Ocurrencia inválida.";
+  if (p.originalAmount != null && (!isMoney(p.originalAmount) || p.originalAmount <= 0)) return "Monto original inválido.";
+  if ((p.installmentCurrent != null && !posInt(p.installmentCurrent)) || (p.installmentTotal != null && !posInt(p.installmentTotal))) return "Cuota inválida.";
   return null;
 }
 
@@ -93,10 +104,14 @@ export async function captureBankTransaction(
     return { status: "duplicate", replayed: false, data: { transactionId: p.transactionId } };
   }
 
-  // Exactly v1's email key (route.ts): provider, date, amount, the bank's line.
-  const idempotencyKey = await computeIdempotencyKey({
-    provider: p.source, transactionDate: p.date, amount: p.amount, rawDescription: p.rawLine,
-  }, opts.hash);
+  // Exactly v1's keys. Email (route.ts): provider, date, amount, the bank's line. Statement
+  // (importTransactions): provider OCR, occN past the first identical row, the purchase price, the cuota.
+  const idempotencyKey = await computeIdempotencyKey(p.source === "EMAIL"
+    ? { provider: "EMAIL", transactionDate: p.date, amount: p.amount, rawDescription: p.rawLine }
+    : {
+      provider: "OCR", providerTransactionId: (p.occurrence ?? 1) > 1 ? `occ${p.occurrence}` : undefined,
+      transactionDate: p.date, amount: p.originalAmount ?? p.amount, rawDescription: p.rawLine, installmentCurrent: p.installmentCurrent ?? null,
+    }, opts.hash);
   const same = await s.findTransactionByIdempotencyKey(cmd.userId, idempotencyKey);
   if (same) return { status: "duplicate", replayed: false, data: { transactionId: same.id } };
 
@@ -108,6 +123,7 @@ export async function captureBankTransaction(
   const { bestMatch } = findReconciliationCandidates({
     account_id: p.accountId, amount: p.amount, direction: p.direction, transaction_date: p.date, raw_description: p.rawLine,
     capture_method: method, transaction_time: p.time ?? null, source_pattern: p.sourcePattern ?? null, currency_code: p.currencyCode,
+    original_amount: p.originalAmount ?? null, installment_current: p.installmentCurrent ?? null,
   }, candidates.map(asCandidate));
   const twin = bestMatch && bestMatch.decision !== "NO_MATCH" ? candidates.find((c) => c.id === bestMatch.candidateId) : undefined;
   const twinTier = twin ? getCaptureTier(twin.captureMethod as TransactionCaptureMethod) : tier;
@@ -128,7 +144,7 @@ export async function captureBankTransaction(
     transactionDate: p.date,
     cleanDescription: p.description.trim(),
     notes: null,
-    captureMethod: method as "EMAIL_IMPORT",
+    captureMethod: method as "EMAIL_IMPORT" | "PDF_IMPORT",
     idempotencyKey,
     flowClass,
     flowClassVersion: FLOW_CLASS_RULES_VERSION,
@@ -139,7 +155,7 @@ export async function captureBankTransaction(
     transactionTime: p.time ?? null,
     merchantName: p.merchantName ?? null,
     sourcePattern: p.sourcePattern ?? null,
-    provider: p.source,
+    provider: PROVIDER[p.source],
     status: held ? "PENDING" : "POSTED",
     reconciledIntoTransactionId: held?.id ?? null,
     createdAt: cmd.clientTs,
