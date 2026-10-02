@@ -15,6 +15,7 @@ export interface LoadedMovimientos {
   cycles: PayCycle[];
   transactions: StoredTransaction[];
   accounts: InicioAccount[];
+  destinatarios: { id: string; name: string; kind: "merchant" | "person"; defaultCategoryId: string | null }[];
 }
 
 /**
@@ -28,5 +29,5 @@ export async function loadMovimientos(userId: string, now: Date = new Date()): P
   const data = await readInicioData(driver, userId, inicioSince(today));
   const state = buildInicio({ today, now: now.toISOString(), ...data });
   if (state.status !== "ready") return null;
-  return { today, cycles: state.cycles, transactions: data.transactions, accounts: data.accounts };
+  return { today, cycles: state.cycles, transactions: data.transactions, accounts: data.accounts, destinatarios: data.destinatarios };
 }

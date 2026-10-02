@@ -18,8 +18,13 @@ services:
       - PDF_PARSER_API_KEY=${PDF_PARSER_API_KEY}
       - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY}
       - RESEND_WEBHOOK_SECRET=${RESEND_WEBHOOK_SECRET}
+      - RESEND_WEBHOOK_SECRET_V2=${RESEND_WEBHOOK_SECRET_V2:-}
       - RESEND_API_KEY=${RESEND_API_KEY}
       - CRON_SECRET=${CRON_SECRET}
+      # Zeta v2's own Supabase project (S9-2). Unset → /api/v2/* answers 503.
+      - V2_SUPABASE_URL=${V2_SUPABASE_URL}
+      - V2_SUPABASE_PUBLISHABLE_KEY=${V2_SUPABASE_PUBLISHABLE_KEY}
+      - V2_DATABASE_URL=${V2_DATABASE_URL}
     depends_on:
       pdf-parser:
         condition: service_healthy

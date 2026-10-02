@@ -5,12 +5,14 @@ import { Redirect, Tabs, useRouter } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { V2_DEBUG_ENABLED } from "../../lib/v2/flags";
 import { useV2UserId } from "../../lib/v2/user";
+import { useV2Sync } from "../../lib/v2/sync/use-sync";
 import { onOpenAnotar, type AnotarPrefill } from "../../lib/v2/anotar/open";
 import { AnotarSheet, type AnotarSaved } from "../../v2/components/AnotarSheet";
 import { FAB_OVERHANG, TAB_BAR_HEIGHT, TabBar } from "../../v2/components/TabBar";
 import { Toast } from "../../v2/components/Toast";
 import { useV2Fonts } from "../../v2/theme/fonts";
-import { V2ThemeProvider, useV2Theme } from "../../v2/theme/ThemeProvider";
+import { useV2Theme } from "../../v2/theme/ThemeProvider";
+import { V2ThemeFromPrefs } from "../../v2/theme/prefs";
 
 /**
  * v2 screens (behind EXPO_PUBLIC_ZETA_V2 until launch): the guard, the v2
@@ -23,9 +25,9 @@ export default function V2Layout() {
   if (!V2_DEBUG_ENABLED) return <Redirect href="/" />;
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <V2ThemeProvider>
+      <V2ThemeFromPrefs>
         {fontsReady ? <V2Tabs /> : <Backdrop />}
-      </V2ThemeProvider>
+      </V2ThemeFromPrefs>
     </GestureHandlerRootView>
   );
 }
@@ -35,6 +37,7 @@ function V2Tabs() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const userId = useV2UserId();
+  useV2Sync(userId);
   const [anotar, setAnotar] = useState<AnotarPrefill | null>(null);
   useEffect(() => onOpenAnotar(setAnotar), []);
   const [toast, setToast] = useState<AnotarSaved | null>(null);
@@ -52,6 +55,8 @@ function V2Tabs() {
       <Tabs.Screen name="flujo" options={{ href: null }} />
       <Tabs.Screen name="cuentas" options={{ href: null }} />
       <Tabs.Screen name="cuenta" options={{ href: null }} />
+      <Tabs.Screen name="ajustes" options={{ href: null }} />
+      <Tabs.Screen name="correos" options={{ href: null }} />
     </Tabs>
     <AnotarSheet
       open={!!anotar}

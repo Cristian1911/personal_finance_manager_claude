@@ -1,3 +1,5 @@
+import { releaseHeld } from "./capture-bank-transaction";
+import { HELD_ERROR, isHeld, isMerged } from "./reconciled";
 import type { EngineOptions } from "../runner";
 import type { CommandEnvelope, CommandResult, StoragePort } from "../types";
 import { UUID_RE } from "../validate";
@@ -25,6 +27,9 @@ export async function deleteTransaction(
   if (!p || !UUID_RE.test(p.transactionId ?? "")) return { status: "rejected", replayed: false, code: "invalid", error: "Identificador inválido." };
   const tx = await s.getTransaction(cmd.userId, p.transactionId);
   if (!tx) return { status: "rejected", replayed: false, code: "not_found", error: "Movimiento no encontrado." };
+  // Merged into the bank's row (a phone that hadn't pulled yet): the bank's facts stand, nothing moves twice.
+  if (isMerged(tx)) return { status: "superseded", replayed: false };
+  if (isHeld(tx)) return { status: "rejected", replayed: false, code: "invalid", error: HELD_ERROR };
   if (!MANUAL_CAPTURE_METHODS.has(tx.captureMethod)) {
     return { status: "rejected", replayed: false, code: "invalid", error: "Solo se pueden borrar los movimientos que anotaste a mano." };
   }
@@ -38,6 +43,8 @@ export async function deleteTransaction(
     await s.deleteTransaction(cmd.userId, row.id);
     // An ignored movement's amount already left the balance when it was ignored.
     if (!row.isExcluded) await moveBalance(s, cmd.userId, row.accountId, row.direction === "OUTFLOW" ? row.amount : -row.amount);
+    // A bank movement held because it might be this one: with this one gone, it counts.
+    for (const held of await s.listHeldFor(cmd.userId, row.id)) await releaseHeld(s, cmd, held, opts);
   }
   return { status: "applied", replayed: false, data: { deleted: rows.map((r) => r.id) } };
 }
