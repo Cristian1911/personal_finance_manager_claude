@@ -262,6 +262,8 @@ export default function InicioScreen() {
           onOrganize={ready ? startOrganizing : undefined}
           onDone={finishOrganizing}
           onVoice={voice}
+          onProfile={() => router.push("/ajustes" as never)}
+          initials={(fullName ?? "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("")}
         />
 
         {error && (

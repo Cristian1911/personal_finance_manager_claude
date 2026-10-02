@@ -20,7 +20,7 @@ export const FAB_OVERHANG = 22;
 export const TAB_BAR_HEIGHT = 56;
 
 /** Secondary screens open inside the tab they belong to; that tab stays lit. */
-const PARENT_TAB: Record<string, string> = { flujo: "inicio", cuentas: "inicio", cuenta: "inicio" };
+const PARENT_TAB: Record<string, string> = { flujo: "inicio", cuentas: "inicio", cuenta: "inicio", ajustes: "inicio" };
 
 export function TabBar({ state, navigation, onAdd }: {
   state: { routes: { name: string }[]; index: number };

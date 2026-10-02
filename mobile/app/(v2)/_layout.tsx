@@ -11,7 +11,8 @@ import { AnotarSheet, type AnotarSaved } from "../../v2/components/AnotarSheet";
 import { FAB_OVERHANG, TAB_BAR_HEIGHT, TabBar } from "../../v2/components/TabBar";
 import { Toast } from "../../v2/components/Toast";
 import { useV2Fonts } from "../../v2/theme/fonts";
-import { V2ThemeProvider, useV2Theme } from "../../v2/theme/ThemeProvider";
+import { useV2Theme } from "../../v2/theme/ThemeProvider";
+import { V2ThemeFromPrefs } from "../../v2/theme/prefs";
 
 /**
  * v2 screens (behind EXPO_PUBLIC_ZETA_V2 until launch): the guard, the v2
@@ -24,9 +25,9 @@ export default function V2Layout() {
   if (!V2_DEBUG_ENABLED) return <Redirect href="/" />;
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <V2ThemeProvider>
+      <V2ThemeFromPrefs>
         {fontsReady ? <V2Tabs /> : <Backdrop />}
-      </V2ThemeProvider>
+      </V2ThemeFromPrefs>
     </GestureHandlerRootView>
   );
 }
@@ -54,6 +55,7 @@ function V2Tabs() {
       <Tabs.Screen name="flujo" options={{ href: null }} />
       <Tabs.Screen name="cuentas" options={{ href: null }} />
       <Tabs.Screen name="cuenta" options={{ href: null }} />
+      <Tabs.Screen name="ajustes" options={{ href: null }} />
     </Tabs>
     <AnotarSheet
       open={!!anotar}
