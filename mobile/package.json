@@ -16,7 +16,8 @@
     "build:ios:simulator:local": "eas build --platform ios --profile preview-ios-simulator-local",
     "build:ios:simulator:device": "eas build --platform ios --profile preview-ios-simulator-device",
     "build:ios:device": "eas build --platform ios --profile preview-ios-device",
-    "build:ios:production": "eas build --platform ios --profile production-ios"
+    "build:ios:production": "eas build --platform ios --profile production-ios",
+    "check:v2": "node scripts/check-v2-boundary.mjs && tsc --noEmit"
   },
   "dependencies": {
     "@expo-google-fonts/bricolage-grotesque": "^0.4.1",

@@ -21,6 +21,9 @@ import { runLocalCommand } from "../../lib/v2/engine/run-local";
 import { loadMovimientos, type LoadedMovimientos } from "../../lib/v2/movimientos/load";
 import { useV2UserId } from "../../lib/v2/user";
 import { Collapse } from "../../v2/components/Collapse";
+import { Button, IconButton } from "../../v2/components/Button";
+import { Chip } from "../../v2/components/Chip";
+import { EmptyState } from "../../v2/components/EmptyState";
 import { DetalleSheet } from "../../v2/components/DetalleSheet";
 import { Dim } from "../../v2/components/Dim";
 import { Toast } from "../../v2/components/Toast";
@@ -44,6 +47,7 @@ export default function MovimientosScreen() {
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<string | null>(params.id ?? null);
+  const [needsFirstRun, setNeedsFirstRun] = useState(false);
 
   const request = useRef(0);
   const reload = useCallback(async () => {
@@ -51,15 +55,15 @@ export default function MovimientosScreen() {
     try {
       const loaded = await loadMovimientos(userId);
       if (id !== request.current) return;
-      if (!loaded) return router.back(); // the first-run questions live on Inicio
-      setData(loaded);
+      setNeedsFirstRun(!loaded); // the first-run questions live on Inicio
+      if (loaded) setData(loaded);
       setError(null);
     } catch (e) {
       if (id !== request.current) return;
       console.warn("[v2 movimientos] load failed", e);
       setError("No pudimos cargar tus movimientos. Intenta de nuevo.");
     }
-  }, [userId, router]);
+  }, [userId]);
   useFocusEffect(useCallback(() => { void reload(); }, [reload]));
 
   // Typing stays at full speed; the list catches up a frame later.
@@ -125,15 +129,21 @@ export default function MovimientosScreen() {
   const back = useCallback(() => (router.canGoBack() ? router.back() : router.replace("/inicio" as never)), [router]);
   const tone = useMemo(() => toneColors(t), [t]);
 
+  if (needsFirstRun) {
+    return (
+      <EmptyState title="Movimientos" message="Responde las tres preguntas de Inicio y aquí vas a ver lo que gastas y lo que te entra.">
+        <Button label="Ir a Inicio" variant="secondary" size="M" onPress={() => router.navigate("/inicio" as never)} />
+      </EmptyState>
+    );
+  }
+
   if (!view) {
     return (
       <View style={[styles.center, { backgroundColor: t.colors.bg, paddingTop: insets.top + 24 }]}>
         {error ? (
           <>
             <Text style={{ color: t.colors.bad.text, fontFamily: t.fonts.uiMedium, textAlign: "center" }} accessibilityRole="alert">{error}</Text>
-            <Pressable onPress={back} accessibilityRole="button" style={[styles.ghost, { borderColor: t.colors.control }]}>
-              <Text style={{ color: t.colors.ink, fontFamily: t.fonts.uiSemibold, fontSize: 14 }}>Volver</Text>
-            </Pressable>
+            <Button label="Volver" variant="secondary" size="M" onPress={back} />
           </>
         ) : <ActivityIndicator color={t.colors.ink} accessibilityLabel="Cargando" />}
       </View>
@@ -143,19 +153,12 @@ export default function MovimientosScreen() {
   const header = (
     <View style={styles.headerBlock}>
       <View style={styles.titleRow}>
-        <Pressable onPress={back} accessibilityRole="button" accessibilityLabel="Volver" hitSlop={6} style={[styles.square, { borderColor: t.colors.control }]}>
-          <ChevronLeft size={18} color={t.colors.ink} strokeWidth={2.2} />
-        </Pressable>
         <Text style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]} accessibilityRole="header">Movimientos</Text>
-        <Pressable
+        <IconButton
           onPress={() => { setSearching((s) => !s); setQuery(""); }}
-          accessibilityRole="button"
-          accessibilityLabel={searching ? "Cerrar búsqueda" : "Buscar"}
-          hitSlop={6}
-          style={[styles.square, { borderColor: t.colors.control }]}
-        >
-          {searching ? <X size={16} color={t.colors.ink} strokeWidth={2.2} /> : <Search size={17} color={t.colors.ink} strokeWidth={2} />}
-        </Pressable>
+          label={searching ? "Cerrar búsqueda" : "Buscar"}
+          icon={searching ? <X size={16} color={t.colors.ink} strokeWidth={2.2} /> : <Search size={17} color={t.colors.ink} strokeWidth={2} />}
+        />
       </View>
 
       {searching && (
@@ -182,18 +185,7 @@ export default function MovimientosScreen() {
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
-        {view.filters.map((f) => (
-          <Pressable
-            key={f.key}
-            onPress={() => setFilter(f.key)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: f.on }}
-            hitSlop={{ top: 6, bottom: 6 }}
-            style={[styles.filter, f.on ? { backgroundColor: t.colors.button } : { borderWidth: 1.5, borderColor: t.colors.control }]}
-          >
-            <Text style={{ fontSize: 13, color: f.on ? t.colors.onButton : t.colors.ink, fontFamily: t.fonts.uiSemibold }}>{f.label}</Text>
-          </Pressable>
-        ))}
+        {view.filters.map((f) => <Chip key={f.key} label={f.label} on={f.on} onPress={() => setFilter(f.key)} />)}
       </ScrollView>
     </View>
   );
@@ -207,7 +199,7 @@ export default function MovimientosScreen() {
         extraData={openRow}
         ListHeaderComponent={header}
         ListEmptyComponent={view.empty ? <Text style={[styles.empty, { color: t.colors.muted, fontFamily: t.fonts.uiMedium }]}>{view.empty}</Text> : null}
-        contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 32, paddingHorizontal: 16, gap: 14 }}
+        contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 40, paddingHorizontal: 16, gap: 14 }}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         initialNumToRender={6}
@@ -330,16 +322,13 @@ const Row = memo(function Row({ row: r, color, last, open, dimmed, onToggle, onM
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16, padding: 24 },
-  ghost: { height: 42, paddingHorizontal: 20, borderRadius: 10, borderWidth: 1.5, justifyContent: "center" },
   headerBlock: { gap: 12 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 4, paddingTop: 4 },
   title: { flex: 1, fontSize: 26, letterSpacing: -0.5 },
-  square: { width: 36, height: 36, borderRadius: 10, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
   search: { height: 46, borderRadius: 14, paddingHorizontal: 14, fontSize: 15 },
   cycle: { height: 46, borderRadius: 14, paddingHorizontal: 6, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   chev: { width: 34, height: 34, alignItems: "center", justifyContent: "center" },
   filters: { gap: 6 },
-  filter: { height: 32, paddingHorizontal: 12, borderRadius: 9, justifyContent: "center" },
   empty: { fontSize: 14, textAlign: "center", paddingVertical: 24 },
   dayHead: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 4, paddingTop: 4, paddingBottom: 6 },
   dayText: { fontSize: 12, letterSpacing: 0.5, textTransform: "uppercase" },

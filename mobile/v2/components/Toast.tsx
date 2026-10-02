@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 import { AccessibilityInfo, Pressable, StyleSheet, Text } from "react-native";
 import Animated, { useAnimatedStyle, withTiming } from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useV2Theme } from "../theme/ThemeProvider";
 import { useMotionMs } from "./Collapse";
 
@@ -9,13 +8,15 @@ import { useMotionMs } from "./Collapse";
 export const TOAST_MS = 5000;
 
 /** A short message at the bottom with an optional action ("Deshacer"); hides itself after 5 s. */
+/** Screens end at the tab bar; clear the "+" that overhangs it by 22. */
+const TOAST_BOTTOM = 34;
+
 export function Toast({ message, action, onHide }: {
   message: string | null;
   action?: { label: string; onPress: () => void };
   onHide: () => void;
 }) {
   const t = useV2Theme();
-  const insets = useSafeAreaInsets();
   const duration = useMotionMs(180);
   const hide = useRef(onHide);
   hide.current = onHide;
@@ -30,7 +31,7 @@ export function Toast({ message, action, onHide }: {
   if (!message) return null;
   return (
     <Animated.View
-      style={[styles.toast, { backgroundColor: t.colors.button, bottom: insets.bottom + 20 }, fade]}
+      style={[styles.toast, { backgroundColor: t.colors.button, bottom: TOAST_BOTTOM }, fade]}
       accessibilityLiveRegion="polite"
       accessibilityRole="alert"
     >

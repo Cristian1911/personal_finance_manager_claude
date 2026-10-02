@@ -46,7 +46,7 @@ export default function FlujoScreen() {
   );
 
   // Ver qué ajustar: your spending, until Límites exists (M4).
-  const adjust = useCallback(() => router.push("/transactions" as never), [router]);
+  const adjust = useCallback(() => router.push("/movimientos" as never), [router]);
   // ponytail: Apartar needs the bill's template (bill_reservations), which reaches the phone in M4.
   const setAside = useCallback(() => Alert.alert("Pronto", "Apartar llega con Pagos en una próxima versión."), []);
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
@@ -13,7 +13,7 @@ import {
 import { runLocalCommand } from "../../lib/v2/engine/run-local";
 import { loadInicio, saveInicioLayout } from "../../lib/v2/inicio/load";
 import { useV2UserId } from "../../lib/v2/user";
-import { useAppStore } from "../../lib/store";
+import { useAuth } from "../../lib/auth";
 import { toColombiaDateString } from "../../lib/utils/date";
 import { DisponibleBlock } from "../../v2/components/DisponibleBlock";
 import { DisponibleDetail } from "../../v2/components/DisponibleDetail";
@@ -55,7 +55,9 @@ export default function InicioScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const userId = useV2UserId();
-  const fullName = useAppStore((s) => s.profile?.full_name ?? null);
+  // The sign-in provider's name (Google/Apple fill it; email sign-ups have none yet).
+  const meta = useAuth().session?.user.user_metadata as { full_name?: string; name?: string } | undefined;
+  const fullName = meta?.full_name ?? meta?.name ?? null;
   const [state, setState] = useState<InicioState | null>(null);
   /** The one view open on Inicio: a widget's id, or the Disponible detail. */
   const [openWidget, setOpenWidget] = useState<string | null>(null);
@@ -83,15 +85,17 @@ export default function InicioScreen() {
       if (prev !== null && p !== prev) scrollTo(scroll, 0, scrollFrom.value + (scrollTarget.value - scrollFrom.value) * p, false);
     },
   );
-  const { height: windowH } = useWindowDimensions();
+  // The scroll view's own height: it ends at the tab bar, not the screen's bottom.
+  const viewH = useRef(0);
   const motionMs = useMotionMs();
   const reveal = useCallback((top: number, bottom: number) => {
     const margin = 16;
     const viewTop = scrollY.current + insets.top;
-    const viewBottom = scrollY.current + windowH - insets.bottom;
+    // The "+" overhangs the bar's top edge by 22.
+    const viewBottom = scrollY.current + viewH.current - 22;
     let to: number | null = null;
     // Too low: lift it so it ends on screen, never past its own top.
-    if (bottom > viewBottom - margin) to = Math.min(top - insets.top - margin, bottom - windowH + insets.bottom + margin);
+    if (bottom > viewBottom - margin) to = Math.min(top - insets.top - margin, bottom - viewH.current + 22 + margin);
     // Too high (scrolled past it): bring its top down.
     else if (top < viewTop + margin) to = top - insets.top - margin;
     if (to === null) return;
@@ -99,7 +103,7 @@ export default function InicioScreen() {
     scrollTarget.value = Math.max(0, to);
     scrollStep.value = 0;
     scrollStep.value = withTiming(1, { duration: motionMs, easing: COLLAPSE_EASING });
-  }, [insets.top, insets.bottom, windowH, scrollFrom, scrollTarget, scrollStep, motionMs]);
+  }, [insets.top, scrollFrom, scrollTarget, scrollStep, motionMs]);
   // A widget opening while the detail closes: everything below moves up by the
   // detail's height during the same animation, so aim where it will end.
   const detailH = useRef(0);
@@ -234,9 +238,10 @@ export default function InicioScreen() {
       <Animated.ScrollView
         ref={scroll}
         onScroll={(e) => { scrollY.current = e.nativeEvent.contentOffset.y; }}
+        onLayout={(e) => { viewH.current = e.nativeEvent.layout.height; }}
         scrollEventThrottle={16}
         scrollEnabled={!dragging}
-        contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 32, paddingHorizontal: 16, gap: 12 }}
+        contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 40, paddingHorizontal: 16, gap: 12 }}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         automaticallyAdjustKeyboardInsets
