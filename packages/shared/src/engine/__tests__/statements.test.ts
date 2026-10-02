@@ -5,6 +5,7 @@ import { readInicioData } from "../inicio-read";
 import { planStatements, statementCommands, statementResult, statementReview, type StatementInput } from "../statements";
 import type { CommandEnvelope, SqlDriver, StoragePort } from "../types";
 import { DRIVERS } from "./support/drivers";
+import { readStatementHistory } from "../disponible/extractos";
 
 const USER = "11111111-1111-4111-8111-111111111111";
 const SAVINGS = "22222222-2222-4222-8222-222222222222";
@@ -25,7 +26,8 @@ const savings = statement({ transactions: [
 ] });
 // Bancolombia's card statements bring no summary balance: what you owe is total_payment_due (like v1).
 const card = statement({
-  statement_type: "credit_card", account_number: null, card_last_four: "7706", summary: { final_balance: null },
+  statement_type: "credit_card", account_number: null, card_last_four: "7706",
+  summary: { final_balance: null, previous_balance: 210_000, purchases_and_charges: 160_000, interest_charged: 4_500 },
   credit_card_metadata: { credit_limit: 3_000_000, minimum_payment: 60_000, payment_due_date: "2026-10-12", total_payment_due: 260_000, interest_rate: 24.33 },
   transactions: [tx("2026-09-18", 100_000, "TIENDA X", { original_amount: 300_000, installment_current: 1, installment_total: 3 }), tx("2026-09-20", 160_000, "RESTAURANTE")],
 });
@@ -89,6 +91,20 @@ describe.each(DRIVERS)("statement import on the phone (planStatements + statemen
     await importAll([card], [{ index: 0, create: { name: "Visa" } }]);
     const data = await readInicioData(driver, USER, "2026-09-01");
     expect(data.statements).toEqual([expect.objectContaining({ dueDate: "2026-10-12", minimum: 60_000, totalDue: 260_000, cutDate: "2026-09-30", rate: 24.33 })]);
+    const cardId = data.accounts.find((a) => a.accountType === "CREDIT_CARD")!.id;
+    expect(await readStatementHistory(driver, USER, cardId)).toEqual([expect.objectContaining({
+      periodTo: "2026-09-30", totalDue: 260_000, minimum: 60_000, interestCharged: 4_500, purchases: 160_000, previousBalance: 210_000,
+    })]);
+  });
+
+  it("a card statement without its cut date (the parser didn't find it) still sets what you owe and the payment day", async () => {
+    await setup();
+    const noCut = { ...card, period_from: null, period_to: null };
+    const [r] = await importAll([noCut], [{ index: 0, create: { name: "Visa" } }]);
+    expect(r).toMatchObject({ nuevos: 2, balance: 260_000, corte: null, pago: 12 });
+    const cardId = (await accounts()).find((a) => a.accountType === "CREDIT_CARD")!.id;
+    // The cut taken as its last movement's day (2026-09-20): it shows in the history.
+    expect(await readStatementHistory(driver, USER, cardId)).toEqual([expect.objectContaining({ periodTo: "2026-09-20", minimum: 60_000 })]);
   });
 
   it("shows what a statement says before importing it: balance, minimum, due date, rate, interest at the minimum", () => {

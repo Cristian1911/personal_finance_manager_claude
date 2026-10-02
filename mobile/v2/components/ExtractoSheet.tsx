@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-  formatPesos, inicioSince, planStatements, readInicioData, statementCommands, statementResult, statementReview,
+  extractosView, formatPesos, inicioSince, readStatementHistory, planStatements, readInicioData, statementCommands, statementResult, statementReview,
   type StatementAccount, type StatementChoice, type StatementInput, type StatementPlan, type StatementResult,
 } from "@zeta/shared";
 import { toColombiaDateString } from "../../lib/utils/date";
@@ -18,7 +18,7 @@ type Step =
   | { kind: "reading"; importing?: boolean }
   | { kind: "password"; wrong: boolean }
   | { kind: "review"; plans: StatementPlan[] }
-  | { kind: "results"; results: StatementResult[] }
+  | { kind: "results"; results: StatementResult[]; outcomes: Record<number, { pago: string | null; deuda: string | null }> }
   | { kind: "error"; message: string };
 
 const KIND: Record<StatementPlan["kind"], string> = { savings: "Cuenta", credit_card: "Tarjeta", loan: "Préstamo", investment: "Inversión" };
@@ -63,7 +63,14 @@ export function ExtractoSheet({ file, userId, onClose }: {
       results.push(statementResult(w, out));
     }
     notifyLocalWrite();
-    if (live.current) setStep({ kind: "results", results });
+    // For each card: did it make a payment, and how the debt moved against the statement before.
+    const { driver } = await getV2Database();
+    const today = toColombiaDateString();
+    const outcomes: Record<number, { pago: string | null; deuda: string | null }> = {};
+    for (const r of results) {
+      if (r.accountId && r.periodTo) outcomes[r.index] = extractosView(await readStatementHistory(driver, userId, r.accountId), today).outcome(r.periodTo);
+    }
+    if (live.current) setStep({ kind: "results", results, outcomes });
   };
 
   const read = async (pw?: string) => {
@@ -202,8 +209,9 @@ export function ExtractoSheet({ file, userId, onClose }: {
                       r.paraRevisar ? `${r.paraRevisar} para revisar` : null,
                     ].filter(Boolean).join(" · "))}
                     {r.balance != null && text(`Saldo puesto al corte, más lo de después: ${money(r.balance)}`, true)}
-                    {r.minimo != null && text(`Pago mínimo ${money(r.minimo)}${r.vence ? ` · vence el ${short(r.vence)}` : ""} · ya cuenta en tu Disponible`, true)}
-                    {r.corte != null && text(`Aprendió su corte (el ${r.corte})${r.pago ? ` y su día de pago (el ${r.pago})` : ""}.`, true)}
+                    {step.outcomes[r.index]?.pago && text(step.outcomes[r.index].pago!)}
+                    {step.outcomes[r.index]?.deuda && text(step.outcomes[r.index].deuda!, true)}
+                    {(r.corte != null || r.pago != null) && text(`Aprendió ${[r.corte != null && `su corte (el ${r.corte})`, r.pago != null && `su día de pago (el ${r.pago})`].filter(Boolean).join(" y ")}.`, true)}
                     {r.paraRevisar > 0 && text("Los que son para revisar están en Revisar: Zeta no está segura de si ya los tenías.", true)}
                     {r.errores > 0 && text(`${r.errores} no se pudieron guardar.`, true)}
                   </>

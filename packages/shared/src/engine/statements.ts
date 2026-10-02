@@ -15,7 +15,7 @@ export interface StatementInput {
   period_from: string | null;
   period_to: string | null;
   currency: string;
-  summary: { final_balance: number | null } | null;
+  summary: { final_balance: number | null; previous_balance?: number | null; purchases_and_charges?: number | null; interest_charged?: number | null } | null;
   credit_card_metadata: {
     credit_limit: number | null; minimum_payment: number | null; payment_due_date: string | null; total_payment_due: number | null;
     /** E.A., in percent. */
@@ -114,6 +114,13 @@ export interface StatementReview {
   periodo: { from: string | null; to: string | null };
 }
 
+/**
+ * The statement's cut. When the parser didn't find it, its last movement's day: everything after it belongs to
+ * the next statement, so it's a safe lower bound (the balance at the cut + what came after).
+ */
+const cutOf = (st: StatementInput): string | null =>
+  st.period_to ?? (st.transactions.length ? st.transactions.reduce((m, t) => (t.date > m ? t.date : m), st.transactions[0].date) : null);
+
 const finalOf = (st: StatementInput) =>
   st.statement_type === "credit_card" ? st.credit_card_metadata?.total_payment_due ?? st.summary?.final_balance ?? null
     : st.statement_type === "loan" ? st.loan_metadata?.remaining_balance ?? st.summary?.final_balance ?? null
@@ -202,12 +209,13 @@ export async function statementCommands(
       } });
     }
     // A card learns its cut and payment days (and limit) from its first statement: the card bill needs them.
+    // Only a cut the statement states (an estimated one would be wrong); the payment day comes from the due date.
     if (account.accountType === "CREDIT_CARD" && account.cutoffDay == null) {
       const cutoffDay = dayOf(st.period_to);
       const paymentDay = dayOf(st.credit_card_metadata?.payment_due_date);
-      if (cutoffDay) {
+      if (cutoffDay || paymentDay) {
         steps.push({ type: "editAccount", kind: "card", payload: {
-          accountId, cutoffDay, ...(paymentDay ? { paymentDay } : {}),
+          accountId, ...(cutoffDay ? { cutoffDay } : {}), ...(paymentDay ? { paymentDay } : {}),
           ...(st.credit_card_metadata?.credit_limit ? { creditLimit: st.credit_card_metadata.credit_limit } : {}),
         } });
       }
@@ -217,14 +225,17 @@ export async function statementCommands(
     if (st.statement_type !== "savings" && (review.minimo != null || review.vence)) {
       steps.push({ type: "recordStatement", kind: "statement", payload: {
         id: await uuidFrom(`statement:${accountId}:COP:${st.period_from ?? ""}:${st.period_to ?? ""}`, hash), accountId,
-        periodFrom: st.period_from, periodTo: st.period_to, finalBalance: st.summary?.final_balance ?? null,
+        periodFrom: st.period_from, periodTo: cutOf(st), finalBalance: st.summary?.final_balance ?? null,
         totalPaymentDue: review.saldo, minimumPayment: review.minimo, paymentDueDate: review.vence, interestRate: review.tasa,
         currencyCode: "COP", transactionCount: st.transactions.length,
+        previousBalance: st.summary?.previous_balance ?? null, purchases: st.summary?.purchases_and_charges ?? null,
+        interestCharged: st.summary?.interest_charged ?? null,
       } });
     }
     const finalBalance = finalOf(st);
-    if (finalBalance != null && st.period_to) {
-      steps.push({ type: "anchorStatementBalance", kind: "anchor", payload: { accountId, finalBalance, asOf: st.period_to } });
+    const cut = cutOf(st);
+    if (finalBalance != null && cut) {
+      steps.push({ type: "anchorStatementBalance", kind: "anchor", payload: { accountId, finalBalance, asOf: cut } });
     }
     work.push({ index: plan.index, account: account.name?.trim() || label, accountId, created, steps });
   }
@@ -232,7 +243,7 @@ export async function statementCommands(
 }
 
 export interface StatementResult {
-  index: number; account: string; created: boolean; nuevos: number; yaEstaban: number; paraRevisar: number;
+  index: number; account: string; accountId: string | null; periodTo: string | null; created: boolean; nuevos: number; yaEstaban: number; paraRevisar: number;
   errores: number; balance: number | null; nota?: string;
   /** The statement's minimum and due date, now counted in Disponible. */
   minimo?: number | null; vence?: string | null;
@@ -242,12 +253,13 @@ export interface StatementResult {
 
 /** Counts a statement's command results for the summary ("3 nuevos · 2 ya estaban · 1 para revisar"). */
 export function statementResult(w: StatementWork, results: CommandResult[]): StatementResult {
-  const r: StatementResult = { index: w.index, account: w.account, created: w.created, nuevos: 0, yaEstaban: 0, paraRevisar: 0, errores: 0, balance: null, nota: w.nota };
+  const r: StatementResult = { index: w.index, account: w.account, accountId: w.accountId, periodTo: null, created: w.created, nuevos: 0, yaEstaban: 0, paraRevisar: 0, errores: 0, balance: null, nota: w.nota };
   w.steps.forEach((step, i) => {
     const res = results[i];
     if (!res) return;
     const p = step.payload as Record<string, unknown>;
     if (step.kind === "statement" && res.status === "applied") {
+      r.periodTo = p.periodTo as string | null;
       r.minimo = p.minimumPayment as number | null;
       r.vence = p.paymentDueDate as string | null;
       return;

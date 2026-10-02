@@ -17,7 +17,7 @@ export async function recordStatement(s: StoragePort, cmd: CommandEnvelope<Recor
   const bad = (error: string): CommandResult => ({ status: "rejected", replayed: false, code: "invalid", error });
   if (!p || !UUID_RE.test(p.id ?? "") || !UUID_RE.test(p.accountId ?? "")) return bad("Identificador inválido.");
   if (!date(p.periodFrom) || !date(p.periodTo) || !date(p.paymentDueDate)) return bad("Fecha inválida.");
-  if (![p.finalBalance, p.totalPaymentDue, p.minimumPayment].every(money)) return bad("Monto inválido.");
+  if (![p.finalBalance, p.totalPaymentDue, p.minimumPayment, p.previousBalance, p.purchases, p.interestCharged].every(money)) return bad("Monto inválido.");
   if (p.interestRate != null && (typeof p.interestRate !== "number" || p.interestRate < 0 || p.interestRate > 300)) return bad("Tasa inválida.");
   if (typeof p.currencyCode !== "string" || !/^[A-Z]{3}$/.test(p.currencyCode)) return bad("Moneda inválida.");
   if (!Number.isInteger(p.transactionCount) || p.transactionCount < 0) return bad("Cantidad inválida.");

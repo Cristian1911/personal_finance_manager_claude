@@ -195,3 +195,10 @@ CREATE TABLE statement_snapshots (
   created_at TEXT, updated_at TEXT
 );
 `;
+
+/** Phone schema version 11: each statement's movement of the debt (month-to-month tracking). */
+export const SQLITE_STATEMENTS_DETAIL_SCHEMA = `
+ALTER TABLE statement_snapshots ADD COLUMN previous_balance REAL;
+ALTER TABLE statement_snapshots ADD COLUMN purchases_and_charges REAL;
+ALTER TABLE statement_snapshots ADD COLUMN interest_charged REAL;
+`;

@@ -219,6 +219,8 @@ export interface StatementSnapshotRow {
   periodFrom: string | null; periodTo: string | null;
   finalBalance: number | null; totalPaymentDue: number | null; minimumPayment: number | null;
   paymentDueDate: string | null; interestRate: number | null; currencyCode: string; transactionCount: number;
+  /** How the debt moved in the period (month-to-month tracking). */
+  previousBalance?: number | null; purchases?: number | null; interestCharged?: number | null;
 }
 
 /** A comercio or persona (S8-2). */
