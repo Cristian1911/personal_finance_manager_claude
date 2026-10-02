@@ -34,7 +34,7 @@ export function Button({ label, onPress, variant = "primary", size = "L", icon, 
   const z = SIZE[size];
   const off = disabled && !loading;
   const look: { bg?: string; border?: string; ink: string } = off
-    ? { bg: variant === "text" ? undefined : c.sunk, ink: c.control }
+    ? { bg: variant === "text" ? undefined : c.sunk, ink: c.muted }
     : variant === "primary" ? { bg: c.button, ink: c.onButton }
     : variant === "secondary" ? { border: c.control, ink: c.ink }
     : variant === "destructive" ? { border: c.bad.solid, ink: c.bad.text }

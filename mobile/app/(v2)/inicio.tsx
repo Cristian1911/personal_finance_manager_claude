@@ -14,6 +14,7 @@ import { runLocalCommand } from "../../lib/v2/engine/run-local";
 import { loadInicio, saveInicioLayout } from "../../lib/v2/inicio/load";
 import { useV2UserId } from "../../lib/v2/user";
 import { useAuth } from "../../lib/auth";
+import { FAB_OVERHANG } from "../../v2/components/TabBar";
 import { toColombiaDateString } from "../../lib/utils/date";
 import { DisponibleBlock } from "../../v2/components/DisponibleBlock";
 import { DisponibleDetail } from "../../v2/components/DisponibleDetail";
@@ -91,11 +92,10 @@ export default function InicioScreen() {
   const reveal = useCallback((top: number, bottom: number) => {
     const margin = 16;
     const viewTop = scrollY.current + insets.top;
-    // The "+" overhangs the bar's top edge by 22.
-    const viewBottom = scrollY.current + viewH.current - 22;
+    const viewBottom = scrollY.current + viewH.current - FAB_OVERHANG;
     let to: number | null = null;
     // Too low: lift it so it ends on screen, never past its own top.
-    if (bottom > viewBottom - margin) to = Math.min(top - insets.top - margin, bottom - viewH.current + 22 + margin);
+    if (bottom > viewBottom - margin) to = Math.min(top - insets.top - margin, bottom - viewH.current + FAB_OVERHANG + margin);
     // Too high (scrolled past it): bring its top down.
     else if (top < viewTop + margin) to = top - insets.top - margin;
     if (to === null) return;

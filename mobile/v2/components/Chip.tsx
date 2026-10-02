@@ -52,5 +52,5 @@ export function Segmented<K extends string>({ options, value, onChange }: {
 const styles = StyleSheet.create({
   chip: { height: 32, paddingHorizontal: 12, borderRadius: 9, justifyContent: "center" },
   track: { flexDirection: "row", padding: 3, borderRadius: 11, borderWidth: 1 },
-  seg: { flex: 1, minHeight: 38, borderRadius: 8, alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },
+  seg: { flex: 1, minHeight: 44, borderRadius: 8, alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },
 });

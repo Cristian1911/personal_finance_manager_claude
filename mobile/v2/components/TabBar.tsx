@@ -12,6 +12,9 @@ export const V2_TABS: readonly { name: string; title: string; icon: LucideIcon }
   { name: "revisar", title: "Revisar", icon: Inbox },
 ];
 
+/** How far the "+" sticks up over the bar (screens keep content clear of it). */
+export const FAB_OVERHANG = 22;
+
 /** Secondary screens open inside the tab they belong to; that tab stays lit. */
 const PARENT_TAB: Record<string, string> = { flujo: "inicio" };
 
@@ -51,7 +54,7 @@ export function TabBar({ state, navigation, onAdd }: {
   };
 
   return (
-    <View accessibilityRole="tablist" style={[styles.bar, { backgroundColor: t.colors.card, borderTopColor: t.colors.line, paddingBottom: Math.max(insets.bottom, 8) }]}>
+    <View style={[styles.bar, { backgroundColor: t.colors.card, borderTopColor: t.colors.line, paddingBottom: Math.max(insets.bottom, 8) }]}>
       {tab(0)}
       {tab(1)}
       <View style={styles.fabSlot}>
@@ -80,5 +83,5 @@ const styles = StyleSheet.create({
   tab: { flex: 1, alignItems: "center", gap: 3, minHeight: 48 },
   pill: { width: 54, height: 30, borderRadius: 99, alignItems: "center", justifyContent: "center" },
   fabSlot: { width: 72, alignItems: "center" },
-  fab: { width: 58, height: 58, borderRadius: 29, marginTop: -22, alignItems: "center", justifyContent: "center" },
+  fab: { width: 58, height: 58, borderRadius: 29, marginTop: -FAB_OVERHANG, alignItems: "center", justifyContent: "center" },
 });

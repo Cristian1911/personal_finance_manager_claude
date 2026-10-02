@@ -14,9 +14,9 @@ V2_DIRS.forEach((d) => walk(join(root, d)));
 
 const bad = [];
 for (const f of files) {
-  for (const [, spec] of readFileSync(f, "utf8").matchAll(/from\s+"(\.{1,2}\/[^"]+)"/g)) {
+  for (const [, spec] of readFileSync(f, "utf8").matchAll(/(?:from|import\(|require\()\s*["'](\.{1,2}\/[^"']+)["']/g)) {
     const target = relative(root, resolve(dirname(f), spec));
-    if (!isV2(target) && !ALLOWED.includes(target)) bad.push(`${relative(root, f)} → ${target}`);
+    if (!isV2(target) && !ALLOWED.some((a) => target === a || target.startsWith(a + "/"))) bad.push(`${relative(root, f)} → ${target}`);
   }
 }
 if (bad.length) {

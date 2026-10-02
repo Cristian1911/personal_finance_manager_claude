@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { AccessibilityInfo, Pressable, StyleSheet, Text } from "react-native";
 import Animated, { useAnimatedStyle, withTiming } from "react-native-reanimated";
+import { FAB_OVERHANG } from "./TabBar";
 import { useV2Theme } from "../theme/ThemeProvider";
 import { useMotionMs } from "./Collapse";
 
@@ -8,8 +9,8 @@ import { useMotionMs } from "./Collapse";
 export const TOAST_MS = 5000;
 
 /** A short message at the bottom with an optional action ("Deshacer"); hides itself after 5 s. */
-/** Screens end at the tab bar; clear the "+" that overhangs it by 22. */
-const TOAST_BOTTOM = 34;
+/** Screens end at the tab bar; clear the "+" that overhangs it. */
+const TOAST_BOTTOM = FAB_OVERHANG + 12;
 
 export function Toast({ message, action, onHide }: {
   message: string | null;

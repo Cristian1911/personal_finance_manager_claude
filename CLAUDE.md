@@ -21,7 +21,7 @@ Zeta v2 is a native-only rebuild (same store app, `mobile/`, `(v2)` routes behin
 - **Disponible:** only the chosen accounts count; card purchases don't lower it, the card **bill** does (minimum payment by default); promised money is subtracted before it's paid. Full rules: spec §4.
 - **Schema until v2 ships:** additive only (the web app must keep working on the same DB); new settings go in side tables, never new `_enc` columns; dev Supabase project first, then production by hand.
 - **Design:** Oliva afinada (default) + Nítido (optional), light/dark; tokens in `mobile/v2/tokens`. **Never use colored side stripes / left accent bars.** Only the Disponible number is bold; widgets centered, one question each, gallery-tested at 360/390/430. Screens come from Claude Design (`docs/mlp/05c-claude-design-v2-prompt.md`).
-- **Agents for v2:** `mobile-webapp-parity` is retired for v2 (contract tests replace it); `zetas-front-guy` reviews `mobile/v2/**` against the v2 tokens and widget rules; `mobile-sync-doctor` also covers the command outbox and replays.
+- **Agents for v2:** `zeta-v2-reviewer` is the review gate for all v2 code (UI under `mobile/v2`, `mobile/app/(v2)`, `mobile/lib/v2`, the engine, `/api/v2` and the v2 sync); it replaces `zetas-front-guy`, `mobile-webapp-parity` and `mobile-sync-doctor` for v2. `mobile-perf-doctor` (lists, animation) and `supabase-migrator` still apply. `pnpm --dir mobile check:v2` (v2 → v1 import boundary + tsc) is a gate.
 - The sections below describe the current web app and mobile v1; where they conflict with v2 rules, v2 rules apply to v2 code only.
 
 ## Design Source of Truth (web app and mobile v1)
