@@ -10,7 +10,9 @@ the tests talk to zeta-dev only. To undo anything, close its PR (and the ones ab
 |---|---|---|---|
 | #446 | `feat/v2-components-tabbar` | Shared controls, tab bar, v2 boundary check, `zeta-v2-reviewer` agent | Open. **Merge together with the next one**: on a real phone the + and the outlined buttons render unstyled until the `Tap` fix in the accounts PR |
 | #447 | `feat/v2-accounts` | Debt-aware balances (cards/loans), createAccount/editAccount/archiveAccount, Mis cuentas, Cuenta, Agregar | Open, reviewed, fixes in |
-| (next) | `feat/v2-anotar` | Anotar (Gasto/Ingreso/Entre cuentas), live effect line, Dictar, Pagar tarjeta, captureTransfer | Open, reviewed, fixes in |
+| #448 | `feat/v2-anotar` | Anotar (Gasto/Ingreso/Entre cuentas), live effect line, Dictar, Pagar tarjeta, captureTransfer | Open, reviewed, fixes in |
+| #449 | `feat/v2-pagos` | Pagos fijos, card bills, loan cuotas, bill detection, Pagos tab | Open, reviewed, fixes in |
+| (next) | `feat/v2-sync` | Sync (phone ↔ zeta-dev), `/api/v2/commands` + `/api/v2/snapshot`, v2 becomes the default screen | In review |
 
 ## Decisions I took for you (simplest option; change any)
 
@@ -37,6 +39,26 @@ the tests talk to zeta-dev only. To undo anything, close its PR (and the ones ab
   without one get a clear message. Not testable on the simulator.
 - **D10. Anotar fecha: Hoy / Ayer only.** Older dates: fix them in Detalle.
 
+- **D11. Card bill = what you bought with the card in that statement period** (cut to cut), due on the payment day,
+  shown "≈". Debt from before (what you told when adding the card, older statements) is debt, not this bill. The
+  spec's S3-6 "minimum payment by default" needs purchase-by-purchase cuotas, which only statements (PDF import) give;
+  until then this is the honest estimate. Paying more than the bill is fine; paying less leaves the rest in Por pagar.
+- **D12. Pagos fijos are on days 1–28.** The server's generator steps month by month (Jan 31 → Feb 28 → Mar 28), the
+  phone computes each month from the start; they only agree on 1–28. "Último día del mes" would need a server change.
+- **D13. v2 is the default screen** whenever v2 is on (dev builds and EXPO_PUBLIC_ZETA_V2=1): signed-in users land on
+  v2 Inicio; its first-run questions replace v1's onboarding. v1 screens stay reachable by link until deleted.
+
+## Things only you can do
+
+1. **Production web server env** (for sync to work from real phones): add `V2_SUPABASE_URL`, `V2_SUPABASE_PUBLISHABLE_KEY`,
+   `V2_DATABASE_URL` (zeta-dev's values, as in `.env.v2-dev`: URL, publishable key, DB URL) to the VPS / deploy secrets.
+   Without them `/api/v2/*` answers 503 and phones keep working offline only.
+2. **Google/Apple sign-in on zeta-dev** (you were on it).
+3. **Before launch**: delete the test user `claude-sim@zeta-dev.test` (created for the simulator sync test) and turn on
+   backups for zeta-dev.
+4. **My local leftovers** (not in git): `mobile/.env` points `EXPO_PUBLIC_API_URL` at `http://localhost:3000` for the sync
+   test; the original is in `mobile/.env.before-sync-test`. A local web dev server and Metro may still be running.
+
 ## Found and fixed
 
 - **Card balances moved the wrong way in the v2 engine** (a card purchase lowered the debt). Now cards/loans
@@ -49,12 +71,16 @@ the tests talk to zeta-dev only. To undo anything, close its PR (and the ones ab
 - **Deleting a manual transfer leg could delete a bank row** linked to it by v1's "link as transfer". Now only
   all-manual transfers delete together.
 - **Accounts could go negative silently** (seen on the simulator): Anotar warns before saving.
+- **Paying a bill that was already set aside** showed Disponible dropping again in Anotar's preview (seen on the simulator);
+  the preview now applies the same detection as saving.
+- **A bill paid with a card, or just before the cycle began, stayed subtracted** while Pagos said Pagado; a partial card
+  payment erased the whole card bill; a late loan payment paid two cuotas. All fixed with tests (review of #449).
+- **iOS drops a modal opened while another is closing** (Pagar from a bill's sheet did nothing): `Sheet.onClosed`.
 
 ## Still pointing at v1 screens (fixed as each v2 screen lands)
 
-Inicio widget buttons: `add_bill` and `see_bills` (/recurrentes), `import_statement` (/import),
-`split_purchase`, `lend`, `see_people` (/personas), Disponible detail "Por pagar" (/recurrentes). The Tarjeta widget doesn't
-read accounts yet ("Sin tarjetas aún" even with a card) — comes with Pagos.
+Inicio widget buttons: `import_statement` (/import), `split_purchase`, `lend`, `see_people` (/personas). The Tarjeta widget
+doesn't read accounts yet ("Sin tarjetas aún" even with a card).
 
 ## Pre-existing, not mine
 
