@@ -1,7 +1,7 @@
-import { SQLITE_ACCOUNTS_SCHEMA, SQLITE_CAPTURE_TIME_SCHEMA, SQLITE_ENGINE_SCHEMA, SQLITE_EXCLUDED_SCHEMA, SQLITE_RECURRING_SCHEMA, SQLITE_SETTINGS_SCHEMA, SQLITE_TRANSFER_SCHEMA } from "../../schema/sqlite";
+import { SQLITE_ACCOUNTS_SCHEMA, SQLITE_CAPTURE_TIME_SCHEMA, SQLITE_ENGINE_SCHEMA, SQLITE_EXCLUDED_SCHEMA, SQLITE_CATEGORIES_SCHEMA, SQLITE_BANK_SCHEMA, SQLITE_STATEMENTS_SCHEMA, SQLITE_STATEMENTS_DETAIL_SCHEMA, SQLITE_RECURRING_SCHEMA, SQLITE_SETTINGS_SCHEMA, SQLITE_TRANSFER_SCHEMA } from "../../schema/sqlite";
 
 /** The phone's full schema: every version in order. */
-export const SQLITE_SCHEMA = SQLITE_ENGINE_SCHEMA + SQLITE_SETTINGS_SCHEMA + SQLITE_CAPTURE_TIME_SCHEMA + SQLITE_EXCLUDED_SCHEMA + SQLITE_ACCOUNTS_SCHEMA + SQLITE_TRANSFER_SCHEMA + SQLITE_RECURRING_SCHEMA;
+export const SQLITE_SCHEMA = SQLITE_ENGINE_SCHEMA + SQLITE_SETTINGS_SCHEMA + SQLITE_CAPTURE_TIME_SCHEMA + SQLITE_EXCLUDED_SCHEMA + SQLITE_ACCOUNTS_SCHEMA + SQLITE_TRANSFER_SCHEMA + SQLITE_RECURRING_SCHEMA + SQLITE_CATEGORIES_SCHEMA + SQLITE_BANK_SCHEMA + SQLITE_STATEMENTS_SCHEMA + SQLITE_STATEMENTS_DETAIL_SCHEMA;
 
 // Same logical tables in both dialects; names and columns match the real
 // Supabase views (`accounts`, `transactions`) and new tables (`commands`,
@@ -28,8 +28,23 @@ CREATE TABLE transactions (
   capture_method text NOT NULL, idempotency_key text NOT NULL UNIQUE,
   is_excluded boolean NOT NULL DEFAULT false,
   created_at timestamptz NOT NULL DEFAULT now(),
-  flow_class text, flow_class_version smallint, transfer_group_id uuid
+  flow_class text, flow_class_version smallint, transfer_group_id uuid,
+  category_id uuid, destinatario_id uuid,
+  raw_description text, transaction_time time, merchant_name text, source_pattern text,
+  reconciled_into_transaction_id uuid, provider text NOT NULL DEFAULT 'MANUAL', status text NOT NULL DEFAULT 'POSTED'
 );
+-- Plain here; on Supabase destinatarios is a view (name encrypted).
+CREATE TABLE destinatarios (
+  id uuid PRIMARY KEY, user_id uuid NOT NULL, name text NOT NULL, kind text NOT NULL,
+  default_category_id uuid, is_active boolean NOT NULL DEFAULT true, created_at timestamptz, updated_at timestamptz
+);
+CREATE TABLE destinatario_rules (
+  id uuid PRIMARY KEY, user_id uuid NOT NULL, destinatario_id uuid NOT NULL,
+  match_type text NOT NULL, pattern text NOT NULL, priority int NOT NULL DEFAULT 100,
+  match_count int NOT NULL DEFAULT 0, last_matched_at timestamptz, created_at timestamptz NOT NULL DEFAULT now()
+);
+-- As on Supabase (20260310044637): one rule per text per user.
+CREATE UNIQUE INDEX destinatario_rules_user_pattern ON destinatario_rules (user_id, lower(pattern));
 CREATE TABLE commands (
   id uuid NOT NULL, user_id uuid NOT NULL, device_id text NOT NULL,
   type text NOT NULL, client_ts timestamptz NOT NULL, payload_enc bytea,
@@ -80,6 +95,14 @@ CREATE TABLE recurring_occurrences (
   status text NOT NULL DEFAULT 'pending', transaction_id uuid, paid_at timestamptz, skipped_at timestamptz,
   linked_manually boolean NOT NULL DEFAULT false, created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (template_id, occurrence_date)
+);
+CREATE TABLE statement_snapshots (
+  id uuid PRIMARY KEY, user_id uuid NOT NULL, account_id uuid NOT NULL,
+  period_from date, period_to date, final_balance numeric, total_payment_due numeric, minimum_payment numeric,
+  payment_due_date date, interest_rate numeric, currency_code text NOT NULL DEFAULT 'COP',
+  previous_balance numeric, purchases_and_charges numeric, interest_charged numeric,
+  transaction_count int NOT NULL DEFAULT 0, imported_count int NOT NULL DEFAULT 0, skipped_count int NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE TABLE account_settings (
   user_id uuid NOT NULL, account_id uuid NOT NULL REFERENCES accounts_enc(id) ON DELETE CASCADE,

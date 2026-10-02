@@ -3,7 +3,9 @@ import { Alert, ScrollView, StyleSheet, Switch, Text, View } from "react-native"
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChevronLeft } from "lucide-react-native";
-import { formatPesos, movimientosView, type AccountRow } from "@zeta/shared";
+import { extractosView, formatPesos, movimientosView, readStatementHistory, type AccountRow, type StatementHistoryRow } from "@zeta/shared";
+import { getV2Database } from "../../lib/v2/engine/database";
+import { toColombiaDateString } from "../../lib/utils/date";
 import { runLocalCommand } from "../../lib/v2/engine/run-local";
 import { loadAccount, loadCuentas, type LoadedCuentas } from "../../lib/v2/cuentas/load";
 import { loadMovimientos } from "../../lib/v2/movimientos/load";
@@ -32,16 +34,19 @@ export default function CuentaScreen() {
   const [account, setAccount] = useState<AccountRow | null>(null);
   const [cuentas, setCuentas] = useState<LoadedCuentas | null>(null);
   const [mov, setMov] = useState<Awaited<ReturnType<typeof loadMovimientos>>>(null);
+  const [history, setHistory] = useState<StatementHistoryRow[]>([]);
   const [editing, setEditing] = useState(false);
   const [confirm, setConfirm] = useState<"count" | "archive" | null>(null);
 
   const reload = useCallback(async () => {
     if (!id) return;
     try {
-      const [a, c, m] = await Promise.all([loadAccount(userId, id), loadCuentas(userId), loadMovimientos(userId)]);
+      const { driver } = await getV2Database();
+      const [a, c, m, h] = await Promise.all([loadAccount(userId, id), loadCuentas(userId), loadMovimientos(userId), readStatementHistory(driver, userId, id)]);
       setAccount(a);
       setCuentas(c);
       setMov(m);
+      setHistory(h);
     } catch (e) {
       console.warn("[v2 cuenta] load failed", e);
       Alert.alert("No pudimos cargar la cuenta", "Intenta de nuevo.");
@@ -172,6 +177,27 @@ export default function CuentaScreen() {
           />
         </View>
 
+        {history.length > 0 && (
+          // Extractos: what you owed at each cut and how it moved — month-to-month tracking of the debt.
+          <View style={[styles.card, { backgroundColor: t.colors.card }, t.shadow]}>
+            <Text style={[styles.section, { color: t.colors.muted, fontFamily: t.fonts.mono }]}>EXTRACTOS</Text>
+            {extractosView(history, toColombiaDateString()).rows.map((e, i) => (
+              <View key={e.id} accessible style={[styles.extracto, i > 0 && { borderTopWidth: 1, borderTopColor: t.colors.line }]}>
+                <View style={styles.extractoTop}>
+                  <Text style={{ flex: 1, fontSize: 14.5, color: t.colors.ink, fontFamily: t.fonts.uiSemibold }}>{e.mes}</Text>
+                  {e.debes && <Text style={{ fontSize: 14.5, color: t.colors.ink, fontFamily: t.fonts.numberSemibold, fontVariant: ["tabular-nums"] }}>{e.debes}</Text>}
+                </View>
+                {e.cambio && (
+                  <Text style={{ fontSize: 12.5, fontFamily: t.fonts.uiMedium, color: e.cambioTone === "bad" ? t.colors.bad.text : e.cambioTone === "ok" ? t.colors.ok.text : t.colors.muted }}>{e.cambio}</Text>
+                )}
+                <Text style={{ fontSize: 12.5, color: t.colors.muted, fontFamily: t.fonts.ui }}>
+                  {[e.minimo && `Mínimo ${e.minimo}`, e.estado, e.intereses && `Intereses ${e.intereses}`].filter(Boolean).join(" · ")}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         <Button label="Editar cuenta" variant="text" onPress={() => setEditing(true)} style={{ alignSelf: "center" }} />
         <Button label="Archivar cuenta" variant="text" onPress={() => setConfirm("archive")} style={{ alignSelf: "center" }} />
       </ScrollView>
@@ -206,6 +232,8 @@ export default function CuentaScreen() {
 }
 
 const styles = StyleSheet.create({
+  extracto: { paddingVertical: 10, gap: 2 },
+  extractoTop: { flexDirection: "row", alignItems: "center", gap: 8 },
   page: { paddingHorizontal: 16, paddingBottom: 40, gap: 12 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 4, paddingTop: 4 },
   title: { flex: 1, fontSize: 26, letterSpacing: -0.5 },

@@ -4,6 +4,7 @@ import type { CommandEnvelope, CommandResult, StoragePort } from "../types";
 import { UUID_RE, isIsoUtc } from "../validate";
 import { moveBalance } from "./balance";
 import { autoLinkPayment } from "./pagos";
+import { matchOnCapture } from "./categorias";
 
 export interface CaptureManualTransactionPayload {
   transactionId: string;
@@ -82,6 +83,8 @@ export async function captureManualTransaction(
     notes: p.notes ?? null,
     captureMethod: "MANUAL_FORM",
     idempotencyKey,
+    // Who it is and its category, from the destinatario rules ("Rappi" → Rappi, Domicilios).
+    ...(await matchOnCapture(s, cmd.userId, p.description)),
     flowClass: p.flowClass ?? null,
     // When it was captured on the device, not when the server replays it: a
     // movement on the first-cycle balance's day lands before or after it the same everywhere.

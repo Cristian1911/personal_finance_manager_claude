@@ -39,9 +39,10 @@ describe.each(DRIVERS)("createSqlStorage on %s", (_name, make) => {
     expect(await s.getTransaction(USER, TX)).toEqual({
       id: TX, userId: USER, accountId: ACCOUNT, amount: 25000, currencyCode: "COP", direction: "OUTFLOW",
       transactionDate: "2026-09-18", cleanDescription: "Tostao", notes: "con Ana", captureMethod: "MANUAL_FORM",
-      idempotencyKey: "k1", createdAt: "2026-09-18T15:00:00.000Z", isExcluded: false, transferGroupId: null,
+      idempotencyKey: "k1", createdAt: "2026-09-18T15:00:00.000Z", isExcluded: false, transferGroupId: null, categoryId: null, destinatarioId: null,
+      flowClass: null, flowClassVersion: null, rawDescription: null, transactionTime: null, sourcePattern: null, reconciledIntoTransactionId: null, status: "POSTED",
     });
-    await s.updateTransactionFacts(USER, TX, { amount: 30000, transactionDate: "2026-09-17", accountId: ACCOUNT });
+    await s.updateTransactionFacts(USER, TX, { amount: 30000, transactionDate: "2026-09-17", accountId: ACCOUNT, cleanDescription: "Tostao", transactionTime: null });
     expect(await s.getTransaction(USER, TX)).toMatchObject({ amount: 30000, transactionDate: "2026-09-17" });
     await s.deleteTransaction(OTHER_USER, TX); // scoped: another user's delete does nothing
     expect(await s.getTransaction(USER, TX)).not.toBeNull();

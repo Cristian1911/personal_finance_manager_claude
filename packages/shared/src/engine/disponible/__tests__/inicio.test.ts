@@ -53,6 +53,57 @@ describe("buildInicio — first run", () => {
   });
 });
 
+describe("buildInicio — the Tarjeta widget reads the cards", () => {
+  it("a card with its days shows its next bill (purchases of its period), due date and what you owe", () => {
+    const card = { id: CARD, name: "Visa", accountType: "CREDIT_CARD", currentBalance: 900_000, countsInDisponible: null, cutoffDay: 27, paymentDay: 12 };
+    const r = build("2026-09-18", [tx("2026-09-17", 300_000, "OUTFLOW", { accountId: CARD }), tx("2026-08-20", 50_000, "OUTFLOW", { accountId: CARD })],
+      { accounts: [ACCOUNTS[0], card] });
+    if (r.status !== "ready") throw new Error(r.status);
+    const w = r.widgets.find((x) => x.id === `tarjeta:${CARD}`);
+    expect(w).toMatchObject({ title: "Visa", hint: "próxima factura" });
+    // Cut on the 27th → this bill is Aug 28–Sep 27 (the 300.000), due Oct 12.
+    expect(w!.rows).toEqual(expect.arrayContaining([expect.objectContaining({ id: "total", amount: "$900.000" })]));
+    expect(w!.lead).toContain("300.000");
+    expect(r.widgets.some((x) => x.empty && x.id.startsWith("tarjeta"))).toBe(false);
+  });
+
+  const card = { id: CARD, name: "Visa", accountType: "CREDIT_CARD", currentBalance: 0, countsInDisponible: null, cutoffDay: 27, paymentDay: 12 };
+  const tarjeta = (r: ReturnType<typeof build>) => {
+    if (r.status !== "ready") throw new Error(r.status);
+    return r.widgets.find((x) => x.id === `tarjeta:${CARD}`)!;
+  };
+
+  it("with its statement, the card's bill in Disponible is the minimum, not everything bought (D24)", () => {
+    const r = build("2026-10-02", [tx("2026-09-17", 300_000, "OUTFLOW", { accountId: CARD })], {
+      accounts: [ACCOUNTS[0], { ...card, cutoffDay: 30, paymentDay: 12 }],
+      statements: [{ accountId: CARD, cutDate: "2026-09-30", dueDate: "2026-10-12", minimum: 45_000, totalDue: 300_000, rate: 24.33 }],
+    });
+    if (r.status !== "ready") throw new Error(r.status);
+    expect(r.bills.find((b) => b.kind === "card")).toMatchObject({ amount: 45_000, dueDate: "2026-10-12", estimated: false });
+    expect(tarjeta(r).rows).toEqual(expect.arrayContaining([expect.objectContaining({ id: "minimum", amount: "$45.000" })]));
+  });
+
+  it("a bill paid this cycle isn't shown as owed (no red on its due day)", () => {
+    const r = build("2026-10-12", [
+      tx("2026-09-17", 300_000, "OUTFLOW", { accountId: CARD }),
+      tx("2026-10-01", 300_000, "INFLOW", { accountId: CARD }), // paid
+    ], { accounts: [ACCOUNTS[0], card] });
+    const w = tarjeta(r);
+    expect(w.lead).not.toContain("300.000");
+    expect(w.attention).toBeFalsy();
+  });
+
+  it("after the due date with nothing new bought, no old bill comes back as 'Pago vencido'", () => {
+    const r = build("2026-10-20", [tx("2026-09-17", 300_000, "OUTFLOW", { accountId: CARD })], { accounts: [ACCOUNTS[0], card] });
+    expect(tarjeta(r).attention?.reason ?? "").not.toBe("Pago vencido");
+  });
+
+  it("a card without its payment day asks for it instead of showing ≈ $0", () => {
+    const r = build("2026-09-18", [], { accounts: [ACCOUNTS[0], { ...card, cutoffDay: null, paymentDay: null }] });
+    expect(tarjeta(r)).toMatchObject({ hint: "Falta el día de pago" });
+  });
+});
+
 describe("buildInicio — the first cycle starts from the balance told", () => {
   it("balance − Ahorro − what went out after it; card purchases don't count", () => {
     const r = build("2026-09-18", [
@@ -69,6 +120,15 @@ describe("buildInicio — the first cycle starts from the balance told", () => {
     expect(r.verdict.state).toBe("vas_bien");
     // Counted money now (Mis cuentas' header): the balance told minus what left the debit after it.
     expect(r.balanceToday).toBe(1_400_000);
+  });
+
+  it("a statement row (no time) is placed by its date, not by when it was imported", () => {
+    const imported = "2026-09-18T15:00:00.000Z";
+    const r = build("2026-09-18", [
+      tx("2026-09-16", 50_000, "OUTFLOW", { captureMethod: "PDF_IMPORT", createdAt: imported }), // the anchor's day: inside the balance
+      tx("2026-09-17", 20_000, "OUTFLOW", { captureMethod: "PDF_IMPORT", createdAt: imported }),
+    ]);
+    expect(r.result.yaSalio.total).toBe(20_000);
   });
 
   it("a movement captured later the same day counts", () => {

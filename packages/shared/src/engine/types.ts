@@ -1,6 +1,10 @@
 /** Commands known to the engine. Add a name here when adding a handler. */
 export type CommandType =
   | "captureManualTransaction"
+  | "captureBankTransaction"
+  | "resolveBankDuplicate"
+  | "anchorStatementBalance"
+  | "recordStatement"
   | "setTransactionNote"
   | "setTransactionExcluded"
   | "deleteTransaction"
@@ -14,7 +18,11 @@ export type CommandType =
   | "createPagoFijo"
   | "editPagoFijo"
   | "archivePagoFijo"
-  | "setOccurrenceStatus";
+  | "setOccurrenceStatus"
+  | "setTransactionCategory"
+  | "createDestinatario"
+  | "setTransactionDestinatario"
+  | "setDestinatarioCategory";
 
 /**
  * One user action. `id` is created on the device (UUID) and makes replays
@@ -148,12 +156,26 @@ export interface TransactionInsert {
   transactionDate: string;
   cleanDescription: string;
   notes: string | null;
-  captureMethod: "MANUAL_FORM";
+  captureMethod: "MANUAL_FORM" | "EMAIL_IMPORT" | "PDF_IMPORT";
   idempotencyKey: string;
   /** Set by hand (Anotar): stored with flow_class_version 0 (v1 FLOW_CLASS_HAND_SET_VERSION). */
   flowClass?: string | null;
+  /** The rules version that classified it; omitted = set by hand (0). */
+  flowClassVersion?: number;
+  /** What the bank said: its line (feeds the idempotency key), time of day, merchant and alert family. */
+  rawDescription?: string | null;
+  transactionTime?: string | null;
+  merchantName?: string | null;
+  sourcePattern?: string | null;
+  provider?: "MANUAL" | "EMAIL" | "OCR";
+  /** PENDING = held for Revisar (a possible duplicate of `reconciledIntoTransactionId`); doesn't count. */
+  status?: "POSTED" | "PENDING";
+  reconciledIntoTransactionId?: string | null;
   /** Both legs of an Entre cuentas share it. */
   transferGroupId?: string | null;
+  /** Set by the destinatario rules on capture (not a user choice: no field version). */
+  categoryId?: string | null;
+  destinatarioId?: string | null;
   /** Capture instant (the command's clientTs), ISO-8601 UTC. */
   createdAt: string;
 }
@@ -177,6 +199,37 @@ export interface TransactionRow {
   isExcluded: boolean;
   /** Entre cuentas: shared by both legs. */
   transferGroupId: string | null;
+  categoryId: string | null;
+  destinatarioId: string | null;
+  flowClass: string | null;
+  /** 0 = set by hand (Anotar); otherwise the rules version that classified it. */
+  flowClassVersion: number | null;
+  rawDescription: string | null;
+  /** "HH:mm" when the bank said it. */
+  transactionTime: string | null;
+  sourcePattern: string | null;
+  /** Set when this row was merged into a bank's row (it no longer counts); on a PENDING row, its likely twin. */
+  reconciledIntoTransactionId: string | null;
+  status: string;
+}
+
+/** One bank statement's numbers (statement_snapshots). */
+export interface StatementSnapshotRow {
+  id: string; userId: string; accountId: string;
+  periodFrom: string | null; periodTo: string | null;
+  finalBalance: number | null; totalPaymentDue: number | null; minimumPayment: number | null;
+  paymentDueDate: string | null; interestRate: number | null; currencyCode: string; transactionCount: number;
+  /** How the debt moved in the period (month-to-month tracking). */
+  previousBalance?: number | null; purchases?: number | null; interestCharged?: number | null;
+}
+
+/** A comercio or persona (S8-2). */
+export interface DestinatarioRow {
+  id: string;
+  userId: string;
+  name: string;
+  kind: "merchant" | "person";
+  defaultCategoryId: string | null;
 }
 
 export interface FieldVersion {
@@ -208,6 +261,14 @@ export interface StoragePort {
   adjustAccountBalance(userId: string, id: string, delta: number): Promise<void>;
   findTransactionByIdempotencyKey(userId: string, key: string): Promise<{ id: string } | null>;
   insertTransaction(row: TransactionInsert): Promise<void>;
+  /** Same account, dates in [from, to], not already merged away: what a bank row may be a duplicate of. */
+  listReconciliationCandidates(userId: string, accountId: string, from: string, to: string): Promise<TransactionRow[]>;
+  setReconciliation(userId: string, id: string, intoId: string | null, status: "POSTED" | "PENDING"): Promise<void>;
+  /** Bank movements held for Revisar because they may be `twinId`. */
+  listHeldFor(userId: string, twinId: string): Promise<TransactionRow[]>;
+  /** What a bank statement said (by id: account + currency + period). */
+  upsertStatementSnapshot(row: StatementSnapshotRow, at: string): Promise<void>;
+  updateTransactionFlow(userId: string, id: string, f: { flowClass: string | null; flowClassVersion: number | null; transferGroupId: string | null }): Promise<void>;
   getTransaction(userId: string, id: string): Promise<TransactionRow | null>;
   updateTransactionNotes(userId: string, id: string, notes: string | null): Promise<void>;
   updateTransactionExcluded(userId: string, id: string, excluded: boolean): Promise<void>;
@@ -224,9 +285,18 @@ export interface StoragePort {
   findOccurrencesByTransaction(userId: string, transactionId: string): Promise<OccurrenceRow[]>;
   /** Movements on or after `since`, for bill detection when a bill is added. */
   listTransactionsSince(userId: string, since: string): Promise<TransactionRow[]>;
+  updateTransactionLabels(userId: string, id: string, patch: { category_id?: string | null; destinatario_id?: string | null }): Promise<void>;
+  insertDestinatario(row: DestinatarioRow, at: string): Promise<void>;
+  getDestinatario(userId: string, id: string): Promise<DestinatarioRow | null>;
+  setDestinatarioDefaultCategory(userId: string, id: string, categoryId: string | null, at: string): Promise<void>;
+  /** Adds a 'contains' pattern unless that destinatario already has it. */
+  addDestinatarioRule(userId: string, id: string, destinatarioId: string, pattern: string, at: string): Promise<void>;
+  /** Every rule with its destinatario's name and default category, for matchDestinatario. */
+  listDestinatarioRules(userId: string): Promise<{ destinatario_id: string; destinatario_name: string; default_category_id: string | null; match_type: "contains" | "exact"; pattern: string; priority: number }[]>;
+  listTransactionsByDestinatario(userId: string, destinatarioId: string): Promise<TransactionRow[]>;
   /** The legs of an Entre cuentas, oldest first. */
   getTransferLegs(userId: string, transferGroupId: string): Promise<TransactionRow[]>;
-  updateTransactionFacts(userId: string, id: string, facts: { amount: number; transactionDate: string; accountId: string }): Promise<void>;
+  updateTransactionFacts(userId: string, id: string, facts: { amount: number; transactionDate: string; accountId: string; cleanDescription: string | null; transactionTime: string | null }): Promise<void>;
   getFieldVersion(userId: string, entity: string, entityId: string, field: string): Promise<FieldVersion | null>;
   setFieldVersion(v: FieldVersionWrite): Promise<void>;
   getCycleSettings(userId: string): Promise<CycleSettings | null>;
