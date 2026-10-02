@@ -158,6 +158,38 @@ describe.skipIf(!enabled)("engine on zeta-dev (real Postgres)", { timeout: 90_00
     expect(raw.name.length).toBeGreaterThan(20);
   });
 
+  it("Anotar: an income with its flow class, and paying a card through the real view", async () => {
+    const s = createSqlStorage(createUserScopedPgDriver(pool, userId));
+    const base = { userId, deviceId: "integration" };
+    const card = crypto.randomUUID();
+    await applyCommand(s, {
+      ...base, id: crypto.randomUUID(), type: "createAccount", clientTs: "2026-10-02T18:00:00.000Z",
+      payload: { accountId: card, accountType: "CREDIT_CARD", name: "Tarjeta pago", currencyCode: "COP", balance: 500000 },
+    });
+    const income = crypto.randomUUID();
+    expect((await applyCommand(s, {
+      ...base, id: crypto.randomUUID(), type: "captureManualTransaction", clientTs: "2026-10-02T18:05:00.000Z",
+      payload: { transactionId: income, accountId, amount: 300000, direction: "INFLOW", currencyCode: "COP", date: "2026-10-02", description: "Ingreso extra", flowClass: "INCOME" },
+    })).status).toBe("applied");
+    const debitBefore = (await s.getAccount(userId, accountId))!.currentBalance;
+    const out = crypto.randomUUID();
+    const group = crypto.randomUUID();
+    const paid = await applyCommand(s, {
+      ...base, id: crypto.randomUUID(), type: "captureTransfer", clientTs: "2026-10-02T18:10:00.000Z",
+      payload: { transferGroupId: group, fromTransactionId: out, toTransactionId: crypto.randomUUID(), fromAccountId: accountId, toAccountId: card, amount: 200000, currencyCode: "COP", date: "2026-10-02" },
+    });
+    expect(paid.status).toBe("applied");
+    expect((await s.getAccount(userId, card))?.currentBalance).toBe(300000);
+    expect((await s.getAccount(userId, accountId))?.currentBalance).toBe(debitBefore - 200000);
+    const rows = (await readInicioData(createUserScopedPgDriver(pool, userId), userId, "2026-09-01")).transactions;
+    expect(rows.find((t) => t.id === income)?.flowClass).toBe("INCOME");
+    expect(rows.filter((t) => t.transferGroupId === group).map((t) => t.flowClass).sort()).toEqual(["DEBT_CREDIT", "DEBT_PAYMENT"]);
+    // Deshacer: deleting one leg removes both and restores both balances.
+    expect((await applyCommand(s, { ...base, id: crypto.randomUUID(), type: "deleteTransaction", clientTs: "2026-10-02T18:11:00.000Z", payload: { transactionId: out } })).status).toBe("applied");
+    expect((await s.getAccount(userId, card))?.currentBalance).toBe(500000);
+    expect((await s.getAccount(userId, accountId))?.currentBalance).toBe(debitBefore);
+  });
+
   it("stores the command payload encrypted, never as plain text", async () => {
     const d = createUserScopedPgDriver(pool, userId);
     const rows = await d.query<{ payload_enc: Buffer }>(
