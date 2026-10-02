@@ -98,5 +98,7 @@ describe.skipIf(!enabled)("v2 sync routes on zeta-dev", { timeout: 90_000 }, () 
     expect((await post({ commands: [cmd("createAccount", {}, { userId: crypto.randomUUID() })] })).status).toBe(403);
     expect((await post({ commands: [cmd("createAccount", {})] }, "Bearer nope")).status).toBe(401);
     expect((await post({ commands: [] })).status).toBe(400);
+    // Bank movements only come from the server.
+    expect((await post({ commands: [cmd("captureBankTransaction", {})] })).status).toBe(403);
   });
 });

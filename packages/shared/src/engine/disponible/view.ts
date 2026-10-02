@@ -172,3 +172,18 @@ export function parseAmount(text: string): number | null {
   const n = Number(normalized);
   return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : null;
 }
+
+/** Bank texts come in CAPS ("DUNKIN DONUTS"): shown as "Dunkin Donuts". Anything with a lowercase letter stays as written. */
+export function readableName(text: string): string {
+  if (/\p{Ll}/u.test(text)) return text;
+  const titled = text.toLowerCase().replace(/(^|[\s/(-])(\p{L})/gu, (_, sep: string, c: string) => sep + c.toUpperCase());
+  // "Crepes y Waffles", "Pan de Bono": connectors stay small (not the first word).
+  return titled.replace(/(?<=\s)(Y|E|De|Del|La|Las|El|Los|En)(?=\s)/g, (w) => w.toLowerCase());
+}
+
+/** The time a movement happened: the bank's when it said it, else when it was captured. */
+export function movementTime(t: { time?: string | null; createdAt?: string | null }, colombiaTime: (iso: string) => string): string | null {
+  const hm = t.time ? t.time.slice(0, 5) : t.createdAt ? colombiaTime(t.createdAt) : null;
+  // Always "07:39" (bank times come padded): mixed "7:39" / "04:05" in one list reads as a mistake.
+  return hm ? hm.padStart(5, "0") : null;
+}

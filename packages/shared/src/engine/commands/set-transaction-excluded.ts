@@ -1,3 +1,4 @@
+import { HELD_ERROR, isHeld, isMerged } from "./reconciled";
 import type { CommandEnvelope, CommandResult, StoragePort } from "../types";
 import { UUID_RE } from "../validate";
 import { isNewer } from "./field-version";
@@ -27,6 +28,9 @@ export async function setTransactionExcluded(
 
   const tx = await s.getTransaction(cmd.userId, p.transactionId);
   if (!tx) return { status: "rejected", replayed: false, code: "not_found", error: "Movimiento no encontrado." };
+  // Merged into the bank's row (a phone that hadn't pulled yet): the bank's facts stand, nothing moves twice.
+  if (isMerged(tx)) return { status: "superseded", replayed: false };
+  if (isHeld(tx)) return { status: "rejected", replayed: false, code: "invalid", error: HELD_ERROR };
 
   const current = await s.getFieldVersion(cmd.userId, "transaction", p.transactionId, "is_excluded");
   if (current && isNewer(current, cmd.clientTs, cmd.id)) {
