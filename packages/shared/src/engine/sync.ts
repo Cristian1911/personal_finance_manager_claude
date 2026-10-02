@@ -38,7 +38,7 @@ export const SYNC_TABLES: SyncTable[] = [
     cols: {
       id: T, user_id: T, account_id: T, amount: N, currency_code: T, direction: T, transaction_date: D, clean_description: T,
       notes: T, capture_method: T, idempotency_key: T, created_at: TS, is_excluded: B, flow_class: T, flow_class_version: N,
-      transfer_group_id: T,
+      transfer_group_id: T, category_id: T, destinatario_id: T,
     },
   },
   {
@@ -57,6 +57,15 @@ export const SYNC_TABLES: SyncTable[] = [
     },
   },
 ];
+
+// Appended after the tables above (order matters for nothing but readability).
+SYNC_TABLES.push(
+  { name: "destinatarios", cols: { id: T, user_id: T, name: T, kind: T, default_category_id: T, is_active: B, created_at: TS, updated_at: TS } },
+  {
+    name: "destinatario_rules",
+    cols: { id: T, user_id: T, destinatario_id: T, match_type: T, pattern: T, priority: N, match_count: N, last_matched_at: TS, created_at: TS },
+  },
+);
 
 export type Snapshot = Record<string, Record<string, unknown>[]>;
 

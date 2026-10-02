@@ -1,7 +1,7 @@
-import { SQLITE_ACCOUNTS_SCHEMA, SQLITE_CAPTURE_TIME_SCHEMA, SQLITE_ENGINE_SCHEMA, SQLITE_EXCLUDED_SCHEMA, SQLITE_RECURRING_SCHEMA, SQLITE_SETTINGS_SCHEMA, SQLITE_TRANSFER_SCHEMA } from "../../schema/sqlite";
+import { SQLITE_ACCOUNTS_SCHEMA, SQLITE_CAPTURE_TIME_SCHEMA, SQLITE_ENGINE_SCHEMA, SQLITE_EXCLUDED_SCHEMA, SQLITE_CATEGORIES_SCHEMA, SQLITE_RECURRING_SCHEMA, SQLITE_SETTINGS_SCHEMA, SQLITE_TRANSFER_SCHEMA } from "../../schema/sqlite";
 
 /** The phone's full schema: every version in order. */
-export const SQLITE_SCHEMA = SQLITE_ENGINE_SCHEMA + SQLITE_SETTINGS_SCHEMA + SQLITE_CAPTURE_TIME_SCHEMA + SQLITE_EXCLUDED_SCHEMA + SQLITE_ACCOUNTS_SCHEMA + SQLITE_TRANSFER_SCHEMA + SQLITE_RECURRING_SCHEMA;
+export const SQLITE_SCHEMA = SQLITE_ENGINE_SCHEMA + SQLITE_SETTINGS_SCHEMA + SQLITE_CAPTURE_TIME_SCHEMA + SQLITE_EXCLUDED_SCHEMA + SQLITE_ACCOUNTS_SCHEMA + SQLITE_TRANSFER_SCHEMA + SQLITE_RECURRING_SCHEMA + SQLITE_CATEGORIES_SCHEMA;
 
 // Same logical tables in both dialects; names and columns match the real
 // Supabase views (`accounts`, `transactions`) and new tables (`commands`,
@@ -28,7 +28,18 @@ CREATE TABLE transactions (
   capture_method text NOT NULL, idempotency_key text NOT NULL UNIQUE,
   is_excluded boolean NOT NULL DEFAULT false,
   created_at timestamptz NOT NULL DEFAULT now(),
-  flow_class text, flow_class_version smallint, transfer_group_id uuid
+  flow_class text, flow_class_version smallint, transfer_group_id uuid,
+  category_id uuid, destinatario_id uuid
+);
+-- Plain here; on Supabase destinatarios is a view (name encrypted).
+CREATE TABLE destinatarios (
+  id uuid PRIMARY KEY, user_id uuid NOT NULL, name text NOT NULL, kind text NOT NULL,
+  default_category_id uuid, is_active boolean NOT NULL DEFAULT true, created_at timestamptz, updated_at timestamptz
+);
+CREATE TABLE destinatario_rules (
+  id uuid PRIMARY KEY, user_id uuid NOT NULL, destinatario_id uuid NOT NULL,
+  match_type text NOT NULL, pattern text NOT NULL, priority int NOT NULL DEFAULT 100,
+  match_count int NOT NULL DEFAULT 0, last_matched_at timestamptz, created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE TABLE commands (
   id uuid NOT NULL, user_id uuid NOT NULL, device_id text NOT NULL,

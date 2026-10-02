@@ -14,7 +14,11 @@ export type CommandType =
   | "createPagoFijo"
   | "editPagoFijo"
   | "archivePagoFijo"
-  | "setOccurrenceStatus";
+  | "setOccurrenceStatus"
+  | "setTransactionCategory"
+  | "createDestinatario"
+  | "setTransactionDestinatario"
+  | "setDestinatarioCategory";
 
 /**
  * One user action. `id` is created on the device (UUID) and makes replays
@@ -154,6 +158,9 @@ export interface TransactionInsert {
   flowClass?: string | null;
   /** Both legs of an Entre cuentas share it. */
   transferGroupId?: string | null;
+  /** Set by the destinatario rules on capture (not a user choice: no field version). */
+  categoryId?: string | null;
+  destinatarioId?: string | null;
   /** Capture instant (the command's clientTs), ISO-8601 UTC. */
   createdAt: string;
 }
@@ -177,6 +184,17 @@ export interface TransactionRow {
   isExcluded: boolean;
   /** Entre cuentas: shared by both legs. */
   transferGroupId: string | null;
+  categoryId: string | null;
+  destinatarioId: string | null;
+}
+
+/** A comercio or persona (S8-2). */
+export interface DestinatarioRow {
+  id: string;
+  userId: string;
+  name: string;
+  kind: "merchant" | "person";
+  defaultCategoryId: string | null;
 }
 
 export interface FieldVersion {
@@ -224,6 +242,15 @@ export interface StoragePort {
   findOccurrencesByTransaction(userId: string, transactionId: string): Promise<OccurrenceRow[]>;
   /** Movements on or after `since`, for bill detection when a bill is added. */
   listTransactionsSince(userId: string, since: string): Promise<TransactionRow[]>;
+  updateTransactionLabels(userId: string, id: string, patch: { category_id?: string | null; destinatario_id?: string | null }): Promise<void>;
+  insertDestinatario(row: DestinatarioRow, at: string): Promise<void>;
+  getDestinatario(userId: string, id: string): Promise<DestinatarioRow | null>;
+  setDestinatarioDefaultCategory(userId: string, id: string, categoryId: string | null, at: string): Promise<void>;
+  /** Adds a 'contains' pattern unless that destinatario already has it. */
+  addDestinatarioRule(userId: string, id: string, destinatarioId: string, pattern: string, at: string): Promise<void>;
+  /** Every rule with its destinatario's name and default category, for matchDestinatario. */
+  listDestinatarioRules(userId: string): Promise<{ destinatario_id: string; destinatario_name: string; default_category_id: string | null; match_type: "contains" | "exact"; pattern: string; priority: number }[]>;
+  listTransactionsByDestinatario(userId: string, destinatarioId: string): Promise<TransactionRow[]>;
   /** The legs of an Entre cuentas, oldest first. */
   getTransferLegs(userId: string, transferGroupId: string): Promise<TransactionRow[]>;
   updateTransactionFacts(userId: string, id: string, facts: { amount: number; transactionDate: string; accountId: string }): Promise<void>;

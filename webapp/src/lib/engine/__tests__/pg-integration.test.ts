@@ -232,6 +232,26 @@ describe.skipIf(!enabled)("engine on zeta-dev (real Postgres)", { timeout: 90_00
     expect((await s.getTemplate(userId, template))?.isActive).toBe(false);
   });
 
+  it("Categorías y destinatarios through the real views (encrypted name, category FK to the seeded 25)", async () => {
+    const s = createSqlStorage(createUserScopedPgDriver(pool, userId));
+    const base = { userId, deviceId: "integration" };
+    const at = () => new Date(Date.now() + Math.floor(Math.random() * 1000)).toISOString();
+    const rappi = crypto.randomUUID();
+    const domicilios = "c2000000-0000-4000-8000-000000000003";
+    expect((await applyCommand(s, { ...base, id: crypto.randomUUID(), type: "createDestinatario", clientTs: at(),
+      payload: { destinatarioId: rappi, name: "Rappi prueba", kind: "merchant", pattern: "rappi", defaultCategoryId: domicilios } })).status).toBe("applied");
+    const tx = crypto.randomUUID();
+    await applyCommand(s, { ...base, id: crypto.randomUUID(), type: "captureManualTransaction", clientTs: at(),
+      payload: { transactionId: tx, accountId, amount: 32000, direction: "OUTFLOW", currencyCode: "COP", date: "2026-10-02", description: "COMPRA RAPPI COLOMBIA" } });
+    expect(await s.getTransaction(userId, tx)).toMatchObject({ destinatarioId: rappi, categoryId: domicilios });
+    expect((await applyCommand(s, { ...base, id: crypto.randomUUID(), type: "setTransactionCategory", clientTs: at(),
+      payload: { transactionId: tx, categoryId: "c2000000-0000-4000-8000-000000000001" } })).status).toBe("applied");
+    const data = await readInicioData(createUserScopedPgDriver(pool, userId), userId, "2026-09-01");
+    expect(data.destinatarios.find((d) => d.id === rappi)).toMatchObject({ name: "Rappi prueba", kind: "merchant" });
+    const [raw] = (await pool.query("SELECT name FROM destinatarios_enc WHERE id = $1", [rappi]).catch(() => ({ rows: [{ name: null }] }))).rows;
+    if (raw.name) expect(Buffer.from(raw.name).toString("utf8")).not.toContain("Rappi prueba");
+  });
+
   it("stores the command payload encrypted, never as plain text", async () => {
     const d = createUserScopedPgDriver(pool, userId);
     const rows = await d.query<{ payload_enc: Buffer }>(

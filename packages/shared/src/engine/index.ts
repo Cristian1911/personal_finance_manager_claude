@@ -2,7 +2,7 @@ export * from "./types";
 export { toDialect } from "./sql";
 export { createSqlStorage } from "./sql-storage";
 export { applyCommand, type EngineOptions } from "./runner";
-export { SQLITE_ACCOUNTS_SCHEMA, SQLITE_CAPTURE_TIME_SCHEMA, SQLITE_ENGINE_SCHEMA, SQLITE_EXCLUDED_SCHEMA, SQLITE_RECURRING_SCHEMA, SQLITE_SETTINGS_SCHEMA, SQLITE_TRANSFER_SCHEMA } from "./schema/sqlite";
+export { SQLITE_ACCOUNTS_SCHEMA, SQLITE_CAPTURE_TIME_SCHEMA, SQLITE_CATEGORIES_SCHEMA, SQLITE_ENGINE_SCHEMA, SQLITE_EXCLUDED_SCHEMA, SQLITE_RECURRING_SCHEMA, SQLITE_SETTINGS_SCHEMA, SQLITE_TRANSFER_SCHEMA } from "./schema/sqlite";
 export { OUTBOX_SCHEMA, applyAndEnqueue } from "./outbox";
 export {
   captureManualTransaction,
@@ -46,3 +46,5 @@ export {
 export * from "./disponible";
 export { readInicioData, type InicioData, type InicioTemplate } from "./inicio-read";
 export { SYNC_TABLES, applySnapshot, readSnapshot, type Snapshot } from "./sync";
+export { V2_CATEGORIES, categoryById, isV2Category, type V2Category } from "./categories";
+export { createDestinatario, patternFrom, setDestinatarioCategory, setTransactionCategory, setTransactionDestinatario, type CreateDestinatarioPayload } from "./commands/categorias";

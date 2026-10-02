@@ -143,3 +143,24 @@ CREATE TABLE recurring_occurrences (
   UNIQUE (template_id, occurrence_date)
 );
 `;
+
+/**
+ * Phone schema version 8: categories and destinatarios (S8-2, S9-6). Same
+ * columns as the Supabase tables; the 25 categories are built into the app.
+ */
+export const SQLITE_CATEGORIES_SCHEMA = `
+ALTER TABLE transactions ADD COLUMN category_id TEXT;
+ALTER TABLE transactions ADD COLUMN destinatario_id TEXT;
+CREATE TABLE destinatarios (
+  id TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('merchant', 'person')),
+  default_category_id TEXT, is_active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT, updated_at TEXT
+);
+CREATE TABLE destinatario_rules (
+  id TEXT PRIMARY KEY, user_id TEXT NOT NULL, destinatario_id TEXT NOT NULL,
+  match_type TEXT NOT NULL CHECK (match_type IN ('contains', 'exact')), pattern TEXT NOT NULL,
+  priority INTEGER NOT NULL DEFAULT 100, match_count INTEGER NOT NULL DEFAULT 0, last_matched_at TEXT,
+  created_at TEXT
+);
+`;

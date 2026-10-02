@@ -22,6 +22,8 @@ export interface InicioData {
   templates: InicioTemplate[];
   /** Occurrences whose status changed from the computed "pending". */
   occurrences: OccurrenceRow[];
+  /** Comercios and personas (pickers, Movimientos). */
+  destinatarios: { id: string; name: string; kind: "merchant" | "person"; defaultCategoryId: string | null }[];
   accounts: InicioAccount[];
   /** Movements dated on or after `since`, as the classifier reads them. */
   transactions: StoredTransaction[];
@@ -63,15 +65,23 @@ export async function readInicioData(driver: SqlDriver, userId: string, since: s
   const txRows = await q<Record<string, unknown>>(
     `SELECT id, account_id, amount, currency_code, direction,
             ${pg ? "transaction_date::text" : "transaction_date"} AS transaction_date,
-            capture_method, created_at, clean_description, notes, is_excluded, flow_class, transfer_group_id
+            capture_method, created_at, clean_description, notes, is_excluded, flow_class, transfer_group_id, category_id, destinatario_id
        FROM transactions
       WHERE user_id = ? AND transaction_date >= ?
       ORDER BY transaction_date, id`,
     [userId, since],
   );
 
+  const destinatarioRows = await q<Record<string, unknown>>(
+    "SELECT id, name, kind, default_category_id FROM destinatarios WHERE user_id = ? AND is_active = ? ORDER BY name, id",
+    [userId, pg ? true : 1],
+  );
+
   return {
     settings,
+    destinatarios: destinatarioRows.map((r) => ({
+      id: String(r.id), name: String(r.name), kind: r.kind as "merchant" | "person", defaultCategoryId: (r.default_category_id as string | null) ?? null,
+    })),
     templates: templateRows.map((r) => ({
       id: String(r.id), label: String(r.merchant_name ?? ""), amount: toNumber(r.amount),
       direction: r.direction as "INFLOW" | "OUTFLOW", frequency: String(r.frequency),
@@ -115,6 +125,8 @@ export async function readInicioData(driver: SqlDriver, userId: string, since: s
       // (outflow = spend, inflow = income). ponytail: no flow_class_override yet.
       flowClass: (r.flow_class as string | null) ?? null,
       transferGroupId: (r.transfer_group_id as string | null) ?? null,
+      categoryId: (r.category_id as string | null) ?? null,
+      destinatarioId: (r.destinatario_id as string | null) ?? null,
     })),
   };
 }

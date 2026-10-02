@@ -96,12 +96,13 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
     async insertTransaction(t) {
       await q(
         `INSERT INTO transactions (id, user_id, account_id, amount, currency_code, direction, transaction_date, clean_description,
-                                   notes, capture_method, idempotency_key, created_at, flow_class, flow_class_version, transfer_group_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                                   notes, capture_method, idempotency_key, created_at, flow_class, flow_class_version, transfer_group_id,
+                                   category_id, destinatario_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [t.id, t.userId, t.accountId, t.amount, t.currencyCode, t.direction, t.transactionDate,
           t.cleanDescription, t.notes, t.captureMethod, t.idempotencyKey, t.createdAt,
           // The real table requires a version whenever a class is set; 0 = set by hand.
-          t.flowClass ?? null, t.flowClass ? 0 : null, t.transferGroupId ?? null],
+          t.flowClass ?? null, t.flowClass ? 0 : null, t.transferGroupId ?? null, t.categoryId ?? null, t.destinatarioId ?? null],
       );
     },
 
@@ -110,7 +111,7 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
       const rows = await q<Record<string, unknown>>(
         `SELECT id, user_id, account_id, amount, currency_code, direction,
                 ${pg ? "transaction_date::text" : "transaction_date"} AS transaction_date,
-                clean_description, notes, capture_method, idempotency_key, created_at, is_excluded, transfer_group_id
+                clean_description, notes, capture_method, idempotency_key, created_at, is_excluded, transfer_group_id, category_id, destinatario_id
            FROM transactions WHERE user_id = ? AND id = ?`,
         [userId, id]);
       return rows[0] ? txRow(rows[0]) : null;
@@ -176,9 +177,69 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
       const rows = await q<Record<string, unknown>>(
         `SELECT id, user_id, account_id, amount, currency_code, direction,
                 ${pg ? "transaction_date::text" : "transaction_date"} AS transaction_date,
-                clean_description, notes, capture_method, idempotency_key, created_at, is_excluded, transfer_group_id
+                clean_description, notes, capture_method, idempotency_key, created_at, is_excluded, transfer_group_id, category_id, destinatario_id
            FROM transactions WHERE user_id = ? AND transaction_date >= ? ORDER BY transaction_date, id`,
         [userId, since]);
+      return rows.map(txRow);
+    },
+
+    async updateTransactionLabels(userId, id, patch) {
+      const cols = Object.keys(patch) as (keyof typeof patch)[];
+      if (cols.length === 0) return;
+      // Column names come from the command's code, never from the payload.
+      await q(`UPDATE transactions SET ${cols.map((c) => `${c} = ?`).join(", ")} WHERE user_id = ? AND id = ?`,
+        [...cols.map((c) => patch[c] ?? null), userId, id]);
+    },
+
+    async insertDestinatario(d, at) {
+      // Through the view on Postgres: its trigger encrypts the name and computes name_hmac.
+      await q(
+        `INSERT INTO destinatarios (id, user_id, name, kind, default_category_id, is_active, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [d.id, d.userId, d.name, d.kind, d.defaultCategoryId, pg ? true : 1, at, at],
+      );
+    },
+
+    async getDestinatario(userId, id) {
+      const rows = await q<Record<string, unknown>>("SELECT id, user_id, name, kind, default_category_id FROM destinatarios WHERE user_id = ? AND id = ?", [userId, id]);
+      const r = rows[0];
+      return r ? { id: String(r.id), userId: String(r.user_id), name: String(r.name), kind: r.kind as "merchant" | "person", defaultCategoryId: (r.default_category_id as string | null) ?? null } : null;
+    },
+
+    async setDestinatarioDefaultCategory(userId, id, categoryId, at) {
+      await q("UPDATE destinatarios SET default_category_id = ?, updated_at = ? WHERE user_id = ? AND id = ?", [categoryId, at, userId, id]);
+    },
+
+    async addDestinatarioRule(userId, id, destinatarioId, pattern, at) {
+      const existing = await q<{ id: string }>(
+        "SELECT id FROM destinatario_rules WHERE user_id = ? AND destinatario_id = ? AND lower(pattern) = lower(?)", [userId, destinatarioId, pattern]);
+      if (existing.length) return;
+      await q(
+        "INSERT INTO destinatario_rules (id, user_id, destinatario_id, match_type, pattern, priority, created_at) VALUES (?, ?, ?, 'contains', ?, 100, ?)",
+        [id, userId, destinatarioId, pattern, at],
+      );
+    },
+
+    async listDestinatarioRules(userId) {
+      const rows = await q<Record<string, unknown>>(
+        `SELECT r.destinatario_id, d.name, d.default_category_id, r.match_type, r.pattern, r.priority
+           FROM destinatario_rules r JOIN destinatarios d ON d.id = r.destinatario_id AND d.user_id = r.user_id
+          WHERE r.user_id = ? AND d.is_active = ? ORDER BY r.priority, r.id`,
+        [userId, pg ? true : 1]);
+      return rows.map((r) => ({
+        destinatario_id: String(r.destinatario_id), destinatario_name: String(r.name),
+        default_category_id: (r.default_category_id as string | null) ?? null,
+        match_type: r.match_type as "contains" | "exact", pattern: String(r.pattern), priority: toNumber(r.priority),
+      }));
+    },
+
+    async listTransactionsByDestinatario(userId, destinatarioId) {
+      const rows = await q<Record<string, unknown>>(
+        `SELECT id, user_id, account_id, amount, currency_code, direction,
+                ${pg ? "transaction_date::text" : "transaction_date"} AS transaction_date,
+                clean_description, notes, capture_method, idempotency_key, created_at, is_excluded, transfer_group_id, category_id, destinatario_id
+           FROM transactions WHERE user_id = ? AND destinatario_id = ?`,
+        [userId, destinatarioId]);
       return rows.map(txRow);
     },
 
@@ -186,7 +247,7 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
       const rows = await q<Record<string, unknown>>(
         `SELECT id, user_id, account_id, amount, currency_code, direction,
                 ${pg ? "transaction_date::text" : "transaction_date"} AS transaction_date,
-                clean_description, notes, capture_method, idempotency_key, created_at, is_excluded, transfer_group_id
+                clean_description, notes, capture_method, idempotency_key, created_at, is_excluded, transfer_group_id, category_id, destinatario_id
            FROM transactions WHERE user_id = ? AND transfer_group_id = ? ORDER BY direction DESC, id`,
         [userId, groupId]);
       return rows.map(txRow);
@@ -316,6 +377,8 @@ function txRow(r: Record<string, unknown>): TransactionRow {
     // SQLite stores booleans as 0/1.
     isExcluded: r.is_excluded === true || r.is_excluded === 1,
     transferGroupId: (r.transfer_group_id as string | null) ?? null,
+    categoryId: (r.category_id as string | null) ?? null,
+    destinatarioId: (r.destinatario_id as string | null) ?? null,
   };
 }
 

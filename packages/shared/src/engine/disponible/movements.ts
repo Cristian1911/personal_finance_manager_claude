@@ -28,6 +28,8 @@ export interface StoredTransaction {
   description?: string | null;
   /** The user's note (Detalle). */
   notes?: string | null;
+  categoryId?: string | null;
+  destinatarioId?: string | null;
   status?: string | null;
   isExcluded?: boolean | null;
   /** Merged into another row (a duplicate): that row counts instead. */
