@@ -143,12 +143,12 @@ export default function AjustesScreen() {
       <ConfirmSheet
         open={confirm === "logout"}
         title="¿Cerrar sesión?"
-        consequence="Lo que anotaste ya está en tu cuenta. Para volver, entras con el mismo correo."
+        consequence="Lo que anotaste queda en tu cuenta y se borra de este teléfono. Para volver, entras con el mismo correo."
         confirmLabel="Cerrar sesión"
         destructive
         onConfirm={async () => {
           setConfirm(null);
-          await signOutV2().catch(() => Alert.alert("No se pudo cerrar sesión", "Intenta de nuevo."));
+          await signOutV2(userId).catch(() => Alert.alert("No se pudo cerrar sesión", "Intenta de nuevo."));
         }}
         onCancel={() => setConfirm(null)}
       />

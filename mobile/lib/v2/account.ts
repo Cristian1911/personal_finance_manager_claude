@@ -1,5 +1,6 @@
 import { supabase } from "../supabase";
 import { getV2Database } from "./engine/database";
+import { syncV2 } from "./sync/sync";
 
 /** Every v2 table that holds a user's rows on the phone. */
 const USER_TABLES = [
@@ -15,8 +16,17 @@ async function forgetLocally(userId: string): Promise<void> {
   });
 }
 
-/** Cerrar sesión. Data already sent stays in the account; the root layout sends you to login. */
-export async function signOutV2(): Promise<void> {
+/**
+ * Cerrar sesión. Sends what's left first; when everything reached the
+ * account, this phone forgets it (a shared phone shouldn't keep someone's
+ * finances). Anything still unsent stays here for when the same person
+ * signs in again. The root layout sends you to login.
+ */
+export async function signOutV2(userId: string): Promise<void> {
+  await syncV2(userId).catch(() => undefined);
+  const { driver } = await getV2Database();
+  const [{ n }] = await driver.query<{ n: number }>("SELECT COUNT(*) AS n FROM outbox WHERE user_id = ? AND state = 'pending'", [userId]);
+  if (n === 0) await forgetLocally(userId).catch((e) => console.warn("[v2 account] local wipe failed", e));
   await supabase.auth.signOut();
 }
 
