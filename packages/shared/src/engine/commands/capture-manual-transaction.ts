@@ -3,6 +3,7 @@ import type { EngineOptions } from "../runner";
 import type { CommandEnvelope, CommandResult, StoragePort } from "../types";
 import { UUID_RE, isIsoUtc } from "../validate";
 import { moveBalance } from "./balance";
+import { autoLinkPayment } from "./pagos";
 
 export interface CaptureManualTransactionPayload {
   transactionId: string;
@@ -87,5 +88,8 @@ export async function captureManualTransaction(
     createdAt: p.capturedAt ?? cmd.clientTs,
   });
   await moveBalance(s, cmd.userId, p.accountId, p.direction === "OUTFLOW" ? -p.amount : p.amount);
+  // Bill detection: a spend that matches a fixed payment's amount and date pays it.
+  const row = await s.getTransaction(cmd.userId, p.transactionId);
+  if (row) await autoLinkPayment(s, cmd.userId, row, cmd.clientTs, opts);
   return { status: "applied", replayed: false, data: { transactionId: p.transactionId } };
 }

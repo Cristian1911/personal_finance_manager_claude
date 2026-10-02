@@ -1,5 +1,5 @@
 import { toDialect, toIso, toJson, toNumber } from "./sql";
-import type { CommandResult, CycleSettingsPatch, SqlDriver, StoragePort, StoredPaySchedule, TransactionRow } from "./types";
+import type { CommandResult, CycleSettingsPatch, OccurrenceRow, SqlDriver, StoragePort, StoredPaySchedule, TemplateRow, TransactionRow } from "./types";
 
 /**
  * The single SQL implementation of StoragePort. Table and column names match
@@ -10,6 +10,11 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
   const q = <R = Record<string, unknown>>(sql: string, params: unknown[] = []) =>
     driver.query<R>(toDialect(sql, driver.dialect), params);
   const pg = driver.dialect === "postgres";
+  const TEMPLATE_SELECT = `SELECT id, user_id, account_id, amount, currency_code, direction, frequency, day_of_month,
+      ${pg ? "start_date::text" : "start_date"} AS start_date, ${pg ? "end_date::text" : "end_date"} AS end_date, merchant_name, is_active
+    FROM recurring_transaction_templates`;
+  const OCCURRENCE_SELECT = `SELECT template_id, ${pg ? "occurrence_date::text" : "occurrence_date"} AS occurrence_date,
+      expected_amount, status, transaction_id, linked_manually FROM recurring_occurrences`;
 
   const storage: StoragePort = {
     withTransaction: (fn) => driver.transaction((tx) => fn(createSqlStorage(tx))),
@@ -109,6 +114,72 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
            FROM transactions WHERE user_id = ? AND id = ?`,
         [userId, id]);
       return rows[0] ? txRow(rows[0]) : null;
+    },
+
+    async insertTemplate(t, createdAt) {
+      // Through the view on Postgres (encrypts the name; its trigger generates the server's occurrences).
+      await q(
+        `INSERT INTO recurring_transaction_templates (id, user_id, account_id, amount, currency_code, direction, frequency,
+           day_of_month, start_date, end_date, merchant_name, description, is_active, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [t.id, t.userId, t.accountId, t.amount, t.currencyCode, t.direction, t.frequency, t.dayOfMonth, t.startDate, t.endDate,
+          t.name, t.name, pg ? t.isActive : t.isActive ? 1 : 0, createdAt, createdAt],
+      );
+    },
+
+    async getTemplate(userId, id) {
+      const rows = await q<Record<string, unknown>>(`${TEMPLATE_SELECT} WHERE user_id = ? AND id = ?`, [userId, id]);
+      return rows[0] ? templateRow(rows[0]) : null;
+    },
+
+    async listTemplates(userId, direction) {
+      const rows = await q<Record<string, unknown>>(
+        `${TEMPLATE_SELECT} WHERE user_id = ? AND direction = ? AND is_active = ? ORDER BY day_of_month, id`,
+        [userId, direction, pg ? true : 1]);
+      return rows.map(templateRow);
+    },
+
+    async updateTemplate(userId, id, patch, updatedAt) {
+      const cols = Object.keys(patch) as (keyof typeof patch)[];
+      if (cols.length === 0) return;
+      // Column names come from the command's code, never from the payload.
+      await q(
+        `UPDATE recurring_transaction_templates SET ${cols.map((c) => `${c} = ?`).join(", ")}, updated_at = ? WHERE user_id = ? AND id = ?`,
+        [...cols.map((c) => (c === "is_active" && !pg ? (patch[c] ? 1 : 0) : patch[c])), updatedAt, userId, id],
+      );
+    },
+
+    async getOccurrence(userId, templateId, date) {
+      const rows = await q<Record<string, unknown>>(`${OCCURRENCE_SELECT} WHERE user_id = ? AND template_id = ? AND occurrence_date = ?`, [userId, templateId, date]);
+      return rows[0] ? occurrenceRow(rows[0]) : null;
+    },
+
+    async upsertOccurrence(userId, id, o, at) {
+      const paidAt = o.status === "paid" ? at : null;
+      const skippedAt = o.status === "skipped" ? at : null;
+      const manual = pg ? o.linkedManually : o.linkedManually ? 1 : 0;
+      await q(
+        `INSERT INTO recurring_occurrences (id, user_id, template_id, occurrence_date, expected_amount, status, transaction_id, paid_at, skipped_at, linked_manually, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT (template_id, occurrence_date) DO UPDATE SET status = excluded.status, transaction_id = excluded.transaction_id,
+           paid_at = excluded.paid_at, skipped_at = excluded.skipped_at, linked_manually = excluded.linked_manually`,
+        [id, userId, o.templateId, o.date, o.expectedAmount, o.status, o.transactionId, paidAt, skippedAt, manual, at],
+      );
+    },
+
+    async findOccurrencesByTransaction(userId, transactionId) {
+      const rows = await q<Record<string, unknown>>(`${OCCURRENCE_SELECT} WHERE user_id = ? AND transaction_id = ?`, [userId, transactionId]);
+      return rows.map(occurrenceRow);
+    },
+
+    async listTransactionsSince(userId, since) {
+      const rows = await q<Record<string, unknown>>(
+        `SELECT id, user_id, account_id, amount, currency_code, direction,
+                ${pg ? "transaction_date::text" : "transaction_date"} AS transaction_date,
+                clean_description, notes, capture_method, idempotency_key, created_at, is_excluded, transfer_group_id
+           FROM transactions WHERE user_id = ? AND transaction_date >= ? ORDER BY transaction_date, id`,
+        [userId, since]);
+      return rows.map(txRow);
     },
 
     async getTransferLegs(userId, groupId) {
@@ -245,5 +316,25 @@ function txRow(r: Record<string, unknown>): TransactionRow {
     // SQLite stores booleans as 0/1.
     isExcluded: r.is_excluded === true || r.is_excluded === 1,
     transferGroupId: (r.transfer_group_id as string | null) ?? null,
+  };
+}
+
+function templateRow(r: Record<string, unknown>): TemplateRow {
+  return {
+    id: String(r.id), userId: String(r.user_id), accountId: (r.account_id as string | null) ?? null,
+    amount: toNumber(r.amount), currencyCode: String(r.currency_code), direction: r.direction as "INFLOW" | "OUTFLOW",
+    frequency: String(r.frequency), dayOfMonth: r.day_of_month == null ? null : toNumber(r.day_of_month),
+    startDate: String(r.start_date), endDate: (r.end_date as string | null) ?? null,
+    name: String(r.merchant_name ?? ""),
+    // SQLite stores booleans as 0/1.
+    isActive: r.is_active === true || r.is_active === 1,
+  };
+}
+
+function occurrenceRow(r: Record<string, unknown>): OccurrenceRow {
+  return {
+    templateId: String(r.template_id), date: String(r.occurrence_date), expectedAmount: toNumber(r.expected_amount),
+    status: r.status as OccurrenceRow["status"], transactionId: (r.transaction_id as string | null) ?? null,
+    linkedManually: r.linked_manually === true || r.linked_manually === 1,
   };
 }

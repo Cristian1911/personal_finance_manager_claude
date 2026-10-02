@@ -1,5 +1,6 @@
 import { isDebtAccountType } from "../../utils/account-balance";
 import { defaultCountsInDisponible } from "../commands/set-account-counts-in-disponible";
+import { calendarDayDiff, occurrenceAmountMatches, OCCURRENCE_AUTO_LINK_DAY_WINDOW } from "../../utils/occurrence-matching";
 import { parseQuickCaptureText } from "../../utils/quick-capture";
 import type { InicioAccount } from "./inicio";
 import { buildInicio } from "./inicio";
@@ -38,7 +39,7 @@ export function anotarPreview(input: InicioInput, draft: AnotarDraft): AnotarPre
   // Money out of an account you have can't go below zero without saying so
   // (not when its balance was never given: $0 there means "no sé").
   const out = draft.kind !== "ingreso" && !isDebtAccountType(from.accountType);
-  if (out && from.currentBalance > 0 && draft.amount > from.currentBalance) {
+  if (out && from.currentBalance !== 0 && draft.amount > from.currentBalance) {
     const left = formatPesos(from.currentBalance - draft.amount).replace("-", "−");
     return { line: `${name(from)} tiene ${formatPesos(from.currentBalance)}: quedaría en ${left}.`, tone: "bad" };
   }
@@ -74,8 +75,19 @@ export function anotarPreview(input: InicioInput, draft: AnotarDraft): AnotarPre
   if (!counts(from)) return { line: `${name(from)} no cuenta para tu Disponible: no cambia.`, tone: "neutral" };
   const income = draft.kind === "ingreso";
   extra = [leg("preview", from.id, income ? "INFLOW" : "OUTFLOW", income ? "INCOME" : "SPEND")];
-  const after = buildInicio({ ...input, transactions: [...input.transactions, ...extra] });
+  // Bill detection, as Guardar will do it: a spend that matches a pending fixed
+  // payment pays it, so it doesn't lower Disponible a second time.
+  const bill = income ? undefined : before.bills.find((b) => b.kind === "fijo" && b.status === "pending"
+    && Math.abs(calendarDayDiff(date, b.dueDate)) <= OCCURRENCE_AUTO_LINK_DAY_WINDOW
+    && occurrenceAmountMatches(b.amount, draft.amount, false));
+  const occurrences = bill
+    ? [...(input.occurrences ?? []), { templateId: bill.templateId!, date: bill.dueDate, expectedAmount: bill.amount, status: "paid" as const, transactionId: "preview", linkedManually: false }]
+    : input.occurrences;
+  const after = buildInicio({ ...input, occurrences, transactions: [...input.transactions, ...extra] });
   if (after.status !== "ready") return null;
+  if (bill && Math.abs(after.result.disponible - before.result.disponible) < 0.005) {
+    return { line: `Pagas ${bill.title}: ya estaba apartado, tu Disponible no cambia.`, tone: "neutral" };
+  }
   if (income) return { line: `Tu Disponible sube a ${formatPesos(after.result.disponible)}`, tone: "neutral" };
   return {
     line: `Te quedan ${formatPesos(after.result.disponible)} · ${after.view.perDay}`,

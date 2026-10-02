@@ -10,7 +10,11 @@ export type CommandType =
   | "createAccount"
   | "editAccount"
   | "archiveAccount"
-  | "captureTransfer";
+  | "captureTransfer"
+  | "createPagoFijo"
+  | "editPagoFijo"
+  | "archivePagoFijo"
+  | "setOccurrenceStatus";
 
 /**
  * One user action. `id` is created on the device (UUID) and makes replays
@@ -67,6 +71,34 @@ export interface AccountRow {
   cutoffDay: number | null;
   paymentDay: number | null;
   monthlyPayment: number | null;
+}
+
+/** A fixed payment (recurring_transaction_templates). */
+export interface TemplateRow {
+  id: string;
+  userId: string;
+  accountId: string | null;
+  amount: number;
+  currencyCode: string;
+  direction: "INFLOW" | "OUTFLOW";
+  frequency: string;
+  dayOfMonth: number | null;
+  startDate: string;
+  endDate: string | null;
+  /** merchant_name: what the bill is called. */
+  name: string;
+  isActive: boolean;
+}
+
+/** A stored occurrence (only once its status changed from the computed "pending"). */
+export interface OccurrenceRow {
+  templateId: string;
+  /** YYYY-MM-DD; with templateId, the key the server shares. */
+  date: string;
+  expectedAmount: number;
+  status: "pending" | "paid" | "skipped";
+  transactionId: string | null;
+  linkedManually: boolean;
 }
 
 /** The details a user can fix on an account (editAccount), by column. */
@@ -180,6 +212,18 @@ export interface StoragePort {
   updateTransactionNotes(userId: string, id: string, notes: string | null): Promise<void>;
   updateTransactionExcluded(userId: string, id: string, excluded: boolean): Promise<void>;
   deleteTransaction(userId: string, id: string): Promise<void>;
+  insertTemplate(row: TemplateRow, createdAt: string): Promise<void>;
+  getTemplate(userId: string, id: string): Promise<TemplateRow | null>;
+  /** Active fixed payments of one direction. */
+  listTemplates(userId: string, direction: "INFLOW" | "OUTFLOW"): Promise<TemplateRow[]>;
+  updateTemplate(userId: string, id: string, patch: { merchant_name?: string; description?: string; amount?: number; day_of_month?: number; start_date?: string; is_active?: boolean }, updatedAt: string): Promise<void>;
+  getOccurrence(userId: string, templateId: string, date: string): Promise<OccurrenceRow | null>;
+  /** Insert or update by (template, date); `id` is used only when the row is new. */
+  upsertOccurrence(userId: string, id: string, row: OccurrenceRow, at: string): Promise<void>;
+  /** Occurrences paid by these movements. */
+  findOccurrencesByTransaction(userId: string, transactionId: string): Promise<OccurrenceRow[]>;
+  /** Movements on or after `since`, for bill detection when a bill is added. */
+  listTransactionsSince(userId: string, since: string): Promise<TransactionRow[]>;
   /** The legs of an Entre cuentas, oldest first. */
   getTransferLegs(userId: string, transferGroupId: string): Promise<TransactionRow[]>;
   updateTransactionFacts(userId: string, id: string, facts: { amount: number; transactionDate: string; accountId: string }): Promise<void>;

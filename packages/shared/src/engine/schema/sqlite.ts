@@ -119,3 +119,27 @@ ALTER TABLE transactions ADD COLUMN flow_class TEXT;
 ALTER TABLE transactions ADD COLUMN flow_class_version INTEGER;
 ALTER TABLE transactions ADD COLUMN transfer_group_id TEXT;
 `;
+
+/**
+ * Phone schema version 7: Pagos fijos. Same columns as the Supabase
+ * recurring tables. Occurrences are computed from the template; a row is
+ * stored only when its status changes, keyed by (template, date) like the
+ * server's unique constraint (the server generates its own rows by trigger).
+ */
+export const SQLITE_RECURRING_SCHEMA = `
+CREATE TABLE recurring_transaction_templates (
+  id TEXT PRIMARY KEY, user_id TEXT NOT NULL, account_id TEXT,
+  amount REAL NOT NULL, currency_code TEXT NOT NULL DEFAULT 'COP', direction TEXT NOT NULL,
+  frequency TEXT NOT NULL, day_of_month INTEGER, start_date TEXT NOT NULL, end_date TEXT,
+  merchant_name TEXT, description TEXT, is_active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT, updated_at TEXT
+);
+CREATE TABLE recurring_occurrences (
+  id TEXT PRIMARY KEY, user_id TEXT NOT NULL, template_id TEXT NOT NULL,
+  occurrence_date TEXT NOT NULL, expected_amount REAL NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'skipped')),
+  transaction_id TEXT, paid_at TEXT, skipped_at TEXT, linked_manually INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT,
+  UNIQUE (template_id, occurrence_date)
+);
+`;

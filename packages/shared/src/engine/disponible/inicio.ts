@@ -8,6 +8,9 @@ import { computeVerdict, type DisponibleVerdict, type DisponibleVerdictMemo } fr
 import { disponibleBlockView, type DisponibleBlockView } from "./view";
 import { disponibleDetailView, type DisponibleDetailView } from "./detail";
 import { buildInicioWidgets, flowScreenView, type CardSummary, type FlowScreenTab, type InicioWidget, type InicioWidgetsInput, type PersonOwing } from "./widgets";
+import type { InicioTemplate } from "../inicio-read";
+import type { OccurrenceRow } from "../types";
+import { cycleBills, type BillItem } from "./pagos";
 
 /** An account as Inicio needs it; `countsInDisponible` is null when the user never chose. */
 export interface InicioAccount {
@@ -21,6 +24,8 @@ export interface InicioAccount {
   cutoffDay?: number | null;
   /** Loans: the cuota. */
   monthlyPayment?: number | null;
+  /** Cards and loans: the day the bill or cuota is due. */
+  paymentDay?: number | null;
   currentBalance: number;
   countsInDisponible: boolean | null;
 }
@@ -56,6 +61,8 @@ export type InicioState =
       flow: FlowScreenTab[];
       /** Counted money now: the balance told plus what moved since, else the counted accounts (Mis cuentas' header). */
       balanceToday: number;
+      /** What's due this cycle and the next (the Pagos tab). */
+      bills: BillItem[];
       /** Movimientos' cycles, newest first: this one and those the phone still holds whole (up to 3, S1-3). */
       cycles: PayCycle[];
     };
@@ -95,6 +102,9 @@ export function buildInicio(input: {
   people?: PersonOwing[];
   /** Cards with statement data (one Tarjeta widget each); none on the phone until M2. */
   cards?: CardSummary[];
+  /** Pagos fijos and their stored occurrences (Pagos). */
+  templates?: InicioTemplate[];
+  occurrences?: OccurrenceRow[];
 }): InicioState {
   const { settings, today } = input;
   const schedule = settings?.schedule;
@@ -137,6 +147,14 @@ export function buildInicio(input: {
 
   const expectedIncomes: ExpectedIncome[] = [];
   const occurrenceLinks: OccurrenceLink[] = [];
+  // Bills due this cycle and the next (Por pagar now; Tu flujo and Pagos look ahead).
+  const nextCycle = cycleOn(addDays(cycle.end, 1));
+  const bills = cycleBills({
+    from: cycle.start, to: nextCycle.end, templates: input.templates ?? [], occurrences: input.occurrences ?? [],
+    accounts: input.accounts, transactions: input.transactions,
+  });
+  occurrenceLinks.push(...bills.occurrenceLinks);
+  const dueNow = bills.obligations.filter((o) => o.dueDate <= cycle.end);
   // A salary due on or before the day the balance was told is taken as inside
   // that balance (told on payday, it usually is); if it lands later after all,
   // it counts then as money in, never twice.
@@ -171,7 +189,7 @@ export function buildInicio(input: {
 
   const result = computeDisponible({
     cycle, today, accounts, expectedIncomes, movements,
-    obligations: [],
+    obligations: dueNow,
     savingsTarget: settings.savingsPerCycle,
     anchor,
     irregular,
@@ -193,7 +211,7 @@ export function buildInicio(input: {
         && (m.at ? m.at > anchor.at : m.date > toldOn))
       .reduce((s, m) => s + (m.direction === "INFLOW" ? m.amount : -m.amount), 0)) * 100) / 100
     : input.accounts.filter((a) => counted.has(a.id)).reduce((s, a) => s + a.currentBalance, 0);
-  const obligations: never[] = [];
+  const obligations = bills.obligations;
   const widgetsInput: InicioWidgetsInput = {
     today, cycle, result, movements, counted,
     transactions: input.transactions,
@@ -213,6 +231,6 @@ export function buildInicio(input: {
     if (before.start < inicioSince(today)) break;
     cycles.push(before);
   }
-  const detail = disponibleDetailView({ today, cycle, result, obligations, movements, counted, transactions: input.transactions });
-  return { status: "ready", cycle, result, verdict, view, detail, widgets, flow, cycles, balanceToday };
+  const detail = disponibleDetailView({ today, cycle, result, obligations: dueNow, movements, counted, transactions: input.transactions });
+  return { status: "ready", cycle, result, verdict, view, detail, widgets, flow, cycles, balanceToday, bills: bills.items };
 }

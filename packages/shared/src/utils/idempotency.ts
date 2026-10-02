@@ -1,6 +1,6 @@
 export type HashFn = (payload: string) => Promise<string>;
 
-async function sha256(payload: string): Promise<string> {
+export async function sha256(payload: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(payload);
   const hashBuffer = await globalThis.crypto.subtle.digest("SHA-256", data);

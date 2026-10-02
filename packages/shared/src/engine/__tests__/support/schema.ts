@@ -1,7 +1,7 @@
-import { SQLITE_ACCOUNTS_SCHEMA, SQLITE_CAPTURE_TIME_SCHEMA, SQLITE_ENGINE_SCHEMA, SQLITE_EXCLUDED_SCHEMA, SQLITE_SETTINGS_SCHEMA, SQLITE_TRANSFER_SCHEMA } from "../../schema/sqlite";
+import { SQLITE_ACCOUNTS_SCHEMA, SQLITE_CAPTURE_TIME_SCHEMA, SQLITE_ENGINE_SCHEMA, SQLITE_EXCLUDED_SCHEMA, SQLITE_RECURRING_SCHEMA, SQLITE_SETTINGS_SCHEMA, SQLITE_TRANSFER_SCHEMA } from "../../schema/sqlite";
 
 /** The phone's full schema: every version in order. */
-export const SQLITE_SCHEMA = SQLITE_ENGINE_SCHEMA + SQLITE_SETTINGS_SCHEMA + SQLITE_CAPTURE_TIME_SCHEMA + SQLITE_EXCLUDED_SCHEMA + SQLITE_ACCOUNTS_SCHEMA + SQLITE_TRANSFER_SCHEMA;
+export const SQLITE_SCHEMA = SQLITE_ENGINE_SCHEMA + SQLITE_SETTINGS_SCHEMA + SQLITE_CAPTURE_TIME_SCHEMA + SQLITE_EXCLUDED_SCHEMA + SQLITE_ACCOUNTS_SCHEMA + SQLITE_TRANSFER_SCHEMA + SQLITE_RECURRING_SCHEMA;
 
 // Same logical tables in both dialects; names and columns match the real
 // Supabase views (`accounts`, `transactions`) and new tables (`commands`,
@@ -65,6 +65,21 @@ CREATE TABLE user_cycle_settings (
     OR (schedule_kind = 'irregular' AND payday_1 IS NULL AND payday_2 IS NULL AND biweekly_anchor IS NULL)
   ),
   CHECK ((balance_anchor IS NULL) = (balance_anchor_at IS NULL))
+);
+-- Recurring (plain here; on Supabase the template is a view over _enc and a trigger generates occurrences).
+CREATE TABLE recurring_transaction_templates (
+  id uuid PRIMARY KEY, user_id uuid NOT NULL, account_id uuid,
+  amount numeric(15,2) NOT NULL, currency_code text NOT NULL DEFAULT 'COP', direction text NOT NULL,
+  frequency text NOT NULL, day_of_month int, start_date date NOT NULL, end_date date,
+  merchant_name text, description text, is_active boolean NOT NULL DEFAULT true,
+  created_at timestamptz, updated_at timestamptz
+);
+CREATE TABLE recurring_occurrences (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL, template_id uuid NOT NULL,
+  occurrence_date date NOT NULL, expected_amount numeric(15,2) NOT NULL,
+  status text NOT NULL DEFAULT 'pending', transaction_id uuid, paid_at timestamptz, skipped_at timestamptz,
+  linked_manually boolean NOT NULL DEFAULT false, created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (template_id, occurrence_date)
 );
 CREATE TABLE account_settings (
   user_id uuid NOT NULL, account_id uuid NOT NULL REFERENCES accounts_enc(id) ON DELETE CASCADE,

@@ -4,6 +4,10 @@ export interface AnotarPrefill {
   toAccountId?: string;
   /** Start listening right away (the Inicio mic). */
   dictar?: boolean;
+  /** Pagos › Pagar: the bill's amount, name and account. */
+  amount?: number;
+  what?: string;
+  accountId?: string | null;
 }
 
 const openers = new Set<(p: AnotarPrefill) => void>();

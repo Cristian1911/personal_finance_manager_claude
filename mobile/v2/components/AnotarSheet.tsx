@@ -69,8 +69,8 @@ export function AnotarSheet({ open, prefill, userId, onClose, onSaved, onAddAcco
     if (!open) return;
     setKind(prefill?.kind ?? "gasto");
     setIncomeKind("extra");
-    setAmountText("");
-    setWhat("");
+    setAmountText(prefill?.amount ? amountTyping(String(prefill.amount).replace(".", ",")) : "");
+    setWhat(prefill?.what ?? "");
     setToAccountId(prefill?.toAccountId ?? null);
     setDate(toColombiaDateString());
     setError(null);
@@ -78,7 +78,8 @@ export function AnotarSheet({ open, prefill, userId, onClose, onSaved, onAddAcco
     loadAnotar(userId).then((d) => {
       setData(d);
       const counted = d.accounts.find((a) => !isDebtAccountType(a.accountType));
-      setAccountId(d.lastAccountId ?? counted?.id ?? d.accounts[0]?.id ?? null);
+      const wanted = prefill?.accountId && d.accounts.some((a) => a.id === prefill.accountId) ? prefill.accountId : null;
+      setAccountId(wanted ?? d.lastAccountId ?? counted?.id ?? d.accounts[0]?.id ?? null);
       if (prefill?.dictar && d.accounts.length > 0) void listen();
     }).catch((e) => {
       console.warn("[v2 anotar] load failed", e);

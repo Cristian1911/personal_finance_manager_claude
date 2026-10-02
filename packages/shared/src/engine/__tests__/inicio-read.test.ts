@@ -45,8 +45,8 @@ describe.each(DRIVERS)("readInicioData on %s", (_name, make) => {
     const data = await readInicioData(d, USER, "2026-08-01");
     expect(data.settings).toMatchObject({ incomePerCycle: 2_100_000, balanceAnchor: { balance: 1_500_000, at: "2026-09-16T14:00:00.000Z" } });
     expect(data.accounts).toEqual([
-      { id: DEBIT, name: "", accountType: "CHECKING", institutionName: null, mask: null, currentBalance: 1_399_000, cutoffDay: null, monthlyPayment: null, countsInDisponible: false },
-      { id: CARD, name: "", accountType: "CREDIT_CARD", institutionName: null, mask: null, currentBalance: 0, cutoffDay: null, monthlyPayment: null, countsInDisponible: null },
+      { id: DEBIT, name: "", accountType: "CHECKING", institutionName: null, mask: null, currentBalance: 1_399_000, cutoffDay: null, monthlyPayment: null, paymentDay: null, countsInDisponible: false },
+      { id: CARD, name: "", accountType: "CREDIT_CARD", institutionName: null, mask: null, currentBalance: 0, cutoffDay: null, monthlyPayment: null, paymentDay: null, countsInDisponible: null },
     ]);
     expect(data.transactions).toHaveLength(1);
     expect(data.transactions[0]).toMatchObject({

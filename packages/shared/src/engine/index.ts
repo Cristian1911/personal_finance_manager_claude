@@ -2,7 +2,7 @@ export * from "./types";
 export { toDialect } from "./sql";
 export { createSqlStorage } from "./sql-storage";
 export { applyCommand, type EngineOptions } from "./runner";
-export { SQLITE_ACCOUNTS_SCHEMA, SQLITE_CAPTURE_TIME_SCHEMA, SQLITE_ENGINE_SCHEMA, SQLITE_EXCLUDED_SCHEMA, SQLITE_SETTINGS_SCHEMA, SQLITE_TRANSFER_SCHEMA } from "./schema/sqlite";
+export { SQLITE_ACCOUNTS_SCHEMA, SQLITE_CAPTURE_TIME_SCHEMA, SQLITE_ENGINE_SCHEMA, SQLITE_EXCLUDED_SCHEMA, SQLITE_RECURRING_SCHEMA, SQLITE_SETTINGS_SCHEMA, SQLITE_TRANSFER_SCHEMA } from "./schema/sqlite";
 export { OUTBOX_SCHEMA, applyAndEnqueue } from "./outbox";
 export {
   captureManualTransaction,
@@ -23,6 +23,17 @@ export {
 } from "./commands/accounts";
 export { captureTransfer, type CaptureTransferPayload } from "./commands/capture-transfer";
 export {
+  archivePagoFijo,
+  createPagoFijo,
+  editPagoFijo,
+  occurrenceDates,
+  setOccurrenceStatus,
+  type ArchivePagoFijoPayload,
+  type CreatePagoFijoPayload,
+  type EditPagoFijoPayload,
+  type SetOccurrenceStatusPayload,
+} from "./commands/pagos";
+export {
   setCycleSettings,
   validateSetCycleSettings,
   type SetCycleSettingsPayload,
@@ -33,4 +44,4 @@ export {
   type SetAccountCountsInDisponiblePayload,
 } from "./commands/set-account-counts-in-disponible";
 export * from "./disponible";
-export { readInicioData, type InicioData } from "./inicio-read";
+export { readInicioData, type InicioData, type InicioTemplate } from "./inicio-read";

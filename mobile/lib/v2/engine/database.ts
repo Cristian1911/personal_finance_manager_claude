@@ -3,6 +3,7 @@ import {
   OUTBOX_SCHEMA,
   SQLITE_ACCOUNTS_SCHEMA,
   SQLITE_TRANSFER_SCHEMA,
+  SQLITE_RECURRING_SCHEMA,
   SQLITE_CAPTURE_TIME_SCHEMA,
   SQLITE_EXCLUDED_SCHEMA,
   SQLITE_ENGINE_SCHEMA,
@@ -38,6 +39,8 @@ const MIGRATIONS: string[] = [
   SQLITE_ACCOUNTS_SCHEMA,
   // 6: Anotar's Ingreso and Entre cuentas (flow_class, transfer_group_id).
   SQLITE_TRANSFER_SCHEMA,
+  // 7: Pagos fijos (recurring templates + occurrences).
+  SQLITE_RECURRING_SCHEMA,
 ];
 
 export interface V2Database {

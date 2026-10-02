@@ -1,6 +1,7 @@
 import { archiveAccount, createAccount, editAccount } from "./commands/accounts";
 import { captureManualTransaction } from "./commands/capture-manual-transaction";
 import { captureTransfer } from "./commands/capture-transfer";
+import { archivePagoFijo, createPagoFijo, editPagoFijo, setOccurrenceStatus } from "./commands/pagos";
 import { setAccountCountsInDisponible } from "./commands/set-account-counts-in-disponible";
 import { setCycleSettings } from "./commands/set-cycle-settings";
 import { deleteTransaction } from "./commands/delete-transaction";
@@ -30,6 +31,10 @@ const HANDLERS: Partial<Record<CommandType, Handler>> = {
   editAccount,
   archiveAccount,
   captureTransfer,
+  createPagoFijo,
+  editPagoFijo,
+  archivePagoFijo,
+  setOccurrenceStatus,
 };
 
 /**

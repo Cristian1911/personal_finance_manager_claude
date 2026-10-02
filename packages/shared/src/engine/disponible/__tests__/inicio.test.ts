@@ -190,3 +190,26 @@ describe("buildInicio — Tu flujo screen", () => {
     expect(r.flow[2].range).toMatch(/sep/);
   });
 });
+
+describe("buildInicio — Pagos (promised money is subtracted before it's paid)", () => {
+  const rent = {
+    id: "rent", label: "Arriendo", amount: 500_000, direction: "OUTFLOW" as const, frequency: "MONTHLY",
+    startDate: "2026-09-20", endDate: null, accountId: null, isActive: true,
+  };
+  it("a fixed payment due this cycle lowers Disponible now", () => {
+    const without = build("2026-09-18", []);
+    const withRent = build("2026-09-18", [], { templates: [rent] });
+    expect(withRent.result.disponible).toBe(without.result.disponible - 500_000);
+    expect(withRent.bills.map((b) => [b.title, b.dueDate, b.status])).toEqual([["Arriendo", "2026-09-20", "pending"]]);
+  });
+
+  it("paying it doesn't count twice", () => {
+    const pay = tx("2026-09-20", 500_000, "OUTFLOW", { id: "pay" });
+    const r = build("2026-09-21", [pay], {
+      templates: [rent],
+      occurrences: [{ templateId: "rent", date: "2026-09-20", expectedAmount: 500_000, status: "paid", transactionId: "pay", linkedManually: false }],
+    });
+    const before = build("2026-09-21", [], { templates: [rent] });
+    expect(r.result.disponible).toBe(before.result.disponible);
+  });
+});

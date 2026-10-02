@@ -1,6 +1,8 @@
+import type { EngineOptions } from "../runner";
 import type { CommandEnvelope, CommandResult, StoragePort } from "../types";
 import { UUID_RE } from "../validate";
 import { moveBalance } from "./balance";
+import { unlinkPayment } from "./pagos";
 
 /** Movements the user wrote down; bank movements are only ever ignored. */
 export const MANUAL_CAPTURE_METHODS: ReadonlySet<string> = new Set(["MANUAL_FORM", "TEXT_QUICK_CAPTURE"]);
@@ -17,6 +19,7 @@ export interface DeleteTransactionPayload {
 export async function deleteTransaction(
   s: StoragePort,
   cmd: CommandEnvelope<DeleteTransactionPayload>,
+  opts: EngineOptions = {},
 ): Promise<CommandResult> {
   const p = cmd.payload;
   if (!p || !UUID_RE.test(p.transactionId ?? "")) return { status: "rejected", replayed: false, code: "invalid", error: "Identificador inválido." };
@@ -31,6 +34,7 @@ export async function deleteTransaction(
   const legs = tx.transferGroupId ? await s.getTransferLegs(cmd.userId, tx.transferGroupId) : [tx];
   const rows = legs.every((l) => MANUAL_CAPTURE_METHODS.has(l.captureMethod)) ? legs : [tx];
   for (const row of rows) {
+    await unlinkPayment(s, cmd.userId, row.id, cmd.clientTs, opts);
     await s.deleteTransaction(cmd.userId, row.id);
     // An ignored movement's amount already left the balance when it was ignored.
     if (!row.isExcluded) await moveBalance(s, cmd.userId, row.accountId, row.direction === "OUTFLOW" ? row.amount : -row.amount);

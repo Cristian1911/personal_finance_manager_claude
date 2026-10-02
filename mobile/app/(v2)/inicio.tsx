@@ -34,18 +34,18 @@ import { useV2Changes } from "../../lib/v2/changes";
  */
 const ACTION_ROUTES: Record<WidgetActionId, string> = {
   capture: "anotar",
-  add_bill: "/recurrentes/new",
+  add_bill: "/pagos?add=1",
   import_statement: "/import",
   split_purchase: "/personas",
   lend: "/personas",
   add_card: "/cuentas?add=tarjeta",
   see_movements: "/movimientos",
-  see_bills: "/recurrentes",
+  see_bills: "/pagos",
   see_people: "/personas",
   see_accounts: "/cuentas",
   see_flow: "/flujo",
 };
-const DETAIL_ROUTES: Partial<Record<DetailPartKey, string>> = { porPagar: "/recurrentes", gastado: "/movimientos" };
+const DETAIL_ROUTES: Partial<Record<DetailPartKey, string>> = { porPagar: "/pagos", gastado: "/movimientos" };
 
 /**
  * v2 Inicio (M1, Claude Design "Z Inicio"): greeting, the Disponible block
