@@ -180,3 +180,25 @@ ALTER TABLE transactions ADD COLUMN reconciled_into_transaction_id TEXT;
 ALTER TABLE transactions ADD COLUMN provider TEXT NOT NULL DEFAULT 'MANUAL';
 ALTER TABLE transactions ADD COLUMN status TEXT NOT NULL DEFAULT 'POSTED';
 `;
+
+/**
+ * Bank statements (phone schema version 10): what each statement said — the
+ * card's minimum, due date, balance and rate (D24: Disponible counts the
+ * minimum). Columns as the Supabase statement_snapshots view.
+ */
+export const SQLITE_STATEMENTS_SCHEMA = `
+CREATE TABLE statement_snapshots (
+  id TEXT PRIMARY KEY, user_id TEXT NOT NULL, account_id TEXT NOT NULL,
+  period_from TEXT, period_to TEXT, final_balance REAL, total_payment_due REAL, minimum_payment REAL,
+  payment_due_date TEXT, interest_rate REAL, currency_code TEXT NOT NULL DEFAULT 'COP',
+  transaction_count INTEGER NOT NULL DEFAULT 0, imported_count INTEGER NOT NULL DEFAULT 0, skipped_count INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT, updated_at TEXT
+);
+`;
+
+/** Phone schema version 11: each statement's movement of the debt (month-to-month tracking). */
+export const SQLITE_STATEMENTS_DETAIL_SCHEMA = `
+ALTER TABLE statement_snapshots ADD COLUMN previous_balance REAL;
+ALTER TABLE statement_snapshots ADD COLUMN purchases_and_charges REAL;
+ALTER TABLE statement_snapshots ADD COLUMN interest_charged REAL;
+`;

@@ -3,7 +3,13 @@ import { applyCommand, createSqlStorage, type CommandEnvelope, type CommandResul
 import { createUserScopedPgDriver } from "@/lib/engine/pg-driver";
 import { v2Config, v2Pool, v2User } from "@/lib/engine/v2-server";
 
-const SERVER_ONLY = new Set<string>(["captureBankTransaction", "anchorStatementBalance"]);
+/**
+ * Bank emails come only from the server's inbox. Statements are parsed by the
+ * server but imported by the phone (offline-first): their rows and anchor are
+ * the phone's own commands, and only ever touch the sender's data.
+ */
+const serverOnly = (c: CommandEnvelope) =>
+  c.type === "captureBankTransaction" && (c.payload as { source?: string } | null)?.source !== "PDF";
 
 const MAX_BATCH = 100;
 const MAX_BODY_BYTES = 1_000_000;
@@ -34,7 +40,7 @@ export async function POST(request: Request) {
   // A token can only write its own data.
   if (commands.some((c) => !c || c.userId !== user.id)) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   // Bank facts come only from the server (emails, statements): a phone can't forge a tier-2 row.
-  if (commands.some((c) => SERVER_ONLY.has(c.type))) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  if (commands.some(serverOnly)) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
   const storage = createSqlStorage(createUserScopedPgDriver(v2Pool(cfg.databaseUrl), user.id));
   const results: { id: string; result: CommandResult }[] = [];

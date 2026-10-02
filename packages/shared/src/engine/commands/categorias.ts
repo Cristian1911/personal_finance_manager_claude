@@ -30,7 +30,11 @@ const rememberable = (pattern: string) => pattern.replace(/[^\p{L}\p{N}]/gu, "")
  * anything the user picks later wins.
  */
 export async function matchOnCapture(s: StoragePort, userId: string, text: string): Promise<{ destinatarioId: string | null; categoryId: string | null }> {
-  const m = matchDestinatario(text, await s.listDestinatarioRules(userId));
+  const rules = await s.listDestinatarioRules(userId);
+  // Then without spaces: "I food" and "IFOOD" are the same Ifood (people type merchants both ways).
+  const squash = (x: string) => x.replace(/\s+/g, "");
+  const m = matchDestinatario(text, rules)
+    ?? matchDestinatario(squash(text), rules.map((r) => ({ ...r, pattern: squash(r.pattern) })));
   return { destinatarioId: m?.destinatario_id ?? null, categoryId: m?.category_id ?? null };
 }
 

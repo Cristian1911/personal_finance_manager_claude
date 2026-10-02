@@ -67,6 +67,8 @@ export default function InicioScreen() {
   const [layout, setLayout] = useState<InicioLayout | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  // Leaving the tab closes what was open: coming back shows Inicio as it is, not a half-open card.
+  useFocusEffect(useCallback(() => () => { setOpenWidget(null); setDetailOpen(false); }, []));
   const [draft, setDraft] = useState<InicioLayout | null>(null);
   const [adding, setAdding] = useState(false);
   const [dragging, setDragging] = useState(false);

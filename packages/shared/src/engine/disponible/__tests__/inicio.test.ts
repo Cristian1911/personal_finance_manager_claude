@@ -73,6 +73,16 @@ describe("buildInicio — the Tarjeta widget reads the cards", () => {
     return r.widgets.find((x) => x.id === `tarjeta:${CARD}`)!;
   };
 
+  it("with its statement, the card's bill in Disponible is the minimum, not everything bought (D24)", () => {
+    const r = build("2026-10-02", [tx("2026-09-17", 300_000, "OUTFLOW", { accountId: CARD })], {
+      accounts: [ACCOUNTS[0], { ...card, cutoffDay: 30, paymentDay: 12 }],
+      statements: [{ accountId: CARD, cutDate: "2026-09-30", dueDate: "2026-10-12", minimum: 45_000, totalDue: 300_000, rate: 24.33 }],
+    });
+    if (r.status !== "ready") throw new Error(r.status);
+    expect(r.bills.find((b) => b.kind === "card")).toMatchObject({ amount: 45_000, dueDate: "2026-10-12", estimated: false });
+    expect(tarjeta(r).rows).toEqual(expect.arrayContaining([expect.objectContaining({ id: "minimum", amount: "$45.000" })]));
+  });
+
   it("a bill paid this cycle isn't shown as owed (no red on its due day)", () => {
     const r = build("2026-10-12", [
       tx("2026-09-17", 300_000, "OUTFLOW", { accountId: CARD }),

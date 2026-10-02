@@ -82,6 +82,13 @@ describe.each(DRIVERS)("categorías y destinatarios on %s", (_name, make) => {
     expect(await row(T2)).toMatchObject({ destinatarioId: OTHER });
   });
 
+  it("spaces don't hide a destinatario: 'I food' and 'IFOOD' are Ifood", async () => {
+    const s = await setup();
+    await applyCommand(s, cmd("createDestinatario", { destinatarioId: RAPPI, name: "Ifood", kind: "merchant", pattern: "ifood", defaultCategoryId: DOMICILIOS }));
+    await applyCommand(s, spend(T1, "I food"));
+    expect(await row(T1)).toMatchObject({ destinatarioId: RAPPI, categoryId: DOMICILIOS });
+  });
+
   it("a short text like 'Pan' isn't remembered (it would match 'empanadas')", async () => {
     const s = await setup();
     await applyCommand(s, cmd("createDestinatario", { destinatarioId: LAURA, name: "Laura Gómez", kind: "person" }));

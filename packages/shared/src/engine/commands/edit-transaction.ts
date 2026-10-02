@@ -7,18 +7,25 @@ import { isIsoDate, isMoney } from "./validate-money";
 import { moveBalance } from "./balance";
 import type { EngineOptions } from "../runner";
 import { autoLinkPayment, unlinkPayment } from "./pagos";
+import { matchOnCapture } from "./categorias";
 
 export interface EditTransactionPayload {
   transactionId: string;
   amount?: number;
   date?: string;
   accountId?: string;
+  /** Its name, as you wrote it. */
+  description?: string;
+  /** "HH:mm" (Colombia), or null to fall back to when it was captured. */
+  time?: string | null;
 }
 
 const FIELDS = [
   { key: "amount", field: "amount" },
   { key: "date", field: "transaction_date" },
   { key: "accountId", field: "account_id" },
+  { key: "description", field: "clean_description" },
+  { key: "time", field: "transaction_time" },
 ] as const;
 
 /**
@@ -36,7 +43,9 @@ export async function editTransaction(
   const p = cmd.payload;
   const bad = (error: string): CommandResult => ({ status: "rejected", replayed: false, code: "invalid", error });
   if (!p || !UUID_RE.test(p.transactionId ?? "")) return bad("Identificador inválido.");
-  if (p.amount === undefined && p.date === undefined && p.accountId === undefined) return bad("No hay nada que cambiar.");
+  if (FIELDS.every(({ key }) => p[key] === undefined)) return bad("No hay nada que cambiar.");
+  if (p.description !== undefined && (typeof p.description !== "string" || !p.description.trim() || p.description.length > 200)) return bad("Escribe un nombre.");
+  if (p.time != null && (typeof p.time !== "string" || !/^([01]\d|2[0-3]):[0-5]\d$/.test(p.time))) return bad("Hora inválida.");
   if (p.amount !== undefined && (!isMoney(p.amount) || p.amount <= 0)) return bad("El monto debe ser mayor que cero.");
   if (p.date !== undefined && !isIsoDate(p.date)) return bad("Fecha inválida.");
   if (p.accountId !== undefined && !UUID_RE.test(p.accountId)) return bad("Cuenta inválida.");
@@ -52,7 +61,7 @@ export async function editTransaction(
     return { status: "rejected", replayed: false, code: "not_found", error: "Cuenta no encontrada." };
   }
 
-  const next = { amount: tx.amount, transactionDate: tx.transactionDate, accountId: tx.accountId };
+  const next = { amount: tx.amount, transactionDate: tx.transactionDate, accountId: tx.accountId, cleanDescription: tx.cleanDescription, transactionTime: tx.transactionTime };
   let changed = 0;
   for (const { key, field } of FIELDS) {
     if (p[key] === undefined) continue;
@@ -61,6 +70,8 @@ export async function editTransaction(
     if (key === "amount") next.amount = p.amount!;
     if (key === "date") next.transactionDate = p.date!;
     if (key === "accountId") next.accountId = p.accountId!;
+    if (key === "description") next.cleanDescription = p.description!.trim();
+    if (key === "time") next.transactionTime = p.time ?? null;
     await s.setFieldVersion({ userId: cmd.userId, entity: "transaction", entityId: tx.id, field, clientTs: cmd.clientTs, commandId: cmd.id });
     changed++;
   }
@@ -68,7 +79,16 @@ export async function editTransaction(
 
   const sign = tx.direction === "OUTFLOW" ? -1 : 1;
   await s.updateTransactionFacts(cmd.userId, tx.id, next);
-  if (!tx.isExcluded) { // an ignored movement isn't in any balance
+  // A new name runs the destinatario rules again ("Ifood" → Ifood), unless you chose who it is by hand.
+  if (next.cleanDescription !== tx.cleanDescription && !(await s.getFieldVersion(cmd.userId, "transaction", tx.id, "destinatario_id"))) {
+    const m = await matchOnCapture(s, cmd.userId, next.cleanDescription ?? "");
+    if (m.destinatarioId) {
+      const handCategory = await s.getFieldVersion(cmd.userId, "transaction", tx.id, "category_id");
+      await s.updateTransactionLabels(cmd.userId, tx.id, { destinatario_id: m.destinatarioId, ...(handCategory ? {} : { category_id: m.categoryId }) });
+    }
+  }
+  const moved = next.amount !== tx.amount || next.transactionDate !== tx.transactionDate || next.accountId !== tx.accountId;
+  if (!tx.isExcluded && moved) { // an ignored movement isn't in any balance
     await moveBalance(s, cmd.userId, tx.accountId, -sign * tx.amount);
     await moveBalance(s, cmd.userId, next.accountId, sign * next.amount);
     // New amount, date or account: check again which bill it pays.
