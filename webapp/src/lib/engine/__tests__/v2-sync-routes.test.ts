@@ -63,6 +63,12 @@ describe.skipIf(!enabled)("v2 sync routes on zeta-dev", { timeout: 90_000 }, () 
     expect(snapshot.transactions).toEqual([expect.objectContaining({ clean_description: "Desde el teléfono", amount: 25000 })]);
   });
 
+  it("a command type this server doesn't know stays queued on the phone (failed, not answered)", async () => {
+    const body = await (await post({ commands: [cmd("someFutureCommand", {})] })).json();
+    expect(body.results).toEqual([]);
+    expect(body.failed).toMatchObject({ error: "El servidor aún no conoce este cambio" });
+  });
+
   it("refuses commands for someone else, and requests without a valid token", async () => {
     expect((await post({ commands: [cmd("createAccount", {}, { userId: crypto.randomUUID() })] })).status).toBe(403);
     expect((await post({ commands: [cmd("createAccount", {})] }, "Bearer nope")).status).toBe(401);

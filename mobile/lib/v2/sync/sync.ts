@@ -7,18 +7,34 @@ import { V2_LOCAL_USER } from "../user";
 
 const API = process.env.EXPO_PUBLIC_API_URL ?? "";
 const BATCH = 50;
+/** After this many failed tries a command is set aside ('dead') so it can't block everything after it. */
+export const MAX_ATTEMPTS = 5;
 
 export type SyncOutcome = "synced" | "pending" | "offline" | "signed_out" | "error";
 
 let running: Promise<SyncOutcome> | null = null;
+let again = false;
 
 /**
  * Sync (S9-4): push the outbox in order, then — only when it's empty, so no
  * local change can be lost — replace the phone's copy with the server's
- * snapshot. Single-flight; never throws; local data stays usable offline.
+ * snapshot. Single-flight (a request while running runs once more after);
+ * never throws; local data stays usable offline.
  */
 export function syncV2(userId: string): Promise<SyncOutcome> {
-  return (running ??= run(userId).finally(() => { running = null; }));
+  if (running) {
+    again = true;
+    return running;
+  }
+  running = (async () => {
+    let outcome: SyncOutcome;
+    do {
+      again = false;
+      outcome = await run(userId);
+    } while (again);
+    return outcome;
+  })().finally(() => { running = null; });
+  return running;
 }
 
 async function run(userId: string): Promise<SyncOutcome> {
@@ -80,8 +96,41 @@ async function push(userId: string, token: string): Promise<"done" | SyncOutcome
 
 async function failed(commandId: string, error: string) {
   const { driver } = await getV2Database();
-  // ponytail: retried forever on the next sync; a 'dead' state + a support message if one ever loops.
-  await driver.query("UPDATE outbox SET attempts = attempts + 1, last_error = ? WHERE command_id = ?", [error, commandId]);
+  await driver.query(
+    `UPDATE outbox SET attempts = attempts + 1, last_error = ?,
+       state = CASE WHEN attempts + 1 >= ? THEN 'dead' ELSE state END
+     WHERE command_id = ?`,
+    [error, MAX_ATTEMPTS, commandId],
+  );
+}
+
+export interface SyncProblem {
+  commandId: string;
+  type: string;
+  /** Spanish, for people. */
+  error: string;
+  state: "dead" | "rejected";
+}
+
+/**
+ * Changes that didn't make it to the account (Revisar): set aside after
+ * repeated failures, or refused by the server (e.g. the account was archived
+ * on another phone). Their local effect is gone after the next pull.
+ */
+export async function syncProblems(userId: string): Promise<SyncProblem[]> {
+  const { driver } = await getV2Database();
+  const rows = await driver.query<{ command_id: string; type: string; state: string; last_error: string | null; server_result: string | null }>(
+    `SELECT o.command_id, c.type, o.state, o.last_error, o.server_result
+       FROM outbox o JOIN commands c ON c.id = o.command_id AND c.user_id = o.user_id
+      WHERE o.user_id = ? AND (o.state = 'dead' OR (o.state = 'acked' AND o.server_result LIKE '%"status":"rejected"%'))
+      ORDER BY o.seq DESC LIMIT 20`,
+    [userId],
+  );
+  return rows.map((r) => {
+    if (r.state === "dead") return { commandId: r.command_id, type: r.type, state: "dead" as const, error: r.last_error ?? "No se pudo guardar." };
+    const result = JSON.parse(r.server_result ?? "{}") as CommandResult;
+    return { commandId: r.command_id, type: r.type, state: "rejected" as const, error: result.error ?? "Tu cuenta no aceptó este cambio." };
+  });
 }
 
 async function pull(userId: string, token: string): Promise<SyncOutcome> {

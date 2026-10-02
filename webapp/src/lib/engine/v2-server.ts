@@ -15,8 +15,12 @@ export function v2Config(): { url: string; publishableKey: string; databaseUrl: 
 
 let pool: Pool | null = null;
 export function v2Pool(databaseUrl: string): Pool {
+  if (pool) return pool;
   // ponytail: one small pool per server process; raise max if sync traffic needs it.
-  return (pool ??= new Pool({ connectionString: databaseUrl, max: 5 }));
+  pool = new Pool({ connectionString: databaseUrl, max: 5, connectionTimeoutMillis: 10_000, idleTimeoutMillis: 30_000 });
+  // An idle connection dropped by the pooler emits 'error' on the pool; unhandled, it would crash the web app.
+  pool.on("error", (e) => console.error("[v2] pg pool error", e.message));
+  return pool;
 }
 
 /** The v2 user behind `Authorization: Bearer <access token>`, or null. */

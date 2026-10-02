@@ -53,6 +53,16 @@ describe("sync snapshot (S9-4 pull: the server's rows replace the phone's)", () 
     expect(JSON.stringify(snapshot)).not.toContain("Ajeno");
   });
 
+  it("a row the phone holds outside the window, now inside it on the server, doesn't break the pull", async () => {
+    const pg = await serverWithData();
+    const phone = await createSqlJsDriver();
+    // The phone's copy is dated before the window; the server's (moved on another device) is inside it.
+    await phone.query("INSERT INTO transactions (id, user_id, account_id, amount, currency_code, direction, transaction_date, capture_method, idempotency_key) VALUES ('55555555-5555-4555-8555-555555555555', ?, ?, 1, 'COP', 'OUTFLOW', '2026-08-01', 'MANUAL_FORM', 'moved')", [USER, DEBIT]);
+    await applySnapshot(phone, USER, await readSnapshot(pg, USER, "2026-09-01"), "2026-09-01");
+    const [row] = await phone.query<{ transaction_date: string }>("SELECT transaction_date FROM transactions WHERE id = '55555555-5555-4555-8555-555555555555'");
+    expect(row.transaction_date).toBe("2026-10-05");
+  });
+
   it("rows deleted on the server leave the phone; rows outside the window stay", async () => {
     const pg = await serverWithData();
     const phone = await createSqlJsDriver();

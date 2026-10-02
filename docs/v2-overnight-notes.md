@@ -51,8 +51,11 @@ the tests talk to zeta-dev only. To undo anything, close its PR (and the ones ab
 ## Things only you can do
 
 1. **Production web server env** (for sync to work from real phones): add `V2_SUPABASE_URL`, `V2_SUPABASE_PUBLISHABLE_KEY`,
-   `V2_DATABASE_URL` (zeta-dev's values, as in `.env.v2-dev`: URL, publishable key, DB URL) to the VPS / deploy secrets.
-   Without them `/api/v2/*` answers 503 and phones keep working offline only.
+   `V2_DATABASE_URL` to the VPS `.env` (docker-compose.prod.yml already passes them through, #sync PR). Without them
+   `/api/v2/*` answers 503 and phones keep working offline only. For `V2_DATABASE_URL`: the **pooler** URL with
+   `sslmode=require` (direct connections are IPv6-only), and ideally a dedicated login role that is only a member of
+   `authenticated` — not `postgres` — so nothing on the web server can bypass RLS/encryption by mistake.
+   (The launch plan's `V2_SUPABASE_SECRET_KEY` is not needed; the code uses the DB URL.)
 2. **Google/Apple sign-in on zeta-dev** (you were on it).
 3. **Before launch**: delete the test user `claude-sim@zeta-dev.test` (created for the simulator sync test) and turn on
    backups for zeta-dev.

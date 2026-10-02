@@ -99,7 +99,10 @@ export async function applySnapshot(driver: SqlDriver, userId: string, snapshot:
         t.dateCol ? [userId, since] : [userId],
       );
       const cols = Object.keys(t.cols);
-      const sql = toDialect(`INSERT INTO ${t.name} (${cols.join(", ")}) VALUES (${cols.map(() => "?").join(", ")})`, tx.dialect);
+      // Upsert: a row the phone holds outside the window (e.g. its date moved on another device)
+      // would otherwise clash on its id and fail every pull.
+      const verb = tx.dialect === "sqlite" ? "INSERT OR REPLACE" : "INSERT";
+      const sql = toDialect(`${verb} INTO ${t.name} (${cols.join(", ")}) VALUES (${cols.map(() => "?").join(", ")})`, tx.dialect);
       for (const r of rows) {
         // Never trust a row for someone else (defense in depth; the server already scopes).
         if (r.user_id !== userId) continue;

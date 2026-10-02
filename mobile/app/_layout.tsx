@@ -123,7 +123,8 @@ function RootLayoutNav() {
 
     async function checkOnboarding() {
       if (loading) return;
-      if (demoMode) {
+      // v2's first-run questions live on Inicio; v1's profiles table isn't read.
+      if (demoMode || V2_DEBUG_ENABLED) {
         if (!mounted) return;
         setNeedsOnboarding(false);
         setCheckingOnboarding(false);
@@ -291,14 +292,14 @@ function RootLayoutNav() {
         // round trip (reading an OTP) must not leave the engine stuck "in
         // background" for the rest of the session. syncAll is a no-op without
         // a session, so the resume sync it fires costs nothing there.
-        if (wasBackground) setSyncForegrounded(true);
+        if (wasBackground && !V2_DEBUG_ENABLED) setSyncForegrounded(true);
         if (wasBackground && session && !demoMode) {
           isBackgroundReauthEnabled().then((enabled) => {
             if (enabled) setBiometricLocked(true);
           });
           // Newly-synced occurrences (or ones that became due) are reflected on
-          // resume — reschedule is a no-op when reminders are off.
-          reschedulePaymentReminders();
+          // resume — reschedule is a no-op when reminders are off. (v1 data: not in v2.)
+          if (!V2_DEBUG_ENABLED) reschedulePaymentReminders();
         }
       } else if (nextState === "background") {
         supabase.auth.stopAutoRefresh();

@@ -4,6 +4,7 @@ import { createUserScopedPgDriver } from "@/lib/engine/pg-driver";
 import { v2Config, v2Pool, v2User } from "@/lib/engine/v2-server";
 
 const MAX_BATCH = 100;
+const MAX_BODY_BYTES = 1_000_000;
 
 /**
  * The phone's outbox, drained (S9-4): each command is replayed, in order,
@@ -17,6 +18,9 @@ export async function POST(request: Request) {
   const user = await v2User(request, cfg);
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
+  if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: "Solicitud muy grande" }, { status: 413 });
+  }
   let commands: CommandEnvelope[];
   try {
     const body = (await request.json()) as { commands?: unknown };
@@ -32,7 +36,13 @@ export async function POST(request: Request) {
   const results: { id: string; result: CommandResult }[] = [];
   for (const c of commands) {
     try {
-      results.push({ id: c.id, result: await applyCommand(storage, c) });
+      const result = await applyCommand(storage, c);
+      // A command this server doesn't know yet (the app is newer than the deploy): not
+      // applied, not recorded — stop here so the phone keeps it queued instead of dropping it.
+      if (result.status === "rejected" && result.code === "unsupported") {
+        return NextResponse.json({ results, failed: { id: c.id, error: "El servidor aún no conoce este cambio" } });
+      }
+      results.push({ id: c.id, result });
     } catch (e) {
       console.error("[v2 commands] apply failed", { id: c.id, type: c.type, error: e instanceof Error ? e.message : String(e) });
       return NextResponse.json({ results, failed: { id: c.id, error: "No se pudo aplicar" } });

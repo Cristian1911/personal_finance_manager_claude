@@ -15,6 +15,8 @@ export async function GET(request: Request) {
   const since = new URL(request.url).searchParams.get("since") ?? "";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(since)) return NextResponse.json({ error: "Fecha inválida" }, { status: 400 });
 
-  const snapshot = await readSnapshot(createUserScopedPgDriver(v2Pool(cfg.databaseUrl), user.id), user.id, since);
+  // One transaction: a consistent copy, even if another device pushes meanwhile.
+  const snapshot = await createUserScopedPgDriver(v2Pool(cfg.databaseUrl), user.id)
+    .transaction((tx) => readSnapshot(tx, user.id, since));
   return NextResponse.json({ snapshot }, { headers: { "Cache-Control": "no-store" } });
 }
