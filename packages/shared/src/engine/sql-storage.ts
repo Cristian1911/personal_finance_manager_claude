@@ -121,6 +121,20 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
       return rows.map(txRow);
     },
 
+    async upsertStatementSnapshot(r, at) {
+      const vals = [r.periodFrom, r.periodTo, r.finalBalance, r.totalPaymentDue, r.minimumPayment, r.paymentDueDate, r.interestRate, r.transactionCount];
+      // The Supabase view has INSTEAD OF triggers (no ON CONFLICT): update by id, else insert.
+      const found = await q("SELECT id FROM statement_snapshots WHERE user_id = ? AND id = ?", [r.userId, r.id]);
+      if (found.length) {
+        await q(`UPDATE statement_snapshots SET period_from = ?, period_to = ?, final_balance = ?, total_payment_due = ?, minimum_payment = ?,
+                 payment_due_date = ?, interest_rate = ?, transaction_count = ?, updated_at = ? WHERE user_id = ? AND id = ?`, [...vals, at, r.userId, r.id]);
+      } else {
+        await q(`INSERT INTO statement_snapshots (period_from, period_to, final_balance, total_payment_due, minimum_payment, payment_due_date,
+                 interest_rate, transaction_count, id, user_id, account_id, currency_code, imported_count, skipped_count, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?)`, [...vals, r.id, r.userId, r.accountId, r.currencyCode, at, at]);
+      }
+    },
+
     async listHeldFor(userId, twinId) {
       const rows = await q<Record<string, unknown>>(
         `SELECT id, user_id, account_id, amount, currency_code, direction,

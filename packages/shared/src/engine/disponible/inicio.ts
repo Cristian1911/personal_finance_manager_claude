@@ -8,7 +8,7 @@ import { computeVerdict, type DisponibleVerdict, type DisponibleVerdictMemo } fr
 import { disponibleBlockView, type DisponibleBlockView } from "./view";
 import { disponibleDetailView, type DisponibleDetailView } from "./detail";
 import { buildInicioWidgets, flowScreenView, type CardSummary, type FlowScreenTab, type InicioWidget, type InicioWidgetsInput, type PersonOwing } from "./widgets";
-import type { InicioTemplate } from "../inicio-read";
+import type { CardStatement, InicioTemplate } from "../inicio-read";
 import type { OccurrenceRow } from "../types";
 import { cycleBills, type BillItem } from "./pagos";
 
@@ -105,6 +105,8 @@ export function buildInicio(input: {
   /** Pagos fijos and their stored occurrences (Pagos). */
   templates?: InicioTemplate[];
   occurrences?: OccurrenceRow[];
+  /** Card/loan statements: the card's bill is its minimum once the statement is in (D24). */
+  statements?: CardStatement[];
 }): InicioState {
   const { settings, today } = input;
   const schedule = settings?.schedule;
@@ -151,7 +153,7 @@ export function buildInicio(input: {
   const nextCycle = cycleOn(addDays(cycle.end, 1));
   const bills = cycleBills({
     from: cycle.start, to: nextCycle.end, templates: input.templates ?? [], occurrences: input.occurrences ?? [],
-    accounts: input.accounts, transactions: input.transactions,
+    accounts: input.accounts, transactions: input.transactions, statements: input.statements ?? [],
     cycleStart: cycle.start, counts: (id) => counted.has(id),
   });
   occurrenceLinks.push(...bills.occurrenceLinks);
@@ -219,7 +221,7 @@ export function buildInicio(input: {
     obligations,
     balances: input.accounts.filter((a) => counted.has(a.id)).map((a) => ({ accountId: a.id, balance: a.currentBalance })),
     people: input.people,
-    cards: input.cards ?? cardsFrom(input.accounts, bills.items, today),
+    cards: input.cards ?? cardsFrom(input.accounts, bills.items, input.statements ?? [], input.transactions, today),
     balanceToday,
     nextIncome: irregular ? 0 : income,
     cycles: { prev: cycleOn(addDays(cycle.start, -1)), next: cycleOn(addDays(cycle.end, 1)) },
@@ -242,11 +244,19 @@ export function buildInicio(input: {
  * one still pending, minus what's paid on it — never an old one. Usage, minimum
  * and the at-cut projection come with the statement later.
  */
-function cardsFrom(accounts: InicioAccount[], items: BillItem[], today: IsoDate): CardSummary[] {
+function cardsFrom(accounts: InicioAccount[], items: BillItem[], statements: CardStatement[], transactions: StoredTransaction[], today: IsoDate): CardSummary[] {
   return accounts.filter((a) => a.accountType === "CREDIT_CARD").map((a) => {
     const pending = items.find((b) => b.kind === "card" && b.accountId === a.id && b.status === "pending");
     const cutDay = a.cutoffDay ?? a.paymentDay;
+    // The last statement in: what's been bought since its cut goes to the next bill (owner's D24 alert).
+    const last = statements.filter((s) => s.accountId === a.id && s.cutDate).sort((x, y) => y.cutDate!.localeCompare(x.cutDate!))[0];
+    const since = last?.cutDate
+      ? Math.round(transactions.filter((t) => isLiveTransaction(t) && t.accountId === a.id && t.direction === "OUTFLOW" && t.date > last.cutDate!)
+        .reduce((s, t) => s + t.amount, 0) * 100) / 100
+      : null;
     return {
+      minimum: pending && !pending.estimated ? Math.max(0, Math.round((pending.amount - pending.paid) * 100) / 100) : null,
+      sinceCut: since,
       accountId: a.id,
       name: a.name?.trim() || "Tarjeta",
       estimatedBill: pending ? Math.max(0, Math.round((pending.amount - pending.paid) * 100) / 100) : 0,

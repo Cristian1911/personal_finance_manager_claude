@@ -140,6 +140,8 @@ export interface CardSummary {
   totalOwed?: number | null;
   /** No payment day yet: there's no bill to show (Pagos needs it). */
   missingPaymentDay?: boolean;
+  /** Bought since the last statement's cut: it goes to the next bill (owner's D24 alert). */
+  sinceCut?: number | null;
 }
 
 /** Days shown on each side of the cycle in Tu flujo. */
@@ -635,6 +637,9 @@ export function tarjetaWidget(i: InicioWidgetsInput, card: CardSummary): InicioW
       detail: `${card.dueDate ? `${shortDate(card.dueDate)} · ` : ""}cuenta en Disponible`,
       amount: signedPesos(card.minimum),
     });
+  }
+  if (card.sinceCut) {
+    w.rows.push({ id: "since_cut", title: "Desde el corte", detail: "va a tu próxima factura", amount: signedPesos(card.sinceCut) });
   }
   if (card.totalOwed != null) {
     w.rows.push({

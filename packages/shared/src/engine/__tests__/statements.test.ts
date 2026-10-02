@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { applyCommand } from "../runner";
 import { createSqlStorage } from "../sql-storage";
 import { readInicioData } from "../inicio-read";
-import { planStatements, statementCommands, statementResult, type StatementInput } from "../statements";
+import { planStatements, statementCommands, statementResult, statementReview, type StatementInput } from "../statements";
 import type { CommandEnvelope, SqlDriver, StoragePort } from "../types";
 import { DRIVERS } from "./support/drivers";
 
@@ -23,9 +23,10 @@ const savings = statement({ transactions: [
   tx("2026-09-12", 90_000, "TRANSFERENCIA A NEQUI 3001234567"),
   tx("2026-09-12", 90_000, "TRANSFERENCIA A NEQUI 3001234567"),
 ] });
+// Bancolombia's card statements bring no summary balance: what you owe is total_payment_due (like v1).
 const card = statement({
-  statement_type: "credit_card", account_number: null, card_last_four: "7706", summary: { final_balance: 260_000 },
-  credit_card_metadata: { credit_limit: 3_000_000, minimum_payment: 60_000, payment_due_date: "2026-10-12", total_payment_due: 260_000 },
+  statement_type: "credit_card", account_number: null, card_last_four: "7706", summary: { final_balance: null },
+  credit_card_metadata: { credit_limit: 3_000_000, minimum_payment: 60_000, payment_due_date: "2026-10-12", total_payment_due: 260_000, interest_rate: 24.33 },
   transactions: [tx("2026-09-18", 100_000, "TIENDA X", { original_amount: 300_000, installment_current: 1, installment_total: 3 }), tx("2026-09-20", 160_000, "RESTAURANTE")],
 });
 const usd = { ...card, currency: "USD", transactions: [tx("2026-09-21", 12.5, "NETFLIX", { currency: "USD" })] };
@@ -81,6 +82,17 @@ describe.each(DRIVERS)("statement import on the phone (planStatements + statemen
     expect(us).toMatchObject({ nuevos: 0, nota: expect.stringContaining("USD") });
     const live = (await readInicioData(driver, USER, "2026-09-01")).transactions.filter((t) => t.accountId === SAVINGS && !t.reconciledIntoTransactionId);
     expect(live).toHaveLength(4); // arriendo (merged), two transfers, mercado
+  });
+
+  it("keeps the card statement (minimum, due date, rate) and Disponible counts the minimum, not the whole bill (D24)", async () => {
+    await setup();
+    await importAll([card], [{ index: 0, create: { name: "Visa" } }]);
+    const data = await readInicioData(driver, USER, "2026-09-01");
+    expect(data.statements).toEqual([expect.objectContaining({ dueDate: "2026-10-12", minimum: 60_000, totalDue: 260_000, cutDate: "2026-09-30", rate: 24.33 })]);
+  });
+
+  it("shows what a statement says before importing it: balance, minimum, due date, rate, interest at the minimum", () => {
+    expect(statementReview(card)).toMatchObject({ saldo: 260_000, minimo: 60_000, vence: "2026-10-12", tasa: 24.33, movimientos: 2, intereses12: expect.any(Number) });
   });
 
   it("the same PDF again changes nothing (and never makes a second card)", async () => {

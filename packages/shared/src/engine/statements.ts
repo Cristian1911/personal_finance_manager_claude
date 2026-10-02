@@ -1,5 +1,6 @@
 import { assignStatementOccurrenceIndexes } from "../utils/statement-import";
 import { sha256, type HashFn } from "../utils/idempotency";
+import { projectMinimumPayoff12mo } from "../utils/cc-projection";
 import type { CommandResult, CommandType } from "./types";
 
 /**
@@ -15,8 +16,12 @@ export interface StatementInput {
   period_to: string | null;
   currency: string;
   summary: { final_balance: number | null } | null;
-  credit_card_metadata: { credit_limit: number | null; minimum_payment: number | null; payment_due_date: string | null; total_payment_due: number | null } | null;
-  loan_metadata?: { remaining_balance: number | null } | null;
+  credit_card_metadata: {
+    credit_limit: number | null; minimum_payment: number | null; payment_due_date: string | null; total_payment_due: number | null;
+    /** E.A., in percent. */
+    interest_rate?: number | null;
+  } | null;
+  loan_metadata?: { remaining_balance: number | null; minimum_payment?: number | null; payment_due_date?: string | null; interest_rate?: number | null } | null;
   transactions: {
     date: string; description: string; amount: number; direction: "INFLOW" | "OUTFLOW"; currency: string;
     installment_current: number | null; installment_total: number | null; original_amount: number | null;
@@ -90,7 +95,45 @@ async function uuidFrom(text: string, hash: HashFn): Promise<string> {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-8${h.slice(17, 20)}-${h.slice(20, 32)}`;
 }
 
-export interface StatementStep { type: CommandType; payload: unknown; kind: "account" | "row" | "card" | "anchor" }
+export interface StatementStep { type: CommandType; payload: unknown; kind: "account" | "row" | "card" | "anchor" | "statement" }
+
+/** What a statement says, before importing it (v1's "Por pagar" card): to read it and trust it. */
+export interface StatementReview {
+  /** What you owe (cards: total_payment_due, like v1) or the account's balance at the cut. */
+  saldo: number | null;
+  minimo: number | null;
+  vence: string | null;
+  /** E.A., in percent. */
+  tasa: number | null;
+  /** Paying only the minimum for 12 months: interest paid, what's left; null when it can't be told. */
+  intereses12: number | null;
+  queda12: number | null;
+  /** The minimum doesn't even cover the interest: the debt grows. */
+  crece: boolean;
+  movimientos: number;
+  periodo: { from: string | null; to: string | null };
+}
+
+const finalOf = (st: StatementInput) =>
+  st.statement_type === "credit_card" ? st.credit_card_metadata?.total_payment_due ?? st.summary?.final_balance ?? null
+    : st.statement_type === "loan" ? st.loan_metadata?.remaining_balance ?? st.summary?.final_balance ?? null
+      : st.summary?.final_balance ?? null;
+
+export function statementReview(st: StatementInput): StatementReview {
+  const meta = st.statement_type === "credit_card" ? st.credit_card_metadata : st.statement_type === "loan" ? st.loan_metadata : null;
+  const saldo = finalOf(st);
+  const minimo = meta?.minimum_payment ?? null;
+  const tasa = meta?.interest_rate ?? null;
+  const p = saldo != null && minimo != null && tasa != null ? projectMinimumPayoff12mo(saldo, tasa / 100, minimo) : null;
+  return {
+    saldo, minimo, vence: meta?.payment_due_date ?? null, tasa,
+    intereses12: p && !p.growing ? Math.round(p.interestAccrued) : null,
+    queda12: p && !p.growing ? Math.round(p.remainingBalance) : null,
+    crece: !!p?.growing,
+    movimientos: st.transactions.length,
+    periodo: { from: st.period_from, to: st.period_to },
+  };
+}
 export interface StatementWork {
   index: number;
   account: string;
@@ -169,7 +212,17 @@ export async function statementCommands(
         } });
       }
     }
-    const finalBalance = st.statement_type === "loan" ? st.loan_metadata?.remaining_balance ?? st.summary?.final_balance : st.summary?.final_balance;
+    // What the statement said (D24: the card's minimum is what Disponible counts), then the balance at its cut.
+    const review = statementReview(st);
+    if (st.statement_type !== "savings" && (review.minimo != null || review.vence)) {
+      steps.push({ type: "recordStatement", kind: "statement", payload: {
+        id: await uuidFrom(`statement:${accountId}:COP:${st.period_from ?? ""}:${st.period_to ?? ""}`, hash), accountId,
+        periodFrom: st.period_from, periodTo: st.period_to, finalBalance: st.summary?.final_balance ?? null,
+        totalPaymentDue: review.saldo, minimumPayment: review.minimo, paymentDueDate: review.vence, interestRate: review.tasa,
+        currencyCode: "COP", transactionCount: st.transactions.length,
+      } });
+    }
+    const finalBalance = finalOf(st);
     if (finalBalance != null && st.period_to) {
       steps.push({ type: "anchorStatementBalance", kind: "anchor", payload: { accountId, finalBalance, asOf: st.period_to } });
     }
@@ -181,6 +234,10 @@ export async function statementCommands(
 export interface StatementResult {
   index: number; account: string; created: boolean; nuevos: number; yaEstaban: number; paraRevisar: number;
   errores: number; balance: number | null; nota?: string;
+  /** The statement's minimum and due date, now counted in Disponible. */
+  minimo?: number | null; vence?: string | null;
+  /** The card learned its days from this statement. */
+  corte?: number | null; pago?: number | null;
 }
 
 /** Counts a statement's command results for the summary ("3 nuevos · 2 ya estaban · 1 para revisar"). */
@@ -189,6 +246,17 @@ export function statementResult(w: StatementWork, results: CommandResult[]): Sta
   w.steps.forEach((step, i) => {
     const res = results[i];
     if (!res) return;
+    const p = step.payload as Record<string, unknown>;
+    if (step.kind === "statement" && res.status === "applied") {
+      r.minimo = p.minimumPayment as number | null;
+      r.vence = p.paymentDueDate as string | null;
+      return;
+    }
+    if (step.kind === "card" && res.status === "applied") {
+      r.corte = (p.cutoffDay as number | undefined) ?? null;
+      r.pago = (p.paymentDay as number | undefined) ?? null;
+      return;
+    }
     if (step.kind === "anchor") {
       const d = res.data as { balance: number; kept?: boolean } | undefined;
       if (res.status === "applied" && d && !d.kept) r.balance = d.balance;

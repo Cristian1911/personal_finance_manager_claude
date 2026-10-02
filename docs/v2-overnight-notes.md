@@ -88,6 +88,15 @@ the tests talk to zeta-dev only. To undo anything, close its PR (and the ones ab
   its cut day, payment day and limit. Uploading the same PDF again changes nothing. Not in yet: rows in another
   currency (USD sections), investments, saved PDF passwords (asked each time), the "¿Es el mismo?" for statement vs
   anotado with different words (held to Revisar, same as email).
+- **D24 (owner): a card's bill in Disponible is the statement's minimum.** Imports keep each card/loan statement in
+  `statement_snapshots` (v1's table, through its encrypted view): minimum, due date, what you owe, rate. With it,
+  Pagos and Disponible count the minimum on the bank's due date; before a statement, the estimate (≈ purchases of
+  the period) stays. The Tarjeta widget adds "Desde el corte: $X · va a tu próxima factura".
+- **D26. Importing a statement always shows it first** (owner): what you owe, minimum, due date, rate, interest if you
+  pay only the minimum for 12 months (v1's projection), period and count; an account Zeta didn't recognize shows
+  "No reconocimos esta tarjeta" with no default choice; after importing, a summary of everything done (new /
+  already there / for Revisar, balance set, minimum counted, days learned). A card's balance is its
+  total_payment_due, like v1 (Bancolombia's card statements have no summary balance).
 - **D25. Statements import on the phone (owner's call).** The server only reads the PDF (`/api/v2/parse-pdf`, one
   request, no database); the phone matches the statements to its accounts and runs the import as its own commands
   against SQLite — instant, like anotar — and sync replays them on the server in the background (20 per request).

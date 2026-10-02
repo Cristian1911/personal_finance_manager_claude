@@ -4,6 +4,7 @@ export type CommandType =
   | "captureBankTransaction"
   | "resolveBankDuplicate"
   | "anchorStatementBalance"
+  | "recordStatement"
   | "setTransactionNote"
   | "setTransactionExcluded"
   | "deleteTransaction"
@@ -212,6 +213,14 @@ export interface TransactionRow {
   status: string;
 }
 
+/** One bank statement's numbers (statement_snapshots). */
+export interface StatementSnapshotRow {
+  id: string; userId: string; accountId: string;
+  periodFrom: string | null; periodTo: string | null;
+  finalBalance: number | null; totalPaymentDue: number | null; minimumPayment: number | null;
+  paymentDueDate: string | null; interestRate: number | null; currencyCode: string; transactionCount: number;
+}
+
 /** A comercio or persona (S8-2). */
 export interface DestinatarioRow {
   id: string;
@@ -255,6 +264,8 @@ export interface StoragePort {
   setReconciliation(userId: string, id: string, intoId: string | null, status: "POSTED" | "PENDING"): Promise<void>;
   /** Bank movements held for Revisar because they may be `twinId`. */
   listHeldFor(userId: string, twinId: string): Promise<TransactionRow[]>;
+  /** What a bank statement said (by id: account + currency + period). */
+  upsertStatementSnapshot(row: StatementSnapshotRow, at: string): Promise<void>;
   updateTransactionFlow(userId: string, id: string, f: { flowClass: string | null; flowClassVersion: number | null; transferGroupId: string | null }): Promise<void>;
   getTransaction(userId: string, id: string): Promise<TransactionRow | null>;
   updateTransactionNotes(userId: string, id: string, notes: string | null): Promise<void>;
