@@ -10,6 +10,7 @@ import { runLocalCommand } from "../../lib/v2/engine/run-local";
 import { syncProblems, type SyncProblem } from "../../lib/v2/sync/sync";
 import { useV2UserId } from "../../lib/v2/user";
 import { Button } from "../../v2/components/Button";
+import { ProfileButton } from "../../v2/components/ProfileButton";
 import { EmptyState } from "../../v2/components/EmptyState";
 import { useV2Theme } from "../../v2/theme/ThemeProvider";
 
@@ -83,7 +84,7 @@ export default function RevisarScreen() {
   }, [userId, reload]);
 
   if (problems.length === 0 && dups.length === 0) {
-    return <EmptyState title="Revisar" message="Nada por revisar. Cuando Zeta no esté segura de algo, te lo va a preguntar aquí." />;
+    return <EmptyState title="Revisar" profile message="Nada por revisar. Cuando Zeta no esté segura de algo, te lo va a preguntar aquí." />;
   }
   const line = (label: string, s: { title: string; amount: string; date: string; account?: string }) => (
     <View style={styles.side}>
@@ -98,7 +99,10 @@ export default function RevisarScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.bg }}>
       <ScrollView contentContainerStyle={[styles.page, { paddingTop: insets.top + 8 }]}>
-        <Text accessibilityRole="header" style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]}>Revisar</Text>
+        <View style={styles.titleRow}>
+          <ProfileButton />
+          <Text accessibilityRole="header" style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]}>Revisar</Text>
+        </View>
         {dups.map((d) => (
           <View key={d.id} style={[styles.card, styles.dup, { backgroundColor: t.colors.card }, t.shadow]}>
             <Text style={{ fontSize: 17, color: t.colors.ink, fontFamily: t.fonts.uiSemibold, textAlign: "center" }}>
@@ -137,7 +141,8 @@ export default function RevisarScreen() {
 
 const styles = StyleSheet.create({
   page: { paddingHorizontal: 16, paddingBottom: 40, gap: 12 },
-  title: { fontSize: 26, letterSpacing: -0.5, paddingHorizontal: 4, paddingTop: 4 },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 4, paddingTop: 4 },
+  title: { fontSize: 26, letterSpacing: -0.5 },
   card: { borderRadius: 18, paddingHorizontal: 14 },
   dup: { paddingVertical: 16, gap: 12 },
   side: { gap: 2 },

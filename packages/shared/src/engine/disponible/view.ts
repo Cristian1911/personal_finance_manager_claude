@@ -183,5 +183,7 @@ export function readableName(text: string): string {
 
 /** The time a movement happened: the bank's when it said it, else when it was captured. */
 export function movementTime(t: { time?: string | null; createdAt?: string | null }, colombiaTime: (iso: string) => string): string | null {
-  return t.time ? t.time.slice(0, 5) : t.createdAt ? colombiaTime(t.createdAt) : null;
+  const hm = t.time ? t.time.slice(0, 5) : t.createdAt ? colombiaTime(t.createdAt) : null;
+  // Always "07:39" (bank times come padded): mixed "7:39" / "04:05" in one list reads as a mistake.
+  return hm ? hm.padStart(5, "0") : null;
 }

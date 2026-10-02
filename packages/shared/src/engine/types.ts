@@ -283,7 +283,7 @@ export interface StoragePort {
   listTransactionsByDestinatario(userId: string, destinatarioId: string): Promise<TransactionRow[]>;
   /** The legs of an Entre cuentas, oldest first. */
   getTransferLegs(userId: string, transferGroupId: string): Promise<TransactionRow[]>;
-  updateTransactionFacts(userId: string, id: string, facts: { amount: number; transactionDate: string; accountId: string }): Promise<void>;
+  updateTransactionFacts(userId: string, id: string, facts: { amount: number; transactionDate: string; accountId: string; cleanDescription: string | null; transactionTime: string | null }): Promise<void>;
   getFieldVersion(userId: string, entity: string, entityId: string, field: string): Promise<FieldVersion | null>;
   setFieldVersion(v: FieldVersionWrite): Promise<void>;
   getCycleSettings(userId: string): Promise<CycleSettings | null>;

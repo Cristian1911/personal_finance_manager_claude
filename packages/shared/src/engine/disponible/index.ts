@@ -117,6 +117,6 @@ export {
   type MovimientosView,
 } from "./movimientos";
 export { cuentasView, type CuentaRow, type CuentasView } from "./cuentas";
-export { anotarPreview, dictado, type AnotarDraft, type AnotarPreview, type Dictado } from "./anotar";
+export { anotarPreview, dictado, yaEsta, type AnotarDraft, type AnotarPreview, type Dictado } from "./anotar";
 export { cycleBills, pagosView, type BillItem, type PagoRow, type PagosView } from "./pagos";
 export { posiblesDuplicados, type PosibleDuplicado } from "./revisar";

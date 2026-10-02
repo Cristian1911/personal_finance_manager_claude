@@ -299,8 +299,8 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
     },
 
     async updateTransactionFacts(userId, id, f) {
-      await q("UPDATE transactions SET amount = ?, transaction_date = ?, account_id = ? WHERE user_id = ? AND id = ?",
-        [f.amount, f.transactionDate, f.accountId, userId, id]);
+      await q("UPDATE transactions SET amount = ?, transaction_date = ?, account_id = ?, clean_description = ?, transaction_time = ? WHERE user_id = ? AND id = ?",
+        [f.amount, f.transactionDate, f.accountId, f.cleanDescription, f.transactionTime, userId, id]);
     },
 
     async updateTransactionNotes(userId, id, notes) {

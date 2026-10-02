@@ -28,6 +28,7 @@ import { Button, IconButton } from "../../v2/components/Button";
 import { Chip } from "../../v2/components/Chip";
 import { CategorySheet, DestinatarioSheet } from "../../v2/components/LabelSheets";
 import { Avatar } from "../../v2/components/Avatar";
+import { ProfileButton } from "../../v2/components/ProfileButton";
 import { EmptyState } from "../../v2/components/EmptyState";
 import { DetalleSheet } from "../../v2/components/DetalleSheet";
 import { Dim } from "../../v2/components/Dim";
@@ -102,6 +103,8 @@ export default function MovimientosScreen() {
 
   // One row open at a time; a new cycle, filter or search closes it.
   const [openRow, setOpenRow] = useState<string | null>(null);
+  // Leaving the tab closes the open row (it'd come back dimming the list).
+  useFocusEffect(useCallback(() => () => setOpenRow(null), []));
   // A new movement (Anotar, a sync) closes the open row, or it'd arrive dimmed.
   const seen = useRef(0);
   useEffect(() => {
@@ -186,7 +189,7 @@ export default function MovimientosScreen() {
 
   if (needsFirstRun) {
     return (
-      <EmptyState title="Movimientos" message="Responde las tres preguntas de Inicio y aquí vas a ver lo que gastas y lo que te entra.">
+      <EmptyState title="Movimientos" profile message="Responde las tres preguntas de Inicio y aquí vas a ver lo que gastas y lo que te entra.">
         <Button label="Ir a Inicio" variant="secondary" size="M" onPress={() => router.navigate("/inicio" as never)} />
       </EmptyState>
     );
@@ -208,6 +211,7 @@ export default function MovimientosScreen() {
   const header = (
     <View style={styles.headerBlock}>
       <View style={styles.titleRow}>
+        <ProfileButton />
         <Text style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]} accessibilityRole="header">Movimientos</Text>
         <IconButton
           onPress={() => { setSearching((s) => !s); setQuery(""); }}
