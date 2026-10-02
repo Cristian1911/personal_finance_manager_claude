@@ -3,9 +3,11 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 import type { SetCycleSettingsPayload, StoredPaySchedule } from "@zeta/shared";
 import { useV2Theme } from "../theme/ThemeProvider";
 
-type Choice = "15y30" | "30" | "15" | "varia";
+export type PayChoice = "15y30" | "30" | "15" | "varia";
+type Choice = PayChoice;
 
-const CHOICES: { key: Choice; label: string; schedule: StoredPaySchedule }[] = [
+/** When you get paid, as the first run and Ajustes › Cuándo me pagan offer it. */
+export const PAY_CHOICES: { key: Choice; label: string; schedule: StoredPaySchedule }[] = [
   { key: "15y30", label: "El 15 y el 30", schedule: { kind: "semimonthly", paydays: [15, 30] } },
   { key: "30", label: "Cada 30", schedule: { kind: "monthly", paydays: [30] } },
   { key: "15", label: "Cada 15", schedule: { kind: "monthly", paydays: [15] } },
@@ -34,7 +36,7 @@ export function FirstRunQuestions({ onSubmit }: { onSubmit: (payload: SetCycleSe
   const varia = choice === "varia";
 
   const submit = async () => {
-    const picked = CHOICES.find((c) => c.key === choice);
+    const picked = PAY_CHOICES.find((c) => c.key === choice);
     if (!picked) return setError("Elige cuándo te pagan.");
     if (!varia && !income) return setError("Escribe cuánto te llega cada vez.");
     if (balance == null) return setError("Escribe cuánto tienes hoy.");
@@ -57,7 +59,7 @@ export function FirstRunQuestions({ onSubmit }: { onSubmit: (payload: SetCycleSe
 
       <Text style={label}>¿Cuándo te pagan?</Text>
       <View style={styles.chips}>
-        {CHOICES.map((c) => {
+        {PAY_CHOICES.map((c) => {
           const on = c.key === choice;
           return (
             <Pressable

@@ -39,7 +39,7 @@ export {
   type StoredTemplate,
   type StoredTransaction,
 } from "./movements";
-export { amountInput, cycleLabel, disponibleBlockView, headerDate, parseAmount, shortDate, signedPesos, type DisponibleBlockView } from "./view";
+export { amountInput, amountTyping, cycleLabel, disponibleBlockView, headerDate, parseAmount, shortDate, signedPesos, type DisponibleBlockView } from "./view";
 export {
   DETAIL_PAID_SHOWN,
   DETAIL_PENDING_SHOWN,
@@ -97,6 +97,7 @@ export {
 } from "./widgets";
 export {
   INICIO_LOOKBACK_DAYS,
+  MANUAL_SALARY_DESCRIPTION,
   MOVIMIENTOS_CYCLES,
   SALARY_SHARE_PERCENT,
   buildInicio,
@@ -116,3 +117,7 @@ export {
   type MovimientosView,
 } from "./movimientos";
 export { cuentasView, type CuentaRow, type CuentasView } from "./cuentas";
+export { anotarPreview, dictado, yaEsta, type AnotarDraft, type AnotarPreview, type Dictado } from "./anotar";
+export { cycleBills, pagosView, type BillItem, type PagoRow, type PagosView } from "./pagos";
+export { posiblesDuplicados, type PosibleDuplicado } from "./revisar";
+export { extractosView, readStatementHistory, type ExtractoRow, type StatementHistoryRow } from "./extractos";

@@ -14,6 +14,8 @@ export const InicioHeader = memo(function InicioHeader({
   onOrganize,
   onDone,
   onVoice,
+  onProfile,
+  initials,
 }: {
   name: string | null;
   date: string;
@@ -21,6 +23,9 @@ export const InicioHeader = memo(function InicioHeader({
   onOrganize?: () => void;
   onDone: () => void;
   onVoice: () => void;
+  /** Ajustes (S8-1: from the avatar on Inicio). */
+  onProfile?: () => void;
+  initials?: string;
 }) {
   const t = useV2Theme();
   const title = editing ? "Organizar Inicio" : name ? `Hola, ${name}` : "Hola";
@@ -52,6 +57,13 @@ export const InicioHeader = memo(function InicioHeader({
           >
             <Mic size={18} color={t.colors.onButton} />
           </Pressable>
+          {/* Ajustes is a place, not "back": top right on every tab (the left is for going back). */}
+          {onProfile && (
+            <Pressable onPress={onProfile} accessibilityRole="button" accessibilityLabel="Ajustes" hitSlop={4}
+              style={[styles.avatar, { backgroundColor: t.colors.sunk, borderColor: t.colors.control }]}>
+              <Text style={{ fontSize: 13, color: t.colors.ink, fontFamily: t.fonts.uiSemibold }}>{initials || "Z"}</Text>
+            </Pressable>
+          )}
         </>
       )}
     </View>
@@ -64,6 +76,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 17 },
   sub: { fontSize: 13 },
   organize: { height: 36, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1.5, flexDirection: "row", alignItems: "center", gap: 6 },
+  avatar: { width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
   mic: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   done: { height: 36, paddingHorizontal: 16, borderRadius: 10, alignItems: "center", justifyContent: "center" },
 });

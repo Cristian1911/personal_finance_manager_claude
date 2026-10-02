@@ -158,6 +158,133 @@ describe.skipIf(!enabled)("engine on zeta-dev (real Postgres)", { timeout: 90_00
     expect(raw.name.length).toBeGreaterThan(20);
   });
 
+  it("Anotar: an income with its flow class, and paying a card through the real view", async () => {
+    const s = createSqlStorage(createUserScopedPgDriver(pool, userId));
+    const base = { userId, deviceId: "integration" };
+    const card = crypto.randomUUID();
+    await applyCommand(s, {
+      ...base, id: crypto.randomUUID(), type: "createAccount", clientTs: "2026-10-02T18:00:00.000Z",
+      payload: { accountId: card, accountType: "CREDIT_CARD", name: "Tarjeta pago", currencyCode: "COP", balance: 500000 },
+    });
+    const income = crypto.randomUUID();
+    expect((await applyCommand(s, {
+      ...base, id: crypto.randomUUID(), type: "captureManualTransaction", clientTs: "2026-10-02T18:05:00.000Z",
+      payload: { transactionId: income, accountId, amount: 300000, direction: "INFLOW", currencyCode: "COP", date: "2026-10-02", description: "Ingreso extra", flowClass: "INCOME" },
+    })).status).toBe("applied");
+    const debitBefore = (await s.getAccount(userId, accountId))!.currentBalance;
+    const out = crypto.randomUUID();
+    const group = crypto.randomUUID();
+    const paid = await applyCommand(s, {
+      ...base, id: crypto.randomUUID(), type: "captureTransfer", clientTs: "2026-10-02T18:10:00.000Z",
+      payload: { transferGroupId: group, fromTransactionId: out, toTransactionId: crypto.randomUUID(), fromAccountId: accountId, toAccountId: card, amount: 200000, currencyCode: "COP", date: "2026-10-02" },
+    });
+    expect(paid.status).toBe("applied");
+    expect((await s.getAccount(userId, card))?.currentBalance).toBe(300000);
+    expect((await s.getAccount(userId, accountId))?.currentBalance).toBe(debitBefore - 200000);
+    const rows = (await readInicioData(createUserScopedPgDriver(pool, userId), userId, "2026-09-01")).transactions;
+    expect(rows.find((t) => t.id === income)?.flowClass).toBe("INCOME");
+    expect(rows.filter((t) => t.transferGroupId === group).map((t) => t.flowClass).sort()).toEqual(["DEBT_CREDIT", "DEBT_PAYMENT"]);
+    // Deshacer: deleting one leg removes both and restores both balances.
+    expect((await applyCommand(s, { ...base, id: crypto.randomUUID(), type: "deleteTransaction", clientTs: "2026-10-02T18:11:00.000Z", payload: { transactionId: out } })).status).toBe("applied");
+    expect((await s.getAccount(userId, card))?.currentBalance).toBe(500000);
+    expect((await s.getAccount(userId, accountId))?.currentBalance).toBe(debitBefore);
+  });
+
+  it("Pagos: a fixed payment through the encrypted view, detected and merged with the server's own occurrence", async () => {
+    const s = createSqlStorage(createUserScopedPgDriver(pool, userId));
+    const base = { userId, deviceId: "integration" };
+    const today = new Date().toISOString().slice(0, 10);
+    const day = 15;
+    const due = `${today.slice(0, 8)}${day}`;
+    const template = crypto.randomUUID();
+    expect((await applyCommand(s, {
+      ...base, id: crypto.randomUUID(), type: "createPagoFijo", clientTs: new Date().toISOString(),
+      payload: { templateId: template, name: "Internet prueba", amount: 99900, dayOfMonth: day, accountId, startDate: due },
+    })).status).toBe("applied");
+    // The server's trigger generated this month's occurrence on its own.
+    const generated = await pool.query("SELECT id, status FROM recurring_occurrences WHERE template_id = $1 AND occurrence_date = $2", [template, due]);
+    expect(generated.rows).toHaveLength(1);
+    const pay = crypto.randomUUID();
+    await applyCommand(s, {
+      ...base, id: crypto.randomUUID(), type: "captureManualTransaction", clientTs: new Date().toISOString(),
+      payload: { transactionId: pay, accountId, amount: 99900, direction: "OUTFLOW", currencyCode: "COP", date: due, description: "Pago internet" },
+    });
+    // Detection updated the server's row (same id), it didn't add a second one.
+    const after = await pool.query("SELECT id, status, transaction_id FROM recurring_occurrences WHERE template_id = $1", [template]);
+    const row = after.rows.find((r: { id: string }) => r.id === generated.rows[0].id);
+    expect(row).toMatchObject({ status: "paid", transaction_id: pay });
+    expect(after.rows.filter((r: { status: string }) => r.status === "paid")).toHaveLength(1);
+    // The name is stored encrypted, and reads back through the view.
+    const [raw] = (await pool.query("SELECT merchant_name FROM recurring_transaction_templates_enc WHERE id = $1", [template])).rows;
+    expect(Buffer.from(raw.merchant_name).toString("utf8")).not.toContain("Internet prueba");
+    expect((await s.getTemplate(userId, template))?.name).toBe("Internet prueba");
+
+    // Edit, skip and archive through the view's UPDATE trigger.
+    const at = () => new Date(Date.now() + 1000).toISOString();
+    expect((await applyCommand(s, { ...base, id: crypto.randomUUID(), type: "editPagoFijo", clientTs: at(), payload: { templateId: template, amount: 109900, name: "Internet hogar" } })).status).toBe("applied");
+    expect(await s.getTemplate(userId, template)).toMatchObject({ amount: 109900, name: "Internet hogar" });
+    const nextMonth = new Date(`${due}T12:00:00Z`);
+    nextMonth.setUTCMonth(nextMonth.getUTCMonth() + 1);
+    const nextDue = nextMonth.toISOString().slice(0, 10);
+    expect((await applyCommand(s, { ...base, id: crypto.randomUUID(), type: "setOccurrenceStatus", clientTs: at(), payload: { templateId: template, date: nextDue, status: "skipped" } })).status).toBe("applied");
+    expect(await s.getOccurrence(userId, template, nextDue)).toMatchObject({ status: "skipped" });
+    expect((await applyCommand(s, { ...base, id: crypto.randomUUID(), type: "archivePagoFijo", clientTs: at(), payload: { templateId: template, archived: true } })).status).toBe("applied");
+    expect((await s.getTemplate(userId, template))?.isActive).toBe(false);
+  });
+
+  it("Categorías y destinatarios through the real views (encrypted name, category FK to the seeded 25)", async () => {
+    const s = createSqlStorage(createUserScopedPgDriver(pool, userId));
+    const base = { userId, deviceId: "integration" };
+    const at = () => new Date(Date.now() + Math.floor(Math.random() * 1000)).toISOString();
+    const rappi = crypto.randomUUID();
+    const domicilios = "c2000000-0000-4000-8000-000000000003";
+    expect((await applyCommand(s, { ...base, id: crypto.randomUUID(), type: "createDestinatario", clientTs: at(),
+      payload: { destinatarioId: rappi, name: "Rappi prueba", kind: "merchant", pattern: "rappi", defaultCategoryId: domicilios } })).status).toBe("applied");
+    const tx = crypto.randomUUID();
+    await applyCommand(s, { ...base, id: crypto.randomUUID(), type: "captureManualTransaction", clientTs: at(),
+      payload: { transactionId: tx, accountId, amount: 32000, direction: "OUTFLOW", currencyCode: "COP", date: "2026-10-02", description: "COMPRA RAPPI COLOMBIA" } });
+    expect(await s.getTransaction(userId, tx)).toMatchObject({ destinatarioId: rappi, categoryId: domicilios });
+    expect((await applyCommand(s, { ...base, id: crypto.randomUUID(), type: "setTransactionCategory", clientTs: at(),
+      payload: { transactionId: tx, categoryId: "c2000000-0000-4000-8000-000000000001" } })).status).toBe("applied");
+    expect(await s.getTransaction(userId, tx)).toMatchObject({ categoryId: "c2000000-0000-4000-8000-000000000001" });
+    // Remembering a text another destinatario already has moves the rule (unique per user on Supabase).
+    const other = crypto.randomUUID();
+    await applyCommand(s, { ...base, id: crypto.randomUUID(), type: "createDestinatario", clientTs: at(),
+      payload: { destinatarioId: other, name: "Otro prueba", kind: "merchant" } });
+    const tx2 = crypto.randomUUID();
+    await applyCommand(s, { ...base, id: crypto.randomUUID(), type: "captureManualTransaction", clientTs: at(),
+      payload: { transactionId: tx2, accountId, amount: 9000, direction: "OUTFLOW", currencyCode: "COP", date: "2026-10-02", description: "Tienda prueba" } });
+    for (const d of [rappi, other]) {
+      expect((await applyCommand(s, { ...base, id: crypto.randomUUID(), type: "setTransactionDestinatario", clientTs: at(),
+        payload: { transactionId: tx2, destinatarioId: d, remember: true } })).status).toBe("applied");
+    }
+    // The default category through the encrypted view's trigger, applied to the past not chosen by hand.
+    expect((await applyCommand(s, { ...base, id: crypto.randomUUID(), type: "setDestinatarioCategory", clientTs: at(),
+      payload: { destinatarioId: other, categoryId: domicilios, applyToPast: true } })).status).toBe("applied");
+    expect(await s.getTransaction(userId, tx2)).toMatchObject({ destinatarioId: other, categoryId: domicilios });
+    const data = await readInicioData(createUserScopedPgDriver(pool, userId), userId, "2026-09-01");
+    expect(data.destinatarios.find((d) => d.id === rappi)).toMatchObject({ name: "Rappi prueba", kind: "merchant" });
+    const [raw] = (await pool.query("SELECT name FROM destinatarios_enc WHERE id = $1", [rappi]).catch(() => ({ rows: [{ name: null }] }))).rows;
+    if (raw.name) expect(Buffer.from(raw.name).toString("utf8")).not.toContain("Rappi prueba");
+  });
+
+  it("a card statement's numbers go through the encrypted statement_snapshots view and come back for Disponible (D24)", async () => {
+    const s = createSqlStorage(createUserScopedPgDriver(pool, userId));
+    const id = crypto.randomUUID();
+    const base = { userId, deviceId: "phone-1" };
+    expect((await applyCommand(s, { ...base, id: crypto.randomUUID(), type: "recordStatement", clientTs: new Date().toISOString(), payload: {
+      id, accountId, periodFrom: "2026-09-01", periodTo: "2026-09-30", finalBalance: null, totalPaymentDue: 260000,
+      minimumPayment: 60000, paymentDueDate: "2026-10-12", interestRate: 24.33, currencyCode: "COP", transactionCount: 2,
+    } })).status).toBe("applied");
+    // Again (same statement re-imported): updated in place, not a second row.
+    expect((await applyCommand(s, { ...base, id: crypto.randomUUID(), type: "recordStatement", clientTs: new Date().toISOString(), payload: {
+      id, accountId, periodFrom: "2026-09-01", periodTo: "2026-09-30", finalBalance: null, totalPaymentDue: 260000,
+      minimumPayment: 65000, paymentDueDate: "2026-10-12", interestRate: 24.33, currencyCode: "COP", transactionCount: 2,
+    } })).status).toBe("applied");
+    const data = await readInicioData(createUserScopedPgDriver(pool, userId), userId, "2026-09-01");
+    expect(data.statements).toEqual([expect.objectContaining({ accountId, dueDate: "2026-10-12", minimum: 65000, totalDue: 260000, rate: 24.33 })]);
+  });
+
   it("stores the command payload encrypted, never as plain text", async () => {
     const d = createUserScopedPgDriver(pool, userId);
     const rows = await d.query<{ payload_enc: Buffer }>(

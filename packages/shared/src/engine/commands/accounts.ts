@@ -1,3 +1,4 @@
+import { setBalanceAsOf } from "./balance";
 import { isDebtAccountType } from "../../utils/account-balance";
 import type { AccountDetailsPatch, CommandEnvelope, CommandResult, StoragePort } from "../types";
 import { UUID_RE } from "../validate";
@@ -20,6 +21,8 @@ export interface CreateAccountPayload {
   cutoffDay?: number | null;
   paymentDay?: number | null;
   monthlyPayment?: number | null;
+  /** Created from a statement: its balance comes from the statement's cut, not from today. */
+  balanceUnknown?: boolean;
 }
 
 export interface EditAccountPayload {
@@ -87,6 +90,9 @@ export async function createAccount(s: StoragePort, cmd: CommandEnvelope<CreateA
     paymentDay: p.paymentDay ?? null,
     monthlyPayment: p.monthlyPayment ?? null,
   });
+  // The balance you told is today's: bank rows from before today are already inside it.
+  // A statement creating its account doesn't know one yet (its cut anchors it).
+  if (!p.balanceUnknown) await setBalanceAsOf(s, cmd.userId, p.accountId, cmd.clientTs, cmd.id);
   return { status: "applied", replayed: false, data: { accountId: p.accountId } };
 }
 

@@ -12,8 +12,10 @@ export const TOAST_MS = 5000;
 /** Screens end at the tab bar; clear the "+" that overhangs it. */
 const TOAST_BOTTOM = FAB_OVERHANG + 12;
 
-export function Toast({ message, action, onHide }: {
+export function Toast({ message, action, onHide, bottom = TOAST_BOTTOM }: {
   message: string | null;
+  /** Distance from the parent's bottom; above the tab bar when the parent is the whole screen. */
+  bottom?: number;
   action?: { label: string; onPress: () => void };
   onHide: () => void;
 }) {
@@ -32,7 +34,7 @@ export function Toast({ message, action, onHide }: {
   if (!message) return null;
   return (
     <Animated.View
-      style={[styles.toast, { backgroundColor: t.colors.button, bottom: TOAST_BOTTOM }, fade]}
+      style={[styles.toast, { backgroundColor: t.colors.button, bottom }, fade]}
       accessibilityLiveRegion="polite"
       accessibilityRole="alert"
     >

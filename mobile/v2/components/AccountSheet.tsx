@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, type KeyboardTypeOptions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Banknote, ChevronRight, CreditCard, Landmark, Wallet, type LucideIcon } from "lucide-react-native";
-import { amountInput, parseAmount, type AccountRow } from "@zeta/shared";
+import { amountInput, amountTyping, parseAmount, type AccountRow } from "@zeta/shared";
 import { useV2Theme } from "../theme/ThemeProvider";
 import { Button } from "./Button";
 import { Segmented } from "./Chip";
@@ -77,10 +77,10 @@ export function AccountSheet({ open, mode, initialKind, account, onSave, onClose
     setBank(a?.institutionName ?? "");
     setMask(a?.mask ?? "");
     setBalance("");
-    setLimit(amountInput(a?.creditLimit));
+    setLimit(amountTyping(amountInput(a?.creditLimit)));
     setCutoff(a?.cutoffDay ? String(a.cutoffDay) : "");
     setPayDay(a?.paymentDay ? String(a.paymentDay) : "");
-    setCuota(amountInput(a?.monthlyPayment));
+    setCuota(amountTyping(amountInput(a?.monthlyPayment)));
     setError(null);
     setSaving(false);
   }, [open, account, initialKind]);
@@ -94,8 +94,10 @@ export function AccountSheet({ open, mode, initialKind, account, onSave, onClose
   const save = async () => {
     if (!kind) return;
     const accountType = kind === "cuenta" ? savings : kind === "efectivo" ? "CASH" : kind === "tarjeta" ? "CREDIT_CARD" : "LOAN";
-    const parsedBalance = balance.trim() === "" ? 0 : parseAmount(balance);
-    if (mode === "add" && balance.trim() !== "" && parsedBalance == null && balance.trim() !== "0") {
+    // Empty or zero is a valid starting balance; parseAmount only reads positive amounts.
+    const zero = /^[$\s0.,]*$/.test(balance);
+    const parsedBalance = zero ? 0 : parseAmount(balance);
+    if (mode === "add" && parsedBalance == null) {
       return setError("Escribe el saldo en pesos, por ejemplo 1.200.000.");
     }
     // An amount that doesn't read as one is an error, never a silent "nothing".
@@ -135,7 +137,7 @@ export function AccountSheet({ open, mode, initialKind, account, onSave, onClose
       <Text style={[styles.label, { color: t.colors.muted, fontFamily: t.fonts.uiMedium }]}>{label}</Text>
       <TextInput
         value={value}
-        onChangeText={(v) => { set(v); setError(null); }}
+        onChangeText={(v) => { set(o.keyboard === "decimal-pad" ? amountTyping(v) : v); setError(null); }}
         placeholder={o.placeholder}
         placeholderTextColor={t.colors.control}
         keyboardType={o.keyboard ?? "default"}

@@ -16,8 +16,12 @@ export const V2_TABS: readonly { name: string; title: string; icon: LucideIcon }
 /** How far the "+" sticks up over the bar (screens keep content clear of it). */
 export const FAB_OVERHANG = 22;
 
+/** The bar's height above the safe area's inset (padding 8 + tab 48). */
+export const TAB_BAR_HEIGHT = 56;
+
 /** Secondary screens open inside the tab they belong to; that tab stays lit. */
 const PARENT_TAB: Record<string, string> = { flujo: "inicio", cuentas: "inicio", cuenta: "inicio" };
+// Ajustes (and Correos) open from the avatar on every tab: no tab is "the one you're in" there.
 
 export function TabBar({ state, navigation, onAdd }: {
   state: { routes: { name: string }[]; index: number };

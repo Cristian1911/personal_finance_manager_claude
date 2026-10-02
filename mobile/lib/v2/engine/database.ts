@@ -2,6 +2,12 @@ import * as SQLite from "expo-sqlite";
 import {
   OUTBOX_SCHEMA,
   SQLITE_ACCOUNTS_SCHEMA,
+  SQLITE_TRANSFER_SCHEMA,
+  SQLITE_RECURRING_SCHEMA,
+  SQLITE_CATEGORIES_SCHEMA,
+  SQLITE_BANK_SCHEMA,
+  SQLITE_STATEMENTS_SCHEMA,
+  SQLITE_STATEMENTS_DETAIL_SCHEMA,
   SQLITE_CAPTURE_TIME_SCHEMA,
   SQLITE_EXCLUDED_SCHEMA,
   SQLITE_ENGINE_SCHEMA,
@@ -35,6 +41,18 @@ const MIGRATIONS: string[] = [
   SQLITE_EXCLUDED_SCHEMA,
   // 5: account names and card/loan details (Mis cuentas, Agregar).
   SQLITE_ACCOUNTS_SCHEMA,
+  // 6: Anotar's Ingreso and Entre cuentas (flow_class, transfer_group_id).
+  SQLITE_TRANSFER_SCHEMA,
+  // 7: Pagos fijos (recurring templates + occurrences).
+  SQLITE_RECURRING_SCHEMA,
+  // 8: categories and destinatarios.
+  SQLITE_CATEGORIES_SCHEMA,
+  // 9: bank captures (email): the bank's text and time, merged / held rows.
+  SQLITE_BANK_SCHEMA,
+  // 10: bank statements' numbers (the card's minimum, D24).
+  SQLITE_STATEMENTS_SCHEMA,
+  // 11: how each statement moved the debt (month-to-month).
+  SQLITE_STATEMENTS_DETAIL_SCHEMA,
 ];
 
 export interface V2Database {
