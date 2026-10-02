@@ -16,7 +16,7 @@ the tests talk to zeta-dev only. To undo anything, close its PR (and the ones ab
 | #451 | `feat/v2-ajustes` | Ajustes: tu número, apariencia, ayuda, cerrar sesión, borrar mi cuenta | Open |
 | #452 | `feat/v2-onboarding` | First run: when you get paid, where your money is, fixed payments | Open |
 | #453 | `feat/v2-categorias` | The 25 categories, destinatarios (comercios/personas), matched on capture; Categoría · ¿Quién? on the open row | Open, reviewed, fixes in |
-| (next) | `feat/v2-email` | Bank emails: forwarding address, Bancolombia alerts as commands (merge / hold / new), Revisar "¿Es el mismo?", Correos del banco | In review |
+| #454 | `feat/v2-email` | Bank emails: forwarding address, Bancolombia alerts as commands (merge / hold / new), Revisar "¿Es el mismo?", Correos del banco | Open, reviewed, fixes in |
 
 ## Decisions I took for you (simplest option; change any)
 

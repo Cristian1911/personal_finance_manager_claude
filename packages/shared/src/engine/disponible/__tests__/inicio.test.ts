@@ -71,6 +71,15 @@ describe("buildInicio — the first cycle starts from the balance told", () => {
     expect(r.balanceToday).toBe(1_400_000);
   });
 
+  it("a statement row (no time) is placed by its date, not by when it was imported", () => {
+    const imported = "2026-09-18T15:00:00.000Z";
+    const r = build("2026-09-18", [
+      tx("2026-09-16", 50_000, "OUTFLOW", { captureMethod: "PDF_IMPORT", createdAt: imported }), // the anchor's day: inside the balance
+      tx("2026-09-17", 20_000, "OUTFLOW", { captureMethod: "PDF_IMPORT", createdAt: imported }),
+    ]);
+    expect(r.result.yaSalio.total).toBe(20_000);
+  });
+
   it("a movement captured later the same day counts", () => {
     const r = build("2026-09-18", [tx("2026-09-16", 50_000, "OUTFLOW", { createdAt: "2026-09-16T20:00:00.000Z" })]);
     expect(r.result.yaSalio.total).toBe(50_000);
