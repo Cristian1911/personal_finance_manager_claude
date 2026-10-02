@@ -31,6 +31,12 @@ export function anotarPreview(input: InicioInput, draft: AnotarDraft): AnotarPre
   const from = input.accounts.find((a) => a.id === draft.accountId);
   if (!from) return null;
   const name = (a: typeof from) => a.name?.trim() || "Esa cuenta";
+  // Money out of an account you have: it can't go below zero without saying so.
+  const out = draft.kind !== "ingreso" && !isDebtAccountType(from.accountType);
+  if (out && draft.amount > from.currentBalance) {
+    const left = formatPesos(from.currentBalance - draft.amount).replace("-", "−");
+    return { line: `${name(from)} tiene ${formatPesos(from.currentBalance)}: quedaría en ${left}.`, tone: "bad" };
+  }
   const date = draft.date ?? input.today;
   const leg = (id: string, accountId: string, direction: "INFLOW" | "OUTFLOW", flowClass: string, transferGroupId?: string): StoredTransaction => ({
     id, accountId, date, amount: draft.amount, direction, currencyCode: "COP", flowClass, createdAt: input.now,

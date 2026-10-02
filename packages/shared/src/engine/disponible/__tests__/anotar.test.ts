@@ -10,7 +10,7 @@ const settings: CycleSettings = {
 };
 const acc = (id: string, accountType: string, over: Partial<InicioAccount> = {}): InicioAccount =>
   ({ id, name: id, accountType, currentBalance: 0, countsInDisponible: null, ...over });
-const accounts = [acc("Bancolombia", "SAVINGS"), acc("Ahorros Nu", "SAVINGS", { countsInDisponible: false }), acc("Tarjeta Nu", "CREDIT_CARD")];
+const accounts = [acc("Bancolombia", "SAVINGS", { currentBalance: 2_000_000 }), acc("Ahorros Nu", "SAVINGS", { countsInDisponible: false, currentBalance: 1_000_000 }), acc("Tarjeta Nu", "CREDIT_CARD")];
 const base = { today: "2026-09-18", now: "2026-09-18T15:00:00.000Z", settings, accounts, transactions: [] };
 
 describe("anotarPreview (the effect line while you type, S8-9)", () => {
@@ -39,13 +39,20 @@ describe("anotarPreview (the effect line while you type, S8-9)", () => {
   });
 
   it("between two counted accounts nothing changes; to one apart it goes down; to a card it's a payment", () => {
-    const counted2 = [...accounts, acc("Nequi", "SAVINGS")];
+    const counted2 = [...accounts, acc("Nequi", "SAVINGS", { currentBalance: 50_000 })];
     expect(anotarPreview({ ...base, accounts: counted2 }, { kind: "entre", amount: 100_000, accountId: "Bancolombia", toAccountId: "Nequi" }).line)
       .toBe("Las dos cuentan para tu Disponible: no cambia.");
     expect(anotarPreview(base, { kind: "entre", amount: 200_000, accountId: "Bancolombia", toAccountId: "Ahorros Nu" }).line)
       .toBe("Ahorros Nu no cuenta para tu Disponible: baja a $1.300.000.");
     expect(anotarPreview(base, { kind: "entre", amount: 200_000, accountId: "Bancolombia", toAccountId: "Tarjeta Nu" }).line)
       .toBe("Pagas Tarjeta Nu: tu Disponible baja a $1.300.000.");
+  });
+
+  it("warns when the account doesn't have that much", () => {
+    const low = [acc("Bancolombia", "SAVINGS", { currentBalance: 75_000 }), acc("Tarjeta Nu", "CREDIT_CARD")];
+    expect(anotarPreview({ ...base, accounts: low }, { kind: "entre", amount: 200_000, accountId: "Bancolombia", toAccountId: "Tarjeta Nu" }))
+      .toEqual({ line: "Bancolombia tiene $75.000: quedaría en −$125.000.", tone: "bad" });
+    expect(anotarPreview({ ...base, accounts: low }, { kind: "gasto", amount: 100_000, accountId: "Bancolombia" })?.tone).toBe("bad");
   });
 
   it("nothing to say without an amount or before the first-run questions", () => {
