@@ -25,8 +25,11 @@ export async function deleteTransaction(
   if (!MANUAL_CAPTURE_METHODS.has(tx.captureMethod)) {
     return { status: "rejected", replayed: false, code: "invalid", error: "Solo se pueden borrar los movimientos que anotaste a mano." };
   }
-  // Entre cuentas: both legs go together, or the money would vanish from one side.
-  const rows = tx.transferGroupId ? await s.getTransferLegs(cmd.userId, tx.transferGroupId) : [tx];
+  // Entre cuentas: both legs go together, or the money would vanish from one side —
+  // but only when every leg was written by hand. v1 can link a manual row to a
+  // bank row as a transfer; the bank's row is a fact and stays.
+  const legs = tx.transferGroupId ? await s.getTransferLegs(cmd.userId, tx.transferGroupId) : [tx];
+  const rows = legs.every((l) => MANUAL_CAPTURE_METHODS.has(l.captureMethod)) ? legs : [tx];
   for (const row of rows) {
     await s.deleteTransaction(cmd.userId, row.id);
     // An ignored movement's amount already left the balance when it was ignored.

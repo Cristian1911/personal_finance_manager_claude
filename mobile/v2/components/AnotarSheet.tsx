@@ -4,7 +4,7 @@ import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from "expo-spe
 import { Mic, Square } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
-import { amountTyping, anotarPreview, dictado, formatPesos, isDebtAccountType, parseAmount } from "@zeta/shared";
+import { MANUAL_SALARY_DESCRIPTION, amountTyping, anotarPreview, dictado, formatPesos, isDebtAccountType, parseAmount } from "@zeta/shared";
 import { loadAnotar, rememberAnotarAccount, type LoadedAnotar } from "../../lib/v2/anotar/load";
 import { notifyV2Change } from "../../lib/v2/changes";
 import type { AnotarPrefill } from "../../lib/v2/anotar/open";
@@ -98,8 +98,9 @@ export function AnotarSheet({ open, prefill, userId, onClose, onSaved, onAddAcco
     if (e.error !== "no-speech" && e.error !== "aborted") setError(e.error === "not-allowed" ? "Zeta no tiene permiso para el micrófono." : "No pude escucharte. Intenta de nuevo.");
   });
   const fill = (said: string) => {
-    const d = dictado(said, dataRef.current?.accounts ?? []);
-    if (d.kind !== kind && kind !== "entre") setKind(d.kind);
+    const d = dictado(said, dataRef.current?.accounts ?? [], new Date(), kind);
+    // Only a spoken income switches a Gasto to Ingreso; never the other way.
+    if (kind === "gasto" && d.kind === "ingreso") setKind("ingreso");
     if (d.amount) setAmountText(amountTyping(String(d.amount).replace(".", ",")));
     if (d.what) setWhat(d.what);
     if (d.accountId) setAccountId(d.accountId);
@@ -110,11 +111,20 @@ export function AnotarSheet({ open, prefill, userId, onClose, onSaved, onAddAcco
     if (!perm.granted) return Alert.alert("Permiso de micrófono", "Actívalo en los Ajustes del teléfono para dictar.");
     if (!ExpoSpeechRecognitionModule.isRecognitionAvailable()) return setError("Dictar no está disponible en este teléfono.");
     // On-device only (privacy labels): audio never leaves the phone.
-    ExpoSpeechRecognitionModule.start({ lang: "es-CO", interimResults: true, continuous: false, requiresOnDeviceRecognition: true, addsPunctuation: false });
+    if (!ExpoSpeechRecognitionModule.supportsOnDeviceRecognition()) {
+      return setError("Este teléfono no puede dictar sin enviar tu voz a internet. Escribe el monto.");
+    }
+    ExpoSpeechRecognitionModule.start({ lang: await spanishLocale(), interimResults: true, continuous: false, requiresOnDeviceRecognition: true, addsPunctuation: false });
     setHeard("");
   }
   const stopListening = () => { try { ExpoSpeechRecognitionModule.stop(); } catch { /* already stopped */ } };
-  useEffect(() => { if (!open) stopListening(); }, [open]);
+  // Closing drops what was being heard (abort: no final result lands in a closed sheet).
+  useEffect(() => {
+    if (!open) {
+      try { ExpoSpeechRecognitionModule.abort(); } catch { /* not listening */ }
+      setHeard(null);
+    }
+  }, [open]);
 
   const amount = parseAmount(amountText) ?? 0;
   const accounts = data?.accounts ?? [];
@@ -126,10 +136,16 @@ export function AnotarSheet({ open, prefill, userId, onClose, onSaved, onAddAcco
     ? anotarPreview({ ...data.input, today: data.input.today }, { kind, amount, accountId: from.id, toAccountId, date })
     : null), [data, from, kind, amount, toAccountId, date]);
 
-  const description = kind === "ingreso"
-    ? what.trim() || INCOME_KINDS.find((k) => k.key === incomeKind)!.label.replace("Mi sueldo", "Sueldo")
-    : what.trim() || "Gasto";
+  // "Mi sueldo" keeps a fixed description (Inicio recognizes the salary by it); its "De qué" goes to the note.
+  const salary = kind === "ingreso" && incomeKind === "sueldo";
+  const description = salary
+    ? MANUAL_SALARY_DESCRIPTION
+    : kind === "ingreso"
+      ? what.trim() || INCOME_KINDS.find((k) => k.key === incomeKind)!.label
+      : what.trim() || "Gasto";
   const ready = amount > 0 && !!from && (kind !== "entre" || !!toAccountId);
+  // Paying a card or loan: offer what's owed.
+  const payTo = kind === "entre" ? accounts.find((a) => a.id === toAccountId && isDebtAccountType(a.accountType)) ?? null : null;
 
   const save = async () => {
     if (!ready || !from) return;
@@ -153,6 +169,7 @@ export function AnotarSheet({ open, prefill, userId, onClose, onSaved, onAddAcco
           payload: {
             transactionId, accountId: from.id, amount, direction: income ? "INFLOW" : "OUTFLOW",
             currencyCode: "COP", date, description, flowClass: income ? "INCOME" : "SPEND",
+            ...(salary && what.trim() ? { notes: what.trim() } : {}),
           },
         });
         if (result.status === "rejected") return setError(result.error ?? "No se pudo anotar.");
@@ -173,8 +190,9 @@ export function AnotarSheet({ open, prefill, userId, onClose, onSaved, onAddAcco
       message: `Anotado · ${what}`,
       undo: async () => {
         // Deleting one leg of a transfer removes both (deleteTransaction).
-        await runLocalCommand({ type: "deleteTransaction", userId, payload: { transactionId } });
+        const { result } = await runLocalCommand({ type: "deleteTransaction", userId, payload: { transactionId } });
         notifyV2Change();
+        if (result.status === "rejected") throw new Error(result.error ?? "rejected");
       },
     });
     onClose();
@@ -223,6 +241,11 @@ export function AnotarSheet({ open, prefill, userId, onClose, onSaved, onAddAcco
             />
           </View>
           </View>
+          {kind === "entre" && payTo && payTo.currentBalance > 0 && (
+            <View style={styles.centerChips}>
+              <Chip label={`Todo lo que debes · ${formatPesos(payTo.currentBalance)}`} on={amount === payTo.currentBalance} onPress={() => setAmountText(amountTyping(String(payTo.currentBalance).replace(".", ",")))} />
+            </View>
+          )}
           <Text accessibilityLiveRegion="polite" style={[styles.preview, { color: heard == null && preview?.tone === "bad" ? t.colors.bad.text : t.colors.muted, fontFamily: t.fonts.uiMedium }]}>
             {heard != null ? (heard ? `«${heard}»` : "Di algo como «almuerzo 45 mil en efectivo»") : preview?.line ?? " "}
           </Text>
@@ -268,6 +291,18 @@ export function AnotarSheet({ open, prefill, userId, onClose, onSaved, onAddAcco
 }
 
 const uuid = () => Crypto.randomUUID().toLowerCase();
+
+/** es-CO when the phone has it on-device, else another installed Spanish (es-US, es-MX, es-ES…). */
+async function spanishLocale(): Promise<string> {
+  try {
+    const { locales, installedLocales } = await ExpoSpeechRecognitionModule.getSupportedLocales({});
+    const pool = installedLocales?.length ? installedLocales : locales;
+    const es = pool.filter((l) => /^es[-_]/i.test(l));
+    return es.find((l) => /co$/i.test(l)) ?? es.find((l) => /(us|mx|419)$/i.test(l)) ?? es[0] ?? "es-CO";
+  } catch {
+    return "es-CO";
+  }
+}
 
 const styles = StyleSheet.create({
   sheet: { maxHeight: "94%", paddingTop: 8, paddingHorizontal: 20, gap: 10 },

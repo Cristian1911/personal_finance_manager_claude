@@ -1,4 +1,5 @@
 import { isDebtAccountType } from "../../utils/account-balance";
+import { defaultCountsInDisponible } from "../commands/set-account-counts-in-disponible";
 import { parseQuickCaptureText } from "../../utils/quick-capture";
 import type { InicioAccount } from "./inicio";
 import { buildInicio } from "./inicio";
@@ -33,9 +34,11 @@ export function anotarPreview(input: InicioInput, draft: AnotarDraft): AnotarPre
   const from = input.accounts.find((a) => a.id === draft.accountId);
   if (!from) return null;
   const name = (a: typeof from) => a.name?.trim() || "Esa cuenta";
-  // Money out of an account you have: it can't go below zero without saying so.
+  const counts = (a: typeof from) => !isDebtAccountType(a.accountType) && (a.countsInDisponible ?? defaultCountsInDisponible(a.accountType));
+  // Money out of an account you have can't go below zero without saying so
+  // (not when its balance was never given: $0 there means "no sé").
   const out = draft.kind !== "ingreso" && !isDebtAccountType(from.accountType);
-  if (out && draft.amount > from.currentBalance) {
+  if (out && from.currentBalance > 0 && draft.amount > from.currentBalance) {
     const left = formatPesos(from.currentBalance - draft.amount).replace("-", "−");
     return { line: `${name(from)} tiene ${formatPesos(from.currentBalance)}: quedaría en ${left}.`, tone: "bad" };
   }
@@ -56,24 +59,23 @@ export function anotarPreview(input: InicioInput, draft: AnotarDraft): AnotarPre
     ];
     const after = buildInicio({ ...input, transactions: [...input.transactions, ...extra] });
     if (after.status !== "ready") return null;
-    const moved = after.result.disponible - before.result.disponible;
     const level = formatPesos(after.result.disponible);
-    if (Math.abs(moved) < 0.005) return { line: `Las dos cuentan para tu Disponible: no cambia.`, tone: "neutral" };
-    if (pay) return { line: `Pagas ${name(to)}: tu Disponible baja a ${level}.`, tone: after.result.disponible < 0 ? "bad" : "neutral" };
-    if (moved < 0) return { line: `${name(to)} no cuenta para tu Disponible: baja a ${level}.`, tone: after.result.disponible < 0 ? "bad" : "neutral" };
+    const tone = after.result.disponible < 0 ? "bad" as const : "neutral" as const;
+    if (pay) return { line: `Pagas ${name(to)}: tu Disponible baja a ${level}.`, tone };
+    if (counts(from) && counts(to)) return { line: "Las dos cuentan para tu Disponible: no cambia.", tone: "neutral" };
+    if (!counts(from) && !counts(to)) return { line: "Ninguna de las dos cuenta para tu Disponible: no cambia.", tone: "neutral" };
+    if (counts(from)) return { line: `${name(to)} no cuenta para tu Disponible: baja a ${level}.`, tone };
     return { line: `${name(from)} no cuenta para tu Disponible: sube a ${level}.`, tone: "neutral" };
   }
 
   if (draft.kind === "gasto" && isDebtAccountType(from.accountType)) {
     return { line: `Va a ${name(from)}: tu Disponible no cambia hoy, lo pagas con la factura.`, tone: "neutral" };
   }
+  if (!counts(from)) return { line: `${name(from)} no cuenta para tu Disponible: no cambia.`, tone: "neutral" };
   const income = draft.kind === "ingreso";
   extra = [leg("preview", from.id, income ? "INFLOW" : "OUTFLOW", income ? "INCOME" : "SPEND")];
   const after = buildInicio({ ...input, transactions: [...input.transactions, ...extra] });
   if (after.status !== "ready") return null;
-  if (Math.abs(after.result.disponible - before.result.disponible) < 0.005) {
-    return { line: `${name(from)} no cuenta para tu Disponible: no cambia.`, tone: "neutral" };
-  }
   if (income) return { line: `Tu Disponible sube a ${formatPesos(after.result.disponible)}`, tone: "neutral" };
   return {
     line: `Te quedan ${formatPesos(after.result.disponible)} · ${after.view.perDay}`,
@@ -95,21 +97,21 @@ const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCa
  * parser. An account named in the sentence ("en efectivo", "con la tarjeta
  * nu") is picked, longest name first. What can't be read goes to En qué.
  */
-export function dictado(text: string, accounts: InicioAccount[], now: Date = new Date()): Dictado {
+export function dictado(text: string, accounts: InicioAccount[], now: Date = new Date(), kind: "gasto" | "ingreso" | "entre" = "gasto"): Dictado {
   const said = fold(text);
   const named = [...accounts]
     .filter((a) => a.name?.trim())
     .sort((a, b) => (b.name!.length - a.name!.length))
     .find((a) => said.includes(fold(a.name!.trim())));
   let r = parseQuickCaptureText(text, { now });
-  // Most of what people dictate is a spend and says so without a verb ("almuerzo 45 mil").
+  // People rarely say the verb ("almuerzo 45 mil"): the kind already chosen in Anotar says it.
   // (account_id is always "missing" there: the parser never picks one.)
   if (!r.success && r.missing_fields.includes("direction") && !r.missing_fields.includes("amount")) {
-    r = parseQuickCaptureText(`gasté ${text}`, { now });
+    r = parseQuickCaptureText(`${kind === "ingreso" ? "recibí" : "gasté"} ${text}`, { now });
   }
   if (!r.success) return { kind: "gasto", amount: null, what: text.trim(), accountId: named?.id ?? null };
   // En qué without the verb we added and without the account it named ("en efectivo").
-  let what = r.data.description.replace(/^gast[eé]\s+/i, "");
+  let what = r.data.description.replace(/^(?:gast[eé]|recib[ií])\s+/i, "");
   if (named) {
     const name = fold(named.name!.trim()).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     what = what.replace(new RegExp(`\\s*(?:\\b(?:en|con|de|del|desde)\\s+)?(?:\\b(?:la|el|mi)\\s+)?${name}\\b`, "i"), "");

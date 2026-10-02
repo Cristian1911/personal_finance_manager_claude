@@ -4,6 +4,7 @@ import { createSqlStorage } from "../sql-storage";
 import { readInicioData } from "../inicio-read";
 import { toDisponibleMovements } from "../disponible/movements";
 import type { CommandEnvelope, CommandType, SqlDriver } from "../types";
+import { toDialect } from "../sql";
 import { DRIVERS, seedAccount } from "./support/drivers";
 
 const USER = "11111111-1111-4111-8111-111111111111";
@@ -101,6 +102,20 @@ describe.each(DRIVERS)("Anotar on %s", (_name, make) => {
     expect(await rows()).toEqual([]);
     expect(await balance(s, DEBIT)).toBe(1_000_000);
     expect(await balance(s, CARD)).toBe(480_000);
+  });
+
+  it("a manual leg linked to a bank row (v1 'link as transfer') deletes alone", async () => {
+    const s = await setup();
+    await applyCommand(s, cmd("captureManualTransaction", {
+      transactionId: OUT, accountId: DEBIT, amount: 50_000, direction: "OUTFLOW", currencyCode: "COP", date: "2026-10-02", description: "A Nu",
+    }));
+    await driver.query(toDialect(
+      `INSERT INTO transactions (id, user_id, account_id, amount, currency_code, direction, transaction_date, clean_description, capture_method, idempotency_key, transfer_group_id)
+       VALUES (?, ?, ?, 50000, 'COP', 'INFLOW', '2026-10-02', 'Desde Bancolombia', 'PDF_IMPORT', 'bank-leg', ?)`, driver.dialect), [IN, USER, SAVINGS, GROUP]);
+    await driver.query(toDialect("UPDATE transactions SET transfer_group_id = ? WHERE id = ?", driver.dialect), [GROUP, OUT]);
+    expect((await applyCommand(s, cmd("deleteTransaction", { transactionId: OUT }, "2026-10-02T16:00:00.000Z"))).status).toBe("applied");
+    expect((await rows()).map((t) => t.id)).toEqual([IN]);
+    expect(await balance(s, DEBIT)).toBe(1_000_000);
   });
 
   it("a transfer leg can't be edited on its own", async () => {

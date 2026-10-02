@@ -55,6 +55,17 @@ describe("anotarPreview (the effect line while you type, S8-9)", () => {
     expect(anotarPreview({ ...base, accounts: low }, { kind: "gasto", amount: 100_000, accountId: "Bancolombia" })?.tone).toBe("bad");
   });
 
+  it("between two accounts that don't count, it says so (not 'las dos cuentan')", () => {
+    const apart2 = [...accounts, acc("CDT", "SAVINGS", { countsInDisponible: false, currentBalance: 500_000 })];
+    expect(anotarPreview({ ...base, accounts: apart2 }, { kind: "entre", amount: 100_000, accountId: "Ahorros Nu", toAccountId: "CDT" })?.line)
+      .toBe("Ninguna de las dos cuenta para tu Disponible: no cambia.");
+  });
+
+  it("an account whose balance was never given doesn't warn on every spend", () => {
+    const fresh = [acc("Efectivo", "CASH", { currentBalance: 0 })];
+    expect(anotarPreview({ ...base, accounts: fresh }, { kind: "gasto", amount: 20_000, accountId: "Efectivo" })?.tone).toBe("neutral");
+  });
+
   it("nothing to say without an amount or before the first-run questions", () => {
     expect(anotarPreview(base, { kind: "gasto", amount: 0, accountId: "Bancolombia" })).toBeNull();
     expect(anotarPreview({ ...base, settings: null }, { kind: "gasto", amount: 10, accountId: "Bancolombia" })).toBeNull();
@@ -74,6 +85,10 @@ describe("dictado (Dictar fills Anotar)", () => {
   it("names the card even with accents or case", () => {
     expect(dictado("taxi 20000 con la tarjeta nu", accts, new Date("2026-09-18T15:00:00Z"))?.accountId).toBe("Tarjeta Nu");
   });
+  it("in Ingreso, a sentence without a verb stays an income", () => {
+    expect(dictado("300 mil del freelance", accts, new Date("2026-09-18T15:00:00Z"), "ingreso")).toMatchObject({ kind: "ingreso", amount: 300_000 });
+  });
+
   it("what it couldn't read goes to En qué", () => {
     expect(dictado("no sé qué compré", accts, new Date("2026-09-18T15:00:00Z"))).toEqual({ kind: "gasto", amount: null, what: "no sé qué compré", accountId: null });
   });

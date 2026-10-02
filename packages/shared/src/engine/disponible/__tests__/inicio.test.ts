@@ -136,6 +136,18 @@ describe("buildInicio — later cycles start from the salary", () => {
     expect(r.view.payday).toBe("Te pagan en 17 días");
   });
 
+  it("a big Ingreso extra written by hand on payday isn't taken as the salary (Anotar)", () => {
+    const r = build("2026-10-05", [tx("2026-09-30", 2_000_000, "INFLOW", { captureMethod: "MANUAL_FORM", description: "Bono", flowClass: "INCOME" })]);
+    expect(r.result.llega.lines.find((l) => l.id === "income")?.amount).toBe(2_000_000);
+    expect(r.result.approximate).toBe(true); // the salary is still expected
+  });
+
+  it("'Mi sueldo' written by hand is the salary", () => {
+    const r = build("2026-10-05", [tx("2026-09-30", 2_100_000, "INFLOW", { captureMethod: "MANUAL_FORM", description: "Sueldo", flowClass: "INCOME" })]);
+    expect(r.result.llega.total).toBe(2_100_000);
+    expect(r.result.approximate).toBe(false);
+  });
+
   it("a big refund mid-cycle isn't taken as the salary", () => {
     const r = build("2026-10-10", [tx("2026-09-30", 2_100_000, "INFLOW"), tx("2026-10-08", 1_200_000, "INFLOW")]);
     expect(r.cycle.start).toBe("2026-09-30");

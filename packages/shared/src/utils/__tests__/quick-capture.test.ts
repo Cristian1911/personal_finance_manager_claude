@@ -16,5 +16,13 @@ describe("parseQuickCaptureText amounts", () => {
     ["gasté 25.000 en tostao", 25_000],
     ["gasté 20000 en taxi", 20_000],
     ["el 15 gasté 80000 en mercado", 80_000],
+    ["me pagaron 1,5 millones del bono", 1_500_000],
+    ["pagué 2 millones de arriendo", 2_000_000],
+    ["pagué 1 millón de la moto", 1_000_000],
   ])("%s → %d", (text, expected) => expect(amount(text)).toBe(expected));
+
+  it.each([
+    "pagué 3 cuotas del iphone 15",
+    "pagué la matrícula de 2026",
+  ])("a stray small number or a year isn't an amount: %s", (text) => expect(amount(text)).toBeNull());
 });

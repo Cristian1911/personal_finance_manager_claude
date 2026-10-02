@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { View } from "react-native";
+import { Alert, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Redirect, Tabs, useRouter } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -63,7 +63,15 @@ function V2Tabs() {
     />
     <Toast
       message={toast?.message ?? null}
-      action={toast ? { label: "Deshacer", onPress: () => void toast.undo() } : undefined}
+      action={toast ? {
+        label: "Deshacer",
+        onPress: () => {
+          toast.undo().catch((e) => {
+            console.warn("[v2 anotar] undo failed", e);
+            Alert.alert("No se pudo deshacer", "Bórralo desde Movimientos.");
+          });
+        },
+      } : undefined}
       onHide={() => setToast(null)}
       bottom={TAB_BAR_HEIGHT + Math.max(insets.bottom, 8) + FAB_OVERHANG + 12}
     />

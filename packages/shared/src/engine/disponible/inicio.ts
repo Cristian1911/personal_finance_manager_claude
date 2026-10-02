@@ -78,6 +78,10 @@ function toPaySchedule(s: StoredPaySchedule): PaySchedule {
  * `needs_setup` until the first-run questions are answered: when you get
  * paid, how much (unless irregular) and how much you have today.
  */
+/** The description Anotar gives "Mi sueldo" (the user's "De qué" goes to notes). */
+export const MANUAL_SALARY_DESCRIPTION = "Sueldo";
+const MANUAL_SALARY_CHECK = new Set(["MANUAL_FORM", "TEXT_QUICK_CAPTURE"]);
+
 export function buildInicio(input: {
   today: IsoDate;
   /** ISO instant, for the verdict's 24 h rule. */
@@ -112,6 +116,10 @@ export function buildInicio(input: {
   const big = irregular || income <= 0 ? [] : live.filter((t) =>
     t.direction === "INFLOW" && counted.has(t.accountId)
     && (t.flowClass == null || t.flowClass === "INCOME")
+    // Written by hand, only Anotar's "Mi sueldo" is a salary: an Ingreso extra or a
+    // Me pagaron near payday must add to Disponible, not stand in for the salary.
+    // ponytail: matched by its fixed description; a real mark when salaries link to their recurring income.
+    && (!t.captureMethod || !MANUAL_SALARY_CHECK.has(t.captureMethod) || t.description === MANUAL_SALARY_DESCRIPTION)
     && t.amount * 100 >= SALARY_SHARE_PERCENT * income);
 
   const cycleOn = (day: IsoDate) => computePayCycle({

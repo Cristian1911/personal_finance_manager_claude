@@ -97,6 +97,7 @@ export {
 } from "./widgets";
 export {
   INICIO_LOOKBACK_DAYS,
+  MANUAL_SALARY_DESCRIPTION,
   MOVIMIENTOS_CYCLES,
   SALARY_SHARE_PERCENT,
   buildInicio,
