@@ -70,22 +70,31 @@ describe.skipIf(!enabled)("v2 statement import on zeta-dev", { timeout: 120_000 
     expect(plans[1]).toMatchObject({ accountId: null, last4: "7706", suggested: { name: "Bancolombia tarjeta ••7706", accountType: "CREDIT_CARD" } });
   });
 
-  it("imports: merges what you anotaste, keeps identical rows apart, anchors the balance; creates the card", async () => {
-    const results = await mod.importStatements(pool, userId, [savingsStatement, cardStatement],
+  const usdSection = { ...cardStatement, currency: "USD", transactions: [tx("2026-09-21", 12.5, "NETFLIX", { currency: "USD" })],
+    summary: { ...cardStatement.summary!, final_balance: 12.5 } };
+
+  it("imports: merges what you anotaste, keeps identical rows apart; creates the card from its statement", async () => {
+    const results = await mod.importStatements(pool, userId, [savingsStatement, cardStatement, usdSection],
       [{ index: 1, create: { accountId: card, name: "Bancolombia tarjeta ••7706" } }]);
-    expect(results[0]).toMatchObject({ nuevos: 3, yaEstaban: 0, balance: 470_000 });
-    expect(await balance(savings)).toBe(470_000); // 500.000 at the cut − 30.000 after it
+    // The balance told today already holds September: no per-row moves, no re-anchor (1.000.000 − arriendo − mercado).
+    expect(results[0]).toMatchObject({ nuevos: 3, yaEstaban: 0, balance: null });
+    expect(await balance(savings)).toBe(850_000);
+    // A card created from its statement takes the statement's balance at the cut.
     expect(results[1]).toMatchObject({ created: true, nuevos: 2, balance: 260_000 });
-    const { rows: [c] } = await pool.query("SELECT cutoff_day, payment_day, mask FROM accounts_enc WHERE id = $1", [card]);
+    const { rows: [c] } = await pool.query("SELECT id, cutoff_day, payment_day FROM accounts_enc WHERE user_id = $1 AND account_type = 'CREDIT_CARD'", [userId]);
     expect(c).toMatchObject({ cutoff_day: 30, payment_day: 12 });
+    expect(await balance(c.id)).toBe(260_000); // the USD section didn't touch it
+    expect(results[2]).toMatchObject({ nuevos: 0, nota: expect.stringContaining("USD") });
     // One movement for the arriendo: the hand-written one is merged into the statement's.
     const { rows } = await pool.query("SELECT count(*)::int AS n FROM transactions_enc WHERE user_id = $1 AND account_id = $2 AND reconciled_into_transaction_id IS NULL", [userId, savings]);
     expect(rows[0].n).toBe(4); // arriendo, 2 transfers, mercado
   });
 
   it("the same PDF again changes nothing", async () => {
-    const results = await mod.importStatements(pool, userId, [savingsStatement, cardStatement], []);
-    expect(results.map((r) => [r.nuevos, r.yaEstaban])).toEqual([[0, 3], [0, 2]]);
-    expect(await balance(savings)).toBe(470_000);
+    const results = await mod.importStatements(pool, userId, [savingsStatement, cardStatement], [{ index: 1, create: { accountId: crypto.randomUUID(), name: "x" } }]);
+    expect(results.map((r) => [r.created, r.nuevos, r.yaEstaban])).toEqual([[false, 0, 3], [false, 0, 2]]);
+    expect(await balance(savings)).toBe(850_000);
+    const { rows } = await pool.query("SELECT count(*)::int AS n FROM accounts_enc WHERE user_id = $1 AND account_type = 'CREDIT_CARD'", [userId]);
+    expect(rows[0].n).toBe(1); // a retry with a new id never makes a second card
   });
 });

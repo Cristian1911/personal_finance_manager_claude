@@ -6,6 +6,10 @@ import type { ParseResponse } from "@/types/import";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const PARSER_URL = process.env.PDF_PARSER_URL || "http://localhost:8000";
+const PARSER_ERRORS: Record<string, string> = {
+  password_required: "Este PDF tiene contraseña.",
+  unsupported_format: "Este PDF no parece un extracto que Zeta sepa leer todavía.",
+};
 
 /**
  * Subir un extracto (S9-3): the phone sends the PDF; the parser reads it.
@@ -54,8 +58,10 @@ export async function POST(request: Request) {
   if (!res.ok) {
     const detail = (await res.json().catch(() => ({}))).detail;
     // The parser's errors are {message, type} objects (never plain strings): see the PDF parser notes.
+    // The parser's messages are for logs (Python errors, "revisa logs…"): the phone gets Spanish copy by type.
     if (detail && typeof detail === "object" && detail.type) {
-      return NextResponse.json({ error: detail.message || "No pudimos leer este PDF.", errorType: detail.type }, { status: res.status });
+      console.warn("[v2 import-pdf] parser:", detail.type, detail.message);
+      return NextResponse.json({ error: PARSER_ERRORS[detail.type as string] ?? "No pudimos leer este PDF.", errorType: detail.type }, { status: res.status });
     }
     return NextResponse.json({ error: "No pudimos leer este PDF." }, { status: res.status >= 500 ? 502 : 422 });
   }

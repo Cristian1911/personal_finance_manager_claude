@@ -34,6 +34,7 @@ export interface StatementPlan {
   last4: string | null;
   period: { from: string | null; to: string | null };
   rows: number;
+  currency: string;
   /** The account with that last 4 and kind, when there is exactly one. */
   accountId: string | null;
   /** For "Crear «…»". Null when v2 can't hold this kind (investments). */
@@ -55,6 +56,8 @@ export interface StatementResult {
   otraMoneda: number;
   errores: number;
   balance: number | null;
+  /** Why nothing was imported (skipped, another currency, not supported yet). */
+  nota?: string;
 }
 
 async function accountsOf(driver: SqlDriver, userId: string): Promise<Account[]> {
@@ -70,18 +73,21 @@ export async function planStatements(pool: Pool, userId: string, statements: Par
     const last4 = lastFour(st);
     const fits = accounts.filter((a) => TYPES[st.statement_type].includes(a.account_type));
     const byMask = last4 ? fits.filter((a) => a.mask === last4) : [];
-    const type = NEW_TYPE[st.statement_type];
+    // ponytail: v2 accounts are COP; a USD section (cards come with one) waits for multi-currency.
+    const type = currencyOf(st) === "COP" ? NEW_TYPE[st.statement_type] : null;
     return {
       index, bank: st.bank, kind: st.statement_type, last4,
       period: { from: st.period_from, to: st.period_to },
       rows: st.transactions.length,
-      accountId: byMask.length === 1 ? byMask[0].id : null,
+      currency: currencyOf(st),
+      accountId: type && byMask.length === 1 ? byMask[0].id : null,
       suggested: type ? { name: `${cap(st.bank)} ${KIND_WORD[st.statement_type]}${last4 ? ` ••${last4}` : ""}`.slice(0, 60), accountType: type } : null,
       options: fits.map((a) => ({ id: a.id, name: a.name })),
     };
   });
 }
 
+const currencyOf = (st: ParsedStatement) => (st.currency || "COP").toUpperCase();
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 const dayOf = (iso: string | null | undefined) => (iso && /^\d{4}-\d{2}-\d{2}$/.test(iso) ? Number(iso.slice(8, 10)) : null);
 
@@ -107,22 +113,29 @@ export async function importStatements(
       applyCommand(storage, { id, type, userId, deviceId: "pdf", clientTs: new Date(now.getTime() + tick++).toISOString(), payload });
     const st = statements[plan.index];
     const choice = choices.find((c) => c.index === plan.index);
-    if (choice?.skip) return;
+    const label = `${cap(st.bank)} ${KIND_WORD[st.statement_type]}${plan.last4 ? ` ••${plan.last4}` : ""}`;
+    const nothing = (nota: string) => results.push({ index: plan.index, account: label, created: false, nuevos: 0, yaEstaban: 0, paraRevisar: 0, otraMoneda: 0, errores: 0, balance: null, nota });
+    if (plan.currency !== "COP") return void nothing(`${plan.rows} movimientos en ${plan.currency}: Zeta aún no lleva otras monedas.`);
+    if (!plan.suggested) return void nothing("Zeta aún no lleva este tipo de cuenta.");
+    if (choice?.skip) return void nothing("No lo importaste.");
     let accountId = choice?.accountId ?? plan.accountId;
     let created = false;
-    if (!accountId && choice?.create && plan.suggested) {
-      const r = await run("createAccount", uuidFrom(`pdf-account:${userId}:${choice.create.accountId}`), {
-        accountId: choice.create.accountId, accountType: plan.suggested.accountType, name: choice.create.name.trim().slice(0, 60),
+    if (!accountId && choice?.create) {
+      // Same card, same id: a retry after a timeout finds the account it already made instead of a second one.
+      const id = plan.last4 ? uuidFrom(`pdf-account:${userId}:${st.statement_type}:${plan.last4}`) : choice.create.accountId;
+      const r = await run("createAccount", uuidFrom(`pdf-create:${userId}:${id}`), {
+        accountId: id, accountType: plan.suggested.accountType, name: choice.create.name.trim().slice(0, 60) || label,
         institutionName: cap(st.bank).slice(0, 60), mask: plan.last4 && /^\d{4}$/.test(plan.last4) ? plan.last4 : null,
-        currencyCode: "COP", balance: 0,
+        currencyCode: "COP", balance: 0, balanceUnknown: true,
       });
-      if (r.status !== "applied" && r.status !== "duplicate") return;
-      accountId = choice.create.accountId;
-      created = true;
+      if (r.status !== "applied" && r.status !== "duplicate") return void nothing("No se pudo crear la cuenta.");
+      accountId = id;
+      created = r.status === "applied" && !r.replayed;
     }
-    if (!accountId) return;
+    if (!accountId) return void nothing("Elige a qué cuenta va.");
     const account = (await accountsOf(tx, userId)).find((a) => a.id === accountId);
-    if (!account) return;
+    // Only an account of the statement's kind: a card statement on a savings account would flip every sign.
+    if (!account || !TYPES[st.statement_type].includes(account.account_type)) return void nothing("Esa cuenta no es de este tipo.");
 
     const result: StatementResult = { index: plan.index, account: account.name, created, nuevos: 0, yaEstaban: 0, paraRevisar: 0, otraMoneda: 0, errores: 0, balance: null };
     const occurrences = assignStatementOccurrenceIndexes(st.transactions.map((t, j) => ({
@@ -139,8 +152,9 @@ export async function importStatements(
         rawLine: t.description.slice(0, 1000), description: t.description.trim().slice(0, 200) || "Movimiento",
         occurrence: occurrences[j], originalAmount: t.original_amount, installmentCurrent: t.installment_current, installmentTotal: t.installment_total,
       });
-      if (r.status === "duplicate" || r.replayed) result.yaEstaban++;
-      else if (r.status === "applied" && (r.data as { heldFor?: string } | undefined)?.heldFor) result.paraRevisar++;
+      if (r.status === "rejected") result.errores++;
+      else if (r.status === "duplicate" || r.replayed) result.yaEstaban++;
+      else if ((r.data as { heldFor?: string } | undefined)?.heldFor) result.paraRevisar++;
       else if (r.status === "applied") result.nuevos++;
       else result.errores++;
     }
@@ -161,7 +175,8 @@ export async function importStatements(
       const r = await run("anchorStatementBalance", uuidFrom(`pdf-anchor:${userId}:${accountId}:${st.period_to}:${finalBalance}`), {
         accountId, finalBalance, asOf: st.period_to,
       });
-      if (r.status === "applied") result.balance = (r.data as { balance: number }).balance;
+      const d = r.data as { balance: number; kept?: boolean } | undefined;
+      if (r.status === "applied" && d && !d.kept) result.balance = d.balance;
     }
     results.push(result);
   });

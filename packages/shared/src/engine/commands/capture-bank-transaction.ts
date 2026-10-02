@@ -7,7 +7,8 @@ import type { TransactionCaptureMethod } from "../../types/domain";
 import type { EngineOptions } from "../runner";
 import type { CommandEnvelope, CommandResult, StoragePort, TransactionRow } from "../types";
 import { UUID_RE } from "../validate";
-import { moveBalance } from "./balance";
+import { balanceAsOf, colombiaInstant, moveBalance } from "./balance";
+import { labelTarget } from "./reconciled";
 import { matchOnCapture } from "./categorias";
 import { autoLinkPayment, relinkPayment } from "./pagos";
 import { isIsoDate, isMoney } from "./validate-money";
@@ -172,7 +173,10 @@ export async function captureBankTransaction(
 
 /** A movement that counts on its own: the balance and bill detection, like any capture. */
 async function post(s: StoragePort, cmd: CommandEnvelope, row: TransactionRow, opts: EngineOptions) {
-  await moveBalance(s, cmd.userId, row.accountId, signed(row));
+  // Before the instant the balance is true as of (told, or a statement's cut): already inside it.
+  // Without a time, a row is placed at the start of its day.
+  const asOf = await balanceAsOf(s, cmd.userId, row.accountId);
+  if (!asOf || colombiaInstant(row.transactionDate, row.transactionTime ?? undefined) > asOf) await moveBalance(s, cmd.userId, row.accountId, signed(row));
   await autoLinkPayment(s, cmd.userId, row, cmd.clientTs, opts);
 }
 
@@ -185,6 +189,8 @@ export async function releaseHeld(s: StoragePort, cmd: CommandEnvelope, held: Tr
 /** The bank's row becomes the movement `twin` was: twin stops counting, its choices and bill move over. */
 async function takeOver(s: StoragePort, cmd: CommandEnvelope, bank: TransactionRow, twin: TransactionRow, opts: EngineOptions) {
   await s.setReconciliation(cmd.userId, twin.id, bank.id, "POSTED");
+  // Bank movements held because they might be the twin now wait on this row (answered once, counted once).
+  for (const h of await s.listHeldFor(cmd.userId, twin.id)) await s.setReconciliation(cmd.userId, h.id, bank.id, "PENDING");
   // An Entre cuentas leg stays a transfer; a class set by hand (Anotar's Gasto/Ingreso, version 0) is the user's word.
   const hand = twin.flowClassVersion === 0 && twin.flowClass;
   if (twin.transferGroupId || hand) {
@@ -222,8 +228,16 @@ export async function resolveBankDuplicate(
   const row = await s.getTransaction(cmd.userId, p.transactionId);
   if (!row) return { status: "rejected", replayed: false, code: "not_found", error: "Movimiento no encontrado." };
   if (row.status !== "PENDING") return { status: "rejected", replayed: false, code: "invalid", error: "Ya respondiste esto." };
-  const twin = row.reconciledIntoTransactionId ? await s.getTransaction(cmd.userId, row.reconciledIntoTransactionId) : null;
-  // The twin may be gone (deleted, or merged elsewhere) since: then it's simply a new movement.
+  const found = row.reconciledIntoTransactionId ? await s.getTransaction(cmd.userId, row.reconciledIntoTransactionId) : null;
+  // The twin may have been merged since (the statement took it over): the answer is about the row it became.
+  const twin = found ? await labelTarget(s, cmd.userId, found) : null;
+  // "Es el mismo" as a statement's row (higher): this one is its duplicate and stops waiting, counted never.
+  if (p.same && twin && !twin.reconciledIntoTransactionId
+    && getCaptureTier(twin.captureMethod as TransactionCaptureMethod) < getCaptureTier(row.captureMethod as TransactionCaptureMethod)) {
+    await s.setReconciliation(cmd.userId, row.id, twin.id, "POSTED");
+    return { status: "applied", replayed: false };
+  }
+  // The twin may be gone (deleted) since: then it's simply a new movement.
   if (p.same && twin && !twin.reconciledIntoTransactionId) {
     await s.setReconciliation(cmd.userId, row.id, null, "POSTED");
     await takeOver(s, cmd, { ...row, status: "POSTED", reconciledIntoTransactionId: null }, twin, opts);

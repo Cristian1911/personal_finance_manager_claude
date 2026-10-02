@@ -10,6 +10,7 @@ export interface StatementPlan {
   last4: string | null;
   period: { from: string | null; to: string | null };
   rows: number;
+  currency: string;
   accountId: string | null;
   suggested: { name: string; accountType: string } | null;
   options: { id: string; name: string }[];
@@ -17,7 +18,7 @@ export interface StatementPlan {
 export type StatementChoice = { index: number; accountId?: string; create?: { accountId: string; name: string }; skip?: boolean };
 export interface StatementResult {
   index: number; account: string; created: boolean; nuevos: number; yaEstaban: number; paraRevisar: number;
-  otraMoneda: number; errores: number; balance: number | null;
+  otraMoneda: number; errores: number; balance: number | null; nota?: string;
 }
 export type StatementAnswer =
   | { kind: "results"; results: StatementResult[] }

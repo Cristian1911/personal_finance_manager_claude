@@ -44,7 +44,10 @@ export function ExtractoSheet({ file, onClose, onImported }: {
     if (!live.current) return;
     if (answer.kind === "password") setStep({ kind: "password", wrong: !!(opts.password ?? password) });
     else if (answer.kind === "needs") {
-      setPicks(Object.fromEntries(answer.plans.map((p) => [p.index, p.accountId ?? (p.suggested ? "create" : "skip")])));
+      // "Crear" only when there's no account of that kind: with one, it's probably that one; with several, you pick
+      // (a second "Bancolombia" would count every movement twice).
+      setPicks(Object.fromEntries(answer.plans.map((p) => [p.index,
+        p.accountId ?? (!p.suggested ? "skip" : p.options.length === 0 ? "create" : p.options.length === 1 ? p.options[0].id : "")])));
       setStep({ kind: "needs", plans: answer.plans });
     } else if (answer.kind === "results") {
       setStep({ kind: "results", results: answer.results });
@@ -60,7 +63,7 @@ export function ExtractoSheet({ file, onClose, onImported }: {
   }, [file]);
 
   const importWith = (plans: StatementPlan[]) => send({
-    choices: plans.map((p): StatementChoice => {
+    choices: plans.filter((p) => p.suggested).map((p): StatementChoice => {
       const pick = picks[p.index];
       if (pick === "skip") return { index: p.index, skip: true };
       if (pick === "create") return { index: p.index, create: { accountId: Crypto.randomUUID().toLowerCase(), name: p.suggested!.name } };
@@ -71,9 +74,9 @@ export function ExtractoSheet({ file, onClose, onImported }: {
   const text = (s: string, muted = false, center = false) => (
     <Text style={{ fontSize: 15, lineHeight: 22, textAlign: center ? "center" : "left", color: muted ? t.colors.muted : t.colors.ink, fontFamily: t.fonts.uiMedium }}>{s}</Text>
   );
-  const busy = step.kind === "reading";
   return (
-    <Sheet open={!!file} onClose={busy ? () => {} : onClose} style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
+    // Closable while it works: the server finishes on its own and the next sync brings the movements.
+    <Sheet open={!!file} onClose={onClose} style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
       <View style={[styles.handle, { backgroundColor: t.colors.line }]} />
       <Text accessibilityRole="header" style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]}>
         {step.kind === "results" ? "Listo" : "Tu extracto"}
@@ -81,7 +84,7 @@ export function ExtractoSheet({ file, onClose, onImported }: {
 
       {step.kind === "reading" && (
         <View style={{ alignItems: "center", gap: 12, paddingVertical: 24 }}>
-          <ActivityIndicator color={t.colors.muted} />
+          <ActivityIndicator color={t.colors.muted} accessibilityLabel="Cargando" />
           {text(step.importing ? "Guardando tus movimientos… puede tardar un minuto." : "Leyendo tu extracto…", true, true)}
         </View>
       )}
@@ -114,7 +117,7 @@ export function ExtractoSheet({ file, onClose, onImported }: {
                 <Text style={{ fontSize: 13, color: t.colors.muted, fontFamily: t.fonts.uiMedium }}>
                   {[`${p.rows} movimientos`, p.period.from && p.period.to ? `${short(p.period.from)}–${short(p.period.to)}` : null].filter(Boolean).join(" · ")}
                 </Text>
-                {!p.accountId && (
+                {!p.accountId && p.suggested && (
                   <View style={styles.chips}>
                     {p.suggested && <Chip label={`Crear «${p.suggested.name}»`} on={picks[p.index] === "create"} onPress={() => setPicks({ ...picks, [p.index]: "create" })} />}
                     {p.options.map((o) => <Chip key={o.id} label={`Es ${o.name}`} on={picks[p.index] === o.id} onPress={() => setPicks({ ...picks, [p.index]: o.id })} />)}
@@ -122,11 +125,13 @@ export function ExtractoSheet({ file, onClose, onImported }: {
                   </View>
                 )}
                 {p.accountId && text(`Va a ${p.options.find((o) => o.id === p.accountId)?.name ?? "tu cuenta"}.`, true)}
-                {!p.suggested && text("Zeta aún no lleva inversiones.", true)}
+                {!p.suggested && text(p.currency !== "COP" ? `En ${p.currency}: Zeta aún no lleva otras monedas.` : "Zeta aún no lleva este tipo de cuenta.", true)}
               </View>
             ))}
           </ScrollView>
-          <Button label="Importar" disabled={step.plans.every((p) => picks[p.index] === "skip")} onPress={() => void importWith(step.plans)} />
+          <Button label="Importar"
+            disabled={step.plans.some((p) => p.suggested && !picks[p.index]) || step.plans.every((p) => !p.suggested || picks[p.index] === "skip")}
+            onPress={() => void importWith(step.plans)} />
         </>
       )}
 
@@ -136,11 +141,12 @@ export function ExtractoSheet({ file, onClose, onImported }: {
           {step.results.map((r) => (
             <View key={r.index} style={[styles.card, { borderColor: t.colors.line }]}>
               <Text style={{ fontSize: 15, color: t.colors.ink, fontFamily: t.fonts.uiSemibold }}>{r.account}{r.created ? " (nueva)" : ""}</Text>
-              {text([
+              {!r.nota && text([
                 `${r.nuevos} ${r.nuevos === 1 ? "movimiento nuevo" : "movimientos nuevos"}`,
                 r.yaEstaban ? `${r.yaEstaban} ya estaban` : null,
                 r.paraRevisar ? `${r.paraRevisar} para revisar` : null,
               ].filter(Boolean).join(" · "), true)}
+              {r.nota && text(r.nota, true)}
               {r.otraMoneda > 0 && text(`${r.otraMoneda} en otra moneda quedaron fuera por ahora.`, true)}
               {r.errores > 0 && text(`${r.errores} no se pudieron guardar.`, true)}
               {r.balance != null && text(`Saldo al corte, con lo de después: ${formatPesos(r.balance)}`)}

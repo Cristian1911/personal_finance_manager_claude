@@ -88,6 +88,14 @@ the tests talk to zeta-dev only. To undo anything, close its PR (and the ones ab
   its cut day, payment day and limit. Uploading the same PDF again changes nothing. Not in yet: rows in another
   currency (USD sections), investments, saved PDF passwords (asked each time), the "¿Es el mismo?" for statement vs
   anotado with different words (held to Revisar, same as email).
+- **D23. Every account knows "as of when" its balance is true**: when you told it (Agregar), or the end of a
+  statement's cut day. Bank movements from before that instant are already inside it: they show up in Movimientos
+  but don't move the balance, and an older statement never re-anchors a newer balance. So a new user who adds
+  "Bancolombia: $1.000.000" today and then uploads September gets September's movements and categories without
+  their balance changing. A card created *from* its statement takes the statement's balance at the cut.
+- **Statement questions:** "Crear" is the default only when you have no account of that kind; with one, Zeta
+  assumes it's that one; with several, you choose (a second "Bancolombia" would count everything twice). A USD
+  section of a card statement is shown as "Zeta aún no lleva otras monedas" and never touches the COP card.
 - **Speed (check on the VPS):** each statement row is ~15 database round trips. From here (159 ms to sa-east-1) a
   4-row statement took ~20 s. If the VPS is far from São Paulo, a 60-row statement will be slow; then batch the
   rule and template lookups per import.
