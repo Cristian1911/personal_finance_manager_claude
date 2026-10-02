@@ -138,6 +138,10 @@ export interface CardSummary {
   dueDate?: IsoDate | null;
   minimum?: number | null;
   totalOwed?: number | null;
+  /** No payment day yet: there's no bill to show (Pagos needs it). */
+  missingPaymentDay?: boolean;
+  /** Bought since the last statement's cut: it goes to the next bill (owner's D24 alert). */
+  sinceCut?: number | null;
 }
 
 /** Days shown on each side of the cycle in Tu flujo. */
@@ -510,6 +514,14 @@ export function pagoWidget(i: InicioWidgetsInput): InicioWidget {
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.line.label.localeCompare(b.line.label));
 
   if (open.length === 0) {
+    // Bills exist but none due before the next pay: say what's next, don't ask to add bills.
+    const later = (i.obligations ?? []).filter((o) => o.dueDate > i.cycle.end).sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
+    if (later) {
+      w.hint = i.cycle.nextPayday ? `Nada antes del ${dayNumber(i.cycle.nextPayday)}` : "Nada en este ciclo";
+      w.lead = `Lo siguiente: ${later.label}, ${shortDate(later.dueDate)}, ${formatPesos(later.amount)}`;
+      w.seeAll = "see_bills";
+      return w;
+    }
     w.empty = true;
     w.hint = "Sin pagos aún";
     w.lead = "Agrega tus pagos fijos (arriendo, servicios, cuotas) y Zeta los resta antes de que lleguen.";
@@ -598,6 +610,12 @@ export function tarjetaWidget(i: InicioWidgetsInput, card: CardSummary): InicioW
   const w = base("tarjeta", card.name, "half");
   w.id = `tarjeta:${card.accountId}`;
   w.seeAll = "see_accounts";
+  if (card.missingPaymentDay) {
+    w.hint = "Falta el día de pago";
+    w.lead = "Agrega el día de corte y de pago en Mis cuentas para ver tu próxima factura y cuándo pagarla.";
+    w.actions = [{ id: "import_statement", label: "Importar extracto" }];
+    return w;
+  }
   setValue(w, card.estimatedBill, APPROX);
   w.hint = "próxima factura";
   if (card.usedPercent != null) w.visual = { kind: "bar", percent: clampPercent(card.usedPercent), level: null };
@@ -619,6 +637,9 @@ export function tarjetaWidget(i: InicioWidgetsInput, card: CardSummary): InicioW
       detail: `${card.dueDate ? `${shortDate(card.dueDate)} · ` : ""}cuenta en Disponible`,
       amount: signedPesos(card.minimum),
     });
+  }
+  if (card.sinceCut) {
+    w.rows.push({ id: "since_cut", title: "Desde el corte", detail: "va a tu próxima factura", amount: signedPesos(card.sinceCut) });
   }
   if (card.totalOwed != null) {
     w.rows.push({

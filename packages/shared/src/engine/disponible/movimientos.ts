@@ -5,8 +5,9 @@ import { diffDays, dayOfWeek, type IsoDate } from "./dates";
 import type { InicioAccount } from "./inicio";
 import type { StoredTransaction } from "./movements";
 import { formatPesos } from "./verdict";
-import { cycleLabel, signedPesos } from "./view";
+import { movementTime, readableName, cycleLabel, signedPesos } from "./view";
 import { colombiaTime, relativeDay } from "./widgets";
+import { categoryById } from "../categories";
 
 /**
  * Movimientos and the Detalle sheet (Claude Design "Z Cuentas": movs,
@@ -30,6 +31,14 @@ export interface MovimientoRow {
   /** "Ignorado" / "No cuenta" in place of the category chip. */
   status: string | null;
   spoken: string;
+  /** The category's name, or null. */
+  category: string | null;
+  categoryId: string | null;
+  /** Who it is (comercio or persona), or null. */
+  destinatario: { id: string; name: string; kind: "merchant" | "person" } | null;
+  /** The movement's own text (bank or typed), to remember a destinatario by. */
+  description: string | null;
+  direction: "INFLOW" | "OUTFLOW";
 }
 
 export interface MovimientosGroup {
@@ -50,6 +59,8 @@ export interface MovimientosView {
   groups: MovimientosGroup[];
   /** Why the list is empty, or null. */
   empty: string | null;
+  /** The account the list is narrowed to (a removable chip), or null. */
+  account: { id: string; label: string } | null;
 }
 
 export type DetalleSource = "manual" | "email" | "notification" | "pdf" | "screenshot" | "other";
@@ -70,7 +81,7 @@ export interface DetalleView {
   /** Written down by hand: amount and date can be fixed; "No es un movimiento" deletes it. */
   manual: boolean;
   /** Raw values for the fix form. */
-  raw: { amount: number; date: IsoDate };
+  raw: { amount: number; date: IsoDate; description: string; time: string | null };
 }
 
 const FILTERS: { key: MovimientosFilter; label: string }[] = [
@@ -93,7 +104,7 @@ const SOURCE_WORD: Record<DetalleSource, string> = {
 const isDebt = (type: string) => type === "CREDIT_CARD" || type === "LOAN";
 const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-const titleOf = (t: StoredTransaction) => t.description?.trim() || (t.direction === "INFLOW" ? "Entrada" : "Gasto");
+const titleOf = (t: StoredTransaction) => readableName(t.description?.trim() || (t.direction === "INFLOW" ? "Entrada" : "Gasto"));
 const range = (c: { start: IsoDate; end: IsoDate }) => cycleLabel(c).replace(/^Ciclo /, "").replace(" – ", "–");
 
 interface Account { type: string; counts: boolean; label: string }
@@ -102,7 +113,7 @@ function accountsById(accounts: InicioAccount[]): Map<string, Account> {
   return new Map(accounts.map((a) => [a.id, {
     type: a.accountType,
     counts: !isDebt(a.accountType) && (a.countsInDisponible ?? defaultCountsInDisponible(a.accountType)),
-    label: ACCOUNT_LABEL[a.accountType] ?? "Cuenta",
+    label: a.name?.trim() || (ACCOUNT_LABEL[a.accountType] ?? "Cuenta"),
   }]));
 }
 
@@ -144,7 +155,12 @@ export function movimientosView(input: {
   index: number;
   filter: MovimientosFilter;
   query: string;
+  /** Only this account's movements (Cuenta › Ver todos). */
+  accountId?: string | null;
+  /** Comercios and personas, to show who each movement is. */
+  destinatarios?: { id: string; name: string; kind: "merchant" | "person" }[];
 }): MovimientosView {
+  const who = new Map((input.destinatarios ?? []).map((d) => [d.id, d]));
   const { today, cycles, filter } = input;
   const index = Math.max(0, Math.min(cycles.length - 1, input.index));
   const c = cycles[index];
@@ -154,10 +170,12 @@ export function movimientosView(input: {
   const inCycle = input.transactions.filter((t) => t.date >= c.start && t.date <= c.end && !t.reconciledIntoTransactionId);
   const shown = inCycle.filter((t) => {
     const a = accounts.get(t.accountId);
+    if (input.accountId && t.accountId !== input.accountId) return false;
     if (filter === "gastos" && t.direction !== "OUTFLOW") return false;
     if (filter === "entradas" && t.direction !== "INFLOW") return false;
     if (filter === "tarjetas" && a?.type !== "CREDIT_CARD") return false;
-    return !q || fold(`${titleOf(t)} ${t.notes ?? ""}`).includes(q);
+    const d = t.destinatarioId ? who.get(t.destinatarioId) : undefined;
+    return !q || fold(`${titleOf(t)} ${t.notes ?? ""} ${d?.name ?? ""} ${categoryById(t.categoryId)?.name ?? ""}`).includes(q);
   }).sort((x, y) => y.date.localeCompare(x.date) || (y.createdAt ?? "").localeCompare(x.createdAt ?? "") || y.id.localeCompare(x.id));
 
   const groups: MovimientosGroup[] = [];
@@ -169,14 +187,17 @@ export function movimientosView(input: {
     }
     const a = accounts.get(t.accountId);
     const tone = toneOf(t, a);
-    const title = titleOf(t);
+    const destinatario = (t.destinatarioId && who.get(t.destinatarioId)) || null;
+    const title = destinatario?.name ?? titleOf(t);
     const amount = amountOf(t, tone);
-    const time = t.createdAt ? colombiaTime(t.createdAt) : null;
+    const time = movementTime(t, colombiaTime);
     const status = statusOf(t, a);
     const account = a?.label ?? "Cuenta";
+    const category = categoryById(t.categoryId)?.name ?? null;
     g.rows.push({
       id: t.id, initial: title.charAt(0).toUpperCase(), title, amount, tone, time, account, status,
-      spoken: [title, amount.replace(/−/g, "menos ").replace(/^\+/, "más "), status, time, account].filter(Boolean).join(", "),
+      spoken: [title, amount.replace(/−/g, "menos ").replace(/^\+/, "más "), status, category, time, account].filter(Boolean).join(", "),
+      category, categoryId: t.categoryId ?? null, destinatario, description: t.description ?? null, direction: t.direction,
     });
   }
   for (const g of groups) {
@@ -195,8 +216,9 @@ export function movimientosView(input: {
     groups,
     empty: groups.length > 0 ? null
       : q ? `Nada con «${input.query.trim()}».`
-      : filter !== "todos" ? "Nada con ese filtro en este ciclo."
+      : filter !== "todos" || input.accountId ? "Nada con ese filtro en este ciclo."
       : "No hay movimientos en este ciclo.",
+    account: input.accountId ? { id: input.accountId, label: accounts.get(input.accountId)?.label ?? "Cuenta" } : null,
   };
 }
 
@@ -207,7 +229,7 @@ export function detalleView(input: { today: IsoDate; transaction: StoredTransact
   const tone = toneOf(t, a);
   const title = titleOf(t);
   const source = SOURCE_OF[t.captureMethod ?? ""] ?? "other";
-  const time = t.createdAt ? ` ${colombiaTime(t.createdAt)}` : "";
+  const time = movementTime(t, colombiaTime) ? ` ${movementTime(t, colombiaTime)}` : "";
   const when = relativeDay(today, t.date);
   const facts = `${SOURCE_WORD[source]} · ${when === "Hoy" || when === "Ayer" ? when.toLowerCase() : when}${time} · ${a?.label ?? "Cuenta"}`;
 
@@ -222,6 +244,6 @@ export function detalleView(input: { today: IsoDate; transaction: StoredTransact
     note: t.notes?.trim() || null,
     excluded: !!t.isExcluded,
     manual: MANUAL_CAPTURE_METHODS.has(t.captureMethod ?? ""),
-    raw: { amount: t.amount, date: t.date },
+    raw: { amount: t.amount, date: t.date, description: t.description?.trim() ?? "", time: movementTime(t, colombiaTime)?.padStart(5, "0") ?? null },
   };
 }

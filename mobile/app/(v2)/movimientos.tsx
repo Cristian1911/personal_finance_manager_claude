@@ -16,15 +16,25 @@ import {
   type EditTransactionPayload,
   type SetTransactionExcludedPayload,
   type SetTransactionNotePayload,
+  categoryById,
+  patternFrom,
 } from "@zeta/shared";
+import * as Crypto from "expo-crypto";
 import { runLocalCommand } from "../../lib/v2/engine/run-local";
 import { loadMovimientos, type LoadedMovimientos } from "../../lib/v2/movimientos/load";
 import { useV2UserId } from "../../lib/v2/user";
 import { Collapse } from "../../v2/components/Collapse";
+import { Button, IconButton } from "../../v2/components/Button";
+import { Chip } from "../../v2/components/Chip";
+import { CategorySheet, DestinatarioSheet } from "../../v2/components/LabelSheets";
+import { Avatar } from "../../v2/components/Avatar";
+import { ProfileButton } from "../../v2/components/ProfileButton";
+import { EmptyState } from "../../v2/components/EmptyState";
 import { DetalleSheet } from "../../v2/components/DetalleSheet";
 import { Dim } from "../../v2/components/Dim";
 import { Toast } from "../../v2/components/Toast";
 import { useV2Theme } from "../../v2/theme/ThemeProvider";
+import { useV2Changes } from "../../lib/v2/changes";
 
 /**
  * v2 Movimientos (M1, Claude Design "Z Cuentas", movs): one cycle at a time,
@@ -36,7 +46,7 @@ export default function MovimientosScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const userId = useV2UserId();
-  const params = useLocalSearchParams<{ id?: string }>();
+  const params = useLocalSearchParams<{ id?: string; account?: string }>();
   const [data, setData] = useState<LoadedMovimientos | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [index, setIndex] = useState(0);
@@ -44,6 +54,7 @@ export default function MovimientosScreen() {
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<string | null>(params.id ?? null);
+  const [needsFirstRun, setNeedsFirstRun] = useState(false);
 
   const request = useRef(0);
   const reload = useCallback(async () => {
@@ -51,22 +62,24 @@ export default function MovimientosScreen() {
     try {
       const loaded = await loadMovimientos(userId);
       if (id !== request.current) return;
-      if (!loaded) return router.back(); // the first-run questions live on Inicio
-      setData(loaded);
+      setNeedsFirstRun(!loaded); // the first-run questions live on Inicio
+      if (loaded) setData(loaded);
       setError(null);
     } catch (e) {
       if (id !== request.current) return;
       console.warn("[v2 movimientos] load failed", e);
       setError("No pudimos cargar tus movimientos. Intenta de nuevo.");
     }
-  }, [userId, router]);
+  }, [userId]);
+  // Anotar and Deshacer change the data without moving focus.
+  useV2Changes(() => void reload());
   useFocusEffect(useCallback(() => { void reload(); }, [reload]));
 
   // Typing stays at full speed; the list catches up a frame later.
   const search = useDeferredValue(query);
   const view = useMemo(
-    () => data && movimientosView({ today: data.today, transactions: data.transactions, accounts: data.accounts, cycles: data.cycles, index, filter, query: search }),
-    [data, index, filter, search],
+    () => data && movimientosView({ today: data.today, transactions: data.transactions, accounts: data.accounts, cycles: data.cycles, index, filter, query: search, accountId: params.account ?? null, destinatarios: data.destinatarios }),
+    [data, index, filter, search, params.account],
   );
   const detalle = useMemo(() => {
     const tx = openId && data?.transactions.find((x) => x.id === openId);
@@ -90,7 +103,56 @@ export default function MovimientosScreen() {
 
   // One row open at a time; a new cycle, filter or search closes it.
   const [openRow, setOpenRow] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ message: string; undo?: () => void } | null>(null);
+  // Leaving the tab closes the open row (it'd come back dimming the list).
+  useFocusEffect(useCallback(() => () => setOpenRow(null), []));
+  // A new movement (Anotar, a sync) closes the open row, or it'd arrive dimmed.
+  const seen = useRef(0);
+  useEffect(() => {
+    const n = data?.transactions.length ?? 0;
+    if (n > seen.current && seen.current > 0) setOpenRow(null);
+    seen.current = n;
+  }, [data]);
+  const [toast, setToast] = useState<{ message: string; undo?: () => void; action?: { label: string; onPress: () => void } } | null>(null);
+  const [labeling, setLabeling] = useState<{ row: MovimientoRow; what: "category" | "destinatario" } | null>(null);
+
+  // Categoría · Destinatario (S8-3), from the open row.
+  const onCategory = useCallback((r: MovimientoRow) => setLabeling({ row: r, what: "category" }), []);
+  const onDestinatario = useCallback((r: MovimientoRow) => setLabeling({ row: r, what: "destinatario" }), []);
+  // The pick runs once the sheet is gone: iOS drops an Alert raised while it's dismissing.
+  const afterLabel = useRef<(() => void) | null>(null);
+  const closeLabel = useCallback((then: () => void) => { afterLabel.current = then; setLabeling(null); }, []);
+  const labelClosed = useCallback(() => { const next = afterLabel.current; afterLabel.current = null; next?.(); }, []);
+  const pickCategory = useCallback(async (r: MovimientoRow, categoryId: string | null) => {
+    if (!(await run("setTransactionCategory", { transactionId: r.id, categoryId }))) return;
+    const d = r.destinatario && data?.destinatarios.find((x) => x.id === r.destinatario!.id);
+    const cat = categoryById(categoryId);
+    if (!d || !cat || d.defaultCategoryId === cat.id) return;
+    if (!d.defaultCategoryId) {
+      // The first time: learn it without asking (a toast that vanishes would lose the rule).
+      // applyToPast only fills movements without a hand-picked category.
+      if (!(await run("setDestinatarioCategory", { destinatarioId: d.id, categoryId: cat.id, applyToPast: true }))) return;
+      setToast({
+        message: `Desde ahora, ${d.name} es ${cat.name}`,
+        // Also un-fills the past it filled (hand-picked categories are never touched).
+        undo: () => void run("setDestinatarioCategory", { destinatarioId: d.id, categoryId: null, applyToPast: true }),
+      });
+    } else {
+      // It already had another one: this may be a one-off, so ask.
+      setToast({
+        message: `¿Siempre ${cat.name} para ${d.name}?`,
+        action: { label: "Sí", onPress: () => void run("setDestinatarioCategory", { destinatarioId: d.id, categoryId: cat.id, applyToPast: true }) },
+      });
+    }
+  }, [run, data]);
+  const pickDestinatario = useCallback(async (r: MovimientoRow, id: string) => {
+    await run("setTransactionDestinatario", { transactionId: r.id, destinatarioId: id, remember: true });
+  }, [run]);
+  const createDestinatario = useCallback(async (r: MovimientoRow, name: string, kind: "merchant" | "person") => {
+    const destinatarioId = Crypto.randomUUID().toLowerCase();
+    const pattern = r.description ? patternFrom(r.description) : null;
+    if (!(await run("createDestinatario", { destinatarioId, name, kind, pattern }))) return;
+    await run("setTransactionDestinatario", { transactionId: r.id, destinatarioId, remember: false });
+  }, [run]);
 
   // "No es un movimiento": a manual entry is deleted, a bank one ignored — both with Deshacer.
   const notAMovement = useCallback(async () => {
@@ -125,15 +187,21 @@ export default function MovimientosScreen() {
   const back = useCallback(() => (router.canGoBack() ? router.back() : router.replace("/inicio" as never)), [router]);
   const tone = useMemo(() => toneColors(t), [t]);
 
+  if (needsFirstRun) {
+    return (
+      <EmptyState title="Movimientos" profile message="Responde las tres preguntas de Inicio y aquí vas a ver lo que gastas y lo que te entra.">
+        <Button label="Ir a Inicio" variant="secondary" size="M" onPress={() => router.navigate("/inicio" as never)} />
+      </EmptyState>
+    );
+  }
+
   if (!view) {
     return (
       <View style={[styles.center, { backgroundColor: t.colors.bg, paddingTop: insets.top + 24 }]}>
         {error ? (
           <>
             <Text style={{ color: t.colors.bad.text, fontFamily: t.fonts.uiMedium, textAlign: "center" }} accessibilityRole="alert">{error}</Text>
-            <Pressable onPress={back} accessibilityRole="button" style={[styles.ghost, { borderColor: t.colors.control }]}>
-              <Text style={{ color: t.colors.ink, fontFamily: t.fonts.uiSemibold, fontSize: 14 }}>Volver</Text>
-            </Pressable>
+            <Button label="Volver" variant="secondary" size="M" onPress={back} />
           </>
         ) : <ActivityIndicator color={t.colors.ink} accessibilityLabel="Cargando" />}
       </View>
@@ -143,19 +211,13 @@ export default function MovimientosScreen() {
   const header = (
     <View style={styles.headerBlock}>
       <View style={styles.titleRow}>
-        <Pressable onPress={back} accessibilityRole="button" accessibilityLabel="Volver" hitSlop={6} style={[styles.square, { borderColor: t.colors.control }]}>
-          <ChevronLeft size={18} color={t.colors.ink} strokeWidth={2.2} />
-        </Pressable>
         <Text style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]} accessibilityRole="header">Movimientos</Text>
-        <Pressable
+        <IconButton
           onPress={() => { setSearching((s) => !s); setQuery(""); }}
-          accessibilityRole="button"
-          accessibilityLabel={searching ? "Cerrar búsqueda" : "Buscar"}
-          hitSlop={6}
-          style={[styles.square, { borderColor: t.colors.control }]}
-        >
-          {searching ? <X size={16} color={t.colors.ink} strokeWidth={2.2} /> : <Search size={17} color={t.colors.ink} strokeWidth={2} />}
-        </Pressable>
+          label={searching ? "Cerrar búsqueda" : "Buscar"}
+          icon={searching ? <X size={16} color={t.colors.ink} strokeWidth={2.2} /> : <Search size={17} color={t.colors.ink} strokeWidth={2} />}
+        />
+        <ProfileButton />
       </View>
 
       {searching && (
@@ -182,18 +244,10 @@ export default function MovimientosScreen() {
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
-        {view.filters.map((f) => (
-          <Pressable
-            key={f.key}
-            onPress={() => setFilter(f.key)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: f.on }}
-            hitSlop={{ top: 6, bottom: 6 }}
-            style={[styles.filter, f.on ? { backgroundColor: t.colors.button } : { borderWidth: 1.5, borderColor: t.colors.control }]}
-          >
-            <Text style={{ fontSize: 13, color: f.on ? t.colors.onButton : t.colors.ink, fontFamily: t.fonts.uiSemibold }}>{f.label}</Text>
-          </Pressable>
-        ))}
+        {view.account && (
+          <Chip label={`${view.account.label}  ✕`} on onPress={() => router.setParams({ account: undefined })} accessibilityLabel={`Solo ${view.account.label}. Quitar filtro`} />
+        )}
+        {view.filters.map((f) => <Chip key={f.key} label={f.label} on={f.on} onPress={() => setFilter(f.key)} />)}
       </ScrollView>
     </View>
   );
@@ -203,11 +257,11 @@ export default function MovimientosScreen() {
       <FlatList
         data={view.groups}
         keyExtractor={(g) => g.date}
-        renderItem={({ item }) => <DayGroup group={item} tone={tone} openRow={openRow} onToggle={onToggle} onMore={onRow} />}
+        renderItem={({ item }) => <DayGroup group={item} tone={tone} openRow={openRow} onToggle={onToggle} onMore={onRow} onCategory={onCategory} onDestinatario={onDestinatario} />}
         extraData={openRow}
         ListHeaderComponent={header}
         ListEmptyComponent={view.empty ? <Text style={[styles.empty, { color: t.colors.muted, fontFamily: t.fonts.uiMedium }]}>{view.empty}</Text> : null}
-        contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 32, paddingHorizontal: 16, gap: 14 }}
+        contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 40, paddingHorizontal: 16, gap: 14 }}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         initialNumToRender={6}
@@ -222,8 +276,27 @@ export default function MovimientosScreen() {
       />
       <Toast
         message={toast?.message ?? null}
-        action={toast?.undo ? { label: "Deshacer", onPress: toast.undo } : undefined}
+        action={toast?.action ?? (toast?.undo ? { label: "Deshacer", onPress: toast.undo } : undefined)}
         onHide={() => setToast(null)}
+      />
+      <CategorySheet
+        open={labeling?.what === "category"}
+        direction={labeling?.row.direction ?? "OUTFLOW"}
+        current={labeling?.row.categoryId ?? null}
+        onPick={(id) => { const r = labeling?.row; if (r) closeLabel(() => void pickCategory(r, id)); }}
+        onClose={() => setLabeling(null)}
+        onClosed={labelClosed}
+      />
+      <DestinatarioSheet
+        open={labeling?.what === "destinatario"}
+        options={data?.destinatarios ?? []}
+        suggestedKind={labeling?.row.destinatario?.kind ?? (/transf|nequi|daviplata|bre-?b/i.test(labeling?.row.description ?? "") ? "person" : "merchant")}
+        text={labeling?.row.description ? patternFrom(labeling.row.description) : ""}
+        current={labeling?.row.destinatario?.id ?? null}
+        onPick={(id) => { const r = labeling?.row; if (r) closeLabel(() => void pickDestinatario(r, id)); }}
+        onCreate={(name, kind) => { const r = labeling?.row; if (r) closeLabel(() => void createDestinatario(r, name, kind)); }}
+        onClose={() => setLabeling(null)}
+        onClosed={labelClosed}
       />
     </View>
   );
@@ -238,10 +311,14 @@ const toneColors = (t: ReturnType<typeof useV2Theme>): ToneColors => ({
 // only the rows (and day totals) that changed redraw.
 const sameRow = (a: MovimientoRow, b: MovimientoRow) =>
   a.id === b.id && a.title === b.title && a.amount === b.amount && a.tone === b.tone
-  && a.status === b.status && a.time === b.time && a.account === b.account;
+  && a.status === b.status && a.time === b.time && a.account === b.account
+  && a.categoryId === b.categoryId && a.description === b.description && a.direction === b.direction
+  && a.destinatario?.id === b.destinatario?.id && a.destinatario?.name === b.destinatario?.name && a.destinatario?.kind === b.destinatario?.kind;
 
-const DayGroup = memo(function DayGroup({ group, tone, openRow, onToggle, onMore }: {
+type LabelHandler = (r: MovimientoRow) => void;
+const DayGroup = memo(function DayGroup({ group, tone, openRow, onToggle, onMore, onCategory, onDestinatario }: {
   group: MovimientosGroup; tone: ToneColors; openRow: string | null; onToggle: (id: string) => void; onMore: (id: string) => void;
+  onCategory: LabelHandler; onDestinatario: LabelHandler;
 }) {
   const t = useV2Theme();
   return (
@@ -255,22 +332,23 @@ const DayGroup = memo(function DayGroup({ group, tone, openRow, onToggle, onMore
           <Row
             key={r.id} row={r} color={tone[r.tone]} last={k === group.rows.length - 1}
             open={openRow === r.id} dimmed={openRow !== null && openRow !== r.id}
-            onToggle={onToggle} onMore={onMore}
+            onToggle={onToggle} onMore={onMore} onCategory={onCategory} onDestinatario={onDestinatario}
           />
         ))}
       </View>
     </View>
   );
-}, (p, n) => p.tone === n.tone && p.openRow === n.openRow && p.onToggle === n.onToggle && p.onMore === n.onMore && p.group.label === n.group.label && p.group.total === n.group.total
+}, (p, n) => p.tone === n.tone && p.openRow === n.openRow && p.onToggle === n.onToggle && p.onMore === n.onMore
+  && p.onCategory === n.onCategory && p.onDestinatario === n.onDestinatario && p.group.label === n.group.label && p.group.total === n.group.total
   && p.group.rows.length === n.group.rows.length && p.group.rows.every((r, i) => sameRow(r, n.group.rows[i])));
 
 /**
  * A movement. A tap opens it in place (S8-3): in M1 only ⋯ (Detalle), already in
  * its final spot on the right; Categoría and Destinatario join it in M3.
  */
-const Row = memo(function Row({ row: r, color, last, open, dimmed, onToggle, onMore }: {
+const Row = memo(function Row({ row: r, color, last, open, dimmed, onToggle, onMore, onCategory, onDestinatario }: {
   row: MovimientoRow; color: string; last: boolean; open: boolean; dimmed: boolean;
-  onToggle: (id: string) => void; onMore: (id: string) => void;
+  onToggle: (id: string) => void; onMore: (id: string) => void; onCategory: LabelHandler; onDestinatario: LabelHandler;
 }) {
   const t = useV2Theme();
   return (
@@ -283,15 +361,18 @@ const Row = memo(function Row({ row: r, color, last, open, dimmed, onToggle, onM
       accessibilityHint={open ? "Cierra" : "Muestra las acciones"}
       style={styles.row}
     >
-      <View style={[styles.avatar, { backgroundColor: t.colors.sunk }]}>
-        <Text style={{ fontSize: 13, color: t.colors.muted, fontFamily: t.fonts.uiSemibold }}>{r.initial}</Text>
-      </View>
+      <Avatar name={r.title} kind={r.destinatario ? (r.destinatario.kind === "person" ? "persona" : "comercio") : "none"} />
       <View style={styles.rowBody}>
         <View style={styles.rowTop}>
           <Text style={[styles.rowTitle, { color: t.colors.ink, fontFamily: t.fonts.uiMedium }]} numberOfLines={1}>{r.title}</Text>
           <Text style={[styles.rowAmount, { color, fontFamily: t.fonts.numberSemibold }]}>{r.amount}</Text>
         </View>
         <View style={styles.rowMeta}>
+          {!r.status && r.category && (
+            <View style={[styles.tag, { backgroundColor: t.colors.sunk }]}>
+              <Text style={[styles.tagText, { color: t.colors.ink, fontFamily: t.fonts.uiMedium }]} numberOfLines={1}>{r.category}</Text>
+            </View>
+          )}
           {r.status && (
             <View style={[styles.status, { borderColor: t.colors.control }]}>
               <Text style={{ fontSize: 12, color: t.colors.ink, fontFamily: t.fonts.uiMedium }} numberOfLines={1}>{r.status}</Text>
@@ -312,6 +393,10 @@ const Row = memo(function Row({ row: r, color, last, open, dimmed, onToggle, onM
     </Pressable>
     <Collapse open={open}>
       <View style={styles.actions}>
+        <Button size="M" variant="secondary" label={r.category ?? "Categoría"} onPress={() => onCategory(r)}
+          accessibilityLabel={r.category ? `Categoría: ${r.category}. Cambiar` : "Elegir categoría"} style={{ flexShrink: 1 }} />
+        <Button size="M" variant="secondary" label={r.destinatario?.name ?? "¿Quién?"} onPress={() => onDestinatario(r)}
+          accessibilityLabel={r.destinatario ? `Destinatario: ${r.destinatario.name}. Cambiar` : "Elegir destinatario"} style={{ flexShrink: 1 }} />
         <View style={{ flex: 1 }} />
         <Pressable
           onPress={() => onMore(r.id)}
@@ -326,28 +411,25 @@ const Row = memo(function Row({ row: r, color, last, open, dimmed, onToggle, onM
     </Dim>
   );
 }, (p, n) => sameRow(p.row, n.row) && p.color === n.color && p.last === n.last && p.open === n.open
+  && p.onCategory === n.onCategory && p.onDestinatario === n.onDestinatario
   && p.dimmed === n.dimmed && p.onToggle === n.onToggle && p.onMore === n.onMore);
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16, padding: 24 },
-  ghost: { height: 42, paddingHorizontal: 20, borderRadius: 10, borderWidth: 1.5, justifyContent: "center" },
   headerBlock: { gap: 12 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 4, paddingTop: 4 },
   title: { flex: 1, fontSize: 26, letterSpacing: -0.5 },
-  square: { width: 36, height: 36, borderRadius: 10, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
   search: { height: 46, borderRadius: 14, paddingHorizontal: 14, fontSize: 15 },
   cycle: { height: 46, borderRadius: 14, paddingHorizontal: 6, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   chev: { width: 34, height: 34, alignItems: "center", justifyContent: "center" },
   filters: { gap: 6 },
-  filter: { height: 32, paddingHorizontal: 12, borderRadius: 9, justifyContent: "center" },
   empty: { fontSize: 14, textAlign: "center", paddingVertical: 24 },
   dayHead: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 4, paddingTop: 4, paddingBottom: 6 },
   dayText: { fontSize: 12, letterSpacing: 0.5, textTransform: "uppercase" },
   card: { borderRadius: 18, paddingHorizontal: 14 },
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12 },
-  actions: { flexDirection: "row", paddingBottom: 12 },
+  actions: { flexDirection: "row", alignItems: "center", gap: 8, paddingBottom: 12 },
   more: { width: 44, height: 44, borderRadius: 11, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
-  avatar: { width: 38, height: 38, borderRadius: 11, alignItems: "center", justifyContent: "center" },
   rowBody: { flex: 1, minWidth: 0, gap: 6 },
   rowTop: { flexDirection: "row", alignItems: "baseline", gap: 10 },
   rowTitle: { flex: 1, minWidth: 0, fontSize: 15 },

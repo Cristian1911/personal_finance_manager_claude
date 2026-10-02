@@ -15,7 +15,10 @@ describe.each(DRIVERS)("createSqlStorage on %s", (_name, make) => {
     await seedAccount(d, { id: ACCOUNT, userId: USER, balance: 100000 });
     const s = createSqlStorage(d);
     await s.adjustAccountBalance(USER, ACCOUNT, -25000.5);
-    expect(await s.getAccount(USER, ACCOUNT)).toEqual({ id: ACCOUNT, userId: USER, accountType: "CHECKING", currentBalance: 74999.5 });
+    expect(await s.getAccount(USER, ACCOUNT)).toEqual({
+      id: ACCOUNT, userId: USER, name: "", accountType: "CHECKING", institutionName: null, mask: null, currencyCode: "COP",
+      currentBalance: 74999.5, isActive: true, creditLimit: null, cutoffDay: null, paymentDay: null, monthlyPayment: null,
+    });
     expect(await s.getAccount(USER, "99999999-9999-4999-8999-999999999999")).toBeNull();
     expect(await s.getAccount(OTHER_USER, ACCOUNT)).toBeNull();
   });
@@ -36,9 +39,10 @@ describe.each(DRIVERS)("createSqlStorage on %s", (_name, make) => {
     expect(await s.getTransaction(USER, TX)).toEqual({
       id: TX, userId: USER, accountId: ACCOUNT, amount: 25000, currencyCode: "COP", direction: "OUTFLOW",
       transactionDate: "2026-09-18", cleanDescription: "Tostao", notes: "con Ana", captureMethod: "MANUAL_FORM",
-      idempotencyKey: "k1", createdAt: "2026-09-18T15:00:00.000Z", isExcluded: false,
+      idempotencyKey: "k1", createdAt: "2026-09-18T15:00:00.000Z", isExcluded: false, transferGroupId: null, categoryId: null, destinatarioId: null,
+      flowClass: null, flowClassVersion: null, rawDescription: null, transactionTime: null, sourcePattern: null, reconciledIntoTransactionId: null, status: "POSTED",
     });
-    await s.updateTransactionFacts(USER, TX, { amount: 30000, transactionDate: "2026-09-17", accountId: ACCOUNT });
+    await s.updateTransactionFacts(USER, TX, { amount: 30000, transactionDate: "2026-09-17", accountId: ACCOUNT, cleanDescription: "Tostao", transactionTime: null });
     expect(await s.getTransaction(USER, TX)).toMatchObject({ amount: 30000, transactionDate: "2026-09-17" });
     await s.deleteTransaction(OTHER_USER, TX); // scoped: another user's delete does nothing
     expect(await s.getTransaction(USER, TX)).not.toBeNull();

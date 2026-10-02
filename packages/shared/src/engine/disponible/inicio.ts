@@ -8,11 +8,24 @@ import { computeVerdict, type DisponibleVerdict, type DisponibleVerdictMemo } fr
 import { disponibleBlockView, type DisponibleBlockView } from "./view";
 import { disponibleDetailView, type DisponibleDetailView } from "./detail";
 import { buildInicioWidgets, flowScreenView, type CardSummary, type FlowScreenTab, type InicioWidget, type InicioWidgetsInput, type PersonOwing } from "./widgets";
+import type { CardStatement, InicioTemplate } from "../inicio-read";
+import type { OccurrenceRow } from "../types";
+import { cycleBills, type BillItem } from "./pagos";
 
 /** An account as Inicio needs it; `countsInDisponible` is null when the user never chose. */
 export interface InicioAccount {
   id: string;
+  /** Empty for accounts created before names existed (phone schema < 5). */
+  name?: string;
   accountType: string;
+  institutionName?: string | null;
+  mask?: string | null;
+  /** Cards: the statement's cut day. */
+  cutoffDay?: number | null;
+  /** Loans: the cuota. */
+  monthlyPayment?: number | null;
+  /** Cards and loans: the day the bill or cuota is due. */
+  paymentDay?: number | null;
   currentBalance: number;
   countsInDisponible: boolean | null;
 }
@@ -46,6 +59,10 @@ export type InicioState =
       widgets: InicioWidget[];
       /** The Tu flujo screen: Pasado, Este ciclo, Próximo. */
       flow: FlowScreenTab[];
+      /** Counted money now: the balance told plus what moved since, else the counted accounts (Mis cuentas' header). */
+      balanceToday: number;
+      /** What's due this cycle and the next (the Pagos tab). */
+      bills: BillItem[];
       /** Movimientos' cycles, newest first: this one and those the phone still holds whole (up to 3, S1-3). */
       cycles: PayCycle[];
     };
@@ -68,6 +85,10 @@ function toPaySchedule(s: StoredPaySchedule): PaySchedule {
  * `needs_setup` until the first-run questions are answered: when you get
  * paid, how much (unless irregular) and how much you have today.
  */
+/** The description Anotar gives "Mi sueldo" (the user's "De qué" goes to notes). */
+export const MANUAL_SALARY_DESCRIPTION = "Sueldo";
+const MANUAL_SALARY_CHECK = new Set(["MANUAL_FORM", "TEXT_QUICK_CAPTURE"]);
+
 export function buildInicio(input: {
   today: IsoDate;
   /** ISO instant, for the verdict's 24 h rule. */
@@ -81,6 +102,11 @@ export function buildInicio(input: {
   people?: PersonOwing[];
   /** Cards with statement data (one Tarjeta widget each); none on the phone until M2. */
   cards?: CardSummary[];
+  /** Pagos fijos and their stored occurrences (Pagos). */
+  templates?: InicioTemplate[];
+  occurrences?: OccurrenceRow[];
+  /** Card/loan statements: the card's bill is its minimum once the statement is in (D24). */
+  statements?: CardStatement[];
 }): InicioState {
   const { settings, today } = input;
   const schedule = settings?.schedule;
@@ -102,6 +128,10 @@ export function buildInicio(input: {
   const big = irregular || income <= 0 ? [] : live.filter((t) =>
     t.direction === "INFLOW" && counted.has(t.accountId)
     && (t.flowClass == null || t.flowClass === "INCOME")
+    // Written by hand, only Anotar's "Mi sueldo" is a salary: an Ingreso extra or a
+    // Me pagaron near payday must add to Disponible, not stand in for the salary.
+    // ponytail: matched by its fixed description; a real mark when salaries link to their recurring income.
+    && (!t.captureMethod || !MANUAL_SALARY_CHECK.has(t.captureMethod) || t.description === MANUAL_SALARY_DESCRIPTION)
     && t.amount * 100 >= SALARY_SHARE_PERCENT * income);
 
   const cycleOn = (day: IsoDate) => computePayCycle({
@@ -119,6 +149,15 @@ export function buildInicio(input: {
 
   const expectedIncomes: ExpectedIncome[] = [];
   const occurrenceLinks: OccurrenceLink[] = [];
+  // Bills due this cycle and the next (Por pagar now; Tu flujo and Pagos look ahead).
+  const nextCycle = cycleOn(addDays(cycle.end, 1));
+  const bills = cycleBills({
+    from: cycle.start, to: nextCycle.end, templates: input.templates ?? [], occurrences: input.occurrences ?? [],
+    accounts: input.accounts, transactions: input.transactions, statements: input.statements ?? [],
+    cycleStart: cycle.start, counts: (id) => counted.has(id),
+  });
+  occurrenceLinks.push(...bills.occurrenceLinks);
+  const dueNow = bills.obligations.filter((o) => o.dueDate <= cycle.end);
   // A salary due on or before the day the balance was told is taken as inside
   // that balance (told on payday, it usually is); if it lands later after all,
   // it counts then as money in, never twice.
@@ -153,7 +192,7 @@ export function buildInicio(input: {
 
   const result = computeDisponible({
     cycle, today, accounts, expectedIncomes, movements,
-    obligations: [],
+    obligations: dueNow,
     savingsTarget: settings.savingsPerCycle,
     anchor,
     irregular,
@@ -175,14 +214,14 @@ export function buildInicio(input: {
         && (m.at ? m.at > anchor.at : m.date > toldOn))
       .reduce((s, m) => s + (m.direction === "INFLOW" ? m.amount : -m.amount), 0)) * 100) / 100
     : input.accounts.filter((a) => counted.has(a.id)).reduce((s, a) => s + a.currentBalance, 0);
-  const obligations: never[] = [];
+  const obligations = bills.obligations;
   const widgetsInput: InicioWidgetsInput = {
     today, cycle, result, movements, counted,
     transactions: input.transactions,
     obligations,
     balances: input.accounts.filter((a) => counted.has(a.id)).map((a) => ({ accountId: a.id, balance: a.currentBalance })),
     people: input.people,
-    cards: input.cards,
+    cards: input.cards ?? cardsFrom(input.accounts, bills.items, input.statements ?? [], input.transactions, today),
     balanceToday,
     nextIncome: irregular ? 0 : income,
     cycles: { prev: cycleOn(addDays(cycle.start, -1)), next: cycleOn(addDays(cycle.end, 1)) },
@@ -195,6 +234,48 @@ export function buildInicio(input: {
     if (before.start < inicioSince(today)) break;
     cycles.push(before);
   }
-  const detail = disponibleDetailView({ today, cycle, result, obligations, movements, counted, transactions: input.transactions });
-  return { status: "ready", cycle, result, verdict, view, detail, widgets, flow, cycles };
+  const detail = disponibleDetailView({ today, cycle, result, obligations: dueNow, movements, counted, transactions: input.transactions });
+  return { status: "ready", cycle, result, verdict, view, detail, widgets, flow, cycles, balanceToday, bills: bills.items };
+}
+
+/**
+ * The Tarjeta widget's cards, from the accounts and Pagos' bills (D11: the next
+ * bill = what was bought in its statement period). The bill shown is the first
+ * one still pending, minus what's paid on it — never an old one. Usage, minimum
+ * and the at-cut projection come with the statement later.
+ */
+function cardsFrom(accounts: InicioAccount[], items: BillItem[], statements: CardStatement[], transactions: StoredTransaction[], today: IsoDate): CardSummary[] {
+  return accounts.filter((a) => a.accountType === "CREDIT_CARD").map((a) => {
+    const pending = items.find((b) => b.kind === "card" && b.accountId === a.id && b.status === "pending");
+    const cutDay = a.cutoffDay ?? a.paymentDay;
+    // The last statement in: what's been bought since its cut goes to the next bill (owner's D24 alert).
+    const last = statements.filter((s) => s.accountId === a.id && s.cutDate).sort((x, y) => y.cutDate!.localeCompare(x.cutDate!))[0];
+    const since = last?.cutDate
+      ? Math.round(transactions.filter((t) => isLiveTransaction(t) && t.accountId === a.id && t.direction === "OUTFLOW" && t.date > last.cutDate!)
+        .reduce((s, t) => s + t.amount, 0) * 100) / 100
+      : null;
+    return {
+      minimum: pending && !pending.estimated ? Math.max(0, Math.round((pending.amount - pending.paid) * 100) / 100) : null,
+      sinceCut: since,
+      accountId: a.id,
+      name: a.name?.trim() || "Tarjeta",
+      estimatedBill: pending ? Math.max(0, Math.round((pending.amount - pending.paid) * 100) / 100) : 0,
+      cutDate: cutDay ? nextDay(today, cutDay) : null,
+      dueDate: pending?.dueDate ?? null,
+      totalOwed: a.currentBalance,
+      missingPaymentDay: !a.paymentDay,
+    };
+  });
+}
+
+/** The next date (today or later) that falls on `day` of a month, clamped to short months. */
+function nextDay(today: IsoDate, day: number): IsoDate {
+  let [y, m] = [Number(today.slice(0, 4)), Number(today.slice(5, 7))];
+  for (let i = 0; i < 2; i++) {
+    const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const d = `${y}-${String(m).padStart(2, "0")}-${String(Math.min(day, last)).padStart(2, "0")}`;
+    if (d >= today) return d;
+    [y, m] = m === 12 ? [y + 1, 1] : [y, m + 1];
+  }
+  return today; // unreachable: next month always has the day (clamped)
 }

@@ -11,6 +11,7 @@ import { InicioWidgetGrid } from "../v2/components/widgets/InicioWidgetGrid";
 import { DISPONIBLE_CASES } from "../v2/gallery/disponible-cases";
 import { FLOW_CASES, FLOW_TODAY, WIDGET_CASES } from "../v2/gallery/widget-cases";
 import { FlowScreen } from "../v2/components/FlowScreen";
+import { ControlsCase } from "../v2/gallery/controls-case";
 import { useV2Fonts } from "../v2/theme/fonts";
 import { V2ThemeProvider, useV2Theme } from "../v2/theme/ThemeProvider";
 import type { ColorMode, ThemeName } from "../v2/tokens";
@@ -20,6 +21,7 @@ import type { DetailPartKey, InicioWidget } from "@zeta/shared";
  * v2 widget gallery (docs/mlp/13-widget-design-rules.md "Testing"): every
  * case × theme × light/dark. Widths 360/390/430 come from the web preview's
  * WIDTH (pnpm preview:web:shots "/v2-gallery?theme=nitido&mode=dark").
+ * Controls (buttons, chips, avatars, tab bar): "/v2-gallery?section=controles".
  * Widgets: "/v2-gallery?section=widgets&case=red&open=hoy&detail=porPagar" (case, open and detail optional).
  */
 export default function V2GalleryRoute() {
@@ -32,7 +34,9 @@ export default function V2GalleryRoute() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
     <V2ThemeProvider name={theme} mode={mode}>
-      {params.section === "flujo" ? (
+      {params.section === "controles" ? (
+        <ControlsCase />
+      ) : params.section === "flujo" ? (
         <FlowCase key={`${params.case}-${params.tab}`} caseKey={params.case} tab={params.tab} />
       ) : (
         <Gallery
