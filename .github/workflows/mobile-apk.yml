@@ -11,6 +11,14 @@ on:
         options:
           - release
           - debug
+      app:
+        description: Which app (v2 = the rebuild, on the v2 Supabase project; never v1's data)
+        type: choice
+        required: true
+        default: v1
+        options:
+          - v1
+          - v2
       api_target:
         description: API URL target embedded in build
         type: choice
@@ -81,8 +89,14 @@ jobs:
             API_TARGET="device"
           fi
 
+          APP="${{ github.event.inputs.app }}"
+          if [ -z "$APP" ]; then
+            APP="v1"
+          fi
+
           echo "APK_VARIANT=$VARIANT" >> "$GITHUB_ENV"
           echo "API_TARGET=$API_TARGET" >> "$GITHUB_ENV"
+          echo "APP=$APP" >> "$GITHUB_ENV"
 
           if [ "$VARIANT" = "release" ]; then
             echo "GRADLE_TASK=assembleRelease" >> "$GITHUB_ENV"
@@ -106,14 +120,33 @@ jobs:
             echo "EXPO_PUBLIC_API_URL=$DEVICE_API_URL" >> "$GITHUB_ENV"
           fi
 
-      - name: Validate required app secrets
+      # v1 builds use the production project; v2 builds use the v2 project (zeta-dev until launch)
+      # and turn the v2 screens on. A v2 build must never point at v1's production data.
+      - name: Resolve Supabase project
         env:
-          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          V1_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          V1_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          V2_URL: ${{ secrets.V2_SUPABASE_URL }}
+          V2_KEY: ${{ secrets.V2_SUPABASE_PUBLISHABLE_KEY }}
         run: |
-          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_PUBLISHABLE_KEY" ]; then
-            echo "Missing required secrets: NEXT_PUBLIC_SUPABASE_URL and/or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" >&2
-            exit 1
+          if [ "$APP" = "v2" ]; then
+            if [ -z "$V2_URL" ] || [ -z "$V2_KEY" ]; then
+              echo "Missing required secrets for v2: V2_SUPABASE_URL and/or V2_SUPABASE_PUBLISHABLE_KEY" >&2
+              exit 1
+            fi
+            if [ "$V2_URL" = "$V1_URL" ]; then
+              echo "V2_SUPABASE_URL is v1's production project: refusing to build v2 against it." >&2
+              exit 1
+            fi
+            echo "::add-mask::$V2_KEY"
+            { echo "EXPO_PUBLIC_SUPABASE_URL=$V2_URL"; echo "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$V2_KEY"; echo "EXPO_PUBLIC_ZETA_V2=1"; } >> "$GITHUB_ENV"
+          else
+            if [ -z "$V1_URL" ] || [ -z "$V1_KEY" ]; then
+              echo "Missing required secrets: NEXT_PUBLIC_SUPABASE_URL and/or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" >&2
+              exit 1
+            fi
+            echo "::add-mask::$V1_KEY"
+            { echo "EXPO_PUBLIC_SUPABASE_URL=$V1_URL"; echo "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$V1_KEY"; } >> "$GITHUB_ENV"
           fi
 
       - name: Install dependencies
@@ -129,8 +162,9 @@ jobs:
 
       - name: Build APK
         env:
-          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          # Same public client ids as eas.json (Google sign-in); the Supabase project comes from the step above.
+          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: 1027538281655-dveo3pn7m1s9es0lsjkmuat4u536lpgh.apps.googleusercontent.com
+          EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: 1027538281655-dh3so5rl229inv5djocenpdh546pij7o.apps.googleusercontent.com
         run: |
           cd mobile/android
           ./gradlew app:$GRADLE_TASK -x lint -x test --no-daemon
@@ -138,14 +172,14 @@ jobs:
       - name: Prepare artifact
         run: |
           mkdir -p dist
-          APK_NAME="zeta-${APK_VARIANT}-${API_TARGET}-${GITHUB_RUN_NUMBER}.apk"
+          APK_NAME="zeta-${APP}-${APK_VARIANT}-${API_TARGET}-${GITHUB_RUN_NUMBER}.apk"
           cp "$APK_PATH" "dist/$APK_NAME"
           echo "APK_NAME=$APK_NAME" >> "$GITHUB_ENV"
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mobile-apk-${{ env.APK_VARIANT }}-${{ env.API_TARGET }}-${{ github.run_number }}
+          name: mobile-apk-${{ env.APP }}-${{ env.APK_VARIANT }}-${{ env.API_TARGET }}-${{ github.run_number }}
           path: dist/${{ env.APK_NAME }}
           if-no-files-found: error
           retention-days: 14
@@ -154,8 +188,8 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
         uses: ncipollo/release-action@v1
         with:
-          tag: android-apk-latest
-          name: Android APK (latest)
+          tag: android-apk-latest${{ env.APP == 'v2' && '-v2' || '' }}
+          name: Android APK (latest${{ env.APP == 'v2' && ', v2' || '' }})
           prerelease: true
           allowUpdates: true
           replacesArtifacts: true
@@ -163,6 +197,7 @@ jobs:
           body: |
             Latest Android APK built from `${{ github.sha }}`.
 
+            - App: `${{ env.APP }}`
             - Variant: `${{ env.APK_VARIANT }}`
             - API target: `${{ env.API_TARGET }}`
             - Run: `${{ github.run_number }}`
@@ -173,9 +208,10 @@ jobs:
           {
             echo "## Mobile APK build"
             echo ""
+            printf -- "- App: \`%s\`\n" "${APP:-n/a}"
             printf -- "- Variant: \`%s\`\n" "${APK_VARIANT:-n/a}"
             printf -- "- API target: \`%s\`\n" "${API_TARGET:-n/a}"
             printf -- "- Artifact: \`%s\`\n" "${APK_NAME:-n/a}"
             echo ""
-            echo "Release download page: https://github.com/${{ github.repository }}/releases/tag/android-apk-latest"
+            echo "Release download page: https://github.com/${{ github.repository }}/releases/tag/android-apk-latest${{ env.APP == 'v2' && '-v2' || '' }}"
           } >> "$GITHUB_STEP_SUMMARY"
