@@ -8,7 +8,7 @@ import Animated, {
 import { Lock, Plus } from "lucide-react-native";
 import {
   applyInicioLayout, headerDate, layoutOf, WIDGET_SIZES,
-  type DetailPartKey, type InicioLayout, type InicioState, type InicioWidgetKey, type SetCycleSettingsPayload, type WidgetActionId,
+  type DetailPartKey, type InicioLayout, type InicioState, type InicioWidgetKey, type CommandType, type WidgetActionId,
 } from "@zeta/shared";
 import { runLocalCommand } from "../../lib/v2/engine/run-local";
 import { loadInicio, saveInicioLayout } from "../../lib/v2/inicio/load";
@@ -21,12 +21,12 @@ import { DisponibleBlock } from "../../v2/components/DisponibleBlock";
 import { DisponibleDetail } from "../../v2/components/DisponibleDetail";
 import { COLLAPSE_EASING, Collapse, useMotionMs } from "../../v2/components/Collapse";
 import { Dim } from "../../v2/components/Dim";
-import { FirstRunQuestions } from "../../v2/components/FirstRunQuestions";
+import { Onboarding } from "../../v2/components/Onboarding";
 import { InicioHeader } from "../../v2/components/InicioHeader";
 import { AddWidgetSheet } from "../../v2/components/widgets/AddWidgetSheet";
 import { InicioWidgetGrid, type GridEditing } from "../../v2/components/widgets/InicioWidgetGrid";
 import { useV2Theme } from "../../v2/theme/ThemeProvider";
-import { useV2Changes } from "../../lib/v2/changes";
+import { notifyV2Change, useV2Changes } from "../../lib/v2/changes";
 
 /**
  * Where a widget action goes. Until the v2 screens exist, the v1 ones
@@ -150,15 +150,15 @@ export default function InicioScreen() {
     }, [reload]),
   );
 
-  const answer = useCallback(
-    async (payload: SetCycleSettingsPayload) => {
-      const { result } = await runLocalCommand({ type: "setCycleSettings", userId, payload });
-      if (result.status === "rejected") return result.error ?? "No se pudo guardar.";
-      await reload();
-      return null;
-    },
-    [userId, reload],
-  );
+  const runFirst = useCallback(async (type: CommandType, payload: unknown) => {
+    try {
+      const { result } = await runLocalCommand({ type, userId, payload });
+      return result.status === "rejected" ? result.error ?? "No se pudo guardar." : null;
+    } catch (e) {
+      console.warn("[v2 inicio] first run failed", e);
+      return "No se pudo guardar. Intenta de nuevo.";
+    }
+  }, [userId]);
 
   const ready = state?.status === "ready" ? state : null;
   const widgets = useMemo(
@@ -272,7 +272,7 @@ export default function InicioScreen() {
           </Text>
         )}
         {!state && !error && <ActivityIndicator color={t.colors.ink} accessibilityLabel="Cargando" />}
-        {state?.status === "needs_setup" && <FirstRunQuestions onSubmit={answer} />}
+        {state?.status === "needs_setup" && <Onboarding run={runFirst} onDone={() => { notifyV2Change(); void reload(); }} />}
         {ready && (
           <>
             {/* The number and how it comes out: one block, so a closed detail leaves no gap. */}

@@ -510,6 +510,14 @@ export function pagoWidget(i: InicioWidgetsInput): InicioWidget {
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.line.label.localeCompare(b.line.label));
 
   if (open.length === 0) {
+    // Bills exist but none due before the next pay: say what's next, don't ask to add bills.
+    const later = (i.obligations ?? []).filter((o) => o.dueDate > i.cycle.end).sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
+    if (later) {
+      w.hint = i.cycle.nextPayday ? `Nada antes del ${dayNumber(i.cycle.nextPayday)}` : "Nada en este ciclo";
+      w.lead = `Lo siguiente: ${later.label}, ${shortDate(later.dueDate)}, ${formatPesos(later.amount)}`;
+      w.seeAll = "see_bills";
+      return w;
+    }
     w.empty = true;
     w.hint = "Sin pagos aún";
     w.lead = "Agrega tus pagos fijos (arriendo, servicios, cuotas) y Zeta los resta antes de que lleguen.";
