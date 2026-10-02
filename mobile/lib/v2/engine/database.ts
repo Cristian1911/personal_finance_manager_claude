@@ -4,6 +4,7 @@ import {
   SQLITE_ACCOUNTS_SCHEMA,
   SQLITE_TRANSFER_SCHEMA,
   SQLITE_RECURRING_SCHEMA,
+  SQLITE_CATEGORIES_SCHEMA,
   SQLITE_CAPTURE_TIME_SCHEMA,
   SQLITE_EXCLUDED_SCHEMA,
   SQLITE_ENGINE_SCHEMA,
@@ -41,6 +42,8 @@ const MIGRATIONS: string[] = [
   SQLITE_TRANSFER_SCHEMA,
   // 7: Pagos fijos (recurring templates + occurrences).
   SQLITE_RECURRING_SCHEMA,
+  // 8: categories and destinatarios.
+  SQLITE_CATEGORIES_SCHEMA,
 ];
 
 export interface V2Database {

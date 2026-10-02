@@ -62,6 +62,8 @@ export function AnotarSheet({ open, prefill, userId, onClose, onSaved, onAddAcco
   // Dictar: what's being heard, while listening.
   const [heard, setHeard] = useState<string | null>(null);
   const dataRef = useRef<LoadedAnotar | null>(null);
+  // What to do once the sheet is fully gone (iOS can't present another modal before that).
+  const afterClose = useRef<(() => void) | null>(null);
   dataRef.current = data;
 
   // Fresh every time it opens: today's date, the last account used.
@@ -208,7 +210,8 @@ export function AnotarSheet({ open, prefill, userId, onClose, onSaved, onAddAcco
   const today = toColombiaDateString();
 
   return (
-    <Sheet open={open} onClose={onClose} style={[styles.sheet, { paddingBottom: insets.bottom + 12 }]}>
+    <Sheet open={open} onClose={onClose} onClosed={() => { const next = afterClose.current; afterClose.current = null; next?.(); }}
+      style={[styles.sheet, { paddingBottom: insets.bottom + 12 }]}>
       <View style={[styles.handle, { backgroundColor: t.colors.line }]} />
       {data && accounts.length === 0 ? (
         <View style={styles.none}>
@@ -216,7 +219,7 @@ export function AnotarSheet({ open, prefill, userId, onClose, onSaved, onAddAcco
           <Text style={{ fontSize: 15, lineHeight: 22, textAlign: "center", color: t.colors.muted, fontFamily: t.fonts.ui }}>
             Para anotar necesitas al menos una cuenta o tu efectivo. Así Zeta sabe de dónde sale y qué cuenta para tu número.
           </Text>
-          <Button label="Agregar cuenta" onPress={() => { onClose(); onAddAccount(); }} />
+          <Button label="Agregar cuenta" onPress={() => { afterClose.current = onAddAccount; onClose(); }} />
         </View>
       ) : (
         <>

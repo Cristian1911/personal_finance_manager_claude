@@ -12,7 +12,10 @@ the tests talk to zeta-dev only. To undo anything, close its PR (and the ones ab
 | #447 | `feat/v2-accounts` | Debt-aware balances (cards/loans), createAccount/editAccount/archiveAccount, Mis cuentas, Cuenta, Agregar | Open, reviewed, fixes in |
 | #448 | `feat/v2-anotar` | Anotar (Gasto/Ingreso/Entre cuentas), live effect line, Dictar, Pagar tarjeta, captureTransfer | Open, reviewed, fixes in |
 | #449 | `feat/v2-pagos` | Pagos fijos, card bills, loan cuotas, bill detection, Pagos tab | Open, reviewed, fixes in |
-| (next) | `feat/v2-sync` | Sync (phone ↔ zeta-dev), `/api/v2/commands` + `/api/v2/snapshot`, v2 becomes the default screen | In review |
+| #450 | `feat/v2-sync` | Sync (phone ↔ zeta-dev), `/api/v2/commands` + `/api/v2/snapshot`, v2 becomes the default screen | Open, reviewed, fixes in |
+| #451 | `feat/v2-ajustes` | Ajustes: tu número, apariencia, ayuda, cerrar sesión, borrar mi cuenta | Open |
+| #452 | `feat/v2-onboarding` | First run: when you get paid, where your money is, fixed payments | Open |
+| (next) | `feat/v2-categorias` | The 25 categories, destinatarios (comercios/personas), matched on capture; Categoría · ¿Quién? on the open row | In review |
 
 ## Decisions I took for you (simplest option; change any)
 
@@ -47,6 +50,18 @@ the tests talk to zeta-dev only. To undo anything, close its PR (and the ones ab
   phone computes each month from the start; they only agree on 1–28. "Último día del mes" would need a server change.
 - **D13. v2 is the default screen** whenever v2 is on (dev builds and EXPO_PUBLIC_ZETA_V2=1): signed-in users land on
   v2 Inicio; its first-run questions replace v1's onboarding. v1 screens stay reachable by link until deleted.
+- **D14. The first category you give a destinatario becomes its default, without asking** ("Desde ahora, Rappi es
+  Domicilios · Deshacer"); it also fills that destinatario's past movements that have no hand-picked category. Only
+  when it already had a different default does Zeta ask "¿Siempre X para Rappi?" (it may be a one-off). Why: on the
+  simulator the question toast vanished before I could answer, and the rule was lost — a real user thinking for 4
+  seconds loses it too. Deshacer clears the default but leaves the past movements as filled.
+- **D15. Naming a destinatario remembers its text.** "+ Nuevo comercio «Rappi»" saves the movement's cleaned text as
+  the pattern, so the next "RAPPI COLOMBIA" (typed, email or PDF) gets Rappi and Domicilios with zero taps (tested).
+  Picking an existing one also adds the text as a new pattern. Personas vs Comercios: the tab opens on Personas when
+  the text looks like a transfer (transf/Nequi/Daviplata/Bre-B), else Comercios.
+- **D16. The category picker** shows the 25 grouped (Comida, Transporte, Hogar, Ocio, Finanzas); groups of one go
+  together under "Otras". Only categories for the movement's direction (gastos vs Salario/Otros ingresos). Tapping
+  the current one clears it. Detalle doesn't show category/destinatario yet — the open row already does.
 
 ## Things only you can do
 

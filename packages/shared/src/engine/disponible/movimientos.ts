@@ -7,6 +7,7 @@ import type { StoredTransaction } from "./movements";
 import { formatPesos } from "./verdict";
 import { cycleLabel, signedPesos } from "./view";
 import { colombiaTime, relativeDay } from "./widgets";
+import { categoryById } from "../categories";
 
 /**
  * Movimientos and the Detalle sheet (Claude Design "Z Cuentas": movs,
@@ -30,6 +31,14 @@ export interface MovimientoRow {
   /** "Ignorado" / "No cuenta" in place of the category chip. */
   status: string | null;
   spoken: string;
+  /** The category's name, or null. */
+  category: string | null;
+  categoryId: string | null;
+  /** Who it is (comercio or persona), or null. */
+  destinatario: { id: string; name: string; kind: "merchant" | "person" } | null;
+  /** The movement's own text (bank or typed), to remember a destinatario by. */
+  description: string | null;
+  direction: "INFLOW" | "OUTFLOW";
 }
 
 export interface MovimientosGroup {
@@ -148,7 +157,10 @@ export function movimientosView(input: {
   query: string;
   /** Only this account's movements (Cuenta › Ver todos). */
   accountId?: string | null;
+  /** Comercios and personas, to show who each movement is. */
+  destinatarios?: { id: string; name: string; kind: "merchant" | "person" }[];
 }): MovimientosView {
+  const who = new Map((input.destinatarios ?? []).map((d) => [d.id, d]));
   const { today, cycles, filter } = input;
   const index = Math.max(0, Math.min(cycles.length - 1, input.index));
   const c = cycles[index];
@@ -162,7 +174,8 @@ export function movimientosView(input: {
     if (filter === "gastos" && t.direction !== "OUTFLOW") return false;
     if (filter === "entradas" && t.direction !== "INFLOW") return false;
     if (filter === "tarjetas" && a?.type !== "CREDIT_CARD") return false;
-    return !q || fold(`${titleOf(t)} ${t.notes ?? ""}`).includes(q);
+    const d = t.destinatarioId ? who.get(t.destinatarioId) : undefined;
+    return !q || fold(`${titleOf(t)} ${t.notes ?? ""} ${d?.name ?? ""} ${categoryById(t.categoryId)?.name ?? ""}`).includes(q);
   }).sort((x, y) => y.date.localeCompare(x.date) || (y.createdAt ?? "").localeCompare(x.createdAt ?? "") || y.id.localeCompare(x.id));
 
   const groups: MovimientosGroup[] = [];
@@ -174,14 +187,17 @@ export function movimientosView(input: {
     }
     const a = accounts.get(t.accountId);
     const tone = toneOf(t, a);
-    const title = titleOf(t);
+    const destinatario = (t.destinatarioId && who.get(t.destinatarioId)) || null;
+    const title = destinatario?.name ?? titleOf(t);
     const amount = amountOf(t, tone);
     const time = t.createdAt ? colombiaTime(t.createdAt) : null;
     const status = statusOf(t, a);
     const account = a?.label ?? "Cuenta";
+    const category = categoryById(t.categoryId)?.name ?? null;
     g.rows.push({
       id: t.id, initial: title.charAt(0).toUpperCase(), title, amount, tone, time, account, status,
-      spoken: [title, amount.replace(/−/g, "menos ").replace(/^\+/, "más "), status, time, account].filter(Boolean).join(", "),
+      spoken: [title, amount.replace(/−/g, "menos ").replace(/^\+/, "más "), status, category, time, account].filter(Boolean).join(", "),
+      category, categoryId: t.categoryId ?? null, destinatario, description: t.description ?? null, direction: t.direction,
     });
   }
   for (const g of groups) {

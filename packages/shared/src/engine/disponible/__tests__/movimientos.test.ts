@@ -66,6 +66,14 @@ describe("Movimientos", () => {
     expect(view().account).toBeNull();
   });
 
+  it("a movement shows its destinatario's name and its category; search finds both", () => {
+    const rappi = { id: "d-rappi", name: "Rappi", kind: "merchant" as const };
+    const txs = [tx("2026-09-18", 32_000, "COMPRA RAPPI COLOMBIA", { destinatarioId: "d-rappi", categoryId: "c2000000-0000-4000-8000-000000000003" })];
+    const v = view({ transactions: txs, destinatarios: [rappi] });
+    expect(v.groups[0].rows[0]).toMatchObject({ title: "Rappi", category: "Domicilios", categoryId: "c2000000-0000-4000-8000-000000000003", destinatario: rappi });
+    expect(view({ transactions: txs, destinatarios: [rappi], query: "domicil" }).groups).toHaveLength(1);
+  });
+
   it("steps back to the last cycle the phone holds", () => {
     const v = view({ index: 1 });
     expect(v.cycle).toBe("Ciclo pasado · 30 ago–14 sep");
