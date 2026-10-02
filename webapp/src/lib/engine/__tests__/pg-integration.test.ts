@@ -190,6 +190,36 @@ describe.skipIf(!enabled)("engine on zeta-dev (real Postgres)", { timeout: 90_00
     expect((await s.getAccount(userId, accountId))?.currentBalance).toBe(debitBefore);
   });
 
+  it("Pagos: a fixed payment through the encrypted view, detected and merged with the server's own occurrence", async () => {
+    const s = createSqlStorage(createUserScopedPgDriver(pool, userId));
+    const base = { userId, deviceId: "integration" };
+    const today = new Date().toISOString().slice(0, 10);
+    const day = 15;
+    const due = `${today.slice(0, 8)}${day}`;
+    const template = crypto.randomUUID();
+    expect((await applyCommand(s, {
+      ...base, id: crypto.randomUUID(), type: "createPagoFijo", clientTs: new Date().toISOString(),
+      payload: { templateId: template, name: "Internet prueba", amount: 99900, dayOfMonth: day, accountId, startDate: due },
+    })).status).toBe("applied");
+    // The server's trigger generated this month's occurrence on its own.
+    const generated = await pool.query("SELECT id, status FROM recurring_occurrences WHERE template_id = $1 AND occurrence_date = $2", [template, due]);
+    expect(generated.rows).toHaveLength(1);
+    const pay = crypto.randomUUID();
+    await applyCommand(s, {
+      ...base, id: crypto.randomUUID(), type: "captureManualTransaction", clientTs: new Date().toISOString(),
+      payload: { transactionId: pay, accountId, amount: 99900, direction: "OUTFLOW", currencyCode: "COP", date: due, description: "Pago internet" },
+    });
+    // Detection updated the server's row (same id), it didn't add a second one.
+    const after = await pool.query("SELECT id, status, transaction_id FROM recurring_occurrences WHERE template_id = $1", [template]);
+    const row = after.rows.find((r: { id: string }) => r.id === generated.rows[0].id);
+    expect(row).toMatchObject({ status: "paid", transaction_id: pay });
+    expect(after.rows.filter((r: { status: string }) => r.status === "paid")).toHaveLength(1);
+    // The name is stored encrypted, and reads back through the view.
+    const [raw] = (await pool.query("SELECT merchant_name FROM recurring_transaction_templates_enc WHERE id = $1", [template])).rows;
+    expect(Buffer.from(raw.merchant_name).toString("utf8")).not.toContain("Internet prueba");
+    expect((await s.getTemplate(userId, template))?.name).toBe("Internet prueba");
+  });
+
   it("stores the command payload encrypted, never as plain text", async () => {
     const d = createUserScopedPgDriver(pool, userId);
     const rows = await d.query<{ payload_enc: Buffer }>(
