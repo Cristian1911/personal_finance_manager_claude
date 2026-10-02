@@ -2,6 +2,9 @@ import { computeIdempotencyKey } from "../../utils/idempotency";
 import type { EngineOptions } from "../runner";
 import type { CommandEnvelope, CommandResult, StoragePort } from "../types";
 import { UUID_RE, isIsoUtc } from "../validate";
+import { moveBalance } from "./balance";
+import { autoLinkPayment } from "./pagos";
+import { matchOnCapture } from "./categorias";
 
 export interface CaptureManualTransactionPayload {
   transactionId: string;
@@ -14,6 +17,8 @@ export interface CaptureManualTransactionPayload {
   notes?: string | null;
   /** Deshacer: the original capture instant, so a re-created movement keeps its time. Not after clientTs. */
   capturedAt?: string;
+  /** Anotar's kind: Gasto → SPEND, Ingreso → INCOME (v1 flow classes). */
+  flowClass?: "SPEND" | "INCOME" | null;
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -31,6 +36,7 @@ export function validateCaptureManualTransaction(p: CaptureManualTransactionPayl
   if (typeof p.description !== "string" || p.description.trim() === "") return "Escribe una descripción.";
   if (p.description.length > 200) return "La descripción es muy larga.";
   if (p.notes != null && (typeof p.notes !== "string" || p.notes.length > 500)) return "La nota es muy larga.";
+  if (p.flowClass != null && p.flowClass !== "SPEND" && p.flowClass !== "INCOME") return "Tipo de movimiento inválido.";
   return null;
 }
 
@@ -77,10 +83,16 @@ export async function captureManualTransaction(
     notes: p.notes ?? null,
     captureMethod: "MANUAL_FORM",
     idempotencyKey,
+    // Who it is and its category, from the destinatario rules ("Rappi" → Rappi, Domicilios).
+    ...(await matchOnCapture(s, cmd.userId, p.description)),
+    flowClass: p.flowClass ?? null,
     // When it was captured on the device, not when the server replays it: a
     // movement on the first-cycle balance's day lands before or after it the same everywhere.
     createdAt: p.capturedAt ?? cmd.clientTs,
   });
-  await s.adjustAccountBalance(cmd.userId, p.accountId, p.direction === "OUTFLOW" ? -p.amount : p.amount);
+  await moveBalance(s, cmd.userId, p.accountId, p.direction === "OUTFLOW" ? -p.amount : p.amount);
+  // Bill detection: a spend that matches a fixed payment's amount and date pays it.
+  const row = await s.getTransaction(cmd.userId, p.transactionId);
+  if (row) await autoLinkPayment(s, cmd.userId, row, cmd.clientTs, opts);
   return { status: "applied", replayed: false, data: { transactionId: p.transactionId } };
 }

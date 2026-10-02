@@ -8,42 +8,44 @@ import Animated, {
 import { Lock, Plus } from "lucide-react-native";
 import {
   applyInicioLayout, headerDate, layoutOf, WIDGET_SIZES,
-  type DetailPartKey, type InicioLayout, type InicioState, type InicioWidgetKey, type SetCycleSettingsPayload, type WidgetActionId,
+  type DetailPartKey, type InicioLayout, type InicioState, type InicioWidgetKey, type CommandType, type WidgetActionId,
 } from "@zeta/shared";
 import { runLocalCommand } from "../../lib/v2/engine/run-local";
 import { loadInicio, saveInicioLayout } from "../../lib/v2/inicio/load";
 import { useV2UserId } from "../../lib/v2/user";
 import { useAuth } from "../../lib/auth";
+import { openAnotar } from "../../lib/v2/anotar/open";
 import { FAB_OVERHANG } from "../../v2/components/TabBar";
 import { toColombiaDateString } from "../../lib/utils/date";
 import { DisponibleBlock } from "../../v2/components/DisponibleBlock";
 import { DisponibleDetail } from "../../v2/components/DisponibleDetail";
 import { COLLAPSE_EASING, Collapse, useMotionMs } from "../../v2/components/Collapse";
 import { Dim } from "../../v2/components/Dim";
-import { FirstRunQuestions } from "../../v2/components/FirstRunQuestions";
+import { Onboarding } from "../../v2/components/Onboarding";
 import { InicioHeader } from "../../v2/components/InicioHeader";
 import { AddWidgetSheet } from "../../v2/components/widgets/AddWidgetSheet";
 import { InicioWidgetGrid, type GridEditing } from "../../v2/components/widgets/InicioWidgetGrid";
 import { useV2Theme } from "../../v2/theme/ThemeProvider";
+import { notifyV2Change, useV2Changes } from "../../lib/v2/changes";
 
 /**
- * Where a widget action goes. Until the v2 screens exist, the v1 ones
- * (they write to the v1 data, which reaches v2 with M2's sync).
+ * Where a widget action goes. "pronto": no v2 screen yet (Te deben) — v1's
+ * screens write v1's data, so they're never opened from v2.
  */
 const ACTION_ROUTES: Record<WidgetActionId, string> = {
-  capture: "/capture",
-  add_bill: "/recurrentes/new",
-  import_statement: "/import",
-  split_purchase: "/personas",
-  lend: "/personas",
-  add_card: "/account/create",
+  capture: "anotar",
+  add_bill: "/pagos?add=1",
+  import_statement: "/cuentas?add=extracto",
+  split_purchase: "pronto",
+  lend: "pronto",
+  add_card: "/cuentas?add=tarjeta",
   see_movements: "/movimientos",
-  see_bills: "/recurrentes",
-  see_people: "/personas",
-  see_accounts: "/accounts-list",
+  see_bills: "/pagos",
+  see_people: "pronto",
+  see_accounts: "/cuentas",
   see_flow: "/flujo",
 };
-const DETAIL_ROUTES: Partial<Record<DetailPartKey, string>> = { porPagar: "/recurrentes", gastado: "/movimientos" };
+const DETAIL_ROUTES: Partial<Record<DetailPartKey, string>> = { porPagar: "/pagos", gastado: "/movimientos" };
 
 /**
  * v2 Inicio (M1, Claude Design "Z Inicio"): greeting, the Disponible block
@@ -65,6 +67,8 @@ export default function InicioScreen() {
   const [layout, setLayout] = useState<InicioLayout | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  // Leaving the tab closes what was open: coming back shows Inicio as it is, not a half-open card.
+  useFocusEffect(useCallback(() => () => { setOpenWidget(null); setDetailOpen(false); }, []));
   const [draft, setDraft] = useState<InicioLayout | null>(null);
   const [adding, setAdding] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -140,21 +144,23 @@ export default function InicioScreen() {
     }
   }, [userId]);
 
+  // Anotar and Deshacer change the data without moving focus.
+  useV2Changes(() => void reload());
   useFocusEffect(
     useCallback(() => {
       void reload();
     }, [reload]),
   );
 
-  const answer = useCallback(
-    async (payload: SetCycleSettingsPayload) => {
-      const { result } = await runLocalCommand({ type: "setCycleSettings", userId, payload });
-      if (result.status === "rejected") return result.error ?? "No se pudo guardar.";
-      await reload();
-      return null;
-    },
-    [userId, reload],
-  );
+  const runFirst = useCallback(async (type: CommandType, payload: unknown) => {
+    try {
+      const { result } = await runLocalCommand({ type, userId, payload });
+      return result.status === "rejected" ? result.error ?? "No se pudo guardar." : null;
+    } catch (e) {
+      console.warn("[v2 inicio] first run failed", e);
+      return "No se pudo guardar. Intenta de nuevo.";
+    }
+  }, [userId]);
 
   const ready = state?.status === "ready" ? state : null;
   const widgets = useMemo(
@@ -166,7 +172,12 @@ export default function InicioScreen() {
     return ready ? ready.widgets.filter((w) => hidden.has(w.id)) : [];
   }, [ready, draft, layout]);
 
-  const onAction = useCallback((id: WidgetActionId) => router.push(ACTION_ROUTES[id] as never), [router]);
+  const onAction = useCallback((id: WidgetActionId) => {
+    const route = ACTION_ROUTES[id];
+    if (route === "anotar") openAnotar();
+    else if (route === "pronto") Alert.alert("Muy pronto", "Te deben y dividir compras llegan en la próxima versión de Zeta.");
+    else router.push(route as never);
+  }, [router]);
   const onSeeAll = useCallback((key: DetailPartKey) => {
     const route = DETAIL_ROUTES[key];
     if (route) router.push(route as never);
@@ -183,7 +194,8 @@ export default function InicioScreen() {
       setDetailOpen(false);
     }
   }, [detailOpen]);
-  const voice = useCallback(() => Alert.alert("Pronto", "Anotar con la voz llega en una próxima versión."), []);
+  // The Inicio mic leads to Anotar › Dictar (S8-1).
+  const voice = useCallback(() => openAnotar({ dictar: true }), []);
 
   // ── Organizar ──
   const startOrganizing = useCallback(() => {
@@ -253,6 +265,8 @@ export default function InicioScreen() {
           onOrganize={ready ? startOrganizing : undefined}
           onDone={finishOrganizing}
           onVoice={voice}
+          onProfile={() => router.push("/ajustes" as never)}
+          initials={(fullName ?? "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("")}
         />
 
         {error && (
@@ -261,7 +275,7 @@ export default function InicioScreen() {
           </Text>
         )}
         {!state && !error && <ActivityIndicator color={t.colors.ink} accessibilityLabel="Cargando" />}
-        {state?.status === "needs_setup" && <FirstRunQuestions onSubmit={answer} />}
+        {state?.status === "needs_setup" && <Onboarding run={runFirst} onDone={() => { notifyV2Change(); void reload(); }} />}
         {ready && (
           <>
             {/* The number and how it comes out: one block, so a closed detail leaves no gap. */}

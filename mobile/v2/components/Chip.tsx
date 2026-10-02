@@ -2,12 +2,13 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useV2Theme } from "../theme/ThemeProvider";
 
 /** Selector chip (filters, kinds): outlined, filled ink when on. 32 visible, 44 touch. */
-export function Chip({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) {
+export function Chip({ label, on, onPress, accessibilityLabel }: { label: string; on: boolean; onPress: () => void; accessibilityLabel?: string }) {
   const t = useV2Theme();
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
       accessibilityState={{ selected: on }}
       hitSlop={{ top: 6, bottom: 6 }}
       style={[styles.chip, on ? { backgroundColor: t.colors.button } : { borderWidth: 1.5, borderColor: t.colors.control }]}

@@ -66,6 +66,8 @@ export async function updateSession(request: NextRequest) {
     "/onboarding",
     "/auth",
     "/api/webhooks",
+    // v2 phones carry tokens from the v2 project; those routes check them themselves (v2-server.ts).
+    "/api/v2",
     "/privacy",
     "/terms",
     "/eliminar-cuenta",

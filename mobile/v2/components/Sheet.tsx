@@ -13,11 +13,14 @@ import { COLLAPSE_EASING, useMotionMs } from "./Collapse";
 export function Sheet({
   open,
   onClose,
+  onClosed,
   children,
   style,
 }: {
   open: boolean;
   onClose: () => void;
+  /** After it's fully gone (the modal dismissed): iOS can't present another modal before that. */
+  onClosed?: () => void;
   children: ReactNode;
   /** The sheet's own padding, gap and max height (background and corners are set here). */
   style?: StyleProp<ViewStyle>;
@@ -30,7 +33,14 @@ export function Sheet({
   const height = useSharedValue(900);
   const openNow = useRef(open);
   openNow.current = open;
-  const unmountIfClosed = () => { if (!openNow.current) setMounted(false); };
+  const closedCb = useRef(onClosed);
+  closedCb.current = onClosed;
+  const unmountIfClosed = () => {
+    if (openNow.current) return;
+    setMounted(false);
+    // Modal.onDismiss is iOS-only; Android has no stacking problem, so it's done here.
+    if (Platform.OS !== "ios") closedCb.current?.();
+  };
 
   useEffect(() => {
     if (open) setMounted(true);
@@ -43,7 +53,7 @@ export function Sheet({
   const slide = useAnimatedStyle(() => ({ transform: [{ translateY: (1 - progress.value) * height.value }] }));
 
   return (
-    <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose} onDismiss={() => closedCb.current?.()} statusBarTranslucent>
       <Animated.View style={[styles.fill, { backgroundColor: t.colors.scrim }, fade]}>
         <Pressable style={styles.fill} onPress={onClose} accessible={false} />
       </Animated.View>

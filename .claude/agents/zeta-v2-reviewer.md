@@ -33,6 +33,8 @@ Sources of truth, in order: `docs/mlp/12-decision-log.md` (newest decision wins)
 - **A11y:** touch ≥ 44 (visible size + hitSlop), `accessibilityRole`/`State`/`Label` on every control, Spanish labels, live regions for changing numbers, reduced motion through `useMotionMs`.
 - **Copy:** Spanish, plain, no "!" , no emoji, money via `formatPesos`/es-CO.
 - **Safe area top** on every screen (`insets.top`).
+- **iOS can't present a modal while another is dismissing**: opening a Sheet/ConfirmSheet (or navigating to a screen that opens one) from another sheet's button must wait for the first sheet's `onClosed` (see Pagos' `afterClose`, AnotarSheet). Immediately = the second never shows.
+- **Never `style={({ pressed }) => …}` on Pressable**: NativeWind's wrapper drops it on native (the control renders unstyled; web preview hides this). Use `v2/components/Tap`.
 - **Perf:** FlatList rows memoized with stable props (`extraData` when row state lives outside data); no inline objects passed to memo children in hot lists; Reanimated for motion.
 
 ## Boundary

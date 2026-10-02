@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 import { useV2Theme } from "../theme/ThemeProvider";
+import { Tap } from "./Tap";
 
 /**
  * The v2 button system (S8-8, botones.html). Red only for actions that can't
@@ -42,7 +43,7 @@ export function Button({ label, onPress, variant = "primary", size = "L", icon, 
     : { ink: c.muted };
 
   return (
-    <Pressable
+    <Tap
       onPress={onPress}
       disabled={disabled || loading}
       accessibilityRole="button"
@@ -50,7 +51,7 @@ export function Button({ label, onPress, variant = "primary", size = "L", icon, 
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: !!disabled, busy: !!loading }}
       hitSlop={size === "S" ? 6 : undefined}
-      style={({ pressed }) => [
+      style={(pressed) => [
         styles.base,
         { height: z.height, borderRadius: z.radius, paddingHorizontal: variant === "text" ? 6 : z.pad },
         look.bg ? { backgroundColor: look.bg } : null,
@@ -78,7 +79,7 @@ export function Button({ label, onPress, variant = "primary", size = "L", icon, 
           </Text>
         </View>
       )}
-    </Pressable>
+    </Tap>
   );
 }
 
@@ -94,14 +95,14 @@ export function IconButton({ icon, onPress, label, round, disabled, size = 36 }:
   const t = useV2Theme();
   const slop = Math.max(0, (44 - size) / 2);
   return (
-    <Pressable
+    <Tap
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: !!disabled }}
       hitSlop={slop}
-      style={({ pressed }) => [
+      style={(pressed) => [
         styles.icon,
         { width: size, height: size, borderRadius: round ? size / 2 : 10, borderColor: t.colors.control },
         disabled && { opacity: 0.4 },
@@ -109,7 +110,7 @@ export function IconButton({ icon, onPress, label, round, disabled, size = 36 }:
       ]}
     >
       {icon}
-    </Pressable>
+    </Tap>
   );
 }
 

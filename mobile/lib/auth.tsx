@@ -24,6 +24,7 @@ import {
   startBackgroundLocationTracking,
 } from "./services/location";
 import { reschedulePaymentReminders } from "./services/notifications";
+import { V2_DEBUG_ENABLED } from "./v2/flags";
 
 type AuthContextType = {
   session: Session | null;
@@ -132,6 +133,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   function triggerInitialSyncOnce(nextSession: Session | null, logLabel: string) {
     if (!nextSession?.user) return;
+    // v2 has its own sync (lib/v2/sync); v1's would write raw rows into v2's project.
+    if (V2_DEBUG_ENABLED) return;
     const userId = nextSession.user.id;
     if (autoSyncedUserRef.current === userId) return;
     autoSyncedUserRef.current = userId;
@@ -201,7 +204,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // A refreshed token is the clearest "we are back online" signal there
     // is: flush whatever was captured offline.
-    if (event === "TOKEN_REFRESHED") requestSync("token-refreshed");
+    if (event === "TOKEN_REFRESHED" && !V2_DEBUG_ENABLED) requestSync("token-refreshed");
   }
 
   useEffect(() => {

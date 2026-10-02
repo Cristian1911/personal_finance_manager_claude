@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useV2Theme } from "../theme/ThemeProvider";
@@ -20,13 +21,20 @@ export function ConfirmSheet({ open, title, consequence, confirmLabel, destructi
 }) {
   const t = useV2Theme();
   const insets = useSafeAreaInsets();
+  // The words are frozen from the moment it opens: while it slides away the
+  // caller has usually cleared or changed what it was asking about.
+  const shown = useRef({ title, consequence, confirmLabel, destructive });
+  const wasOpen = useRef(false);
+  if (open && !wasOpen.current) shown.current = { title, consequence, confirmLabel, destructive };
+  wasOpen.current = open;
+  const w = shown.current;
   return (
     <Sheet open={open} onClose={onCancel} style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
       <View style={[styles.handle, { backgroundColor: t.colors.line }]} />
-      <Text accessibilityRole="header" style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]}>{title}</Text>
-      <Text style={[styles.body, { color: t.colors.muted, fontFamily: t.fonts.ui }]}>{consequence}</Text>
+      <Text accessibilityRole="header" style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]}>{w.title}</Text>
+      <Text style={[styles.body, { color: t.colors.muted, fontFamily: t.fonts.ui }]}>{w.consequence}</Text>
       <View style={styles.actions}>
-        <Button label={confirmLabel} variant={destructive ? "destructiveConfirm" : "primary"} onPress={onConfirm} />
+        <Button label={w.confirmLabel} variant={w.destructive ? "destructiveConfirm" : "primary"} onPress={onConfirm} />
         <Button label="Cancelar" variant="text" onPress={onCancel} />
       </View>
     </Sheet>

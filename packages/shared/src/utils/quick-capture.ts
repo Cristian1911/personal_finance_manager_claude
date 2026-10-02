@@ -79,15 +79,19 @@ function normalizeInput(value: string): string {
 
 function parseAmountToken(token: string): number | null {
   const normalized = token.toLowerCase().replace(/\s+/g, "");
-  const suffix = normalized.endsWith("mil")
-    ? "mil"
-    : normalized.endsWith("k")
-      ? "k"
-      : normalized.endsWith("m")
-        ? "m"
-        : "";
+  // "millón"/"millones" are millions, like "m".
+  const millions = normalized.match(/mill[oó]n(?:es)?$/);
+  const suffix = millions
+    ? "m"
+    : normalized.endsWith("mil")
+      ? "mil"
+      : normalized.endsWith("k")
+        ? "k"
+        : normalized.endsWith("m")
+          ? "m"
+          : "";
 
-  let base = suffix ? normalized.slice(0, -suffix.length) : normalized;
+  let base = millions ? normalized.slice(0, -millions[0].length) : suffix ? normalized.slice(0, -suffix.length) : normalized;
   base = base.replace(/[^\d.,]/g, "");
   if (!base) return null;
 
@@ -117,12 +121,15 @@ function parseAmountToken(token: string): number | null {
 }
 
 function extractAmount(input: string): { amount: number | null; rawMatch: string | null } {
+  // Suffixes, longest first and as whole words: "300 mil" was read as "300 m" = 300 millones.
   const amountRegex =
-    /(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d+)?|\d+(?:[.,]\d+)?(?:\s?(?:k|m|mil)))/i;
-  const match = input.match(amountRegex);
-  if (!match) return { amount: null, rawMatch: null };
-  const amount = parseAmountToken(match[0]);
-  return { amount, rawMatch: match[0] };
+    /(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d+)?|\d+(?:[.,]\d+)?(?:\s?(?:mill[oó]n(?:es)?|mil|k|m)\b)?)/gi;
+  const candidates = [...input.matchAll(amountRegex)].map((m) => m[0]);
+  // Only something that looks like money: a suffix, thousands separators, or
+  // 3+ digits that aren't a year. "3 cuotas del iphone 15" or "de 2026" ask instead.
+  const raw = candidates.find((c) => /[a-z]/i.test(c) || /\d[.,]\d{3}/.test(c) || (/\d{3}/.test(c) && !/^(19|20)\d{2}$/.test(c)));
+  if (!raw) return { amount: null, rawMatch: null };
+  return { amount: parseAmountToken(raw), rawMatch: raw };
 }
 
 function extractDirection(normalized: string): TransactionDirection | null {
