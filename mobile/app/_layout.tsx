@@ -49,6 +49,7 @@ export {
   // Catch any errors thrown by the Layout component.
   ErrorBoundary,
 } from "expo-router";
+import { V2_DEBUG_ENABLED } from "../lib/v2/flags";
 
 export const unstable_settings = {
   // Ensure that reloading on `/modal` keeps a back button present.
@@ -229,6 +230,16 @@ function RootLayoutNav() {
 
     if (!session && !demoMode && !inAuthGroup) {
       router.replace("/(auth)/login");
+      return;
+    }
+
+    // v2 (S9-1): the new app is the app. Signed in (or demo) → v2 Inicio, whose
+    // first-run questions replace v1's onboarding. v1 screens stay reachable by
+    // link until they're deleted after the data migration.
+    if (V2_DEBUG_ENABLED) {
+      if ((session || demoMode) && (inAuthGroup || inOnboarding || firstSegment === "(tabs)" || firstSegment === "")) {
+        router.replace("/inicio" as never);
+      }
       return;
     }
 

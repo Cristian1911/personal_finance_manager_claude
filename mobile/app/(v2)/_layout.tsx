@@ -5,6 +5,7 @@ import { Redirect, Tabs, useRouter } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { V2_DEBUG_ENABLED } from "../../lib/v2/flags";
 import { useV2UserId } from "../../lib/v2/user";
+import { useV2Sync } from "../../lib/v2/sync/use-sync";
 import { onOpenAnotar, type AnotarPrefill } from "../../lib/v2/anotar/open";
 import { AnotarSheet, type AnotarSaved } from "../../v2/components/AnotarSheet";
 import { FAB_OVERHANG, TAB_BAR_HEIGHT, TabBar } from "../../v2/components/TabBar";
@@ -35,6 +36,7 @@ function V2Tabs() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const userId = useV2UserId();
+  useV2Sync(userId);
   const [anotar, setAnotar] = useState<AnotarPrefill | null>(null);
   useEffect(() => onOpenAnotar(setAnotar), []);
   const [toast, setToast] = useState<AnotarSaved | null>(null);

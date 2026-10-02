@@ -13,6 +13,13 @@ import { getDeviceId } from "./secrets";
 export const expoSha256: HashFn = (payload) =>
   Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, payload);
 
+const written = new Set<() => void>();
+/** Called after every queued local command (the sync scheduler listens). */
+export function onLocalCommand(listener: () => void): () => void {
+  written.add(listener);
+  return () => { written.delete(listener); };
+}
+
 /** Runs a user action on the phone and queues it; never touches the network. */
 export async function runLocalCommand(input: {
   type: CommandType;
@@ -28,7 +35,9 @@ export async function runLocalCommand(input: {
     clientTs: new Date().toISOString(),
     payload: input.payload,
   };
-  return { command, result: await applyAndEnqueue(driver, command, { hash: expoSha256 }) };
+  const result = await applyAndEnqueue(driver, command, { hash: expoSha256 });
+  if (result.status !== "rejected") for (const l of written) l();
+  return { command, result };
 }
 
 /** Sends an existing command again (debug: proves replays are no-ops). */
