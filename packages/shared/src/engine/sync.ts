@@ -39,6 +39,7 @@ export const SYNC_TABLES: SyncTable[] = [
       id: T, user_id: T, account_id: T, amount: N, currency_code: T, direction: T, transaction_date: D, clean_description: T,
       notes: T, capture_method: T, idempotency_key: T, created_at: TS, is_excluded: B, flow_class: T, flow_class_version: N,
       transfer_group_id: T, category_id: T, destinatario_id: T,
+      raw_description: T, transaction_time: T, merchant_name: T, source_pattern: T, reconciled_into_transaction_id: T, provider: T, status: T,
     },
   },
   {

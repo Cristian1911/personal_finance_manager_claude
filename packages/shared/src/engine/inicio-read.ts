@@ -65,7 +65,8 @@ export async function readInicioData(driver: SqlDriver, userId: string, since: s
   const txRows = await q<Record<string, unknown>>(
     `SELECT id, account_id, amount, currency_code, direction,
             ${pg ? "transaction_date::text" : "transaction_date"} AS transaction_date,
-            capture_method, created_at, clean_description, notes, is_excluded, flow_class, transfer_group_id, category_id, destinatario_id
+            capture_method, created_at, clean_description, notes, is_excluded, flow_class, transfer_group_id, category_id, destinatario_id,
+            reconciled_into_transaction_id, status
        FROM transactions
       WHERE user_id = ? AND transaction_date >= ?
       ORDER BY transaction_date, id`,
@@ -127,6 +128,9 @@ export async function readInicioData(driver: SqlDriver, userId: string, since: s
       transferGroupId: (r.transfer_group_id as string | null) ?? null,
       categoryId: (r.category_id as string | null) ?? null,
       destinatarioId: (r.destinatario_id as string | null) ?? null,
+      // Merged into the bank's row: it no longer counts (movements.ts).
+      reconciledIntoTransactionId: (r.reconciled_into_transaction_id as string | null) ?? null,
+      status: r.status == null ? null : String(r.status),
     })),
   };
 }

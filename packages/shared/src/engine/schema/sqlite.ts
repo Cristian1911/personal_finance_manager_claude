@@ -165,3 +165,18 @@ CREATE TABLE destinatario_rules (
 );
 CREATE UNIQUE INDEX destinatario_rules_user_pattern ON destinatario_rules (user_id, lower(pattern));
 `;
+
+/**
+ * Bank captures (phone schema version 9): what the bank said (text, time,
+ * merchant, alert family) and which row a reconciled movement became.
+ * Same columns as the Supabase transactions view.
+ */
+export const SQLITE_BANK_SCHEMA = `
+ALTER TABLE transactions ADD COLUMN raw_description TEXT;
+ALTER TABLE transactions ADD COLUMN transaction_time TEXT;
+ALTER TABLE transactions ADD COLUMN merchant_name TEXT;
+ALTER TABLE transactions ADD COLUMN source_pattern TEXT;
+ALTER TABLE transactions ADD COLUMN reconciled_into_transaction_id TEXT;
+ALTER TABLE transactions ADD COLUMN provider TEXT NOT NULL DEFAULT 'MANUAL';
+ALTER TABLE transactions ADD COLUMN status TEXT NOT NULL DEFAULT 'POSTED';
+`;

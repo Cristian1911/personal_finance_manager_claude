@@ -15,7 +15,7 @@ the tests talk to zeta-dev only. To undo anything, close its PR (and the ones ab
 | #450 | `feat/v2-sync` | Sync (phone ↔ zeta-dev), `/api/v2/commands` + `/api/v2/snapshot`, v2 becomes the default screen | Open, reviewed, fixes in |
 | #451 | `feat/v2-ajustes` | Ajustes: tu número, apariencia, ayuda, cerrar sesión, borrar mi cuenta | Open |
 | #452 | `feat/v2-onboarding` | First run: when you get paid, where your money is, fixed payments | Open |
-| (next) | `feat/v2-categorias` | The 25 categories, destinatarios (comercios/personas), matched on capture; Categoría · ¿Quién? on the open row | In review |
+| #453 | `feat/v2-categorias` | The 25 categories, destinatarios (comercios/personas), matched on capture; Categoría · ¿Quién? on the open row | Open, reviewed, fixes in |
 
 ## Decisions I took for you (simplest option; change any)
 

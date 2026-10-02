@@ -1,6 +1,8 @@
 /** Commands known to the engine. Add a name here when adding a handler. */
 export type CommandType =
   | "captureManualTransaction"
+  | "captureBankTransaction"
+  | "resolveBankDuplicate"
   | "setTransactionNote"
   | "setTransactionExcluded"
   | "deleteTransaction"
@@ -152,10 +154,21 @@ export interface TransactionInsert {
   transactionDate: string;
   cleanDescription: string;
   notes: string | null;
-  captureMethod: "MANUAL_FORM";
+  captureMethod: "MANUAL_FORM" | "EMAIL_IMPORT" | "PDF_IMPORT";
   idempotencyKey: string;
   /** Set by hand (Anotar): stored with flow_class_version 0 (v1 FLOW_CLASS_HAND_SET_VERSION). */
   flowClass?: string | null;
+  /** The rules version that classified it; omitted = set by hand (0). */
+  flowClassVersion?: number;
+  /** What the bank said: its line (feeds the idempotency key), time of day, merchant and alert family. */
+  rawDescription?: string | null;
+  transactionTime?: string | null;
+  merchantName?: string | null;
+  sourcePattern?: string | null;
+  provider?: "MANUAL" | "EMAIL";
+  /** PENDING = held for Revisar (a possible duplicate of `reconciledIntoTransactionId`); doesn't count. */
+  status?: "POSTED" | "PENDING";
+  reconciledIntoTransactionId?: string | null;
   /** Both legs of an Entre cuentas share it. */
   transferGroupId?: string | null;
   /** Set by the destinatario rules on capture (not a user choice: no field version). */
@@ -186,6 +199,14 @@ export interface TransactionRow {
   transferGroupId: string | null;
   categoryId: string | null;
   destinatarioId: string | null;
+  flowClass: string | null;
+  rawDescription: string | null;
+  /** "HH:mm" when the bank said it. */
+  transactionTime: string | null;
+  sourcePattern: string | null;
+  /** Set when this row was merged into a bank's row (it no longer counts); on a PENDING row, its likely twin. */
+  reconciledIntoTransactionId: string | null;
+  status: string;
 }
 
 /** A comercio or persona (S8-2). */
@@ -226,6 +247,9 @@ export interface StoragePort {
   adjustAccountBalance(userId: string, id: string, delta: number): Promise<void>;
   findTransactionByIdempotencyKey(userId: string, key: string): Promise<{ id: string } | null>;
   insertTransaction(row: TransactionInsert): Promise<void>;
+  /** Same account, dates in [from, to], not already merged away: what a bank row may be a duplicate of. */
+  listReconciliationCandidates(userId: string, accountId: string, from: string, to: string): Promise<TransactionRow[]>;
+  setReconciliation(userId: string, id: string, intoId: string | null, status: "POSTED" | "PENDING"): Promise<void>;
   getTransaction(userId: string, id: string): Promise<TransactionRow | null>;
   updateTransactionNotes(userId: string, id: string, notes: string | null): Promise<void>;
   updateTransactionExcluded(userId: string, id: string, excluded: boolean): Promise<void>;

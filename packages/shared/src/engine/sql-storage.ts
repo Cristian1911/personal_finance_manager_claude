@@ -97,13 +97,32 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
       await q(
         `INSERT INTO transactions (id, user_id, account_id, amount, currency_code, direction, transaction_date, clean_description,
                                    notes, capture_method, idempotency_key, created_at, flow_class, flow_class_version, transfer_group_id,
-                                   category_id, destinatario_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                                   category_id, destinatario_id, raw_description, transaction_time, merchant_name, source_pattern, provider,
+                                   status, reconciled_into_transaction_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [t.id, t.userId, t.accountId, t.amount, t.currencyCode, t.direction, t.transactionDate,
           t.cleanDescription, t.notes, t.captureMethod, t.idempotencyKey, t.createdAt,
           // The real table requires a version whenever a class is set; 0 = set by hand.
-          t.flowClass ?? null, t.flowClass ? 0 : null, t.transferGroupId ?? null, t.categoryId ?? null, t.destinatarioId ?? null],
+          t.flowClass ?? null, t.flowClass ? (t.flowClassVersion ?? 0) : null, t.transferGroupId ?? null, t.categoryId ?? null, t.destinatarioId ?? null,
+          t.rawDescription ?? null, t.transactionTime ?? null, t.merchantName ?? null, t.sourcePattern ?? null, t.provider ?? "MANUAL",
+          t.status ?? "POSTED", t.reconciledIntoTransactionId ?? null],
       );
+    },
+
+    async listReconciliationCandidates(userId, accountId, from, to) {
+      const rows = await q<Record<string, unknown>>(
+        `SELECT id, user_id, account_id, amount, currency_code, direction,
+                ${pg ? "transaction_date::text" : "transaction_date"} AS transaction_date,
+                clean_description, notes, capture_method, idempotency_key, created_at, is_excluded, transfer_group_id, category_id, destinatario_id, flow_class, raw_description, ${pg ? "transaction_time::text" : "transaction_time"} AS transaction_time, source_pattern, reconciled_into_transaction_id, status
+           FROM transactions
+          WHERE user_id = ? AND account_id = ? AND transaction_date >= ? AND transaction_date <= ? AND reconciled_into_transaction_id IS NULL
+          ORDER BY transaction_date, id`,
+        [userId, accountId, from, to]);
+      return rows.map(txRow);
+    },
+
+    async setReconciliation(userId, id, intoId, status) {
+      await q("UPDATE transactions SET reconciled_into_transaction_id = ?, status = ? WHERE user_id = ? AND id = ?", [intoId, status, userId, id]);
     },
 
     async getTransaction(userId, id) {
@@ -111,7 +130,7 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
       const rows = await q<Record<string, unknown>>(
         `SELECT id, user_id, account_id, amount, currency_code, direction,
                 ${pg ? "transaction_date::text" : "transaction_date"} AS transaction_date,
-                clean_description, notes, capture_method, idempotency_key, created_at, is_excluded, transfer_group_id, category_id, destinatario_id
+                clean_description, notes, capture_method, idempotency_key, created_at, is_excluded, transfer_group_id, category_id, destinatario_id, flow_class, raw_description, ${pg ? "transaction_time::text" : "transaction_time"} AS transaction_time, source_pattern, reconciled_into_transaction_id, status
            FROM transactions WHERE user_id = ? AND id = ?`,
         [userId, id]);
       return rows[0] ? txRow(rows[0]) : null;
@@ -177,7 +196,7 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
       const rows = await q<Record<string, unknown>>(
         `SELECT id, user_id, account_id, amount, currency_code, direction,
                 ${pg ? "transaction_date::text" : "transaction_date"} AS transaction_date,
-                clean_description, notes, capture_method, idempotency_key, created_at, is_excluded, transfer_group_id, category_id, destinatario_id
+                clean_description, notes, capture_method, idempotency_key, created_at, is_excluded, transfer_group_id, category_id, destinatario_id, flow_class, raw_description, ${pg ? "transaction_time::text" : "transaction_time"} AS transaction_time, source_pattern, reconciled_into_transaction_id, status
            FROM transactions WHERE user_id = ? AND transaction_date >= ? ORDER BY transaction_date, id`,
         [userId, since]);
       return rows.map(txRow);
@@ -243,7 +262,7 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
       const rows = await q<Record<string, unknown>>(
         `SELECT id, user_id, account_id, amount, currency_code, direction,
                 ${pg ? "transaction_date::text" : "transaction_date"} AS transaction_date,
-                clean_description, notes, capture_method, idempotency_key, created_at, is_excluded, transfer_group_id, category_id, destinatario_id
+                clean_description, notes, capture_method, idempotency_key, created_at, is_excluded, transfer_group_id, category_id, destinatario_id, flow_class, raw_description, ${pg ? "transaction_time::text" : "transaction_time"} AS transaction_time, source_pattern, reconciled_into_transaction_id, status
            FROM transactions WHERE user_id = ? AND destinatario_id = ?`,
         [userId, destinatarioId]);
       return rows.map(txRow);
@@ -253,7 +272,7 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
       const rows = await q<Record<string, unknown>>(
         `SELECT id, user_id, account_id, amount, currency_code, direction,
                 ${pg ? "transaction_date::text" : "transaction_date"} AS transaction_date,
-                clean_description, notes, capture_method, idempotency_key, created_at, is_excluded, transfer_group_id, category_id, destinatario_id
+                clean_description, notes, capture_method, idempotency_key, created_at, is_excluded, transfer_group_id, category_id, destinatario_id, flow_class, raw_description, ${pg ? "transaction_time::text" : "transaction_time"} AS transaction_time, source_pattern, reconciled_into_transaction_id, status
            FROM transactions WHERE user_id = ? AND transfer_group_id = ? ORDER BY direction DESC, id`,
         [userId, groupId]);
       return rows.map(txRow);
@@ -385,6 +404,13 @@ function txRow(r: Record<string, unknown>): TransactionRow {
     transferGroupId: (r.transfer_group_id as string | null) ?? null,
     categoryId: (r.category_id as string | null) ?? null,
     destinatarioId: (r.destinatario_id as string | null) ?? null,
+    flowClass: (r.flow_class as string | null) ?? null,
+    rawDescription: (r.raw_description as string | null) ?? null,
+    // Postgres time is "12:41:00".
+    transactionTime: r.transaction_time == null ? null : String(r.transaction_time).slice(0, 5),
+    sourcePattern: (r.source_pattern as string | null) ?? null,
+    reconciledIntoTransactionId: (r.reconciled_into_transaction_id as string | null) ?? null,
+    status: r.status == null ? "POSTED" : String(r.status),
   };
 }
 

@@ -1,7 +1,7 @@
-import { SQLITE_ACCOUNTS_SCHEMA, SQLITE_CAPTURE_TIME_SCHEMA, SQLITE_ENGINE_SCHEMA, SQLITE_EXCLUDED_SCHEMA, SQLITE_CATEGORIES_SCHEMA, SQLITE_RECURRING_SCHEMA, SQLITE_SETTINGS_SCHEMA, SQLITE_TRANSFER_SCHEMA } from "../../schema/sqlite";
+import { SQLITE_ACCOUNTS_SCHEMA, SQLITE_CAPTURE_TIME_SCHEMA, SQLITE_ENGINE_SCHEMA, SQLITE_EXCLUDED_SCHEMA, SQLITE_CATEGORIES_SCHEMA, SQLITE_BANK_SCHEMA, SQLITE_RECURRING_SCHEMA, SQLITE_SETTINGS_SCHEMA, SQLITE_TRANSFER_SCHEMA } from "../../schema/sqlite";
 
 /** The phone's full schema: every version in order. */
-export const SQLITE_SCHEMA = SQLITE_ENGINE_SCHEMA + SQLITE_SETTINGS_SCHEMA + SQLITE_CAPTURE_TIME_SCHEMA + SQLITE_EXCLUDED_SCHEMA + SQLITE_ACCOUNTS_SCHEMA + SQLITE_TRANSFER_SCHEMA + SQLITE_RECURRING_SCHEMA + SQLITE_CATEGORIES_SCHEMA;
+export const SQLITE_SCHEMA = SQLITE_ENGINE_SCHEMA + SQLITE_SETTINGS_SCHEMA + SQLITE_CAPTURE_TIME_SCHEMA + SQLITE_EXCLUDED_SCHEMA + SQLITE_ACCOUNTS_SCHEMA + SQLITE_TRANSFER_SCHEMA + SQLITE_RECURRING_SCHEMA + SQLITE_CATEGORIES_SCHEMA + SQLITE_BANK_SCHEMA;
 
 // Same logical tables in both dialects; names and columns match the real
 // Supabase views (`accounts`, `transactions`) and new tables (`commands`,
@@ -29,7 +29,9 @@ CREATE TABLE transactions (
   is_excluded boolean NOT NULL DEFAULT false,
   created_at timestamptz NOT NULL DEFAULT now(),
   flow_class text, flow_class_version smallint, transfer_group_id uuid,
-  category_id uuid, destinatario_id uuid
+  category_id uuid, destinatario_id uuid,
+  raw_description text, transaction_time time, merchant_name text, source_pattern text,
+  reconciled_into_transaction_id uuid, provider text NOT NULL DEFAULT 'MANUAL', status text NOT NULL DEFAULT 'POSTED'
 );
 -- Plain here; on Supabase destinatarios is a view (name encrypted).
 CREATE TABLE destinatarios (
