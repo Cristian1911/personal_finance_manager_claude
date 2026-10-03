@@ -57,6 +57,11 @@ export interface StatementPlan {
   suggested: { name: string; accountType: string } | null;
   /** The user's accounts of this kind, to pick one by hand. */
   options: { id: string; name: string }[];
+  /**
+   * A card's USD section (S10-14) goes to the same card as its pesos section
+   * in this PDF (same last 4): the index of that section, when there is one.
+   */
+  withIndex: number | null;
 }
 
 /** The user's choice per statement: an existing account, a new one, or skip. */
@@ -75,8 +80,12 @@ export function planStatements(statements: StatementInput[], accounts: Statement
     const last4 = statementLastFour(st);
     const fits = accounts.filter((a) => TYPES[st.statement_type].includes(a.accountType));
     const byMask = last4 ? fits.filter((a) => a.mask === last4) : [];
-    // ponytail: v2 accounts are COP; a USD section (cards come with one) waits for multi-currency.
-    const type = currencyOf(st) === "COP" ? NEW_TYPE[st.statement_type] : null;
+    // A card's USD section goes to the same card (S10-14); other kinds in another currency wait for multi-currency.
+    const foreign = currencyOf(st) !== "COP";
+    const type = !foreign || (st.statement_type === "credit_card" && currencyOf(st) === "USD") ? NEW_TYPE[st.statement_type] : null;
+    const sibling = foreign && last4
+      ? statements.findIndex((o, i) => i !== index && currencyOf(o) === "COP" && o.statement_type === st.statement_type && statementLastFour(o) === last4)
+      : -1;
     return {
       index, bank: st.bank, kind: st.statement_type, last4,
       period: { from: st.period_from, to: st.period_to },
@@ -85,6 +94,7 @@ export function planStatements(statements: StatementInput[], accounts: Statement
       accountId: type && byMask.length === 1 ? byMask[0].id : null,
       suggested: type ? { name: labelOf(st, last4), accountType: type } : null,
       options: fits.map((a) => ({ id: a.id, name: a.name?.trim() || "Cuenta" })),
+      withIndex: type && sibling >= 0 ? sibling : null,
     };
   });
 }
@@ -161,20 +171,31 @@ export interface StatementWork {
 export async function statementCommands(
   userId: string, statements: StatementInput[], plans: StatementPlan[], choices: StatementChoice[], accounts: StatementAccount[],
   hash: HashFn = sha256,
+  /** Pesos per dollar today, to keep each USD row's value in pesos (≈); null leaves it unknown. */
+  usdRate: number | null = null,
 ): Promise<StatementWork[]> {
   const work: StatementWork[] = [];
-  for (const plan of plans) {
+  // Pesos sections first: a USD section goes to the account its pesos sibling resolved to (or created).
+  const resolved = new Map<number, StatementAccount>();
+  const ordered = [...plans].sort((a, b) => Number(a.withIndex != null) - Number(b.withIndex != null));
+  for (const plan of ordered) {
     const st = statements[plan.index];
     const choice = choices.find((c) => c.index === plan.index);
     const label = labelOf(st, plan.last4);
     const none = (nota: string) => work.push({ index: plan.index, account: label, accountId: null, created: false, nota, steps: [] });
-    if (plan.currency !== "COP") { none(`${plan.rows} movimientos en ${plan.currency}: Zeta aún no lleva otras monedas.`); continue; }
-    if (!plan.suggested) { none("Zeta aún no lleva este tipo de cuenta."); continue; }
-    if (choice?.skip) { none("No lo importaste."); continue; }
+    if (!plan.suggested) {
+      none(plan.currency !== "COP" ? `${plan.rows} movimientos en ${plan.currency}: Zeta aún no lleva esta moneda aquí.` : "Zeta aún no lleva este tipo de cuenta.");
+      continue;
+    }
+    const currency = plan.currency;
+    const foreign = currency !== "COP";
+    const sibling = plan.withIndex != null ? resolved.get(plan.withIndex) : undefined;
+    const siblingAccount = sibling?.id;
+    if (choice?.skip || (plan.withIndex != null && !choice && !plan.accountId && !siblingAccount)) { none("No lo importaste."); continue; }
 
     const steps: StatementStep[] = [];
-    let accountId = choice?.accountId ?? plan.accountId;
-    let account = accounts.find((a) => a.id === accountId);
+    let accountId = choice?.accountId ?? plan.accountId ?? siblingAccount ?? null;
+    let account = accounts.find((a) => a.id === accountId) ?? (sibling && sibling.id === accountId ? sibling : undefined);
     let created = false;
     if (!accountId && choice?.create) {
       // Same card, same id: importing again (or a retry) finds the account it already made.
@@ -191,6 +212,7 @@ export async function statementCommands(
       }
     }
     if (!accountId || !account) { none("Elige a qué cuenta va."); continue; }
+    resolved.set(plan.index, account);
     // Only an account of the statement's kind: a card statement on a savings account would flip every sign.
     if (!TYPES[st.statement_type].includes(account.accountType)) { none("Esa cuenta no es de este tipo."); continue; }
 
@@ -199,18 +221,21 @@ export async function statementCommands(
       rawDescription: t.description, installmentCurrent: t.installment_current,
     })));
     for (const [j, t] of st.transactions.entries()) {
-      if ((t.currency || st.currency || "COP").toUpperCase() !== "COP") continue;
-      const identity = `${userId}:${accountId}:${t.date}:${t.amount}:${t.description}:${occurrences[j]}:${t.installment_current ?? ""}`;
+      if ((t.currency || st.currency || "COP").toUpperCase() !== currency) continue;
+      // The currency joins the id only for foreign rows: pesos rows keep the ids they always had.
+      const identity = `${userId}:${accountId}:${t.date}:${t.amount}:${t.description}:${occurrences[j]}:${t.installment_current ?? ""}${foreign ? `:${currency}` : ""}`;
       steps.push({ type: "captureBankTransaction", kind: "row", payload: {
         transactionId: await uuidFrom(`pdf-row:${identity}`, hash), accountId, source: "PDF",
-        amount: t.amount, direction: t.direction, currencyCode: "COP", date: t.date,
+        amount: t.amount, direction: t.direction, currencyCode: currency, date: t.date,
+        ...(foreign && usdRate ? { amountInBaseCurrency: Math.round(t.amount * usdRate) } : {}),
         rawLine: t.description.slice(0, 1000), description: t.description.trim().slice(0, 200) || "Movimiento",
         occurrence: occurrences[j], originalAmount: t.original_amount, installmentCurrent: t.installment_current, installmentTotal: t.installment_total,
       } });
     }
     // A card learns its cut and payment days (and limit) from its first statement: the card bill needs them.
     // Only a cut the statement states (an estimated one would be wrong); the payment day comes from the due date.
-    if (account.accountType === "CREDIT_CARD" && account.cutoffDay == null) {
+    // Its pesos section teaches the card its days and its limit in pesos; a USD section never does.
+    if (!foreign && account.accountType === "CREDIT_CARD" && account.cutoffDay == null) {
       const cutoffDay = dayOf(st.period_to);
       const paymentDay = dayOf(st.credit_card_metadata?.payment_due_date);
       if (cutoffDay || paymentDay) {
@@ -224,10 +249,10 @@ export async function statementCommands(
     const review = statementReview(st);
     if (st.statement_type !== "savings" && (review.minimo != null || review.vence)) {
       steps.push({ type: "recordStatement", kind: "statement", payload: {
-        id: await uuidFrom(`statement:${accountId}:COP:${st.period_from ?? ""}:${st.period_to ?? ""}`, hash), accountId,
+        id: await uuidFrom(`statement:${accountId}:${currency}:${st.period_from ?? ""}:${st.period_to ?? ""}`, hash), accountId,
         periodFrom: st.period_from, periodTo: cutOf(st), finalBalance: st.summary?.final_balance ?? null,
         totalPaymentDue: review.saldo, minimumPayment: review.minimo, paymentDueDate: review.vence, interestRate: review.tasa,
-        currencyCode: "COP", transactionCount: st.transactions.length,
+        currencyCode: currency, transactionCount: st.transactions.length,
         previousBalance: st.summary?.previous_balance ?? null, purchases: st.summary?.purchases_and_charges ?? null,
         interestCharged: st.summary?.interest_charged ?? null,
       } });
@@ -235,7 +260,7 @@ export async function statementCommands(
     const finalBalance = finalOf(st);
     const cut = cutOf(st);
     if (finalBalance != null && cut) {
-      steps.push({ type: "anchorStatementBalance", kind: "anchor", payload: { accountId, finalBalance, asOf: cut } });
+      steps.push({ type: "anchorStatementBalance", kind: "anchor", payload: { accountId, finalBalance, asOf: cut, ...(foreign ? { currencyCode: currency } : {}) } });
     }
     work.push({ index: plan.index, account: account.name?.trim() || label, accountId, created, steps });
   }

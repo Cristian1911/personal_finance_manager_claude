@@ -31,7 +31,12 @@ const card = statement({
   credit_card_metadata: { credit_limit: 3_000_000, minimum_payment: 60_000, payment_due_date: "2026-10-12", total_payment_due: 260_000, interest_rate: 24.33 },
   transactions: [tx("2026-09-18", 100_000, "TIENDA X", { original_amount: 300_000, installment_current: 1, installment_total: 3 }), tx("2026-09-20", 160_000, "RESTAURANTE")],
 });
-const usd = { ...card, currency: "USD", transactions: [tx("2026-09-21", 12.5, "NETFLIX", { currency: "USD" })] };
+// The same card's USD section (Bancolombia brings both in one PDF): its own minimum and debt, in dollars.
+const usd = {
+  ...card, currency: "USD", summary: { final_balance: null, previous_balance: 0, purchases_and_charges: 12.5, interest_charged: 0 },
+  credit_card_metadata: { credit_limit: null, minimum_payment: 12.5, payment_due_date: "2026-10-12", total_payment_due: 12.5, interest_rate: 24.33 },
+  transactions: [tx("2026-09-21", 12.5, "NETFLIX", { currency: "USD" })],
+};
 
 let seq = 0;
 let ts = Date.parse("2026-10-02T15:00:00.000Z");
@@ -70,10 +75,11 @@ describe.each(DRIVERS)("statement import on the phone (planStatements + statemen
     const plans = planStatements([savings, card, usd], await accounts());
     expect(plans[0]).toMatchObject({ accountId: SAVINGS, last4: "4821" });
     expect(plans[1]).toMatchObject({ accountId: null, suggested: { name: "Bancolombia tarjeta ••7706", accountType: "CREDIT_CARD" } });
-    expect(plans[2]).toMatchObject({ suggested: null, currency: "USD" });
+    // Its USD section goes with it (S10-14): same last 4, no question of its own.
+    expect(plans[2]).toMatchObject({ suggested: { accountType: "CREDIT_CARD" }, currency: "USD", withIndex: 1 });
   });
 
-  it("imports: merges what you anotaste, keeps identical rows apart, anchors at the cut; creates the card; USD stays out", async () => {
+  it("imports: merges what you anotaste, keeps identical rows apart, anchors at the cut; creates the card; its USD section joins it", async () => {
     await setup();
     const [sv, cd, us] = await importAll([savings, card, usd], [{ index: 1, create: { name: "Bancolombia tarjeta ••7706" } }]);
     expect(sv).toMatchObject({ nuevos: 3, yaEstaban: 0, balance: 470_000 }); // 500.000 at the cut − 30.000 after it
@@ -81,7 +87,12 @@ describe.each(DRIVERS)("statement import on the phone (planStatements + statemen
     expect(cd).toMatchObject({ created: true, nuevos: 2, balance: 260_000 });
     const cardAccount = (await accounts()).find((a) => a.accountType === "CREDIT_CARD")!;
     expect(cardAccount).toMatchObject({ mask: "7706", cutoffDay: 30 });
-    expect(us).toMatchObject({ nuevos: 0, nota: expect.stringContaining("USD") });
+    // The USD section lands on the same card, in dollars; the pesos debt stays what the pesos section said.
+    expect(us).toMatchObject({ nuevos: 1, accountId: cd.accountId });
+    const c = await s.getAccount(USER, cd.accountId!);
+    expect(c).toMatchObject({ currentBalance: 260_000, currencyBalances: { USD: { current_balance: 12.5 } } });
+    const usdRow = (await readInicioData(driver, USER, "2026-09-01")).transactions.find((t) => t.currencyCode === "USD");
+    expect(usdRow).toMatchObject({ amount: 12.5, accountId: cd.accountId });
     const live = (await readInicioData(driver, USER, "2026-09-01")).transactions.filter((t) => t.accountId === SAVINGS && !t.reconciledIntoTransactionId);
     expect(live).toHaveLength(4); // arriendo (merged), two transfers, mercado
   });
