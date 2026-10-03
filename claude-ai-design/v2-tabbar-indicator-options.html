@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zeta v2 · Indicador de pestaña</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  /* Oliva afinada tokens (mobile/v2/tokens). */
+  :root {
+    --bg:#E9E0CC; --card:#FFFCF5; --ink:#14160F; --muted:#4B463B; --line:#E6DDC9;
+    --control:#8C7F63; --sunk:#EFE7D6; --button:#14160F; --onButton:#FFFCF5; --est:#CDBF9F;
+    --okTint:#CFE0A6; --okText:#2E4A12; --shadow:0 6px 16px rgba(20,22,15,.25);
+  }
+  :root[data-mode="dark"] {
+    --bg:#12130E; --card:#1F2119; --ink:#F3EFE3; --muted:#B8B09C; --line:#2E3027;
+    --control:#858270; --sunk:#2A2C22; --button:#F3EFE3; --onButton:#12130E; --est:#4A4B3E;
+    --okTint:#2A3A14; --okText:#CFE39A; --shadow:none;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:Geist, system-ui, sans-serif; }
+  header { max-width:1200px; margin:0 auto; padding:32px 16px 8px; display:flex; flex-wrap:wrap; gap:16px; align-items:end; justify-content:space-between; }
+  h1 { margin:0; font-size:28px; letter-spacing:-.5px; }
+  header p { margin:6px 0 0; color:var(--muted); max-width:640px; line-height:1.45; }
+  .mode { display:flex; gap:6px; }
+  .mode button { height:36px; padding:0 14px; border-radius:10px; border:1.5px solid var(--control); background:var(--card); color:var(--ink); font:600 13px Geist; cursor:pointer; }
+  .mode button[aria-pressed="true"] { background:var(--button); color:var(--onButton); border-color:var(--button); }
+  main { max-width:1200px; margin:0 auto; padding:16px; display:grid; grid-template-columns:repeat(auto-fill, minmax(360px, 1fr)); gap:20px; }
+  .opt { display:flex; flex-direction:column; gap:10px; }
+  .opt h2 { margin:0; font-size:17px; display:flex; gap:8px; align-items:baseline; }
+  .opt h2 span { font:600 12px "Geist Mono"; color:var(--muted); }
+  .opt p { margin:0; color:var(--muted); font-size:14px; line-height:1.45; }
+  .tag { display:inline-block; font:600 12px Geist; padding:3px 8px; border-radius:8px; background:var(--okTint); color:var(--okText); }
+  .phone { width:100%; max-width:390px; border-radius:28px; overflow:hidden; background:var(--bg); border:1px solid var(--line); }
+  .screen { height:120px; padding:16px; display:flex; align-items:flex-end; color:var(--muted); font-size:13px; }
+
+  /* The bar: same geometry as TabBar.tsx (56 + safe area, FAB 58 sticking up 22). */
+  .bar { position:relative; display:flex; align-items:flex-start; background:var(--card); border-top:1px solid var(--line); padding:8px 6px 22px; }
+  .tab { flex:1; min-width:0; min-height:48px; border:0; background:none; padding:0; cursor:pointer; color:var(--muted);
+         display:flex; flex-direction:column; align-items:center; gap:3px; font:500 10.5px Geist; position:relative; }
+  .tab svg { width:19px; height:19px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; transition:transform .2s; }
+  .tab .lbl { white-space:nowrap; transition:color .2s; }
+  .tab.on { color:var(--ink); font-weight:600; }
+  .tab.on svg { stroke-width:2.3; }
+  .fabSlot { width:72px; display:flex; justify-content:center; }
+  .fab { width:58px; height:58px; border-radius:29px; margin-top:-30px; border:0; background:var(--button); color:var(--onButton); box-shadow:var(--shadow); display:grid; place-items:center; }
+  .fab svg { width:26px; height:26px; stroke:currentColor; stroke-width:2.4; fill:none; stroke-linecap:round; }
+  .ic { width:54px; height:30px; display:grid; place-items:center; border-radius:15px; transition:background .2s, border-color .2s; border:1.5px solid transparent; }
+
+  /* A · Hoy (referencia): solo el ícono dentro del óvalo. */
+  .A .tab.on .ic { background:var(--sunk); border-color:var(--ink); }
+
+  /* B · Ícono y texto juntos en una pastilla vertical suave. */
+  .B .tab { gap:0; }
+  .B .tab .wrap { display:flex; flex-direction:column; align-items:center; gap:2px; padding:5px 8px 4px; border-radius:14px; transition:background .2s; min-width:64px; }
+  .B .tab.on .wrap { background:var(--sunk); }
+  .B .ic { height:24px; }
+
+  /* C · Pastilla horizontal: la activa crece y muestra su nombre al lado del ícono. */
+  .C .tab { justify-content:center; min-height:48px; transition:flex .25s; }
+  .C .tab.on { flex:1.9; }
+  .C .tab .wrap { display:flex; align-items:center; gap:6px; height:36px; padding:0 10px; border-radius:18px; transition:background .25s, padding .25s; }
+  .C .tab .lbl { max-width:0; overflow:hidden; opacity:0; transition:max-width .25s, opacity .2s; font-size:12.5px; }
+  .C .tab.on .wrap { background:var(--button); color:var(--onButton); padding:0 12px; }
+  .C .tab.on .lbl { max-width:90px; opacity:1; }
+  .C .tab:not(.on) .lbl { display:block; }
+
+  /* D · Sin contenedor: ícono relleno + punto bajo el texto. */
+  .D .tab.on svg { fill:var(--sunk); }
+  .D .tab::after { content:""; width:4px; height:4px; border-radius:2px; background:transparent; margin-top:1px; transition:background .2s; }
+  .D .tab.on::after { background:var(--ink); }
+
+  /* E · Contorno completo alrededor del ícono y del texto (estilo chip de v2). */
+  .E .tab .wrap { display:flex; flex-direction:column; align-items:center; gap:2px; padding:4px 8px 3px; border-radius:12px; border:1.5px solid transparent; transition:border-color .2s; min-width:64px; }
+  .E .tab.on .wrap { border-color:var(--ink); }
+  .E .ic { height:24px; }
+
+  /* F · Pastilla tinta (relleno oscuro) con ícono + texto, el resto plano. */
+  .F .tab .wrap { display:flex; flex-direction:column; align-items:center; gap:2px; padding:5px 8px 4px; border-radius:14px; transition:background .2s, color .2s; min-width:64px; }
+  .F .tab.on .wrap { background:var(--button); color:var(--onButton); }
+  .F .ic { height:24px; }
+  .F .tab.on .lbl { color:var(--onButton); }
+
+  /* G · Indicador que se desliza entre pestañas (misma pastilla de B, animada). */
+  .G .bar { --i:0; }
+  .G .slider { position:absolute; top:8px; height:50px; border-radius:14px; background:var(--sunk); transition:left .3s cubic-bezier(.2,.8,.2,1); pointer-events:none; }
+  .G .tab { z-index:1; }
+  .G .ic { height:24px; }
+
+  footer { max-width:1200px; margin:0 auto; padding:8px 16px 40px; color:var(--muted); font-size:13px; line-height:1.5; }
+  @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Indicador de la pestaña actual</h1>
+    <p>Siete opciones para la barra de v2, con los tokens de Oliva afinada. Toca las pestañas de cada barra para ver el cambio. La <b>A</b> es la de hoy, solo como referencia. Ninguna usa franjas laterales.</p>
+  </div>
+  <div class="mode" role="group" aria-label="Modo">
+    <button type="button" data-m="light" aria-pressed="true">Claro</button>
+    <button type="button" data-m="dark" aria-pressed="false">Oscuro</button>
+  </div>
+</header>
+
+<main id="opts"></main>
+
+<footer>
+  Todas mantienen la geometría actual (barra de 56 + área segura, + de 58 que sobresale 22) y objetivos táctiles de 48. El texto de la activa siempre va en semibold con color tinta; las inactivas en gris.
+  Archivo: <code>claude-ai-design/v2-tabbar-indicator-options.html</code>.
+</footer>
+
+<template id="icons">
+  <svg data-k="home" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+  <svg data-k="list" viewBox="0 0 24 24"><path d="M3 12h.01M3 18h.01M3 6h.01M8 12h13M8 18h13M8 6h13"/></svg>
+  <svg data-k="cal" viewBox="0 0 24 24"><path d="M8 2v4M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
+  <svg data-k="inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+  <svg data-k="plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg>
+</template>
+
+<script>
+const OPTS = [
+  ["A", "Hoy (referencia)", "Solo el ícono va dentro del óvalo con borde; el texto queda afuera. Es lo que se ve raro.", null],
+  ["B", "Pastilla suave con ícono y texto", "Un fondo hundido abarca ícono y nombre juntos. Tranquilo, se lee como una sola pieza.", "Recomendada"],
+  ["C", "Pastilla horizontal que se abre", "La activa es una pastilla oscura con el ícono y su nombre al lado; las demás solo muestran el ícono. Muy clara, pero esconde nombres.", null],
+  ["D", "Sin contenedor: ícono relleno y punto", "Nada encierra el ícono: se rellena suave y aparece un punto bajo el nombre. Lo más minimal.", null],
+  ["E", "Contorno alrededor de ícono y texto", "El mismo lenguaje de los chips de v2 (borde tinta) pero abarcando todo. Mantiene el borde de hoy, sin el efecto de “ícono suelto”.", null],
+  ["F", "Pastilla tinta con ícono y texto", "Relleno oscuro como el botón +. Muy fuerte; puede competir con el + y con el Disponible.", null],
+  ["G", "B que se desliza", "La misma pastilla suave de B, pero se mueve de una pestaña a otra al tocar. Da sensación de continuidad.", null],
+];
+const TABS = [["home","Inicio"],["list","Movimientos"],["cal","Pagos"],["inbox","Revisar"]];
+const ic = (k) => document.getElementById("icons").content.querySelector(`svg[data-k="${k}"]`).outerHTML;
+const main = document.getElementById("opts");
+
+for (const [id, title, text, tag] of OPTS) {
+  const sec = document.createElement("section");
+  sec.className = `opt ${id}`;
+  const wrapped = ["B","C","E","F"].includes(id);
+  const tab = ([k, l], i) => {
+    const inner = `<span class="ic">${ic(k)}</span><span class="lbl">${l}</span>`;
+    return `<button type="button" class="tab${i===0?" on":""}" role="tab" aria-selected="${i===0}" aria-label="${l}">${wrapped ? `<span class="wrap">${inner}</span>` : inner}</button>`;
+  };
+  sec.innerHTML = `
+    <h2><span>${id}</span>${title}</h2>
+    ${tag ? `<div><span class="tag">${tag}</span></div>` : ""}
+    <p>${text}</p>
+    <div class="phone">
+      <div class="screen">Contenido de la pantalla</div>
+      <nav class="bar" role="tablist">
+        ${id==="G" ? '<span class="slider"></span>' : ""}
+        ${tab(TABS[0],0)}${tab(TABS[1],1)}
+        <div class="fabSlot"><button class="fab" type="button" aria-label="Anotar">${ic("plus")}</button></div>
+        ${tab(TABS[2],2)}${tab(TABS[3],3)}
+      </nav>
+    </div>`;
+  main.appendChild(sec);
+  const bar = sec.querySelector(".bar");
+  const tabs = [...bar.querySelectorAll(".tab")];
+  const slider = bar.querySelector(".slider");
+  const place = (el) => {
+    if (!slider) return;
+    const b = bar.getBoundingClientRect(), r = el.getBoundingClientRect();
+    const w = 64;
+    slider.style.width = w + "px";
+    slider.style.left = (r.left - b.left + r.width / 2 - w / 2) + "px";
+  };
+  tabs.forEach((t) => t.addEventListener("click", () => {
+    tabs.forEach((x) => { x.classList.toggle("on", x === t); x.setAttribute("aria-selected", x === t); });
+    place(t);
+  }));
+  requestAnimationFrame(() => place(tabs[0]));
+  window.addEventListener("resize", () => place(bar.querySelector(".tab.on")));
+}
+
+document.querySelectorAll(".mode button").forEach((b) => b.addEventListener("click", () => {
+  document.documentElement.dataset.mode = b.dataset.m;
+  document.querySelectorAll(".mode button").forEach((x) => x.setAttribute("aria-pressed", x === b));
+}));
+</script>
+</body>
+</html>

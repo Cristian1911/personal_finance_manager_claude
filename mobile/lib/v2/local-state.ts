@@ -46,6 +46,7 @@ export const ONBOARDING_KEYS = {
   noCards: "onboarding.no_cards",
   noBills: "onboarding.no_bills",
   hoyGuideSeen: "guide.hoy_seen",
+  setupOpen: "guide.setup_open",
   dismissedPagos: "revisar.dismissed_pagos",
 } as const;
 

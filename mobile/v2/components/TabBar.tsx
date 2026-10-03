@@ -86,7 +86,8 @@ export function TabBar({ state, navigation, onAdd }: {
 const styles = StyleSheet.create({
   bar: { flexDirection: "row", alignItems: "flex-start", borderTopWidth: 1, paddingTop: 8, paddingHorizontal: 6 },
   tab: { flex: 1, alignItems: "center", gap: 3, minHeight: 48 },
-  pill: { width: 54, height: 30, borderRadius: 99, alignItems: "center", justifyContent: "center" },
+  // Radius = half the height: Android draws square corners when it is larger (99 did).
+  pill: { width: 54, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" },
   fabSlot: { width: 72, alignItems: "center" },
   fab: { width: 58, height: 58, borderRadius: 29, marginTop: -FAB_OVERHANG, alignItems: "center", justifyContent: "center" },
 });

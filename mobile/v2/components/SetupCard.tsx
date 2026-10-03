@@ -1,40 +1,65 @@
 import { memo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Check, ChevronRight } from "lucide-react-native";
+import { Check, ChevronDown, ChevronRight, ChevronUp } from "lucide-react-native";
 import { setupLevelLabel, type SetupProgress, type SetupTask, type SetupTaskId } from "@zeta/shared";
 import { useV2Theme } from "../theme/ThemeProvider";
 import { Button } from "./Button";
+import { Collapse } from "./Collapse";
 import { Sheet } from "./Sheet";
 
 /**
- * "Afina tu número" (S10-4): what's left for a real Disponible, on top of Hoy
- * until it's all done. Each task says what it adds; cards and fixed payments
- * can be closed with "No tengo" (or, for names left pending, "Ya no los pago").
+ * "Completa tus datos" (S10-4, was "Afina tu número"): what's left for a real
+ * Disponible, on top of Hoy until it's all done. Collapsed by default to one
+ * line — title, count, a thin bar and the next step — so it's always there
+ * without taking the screen; the user's choice is remembered. Each task says
+ * what it adds; cards and fixed payments can be closed with "No tengo" (or,
+ * for names left pending, "Ya no los pago").
  */
-export const SetupCard = memo(function SetupCard({ setup, onTask, onDecline }: {
+export const SetupCard = memo(function SetupCard({ setup, open, onToggle, onTask, onDecline }: {
   setup: SetupProgress;
+  open: boolean;
+  onToggle: () => void;
   onTask: (id: SetupTaskId) => void;
   onDecline: (id: SetupTaskId) => void;
 }) {
   const t = useV2Theme();
+  const c = t.colors;
   const tasks = setup.tasks.filter((x) => x.id !== "basics");
   const done = tasks.filter((x) => x.done).length;
+  const next = tasks.find((x) => !x.done) ?? null;
+  const Chevron = open ? ChevronUp : ChevronDown;
   return (
-    <View style={[styles.card, { backgroundColor: t.colors.card }, t.shadow]}>
-      <View style={styles.head}>
-        <Text accessibilityRole="header" style={{ fontSize: 16, color: t.colors.ink, fontFamily: t.fonts.uiSemibold }}>Afina tu número</Text>
-        <Text style={{ fontSize: 12, color: t.colors.muted, fontFamily: t.fonts.mono }}>{done} de {tasks.length}</Text>
+    <View style={[styles.card, { backgroundColor: c.card }, t.shadow]}>
+      <Pressable
+        onPress={onToggle}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        accessibilityLabel={`Completa tus datos. ${done} de ${tasks.length} listos. Tu número está en ${setup.percent} por ciento`}
+        accessibilityHint={open ? "Oculta los pasos" : "Muestra los pasos"}
+        style={styles.head}
+      >
+        <Text accessibilityRole="header" style={{ flex: 1, fontSize: 16, color: c.ink, fontFamily: t.fonts.uiSemibold }}>Completa tus datos</Text>
+        <Text style={{ fontSize: 12, color: c.muted, fontFamily: t.fonts.mono }}>{done} de {tasks.length}</Text>
+        <Chevron size={18} color={c.ink} strokeWidth={2.2} />
+      </Pressable>
+      <View style={[styles.track, { backgroundColor: c.sunk }]} accessible={false}>
+        <View style={[styles.fill, { width: `${Math.max(setup.percent, 2)}%`, backgroundColor: c.ink }]} />
       </View>
-      <Text style={{ fontSize: 13, lineHeight: 18, color: t.colors.muted, fontFamily: t.fonts.ui }}>
-        Se queda aquí hasta que termines. Cada paso hace tu número más real.
-      </Text>
-      {tasks.map((task) => <TaskRow key={task.id} task={task} onPress={() => onTask(task.id)} onDecline={() => onDecline(task.id)} />)}
+      {!open && next && <TaskRow task={next} compact onPress={() => onTask(next.id)} onDecline={() => onDecline(next.id)} />}
+      <Collapse open={open}>
+        <View style={{ gap: 10, paddingTop: 2 }}>
+          <Text style={{ fontSize: 13, lineHeight: 18, color: c.muted, fontFamily: t.fonts.ui }}>
+            Se queda aquí hasta que termines. Cada paso hace tu número más real.
+          </Text>
+          {tasks.map((task) => <TaskRow key={task.id} task={task} onPress={() => onTask(task.id)} onDecline={() => onDecline(task.id)} />)}
+        </View>
+      </Collapse>
     </View>
   );
 });
 
-function TaskRow({ task, onPress, onDecline }: { task: SetupTask; onPress: () => void; onDecline: () => void }) {
+function TaskRow({ task, onPress, onDecline, compact }: { task: SetupTask; onPress: () => void; onDecline: () => void; compact?: boolean }) {
   const t = useV2Theme();
   const c = t.colors;
   return (
@@ -54,14 +79,14 @@ function TaskRow({ task, onPress, onDecline }: { task: SetupTask; onPress: () =>
           <Text style={{ fontSize: 15, color: task.done ? c.muted : c.ink, fontFamily: t.fonts.uiSemibold, textDecorationLine: task.done ? "line-through" : "none" }}>
             {task.title}
           </Text>
-          {!task.done && <Text style={{ fontSize: 12, lineHeight: 16, color: c.muted, fontFamily: t.fonts.ui }}>{task.detail}</Text>}
+          {!task.done && !compact && <Text style={{ fontSize: 12, lineHeight: 16, color: c.muted, fontFamily: t.fonts.ui }}>{task.detail}</Text>}
         </View>
         <View style={[styles.gain, { backgroundColor: c.ok.tint }]}>
           <Text style={{ fontSize: 12, color: c.ok.text, fontFamily: t.fonts.uiSemibold }}>{task.done ? "Listo" : `+${task.weight}%`}</Text>
         </View>
         {!task.done && <ChevronRight size={16} color={c.muted} />}
       </Pressable>
-      {!task.done && task.canDecline && (
+      {!task.done && !compact && task.canDecline && (
         <Button
           label={task.declineLabel} variant="text" size="S" onPress={onDecline} style={{ alignSelf: "flex-start", marginLeft: 34 }}
           accessibilityLabel={task.declineLabel === "No tengo" ? `No tengo ${task.id === "cards" ? "tarjetas de crédito" : "pagos fijos"}` : `${task.declineLabel}: quitar los pagos sin monto`}
@@ -112,7 +137,9 @@ export function PrecisionSheet({ setup, open, onClose }: { setup: SetupProgress;
 
 const styles = StyleSheet.create({
   card: { borderRadius: 20, padding: 16, gap: 10 },
-  head: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" },
+  head: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 44 },
+  track: { height: 6, borderRadius: 3, overflow: "hidden", marginTop: -4 },
+  fill: { height: 6, borderRadius: 3 },
   task: { borderRadius: 14, borderWidth: 1.5, paddingVertical: 8, paddingHorizontal: 10 },
   taskMain: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 44 },
   check: { width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center" },

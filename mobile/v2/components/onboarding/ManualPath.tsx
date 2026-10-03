@@ -214,7 +214,7 @@ export function ManualPath({ onFinish, onBack }: { onFinish: (r: ManualResult) =
               </View>
             </View>
           ))}
-          {bills.some((b) => b.name.trim() && !completeBill(b)) && <Hint>Los que queden sin monto o día te esperan en Hoy, en “Afina tu número”.</Hint>}
+          {bills.some((b) => b.name.trim() && !completeBill(b)) && <Hint>Los que queden sin monto o día te esperan en Hoy, en “Completa tus datos”.</Hint>}
         </>
       ),
     },

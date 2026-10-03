@@ -34,10 +34,14 @@ export interface LoadedInicio {
   tourSeen: boolean;
   /** Fixed payments named in onboarding without amount or day yet. */
   pendingBills: string[];
+  /** "Completa tus datos" was left open (collapsed by default). */
+  setupOpen: boolean;
 }
 
 export const saveInicioLayout = (userId: string, layout: InicioLayout) =>
   remember(userId, LAYOUT_KEY, JSON.stringify(layout));
+
+export const rememberSetupOpen = (userId: string, open: boolean) => remember(userId, ONBOARDING_KEYS.setupOpen, open ? "1" : "0");
 
 export const markHoyGuideSeen = (userId: string) => remember(userId, ONBOARDING_KEYS.hoyGuideSeen, "1");
 
@@ -72,7 +76,7 @@ export async function loadInicio(userId: string, now: Date = new Date()): Promis
 
   const local = await readLocal(userId, [
     MEMO_KEY, AUTO_OPEN_KEY, LAYOUT_KEY,
-    ONBOARDING_KEYS.pendingBills, ONBOARDING_KEYS.noCards, ONBOARDING_KEYS.noBills, ONBOARDING_KEYS.hoyGuideSeen, ONBOARDING_KEYS.tourSeen,
+    ONBOARDING_KEYS.pendingBills, ONBOARDING_KEYS.noCards, ONBOARDING_KEYS.noBills, ONBOARDING_KEYS.hoyGuideSeen, ONBOARDING_KEYS.tourSeen, ONBOARDING_KEYS.setupOpen,
   ]);
   // A damaged memo only costs one flicker.
   const memo = parseLocal<DisponibleVerdictMemo | null>(local.get(MEMO_KEY), null);
@@ -91,10 +95,11 @@ export async function loadInicio(userId: string, now: Date = new Date()): Promis
   });
   const guideSeen = local.has(ONBOARDING_KEYS.hoyGuideSeen);
   const tourSeen = local.has(ONBOARDING_KEYS.tourSeen);
+  const setupOpen = local.get(ONBOARDING_KEYS.setupOpen) === "1";
 
   const state = buildInicio({ today, now: now.toISOString(), memo, ...data });
   const layout = parseLayout(local.get(LAYOUT_KEY));
-  if (state.status !== "ready") return { state, autoOpen: null, layout, setup, guideSeen, tourSeen, pendingBills };
+  if (state.status !== "ready") return { state, autoOpen: null, layout, setup, guideSeen, tourSeen, pendingBills, setupOpen };
 
   const memoJson = JSON.stringify(state.verdict.memo);
   if (memoJson !== local.get(MEMO_KEY)) await remember(userId, MEMO_KEY, memoJson);
@@ -102,7 +107,7 @@ export async function loadInicio(userId: string, now: Date = new Date()): Promis
   const hidden = new Set(layout?.hidden ?? []);
   const autoOpen = pickAutoOpen(state.widgets.filter((w) => !hidden.has(w.id)), local.get(AUTO_OPEN_KEY) ?? null, today);
   if (autoOpen) await remember(userId, AUTO_OPEN_KEY, today);
-  return { state, autoOpen, layout, setup, guideSeen, tourSeen, pendingBills };
+  return { state, autoOpen, layout, setup, guideSeen, tourSeen, pendingBills, setupOpen };
 }
 
 

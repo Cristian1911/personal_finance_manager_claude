@@ -12,7 +12,7 @@ import {
   type DetailPartKey, type InicioLayout, type InicioState, type InicioWidgetKey, type CommandType, type SetupProgress, type SetupTaskId, type WidgetActionId,
 } from "@zeta/shared";
 import { runLocalCommand } from "../../lib/v2/engine/run-local";
-import { declineSetupTask, loadInicio, markHoyGuideSeen, saveInicioLayout } from "../../lib/v2/inicio/load";
+import { declineSetupTask, loadInicio, markHoyGuideSeen, rememberSetupOpen, saveInicioLayout } from "../../lib/v2/inicio/load";
 import { ONBOARDING_KEYS, rememberJson } from "../../lib/v2/local-state";
 import { useV2UserId } from "../../lib/v2/user";
 import { useAuth } from "../../lib/auth";
@@ -83,6 +83,8 @@ export default function InicioScreen() {
   const [guideSeen, setGuideSeen] = useState(true);
   const [tourSeen, setTourSeen] = useState(false);
   const [precisionOpen, setPrecisionOpen] = useState(false);
+  /** "Completa tus datos" opened (collapsed by default, remembered). */
+  const [setupOpen, setSetupOpen] = useState(false);
   // Leaving the tab closes what was open: coming back shows Inicio as it is, not a half-open card.
   useFocusEffect(useCallback(() => () => { setOpenWidget(null); setDetailOpen(false); }, []));
   const [draft, setDraft] = useState<InicioLayout | null>(null);
@@ -155,6 +157,7 @@ export default function InicioScreen() {
       setPendingBills((prev) => (prev.join("\n") === loaded.pendingBills.join("\n") ? prev : loaded.pendingBills));
       setGuideSeen(loaded.guideSeen);
       setTourSeen(loaded.tourSeen);
+      setSetupOpen(loaded.setupOpen);
       if (loaded.autoOpen) setOpenWidget(loaded.autoOpen);
       setError(null);
     } catch (e) {
@@ -227,6 +230,12 @@ export default function InicioScreen() {
       : declineSetupTask(userId, id);
     void done.then(reload).catch((e) => console.warn("[v2 inicio] decline not saved", e));
   }, [userId, reload, pendingBills]);
+  const toggleSetup = useCallback(() => {
+    setSetupOpen((o) => {
+      void rememberSetupOpen(userId, !o).catch((e) => console.warn("[v2 inicio] setup card state not saved", e));
+      return !o;
+    });
+  }, [userId]);
   const closeGuide = useCallback(() => {
     setGuideSeen(true);
     void markHoyGuideSeen(userId).catch((e) => console.warn("[v2 inicio] guide not saved", e));
@@ -328,7 +337,7 @@ export default function InicioScreen() {
                 <Text style={{ fontSize: 11, letterSpacing: 0.5, color: t.colors.onButton, opacity: 0.8, fontFamily: t.fonts.mono }}>PRIMERA VEZ EN HOY</Text>
                 <Text style={{ fontSize: 17, color: t.colors.onButton, fontFamily: t.fonts.uiSemibold }}>Este es tu Disponible</Text>
                 <Text style={{ fontSize: 14, lineHeight: 20, color: t.colors.onButton, opacity: 0.9, fontFamily: t.fonts.ui }}>
-                  Lo que puedes gastar hasta tu próximo sueldo. El ≈ y los puntos dicen qué tan exacto es; “Afina tu número” lo vuelve real.
+                  Lo que puedes gastar hasta tu próximo sueldo. El ≈ y los puntos dicen qué tan exacto es; “Completa tus datos” lo vuelve real.
                 </Text>
                 <Pressable onPress={closeGuide} accessibilityRole="button" style={[styles.guideButton, { backgroundColor: t.colors.card }]}>
                   <Text style={{ fontSize: 14, color: t.colors.ink, fontFamily: t.fonts.uiSemibold }}>Entendido</Text>
@@ -366,7 +375,7 @@ export default function InicioScreen() {
             </View>
             {setup && setup.percent < 100 && !editing && (
               <Dim on={(!!openWidget || detailOpen) && !editing}>
-                <SetupCard setup={setup} onTask={onSetupTask} onDecline={onSetupDecline} />
+                <SetupCard setup={setup} open={setupOpen} onToggle={toggleSetup} onTask={onSetupTask} onDecline={onSetupDecline} />
               </Dim>
             )}
             <Animated.View layout={editing && motionMs ? LinearTransition.duration(240) : undefined} onLayout={(e) => { gridY.current = e.nativeEvent.layout.y; }}>
