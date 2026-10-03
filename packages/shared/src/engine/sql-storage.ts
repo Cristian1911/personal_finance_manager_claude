@@ -1,5 +1,5 @@
 import { toDialect, toIso, toJson, toNumber } from "./sql";
-import type { CommandResult, CycleSettingsPatch, OccurrenceRow, SqlDriver, StoragePort, StoredPaySchedule, TemplateRow, TransactionRow } from "./types";
+import type { CommandResult, CurrencyBalances, CycleSettingsPatch, OccurrenceRow, SqlDriver, StoragePort, StoredPaySchedule, TemplateRow, TransactionRow } from "./types";
 
 /**
  * The single SQL implementation of StoragePort. Table and column names match
@@ -10,6 +10,14 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
   const q = <R = Record<string, unknown>>(sql: string, params: unknown[] = []) =>
     driver.query<R>(toDialect(sql, driver.dialect), params);
   const pg = driver.dialect === "postgres";
+  // A card's other currencies (S10-14): read-modify-write of the JSON (commands per user run one at a time).
+  // Postgres writes accounts_enc directly, like adjustAccountBalance (the column isn't encrypted).
+  const readCurrencyBalances = async (userId: string, id: string): Promise<CurrencyBalances> =>
+    parseCurrencyBalances((await q<{ currency_balances: unknown }>(
+      "SELECT currency_balances FROM accounts WHERE user_id = ? AND id = ?", [userId, id]))[0]?.currency_balances) ?? {};
+  const writeCurrencyBalances = (userId: string, id: string, bal: CurrencyBalances) => q(
+    `UPDATE ${pg ? "accounts_enc" : "accounts"} SET currency_balances = ${pg ? "?::jsonb" : "?"} WHERE user_id = ? AND id = ?`,
+    [JSON.stringify(bal), userId, id]);
   const TEMPLATE_SELECT = `SELECT id, user_id, account_id, amount, currency_code, direction, frequency, day_of_month,
       ${pg ? "start_date::text" : "start_date"} AS start_date, ${pg ? "end_date::text" : "end_date"} AS end_date, merchant_name, is_active
     FROM recurring_transaction_templates`;
@@ -38,7 +46,7 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
     async getAccount(userId, id) {
       const rows = await q<Record<string, unknown>>(
         `SELECT id, user_id, name, account_type, institution_name, mask, currency_code, current_balance, is_active,
-                credit_limit, cutoff_day, payment_day, monthly_payment
+                credit_limit, cutoff_day, payment_day, monthly_payment, currency_balances
            FROM accounts WHERE user_id = ? AND id = ?`, [userId, id]);
       const r = rows[0];
       const num = (v: unknown) => (v == null ? null : toNumber(v));
@@ -50,6 +58,7 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
           // SQLite stores booleans as 0/1.
           isActive: r.is_active === true || r.is_active === 1,
           creditLimit: num(r.credit_limit), cutoffDay: num(r.cutoff_day), paymentDay: num(r.payment_day), monthlyPayment: num(r.monthly_payment),
+          currencyBalances: parseCurrencyBalances(r.currency_balances),
         }
         : null;
     },
@@ -87,6 +96,18 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
       );
     },
 
+    async adjustCurrencyBalance(userId, id, currency, delta) {
+      const bal = await readCurrencyBalances(userId, id);
+      const entry = bal[currency] ?? {};
+      const next = Math.round(((entry.current_balance ?? 0) + delta) * 100) / 100;
+      await writeCurrencyBalances(userId, id, { ...bal, [currency]: { ...entry, current_balance: next } });
+    },
+
+    async setCurrencyBalance(userId, id, currency, patch) {
+      const bal = await readCurrencyBalances(userId, id);
+      await writeCurrencyBalances(userId, id, { ...bal, [currency]: { ...(bal[currency] ?? {}), ...patch } });
+    },
+
     async findTransactionByIdempotencyKey(userId, key) {
       const rows = await q<{ id: string }>(
         "SELECT id FROM transactions WHERE user_id = ? AND idempotency_key = ?", [userId, key]);
@@ -98,20 +119,20 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
         `INSERT INTO transactions (id, user_id, account_id, amount, currency_code, direction, transaction_date, clean_description,
                                    notes, capture_method, idempotency_key, created_at, flow_class, flow_class_version, transfer_group_id,
                                    category_id, destinatario_id, raw_description, transaction_time, merchant_name, source_pattern, provider,
-                                   status, reconciled_into_transaction_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                                   status, reconciled_into_transaction_id, amount_in_base_currency)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [t.id, t.userId, t.accountId, t.amount, t.currencyCode, t.direction, t.transactionDate,
           t.cleanDescription, t.notes, t.captureMethod, t.idempotencyKey, t.createdAt,
           // The real table requires a version whenever a class is set; 0 = set by hand.
           t.flowClass ?? null, t.flowClass ? (t.flowClassVersion ?? 0) : null, t.transferGroupId ?? null, t.categoryId ?? null, t.destinatarioId ?? null,
           t.rawDescription ?? null, t.transactionTime ?? null, t.merchantName ?? null, t.sourcePattern ?? null, t.provider ?? "MANUAL",
-          t.status ?? "POSTED", t.reconciledIntoTransactionId ?? null],
+          t.status ?? "POSTED", t.reconciledIntoTransactionId ?? null, t.amountInBaseCurrency ?? null],
       );
     },
 
     async listReconciliationCandidates(userId, accountId, from, to) {
       const rows = await q<Record<string, unknown>>(
-        `SELECT id, user_id, account_id, amount, currency_code, direction,
+        `SELECT id, user_id, account_id, amount, currency_code, direction, amount_in_base_currency,
                 ${pg ? "transaction_date::text" : "transaction_date"} AS transaction_date,
                 clean_description, notes, capture_method, idempotency_key, created_at, is_excluded, transfer_group_id, category_id, destinatario_id, flow_class, flow_class_version, raw_description, ${pg ? "transaction_time::text" : "transaction_time"} AS transaction_time, source_pattern, reconciled_into_transaction_id, status
            FROM transactions
@@ -140,7 +161,7 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
 
     async listHeldFor(userId, twinId) {
       const rows = await q<Record<string, unknown>>(
-        `SELECT id, user_id, account_id, amount, currency_code, direction,
+        `SELECT id, user_id, account_id, amount, currency_code, direction, amount_in_base_currency,
                 ${pg ? "transaction_date::text" : "transaction_date"} AS transaction_date,
                 clean_description, notes, capture_method, idempotency_key, created_at, is_excluded, transfer_group_id, category_id, destinatario_id, flow_class, flow_class_version, raw_description, ${pg ? "transaction_time::text" : "transaction_time"} AS transaction_time, source_pattern, reconciled_into_transaction_id, status
            FROM transactions WHERE user_id = ? AND reconciled_into_transaction_id = ? AND status = 'PENDING'`,
@@ -160,7 +181,7 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
     async getTransaction(userId, id) {
       // date as text on Postgres: a JS Date would shift the day with the time zone.
       const rows = await q<Record<string, unknown>>(
-        `SELECT id, user_id, account_id, amount, currency_code, direction,
+        `SELECT id, user_id, account_id, amount, currency_code, direction, amount_in_base_currency,
                 ${pg ? "transaction_date::text" : "transaction_date"} AS transaction_date,
                 clean_description, notes, capture_method, idempotency_key, created_at, is_excluded, transfer_group_id, category_id, destinatario_id, flow_class, flow_class_version, raw_description, ${pg ? "transaction_time::text" : "transaction_time"} AS transaction_time, source_pattern, reconciled_into_transaction_id, status
            FROM transactions WHERE user_id = ? AND id = ?`,
@@ -226,7 +247,7 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
 
     async listTransactionsSince(userId, since) {
       const rows = await q<Record<string, unknown>>(
-        `SELECT id, user_id, account_id, amount, currency_code, direction,
+        `SELECT id, user_id, account_id, amount, currency_code, direction, amount_in_base_currency,
                 ${pg ? "transaction_date::text" : "transaction_date"} AS transaction_date,
                 clean_description, notes, capture_method, idempotency_key, created_at, is_excluded, transfer_group_id, category_id, destinatario_id, flow_class, flow_class_version, raw_description, ${pg ? "transaction_time::text" : "transaction_time"} AS transaction_time, source_pattern, reconciled_into_transaction_id, status
            FROM transactions WHERE user_id = ? AND transaction_date >= ? ORDER BY transaction_date, id`,
@@ -292,7 +313,7 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
 
     async listTransactionsByDestinatario(userId, destinatarioId) {
       const rows = await q<Record<string, unknown>>(
-        `SELECT id, user_id, account_id, amount, currency_code, direction,
+        `SELECT id, user_id, account_id, amount, currency_code, direction, amount_in_base_currency,
                 ${pg ? "transaction_date::text" : "transaction_date"} AS transaction_date,
                 clean_description, notes, capture_method, idempotency_key, created_at, is_excluded, transfer_group_id, category_id, destinatario_id, flow_class, flow_class_version, raw_description, ${pg ? "transaction_time::text" : "transaction_time"} AS transaction_time, source_pattern, reconciled_into_transaction_id, status
            FROM transactions WHERE user_id = ? AND destinatario_id = ?`,
@@ -302,7 +323,7 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
 
     async getTransferLegs(userId, groupId) {
       const rows = await q<Record<string, unknown>>(
-        `SELECT id, user_id, account_id, amount, currency_code, direction,
+        `SELECT id, user_id, account_id, amount, currency_code, direction, amount_in_base_currency,
                 ${pg ? "transaction_date::text" : "transaction_date"} AS transaction_date,
                 clean_description, notes, capture_method, idempotency_key, created_at, is_excluded, transfer_group_id, category_id, destinatario_id, flow_class, flow_class_version, raw_description, ${pg ? "transaction_time::text" : "transaction_time"} AS transaction_time, source_pattern, reconciled_into_transaction_id, status
            FROM transactions WHERE user_id = ? AND transfer_group_id = ? ORDER BY direction DESC, id`,
@@ -444,7 +465,20 @@ function txRow(r: Record<string, unknown>): TransactionRow {
     sourcePattern: (r.source_pattern as string | null) ?? null,
     reconciledIntoTransactionId: (r.reconciled_into_transaction_id as string | null) ?? null,
     status: r.status == null ? "POSTED" : String(r.status),
+    amountInBaseCurrency: r.amount_in_base_currency == null ? null : toNumber(r.amount_in_base_currency),
   };
+}
+
+/** currency_balances as stored: jsonb (object) on Postgres, text on SQLite; damaged → null. */
+export function parseCurrencyBalances(v: unknown): CurrencyBalances | null {
+  if (v == null) return null;
+  if (typeof v === "object") return v as CurrencyBalances;
+  try {
+    const o = JSON.parse(String(v));
+    return o && typeof o === "object" ? (o as CurrencyBalances) : null;
+  } catch {
+    return null;
+  }
 }
 
 function templateRow(r: Record<string, unknown>): TemplateRow {

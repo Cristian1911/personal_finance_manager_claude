@@ -8,6 +8,7 @@ import {
   SQLITE_BANK_SCHEMA,
   SQLITE_STATEMENTS_SCHEMA,
   SQLITE_STATEMENTS_DETAIL_SCHEMA,
+  SQLITE_CURRENCY_SCHEMA,
   SQLITE_CAPTURE_TIME_SCHEMA,
   SQLITE_EXCLUDED_SCHEMA,
   SQLITE_ENGINE_SCHEMA,
@@ -53,6 +54,8 @@ const MIGRATIONS: string[] = [
   SQLITE_STATEMENTS_SCHEMA,
   // 11: how each statement moved the debt (month-to-month).
   SQLITE_STATEMENTS_DETAIL_SCHEMA,
+  // 12: a card's balance in another currency; a foreign movement's value in pesos (S10-14).
+  SQLITE_CURRENCY_SCHEMA,
 ];
 
 export interface V2Database {

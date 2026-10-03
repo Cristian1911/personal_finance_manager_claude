@@ -18,6 +18,7 @@ describe.each(DRIVERS)("createSqlStorage on %s", (_name, make) => {
     expect(await s.getAccount(USER, ACCOUNT)).toEqual({
       id: ACCOUNT, userId: USER, name: "", accountType: "CHECKING", institutionName: null, mask: null, currencyCode: "COP",
       currentBalance: 74999.5, isActive: true, creditLimit: null, cutoffDay: null, paymentDay: null, monthlyPayment: null,
+      currencyBalances: null,
     });
     expect(await s.getAccount(USER, "99999999-9999-4999-8999-999999999999")).toBeNull();
     expect(await s.getAccount(OTHER_USER, ACCOUNT)).toBeNull();
@@ -40,7 +41,7 @@ describe.each(DRIVERS)("createSqlStorage on %s", (_name, make) => {
       id: TX, userId: USER, accountId: ACCOUNT, amount: 25000, currencyCode: "COP", direction: "OUTFLOW",
       transactionDate: "2026-09-18", cleanDescription: "Tostao", notes: "con Ana", captureMethod: "MANUAL_FORM",
       idempotencyKey: "k1", createdAt: "2026-09-18T15:00:00.000Z", isExcluded: false, transferGroupId: null, categoryId: null, destinatarioId: null,
-      flowClass: null, flowClassVersion: null, rawDescription: null, transactionTime: null, sourcePattern: null, reconciledIntoTransactionId: null, status: "POSTED",
+      flowClass: null, flowClassVersion: null, rawDescription: null, transactionTime: null, sourcePattern: null, reconciledIntoTransactionId: null, status: "POSTED", amountInBaseCurrency: null,
     });
     await s.updateTransactionFacts(USER, TX, { amount: 30000, transactionDate: "2026-09-17", accountId: ACCOUNT, cleanDescription: "Tostao", transactionTime: null });
     expect(await s.getTransaction(USER, TX)).toMatchObject({ amount: 30000, transactionDate: "2026-09-17" });
@@ -96,5 +97,19 @@ describe.each(DRIVERS)("createSqlStorage on %s", (_name, make) => {
       }),
     ).rejects.toThrow("boom");
     expect((await s.getAccount(USER, ACCOUNT))?.currentBalance).toBe(100);
+  });
+});
+
+describe.each(DRIVERS)("currency balances on %s (S10-14)", (_name, make) => {
+  it("moves and sets one currency's numbers without touching the account's balance", async () => {
+    const d = await make();
+    await seedAccount(d, { id: ACCOUNT, userId: USER, balance: 100000 });
+    const s = createSqlStorage(d);
+    await s.adjustCurrencyBalance(USER, ACCOUNT, "USD", 120.5);
+    await s.adjustCurrencyBalance(USER, ACCOUNT, "USD", -20.25);
+    await s.setCurrencyBalance(USER, ACCOUNT, "USD", { minimum_payment: 45, total_payment_due: 100.25 });
+    const a = await s.getAccount(USER, ACCOUNT);
+    expect(a?.currentBalance).toBe(100000);
+    expect(a?.currencyBalances).toEqual({ USD: { current_balance: 100.25, minimum_payment: 45, total_payment_due: 100.25 } });
   });
 });

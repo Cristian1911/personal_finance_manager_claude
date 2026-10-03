@@ -202,3 +202,15 @@ ALTER TABLE statement_snapshots ADD COLUMN previous_balance REAL;
 ALTER TABLE statement_snapshots ADD COLUMN purchases_and_charges REAL;
 ALTER TABLE statement_snapshots ADD COLUMN interest_charged REAL;
 `;
+
+/**
+ * Phone schema version 12: a card's balance in another currency (USD section
+ * of a statement, S10-14) and a foreign movement's value in pesos. Same
+ * columns as the Supabase views: `accounts.currency_balances` (JSON, v1's
+ * shape `{ "USD": { current_balance, minimum_payment, … } }`) and
+ * `transactions.amount_in_base_currency`.
+ */
+export const SQLITE_CURRENCY_SCHEMA = `
+ALTER TABLE accounts ADD COLUMN currency_balances TEXT;
+ALTER TABLE transactions ADD COLUMN amount_in_base_currency REAL;
+`;

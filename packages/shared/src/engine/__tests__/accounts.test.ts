@@ -36,7 +36,7 @@ describe.each(DRIVERS)("accounts on %s", (_name, make) => {
     expect(await s.getAccount(USER, ACC)).toEqual({
       id: ACC, userId: USER, name: "Bancolombia", accountType: "SAVINGS", institutionName: "Bancolombia", mask: "4821",
       currencyCode: "COP", currentBalance: 1_320_000, isActive: true,
-      creditLimit: null, cutoffDay: null, paymentDay: null, monthlyPayment: null,
+      creditLimit: null, cutoffDay: null, paymentDay: null, monthlyPayment: null, currencyBalances: null,
     });
   });
 

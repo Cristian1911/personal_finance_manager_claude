@@ -79,7 +79,23 @@ export interface AccountRow {
   cutoffDay: number | null;
   paymentDay: number | null;
   monthlyPayment: number | null;
+  /**
+   * A card's balance in other currencies (S10-14), v1's `currency_balances`
+   * shape: { USD: { current_balance, minimum_payment, total_payment_due, … } }.
+   */
+  currencyBalances?: CurrencyBalances | null;
 }
+
+/** One currency's numbers on an account (v1 `accounts.currency_balances`). */
+export interface AccountCurrencyBalance {
+  current_balance?: number | null;
+  credit_limit?: number | null;
+  available_balance?: number | null;
+  interest_rate?: number | null;
+  minimum_payment?: number | null;
+  total_payment_due?: number | null;
+}
+export type CurrencyBalances = Record<string, AccountCurrencyBalance>;
 
 /** A fixed payment (recurring_transaction_templates). */
 export interface TemplateRow {
@@ -173,6 +189,8 @@ export interface TransactionInsert {
   reconciledIntoTransactionId?: string | null;
   /** Both legs of an Entre cuentas share it. */
   transferGroupId?: string | null;
+  /** A foreign movement's value in pesos (at the day's rate when captured; ≈). */
+  amountInBaseCurrency?: number | null;
   /** Set by the destinatario rules on capture (not a user choice: no field version). */
   categoryId?: string | null;
   destinatarioId?: string | null;
@@ -211,6 +229,8 @@ export interface TransactionRow {
   /** Set when this row was merged into a bank's row (it no longer counts); on a PENDING row, its likely twin. */
   reconciledIntoTransactionId: string | null;
   status: string;
+  /** A foreign movement's value in pesos, when known. */
+  amountInBaseCurrency?: number | null;
 }
 
 /** One bank statement's numbers (statement_snapshots). */
@@ -259,6 +279,10 @@ export interface StoragePort {
   insertAccount(row: Omit<AccountRow, "isActive">): Promise<void>;
   updateAccountDetails(userId: string, id: string, patch: AccountDetailsPatch): Promise<void>;
   adjustAccountBalance(userId: string, id: string, delta: number): Promise<void>;
+  /** Moves one currency's balance (current_balance in currency_balances[currency]) by delta. */
+  adjustCurrencyBalance(userId: string, id: string, currency: string, delta: number): Promise<void>;
+  /** Sets fields of one currency's entry in currency_balances (a statement's numbers). */
+  setCurrencyBalance(userId: string, id: string, currency: string, patch: AccountCurrencyBalance): Promise<void>;
   findTransactionByIdempotencyKey(userId: string, key: string): Promise<{ id: string } | null>;
   insertTransaction(row: TransactionInsert): Promise<void>;
   /** Same account, dates in [from, to], not already merged away: what a bank row may be a duplicate of. */

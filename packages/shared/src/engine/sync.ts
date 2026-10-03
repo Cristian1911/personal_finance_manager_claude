@@ -7,7 +7,7 @@ import type { SqlDriver } from "./types";
  * and the phone writes them into SQLCipher. Types turn Postgres values into
  * JSON and back into SQLite's.
  */
-type Kind = "text" | "num" | "bool" | "date" | "ts";
+type Kind = "text" | "num" | "bool" | "date" | "ts" | "json";
 interface SyncTable {
   name: string;
   cols: Record<string, Kind>;
@@ -15,13 +15,15 @@ interface SyncTable {
   dateCol?: string;
 }
 
-const T = "text", N = "num", B = "bool", D = "date", TS = "ts";
+const T = "text", N = "num", B = "bool", D = "date", TS = "ts", J = "json";
 export const SYNC_TABLES: SyncTable[] = [
   {
     name: "accounts",
     cols: {
       id: T, user_id: T, name: T, account_type: T, institution_name: T, mask: T, currency_code: T, current_balance: N,
       is_active: B, credit_limit: N, cutoff_day: N, payment_day: N, monthly_payment: N,
+      // A card's balance in another currency (S10-14): without it a pull would wipe the phone's USD debt.
+      currency_balances: J,
     },
   },
   { name: "account_settings", cols: { user_id: T, account_id: T, counts_in_disponible: B, updated_at: TS } },
@@ -40,6 +42,7 @@ export const SYNC_TABLES: SyncTable[] = [
       notes: T, capture_method: T, idempotency_key: T, created_at: TS, is_excluded: B, flow_class: T, flow_class_version: N,
       transfer_group_id: T, category_id: T, destinatario_id: T,
       raw_description: T, transaction_time: T, merchant_name: T, source_pattern: T, reconciled_into_transaction_id: T, provider: T, status: T,
+      amount_in_base_currency: N,
     },
   },
   {
@@ -86,6 +89,8 @@ function toJson(kind: Kind, v: unknown): unknown {
   if (kind === "num") return toNumber(v);
   if (kind === "bool") return v === true || v === 1;
   if (kind === "ts") return toIso(v);
+  // jsonb arrives as an object from Postgres and as text from SQLite: travel (and store on the phone) as text.
+  if (kind === "json") return typeof v === "string" ? v : JSON.stringify(v);
   return String(v);
 }
 

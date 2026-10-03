@@ -1,7 +1,7 @@
-import { SQLITE_ACCOUNTS_SCHEMA, SQLITE_CAPTURE_TIME_SCHEMA, SQLITE_ENGINE_SCHEMA, SQLITE_EXCLUDED_SCHEMA, SQLITE_CATEGORIES_SCHEMA, SQLITE_BANK_SCHEMA, SQLITE_STATEMENTS_SCHEMA, SQLITE_STATEMENTS_DETAIL_SCHEMA, SQLITE_RECURRING_SCHEMA, SQLITE_SETTINGS_SCHEMA, SQLITE_TRANSFER_SCHEMA } from "../../schema/sqlite";
+import { SQLITE_ACCOUNTS_SCHEMA, SQLITE_CAPTURE_TIME_SCHEMA, SQLITE_ENGINE_SCHEMA, SQLITE_EXCLUDED_SCHEMA, SQLITE_CATEGORIES_SCHEMA, SQLITE_BANK_SCHEMA, SQLITE_STATEMENTS_SCHEMA, SQLITE_STATEMENTS_DETAIL_SCHEMA, SQLITE_CURRENCY_SCHEMA, SQLITE_RECURRING_SCHEMA, SQLITE_SETTINGS_SCHEMA, SQLITE_TRANSFER_SCHEMA } from "../../schema/sqlite";
 
 /** The phone's full schema: every version in order. */
-export const SQLITE_SCHEMA = SQLITE_ENGINE_SCHEMA + SQLITE_SETTINGS_SCHEMA + SQLITE_CAPTURE_TIME_SCHEMA + SQLITE_EXCLUDED_SCHEMA + SQLITE_ACCOUNTS_SCHEMA + SQLITE_TRANSFER_SCHEMA + SQLITE_RECURRING_SCHEMA + SQLITE_CATEGORIES_SCHEMA + SQLITE_BANK_SCHEMA + SQLITE_STATEMENTS_SCHEMA + SQLITE_STATEMENTS_DETAIL_SCHEMA;
+export const SQLITE_SCHEMA = SQLITE_ENGINE_SCHEMA + SQLITE_SETTINGS_SCHEMA + SQLITE_CAPTURE_TIME_SCHEMA + SQLITE_EXCLUDED_SCHEMA + SQLITE_ACCOUNTS_SCHEMA + SQLITE_TRANSFER_SCHEMA + SQLITE_RECURRING_SCHEMA + SQLITE_CATEGORIES_SCHEMA + SQLITE_BANK_SCHEMA + SQLITE_STATEMENTS_SCHEMA + SQLITE_STATEMENTS_DETAIL_SCHEMA + SQLITE_CURRENCY_SCHEMA;
 
 // Same logical tables in both dialects; names and columns match the real
 // Supabase views (`accounts`, `transactions`) and new tables (`commands`,
@@ -18,7 +18,8 @@ CREATE TABLE accounts_enc (
   -- Plain text here; on Supabase name/institution_name/mask are encrypted behind the view.
   name text NOT NULL DEFAULT '', institution_name text, mask text,
   currency_code text NOT NULL DEFAULT 'COP', is_active boolean NOT NULL DEFAULT true,
-  credit_limit numeric(15,2), cutoff_day smallint, payment_day smallint, monthly_payment numeric(15,2)
+  credit_limit numeric(15,2), cutoff_day smallint, payment_day smallint, monthly_payment numeric(15,2),
+  currency_balances jsonb
 );
 CREATE VIEW accounts AS SELECT * FROM accounts_enc;
 CREATE TABLE transactions (
@@ -31,7 +32,8 @@ CREATE TABLE transactions (
   flow_class text, flow_class_version smallint, transfer_group_id uuid,
   category_id uuid, destinatario_id uuid,
   raw_description text, transaction_time time, merchant_name text, source_pattern text,
-  reconciled_into_transaction_id uuid, provider text NOT NULL DEFAULT 'MANUAL', status text NOT NULL DEFAULT 'POSTED'
+  reconciled_into_transaction_id uuid, provider text NOT NULL DEFAULT 'MANUAL', status text NOT NULL DEFAULT 'POSTED',
+  amount_in_base_currency numeric(15,2)
 );
 -- Plain here; on Supabase destinatarios is a view (name encrypted).
 CREATE TABLE destinatarios (
