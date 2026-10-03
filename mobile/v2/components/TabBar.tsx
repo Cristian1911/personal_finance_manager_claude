@@ -1,25 +1,25 @@
 import { useEffect, type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useKeyboardState } from "react-native-keyboard-controller";
-import { Plus } from "lucide-react-native";
+import { Calendar, Home, Inbox, List, Plus, type LucideIcon } from "lucide-react-native";
 import { useV2Theme } from "../theme/ThemeProvider";
-import { useMotionMs } from "./Collapse";
-import { TabIcon, type TabIconName } from "./TabIcons";
 import { Tap } from "./Tap";
 
 /**
  * The bar (S8-1): Inicio · Movimientos · (+) · Pagos · Revisar. The tab you're
- * in has a filled icon, its name in ink and a dot under it; the rest are
- * outlines in gray (owner choice, option D in
- * claude-ai-design/v2-tabbar-indicator-options.html).
+ * in: icon in ink with a heavier stroke, grown 22 % with a small spring, its
+ * name in ink, a bit bigger, and a dot under it; the rest are thin gray
+ * outlines. No container around the icon (owner choice: option D in
+ * claude-ai-design/v2-tabbar-indicator-options.html, variant 4 in
+ * v2-tabbar-active-icon.html).
  */
-export const V2_TABS: readonly { name: string; title: string; icon: TabIconName }[] = [
-  { name: "inicio", title: "Inicio", icon: "home" },
-  { name: "movimientos", title: "Movimientos", icon: "list" },
-  { name: "pagos", title: "Pagos", icon: "calendar" },
-  { name: "revisar", title: "Revisar", icon: "inbox" },
+export const V2_TABS: readonly { name: string; title: string; icon: LucideIcon }[] = [
+  { name: "inicio", title: "Inicio", icon: Home },
+  { name: "movimientos", title: "Movimientos", icon: List },
+  { name: "pagos", title: "Pagos", icon: Calendar },
+  { name: "revisar", title: "Revisar", icon: Inbox },
 ];
 
 /** How far the "+" sticks up over the bar (screens keep content clear of it). */
@@ -46,7 +46,7 @@ export function TabBar({ state, navigation, onAdd }: {
   const current = state.routes[state.index]?.name ?? "";
   const active = PARENT_TAB[current] ?? current;
   const tab = (i: number) => {
-    const { name, title, icon } = V2_TABS[i];
+    const { name, title, icon: Icon } = V2_TABS[i];
     const on = name === active;
     return (
       <Pressable
@@ -58,9 +58,9 @@ export function TabBar({ state, navigation, onAdd }: {
         style={styles.tab}
       >
         <GrowIcon on={on}>
-          <TabIcon name={icon} filled={on} color={on ? t.colors.ink : t.colors.muted} cut={t.colors.card} />
+          <Icon size={20} color={on ? t.colors.ink : t.colors.muted} strokeWidth={on ? 2.4 : 1.8} />
         </GrowIcon>
-        <Text numberOfLines={1} style={{ fontSize: 10.5, color: on ? t.colors.ink : t.colors.muted, fontFamily: on ? t.fonts.uiSemibold : t.fonts.uiMedium }}>
+        <Text numberOfLines={1} style={{ fontSize: on ? 11.5 : 10.5, color: on ? t.colors.ink : t.colors.muted, fontFamily: on ? t.fonts.uiSemibold : t.fonts.uiMedium }}>
           {title}
         </Text>
         <View style={[styles.dot, { backgroundColor: on ? t.colors.ink : "transparent" }]} />
@@ -93,17 +93,21 @@ export function TabBar({ state, navigation, onAdd }: {
   );
 }
 
-/** The active icon grows a little (12%) in place: the bar doesn't move. */
+/**
+ * The active icon grows in place (the bar doesn't move) with a small spring,
+ * so you see it grow; the one you left shrinks back. Reduced motion: no spring.
+ */
 function GrowIcon({ on, children }: { on: boolean; children: ReactNode }) {
-  const ms = useMotionMs(180);
+  const reduced = useReducedMotion();
   const scale = useSharedValue(on ? ACTIVE_SCALE : 1);
   useEffect(() => {
-    scale.value = withTiming(on ? ACTIVE_SCALE : 1, { duration: ms });
-  }, [on, ms, scale]);
+    const to = on ? ACTIVE_SCALE : 1;
+    scale.value = reduced ? to : withSpring(to, { damping: 11, stiffness: 260, mass: 0.7 });
+  }, [on, reduced, scale]);
   const grow = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return <Animated.View style={[styles.icon, grow]}>{children}</Animated.View>;
 }
-const ACTIVE_SCALE = 1.12;
+const ACTIVE_SCALE = 1.22;
 
 const styles = StyleSheet.create({
   bar: { flexDirection: "row", alignItems: "flex-start", borderTopWidth: 1, paddingTop: 8, paddingHorizontal: 6 },

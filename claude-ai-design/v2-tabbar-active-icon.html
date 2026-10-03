@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zeta v2 · Ícono activo</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#E9E0CC; --card:#FFFCF5; --ink:#14160F; --muted:#4B463B; --line:#E6DDC9; --sunk:#EFE7D6; --est:#CDBF9F; --okTint:#CFE0A6; --button:#14160F; --onButton:#FFFCF5; --shadow:0 6px 16px rgba(20,22,15,.25); }
+  :root[data-mode="dark"] { --bg:#12130E; --card:#1F2119; --ink:#F3EFE3; --muted:#B8B09C; --line:#2E3027; --sunk:#2A2C22; --est:#4A4B3E; --okTint:#2A3A14; --button:#F3EFE3; --onButton:#12130E; --shadow:none; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:Geist, system-ui, sans-serif; }
+  header { max-width:1100px; margin:0 auto; padding:28px 16px 4px; display:flex; flex-wrap:wrap; gap:16px; justify-content:space-between; align-items:end; }
+  h1 { margin:0; font-size:26px; letter-spacing:-.5px; }
+  header p { margin:6px 0 0; color:var(--muted); max-width:620px; line-height:1.45; }
+  .mode button { height:36px; padding:0 14px; border-radius:10px; border:1.5px solid var(--muted); background:var(--card); color:var(--ink); font:600 13px Geist; cursor:pointer; }
+  .mode button[aria-pressed="true"] { background:var(--button); color:var(--onButton); }
+  main { max-width:1100px; margin:0 auto; padding:16px; display:grid; grid-template-columns:repeat(auto-fill, minmax(360px, 1fr)); gap:22px; }
+  section { display:flex; flex-direction:column; gap:8px; }
+  h2 { margin:0; font-size:17px; } h2 span { font:600 12px "Geist Mono"; color:var(--muted); margin-right:6px; }
+  section p { margin:0; color:var(--muted); font-size:14px; line-height:1.45; }
+  .bar { position:relative; display:flex; align-items:flex-start; background:var(--card); border:1px solid var(--line); border-radius:20px; padding:12px 6px 18px; margin-top:28px; }
+  .tab { flex:1; min-width:0; min-height:48px; border:0; background:none; cursor:pointer; color:var(--muted); display:flex; flex-direction:column; align-items:center; gap:2px; font:500 10.5px Geist; }
+  .tab .ic { height:28px; display:grid; place-items:center; }
+  .tab svg { transition:transform .18s ease-out; }
+  .tab .dot { width:4px; height:4px; border-radius:2px; }
+  .tab.on { color:var(--ink); font-weight:600; }
+  .tab.on .dot { background:var(--ink); }
+  .fabSlot { width:72px; display:flex; justify-content:center; }
+  .fab { width:58px; height:58px; border-radius:29px; margin-top:-34px; border:0; background:var(--button); color:var(--onButton); box-shadow:var(--shadow); display:grid; place-items:center; }
+  .zoom { display:flex; gap:28px; padding:14px; background:var(--card); border-radius:16px; border:1px solid var(--line); justify-content:center; }
+  .zoom div { display:flex; gap:10px; align-items:center; }
+  .tag { align-self:flex-start; font:600 12px Geist; padding:3px 8px; border-radius:8px; background:var(--okTint); }
+  @media (prefers-reduced-motion: reduce) { .tab svg { transition:none; } }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Ícono de la pestaña activa (opción D)</h1>
+    <p>Alternativas al relleno sólido que conservan el detalle del ícono. Todas llevan el nombre en tinta y el punto. Toca las pestañas; abajo de cada barra está el ícono activo e inactivo en grande.</p>
+  </div>
+  <div class="mode"><button data-m="light" aria-pressed="true">Claro</button> <button data-m="dark" aria-pressed="false">Oscuro</button></div>
+</header>
+<main id="opts"></main>
+<script>
+const P = {
+  home: [["path","M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z","body"],["path","M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"]],
+  list: [["path","M3 12h.01M3 18h.01M3 6h.01M8 12h13M8 18h13M8 6h13"]],
+  cal:  [["path","M8 2v4M16 2v4"],["rect","3 4 18 18 2","body"],["path","M3 10h18"]],
+  inbox:[["path","M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z","body"],["path","M22 12h-6l-2 3h-4l-2-3H2"]],
+};
+// tint: fill for the "body" shape when active; w: stroke widths; s: active scale.
+const OPTS = [
+  ["1", "Trazo más grueso y más grande", "Mismo ícono de contorno: activo en tinta, trazo 2.4 (inactivo 1.8) y 20 % más grande. Sin rellenos.", { tint:null, w:[1.8,2.4], s:1.2 }, true],
+  ["2", "Dos tonos suaves", "Contorno en tinta y el cuerpo del ícono con un fondo arena suave; el detalle (puerta, renglón, bandeja) se mantiene. 15 % más grande.", { tint:"var(--est)", w:[1.8,2.2], s:1.15 }, false],
+  ["3", "Dos tonos en verde", "Igual que 2 pero el fondo usa el tinte de “Vas bien”. Más color; puede confundirse con un estado.", { tint:"var(--okTint)", w:[1.8,2.2], s:1.15 }, false],
+  ["4", "Grueso + más grande + nombre más grande", "Como 1, y además el nombre activo pasa de 10.5 a 11.5. El cambio se nota en ícono y texto.", { tint:null, w:[1.8,2.4], s:1.22, big:true }, false],
+];
+const svg = (name, on, o, size) => {
+  const w = on ? o.w[1] : o.w[0];
+  const el = P[name].map(([k, d, role]) => {
+    const fill = on && o.tint && role === "body" ? o.tint : "none";
+    const common = `stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" fill="${fill}"`;
+    if (k === "rect") { const [x,y,ww,h,r] = d.split(" "); return `<rect x="${x}" y="${y}" width="${ww}" height="${h}" rx="${r}" ${common}/>`; }
+    return `<path d="${d}" ${common}/>`;
+  }).join("");
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" style="transform:scale(${on ? o.s : 1})">${el}</svg>`;
+};
+const TABS = [["home","Inicio"],["list","Movimientos"],["cal","Pagos"],["inbox","Revisar"]];
+for (const [id, title, text, o, rec] of OPTS) {
+  const sec = document.createElement("section");
+  const draw = (active) => {
+    const tab = ([k, l], i) => `<button class="tab${i===active?" on":""}" data-i="${i}" style="${i===active && o.big ? "font-size:11.5px" : ""}"><span class="ic">${svg(k, i===active, o, 20)}</span><span>${l}</span><span class="dot"></span></button>`;
+    sec.innerHTML = `<h2><span>${id}</span>${title}</h2>${rec ? '<span class="tag">Recomendada</span>' : ""}<p>${text}</p>
+      <nav class="bar">${tab(TABS[0],0)}${tab(TABS[1],1)}<div class="fabSlot"><button class="fab" aria-label="Anotar"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button></div>${tab(TABS[2],2)}${tab(TABS[3],3)}</nav>
+      <div class="zoom">${TABS.map(([k]) => `<div style="color:var(--muted)">${svg(k,false,o,40)}<span style="color:var(--ink)">${svg(k,true,o,40)}</span></div>`).join("")}</div>`;
+    sec.querySelectorAll(".tab").forEach((b) => b.onclick = () => draw(+b.dataset.i));
+  };
+  draw(0);
+  document.getElementById("opts").appendChild(sec);
+}
+document.querySelectorAll(".mode button").forEach((b) => b.onclick = () => {
+  document.documentElement.dataset.mode = b.dataset.m;
+  document.querySelectorAll(".mode button").forEach((x) => x.setAttribute("aria-pressed", x === b));
+});
+</script>
+</body>
+</html>
