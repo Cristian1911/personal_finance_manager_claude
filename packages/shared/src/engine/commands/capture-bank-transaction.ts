@@ -41,6 +41,8 @@ export interface CaptureBankTransactionPayload {
   originalAmount?: number | null;
   installmentCurrent?: number | null;
   installmentTotal?: number | null;
+  /** A foreign row's value in pesos at the day's rate (S10-14); ≈ until a payment says otherwise. */
+  amountInBaseCurrency?: number | null;
 }
 
 const METHOD: Record<CaptureBankTransactionPayload["source"], TransactionCaptureMethod> = { EMAIL: "EMAIL_IMPORT", PDF: "PDF_IMPORT" };
@@ -65,6 +67,7 @@ function validate(p: CaptureBankTransactionPayload): string | null {
   if (p.occurrence != null && !posInt(p.occurrence)) return "Ocurrencia inválida.";
   if (p.originalAmount != null && (!isMoney(p.originalAmount) || p.originalAmount <= 0)) return "Monto original inválido.";
   if ((p.installmentCurrent != null && !posInt(p.installmentCurrent)) || (p.installmentTotal != null && !posInt(p.installmentTotal))) return "Cuota inválida.";
+  if (p.amountInBaseCurrency != null && (!isMoney(p.amountInBaseCurrency) || p.amountInBaseCurrency <= 0)) return "Valor en pesos inválido.";
   return null;
 }
 
@@ -150,6 +153,7 @@ export async function captureBankTransaction(
     flowClass,
     flowClassVersion: FLOW_CLASS_RULES_VERSION,
     transferGroupId: null,
+    amountInBaseCurrency: p.amountInBaseCurrency ?? null,
     categoryId: matched.categoryId,
     destinatarioId: matched.destinatarioId,
     rawDescription: p.rawLine,
@@ -175,8 +179,10 @@ export async function captureBankTransaction(
 async function post(s: StoragePort, cmd: CommandEnvelope, row: TransactionRow, opts: EngineOptions) {
   // Before the instant the balance is true as of (told, or a statement's cut): already inside it.
   // Without a time, a row is placed at the start of its day.
-  const asOf = await balanceAsOf(s, cmd.userId, row.accountId);
-  if (!asOf || colombiaInstant(row.transactionDate, row.transactionTime ?? undefined) > asOf) await moveBalance(s, cmd.userId, row.accountId, signed(row));
+  const account = await s.getAccount(cmd.userId, row.accountId);
+  const foreign = account && row.currencyCode !== account.currencyCode ? row.currencyCode : null;
+  const asOf = await balanceAsOf(s, cmd.userId, row.accountId, foreign);
+  if (!asOf || colombiaInstant(row.transactionDate, row.transactionTime ?? undefined) > asOf) await moveBalance(s, cmd.userId, row.accountId, signed(row), row.currencyCode);
   await autoLinkPayment(s, cmd.userId, row, cmd.clientTs, opts);
 }
 
@@ -211,7 +217,13 @@ async function takeOver(s: StoragePort, cmd: CommandEnvelope, bank: TransactionR
     if (v) await s.setFieldVersion({ userId: cmd.userId, entity: "transaction", entityId: bank.id, field, clientTs: v.clientTs, commandId: v.commandId });
   }
   // Only the difference: the twin already moved the balance. Ignored, neither is in it.
-  if (!twin.isExcluded) await moveBalance(s, cmd.userId, bank.accountId, signed(bank) - signed(twin));
+  if (!twin.isExcluded) {
+    if (bank.currencyCode === twin.currencyCode) await moveBalance(s, cmd.userId, bank.accountId, signed(bank) - signed(twin), bank.currencyCode);
+    else {
+      await moveBalance(s, cmd.userId, twin.accountId, -signed(twin), twin.currencyCode);
+      await moveBalance(s, cmd.userId, bank.accountId, signed(bank), bank.currencyCode);
+    }
+  }
   await relinkPayment(s, cmd.userId, twin.id, bank.id, cmd.clientTs, opts);
 }
 

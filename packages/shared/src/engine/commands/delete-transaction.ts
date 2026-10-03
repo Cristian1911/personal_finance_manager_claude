@@ -42,7 +42,7 @@ export async function deleteTransaction(
     await unlinkPayment(s, cmd.userId, row.id, cmd.clientTs, opts);
     await s.deleteTransaction(cmd.userId, row.id);
     // An ignored movement's amount already left the balance when it was ignored.
-    if (!row.isExcluded) await moveBalance(s, cmd.userId, row.accountId, row.direction === "OUTFLOW" ? row.amount : -row.amount);
+    if (!row.isExcluded) await moveBalance(s, cmd.userId, row.accountId, row.direction === "OUTFLOW" ? row.amount : -row.amount, row.currencyCode);
     // A bank movement held because it might be this one: with this one gone, it counts.
     for (const held of await s.listHeldFor(cmd.userId, row.id)) await releaseHeld(s, cmd, held, opts);
   }

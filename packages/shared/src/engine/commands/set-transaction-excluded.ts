@@ -44,7 +44,7 @@ export async function setTransactionExcluded(
   // Like the web (toggleExclude): an ignored movement is out of its account's balance.
   if (tx.isExcluded !== p.excluded) {
     const effect = tx.direction === "OUTFLOW" ? -tx.amount : tx.amount;
-    await moveBalance(s, cmd.userId, tx.accountId, p.excluded ? -effect : effect);
+    await moveBalance(s, cmd.userId, tx.accountId, p.excluded ? -effect : effect, tx.currencyCode);
     // An ignored movement pays nothing; counted again, it may pay its bill again.
     if (p.excluded) await unlinkPayment(s, cmd.userId, tx.id, cmd.clientTs, opts);
     else await autoLinkPayment(s, cmd.userId, { ...tx, isExcluded: false }, cmd.clientTs, opts);

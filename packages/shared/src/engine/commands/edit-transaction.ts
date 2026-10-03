@@ -89,8 +89,8 @@ export async function editTransaction(
   }
   const moved = next.amount !== tx.amount || next.transactionDate !== tx.transactionDate || next.accountId !== tx.accountId;
   if (!tx.isExcluded && moved) { // an ignored movement isn't in any balance
-    await moveBalance(s, cmd.userId, tx.accountId, -sign * tx.amount);
-    await moveBalance(s, cmd.userId, next.accountId, sign * next.amount);
+    await moveBalance(s, cmd.userId, tx.accountId, -sign * tx.amount, tx.currencyCode);
+    await moveBalance(s, cmd.userId, next.accountId, sign * next.amount, tx.currencyCode);
     // New amount, date or account: check again which bill it pays.
     await unlinkPayment(s, cmd.userId, tx.id, cmd.clientTs, opts);
     await autoLinkPayment(s, cmd.userId, { ...tx, ...next }, cmd.clientTs, opts);

@@ -6,23 +6,31 @@ import type { StoragePort } from "../types";
  * − out). A card or loan stores what you owe, so the effect is reversed
  * there (v1 applyAccountBalanceDelta): a purchase raises the debt.
  */
-export async function moveBalance(s: StoragePort, userId: string, accountId: string, moneyDelta: number): Promise<void> {
+export async function moveBalance(s: StoragePort, userId: string, accountId: string, moneyDelta: number, currency?: string): Promise<void> {
   const account = await s.getAccount(userId, accountId);
   if (!account) return;
-  await s.adjustAccountBalance(userId, accountId, isDebtAccountType(account.accountType) ? -moneyDelta : moneyDelta);
+  const delta = isDebtAccountType(account.accountType) ? -moneyDelta : moneyDelta;
+  // A movement in another currency (a card's USD section, S10-14) moves that currency's balance, never the pesos.
+  if (currency && currency !== account.currencyCode) await s.adjustCurrencyBalance(userId, accountId, currency, delta);
+  else await s.adjustAccountBalance(userId, accountId, delta);
 }
+
+/** The version field that holds when a balance is true as of; per currency for an account's other currencies. */
+const asOfField = (currency?: string | null) => (currency ? `balance_as_of:${currency}` : "balance_as_of");
 
 /**
  * The instant an account's balance is true as of: when you told it (Agregar) or
  * the end of a statement's cut day. Bank movements before it are already inside
  * it. Kept as the version of the balance (field_versions, synced) — no schema change.
  */
-export async function balanceAsOf(s: StoragePort, userId: string, accountId: string): Promise<string | null> {
-  return (await s.getFieldVersion(userId, "account", accountId, "balance_as_of"))?.clientTs ?? null;
+export async function balanceAsOf(s: StoragePort, userId: string, accountId: string, foreignCurrency?: string | null): Promise<string | null> {
+  return (await s.getFieldVersion(userId, "account", accountId, asOfField(foreignCurrency)))?.clientTs ?? null;
 }
 
-export async function setBalanceAsOf(s: StoragePort, userId: string, accountId: string, instant: string, commandId: string): Promise<void> {
-  await s.setFieldVersion({ userId, entity: "account", entityId: accountId, field: "balance_as_of", clientTs: instant, commandId });
+export async function setBalanceAsOf(
+  s: StoragePort, userId: string, accountId: string, instant: string, commandId: string, foreignCurrency?: string | null,
+): Promise<void> {
+  await s.setFieldVersion({ userId, entity: "account", entityId: accountId, field: asOfField(foreignCurrency), clientTs: instant, commandId });
 }
 
 /** A Colombian wall time as a UTC instant ("2026-09-30", "23:59:59.999" → 2026-10-01T04:59:59.999Z). */
