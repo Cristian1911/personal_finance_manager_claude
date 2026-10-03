@@ -282,3 +282,65 @@ export function statementResult(w: StatementWork, results: CommandResult[]): Sta
   });
   return r;
 }
+
+/** An imported statement of an account (its period), as readStatementHistory gives it. */
+export interface ImportedPeriod { periodFrom: string | null; periodTo: string }
+
+export interface StatementWarning {
+  kind: "old" | "already" | "overlap" | "newer";
+  title: string;
+  detail: string;
+}
+
+/** A statement whose cut is this many days back is "old" (one monthly cycle plus a margin). */
+export const OLD_STATEMENT_DAYS = 45;
+/** Two cuts this close are the same statement (banks move the cut a little). */
+const SAME_CUT_DAYS = 3;
+const MONTHS_SHORT = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const dm = (iso: string) => `${Number(iso.slice(8, 10))} ${MONTHS_SHORT[Number(iso.slice(5, 7)) - 1]}`;
+const dmy = (iso: string) => `${dm(iso)} ${iso.slice(0, 4)}`;
+const days = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 86_400_000);
+
+/**
+ * What the review must make obvious before importing: a statement from long
+ * ago (you may have downloaded the wrong month), one this account already has,
+ * one that overlaps what's there, or one older than the newest already in.
+ * `imported` is the target account's history (empty when it's a new account).
+ * Pure; most important first.
+ */
+export function statementWarnings(
+  period: { from: string | null; to: string | null },
+  today: string,
+  imported: ImportedPeriod[],
+): StatementWarning[] {
+  const to = period.to;
+  if (!to || !/^\d{4}-\d{2}-\d{2}$/.test(to)) return [];
+  const out: StatementWarning[] = [];
+  const range = period.from ? `${dmy(period.from)} – ${dmy(to)}` : `hasta el ${dmy(to)}`;
+
+  const same = imported.find((h) => Math.abs(days(h.periodTo, to)) <= SAME_CUT_DAYS);
+  const overlap = !same && period.from
+    ? imported.find((h) => (h.periodFrom ?? h.periodTo) <= to && h.periodTo >= period.from!)
+    : undefined;
+  if (same) {
+    out.push({ kind: "already", title: "Ya importaste este extracto", detail: `Esta cuenta ya tiene el de ${range}. Importarlo otra vez no duplica movimientos: los que ya están se saltan.` });
+  } else if (overlap) {
+    out.push({ kind: "overlap", title: "Ya tienes parte de este periodo", detail: `Esta cuenta ya tiene el extracto hasta el ${dmy(overlap.periodTo)}. Los movimientos que ya están se saltan.` });
+  }
+
+  const age = days(to, today);
+  if (age > OLD_STATEMENT_DAYS) {
+    const months = Math.max(1, Math.round(age / 30));
+    out.unshift({
+      kind: "old",
+      title: `Este extracto es de hace ${months} ${months === 1 ? "mes" : "meses"}`,
+      detail: `Cubre ${range}. Si buscabas el de este mes, descárgalo de nuevo en tu banco. Si es a propósito, sus movimientos van a tu historial.`,
+    });
+  }
+
+  const newest = imported.reduce<string | null>((m, h) => (!m || h.periodTo > m ? h.periodTo : m), null);
+  if (!same && newest && days(to, newest) > SAME_CUT_DAYS) {
+    out.push({ kind: "newer", title: "Ya tienes uno más reciente", detail: `El último que importaste de esta cuenta llega hasta el ${dmy(newest)}.` });
+  }
+  return out;
+}

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { TriangleAlert } from "lucide-react-native";
 import {
   extractosView, formatPesos, inicioSince, readStatementHistory, planStatements, readInicioData, statementCommands, statementResult, statementReview,
-  type StatementAccount, type StatementChoice, type StatementInput, type StatementPlan, type StatementResult,
+  statementWarnings, type ImportedPeriod, type StatementAccount, type StatementChoice, type StatementInput, type StatementPlan, type StatementResult,
 } from "@zeta/shared";
 import { toColombiaDateString } from "../../lib/utils/date";
 import { getV2Database } from "../../lib/v2/engine/database";
@@ -17,7 +18,7 @@ import { Sheet } from "./Sheet";
 type Step =
   | { kind: "reading"; importing?: boolean }
   | { kind: "password"; wrong: boolean }
-  | { kind: "review"; plans: StatementPlan[] }
+  | { kind: "review"; plans: StatementPlan[]; history: Record<string, ImportedPeriod[]> }
   | { kind: "results"; results: StatementResult[]; outcomes: Record<number, { pago: string | null; deuda: string | null }> }
   | { kind: "error"; message: string };
 
@@ -82,11 +83,17 @@ export function ExtractoSheet({ file, userId, onClose }: {
     if (answer.kind === "password") return setStep({ kind: "password", wrong: !!(pw ?? password) });
     if (answer.kind === "error") return setStep({ kind: "error", message: answer.message });
     statements.current = answer.statements;
-    const plans = planStatements(answer.statements, await phoneAccounts(userId));
+    const accounts = await phoneAccounts(userId);
+    const plans = planStatements(answer.statements, accounts);
+    // What each account already has, to say "ya importaste este extracto" before importing.
+    const { driver } = await getV2Database();
+    const history: Record<string, ImportedPeriod[]> = {};
+    for (const a of accounts) history[a.id] = await readStatementHistory(driver, userId, a.id).catch(() => []);
+    if (!live.current) return;
     // Always shown before importing: what the statement says, and where it goes. An account Zeta didn't
     // recognize has no default: you choose (guessing could put a statement on the wrong card).
     setPicks(Object.fromEntries(plans.map((p) => [p.index, p.accountId ?? (p.suggested ? "" : "skip")])));
-    setStep({ kind: "review", plans });
+    setStep({ kind: "review", plans, history });
   };
 
   useEffect(() => {
@@ -108,6 +115,13 @@ export function ExtractoSheet({ file, userId, onClose }: {
     <Text style={{ fontSize: 15, lineHeight: 22, textAlign: center ? "center" : "left", color: muted ? t.colors.muted : t.colors.ink, fontFamily: t.fonts.uiMedium }}>{s}</Text>
   );
   const close = () => onClose(step.kind === "results");
+  // Any statement about to be imported carries a warning: the button says so too.
+  const reviewWarned = (st: { plans: StatementPlan[]; history: Record<string, ImportedPeriod[]> }) => st.plans.some((p) => {
+    if (!p.suggested || picks[p.index] === "skip") return false;
+    const target = p.accountId ?? (picks[p.index] && picks[p.index] !== "create" ? picks[p.index] : null);
+    const s0 = statements.current[p.index];
+    return statementWarnings({ from: s0.period_from, to: s0.period_to }, toColombiaDateString(), target ? st.history[target] ?? [] : []).length > 0;
+  });
   return (
     <Sheet open={!!file} onClose={close} style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
       <View style={[styles.handle, { backgroundColor: t.colors.line }]} />
@@ -147,6 +161,11 @@ export function ExtractoSheet({ file, userId, onClose }: {
               const r = statementReview(st);
               const card = p.kind === "credit_card" || p.kind === "loan";
               const unknown = !!p.suggested && !p.accountId;
+              // The account it would go to: recognized, or the one picked ("create" is new: nothing there yet).
+              const target = p.accountId ?? (picks[p.index] && picks[p.index] !== "create" && picks[p.index] !== "skip" ? picks[p.index] : null);
+              const warnings = p.suggested && picks[p.index] !== "skip"
+                ? statementWarnings(r.periodo, toColombiaDateString(), target ? step.history[target] ?? [] : [])
+                : [];
               const fact = (label: string, value: string, strong = false) => (
                 <View style={styles.fact}>
                   <Text style={{ fontSize: 11, letterSpacing: 0.5, color: t.colors.muted, fontFamily: t.fonts.mono }}>{label}</Text>
@@ -154,7 +173,16 @@ export function ExtractoSheet({ file, userId, onClose }: {
                 </View>
               );
               return (
-                <View key={p.index} style={[styles.card, { borderColor: t.colors.line }]}>
+                <View key={p.index} style={[styles.card, { borderColor: warnings.length ? t.colors.warn.solid : t.colors.line, borderWidth: warnings.length ? 2 : 1 }]}>
+                  {warnings.map((w) => (
+                    <View key={w.kind} style={[styles.warning, { backgroundColor: t.colors.warn.tint }]} accessibilityRole="alert">
+                      <View style={styles.warningHead}>
+                        <TriangleAlert size={18} color={t.colors.warn.text} strokeWidth={2.4} />
+                        <Text style={{ flex: 1, fontSize: 16, color: t.colors.warn.text, fontFamily: t.fonts.uiSemibold }}>{w.title}</Text>
+                      </View>
+                      <Text style={{ fontSize: 14, lineHeight: 20, color: t.colors.warn.text, fontFamily: t.fonts.uiMedium }}>{w.detail}</Text>
+                    </View>
+                  ))}
                   <Text style={{ fontSize: 15, color: t.colors.ink, fontFamily: t.fonts.uiSemibold }}>
                     {KIND[p.kind]} {cap(p.bank)}{p.last4 ? ` ••${p.last4}` : ""}{p.currency !== "COP" ? ` · ${p.currency}` : ""}
                   </Text>
@@ -190,7 +218,7 @@ export function ExtractoSheet({ file, userId, onClose }: {
             })}
           </ScrollView>
           {step.plans.some((p) => p.suggested && !p.accountId && !picks[p.index]) && text("Elige a dónde va cada extracto para importar.", true, true)}
-          <Button label="Importar"
+          <Button label={reviewWarned(step) ? "Importar de todas formas" : "Importar"}
             disabled={step.plans.some((p) => p.suggested && !p.accountId && !picks[p.index]) || step.plans.every((p) => !p.suggested || picks[p.index] === "skip")}
             onPress={() => void importWith(step.plans)} />
         </>
@@ -237,6 +265,8 @@ export function ExtractoSheet({ file, userId, onClose }: {
 }
 
 const styles = StyleSheet.create({
+  warning: { borderRadius: 12, padding: 12, gap: 6 },
+  warningHead: { flexDirection: "row", alignItems: "center", gap: 8 },
   sheet: { maxHeight: "90%", paddingTop: 8, paddingHorizontal: 20, gap: 12 },
   handle: { width: 38, height: 5, borderRadius: 3, alignSelf: "center" },
   title: { fontSize: 19, textAlign: "center" },
