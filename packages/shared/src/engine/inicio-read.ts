@@ -1,5 +1,5 @@
 import type { InicioAccount, StoredTransaction } from "./disponible";
-import { createSqlStorage } from "./sql-storage";
+import { createSqlStorage, parseCurrencyBalances } from "./sql-storage";
 import { toDialect, toIso, toNumber } from "./sql";
 import type { CycleSettings, OccurrenceRow, SqlDriver } from "./types";
 
@@ -68,7 +68,8 @@ export async function readInicioData(driver: SqlDriver, userId: string, since: s
   );
 
   const accountRows = await q<Record<string, unknown>>(
-    `SELECT a.id, a.name, a.account_type, a.institution_name, a.mask, a.current_balance, a.cutoff_day, a.payment_day, a.monthly_payment, s.counts_in_disponible
+    `SELECT a.id, a.name, a.account_type, a.institution_name, a.mask, a.current_balance, a.cutoff_day, a.payment_day, a.monthly_payment,
+            a.currency_balances, s.counts_in_disponible
        FROM accounts a
        LEFT JOIN account_settings s ON s.user_id = a.user_id AND s.account_id = a.id
       WHERE a.user_id = ? AND a.is_active = ?
@@ -78,7 +79,7 @@ export async function readInicioData(driver: SqlDriver, userId: string, since: s
 
   // Dates as text on Postgres: a JS Date would shift the day with the time zone.
   const txRows = await q<Record<string, unknown>>(
-    `SELECT id, account_id, amount, currency_code, direction,
+    `SELECT id, account_id, amount, currency_code, amount_in_base_currency, direction,
             ${pg ? "transaction_date::text" : "transaction_date"} AS transaction_date,
             capture_method, created_at, clean_description, notes, is_excluded, flow_class, transfer_group_id, category_id, destinatario_id,
             reconciled_into_transaction_id, status, ${pg ? "transaction_time::text" : "transaction_time"} AS transaction_time
@@ -137,6 +138,7 @@ export async function readInicioData(driver: SqlDriver, userId: string, since: s
       paymentDay: r.payment_day == null ? null : toNumber(r.payment_day),
       // SQLite stores booleans as 0/1.
       countsInDisponible: r.counts_in_disponible == null ? null : r.counts_in_disponible === true || r.counts_in_disponible === 1,
+      usdOwed: parseCurrencyBalances(r.currency_balances)?.USD?.current_balance ?? null,
     })),
     transactions: txRows.map((r) => ({
       id: String(r.id),
@@ -145,6 +147,7 @@ export async function readInicioData(driver: SqlDriver, userId: string, since: s
       amount: toNumber(r.amount),
       direction: r.direction as "INFLOW" | "OUTFLOW",
       currencyCode: String(r.currency_code),
+      amountInBaseCurrency: r.amount_in_base_currency == null ? null : toNumber(r.amount_in_base_currency),
       captureMethod: (r.capture_method as string | null) ?? null,
       createdAt: r.created_at == null ? null : toIso(r.created_at),
       description: (r.clean_description as string | null) ?? null,

@@ -1,7 +1,7 @@
 import { isDebtAccountType } from "../../utils/account-balance";
 import { defaultCountsInDisponible } from "../commands/set-account-counts-in-disponible";
 import type { InicioAccount } from "./inicio";
-import { formatPesos } from "./verdict";
+import { formatPesos, formatUsd } from "./verdict";
 
 export interface CuentaRow {
   id: string;
@@ -10,6 +10,8 @@ export interface CuentaRow {
   sub: string;
   /** What you have; on a card or loan, what you owe. */
   amount: string;
+  /** A card's USD debt, apart from the pesos ("+ US$1.234") (S10-14). */
+  usd?: string;
   counts: boolean;
   /** Cards and loans never count (S3-0): no switch. */
   canCount: boolean;
@@ -24,6 +26,8 @@ export interface CuentasView {
   apart: string | null;
   /** What you owe on cards and loans (null when none). */
   owed: string | null;
+  /** Cards' USD debt, said apart ("y US$1.234"), null when none. */
+  owedUsd: string | null;
   cuentas: CuentaRow[];
   deudas: CuentaRow[];
 }
@@ -49,6 +53,7 @@ function row(a: InicioAccount): CuentaRow {
     title: a.name?.trim() || kind,
     sub: parts.join(" · "),
     amount: formatPesos(a.currentBalance),
+    ...(a.usdOwed ? { usd: `+ ${formatUsd(a.usdOwed)}` } : {}),
     counts,
     canCount: !isDebt,
     isDebt,
@@ -73,6 +78,10 @@ export function cuentasView(i: { accounts: InicioAccount[] }): CuentasView {
     counted: countedIds.size ? formatPesos(sum(countedIds)) : null,
     apart: apartIds.size ? formatPesos(sum(apartIds)) : null,
     owed: debtIds.size ? formatPesos(sum(debtIds)) : null,
+    owedUsd: (() => {
+      const usd = i.accounts.reduce((s, a) => s + (a.usdOwed ?? 0), 0);
+      return usd > 0 ? formatUsd(usd) : null;
+    })(),
     cuentas,
     deudas,
   };

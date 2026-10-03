@@ -103,13 +103,13 @@ export default function PagosScreen() {
             key={r.id}
             onPress={() => setOpen(r)}
             accessibilityRole="button"
-            accessibilityLabel={`${r.title}, ${r.amount}, ${r.sub}`}
+            accessibilityLabel={`${r.title}, ${r.amount}${r.note ? `, ${r.note}` : ""}, ${r.sub}`}
             style={(pressed) => [styles.row, i > 0 && { borderTopWidth: 1, borderTopColor: t.colors.line }, pressed && { opacity: 0.7 }]}
           >
             <View style={[styles.icon, { backgroundColor: t.colors.sunk }]}><Icon size={18} color={t.colors.ink} strokeWidth={2} /></View>
             <View style={styles.rowBody}>
               <Text numberOfLines={1} style={{ fontSize: 15, color: muted ? t.colors.muted : t.colors.ink, fontFamily: t.fonts.uiSemibold }}>{r.title}</Text>
-              <Text style={{ fontSize: 12.5, color: subColor, fontFamily: t.fonts.uiMedium }}>{r.sub}</Text>
+              <Text style={{ fontSize: 12.5, color: subColor, fontFamily: t.fonts.uiMedium }}>{r.note ? `${r.sub} · ${r.note}` : r.sub}</Text>
             </View>
             <Text style={[styles.amount, {
               color: r.status === "pending" && !muted ? t.colors.ink : t.colors.muted, fontFamily: t.fonts.numberSemibold,
@@ -223,7 +223,7 @@ function PagoSheet({ row, onClose, onClosed, onPay, onStatus, onArchive }: {
       {r && (
         <>
           <Text accessibilityRole="header" style={[styles.sheetTitle, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]}>{r.title}</Text>
-          <Text style={{ fontSize: 15, textAlign: "center", color: t.colors.muted, fontFamily: t.fonts.uiMedium }}>{r.amount} · {r.sub}</Text>
+          <Text style={{ fontSize: 15, textAlign: "center", color: t.colors.muted, fontFamily: t.fonts.uiMedium }}>{r.amount} · {r.sub}{r.note ? ` · ${r.note}` : ""}</Text>
           {r.item.estimated && r.status === "pending" && (
             <Text style={{ fontSize: 13, lineHeight: 19, textAlign: "center", color: t.colors.muted, fontFamily: t.fonts.ui }}>
               Es lo que compraste con la tarjeta en ese corte. Si el corte no ha llegado, puede subir.

@@ -13,7 +13,7 @@ import {
 } from "@zeta/shared";
 import { toColombiaDateString } from "../../utils/date";
 import { getV2Database } from "../engine/database";
-import { ONBOARDING_KEYS, parseLocal, readLocal, remember } from "../local-state";
+import { ONBOARDING_KEYS, parseLocal, readLocal, readUsdRate, remember } from "../local-state";
 
 const MEMO_KEY = "inicio.verdict_memo";
 /** The day a widget last opened by itself (13 §Attention: once per day). */
@@ -108,7 +108,8 @@ export async function loadInicio(userId: string, now: Date = new Date()): Promis
   const snoozed = (local.get(ONBOARDING_KEYS.captureSnoozedUntil) ?? "") > today;
   const offerCapture = !snoozed && !captureActive(data.transactions, today);
 
-  const state = buildInicio({ today, now: now.toISOString(), memo, ...data });
+  const usdRate = (await readUsdRate(userId))?.rate ?? null;
+  const state = buildInicio({ today, now: now.toISOString(), memo, ...data, usdRate });
   const layout = parseLayout(local.get(LAYOUT_KEY));
   if (state.status !== "ready") return { state, autoOpen: null, layout, setup, guideSeen, tourSeen, pendingBills, setupOpen, offerCapture };
 

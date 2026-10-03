@@ -28,6 +28,8 @@ export interface InicioAccount {
   paymentDay?: number | null;
   currentBalance: number;
   countsInDisponible: boolean | null;
+  /** A card's USD debt (its statement's USD section, S10-14); null when it has none. */
+  usdOwed?: number | null;
 }
 
 /**

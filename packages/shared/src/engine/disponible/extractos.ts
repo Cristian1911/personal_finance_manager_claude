@@ -1,6 +1,6 @@
 import { toDialect } from "../sql";
 import type { SqlDriver } from "../types";
-import { formatPesos } from "./verdict";
+import { formatPesos, formatUsd } from "./verdict";
 import { shortDate, signedPesos } from "./view";
 
 /** One statement of a card or loan, as kept (statement_snapshots). */
@@ -22,14 +22,14 @@ export interface StatementHistoryRow {
 const num = (v: unknown) => (v == null ? null : Number(v));
 
 /** All of an account's statements (COP), oldest first. */
-export async function readStatementHistory(driver: SqlDriver, userId: string, accountId: string): Promise<StatementHistoryRow[]> {
+export async function readStatementHistory(driver: SqlDriver, userId: string, accountId: string, currency = "COP"): Promise<StatementHistoryRow[]> {
   const pg = driver.dialect === "postgres";
   const d = (c: string) => (pg ? `${c}::text` : c);
   const rows = await driver.query<Record<string, unknown>>(toDialect(
     `SELECT id, ${d("period_from")} AS period_from, ${d("period_to")} AS period_to, total_payment_due, minimum_payment,
             ${d("payment_due_date")} AS payment_due_date, interest_rate, interest_charged, purchases_and_charges, previous_balance
-       FROM statement_snapshots WHERE user_id = ? AND account_id = ? AND currency_code = 'COP' AND period_to IS NOT NULL
-      ORDER BY period_to`, driver.dialect), [userId, accountId]);
+       FROM statement_snapshots WHERE user_id = ? AND account_id = ? AND currency_code = ? AND period_to IS NOT NULL
+      ORDER BY period_to`, driver.dialect), [userId, accountId, currency]);
   return rows.map((r) => ({
     id: String(r.id), periodFrom: (r.period_from as string | null) ?? null, periodTo: String(r.period_to),
     totalDue: num(r.total_payment_due), minimum: num(r.minimum_payment), dueDate: (r.payment_due_date as string | null) ?? null,
@@ -59,24 +59,26 @@ export interface ExtractoRow {
  * A card's statements month to month (Cuenta › Extractos), and for one just
  * imported: did it make a payment, and how did the debt move.
  */
-export function extractosView(history: StatementHistoryRow[], today: string) {
+export function extractosView(history: StatementHistoryRow[], today: string, currency = "COP") {
+  // A card's USD section (S10-14) reads in dollars.
+  const money = (n: number) => (currency === "USD" ? formatUsd(n) : formatPesos(Math.round(n)));
   const sorted = [...history].sort((a, b) => a.periodTo.localeCompare(b.periodTo));
   const prevOf = (i: number) => (i > 0 ? sorted[i - 1] : undefined);
   const diff = (i: number) => {
     const cur = sorted[i].totalDue;
     const prev = prevOf(i)?.totalDue;
-    return cur != null && prev != null ? Math.round(cur - prev) : null;
+    return cur != null && prev != null ? Math.round((cur - prev) * 100) / 100 : null;
   };
   const rows: ExtractoRow[] = sorted.map((s, i) => {
     const d = diff(i);
     return {
       id: s.id,
       mes: `${cap(monthOf(s.periodTo))} ${s.periodTo.slice(0, 4)}`,
-      debes: s.totalDue != null ? formatPesos(Math.round(s.totalDue)) : null,
-      cambio: d != null && d !== 0 ? `${d > 0 ? "+" : ""}${signedPesos(d)} frente a ${monthOf(prevOf(i)!.periodTo)}` : d === 0 ? `Igual que en ${monthOf(prevOf(i)!.periodTo)}` : null,
+      debes: s.totalDue != null ? money(s.totalDue) : null,
+      cambio: d != null && d !== 0 ? `${d > 0 ? "+" : ""}${currency === "USD" ? `${d < 0 ? "−" : ""}${formatUsd(Math.abs(d))}` : signedPesos(d)} frente a ${monthOf(prevOf(i)!.periodTo)}` : d === 0 ? `Igual que en ${monthOf(prevOf(i)!.periodTo)}` : null,
       cambioTone: (d == null || d === 0 ? "neutral" : d > 0 ? "bad" : "ok") as ExtractoRow["cambioTone"],
-      intereses: s.interestCharged != null ? formatPesos(Math.round(s.interestCharged)) : null,
-      minimo: s.minimum != null ? formatPesos(Math.round(s.minimum)) : null,
+      intereses: s.interestCharged != null ? money(s.interestCharged) : null,
+      minimo: s.minimum != null ? money(s.minimum) : null,
       estado: s.dueDate ? `${s.dueDate >= today ? "Vence" : "Venció"} el ${shortDate(s.dueDate)}` : null,
     };
   }).reverse();

@@ -3,7 +3,7 @@ import { Alert, ScrollView, StyleSheet, Switch, Text, View } from "react-native"
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChevronLeft } from "lucide-react-native";
-import { extractosView, formatPesos, movimientosView, readStatementHistory, type AccountRow, type StatementHistoryRow } from "@zeta/shared";
+import { extractosView, formatPesos, formatUsd, movimientosView, readStatementHistory, type AccountRow, type StatementHistoryRow } from "@zeta/shared";
 import { getV2Database } from "../../lib/v2/engine/database";
 import { toColombiaDateString } from "../../lib/utils/date";
 import { runLocalCommand } from "../../lib/v2/engine/run-local";
@@ -35,6 +35,7 @@ export default function CuentaScreen() {
   const [cuentas, setCuentas] = useState<LoadedCuentas | null>(null);
   const [mov, setMov] = useState<Awaited<ReturnType<typeof loadMovimientos>>>(null);
   const [history, setHistory] = useState<StatementHistoryRow[]>([]);
+  const [usdHistory, setUsdHistory] = useState<StatementHistoryRow[]>([]);
   const [editing, setEditing] = useState(false);
   const [confirm, setConfirm] = useState<"count" | "archive" | null>(null);
 
@@ -42,11 +43,15 @@ export default function CuentaScreen() {
     if (!id) return;
     try {
       const { driver } = await getV2Database();
-      const [a, c, m, h] = await Promise.all([loadAccount(userId, id), loadCuentas(userId), loadMovimientos(userId), readStatementHistory(driver, userId, id)]);
+      const [a, c, m, h, hu] = await Promise.all([
+        loadAccount(userId, id), loadCuentas(userId), loadMovimientos(userId),
+        readStatementHistory(driver, userId, id), readStatementHistory(driver, userId, id, "USD"),
+      ]);
       setAccount(a);
       setCuentas(c);
       setMov(m);
       setHistory(h);
+      setUsdHistory(hu);
     } catch (e) {
       console.warn("[v2 cuenta] load failed", e);
       Alert.alert("No pudimos cargar la cuenta", "Intenta de nuevo.");
@@ -110,6 +115,7 @@ export default function CuentaScreen() {
     ) : <View style={{ flex: 1, backgroundColor: t.colors.bg }} />;
   }
   const debt = row.isDebt;
+  const usdOwed = account.currencyBalances?.USD?.current_balance ?? 0;
   const facts = [
     account.accountType === "CREDIT_CARD" && account.creditLimit != null && `Cupo ${formatPesos(account.creditLimit)} · te quedan ${formatPesos(Math.max(0, account.creditLimit - account.currentBalance))}`,
     account.cutoffDay != null && `Corte el ${account.cutoffDay}`,
@@ -130,6 +136,15 @@ export default function CuentaScreen() {
           {/* The kind and digits; the cut/pay days go in the facts line below. */}
           <Text style={{ fontSize: 13, color: t.colors.muted, fontFamily: t.fonts.ui }}>{facts ? row.sub.split(" · ")[0] : row.sub}</Text>
           {facts ? <Text style={{ fontSize: 13, color: t.colors.muted, fontFamily: t.fonts.ui, textAlign: "center" }}>{facts}</Text> : null}
+          {usdOwed ? (
+            // Its USD section (S10-14): debt in dollars, said in pesos at the dollar the phone has.
+            <View style={[styles.usd, { backgroundColor: t.colors.sunk }]}>
+              <Text style={{ fontSize: 15, color: t.colors.ink, fontFamily: t.fonts.numberSemibold, fontVariant: ["tabular-nums"] }}>y {formatUsd(usdOwed)}</Text>
+              <Text style={{ fontSize: 12.5, color: t.colors.muted, fontFamily: t.fonts.ui, textAlign: "center" }}>
+                {cuentas?.usdRate ? `≈ ${formatPesos(Math.round(usdOwed * cuentas.usdRate.rate))} al dólar de hoy (${formatPesos(Math.round(cuentas.usdRate.rate))})` : "Sin el dólar de hoy todavía: se actualiza al sincronizar."}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         {debt && (
@@ -177,11 +192,11 @@ export default function CuentaScreen() {
           />
         </View>
 
-        {history.length > 0 && (
-          // Extractos: what you owed at each cut and how it moved — month-to-month tracking of the debt.
-          <View style={[styles.card, { backgroundColor: t.colors.card }, t.shadow]}>
-            <Text style={[styles.section, { color: t.colors.muted, fontFamily: t.fonts.mono }]}>EXTRACTOS</Text>
-            {extractosView(history, toColombiaDateString()).rows.map((e, i) => (
+        {[{ h: history, cur: "COP", label: usdHistory.length ? "EXTRACTOS · PESOS" : "EXTRACTOS" }, { h: usdHistory, cur: "USD", label: "EXTRACTOS · DÓLARES" }].filter((x) => x.h.length > 0).map(({ h, cur, label }) => (
+          // Extractos: what you owed at each cut and how it moved — month-to-month tracking of the debt (pesos and USD apart).
+          <View key={cur} style={[styles.card, { backgroundColor: t.colors.card }, t.shadow]}>
+            <Text style={[styles.section, { color: t.colors.muted, fontFamily: t.fonts.mono }]}>{label}</Text>
+            {extractosView(h, toColombiaDateString(), cur).rows.map((e, i) => (
               <View key={e.id} accessible style={[styles.extracto, i > 0 && { borderTopWidth: 1, borderTopColor: t.colors.line }]}>
                 <View style={styles.extractoTop}>
                   <Text style={{ flex: 1, fontSize: 14.5, color: t.colors.ink, fontFamily: t.fonts.uiSemibold }}>{e.mes}</Text>
@@ -196,7 +211,7 @@ export default function CuentaScreen() {
               </View>
             ))}
           </View>
-        )}
+        ))}
 
         <Button label="Editar cuenta" variant="text" onPress={() => setEditing(true)} style={{ alignSelf: "center" }} />
         <Button label="Archivar cuenta" variant="text" onPress={() => setConfirm("archive")} style={{ alignSelf: "center" }} />
@@ -232,6 +247,7 @@ export default function CuentaScreen() {
 }
 
 const styles = StyleSheet.create({
+  usd: { alignSelf: "stretch", alignItems: "center", gap: 2, borderRadius: 12, paddingVertical: 8, paddingHorizontal: 10, marginTop: 6 },
   extracto: { paddingVertical: 10, gap: 2 },
   extractoTop: { flexDirection: "row", alignItems: "center", gap: 8 },
   page: { paddingHorizontal: 16, paddingBottom: 40, gap: 12 },

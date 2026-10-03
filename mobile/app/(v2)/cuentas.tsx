@@ -106,7 +106,7 @@ export default function CuentasScreen() {
           <Pressable
             onPress={() => router.push({ pathname: "/cuenta", params: { id: r.id } } as never)}
             accessibilityRole="button"
-            accessibilityLabel={`${r.title}, ${r.sub}, ${r.isDebt ? "debes" : "saldo"} ${r.amount}`}
+            accessibilityLabel={`${r.title}, ${r.sub}, ${r.isDebt ? "debes" : "saldo"} ${r.amount}${r.usd ? ` ${r.usd}` : ""}`}
             style={styles.rowMain}
           >
             <Avatar name={r.title} kind="none" />
@@ -114,7 +114,10 @@ export default function CuentasScreen() {
               <Text numberOfLines={1} style={{ fontSize: 15, color: t.colors.ink, fontFamily: t.fonts.uiSemibold }}>{r.title}</Text>
               <Text numberOfLines={1} style={{ fontSize: 12.5, color: t.colors.muted, fontFamily: t.fonts.ui }}>{r.sub}</Text>
             </View>
-            <Text style={[styles.amount, { color: t.colors.ink, fontFamily: t.fonts.numberSemibold }]}>{r.amount}</Text>
+            <View style={{ alignItems: "flex-end" }}>
+              <Text style={[styles.amount, { color: t.colors.ink, fontFamily: t.fonts.numberSemibold }]}>{r.amount}</Text>
+              {r.usd && <Text style={{ fontSize: 12.5, color: t.colors.muted, fontFamily: t.fonts.numberSemibold, fontVariant: ["tabular-nums"] }}>{r.usd}</Text>}
+            </View>
           </Pressable>
           {r.canCount ? (
             // iOS 27's switch reports a taller frame than it draws: a centered box keeps it on the row's midline.
@@ -151,7 +154,7 @@ export default function CuentasScreen() {
             <Text accessibilityLiveRegion="polite" style={{ fontSize: 28, color: t.colors.ink, fontFamily: t.fonts.numberSemibold, fontVariant: ["tabular-nums"] }}>{v.counted ?? "$0"}</Text>
             {(v.apart || v.owed) && (
               <Text style={{ fontSize: 13, color: t.colors.muted, fontFamily: t.fonts.ui }}>
-                {[v.apart && `Aparte ${v.apart}`, v.owed && `Debes ${v.owed}`].filter(Boolean).join(" · ")}
+                {[v.apart && `Aparte ${v.apart}`, v.owed && `Debes ${v.owed}${v.owedUsd ? ` y ${v.owedUsd}` : ""}`].filter(Boolean).join(" · ")}
               </Text>
             )}
           </View>

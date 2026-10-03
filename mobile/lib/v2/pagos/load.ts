@@ -1,6 +1,7 @@
 import { buildInicio, inicioSince, pagosView, readInicioData, type InicioAccount, type PagosView } from "@zeta/shared";
 import { toColombiaDateString } from "../../utils/date";
 import { getV2Database } from "../engine/database";
+import { readUsdRate } from "../local-state";
 
 export interface LoadedPagos {
   today: string;
@@ -18,7 +19,7 @@ export async function loadPagos(userId: string, now: Date = new Date()): Promise
   const { driver } = await getV2Database();
   const today = toColombiaDateString(now);
   const data = await readInicioData(driver, userId, inicioSince(today));
-  const state = buildInicio({ today, now: now.toISOString(), ...data });
+  const state = buildInicio({ today, now: now.toISOString(), ...data, usdRate: (await readUsdRate(userId))?.rate ?? null });
   if (state.status !== "ready") return null;
   const end = state.cycle.end;
   return {

@@ -7,7 +7,7 @@ import type { InicioAccount } from "./inicio";
 import type { CardStatement } from "../inicio-read";
 import { calendarDayDiff } from "../../utils/occurrence-matching";
 import { occurrencesToCycleInputs, type OccurrenceLink, type StoredOccurrence, type StoredTransaction } from "./movements";
-import { formatPesos } from "./verdict";
+import { formatPesos, formatUsd } from "./verdict";
 import { shortDate } from "./view";
 
 export interface BillItem {
@@ -206,6 +206,8 @@ export interface PagoRow {
   /** "Vence el 12 oct", "Vence hoy", "Venció el 5 oct", "Pagado", "Este mes no". */
   sub: string;
   amount: string;
+  /** "Incluye US$12,50" on a card bill with a USD part (S10-14). */
+  note?: string;
   status: BillItem["status"];
   tone: "neutral" | "warn" | "ok";
   item: BillItem;
@@ -231,7 +233,9 @@ export function pagosView(i: { today: string; bills: BillItem[] }): PagosView {
         : late ? `Venció el ${shortDate(b.dueDate)}` : `Vence el ${shortDate(b.dueDate)}`;
       return {
         id: b.id, kind: b.kind, title: b.title, sub,
-        amount: `${b.estimated && b.status === "pending" ? "≈ " : ""}${formatPesos(b.status === "pending" ? owed : b.amount)}`,
+        // Dollars inside: the pesos are today's rate + 3 %, so ≈ too.
+        amount: `${(b.estimated || b.usd) && b.status === "pending" ? "≈ " : ""}${formatPesos(b.status === "pending" ? owed : b.amount)}`,
+        ...(b.usd ? { note: `Incluye ${formatUsd(b.usd)}` } : {}),
         status: b.status, tone: late ? "warn" : b.status === "paid" ? "ok" : "neutral", item: b,
       };
     });
