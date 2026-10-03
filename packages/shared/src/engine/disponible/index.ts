@@ -125,6 +125,7 @@ export {
   CAPTURE_WINDOW_DAYS,
   REAL_AT,
   SETUP_WEIGHTS,
+  captureActive,
   hasSetupBasics,
   setupLevel,
   setupLevelLabel,

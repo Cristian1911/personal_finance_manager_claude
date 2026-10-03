@@ -47,6 +47,8 @@ export const ONBOARDING_KEYS = {
   noBills: "onboarding.no_bills",
   hoyGuideSeen: "guide.hoy_seen",
   setupOpen: "guide.setup_open",
+  /** "Ahora no" on the capture card: hidden until this date (YYYY-MM-DD). */
+  captureSnoozedUntil: "guide.capture_snoozed_until",
   dismissedPagos: "revisar.dismissed_pagos",
 } as const;
 

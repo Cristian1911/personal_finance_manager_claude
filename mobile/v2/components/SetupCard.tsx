@@ -102,7 +102,6 @@ const MISSING: Record<SetupTaskId, string> = {
   statement: "tus extractos",
   bills: "tus pagos fijos",
   cards: "tus tarjetas",
-  capture: "la captura automática",
 };
 
 /** "¿Qué tan real es tu número?": the levels and what's missing. */
@@ -116,7 +115,7 @@ export function PrecisionSheet({ setup, open, onClose }: { setup: SetupProgress;
       <Text accessibilityRole="header" style={{ fontSize: 18, color: t.colors.ink, fontFamily: t.fonts.uiSemibold }}>¿Qué tan real es tu número?</Text>
       <Text style={{ fontSize: 15, lineHeight: 21, color: t.colors.muted, fontFamily: t.fonts.ui }}>
         {setup.level === "real"
-          ? missing.length ? `Ya es real. Para afinarlo del todo: ${missing.join(", ")}.` : "Ya incluye tus pagos fijos, tus tarjetas y tus compras automáticas."
+          ? missing.length ? `Ya es real. Para afinarlo del todo: ${missing.join(", ")}.` : "Ya incluye tus extractos, tus pagos fijos y tus tarjetas."
           : `Zeta lo calcula con lo que sabe; por eso lleva ≈. Le falta: ${missing.join(", ")}.`}
       </Text>
       <View style={styles.levels}>

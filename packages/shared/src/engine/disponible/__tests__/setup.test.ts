@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { setupProgress, setupLevel, type SetupInput } from "../setup";
+import { captureActive, setupProgress, setupLevel, type SetupInput } from "../setup";
 import { firstPagoDate, pagosFijosSugeridos } from "../revisar";
 import type { StoredTransaction } from "../movements";
 import type { CycleSettings } from "../../types";
@@ -24,7 +24,7 @@ describe("setupProgress (S10-4: how real the Disponible is)", () => {
     const p = setupProgress(base);
     expect(p.percent).toBe(20);
     expect(p.level).toBe("borrador");
-    expect(p.tasks.filter((t) => !t.done).map((t) => t.id)).toEqual(["statement", "bills", "cards", "capture"]);
+    expect(p.tasks.filter((t) => !t.done).map((t) => t.id)).toEqual(["statement", "bills", "cards"]);
   });
 
   it("no settings is 0%; irregular income needs no amount", () => {
@@ -39,7 +39,6 @@ describe("setupProgress (S10-4: how real the Disponible is)", () => {
       ...base, hasStatement: true,
       templates: [{ isActive: true, direction: "OUTFLOW" }],
       accounts: [{ accountType: "CREDIT_CARD" }],
-      transactions: [{ date: "2026-09-25", captureMethod: "EMAIL_IMPORT" }],
     });
     expect(all.percent).toBe(100);
     expect(all.level).toBe("real");
@@ -54,14 +53,15 @@ describe("setupProgress (S10-4: how real the Disponible is)", () => {
   });
 
   it("'No tengo' closes cards and bills; archived or income templates don't count", () => {
-    expect(pct({ noCards: true, noBills: true })).toBe(55);
+    expect(pct({ noCards: true, noBills: true })).toBe(60);
     expect(pct({ templates: [{ isActive: false }, { isActive: true, direction: "INFLOW" }] })).toBe(20);
   });
 
-  it("automatic capture counts only inside the 14-day window and not for manual or PDF", () => {
-    expect(pct({ transactions: [{ date: "2026-09-10", captureMethod: "EMAIL_IMPORT" }] })).toBe(20);
-    expect(pct({ transactions: [{ date: "2026-10-01", captureMethod: "MANUAL_FORM" }, { date: "2026-10-01", captureMethod: "PDF_IMPORT" }, { date: "2026-10-01", captureMethod: "EMAIL_PDF_IMPORT" }] })).toBe(20);
-    expect(pct({ transactions: [{ date: "2026-10-01", captureMethod: "NOTIFICATION" }] })).toBe(30);
+  it("automatic capture is its own guide: active only inside 14 days, not for manual or PDF", () => {
+    expect(captureActive([{ date: "2026-09-10", captureMethod: "EMAIL_IMPORT" }], "2026-10-03")).toBe(false);
+    expect(captureActive([{ date: "2026-10-01", captureMethod: "MANUAL_FORM" }, { date: "2026-10-01", captureMethod: "PDF_IMPORT" }, { date: "2026-10-01", captureMethod: "EMAIL_PDF_IMPORT" }], "2026-10-03")).toBe(false);
+    expect(captureActive([{ date: "2026-10-01", captureMethod: "NOTIFICATION" }], "2026-10-03")).toBe(true);
+    expect(pct({ transactions: [{ date: "2026-10-01", captureMethod: "NOTIFICATION" }] })).toBe(20);
   });
 
   it("levels: <40 Borrador, 40–79 Aproximado, ≥80 Real", () => {

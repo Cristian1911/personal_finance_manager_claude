@@ -7,7 +7,7 @@ import type { CycleSettings } from "../types";
  * its own "No tengo" answers and the fixed payments left without an amount.
  */
 
-export type SetupTaskId = "basics" | "statement" | "bills" | "cards" | "capture";
+export type SetupTaskId = "basics" | "statement" | "bills" | "cards";
 export type SetupLevel = "borrador" | "aproximado" | "real";
 
 export interface SetupTask {
@@ -48,7 +48,12 @@ export interface SetupInput {
   today: IsoDate;
 }
 
-export const SETUP_WEIGHTS: Record<SetupTaskId, number> = { basics: 20, statement: 35, bills: 20, cards: 15, capture: 10 };
+/**
+ * Automatic capture is not a setup task (owner, 2026-10-03): it's the app's
+ * best feature and the hardest to set up, so it has its own guide on Hoy
+ * (captureActive) instead of a checklist line, and doesn't weigh on precision.
+ */
+export const SETUP_WEIGHTS: Record<SetupTaskId, number> = { basics: 20, statement: 40, bills: 20, cards: 20 };
 /** Below it the number is a Borrador; from REAL_AT it is Real. */
 export const APROXIMADO_AT = 40;
 export const REAL_AT = 80;
@@ -75,8 +80,6 @@ export function hasSetupBasics(settings: CycleSettings | null): boolean {
 export function setupProgress(input: SetupInput): SetupProgress {
   const activeBills = input.templates.filter((t) => t.isActive && t.direction !== "INFLOW").length;
   const pending = input.pendingBills.filter((n) => n.trim());
-  const since = addDays(input.today, -CAPTURE_WINDOW_DAYS);
-  const captured = input.transactions.some((t) => t.date >= since && AUTOMATIC.has(t.captureMethod ?? ""));
 
   const billsDone = pending.length === 0 && (activeBills > 0 || input.noBills);
   const cardsDone = input.noCards || input.accounts.some((a) => a.accountType === "CREDIT_CARD");
@@ -101,13 +104,15 @@ export function setupProgress(input: SetupInput): SetupProgress {
       id: "cards", weight: SETUP_WEIGHTS.cards, done: cardsDone, canDecline: true, declineLabel: "No tengo",
       title: "Agrega tus tarjetas", detail: "Su factura cuenta por el pago mínimo",
     },
-    {
-      id: "capture", weight: SETUP_WEIGHTS.capture, done: captured, canDecline: false, declineLabel: "",
-      title: "Activa la captura automática", detail: "Reenvía los correos de tu banco y tus compras entran solas",
-    },
   ];
   const percent = Math.min(100, tasks.reduce((s, t) => s + (t.done ? t.weight : 0), 0));
   return { percent, level: setupLevel(percent), tasks };
+}
+
+/** Something arrived on its own (bank email, notification) in the last two weeks. */
+export function captureActive(transactions: { date: IsoDate; captureMethod?: string | null }[], today: IsoDate): boolean {
+  const since = addDays(today, -CAPTURE_WINDOW_DAYS);
+  return transactions.some((t) => t.date >= since && AUTOMATIC.has(t.captureMethod ?? ""));
 }
 
 function listNames(names: string[]): string {

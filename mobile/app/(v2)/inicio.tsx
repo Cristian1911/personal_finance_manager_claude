@@ -12,7 +12,8 @@ import {
   type DetailPartKey, type InicioLayout, type InicioState, type InicioWidgetKey, type CommandType, type SetupProgress, type SetupTaskId, type WidgetActionId,
 } from "@zeta/shared";
 import { runLocalCommand } from "../../lib/v2/engine/run-local";
-import { declineSetupTask, loadInicio, markHoyGuideSeen, rememberSetupOpen, saveInicioLayout } from "../../lib/v2/inicio/load";
+import { declineSetupTask, loadInicio, markHoyGuideSeen, rememberSetupOpen, saveInicioLayout, snoozeCapture } from "../../lib/v2/inicio/load";
+import { CaptureCard } from "../../v2/components/CaptureCard";
 import { ONBOARDING_KEYS, rememberJson } from "../../lib/v2/local-state";
 import { useV2UserId } from "../../lib/v2/user";
 import { useAuth } from "../../lib/auth";
@@ -55,7 +56,6 @@ const SETUP_ROUTES: Record<SetupTaskId, string> = {
   statement: "/cuentas?add=extracto",
   bills: "/pagos?add=1",
   cards: "/cuentas?add=tarjeta",
-  capture: "/correos",
 };
 
 /**
@@ -85,6 +85,7 @@ export default function InicioScreen() {
   const [precisionOpen, setPrecisionOpen] = useState(false);
   /** "Completa tus datos" opened (collapsed by default, remembered). */
   const [setupOpen, setSetupOpen] = useState(false);
+  const [offerCapture, setOfferCapture] = useState(false);
   // Leaving the tab closes what was open: coming back shows Inicio as it is, not a half-open card.
   useFocusEffect(useCallback(() => () => { setOpenWidget(null); setDetailOpen(false); }, []));
   const [draft, setDraft] = useState<InicioLayout | null>(null);
@@ -158,6 +159,7 @@ export default function InicioScreen() {
       setGuideSeen(loaded.guideSeen);
       setTourSeen(loaded.tourSeen);
       setSetupOpen(loaded.setupOpen);
+      setOfferCapture(loaded.offerCapture);
       if (loaded.autoOpen) setOpenWidget(loaded.autoOpen);
       setError(null);
     } catch (e) {
@@ -235,6 +237,11 @@ export default function InicioScreen() {
       void rememberSetupOpen(userId, !o).catch((e) => console.warn("[v2 inicio] setup card state not saved", e));
       return !o;
     });
+  }, [userId]);
+  const setUpCapture = useCallback(() => router.push("/correos" as never), [router]);
+  const laterCapture = useCallback(() => {
+    setOfferCapture(false);
+    void snoozeCapture(userId, toColombiaDateString()).catch((e) => console.warn("[v2 inicio] capture snooze not saved", e));
   }, [userId]);
   const closeGuide = useCallback(() => {
     setGuideSeen(true);
@@ -376,6 +383,11 @@ export default function InicioScreen() {
             {setup && setup.percent < 100 && !editing && (
               <Dim on={(!!openWidget || detailOpen) && !editing}>
                 <SetupCard setup={setup} open={setupOpen} onToggle={toggleSetup} onTask={onSetupTask} onDecline={onSetupDecline} />
+              </Dim>
+            )}
+            {offerCapture && !editing && (
+              <Dim on={(!!openWidget || detailOpen) && !editing}>
+                <CaptureCard onSetUp={setUpCapture} onLater={laterCapture} />
               </Dim>
             )}
             <Animated.View layout={editing && motionMs ? LinearTransition.duration(240) : undefined} onLayout={(e) => { gridY.current = e.nativeEvent.layout.y; }}>
