@@ -10,6 +10,11 @@
 
 ---
 
+## v2.1 — Voz en lote + Cuadrar con mi saldo (plan: `docs/mlp/14-voice-batch-and-balance-adjust.md`, decisiones S9-1…S9-5, 2026-10-03)
+- **v1 (deuda de D14):** construir `adjustBalance` (hoy el motor solo tiene `anchor-statement-balance`) + hoja de 3 opciones (dejarlo, nombrarlo, por identificar) + tabla lateral `balance_adjustments` (#16, vía `supabase-migrator`). El ajuste cuenta en "Ya salió" con categoría de sistema "Desfase".
+- **v1.1:** `explainAdjustmentsFromStatement` (el extracto consume el ajuste) + tarjeta/push "Estos fueron los gastos que te desfasaron"; voz en lote (separador determinista + revisión + detalle por gasto + montos pendientes → ajuste con notas); esquema Jev `voice-item` + corpus de ~40 frases; dedup contra Revisar; gratis con tope diario → Plus al lanzar cobro.
+- **Abiertos:** nombre final de la categoría ("Desfase" vs "Sin identificar"), valor del tope diario, Jev en dispositivo o servidor.
+
 ## v2 Movimientos — pendientes de PR #445 (2026-10-01)
 - **Antes de M2 (sync + `/api/v2/commands`): guardas de vínculos en `deleteTransaction` / `editTransaction`.** Hoy no miran `personal_debt_id`, `split_group_id`, `transfer_group_id`, ocurrencias pagadas (`recurring_occurrences.transaction_id`, ON DELETE SET NULL) ni hijos reconciliados. En Postgres el DELETE cascada `personal_debt_allocations` y deja la ocurrencia "pagada" sin movimiento. Opción mínima: rechazar con mensaje y ofrecer Ignorar; o portar la limpieza de `webapp/src/actions/transactions.ts:1659-1750`. Inalcanzable mientras el teléfono no tenga filas de la web.
 - **PR 4 (cuentas): `editTransaction` no valida la moneda** al mover un movimiento a otra cuenta; tampoco refresca `amount_in_base_currency`. Agregar la moneda a las cuentas del teléfono y rechazar cruces.

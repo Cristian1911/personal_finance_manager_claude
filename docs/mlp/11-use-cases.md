@@ -72,6 +72,8 @@ Every architecture, database and screen decision is checked against this list. N
 | C14 | Have Apple Pay / Google Wallet payments appear on their own | Auto (Android: Wallet app; iPhone: Shortcuts "Transacción") | v1 | S4-6 |
 | C15 | Have bank SMS alerts appear on their own | Auto (Android: SMS app notifications; iPhone: Shortcuts "Mensaje", after spike) | v1 | S4-6 |
 | C16 | Send a screenshot of my bank app and have balances/movements updated | Share sheet / gallery → review | v1.1 (paid) | S4-7 |
+| C17 | Say several forgotten expenses in one phrase and finish them in a list | Inicio "+" › micrófono (batch review) | v1.1 | S9-2, S9-4 |
+| C18 | See which expenses a balance adjustment turned out to hide once the statement arrives | Revisar card, push "Extracto listo" | v1.1 | S9-3 |
 
 ## D. Fixing and organizing
 
