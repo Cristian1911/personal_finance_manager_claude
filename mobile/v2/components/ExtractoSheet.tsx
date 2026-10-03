@@ -3,13 +3,14 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { TriangleAlert } from "lucide-react-native";
 import {
-  extractosView, formatPesos, inicioSince, readStatementHistory, planStatements, readInicioData, statementCommands, statementResult, statementReview,
+  extractosView, formatPesos, formatUsd, inicioSince, readStatementHistory, planStatements, readInicioData, statementCommands, statementResult, statementReview,
   statementWarnings, type ImportedPeriod, type StatementAccount, type StatementChoice, type StatementInput, type StatementPlan, type StatementResult,
 } from "@zeta/shared";
 import { toColombiaDateString } from "../../lib/utils/date";
 import { getV2Database } from "../../lib/v2/engine/database";
 import { expoSha256, notifyLocalWrite, runLocalCommand } from "../../lib/v2/engine/run-local";
 import { notifyV2Change } from "../../lib/v2/changes";
+import { readUsdRate } from "../../lib/v2/local-state";
 import { parseStatement } from "../../lib/v2/statement";
 import { useV2Theme } from "../theme/ThemeProvider";
 import { Button } from "./Button";
@@ -58,7 +59,8 @@ export function ExtractoSheet({ file, userId, onClose }: {
   const run = async (plans: StatementPlan[], choices: StatementChoice[]) => {
     setStep({ kind: "reading", importing: true });
     const accounts = await phoneAccounts(userId);
-    const work = await statementCommands(userId, statements.current, plans, choices, accounts, expoSha256);
+    // A card's USD rows keep their value in pesos at the last dollar the phone has (≈; none offline-from-start).
+    const work = await statementCommands(userId, statements.current, plans, choices, accounts, expoSha256, (await readUsdRate(userId))?.rate ?? null);
     const results: StatementResult[] = [];
     for (const w of work) {
       const out = [];
@@ -95,7 +97,8 @@ export function ExtractoSheet({ file, userId, onClose }: {
     if (!live.current) return;
     // Always shown before importing: what the statement says, and where it goes. An account Zeta didn't
     // recognize has no default: you choose (guessing could put a statement on the wrong card).
-    setPicks(Object.fromEntries(plans.map((p) => [p.index, p.accountId ?? (p.suggested ? "" : "skip")])));
+    // A card's USD section goes with its pesos section ("with"): no question of its own.
+    setPicks(Object.fromEntries(plans.map((p) => [p.index, p.accountId ?? (p.withIndex != null ? "with" : p.suggested ? "" : "skip")])));
     setStep({ kind: "review", plans, history });
   };
 
@@ -110,6 +113,7 @@ export function ExtractoSheet({ file, userId, onClose }: {
     plans.filter((p) => p.suggested).map((p): StatementChoice => {
       const pick = picks[p.index];
       if (pick === "skip") return { index: p.index, skip: true };
+      if (pick === "with") return { index: p.index };
       if (pick === "create") return { index: p.index, create: { name: p.suggested!.name } };
       return { index: p.index, accountId: pick };
     }));
@@ -121,7 +125,7 @@ export function ExtractoSheet({ file, userId, onClose }: {
   // Any statement about to be imported carries a warning: the button says so too.
   const reviewWarned = (st: { plans: StatementPlan[]; history: Record<string, ImportedPeriod[]> }) => st.plans.some((p) => {
     if (!p.suggested || picks[p.index] === "skip") return false;
-    const target = p.accountId ?? (picks[p.index] && picks[p.index] !== "create" ? picks[p.index] : null);
+    const target = p.accountId ?? (picks[p.index] && !["create", "with"].includes(picks[p.index]) ? picks[p.index] : null);
     const s0 = statements.current[p.index];
     return statementWarnings({ from: s0.period_from, to: s0.period_to }, toColombiaDateString(), target ? st.history[target] ?? [] : []).length > 0;
   });
@@ -163,9 +167,10 @@ export function ExtractoSheet({ file, userId, onClose }: {
               const st = statements.current[p.index];
               const r = statementReview(st);
               const card = p.kind === "credit_card" || p.kind === "loan";
-              const unknown = !!p.suggested && !p.accountId;
+              const unknown = !!p.suggested && !p.accountId && p.withIndex == null;
+              const fmt = p.currency === "USD" ? formatUsd : money;
               // The account it would go to: recognized, or the one picked ("create" is new: nothing there yet).
-              const target = p.accountId ?? (picks[p.index] && picks[p.index] !== "create" && picks[p.index] !== "skip" ? picks[p.index] : null);
+              const target = p.accountId ?? (picks[p.index] && !["create", "skip", "with"].includes(picks[p.index]) ? picks[p.index] : null);
               const warnings = p.suggested && picks[p.index] !== "skip"
                 ? statementWarnings(r.periodo, toColombiaDateString(), target ? step.history[target] ?? [] : [])
                 : [];
@@ -194,14 +199,15 @@ export function ExtractoSheet({ file, userId, onClose }: {
                   </Text>
                   {p.suggested ? (
                     <View style={styles.facts}>
-                      {r.saldo != null && fact(card ? "DEBES" : "SALDO AL CORTE", money(r.saldo), true)}
-                      {r.minimo != null && fact("PAGO MÍNIMO", money(r.minimo), true)}
+                      {r.saldo != null && fact(card ? "DEBES" : "SALDO AL CORTE", fmt(r.saldo), true)}
+                      {r.minimo != null && fact("PAGO MÍNIMO", fmt(r.minimo), true)}
                       {r.vence && fact("VENCE", short(r.vence))}
                       {r.tasa != null && fact("TASA E.A.", `${r.tasa.toFixed(2).replace(".", ",")}%`)}
                     </View>
                   ) : null}
                   {p.suggested && r.crece && text("Con solo el mínimo la deuda crece: no cubre los intereses.", true)}
-                  {p.suggested && r.intereses12 != null && text(`Con solo el mínimo: ${money(r.intereses12)} en intereses en 12 meses y quedarías debiendo ${money(r.queda12 ?? 0)}.`, true)}
+                  {p.withIndex != null && !p.accountId && text("Va a la misma tarjeta de arriba, en dólares. Zeta la cuenta en pesos al dólar del día.", true)}
+                  {p.suggested && p.currency === "COP" && r.intereses12 != null && text(`Con solo el mínimo: ${money(r.intereses12)} en intereses en 12 meses y quedarías debiendo ${money(r.queda12 ?? 0)}.`, true)}
                   {!p.suggested && text(p.currency !== "COP" ? `En ${p.currency}: Zeta aún no lleva otras monedas, así que no se importa.` : "Zeta aún no lleva este tipo de cuenta.", true)}
                   {p.accountId && text(`Va a ${p.options.find((o) => o.id === p.accountId)?.name ?? "tu cuenta"}: la reconocimos por sus últimos 4.`, true)}
                   {unknown && (

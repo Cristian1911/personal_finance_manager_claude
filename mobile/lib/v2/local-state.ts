@@ -61,3 +61,14 @@ export async function resolvePendingBill(userId: string, name: string): Promise<
   const left = list.filter((n) => norm(n) !== norm(name));
   if (left.length !== list.length) await rememberJson(userId, key, left);
 }
+
+/** Today's dollar as the last pull brought it (S10-14): pesos per dollar and when the server fetched it. */
+export interface UsdRate { rate: number; at: string }
+const USD_RATE_KEY = "fx.usd_cop";
+
+export const rememberUsdRate = (userId: string, r: UsdRate) => rememberJson(userId, USD_RATE_KEY, r);
+
+export async function readUsdRate(userId: string): Promise<UsdRate | null> {
+  const r = parseLocal<UsdRate | null>((await readLocal(userId, [USD_RATE_KEY])).get(USD_RATE_KEY), null);
+  return r && typeof r.rate === "number" && r.rate > 0 ? r : null;
+}

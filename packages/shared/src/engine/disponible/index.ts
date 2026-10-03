@@ -22,6 +22,7 @@ export {
   computeVerdict,
   findBillAtRisk,
   formatPesos,
+  formatUsd,
   verdictMessage,
   type DisponibleVerdict,
   type DisponibleVerdictInput,

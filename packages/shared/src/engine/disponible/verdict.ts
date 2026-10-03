@@ -91,6 +91,14 @@ export function formatPesos(amount: number): string {
   return `${amount < 0 ? "-" : ""}$${String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
 }
 
+/** Dollars as Colombians read them (S10-14): "US$1.234,50"; whole amounts without cents ("US$45"). */
+export function formatUsd(amount: number): string {
+  const cents = Math.round(Math.abs(amount) * 100);
+  const whole = String(Math.floor(cents / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  const rest = cents % 100;
+  return `${amount < 0 ? "-" : ""}US$${whole}${rest ? `,${String(rest).padStart(2, "0")}` : ""}`;
+}
+
 const dayOf = (d: IsoDate) => Number(d.slice(8, 10));
 
 /** The Spanish line under the pill. */

@@ -3,6 +3,7 @@ import { supabase } from "../../supabase";
 import { toColombiaDateString } from "../../utils/date";
 import { notifyV2Change } from "../changes";
 import { getV2Database } from "../engine/database";
+import { rememberUsdRate } from "../local-state";
 import { V2_LOCAL_USER } from "../user";
 
 const API = process.env.EXPO_PUBLIC_API_URL ?? "";
@@ -145,7 +146,10 @@ async function pull(userId: string, token: string): Promise<SyncOutcome> {
   }
   if (res.status === 401) return "signed_out";
   if (!res.ok) return "error";
-  const { snapshot } = (await res.json()) as { snapshot: Snapshot };
+  const { snapshot, rates } = (await res.json()) as { snapshot: Snapshot; rates?: Record<string, { rate: number; at: string }> };
+  // Today's dollar (S10-14): kept on the phone so a card's USD part shows in pesos offline too. An older
+  // server sends none: the last one stays.
+  if (rates?.USD_COP?.rate) await rememberUsdRate(userId, rates.USD_COP).catch((e) => console.warn("[v2 sync] rate not saved", e));
   const { driver } = await getV2Database();
   // Check and replace in one transaction: a command written meanwhile would be wiped otherwise.
   const applied = await driver.transaction(async (tx) => {
