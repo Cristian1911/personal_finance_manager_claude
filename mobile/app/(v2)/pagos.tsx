@@ -9,6 +9,7 @@ import { openAnotar } from "../../lib/v2/anotar/open";
 import { notifyV2Change, useV2Changes } from "../../lib/v2/changes";
 import { runLocalCommand } from "../../lib/v2/engine/run-local";
 import { loadPagos, type LoadedPagos } from "../../lib/v2/pagos/load";
+import { resolvePendingBill } from "../../lib/v2/local-state";
 import { useV2UserId } from "../../lib/v2/user";
 import { toColombiaDateString } from "../../lib/utils/date";
 import { ProfileButton } from "../../v2/components/ProfileButton";
@@ -33,10 +34,12 @@ export default function PagosScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const userId = useV2UserId();
-  const params = useLocalSearchParams<{ add?: string }>();
+  const params = useLocalSearchParams<{ add?: string; name?: string }>();
   const [data, setData] = useState<LoadedPagos | null | undefined>(undefined);
   const [open, setOpen] = useState<PagoRow | null>(null);
   const [adding, setAdding] = useState(false);
+  /** A fixed payment left without amount in onboarding comes back named (S10-4). */
+  const [addName, setAddName] = useState("");
   const afterClose = useRef<(() => void) | null>(null);
   const [archiving, setArchiving] = useState<PagoRow | null>(null);
 
@@ -52,10 +55,11 @@ export default function PagosScreen() {
   useFocusEffect(useCallback(() => {
     void reload();
     if (params.add) {
+      setAddName(typeof params.name === "string" ? params.name : "");
       setAdding(true);
-      router.setParams({ add: undefined });
+      router.setParams({ add: undefined, name: undefined });
     }
-  }, [reload, params.add, router]));
+  }, [reload, params.add, params.name, router]));
 
   const run = useCallback(async (type: CommandType, payload: unknown): Promise<string | null> => {
     try {
@@ -181,10 +185,16 @@ export default function PagosScreen() {
         }}
         onCancel={() => setArchiving(null)}
       />
-      <AddPagoFijoSheet open={adding} accounts={data?.accounts ?? []} onClose={() => setAdding(false)}
+      <AddPagoFijoSheet open={adding} initialName={addName} accounts={data?.accounts ?? []} onClose={() => { setAdding(false); setAddName(""); }}
         onSave={async (p) => {
           const problem = await run("createPagoFijo", { templateId: Crypto.randomUUID().toLowerCase(), ...p });
-          if (!problem) setAdding(false);
+          if (!problem) {
+            setAdding(false);
+            // Named in onboarding without an amount: it's done now.
+            await resolvePendingBill(userId, addName || p.name).catch((e) => console.warn("[v2 pagos] pending bill not cleared", e));
+            setAddName("");
+            notifyV2Change();
+          }
           return problem;
         }}
       />
@@ -236,8 +246,9 @@ function PagoSheet({ row, onClose, onClosed, onPay, onStatus, onArchive }: {
 }
 
 /** Agregar pago fijo: what, how much, which day (1–28, owner note D12), from which account (optional). */
-function AddPagoFijoSheet({ open, accounts, onClose, onSave }: {
+function AddPagoFijoSheet({ open, initialName = "", accounts, onClose, onSave }: {
   open: boolean;
+  initialName?: string;
   accounts: LoadedPagos["accounts"];
   onClose: () => void;
   onSave: (p: { name: string; amount: number; dayOfMonth: number; startDate: string; accountId: string | null }) => Promise<string | null>;
@@ -253,7 +264,7 @@ function AddPagoFijoSheet({ open, accounts, onClose, onSave }: {
   const [wasOpen, setWasOpen] = useState(false);
   if (open && !wasOpen) {
     setWasOpen(true);
-    setName(""); setAmount(""); setDay(""); setAccountId(null); setError(null); setSaving(false);
+    setName(initialName); setAmount(""); setDay(""); setAccountId(null); setError(null); setSaving(false);
   }
   if (!open && wasOpen) setWasOpen(false);
 

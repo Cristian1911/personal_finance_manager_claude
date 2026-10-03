@@ -8,10 +8,11 @@ import Animated, {
 import { Lock, Plus } from "lucide-react-native";
 import {
   applyInicioLayout, headerDate, layoutOf, WIDGET_SIZES,
-  type DetailPartKey, type InicioLayout, type InicioState, type InicioWidgetKey, type CommandType, type WidgetActionId,
+  setupLevelLabel,
+  type DetailPartKey, type InicioLayout, type InicioState, type InicioWidgetKey, type CommandType, type SetupProgress, type SetupTaskId, type WidgetActionId,
 } from "@zeta/shared";
 import { runLocalCommand } from "../../lib/v2/engine/run-local";
-import { loadInicio, saveInicioLayout } from "../../lib/v2/inicio/load";
+import { declineSetupTask, loadInicio, markHoyGuideSeen, saveInicioLayout } from "../../lib/v2/inicio/load";
 import { useV2UserId } from "../../lib/v2/user";
 import { useAuth } from "../../lib/auth";
 import { openAnotar } from "../../lib/v2/anotar/open";
@@ -22,6 +23,7 @@ import { DisponibleDetail } from "../../v2/components/DisponibleDetail";
 import { COLLAPSE_EASING, Collapse, useMotionMs } from "../../v2/components/Collapse";
 import { Dim } from "../../v2/components/Dim";
 import { Onboarding } from "../../v2/components/Onboarding";
+import { PrecisionSheet, SetupCard } from "../../v2/components/SetupCard";
 import { InicioHeader } from "../../v2/components/InicioHeader";
 import { AddWidgetSheet } from "../../v2/components/widgets/AddWidgetSheet";
 import { InicioWidgetGrid, type GridEditing } from "../../v2/components/widgets/InicioWidgetGrid";
@@ -46,6 +48,14 @@ const ACTION_ROUTES: Record<WidgetActionId, string> = {
   see_flow: "/flujo",
 };
 const DETAIL_ROUTES: Partial<Record<DetailPartKey, string>> = { porPagar: "/pagos", gastado: "/movimientos" };
+/** Where each "Afina tu número" task is done (S10-4). */
+const SETUP_ROUTES: Record<SetupTaskId, string> = {
+  basics: "/ajustes",
+  statement: "/cuentas?add=extracto",
+  bills: "/pagos?add=1",
+  cards: "/cuentas?add=tarjeta",
+  capture: "/correos",
+};
 
 /**
  * v2 Inicio (M1, Claude Design "Z Inicio"): greeting, the Disponible block
@@ -67,6 +77,11 @@ export default function InicioScreen() {
   const [layout, setLayout] = useState<InicioLayout | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [setup, setSetup] = useState<SetupProgress | null>(null);
+  const [pendingBills, setPendingBills] = useState<string[]>([]);
+  const [guideSeen, setGuideSeen] = useState(true);
+  const [tourSeen, setTourSeen] = useState(false);
+  const [precisionOpen, setPrecisionOpen] = useState(false);
   // Leaving the tab closes what was open: coming back shows Inicio as it is, not a half-open card.
   useFocusEffect(useCallback(() => () => { setOpenWidget(null); setDetailOpen(false); }, []));
   const [draft, setDraft] = useState<InicioLayout | null>(null);
@@ -135,6 +150,10 @@ export default function InicioScreen() {
         setState(loaded.state);
       }
       setLayout((prev) => (JSON.stringify(prev) === JSON.stringify(loaded.layout) ? prev : loaded.layout));
+      setSetup((prev) => (JSON.stringify(prev) === JSON.stringify(loaded.setup) ? prev : loaded.setup));
+      setPendingBills((prev) => (prev.join("\n") === loaded.pendingBills.join("\n") ? prev : loaded.pendingBills));
+      setGuideSeen(loaded.guideSeen);
+      setTourSeen(loaded.tourSeen);
       if (loaded.autoOpen) setOpenWidget(loaded.autoOpen);
       setError(null);
     } catch (e) {
@@ -194,6 +213,25 @@ export default function InicioScreen() {
       setDetailOpen(false);
     }
   }, [detailOpen]);
+  const onSetupTask = useCallback((id: SetupTaskId) => {
+    // A fixed payment left without amount comes back with its name already written.
+    const route = id === "bills" && pendingBills[0] ? `/pagos?add=1&name=${encodeURIComponent(pendingBills[0])}` : SETUP_ROUTES[id];
+    router.push(route as never);
+  }, [router, pendingBills]);
+  const onSetupDecline = useCallback((id: SetupTaskId) => {
+    if (id !== "cards" && id !== "bills") return;
+    void declineSetupTask(userId, id).then(reload).catch((e) => console.warn("[v2 inicio] decline not saved", e));
+  }, [userId, reload]);
+  const closeGuide = useCallback(() => {
+    setGuideSeen(true);
+    void markHoyGuideSeen(userId).catch((e) => console.warn("[v2 inicio] guide not saved", e));
+  }, [userId]);
+  const precision = useMemo(
+    () => (setup && setup.percent < 100 ? { label: setupLevelLabel(setup.level), percent: setup.percent, real: setup.level === "real" } : null),
+    [setup],
+  );
+  const openPrecision = useCallback(() => setPrecisionOpen(true), []);
+
   // The Inicio mic leads to Anotar › Dictar (S8-1).
   const voice = useCallback(() => openAnotar({ dictar: true }), []);
 
@@ -275,13 +313,30 @@ export default function InicioScreen() {
           </Text>
         )}
         {!state && !error && <ActivityIndicator color={t.colors.ink} accessibilityLabel="Cargando" />}
-        {state?.status === "needs_setup" && <Onboarding run={runFirst} onDone={() => { notifyV2Change(); void reload(); }} />}
+        {state?.status === "needs_setup" && (
+          <Onboarding run={runFirst} userId={userId} tourSeen={tourSeen} onDone={() => { notifyV2Change(); void reload(); }} />
+        )}
         {ready && (
           <>
+            {!guideSeen && !editing && (
+              <View style={[styles.guide, { backgroundColor: t.colors.button }]} accessibilityRole="summary">
+                <Text style={{ fontSize: 11, letterSpacing: 0.5, color: t.colors.onButton, opacity: 0.8, fontFamily: t.fonts.mono }}>PRIMERA VEZ EN HOY</Text>
+                <Text style={{ fontSize: 17, color: t.colors.onButton, fontFamily: t.fonts.uiSemibold }}>Este es tu Disponible</Text>
+                <Text style={{ fontSize: 14, lineHeight: 20, color: t.colors.onButton, opacity: 0.9, fontFamily: t.fonts.ui }}>
+                  Lo que puedes gastar hasta tu próximo sueldo. El ≈ y los puntos dicen qué tan exacto es; “Afina tu número” lo vuelve real.
+                </Text>
+                <Pressable onPress={closeGuide} accessibilityRole="button" style={[styles.guideButton, { backgroundColor: t.colors.card }]}>
+                  <Text style={{ fontSize: 14, color: t.colors.ink, fontFamily: t.fonts.uiSemibold }}>Entendido</Text>
+                </Pressable>
+              </View>
+            )}
             {/* The number and how it comes out: one block, so a closed detail leaves no gap. */}
             <View onLayout={(e) => { blockY.current = e.nativeEvent.layout.y; }}>
               <Dim on={!!openWidget && !editing}>
-                <DisponibleBlock view={ready.view} open={detailOpen} onToggle={editing ? undefined : toggleDetail} dimmed={editing} />
+                <DisponibleBlock
+                  view={ready.view} open={detailOpen} onToggle={editing ? undefined : toggleDetail} dimmed={editing}
+                  precision={precision} onPrecision={editing ? undefined : openPrecision}
+                />
                 {editing && (
                   <View style={[styles.fixed, { backgroundColor: t.colors.card }]} accessible accessibilityLabel="Fijo">
                     <Lock size={12} color={t.colors.muted} />
@@ -304,6 +359,11 @@ export default function InicioScreen() {
                 </Collapse>
               </View>
             </View>
+            {setup && setup.percent < 100 && !editing && (
+              <Dim on={(!!openWidget || detailOpen) && !editing}>
+                <SetupCard setup={setup} onTask={onSetupTask} onDecline={onSetupDecline} />
+              </Dim>
+            )}
             <Animated.View layout={editing && motionMs ? LinearTransition.duration(240) : undefined} onLayout={(e) => { gridY.current = e.nativeEvent.layout.y; }}>
               <InicioWidgetGrid
                 widgets={widgets}
@@ -329,6 +389,7 @@ export default function InicioScreen() {
         )}
       </Animated.ScrollView>
       <AddWidgetSheet visible={adding} hidden={hiddenWidgets} onAdd={addWidget} onClose={() => setAdding(false)} />
+      {setup && <PrecisionSheet setup={setup} open={precisionOpen} onClose={() => setPrecisionOpen(false)} />}
     </View>
   );
 }
@@ -337,5 +398,7 @@ const styles = StyleSheet.create({
   error: { fontSize: 14 },
   detailGap: { paddingTop: 12 },
   fixed: { position: "absolute", top: 12, right: 12, height: 24, paddingHorizontal: 9, borderRadius: 7, flexDirection: "row", alignItems: "center", gap: 4 },
+  guide: { borderRadius: 18, padding: 16, gap: 6 },
+  guideButton: { alignSelf: "flex-end", height: 40, paddingHorizontal: 16, borderRadius: 11, alignItems: "center", justifyContent: "center", marginTop: 4 },
   addButton: { height: 48, borderRadius: 12, borderWidth: 1.5, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
 });

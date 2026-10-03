@@ -3,12 +3,16 @@ import {
   inicioSince,
   pickAutoOpen,
   readInicioData,
+  setupProgress,
   type DisponibleVerdictMemo,
   type InicioLayout,
   type InicioState,
+  type SetupProgress,
+  type SqlDriver,
 } from "@zeta/shared";
 import { toColombiaDateString } from "../../utils/date";
 import { getV2Database } from "../engine/database";
+import { ONBOARDING_KEYS, parseLocal, readLocal, remember } from "../local-state";
 
 const MEMO_KEY = "inicio.verdict_memo";
 /** The day a widget last opened by itself (13 §Attention: once per day). */
@@ -22,32 +26,38 @@ export interface LoadedInicio {
   autoOpen: string | null;
   /** Organizar's saved layout, or null for the default. */
   layout: InicioLayout | null;
-}
-
-/**
- * The only raw writes on the phone, on purpose: local_state is UI memory,
- * never synced or replayed, so it doesn't go through a command.
- */
-async function remember(userId: string, key: string, value: string): Promise<void> {
-  const { driver } = await getV2Database();
-  await driver.query(
-    `INSERT INTO local_state (user_id, key, value) VALUES (?, ?, ?)
-     ON CONFLICT (user_id, key) DO UPDATE SET value = excluded.value`,
-    [userId, key, value],
-  );
+  /** How real the number is and what's left (S10-4). */
+  setup: SetupProgress;
+  /** The first-time note on Hoy was already shown. */
+  guideSeen: boolean;
+  /** The onboarding tour was already shown (needs_setup starts after it). */
+  tourSeen: boolean;
+  /** Fixed payments named in onboarding without amount or day yet. */
+  pendingBills: string[];
 }
 
 export const saveInicioLayout = (userId: string, layout: InicioLayout) =>
   remember(userId, LAYOUT_KEY, JSON.stringify(layout));
 
+export const markHoyGuideSeen = (userId: string) => remember(userId, ONBOARDING_KEYS.hoyGuideSeen, "1");
+
+/** "No tengo" on a setup task (cards or fixed payments). */
+export const declineSetupTask = (userId: string, task: "cards" | "bills") =>
+  remember(userId, task === "cards" ? ONBOARDING_KEYS.noCards : ONBOARDING_KEYS.noBills, "1");
+
 function parseLayout(raw: string | undefined): InicioLayout | null {
-  if (!raw) return null;
-  try {
-    const l = JSON.parse(raw) as InicioLayout;
-    return Array.isArray(l.items) && Array.isArray(l.hidden) ? l : null;
-  } catch {
-    return null; // a damaged layout falls back to the default
-  }
+  const l = parseLocal<InicioLayout | null>(raw, null);
+  return l && Array.isArray(l.items) && Array.isArray(l.hidden) ? l : null;
+}
+
+/** A statement is on the phone: a snapshot, or a movement a PDF brought. */
+export async function hasImportedStatement(driver: SqlDriver, userId: string): Promise<boolean> {
+  const rows = await driver.query<{ n: number }>(
+    `SELECT (SELECT COUNT(*) FROM statement_snapshots WHERE user_id = ?)
+          + (SELECT COUNT(*) FROM transactions WHERE user_id = ? AND capture_method IN ('PDF_IMPORT', 'EMAIL_PDF_IMPORT')) AS n`,
+    [userId, userId],
+  );
+  return Number(rows[0]?.n ?? 0) > 0;
 }
 
 /**
@@ -59,22 +69,31 @@ export async function loadInicio(userId: string, now: Date = new Date()): Promis
   const today = toColombiaDateString(now);
   const data = await readInicioData(driver, userId, inicioSince(today));
 
-  const local = new Map(
-    (await driver.query<{ key: string; value: string }>(
-      "SELECT key, value FROM local_state WHERE user_id = ? AND key IN (?, ?, ?)", [userId, MEMO_KEY, AUTO_OPEN_KEY, LAYOUT_KEY],
-    )).map((r) => [r.key, r.value]),
-  );
-  const row = local.has(MEMO_KEY) ? { value: local.get(MEMO_KEY)! } : undefined;
-  let memo: DisponibleVerdictMemo | null = null;
-  try {
-    memo = row ? (JSON.parse(row.value) as DisponibleVerdictMemo) : null;
-  } catch {
-    memo = null; // a damaged memo only costs one flicker
-  }
+  const local = await readLocal(userId, [
+    MEMO_KEY, AUTO_OPEN_KEY, LAYOUT_KEY,
+    ONBOARDING_KEYS.pendingBills, ONBOARDING_KEYS.noCards, ONBOARDING_KEYS.noBills, ONBOARDING_KEYS.hoyGuideSeen, ONBOARDING_KEYS.tourSeen,
+  ]);
+  // A damaged memo only costs one flicker.
+  const memo = parseLocal<DisponibleVerdictMemo | null>(local.get(MEMO_KEY), null);
+
+  const pendingBills = parseLocal<string[]>(local.get(ONBOARDING_KEYS.pendingBills), []);
+  const setup = setupProgress({
+    settings: data.settings,
+    accounts: data.accounts,
+    templates: data.templates,
+    transactions: data.transactions,
+    hasStatement: await hasImportedStatement(driver, userId),
+    pendingBills,
+    noCards: local.has(ONBOARDING_KEYS.noCards),
+    noBills: local.has(ONBOARDING_KEYS.noBills),
+    today,
+  });
+  const guideSeen = local.has(ONBOARDING_KEYS.hoyGuideSeen);
+  const tourSeen = local.has(ONBOARDING_KEYS.tourSeen);
 
   const state = buildInicio({ today, now: now.toISOString(), memo, ...data });
   const layout = parseLayout(local.get(LAYOUT_KEY));
-  if (state.status !== "ready") return { state, autoOpen: null, layout };
+  if (state.status !== "ready") return { state, autoOpen: null, layout, setup, guideSeen, tourSeen, pendingBills };
 
   const memoJson = JSON.stringify(state.verdict.memo);
   if (memoJson !== local.get(MEMO_KEY)) await remember(userId, MEMO_KEY, memoJson);
@@ -82,5 +101,7 @@ export async function loadInicio(userId: string, now: Date = new Date()): Promis
   const hidden = new Set(layout?.hidden ?? []);
   const autoOpen = pickAutoOpen(state.widgets.filter((w) => !hidden.has(w.id)), local.get(AUTO_OPEN_KEY) ?? null, today);
   if (autoOpen) await remember(userId, AUTO_OPEN_KEY, today);
-  return { state, autoOpen, layout };
+  return { state, autoOpen, layout, setup, guideSeen, tourSeen, pendingBills };
 }
+
+

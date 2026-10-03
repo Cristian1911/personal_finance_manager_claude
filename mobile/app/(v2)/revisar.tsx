@@ -2,13 +2,16 @@ import { useCallback, useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { inicioSince, posiblesDuplicados, readInicioData, type PosibleDuplicado } from "@zeta/shared";
+import * as Crypto from "expo-crypto";
+import { formatPesos, pagosFijosSugeridos, posiblesDuplicados, readInicioData, type PagoFijoSugerido, type PosibleDuplicado } from "@zeta/shared";
 import { toColombiaDateString } from "../../lib/utils/date";
 import { useV2Changes } from "../../lib/v2/changes";
 import { getV2Database } from "../../lib/v2/engine/database";
 import { runLocalCommand } from "../../lib/v2/engine/run-local";
 import { syncProblems, type SyncProblem } from "../../lib/v2/sync/sync";
 import { useV2UserId } from "../../lib/v2/user";
+import { notifyV2Change } from "../../lib/v2/changes";
+import { ONBOARDING_KEYS, parseLocal, readLocal, rememberJson } from "../../lib/v2/local-state";
 import { Button } from "../../v2/components/Button";
 import { ProfileButton } from "../../v2/components/ProfileButton";
 import { EmptyState } from "../../v2/components/EmptyState";
@@ -37,10 +40,15 @@ const WHAT: Record<string, string> = {
   resolveBankDuplicate: "Una respuesta en Revisar",
 };
 
+/** Far enough back to see a monthly charge twice (a statement brings ~3 months). */
+const SUGGEST_DAYS = 120;
+const daysBefore = (iso: string, n: number) => new Date(Date.parse(`${iso}T12:00:00Z`) - n * 86_400_000).toISOString().slice(0, 10);
+
 /**
  * Revisar (S8-1): what Zeta won't decide alone.
  * - A bank movement that may be one you anotaste (S1-2): "¿Es el mismo?".
  * - Changes that didn't reach the account, so nothing disappears without a word.
+ * - Monthly charges that look like a fixed payment (S10-6): "¿Pagas X cada mes?".
  */
 export default function RevisarScreen() {
   const t = useV2Theme();
@@ -48,14 +56,21 @@ export default function RevisarScreen() {
   const userId = useV2UserId();
   const [problems, setProblems] = useState<SyncProblem[]>([]);
   const [dups, setDups] = useState<PosibleDuplicado[]>([]);
+  const [pagos, setPagos] = useState<PagoFijoSugerido[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     setProblems(await syncProblems(userId).catch(() => []));
     try {
       const { driver } = await getV2Database();
-      const data = await readInicioData(driver, userId, inicioSince(toColombiaDateString()));
+      const today = toColombiaDateString();
+      const data = await readInicioData(driver, userId, daysBefore(today, SUGGEST_DAYS));
       setDups(posiblesDuplicados(data.transactions, data.accounts));
+      const dismissed = parseLocal<string[]>((await readLocal(userId, [ONBOARDING_KEYS.dismissedPagos])).get(ONBOARDING_KEYS.dismissedPagos), []);
+      setPagos(pagosFijosSugeridos({
+        transactions: data.transactions, templates: data.templates, occurrences: data.occurrences,
+        destinatarios: data.destinatarios, dismissed, today,
+      }));
     } catch (e) {
       console.warn("[v2 revisar] load failed", e);
     }
@@ -83,7 +98,30 @@ export default function RevisarScreen() {
     setBusy(null);
   }, [userId, reload]);
 
-  if (problems.length === 0 && dups.length === 0) {
+  const answerPago = useCallback(async (s: PagoFijoSugerido, yes: boolean) => {
+    setBusy(s.key);
+    try {
+      if (yes) {
+        const { result } = await runLocalCommand({
+          type: "createPagoFijo", userId,
+          payload: { templateId: Crypto.randomUUID().toLowerCase(), name: s.name, amount: s.amount, dayOfMonth: s.dayOfMonth, startDate: s.startDate },
+        });
+        if (result.status === "rejected") Alert.alert("No se pudo guardar", result.error ?? "Intenta de nuevo.");
+        else notifyV2Change();
+      } else {
+        const key = ONBOARDING_KEYS.dismissedPagos;
+        const had = parseLocal<string[]>((await readLocal(userId, [key])).get(key), []);
+        await rememberJson(userId, key, [...new Set([...had, s.key])]);
+      }
+    } catch (e) {
+      console.warn("[v2 revisar] pago answer failed", e);
+      Alert.alert("No se pudo guardar", "Intenta de nuevo.");
+    }
+    await reload();
+    setBusy(null);
+  }, [userId, reload]);
+
+  if (problems.length === 0 && dups.length === 0 && pagos.length === 0) {
     return <EmptyState title="Revisar" profile message="Nada por revisar. Cuando Zeta no esté segura de algo, te lo va a preguntar aquí." />;
   }
   const line = (label: string, s: { title: string; amount: string; date: string; account?: string }) => (
@@ -116,6 +154,17 @@ export default function RevisarScreen() {
             {d.tuyo && <Button label="Sí, es el mismo" disabled={busy !== null} loading={busy === d.id} onPress={() => void answer(d.id, true)} />}
             <Button label={d.tuyo ? "No, son dos" : "Contarlo"} variant={d.tuyo ? "secondary" : "primary"} disabled={busy !== null}
               onPress={() => void answer(d.id, false)} />
+          </View>
+        ))}
+        {pagos.map((p) => (
+          <View key={p.key} style={[styles.card, styles.dup, { backgroundColor: t.colors.card }, t.shadow]}>
+            <Text style={{ fontSize: 17, color: t.colors.ink, fontFamily: t.fonts.uiSemibold, textAlign: "center" }}>¿Pagas {p.name} cada mes?</Text>
+            <Text style={{ fontSize: 15, color: t.colors.ink, fontFamily: t.fonts.numberSemibold, textAlign: "center" }}>{formatPesos(p.amount)} · el día {p.dayOfMonth}</Text>
+            <Text style={{ fontSize: 13, lineHeight: 18, color: t.colors.muted, fontFamily: t.fonts.uiMedium, textAlign: "center" }}>
+              Lo vimos el {p.seen}. Si es fijo, Zeta lo aparta de tu número antes de la fecha.
+            </Text>
+            <Button label="Sí, es un pago fijo" disabled={busy !== null} loading={busy === p.key} onPress={() => void answerPago(p, true)} />
+            <Button label="No" variant="secondary" disabled={busy !== null} onPress={() => void answerPago(p, false)} />
           </View>
         ))}
         {problems.length > 0 && (

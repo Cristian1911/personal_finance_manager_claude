@@ -19,11 +19,16 @@ export const DisponibleBlock = memo(function DisponibleBlock({
   open = false,
   onToggle,
   dimmed = false,
+  precision,
+  onPrecision,
 }: {
   view: DisponibleBlockView;
   open?: boolean;
   onToggle?: () => void;
   dimmed?: boolean;
+  /** How real the number is (S10-4); absent once it's Real and nothing is left. */
+  precision?: { label: string; percent: number; real: boolean } | null;
+  onPrecision?: () => void;
 }) {
   const t = useV2Theme();
   const state = t.colors[VERDICT_STATE[view.state]];
@@ -32,6 +37,10 @@ export const DisponibleBlock = memo(function DisponibleBlock({
   const accent = solid ? state.onSolid : state.text;
   const strong = solid ? state.onSolid : t.colors.ink;
   const Chevron = open ? ChevronUp : ChevronDown;
+  // Until it's Real the number says it's approximate (unless it already does).
+  const approx = precision && !precision.real && !view.amount.startsWith("~");
+  const amount = approx ? `≈ ${view.amount}` : view.amount;
+  const amountShort = approx && view.amountShort ? `≈ ${view.amountShort}` : view.amountShort;
 
   return (
     <Pressable
@@ -39,7 +48,7 @@ export const DisponibleBlock = memo(function DisponibleBlock({
       disabled={!onToggle}
       accessibilityRole={onToggle ? "button" : "summary"}
       accessibilityState={onToggle ? { expanded: open } : undefined}
-      accessibilityLabel={spokenLabel(view)}
+      accessibilityLabel={spokenLabel({ ...view, amount })}
       accessibilityHint={onToggle ? (open ? "Oculta cómo sale tu número" : "Muestra cómo sale tu número") : undefined}
       style={[styles.block, { backgroundColor: fill, opacity: dimmed ? 0.55 : 1 }, !solid && t.shadow]}
     >
@@ -54,7 +63,7 @@ export const DisponibleBlock = memo(function DisponibleBlock({
       </View>
 
       <Text style={[styles.label, { color: strong, fontFamily: t.fonts.uiSemibold }]}>Disponible</Text>
-      <FittedAmount full={view.amount} short={view.amountShort} color={strong} fontFamily={t.fonts.number} size={64} style={styles.number} />
+      <FittedAmount full={amount} short={amountShort} color={strong} fontFamily={t.fonts.number} size={64} style={styles.number} />
 
       <View style={styles.bottom}>
         <Text style={[styles.meta, { color: accent, fontFamily: t.fonts.uiMedium }]}>
@@ -65,6 +74,24 @@ export const DisponibleBlock = memo(function DisponibleBlock({
         </Text>
         {view.sub && <Text style={[styles.meta, { color: accent, fontFamily: t.fonts.uiMedium }]}>{view.sub}</Text>}
       </View>
+      {precision && (
+        <Pressable
+          onPress={onPrecision}
+          disabled={!onPrecision}
+          accessibilityRole="button"
+          accessibilityLabel={`Precisión de tu número: ${precision.label}, ${precision.percent} por ciento`}
+          accessibilityHint="Muestra qué le falta a tu número"
+          hitSlop={6}
+          style={[styles.precision, { backgroundColor: solid ? "transparent" : t.colors.card, borderColor: accent, borderWidth: solid ? 1.5 : 0 }]}
+        >
+          <View style={styles.dots}>
+            {[0, 1, 2, 3, 4].map((i) => (
+              <View key={i} style={[styles.pdot, { backgroundColor: i < Math.round(precision.percent / 20) ? strong : solid ? accent : t.colors.est, opacity: i < Math.round(precision.percent / 20) ? 1 : 0.5 }]} />
+            ))}
+          </View>
+          <Text style={{ fontSize: 12, color: strong, fontFamily: t.fonts.uiSemibold }}>{precision.label} · {precision.percent}%</Text>
+        </Pressable>
+      )}
       {view.approxNote && (
         <Text style={[styles.meta, styles.approx, { color: accent, fontFamily: t.fonts.ui }]}>~ {view.approxNote}</Text>
       )}
@@ -79,7 +106,7 @@ export const DisponibleBlock = memo(function DisponibleBlock({
 });
 
 /** "~" and "−" read aloud the same way on every screen reader. */
-const spoken = (amount: string) => amount.replace("~", "aproximadamente ").replace(/−/g, "menos ");
+const spoken = (amount: string) => amount.replace("~", "aproximadamente ").replace("≈", "aproximadamente").replace(/−/g, "menos ");
 
 function spokenLabel(v: DisponibleBlockView): string {
   const parts = [v.pill, `Disponible ${spoken(v.amount)}`, v.perDay, v.payday];
@@ -100,6 +127,9 @@ const styles = StyleSheet.create({
   bottom: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", columnGap: 10, rowGap: 4, marginTop: 12 },
   meta: { fontSize: 13 },
   approx: { marginTop: 6 },
+  precision: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 8, minHeight: 28, paddingHorizontal: 10, borderRadius: 999, marginTop: 10 },
+  dots: { flexDirection: "row", gap: 3 },
+  pdot: { width: 6, height: 6, borderRadius: 3 },
   toggle: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, marginTop: 10 },
   toggleText: { fontSize: 12 },
 });
