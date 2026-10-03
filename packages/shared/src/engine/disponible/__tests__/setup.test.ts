@@ -50,7 +50,7 @@ describe("setupProgress (S10-4: how real the Disponible is)", () => {
     const bills = p.tasks.find((t) => t.id === "bills")!;
     expect(bills.done).toBe(false);
     expect(bills.detail).toContain("Arriendo y Internet");
-    expect(bills.canDecline).toBe(false);
+    expect(bills.declineLabel).toBe("Ya no los pago");
   });
 
   it("'No tengo' closes cards and bills; archived or income templates don't count", () => {
@@ -60,7 +60,7 @@ describe("setupProgress (S10-4: how real the Disponible is)", () => {
 
   it("automatic capture counts only inside the 14-day window and not for manual or PDF", () => {
     expect(pct({ transactions: [{ date: "2026-09-10", captureMethod: "EMAIL_IMPORT" }] })).toBe(20);
-    expect(pct({ transactions: [{ date: "2026-10-01", captureMethod: "MANUAL_FORM" }, { date: "2026-10-01", captureMethod: "PDF_IMPORT" }] })).toBe(20);
+    expect(pct({ transactions: [{ date: "2026-10-01", captureMethod: "MANUAL_FORM" }, { date: "2026-10-01", captureMethod: "PDF_IMPORT" }, { date: "2026-10-01", captureMethod: "EMAIL_PDF_IMPORT" }] })).toBe(20);
     expect(pct({ transactions: [{ date: "2026-10-01", captureMethod: "NOTIFICATION" }] })).toBe(30);
   });
 

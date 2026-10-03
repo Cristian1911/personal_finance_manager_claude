@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -59,21 +59,30 @@ export default function RevisarScreen() {
   const [pagos, setPagos] = useState<PagoFijoSugerido[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
 
+  // Only the latest load may land: focus, changes and answers can overlap.
+  const request = useRef(0);
   const reload = useCallback(async () => {
-    setProblems(await syncProblems(userId).catch(() => []));
+    const id = ++request.current;
+    const nextProblems = await syncProblems(userId).catch(() => []);
+    let nextDups: PosibleDuplicado[] | null = null;
+    let nextPagos: PagoFijoSugerido[] | null = null;
     try {
       const { driver } = await getV2Database();
       const today = toColombiaDateString();
       const data = await readInicioData(driver, userId, daysBefore(today, SUGGEST_DAYS));
-      setDups(posiblesDuplicados(data.transactions, data.accounts));
       const dismissed = parseLocal<string[]>((await readLocal(userId, [ONBOARDING_KEYS.dismissedPagos])).get(ONBOARDING_KEYS.dismissedPagos), []);
-      setPagos(pagosFijosSugeridos({
+      nextDups = posiblesDuplicados(data.transactions, data.accounts);
+      nextPagos = pagosFijosSugeridos({
         transactions: data.transactions, templates: data.templates, occurrences: data.occurrences,
         destinatarios: data.destinatarios, dismissed, today,
-      }));
+      });
     } catch (e) {
       console.warn("[v2 revisar] load failed", e);
     }
+    if (id !== request.current) return;
+    setProblems(nextProblems);
+    if (nextDups) setDups(nextDups);
+    if (nextPagos) setPagos(nextPagos);
   }, [userId]);
   useV2Changes(() => void reload());
   useFocusEffect(useCallback(() => { void reload(); }, [reload]));
@@ -159,7 +168,7 @@ export default function RevisarScreen() {
         {pagos.map((p) => (
           <View key={p.key} style={[styles.card, styles.dup, { backgroundColor: t.colors.card }, t.shadow]}>
             <Text style={{ fontSize: 17, color: t.colors.ink, fontFamily: t.fonts.uiSemibold, textAlign: "center" }}>¿Pagas {p.name} cada mes?</Text>
-            <Text style={{ fontSize: 15, color: t.colors.ink, fontFamily: t.fonts.numberSemibold, textAlign: "center" }}>{formatPesos(p.amount)} · el día {p.dayOfMonth}</Text>
+            <Text style={{ fontSize: 15, color: t.colors.ink, fontFamily: t.fonts.numberSemibold, textAlign: "center", fontVariant: ["tabular-nums"] }}>{formatPesos(p.amount)} · el día {p.dayOfMonth}</Text>
             <Text style={{ fontSize: 13, lineHeight: 18, color: t.colors.muted, fontFamily: t.fonts.uiMedium, textAlign: "center" }}>
               Lo vimos el {p.seen}. Si es fijo, Zeta lo aparta de tu número antes de la fecha.
             </Text>

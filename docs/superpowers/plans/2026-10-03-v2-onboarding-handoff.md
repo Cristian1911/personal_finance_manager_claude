@@ -40,7 +40,14 @@ This is the first file to read when resuming this work on branch `ccr-8048e38b-y
 - **`app/(v2)/revisar.tsx`:** "¿Pagas X cada mes?" cards. Sí runs `createPagoFijo`; No is remembered in `revisar.dismissed_pagos`.
 - **Check:** `pnpm --dir mobile check:v2` passes (boundary and tsc).
 
-## Still to do before a PR
+## Update (local session, 2026-10-03)
+
+- `origin/main` merged (decision-log conflict: S9 rows first, then S10).
+- **Seen running** in `pnpm preview:web:shots` (demo, light, 390): tour → Lo digo yo → Hoy with "≈", precision chip, Afina tu número, first-time guide. Fixed: the basics' inputs collapsed (`Field flex={0}`); the preview went blank in demo mode (`lib/supabase.ts` `??` → `||` on empty env).
+- **Reviews done** (`zeta-v2-reviewer`, `mobile-perf-doctor`), fixes applied: stable ids so a retry is a duplicate, not a second account/bill; empty balance no longer saved as $0; balance refills after another statement until edited; cancelling the upload is not an error (`ExtractoSheet onClose(imported)`); precision chip moved out of the block's Pressable (screen readers) and read in the block's label; 44pt targets; pending bill names can be dropped ("Ya no los pago"); card fields say dólares; "Le falta" uses nouns; `EMAIL_PDF_IMPORT` no longer counts as automatic capture; Revisar keeps only the latest load; `EXISTS` for the statement check; tabular numbers.
+- **Still open:** extract path with a real PDF (needs `EXPO_PUBLIC_API_URL`), dark mode and 360/430 shots, bank step texts (owner), device test (owner). Optional polish: ProgressBar `scaleX` instead of width; cache "has statement" in `local_state`.
+
+## Still to do before a PR (original list)
 
 1. **See it running.** Nothing has been run in a browser or on a device yet. In `mobile/`, use `pnpm preview:web`, or for shots:
    `HEIGHT=1800 pnpm preview:web:shots "/inicio" "/inicio@Siguiente|Siguiente|Quiero esto con mis datos|Seguir|Lo digo yo"`

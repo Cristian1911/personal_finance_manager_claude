@@ -52,9 +52,10 @@ function parseLayout(raw: string | undefined): InicioLayout | null {
 
 /** A statement is on the phone: a snapshot, or a movement a PDF brought. */
 export async function hasImportedStatement(driver: SqlDriver, userId: string): Promise<boolean> {
+  // EXISTS stops at the first row (this runs on every Inicio load).
   const rows = await driver.query<{ n: number }>(
-    `SELECT (SELECT COUNT(*) FROM statement_snapshots WHERE user_id = ?)
-          + (SELECT COUNT(*) FROM transactions WHERE user_id = ? AND capture_method IN ('PDF_IMPORT', 'EMAIL_PDF_IMPORT')) AS n`,
+    `SELECT EXISTS (SELECT 1 FROM statement_snapshots WHERE user_id = ?)
+         OR EXISTS (SELECT 1 FROM transactions WHERE user_id = ? AND capture_method IN ('PDF_IMPORT', 'EMAIL_PDF_IMPORT')) AS n`,
     [userId, userId],
   );
   return Number(rows[0]?.n ?? 0) > 0;

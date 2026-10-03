@@ -42,7 +42,8 @@ async function phoneAccounts(userId: string): Promise<StatementAccount[]> {
 export function ExtractoSheet({ file, userId, onClose }: {
   file: { uri: string; name: string } | null;
   userId: string;
-  onClose: () => void;
+  /** `imported`: the sheet got as far as the results (something was saved). */
+  onClose: (imported: boolean) => void;
 }) {
   const t = useV2Theme();
   const insets = useSafeAreaInsets();
@@ -106,8 +107,9 @@ export function ExtractoSheet({ file, userId, onClose }: {
   const text = (s: string, muted = false, center = false) => (
     <Text style={{ fontSize: 15, lineHeight: 22, textAlign: center ? "center" : "left", color: muted ? t.colors.muted : t.colors.ink, fontFamily: t.fonts.uiMedium }}>{s}</Text>
   );
+  const close = () => onClose(step.kind === "results");
   return (
-    <Sheet open={!!file} onClose={onClose} style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
+    <Sheet open={!!file} onClose={close} style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
       <View style={[styles.handle, { backgroundColor: t.colors.line }]} />
       <Text accessibilityRole="header" style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.uiSemibold }]}>
         {step.kind === "results" ? "Listo" : "Tu extracto"}
@@ -219,7 +221,7 @@ export function ExtractoSheet({ file, userId, onClose }: {
               </View>
             ))}
           </ScrollView>
-          <Button label="Listo" onPress={onClose} />
+          <Button label="Listo" onPress={close} />
         </>
       )}
 
@@ -227,7 +229,7 @@ export function ExtractoSheet({ file, userId, onClose }: {
         <>
           {text(step.message, true, true)}
           <Button label="Intentar de nuevo" onPress={() => void read()} />
-          <Button label="Cerrar" variant="text" onPress={onClose} style={{ alignSelf: "center" }} />
+          <Button label="Cerrar" variant="text" onPress={close} style={{ alignSelf: "center" }} />
         </>
       )}
     </Sheet>

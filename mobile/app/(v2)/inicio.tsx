@@ -13,6 +13,7 @@ import {
 } from "@zeta/shared";
 import { runLocalCommand } from "../../lib/v2/engine/run-local";
 import { declineSetupTask, loadInicio, markHoyGuideSeen, saveInicioLayout } from "../../lib/v2/inicio/load";
+import { ONBOARDING_KEYS, rememberJson } from "../../lib/v2/local-state";
 import { useV2UserId } from "../../lib/v2/user";
 import { useAuth } from "../../lib/auth";
 import { openAnotar } from "../../lib/v2/anotar/open";
@@ -220,8 +221,12 @@ export default function InicioScreen() {
   }, [router, pendingBills]);
   const onSetupDecline = useCallback((id: SetupTaskId) => {
     if (id !== "cards" && id !== "bills") return;
-    void declineSetupTask(userId, id).then(reload).catch((e) => console.warn("[v2 inicio] decline not saved", e));
-  }, [userId, reload]);
+    // Names left without amount in onboarding: "Ya no los pago" drops them (they aren't "No tengo").
+    const done = id === "bills" && pendingBills.length
+      ? rememberJson(userId, ONBOARDING_KEYS.pendingBills, [])
+      : declineSetupTask(userId, id);
+    void done.then(reload).catch((e) => console.warn("[v2 inicio] decline not saved", e));
+  }, [userId, reload, pendingBills]);
   const closeGuide = useCallback(() => {
     setGuideSeen(true);
     void markHoyGuideSeen(userId).catch((e) => console.warn("[v2 inicio] guide not saved", e));
@@ -399,6 +404,6 @@ const styles = StyleSheet.create({
   detailGap: { paddingTop: 12 },
   fixed: { position: "absolute", top: 12, right: 12, height: 24, paddingHorizontal: 9, borderRadius: 7, flexDirection: "row", alignItems: "center", gap: 4 },
   guide: { borderRadius: 18, padding: 16, gap: 6 },
-  guideButton: { alignSelf: "flex-end", height: 40, paddingHorizontal: 16, borderRadius: 11, alignItems: "center", justifyContent: "center", marginTop: 4 },
+  guideButton: { alignSelf: "flex-end", height: 44, paddingHorizontal: 16, borderRadius: 11, alignItems: "center", justifyContent: "center", marginTop: 4 },
   addButton: { height: 48, borderRadius: 12, borderWidth: 1.5, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
 });

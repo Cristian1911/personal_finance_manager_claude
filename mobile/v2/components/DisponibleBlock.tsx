@@ -42,38 +42,50 @@ export const DisponibleBlock = memo(function DisponibleBlock({
   const amount = approx ? `≈ ${view.amount}` : view.amount;
   const amountShort = approx && view.amountShort ? `≈ ${view.amountShort}` : view.amountShort;
 
+  // The precision chip is a sibling of the block's Pressable, not inside it:
+  // nested, a screen reader reads the block as one element and never reaches it.
   return (
-    <Pressable
-      onPress={onToggle}
-      disabled={!onToggle}
-      accessibilityRole={onToggle ? "button" : "summary"}
-      accessibilityState={onToggle ? { expanded: open } : undefined}
-      accessibilityLabel={spokenLabel({ ...view, amount })}
-      accessibilityHint={onToggle ? (open ? "Oculta cómo sale tu número" : "Muestra cómo sale tu número") : undefined}
-      style={[styles.block, { backgroundColor: fill, opacity: dimmed ? 0.55 : 1 }, !solid && t.shadow]}
-    >
-      <View style={styles.top}>
-        <View style={[styles.pill, solid ? { borderWidth: 1.5, borderColor: accent } : { backgroundColor: t.colors.card }]}>
-          <View style={[styles.dot, { backgroundColor: solid ? accent : state.solid }]} />
-          <Text style={[styles.pillText, { color: accent, fontFamily: t.fonts.uiSemibold }]}>{view.pill}</Text>
+    <View style={[styles.block, { backgroundColor: fill, opacity: dimmed ? 0.55 : 1 }, !solid && t.shadow]}>
+      <Pressable
+        onPress={onToggle}
+        disabled={!onToggle}
+        accessibilityRole={onToggle ? "button" : "summary"}
+        accessibilityState={onToggle ? { expanded: open } : undefined}
+        accessibilityLabel={spokenLabel({ ...view, amount }, precision)}
+        accessibilityHint={onToggle ? (open ? "Oculta cómo sale tu número" : "Muestra cómo sale tu número") : undefined}
+      >
+        <View style={styles.top}>
+          <View style={[styles.pill, solid ? { borderWidth: 1.5, borderColor: accent } : { backgroundColor: t.colors.card }]}>
+            <View style={[styles.dot, { backgroundColor: solid ? accent : state.solid }]} />
+            <Text style={[styles.pillText, { color: accent, fontFamily: t.fonts.uiSemibold }]}>{view.pill}</Text>
+          </View>
+          <Text style={[styles.payday, { color: accent, fontFamily: t.fonts.uiMedium }]} numberOfLines={1}>
+            {view.payday}
+          </Text>
         </View>
-        <Text style={[styles.payday, { color: accent, fontFamily: t.fonts.uiMedium }]} numberOfLines={1}>
-          {view.payday}
-        </Text>
-      </View>
 
-      <Text style={[styles.label, { color: strong, fontFamily: t.fonts.uiSemibold }]}>Disponible</Text>
-      <FittedAmount full={amount} short={amountShort} color={strong} fontFamily={t.fonts.number} size={64} style={styles.number} />
+        <Text style={[styles.label, { color: strong, fontFamily: t.fonts.uiSemibold }]}>Disponible</Text>
+        <FittedAmount full={amount} short={amountShort} color={strong} fontFamily={t.fonts.number} size={64} style={styles.number} />
 
-      <View style={styles.bottom}>
-        <Text style={[styles.meta, { color: accent, fontFamily: t.fonts.uiMedium }]}>
-          {view.perDayAmount && (
-            <Text style={{ color: strong, fontFamily: t.fonts.numberSemibold, fontSize: 14 }}>{view.perDayAmount} </Text>
-          )}
-          {view.perDayRest}
-        </Text>
-        {view.sub && <Text style={[styles.meta, { color: accent, fontFamily: t.fonts.uiMedium }]}>{view.sub}</Text>}
-      </View>
+        <View style={styles.bottom}>
+          <Text style={[styles.meta, { color: accent, fontFamily: t.fonts.uiMedium }]}>
+            {view.perDayAmount && (
+              <Text style={{ color: strong, fontFamily: t.fonts.numberSemibold, fontSize: 14 }}>{view.perDayAmount} </Text>
+            )}
+            {view.perDayRest}
+          </Text>
+          {view.sub && <Text style={[styles.meta, { color: accent, fontFamily: t.fonts.uiMedium }]}>{view.sub}</Text>}
+        </View>
+        {view.approxNote && (
+          <Text style={[styles.meta, styles.approx, { color: accent, fontFamily: t.fonts.ui }]}>~ {view.approxNote}</Text>
+        )}
+        {onToggle && (
+          <View style={styles.toggle}>
+            <Text style={[styles.toggleText, { color: accent, fontFamily: t.fonts.uiSemibold }]}>{open ? "Ocultar" : "Cómo sale"}</Text>
+            <Chevron size={14} color={accent} strokeWidth={2.4} />
+          </View>
+        )}
+      </Pressable>
       {precision && (
         <Pressable
           onPress={onPrecision}
@@ -81,7 +93,7 @@ export const DisponibleBlock = memo(function DisponibleBlock({
           accessibilityRole="button"
           accessibilityLabel={`Precisión de tu número: ${precision.label}, ${precision.percent} por ciento`}
           accessibilityHint="Muestra qué le falta a tu número"
-          hitSlop={6}
+          hitSlop={8}
           style={[styles.precision, { backgroundColor: solid ? "transparent" : t.colors.card, borderColor: accent, borderWidth: solid ? 1.5 : 0 }]}
         >
           <View style={styles.dots}>
@@ -92,24 +104,16 @@ export const DisponibleBlock = memo(function DisponibleBlock({
           <Text style={{ fontSize: 12, color: strong, fontFamily: t.fonts.uiSemibold }}>{precision.label} · {precision.percent}%</Text>
         </Pressable>
       )}
-      {view.approxNote && (
-        <Text style={[styles.meta, styles.approx, { color: accent, fontFamily: t.fonts.ui }]}>~ {view.approxNote}</Text>
-      )}
-      {onToggle && (
-        <View style={styles.toggle}>
-          <Text style={[styles.toggleText, { color: accent, fontFamily: t.fonts.uiSemibold }]}>{open ? "Ocultar" : "Cómo sale"}</Text>
-          <Chevron size={14} color={accent} strokeWidth={2.4} />
-        </View>
-      )}
-    </Pressable>
+    </View>
   );
 });
 
 /** "~" and "−" read aloud the same way on every screen reader. */
 const spoken = (amount: string) => amount.replace("~", "aproximadamente ").replace("≈", "aproximadamente").replace(/−/g, "menos ");
 
-function spokenLabel(v: DisponibleBlockView): string {
+function spokenLabel(v: DisponibleBlockView, precision?: { label: string; percent: number } | null): string {
   const parts = [v.pill, `Disponible ${spoken(v.amount)}`, v.perDay, v.payday];
+  if (precision) parts.push(`Precisión: ${precision.label}, ${precision.percent} por ciento`);
   if (v.sub) parts.push(spoken(v.sub));
   if (v.approxNote) parts.push(v.approxNote);
   return `${parts.join(". ")}.`;
@@ -127,7 +131,7 @@ const styles = StyleSheet.create({
   bottom: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", columnGap: 10, rowGap: 4, marginTop: 12 },
   meta: { fontSize: 13 },
   approx: { marginTop: 6 },
-  precision: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 8, minHeight: 28, paddingHorizontal: 10, borderRadius: 999, marginTop: 10 },
+  precision: { alignSelf: "center", flexDirection: "row", alignItems: "center", gap: 8, minHeight: 28, paddingHorizontal: 10, borderRadius: 999, marginTop: 10 },
   dots: { flexDirection: "row", gap: 3 },
   pdot: { width: 6, height: 6, borderRadius: 3 },
   toggle: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, marginTop: 10 },

@@ -21,6 +21,8 @@ export interface SetupTask {
   detail: string;
   /** The user may close it by saying they don't have it. */
   canDecline: boolean;
+  /** What closing it says: "No tengo", or "Ya no los pago" for names left pending. */
+  declineLabel: string;
 }
 
 export interface SetupProgress {
@@ -53,7 +55,7 @@ export const REAL_AT = 80;
 /** Automatic capture counts while something arrived on its own in this window. */
 export const CAPTURE_WINDOW_DAYS = 14;
 
-const AUTOMATIC = new Set(["EMAIL_IMPORT", "NOTIFICATION", "EMAIL_PDF_IMPORT"]);
+const AUTOMATIC = new Set(["EMAIL_IMPORT", "NOTIFICATION"]);
 
 export function setupLevel(percent: number): SetupLevel {
   return percent >= REAL_AT ? "real" : percent >= APROXIMADO_AT ? "aproximado" : "borrador";
@@ -81,24 +83,26 @@ export function setupProgress(input: SetupInput): SetupProgress {
 
   const tasks: SetupTask[] = [
     {
-      id: "basics", weight: SETUP_WEIGHTS.basics, done: hasSetupBasics(input.settings), canDecline: false,
+      id: "basics", weight: SETUP_WEIGHTS.basics, done: hasSetupBasics(input.settings), canDecline: false, declineLabel: "",
       title: "Cuándo te pagan y cuánto tienes", detail: "Lo mínimo para tu número",
     },
     {
-      id: "statement", weight: SETUP_WEIGHTS.statement, done: input.hasStatement, canDecline: false,
+      id: "statement", weight: SETUP_WEIGHTS.statement, done: input.hasStatement, canDecline: false, declineLabel: "",
       title: "Sube tus extractos", detail: "Los últimos 3 meses son gratis: Zeta saca tus pagos y tarjetas",
     },
     {
-      id: "bills", weight: SETUP_WEIGHTS.bills, done: billsDone, canDecline: pending.length === 0,
+      // A name tapped by mistake in onboarding must be droppable, or the card never leaves Hoy.
+      id: "bills", weight: SETUP_WEIGHTS.bills, done: billsDone, canDecline: true,
+      declineLabel: pending.length ? (pending.length === 1 ? "Ya no lo pago" : "Ya no los pago") : "No tengo",
       title: pending.length ? "Completa tus pagos fijos" : "Agrega tus pagos fijos",
       detail: pending.length ? `Falta el monto de ${listNames(pending)}` : "Arriendo, servicios, internet… aproximado sirve",
     },
     {
-      id: "cards", weight: SETUP_WEIGHTS.cards, done: cardsDone, canDecline: true,
+      id: "cards", weight: SETUP_WEIGHTS.cards, done: cardsDone, canDecline: true, declineLabel: "No tengo",
       title: "Agrega tus tarjetas", detail: "Su factura cuenta por el pago mínimo",
     },
     {
-      id: "capture", weight: SETUP_WEIGHTS.capture, done: captured, canDecline: false,
+      id: "capture", weight: SETUP_WEIGHTS.capture, done: captured, canDecline: false, declineLabel: "",
       title: "Activa la captura automática", detail: "Reenvía los correos de tu banco y tus compras entran solas",
     },
   ];

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as Crypto from "expo-crypto";
@@ -58,6 +58,10 @@ export function ExtractoPath({ userId, onFinish, onManual }: {
   const [choice, setChoice] = useState<PayChoice | null>(null);
   const [income, setIncome] = useState("");
   const [balance, setBalance] = useState("");
+  /** The user typed the balance: stop refilling it from the accounts. */
+  const balanceEdited = useRef(false);
+  /** One templateId per suggestion, so a retry after a failed save is a duplicate, not a second bill. */
+  const templateIds = useRef(new Map<string, string>());
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const varia = choice === "varia";
@@ -89,7 +93,8 @@ export function ExtractoPath({ userId, onFinish, onManual }: {
       });
       setFound({ accounts: liquid.length, cards: data.accounts.filter((a) => a.accountType === "CREDIT_CARD").length, counted, suggestions });
       setAnswers((a) => Object.fromEntries(suggestions.map((s) => [s.key, a[s.key] ?? true])));
-      if (!balance) setBalance(liquid.length ? formatPesos(Math.round(counted)) : "");
+      // Each new statement adds its accounts: refill until the user edits it.
+      if (!balanceEdited.current) setBalance(liquid.length ? formatPesos(Math.round(counted)) : "");
     } catch (e) {
       console.warn("[v2 onboarding] read after import failed", e);
       setError("No pudimos leer lo importado. Intenta de nuevo.");
@@ -98,9 +103,15 @@ export function ExtractoPath({ userId, onFinish, onManual }: {
     }
   };
 
+  const templateIdFor = (key: string) => {
+    if (!templateIds.current.has(key)) templateIds.current.set(key, Crypto.randomUUID().toLowerCase());
+    return templateIds.current.get(key)!;
+  };
+
   const finish = async () => {
     if (!choice) return setError("Elige cuándo te pagan.");
     if (!varia && !parseAmount(income)) return setError("Escribe cuánto te llega cada vez (aproximado sirve).");
+    if (!balance.trim()) return setError("Escribe cuánto tienes hoy en tus cuentas, más o menos.");
     const anchor = /^[$\s0.,]*$/.test(balance) ? 0 : parseAmount(balance);
     if (anchor == null) return setError("Revisa cuánto tienes hoy: escríbelo como 1.200.000.");
     setError(null);
@@ -110,7 +121,7 @@ export function ExtractoPath({ userId, onFinish, onManual }: {
       ["setCycleSettings", { schedule: picked.schedule, incomePerCycle: varia ? null : parseAmount(income) }],
       ["setCycleSettings", { balanceAnchor: anchor }],
       ...yes.map((s): [CommandType, unknown] => ["createPagoFijo", {
-        templateId: Crypto.randomUUID().toLowerCase(), name: s.name, amount: s.amount, dayOfMonth: s.dayOfMonth, startDate: s.startDate,
+        templateId: templateIdFor(s.key), name: s.name, amount: s.amount, dayOfMonth: s.dayOfMonth, startDate: s.startDate,
       }]),
     ];
     setSaving(true);
@@ -130,7 +141,7 @@ export function ExtractoPath({ userId, onFinish, onManual }: {
           {[["Cuentas", String(found.accounts)], ["Tarjetas", String(found.cards)], ["Tienes hoy", formatPesos(Math.round(found.counted))]].map(([k, v]) => (
             <View key={k} style={[styles.stat, { backgroundColor: t.colors.sunk }]}>
               <Text style={{ fontSize: 12, color: t.colors.muted, fontFamily: t.fonts.uiMedium }}>{k}</Text>
-              <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 15, color: t.colors.ink, fontFamily: t.fonts.numberSemibold }}>{v}</Text>
+              <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 15, color: t.colors.ink, fontFamily: t.fonts.numberSemibold, fontVariant: ["tabular-nums"] }}>{v}</Text>
             </View>
           ))}
         </View>
@@ -153,6 +164,7 @@ export function ExtractoPath({ userId, onFinish, onManual }: {
                       accessibilityRole="switch"
                       accessibilityState={{ checked: on }}
                       accessibilityLabel={`${s.name} es un pago fijo`}
+                      hitSlop={4}
                       style={[styles.yes, on ? { backgroundColor: t.colors.ok.tint, borderColor: t.colors.ok.solid } : { borderColor: t.colors.control }]}
                     >
                       <Text style={{ fontSize: 14, color: on ? t.colors.ok.text : t.colors.ink, fontFamily: t.fonts.uiSemibold }}>{on ? "Sí" : "No"}</Text>
@@ -169,10 +181,10 @@ export function ExtractoPath({ userId, onFinish, onManual }: {
           {PAY_CHOICES.map((c) => <Chip key={c.key} label={c.label} on={choice === c.key} onPress={() => { setChoice(c.key); setError(null); }} />)}
         </View>
         {!varia && <Field label="¿Cuánto te llega cada vez? Aproximado sirve" value={income} onChange={setIncome} placeholder="Ej: $2.400.000" money flex={0} />}
-        <Field label="Lo que tienes hoy en tus cuentas (corrígelo si cambió)" value={balance} onChange={setBalance} placeholder="$0" money flex={0} />
+        <Field label="Lo que tienes hoy en tus cuentas (corrígelo si cambió)" value={balance} onChange={(v) => { balanceEdited.current = true; setBalance(v); setError(null); }} placeholder="$0" money flex={0} />
         <ErrorLine text={error} />
         <Button label="Ver mi número" onPress={finish} loading={saving} />
-        <ExtractoSheet file={pdf} userId={userId} onClose={() => { setPdf(null); void look(); }} />
+        <ExtractoSheet file={pdf} userId={userId} onClose={(imported) => { setPdf(null); if (imported) void look(); }} />
       </View>
     );
   }
@@ -200,7 +212,7 @@ export function ExtractoPath({ userId, onFinish, onManual }: {
       <ErrorLine text={error} />
       <Button label="Ya los tengo, subir PDF" onPress={pick} />
       <Button label="Lo hago después" variant="text" onPress={onManual} style={{ alignSelf: "center" }} accessibilityHint="Sigue con Lo digo yo; el extracto te queda como tarea en Hoy" />
-      <ExtractoSheet file={pdf} userId={userId} onClose={() => { setPdf(null); void look(); }} />
+      <ExtractoSheet file={pdf} userId={userId} onClose={(imported) => { setPdf(null); if (imported) void look(); }} />
     </View>
   );
 }
@@ -212,5 +224,5 @@ const styles = StyleSheet.create({
   stats: { flexDirection: "row", gap: 8 },
   stat: { flex: 1, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 8, alignItems: "center", gap: 3 },
   sugg: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10 },
-  yes: { minWidth: 60, height: 40, borderRadius: 20, borderWidth: 1.5, alignItems: "center", justifyContent: "center", paddingHorizontal: 12 },
+  yes: { minWidth: 60, height: 44, borderRadius: 20, borderWidth: 1.5, alignItems: "center", justifyContent: "center", paddingHorizontal: 12 },
 });

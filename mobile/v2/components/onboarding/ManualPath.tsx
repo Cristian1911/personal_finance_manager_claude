@@ -114,23 +114,24 @@ export function ManualPath({ onFinish, onBack }: { onFinish: (r: ManualResult) =
     setError(null);
 
     const picked = PAY_CHOICES.find((c) => c.key === choice)!;
+    // Ids come from the rows (stable): a retry after a failed save is a duplicate, not a second account or bill.
     const commands: [CommandType, unknown][] = [
       ["setCycleSettings", { schedule: picked.schedule, incomePerCycle: varia ? null : money(income) }],
       ...namedAccounts.map((a): [CommandType, unknown] => ["createAccount", {
-        accountId: uuid(), accountType: a.cash ? "CASH" : "SAVINGS", name: a.cash ? "Efectivo" : a.name.trim(),
+        accountId: a.key, accountType: a.cash ? "CASH" : "SAVINGS", name: a.cash ? "Efectivo" : a.name.trim(),
         currencyCode: "COP", balance: money(a.balance) ?? 0,
       }]),
       ...namedCards.map((c): [CommandType, unknown] => {
         const owed = money(c.owed);
         return ["createAccount", {
-          accountId: uuid(), accountType: "CREDIT_CARD", name: c.name.trim(), currencyCode: c.usd ? "USD" : "COP",
+          accountId: c.key, accountType: "CREDIT_CARD", name: c.name.trim(), currencyCode: c.usd ? "USD" : "COP",
           balance: owed ?? 0, balanceUnknown: owed == null, creditLimit: money(c.limit) ?? undefined, paymentDay: dayOf(c.day) ?? undefined,
         }];
       }),
       ...namedLoans.map((l): [CommandType, unknown] => {
         const owed = money(l.balance);
         return ["createAccount", {
-          accountId: uuid(), accountType: "LOAN", name: l.name.trim(), currencyCode: "COP",
+          accountId: l.key, accountType: "LOAN", name: l.name.trim(), currencyCode: "COP",
           balance: owed ?? 0, balanceUnknown: owed == null, monthlyPayment: money(l.cuota) ?? undefined, paymentDay: dayOf(l.day) ?? undefined,
         }];
       }),
@@ -138,7 +139,7 @@ export function ManualPath({ onFinish, onBack }: { onFinish: (r: ManualResult) =
       ["setCycleSettings", { balanceAnchor: balanceValue }],
       ...namedBills.filter(completeBill).map((b): [CommandType, unknown] => {
         const d = Number(b.day);
-        return ["createPagoFijo", { templateId: uuid(), name: b.name.trim(), amount: money(b.amount), dayOfMonth: d, startDate: firstPagoDate(d, today) }];
+        return ["createPagoFijo", { templateId: b.key, name: b.name.trim(), amount: money(b.amount), dayOfMonth: d, startDate: firstPagoDate(d, today) }];
       }),
     ];
     setSaving(true);
@@ -160,7 +161,7 @@ export function ManualPath({ onFinish, onBack }: { onFinish: (r: ManualResult) =
   );
   const openBlock = (id: BlockId) => {
     setOpen(id);
-    if (id === "cuentas" && accounts.length === 0) setAccounts([{ key: "cash", name: "Efectivo", cash: true, balance: "" }, { key: uuid(), name: "", cash: false, balance: "" }]);
+    if (id === "cuentas" && accounts.length === 0) setAccounts([{ key: uuid(), name: "Efectivo", cash: true, balance: "" }, { key: uuid(), name: "", cash: false, balance: "" }]);
     if (id === "tarjetas" && cards.length === 0) setCards([{ key: uuid(), name: "", limit: "", owed: "", day: "", usd: false }]);
     if (id === "creditos" && loans.length === 0) setLoans([{ key: uuid(), name: "", balance: "", cuota: "", day: "" }]);
   };
@@ -228,8 +229,8 @@ export function ManualPath({ onFinish, onBack }: { onFinish: (r: ManualResult) =
                 {rowX(`Quitar ${c.name || "tarjeta"}`, () => remove(setCards, c.key))}
               </View>
               <View style={styles.line}>
-                <Field label="Cupo (opcional)" value={c.limit} onChange={(v) => update(setCards, c.key, { limit: v })} placeholder="$0" money />
-                <Field label="Debes hoy (opcional)" value={c.owed} onChange={(v) => update(setCards, c.key, { owed: v })} placeholder="$0" money />
+                <Field label={c.usd ? "Cupo en dólares (opcional)" : "Cupo (opcional)"} value={c.limit} onChange={(v) => update(setCards, c.key, { limit: v })} placeholder={c.usd ? "US$0" : "$0"} money />
+                <Field label={c.usd ? "Debes hoy en dólares (opcional)" : "Debes hoy (opcional)"} value={c.owed} onChange={(v) => update(setCards, c.key, { owed: v })} placeholder={c.usd ? "US$0" : "$0"} money />
               </View>
               <View style={styles.line}>
                 <Field label="Día de pago" value={c.day} onChange={(v) => update(setCards, c.key, { day: v })} placeholder="Ej: 20" day />

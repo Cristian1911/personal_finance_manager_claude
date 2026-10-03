@@ -10,7 +10,7 @@ import { Sheet } from "./Sheet";
 /**
  * "Afina tu número" (S10-4): what's left for a real Disponible, on top of Hoy
  * until it's all done. Each task says what it adds; cards and fixed payments
- * can be closed with "No tengo".
+ * can be closed with "No tengo" (or, for names left pending, "Ya no los pago").
  */
 export const SetupCard = memo(function SetupCard({ setup, onTask, onDecline }: {
   setup: SetupProgress;
@@ -62,17 +62,29 @@ function TaskRow({ task, onPress, onDecline }: { task: SetupTask; onPress: () =>
         {!task.done && <ChevronRight size={16} color={c.muted} />}
       </Pressable>
       {!task.done && task.canDecline && (
-        <Button label="No tengo" variant="text" size="S" onPress={onDecline} style={{ alignSelf: "flex-start", marginLeft: 34 }} accessibilityLabel={`No tengo ${task.id === "cards" ? "tarjetas de crédito" : "pagos fijos"}`} />
+        <Button
+          label={task.declineLabel} variant="text" size="S" onPress={onDecline} style={{ alignSelf: "flex-start", marginLeft: 34 }}
+          accessibilityLabel={task.declineLabel === "No tengo" ? `No tengo ${task.id === "cards" ? "tarjetas de crédito" : "pagos fijos"}` : `${task.declineLabel}: quitar los pagos sin monto`}
+        />
       )}
     </View>
   );
 }
 
+/** What each open task means, as "Le falta: …" reads it. */
+const MISSING: Record<SetupTaskId, string> = {
+  basics: "cuándo te pagan y cuánto tienes",
+  statement: "tus extractos",
+  bills: "tus pagos fijos",
+  cards: "tus tarjetas",
+  capture: "la captura automática",
+};
+
 /** "¿Qué tan real es tu número?": the levels and what's missing. */
 export function PrecisionSheet({ setup, open, onClose }: { setup: SetupProgress; open: boolean; onClose: () => void }) {
   const t = useV2Theme();
   const insets = useSafeAreaInsets();
-  const missing = setup.tasks.filter((x) => !x.done).map((x) => x.title.toLowerCase());
+  const missing = setup.tasks.filter((x) => !x.done).map((x) => MISSING[x.id]);
   return (
     <Sheet open={open} onClose={onClose} style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: insets.bottom + 16, gap: 12 }}>
       <View style={[styles.handle, { backgroundColor: t.colors.line }]} />
