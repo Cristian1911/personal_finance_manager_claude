@@ -119,5 +119,20 @@ export {
 export { cuentasView, type CuentaRow, type CuentasView } from "./cuentas";
 export { anotarPreview, dictado, yaEsta, type AnotarDraft, type AnotarPreview, type Dictado } from "./anotar";
 export { cycleBills, pagosView, type BillItem, type PagoRow, type PagosView } from "./pagos";
-export { posiblesDuplicados, type PosibleDuplicado } from "./revisar";
+export { firstPagoDate, pagosFijosSugeridos, posiblesDuplicados, type PagoFijoSugerido, type PosibleDuplicado } from "./revisar";
+export {
+  APROXIMADO_AT,
+  CAPTURE_WINDOW_DAYS,
+  REAL_AT,
+  SETUP_WEIGHTS,
+  hasSetupBasics,
+  setupLevel,
+  setupLevelLabel,
+  setupProgress,
+  type SetupInput,
+  type SetupLevel,
+  type SetupProgress,
+  type SetupTask,
+  type SetupTaskId,
+} from "./setup";
 export { extractosView, readStatementHistory, type ExtractoRow, type StatementHistoryRow } from "./extractos";
