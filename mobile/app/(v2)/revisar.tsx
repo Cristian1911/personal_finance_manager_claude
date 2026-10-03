@@ -8,7 +8,7 @@ import { toColombiaDateString } from "../../lib/utils/date";
 import { useV2Changes } from "../../lib/v2/changes";
 import { getV2Database } from "../../lib/v2/engine/database";
 import { runLocalCommand } from "../../lib/v2/engine/run-local";
-import { syncProblems, type SyncProblem } from "../../lib/v2/sync/sync";
+import { syncProblems, syncV2, type SyncProblem } from "../../lib/v2/sync/sync";
 import { useV2UserId } from "../../lib/v2/user";
 import { notifyV2Change } from "../../lib/v2/changes";
 import { ONBOARDING_KEYS, parseLocal, readLocal, rememberJson } from "../../lib/v2/local-state";
@@ -38,6 +38,9 @@ const WHAT: Record<string, string> = {
   setTransactionDestinatario: "Quién es un movimiento",
   setDestinatarioCategory: "La categoría de un comercio o persona",
   resolveBankDuplicate: "Una respuesta en Revisar",
+  captureBankTransaction: "Un movimiento de un extracto",
+  recordStatement: "Los datos de un extracto",
+  anchorStatementBalance: "El saldo de un extracto",
 };
 
 /** Far enough back to see a monthly charge twice (a statement brings ~3 months). */
@@ -86,6 +89,14 @@ export default function RevisarScreen() {
   }, [userId]);
   useV2Changes(() => void reload());
   useFocusEffect(useCallback(() => { void reload(); }, [reload]));
+
+  // Set aside after failing several times (often the server, not the change): send them again.
+  const retry = useCallback(async () => {
+    const { driver } = await getV2Database();
+    await driver.query("UPDATE outbox SET state = 'pending', attempts = 0, last_error = NULL WHERE user_id = ? AND state = 'dead'", [userId]);
+    await syncV2(userId).catch((e) => console.warn("[v2 revisar] retry sync failed", e));
+    await reload();
+  }, [userId, reload]);
 
   const dismiss = useCallback(async () => {
     const { driver } = await getV2Database();
@@ -178,8 +189,11 @@ export default function RevisarScreen() {
         ))}
         {problems.length > 0 && (
           <>
+            <Text accessibilityRole="header" style={{ fontSize: 17, color: t.colors.ink, fontFamily: t.fonts.uiSemibold, paddingHorizontal: 4 }}>
+              No pudimos guardar esto en tu cuenta
+            </Text>
             <Text style={{ fontSize: 15, lineHeight: 22, color: t.colors.muted, fontFamily: t.fonts.uiMedium, paddingHorizontal: 4 }}>
-              Estos cambios no se guardaron en tu cuenta. Ya no están en el teléfono; si los necesitas, anótalos de nuevo.
+              Lo hiciste en este teléfono, pero no llegó a tu cuenta. Intenta de nuevo; si vuelve a fallar, descártalo y hazlo otra vez.
             </Text>
             <View style={[styles.card, { backgroundColor: t.colors.card }, t.shadow]}>
               {problems.map((p, i) => (
@@ -189,7 +203,8 @@ export default function RevisarScreen() {
                 </View>
               ))}
             </View>
-            <Button label="Entendido" variant="secondary" onPress={() => void dismiss()} />
+            {problems.some((p) => p.state === "dead") && <Button label="Intentar de nuevo" onPress={() => void retry()} />}
+            <Button label="Descartar" variant="secondary" onPress={() => void dismiss()} />
           </>
         )}
       </ScrollView>

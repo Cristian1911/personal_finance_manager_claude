@@ -55,7 +55,7 @@ export async function POST(request: Request) {
       results.push({ id: c.id, result });
     } catch (e) {
       console.error("[v2 commands] apply failed", { id: c.id, type: c.type, error: e instanceof Error ? e.message : String(e) });
-      return NextResponse.json({ results, failed: { id: c.id, error: "No se pudo aplicar" } });
+      return NextResponse.json({ results, failed: { id: c.id, error: "Tu cuenta no respondió: intenta de nuevo" } });
     }
   }
   return NextResponse.json({ results });
