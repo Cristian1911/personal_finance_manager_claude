@@ -114,3 +114,27 @@ describe("cycleBills — review fixes", () => {
     expect(bills.items[0].amount).toBe(1_300_000);
   });
 });
+
+describe("a card bill with a USD section (S10-14)", () => {
+  const st = (currency: string, minimum: number) => ({ accountId: "card", currency, cutDate: "2026-09-27", dueDate: "2026-10-12", minimum, totalDue: minimum, rate: 24 });
+  const base = { ...window, templates: [], occurrences: [], accounts: [card] };
+
+  it("pesos minimum + USD minimum at today's dollar + 3 %, keeping the dollars apart", () => {
+    const bills = cycleBills({ ...base, transactions: [], statements: [st("COP", 60_000), st("USD", 12.5)], usdRate: 4_000 });
+    expect(bills.items[0]).toMatchObject({ kind: "card", amount: 111_500, usd: 12.5, estimated: false });
+    expect(bills.obligations[0]).toMatchObject({ amount: 111_500 });
+  });
+
+  it("with no dollar on the phone yet, only the pesos count; the dollars still show", () => {
+    const bills = cycleBills({ ...base, transactions: [], statements: [st("COP", 60_000), st("USD", 12.5)] });
+    expect(bills.items[0]).toMatchObject({ amount: 60_000, usd: 12.5 });
+  });
+
+  it("before any statement, a USD purchase counts by its value in pesos", () => {
+    const bills = cycleBills({ ...base, transactions: [
+      tx("card", "2026-09-15", 100_000, "OUTFLOW"),
+      tx("card", "2026-09-20", 20, "OUTFLOW", { currencyCode: "USD", amountInBaseCurrency: 80_000 }),
+    ] });
+    expect(bills.items[0]).toMatchObject({ amount: 180_000, usd: 20, estimated: true });
+  });
+});

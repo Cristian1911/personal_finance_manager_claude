@@ -19,6 +19,8 @@ export interface InicioTemplate {
 /** A card or loan statement's numbers, for Disponible and the Tarjeta widget. */
 export interface CardStatement {
   accountId: string;
+  /** COP, or a card's USD section (S10-14). */
+  currency?: string;
   cutDate: string | null;
   dueDate: string;
   minimum: number | null;
@@ -93,8 +95,8 @@ export async function readInicioData(driver: SqlDriver, userId: string, since: s
 
   const statementRows = await q<Record<string, unknown>>(
     `SELECT account_id, ${pg ? "period_to::text" : "period_to"} AS period_to, ${pg ? "payment_due_date::text" : "payment_due_date"} AS payment_due_date,
-            minimum_payment, total_payment_due, interest_rate
-       FROM statement_snapshots WHERE user_id = ? AND payment_due_date >= ? AND currency_code = 'COP' ORDER BY payment_due_date`,
+            minimum_payment, total_payment_due, interest_rate, currency_code
+       FROM statement_snapshots WHERE user_id = ? AND payment_due_date >= ? ORDER BY payment_due_date`,
     [userId, since],
   );
 
@@ -105,6 +107,7 @@ export async function readInicioData(driver: SqlDriver, userId: string, since: s
       minimum: r.minimum_payment == null ? null : toNumber(r.minimum_payment),
       totalDue: r.total_payment_due == null ? null : toNumber(r.total_payment_due),
       rate: r.interest_rate == null ? null : toNumber(r.interest_rate),
+      currency: r.currency_code == null ? "COP" : String(r.currency_code),
     })),
     destinatarios: destinatarioRows.map((r) => ({
       id: String(r.id), name: String(r.name), kind: r.kind as "merchant" | "person", defaultCategoryId: (r.default_category_id as string | null) ?? null,

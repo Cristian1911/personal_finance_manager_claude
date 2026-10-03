@@ -22,11 +22,15 @@ export interface BillItem {
   status: "pending" | "paid" | "skipped";
   /** Card bills before the statement: what was owed at the cut. */
   estimated?: boolean;
+  /** The dollars inside a card bill (its USD section's minimum or USD purchases), counted in pesos ≈ (S10-14). */
+  usd?: number;
   templateId?: string;
   accountId?: string;
 }
 
 const cents = (n: number) => Math.round(n * 100) / 100;
+/** A purchase in dollars costs the day's rate plus about 3 % on a Colombian card (spec §4). */
+export const FOREIGN_MARKUP = 1.03;
 const addDays = (d: string, n: number) => {
   const x = new Date(`${d}T12:00:00Z`);
   x.setUTCDate(x.getUTCDate() + n);
@@ -72,6 +76,8 @@ export function cycleBills(i: {
   counts?: (accountId: string) => boolean;
   /** Card statements: the bill becomes the statement's minimum (D24). */
   statements?: CardStatement[];
+  /** Pesos per dollar today, for a card's USD part; unknown → the dollars aren't counted (shown apart). */
+  usdRate?: number | null;
 }): { items: BillItem[]; obligations: Obligation[]; occurrenceLinks: OccurrenceLink[] } {
   const stored = new Map(i.occurrences.map((o) => [`${o.templateId}:${o.date}`, o]));
   const items: BillItem[] = [];
@@ -117,11 +123,17 @@ export function cycleBills(i: {
   // ── Tarjetas y créditos ──
   const into = (accountId: string, from: string, to: string) => i.transactions
     .filter((t) => live(t) && t.accountId === accountId && t.date >= from && t.date <= to);
-  const sum = (ts: StoredTransaction[], dir: "INFLOW" | "OUTFLOW") => cents(ts.filter((t) => t.direction === dir).reduce((s, t) => s + t.amount, 0));
+  // A foreign row counts by its value in pesos (or today's dollar + 3 %); with no rate at all, not at all.
+  const pesos = (t: StoredTransaction) => (t.currencyCode === "COP" ? t.amount
+    : t.amountInBaseCurrency ?? (i.usdRate && t.currencyCode === "USD" ? t.amount * i.usdRate * FOREIGN_MARKUP : 0));
+  const sum = (ts: StoredTransaction[], dir: "INFLOW" | "OUTFLOW") => cents(ts.filter((t) => t.direction === dir).reduce((s, t) => s + pesos(t), 0));
+  const dollars = (ts: StoredTransaction[]) => cents(ts.filter((t) => t.direction === "OUTFLOW" && t.currencyCode === "USD").reduce((s, t) => s + t.amount, 0));
   for (const a of i.accounts.filter((x) => isDebtAccountType(x.accountType) && x.paymentDay)) {
     const card = a.accountType === "CREDIT_CARD";
     for (const due of monthDays(a.paymentDay!, i.from, i.to)) {
       let amount: number;
+      let usd = 0;
+      let copOnly = 0;
       let since: string;
       let until: string;
       if (card) {
@@ -134,7 +146,10 @@ export function cycleBills(i: {
         const [py, pm] = prevMonth(cy, cm);
         // This bill = what was bought with the card in its statement period (owner note D11): debt from
         // before (told when the card was added, or earlier statements) is debt, not this bill.
-        amount = sum(into(a.id, addDays(ymd(py, pm, cutDay), 1), cut), "OUTFLOW");
+        const period = into(a.id, addDays(ymd(py, pm, cutDay), 1), cut);
+        amount = sum(period, "OUTFLOW");
+        usd = dollars(period);
+        copOnly = sum(period.filter((t) => t.currencyCode === "COP"), "OUTFLOW");
         since = addDays(cut, 1);
         // Payments after the next cut belong to the next bill.
         const [ny, nm] = cm === 12 ? [cy + 1, 1] : [cy, cm + 1];
@@ -149,10 +164,17 @@ export function cycleBills(i: {
       // D24: once the statement is in, the bill is its minimum, due on the bank's date (it moves on weekends).
       let dueDate = due;
       let estimated = card;
-      const statement = card ? (i.statements ?? []).find((s) => s.accountId === a.id && Math.abs(calendarDayDiff(s.dueDate, due)) <= 7) : undefined;
-      if (statement?.minimum != null) {
-        amount = statement.minimum;
-        dueDate = statement.dueDate;
+      const near = (s: CardStatement) => s.accountId === a.id && Math.abs(calendarDayDiff(s.dueDate, due)) <= 7;
+      const statement = card ? (i.statements ?? []).find((s) => near(s) && (s.currency ?? "COP") === "COP") : undefined;
+      const usdStatement = card ? (i.statements ?? []).find((s) => near(s) && s.currency === "USD") : undefined;
+      if (statement?.minimum != null || usdStatement?.minimum != null) {
+        // The pesos minimum, plus the USD section's minimum in pesos at today's dollar + 3 % (S10-14).
+        // A section without its statement yet stays the estimate of its own purchases.
+        const copPart = statement?.minimum ?? copOnly;
+        const usdPart = usdStatement?.minimum ?? (statement && !usdStatement ? usd : 0);
+        usd = usdPart;
+        amount = cents(copPart + (i.usdRate ? usdPart * i.usdRate * FOREIGN_MARKUP : 0));
+        dueDate = (statement ?? usdStatement)!.dueDate;
         estimated = false;
       }
       if (amount <= 0) continue;
@@ -168,7 +190,7 @@ export function cycleBills(i: {
       items.push({
         id, kind: card ? "card" : "loan", title: a.name || (card ? "Tarjeta" : "Crédito"), dueDate, amount,
         paid: Math.min(amount, paidAll), status: paidAll * 100 >= PAID_TOLERANCE_PERCENT * amount ? "paid" : "pending",
-        accountId: a.id, ...(card ? { estimated } : {}),
+        accountId: a.id, ...(card ? { estimated } : {}), ...(usd > 0 ? { usd } : {}),
       });
     }
   }

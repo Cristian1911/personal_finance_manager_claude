@@ -107,6 +107,8 @@ export function buildInicio(input: {
   occurrences?: OccurrenceRow[];
   /** Card/loan statements: the card's bill is its minimum once the statement is in (D24). */
   statements?: CardStatement[];
+  /** Pesos per dollar today (the phone's last pull), for a card's USD part (S10-14). */
+  usdRate?: number | null;
 }): InicioState {
   const { settings, today } = input;
   const schedule = settings?.schedule;
@@ -154,7 +156,7 @@ export function buildInicio(input: {
   const bills = cycleBills({
     from: cycle.start, to: nextCycle.end, templates: input.templates ?? [], occurrences: input.occurrences ?? [],
     accounts: input.accounts, transactions: input.transactions, statements: input.statements ?? [],
-    cycleStart: cycle.start, counts: (id) => counted.has(id),
+    cycleStart: cycle.start, counts: (id) => counted.has(id), usdRate: input.usdRate ?? null,
   });
   occurrenceLinks.push(...bills.occurrenceLinks);
   const dueNow = bills.obligations.filter((o) => o.dueDate <= cycle.end);
@@ -252,7 +254,7 @@ function cardsFrom(accounts: InicioAccount[], items: BillItem[], statements: Car
     const last = statements.filter((s) => s.accountId === a.id && s.cutDate).sort((x, y) => y.cutDate!.localeCompare(x.cutDate!))[0];
     const since = last?.cutDate
       ? Math.round(transactions.filter((t) => isLiveTransaction(t) && t.accountId === a.id && t.direction === "OUTFLOW" && t.date > last.cutDate!)
-        .reduce((s, t) => s + t.amount, 0) * 100) / 100
+        .reduce((s, t) => s + (t.currencyCode === "COP" ? t.amount : t.amountInBaseCurrency ?? 0), 0) * 100) / 100
       : null;
     return {
       minimum: pending && !pending.estimated ? Math.max(0, Math.round((pending.amount - pending.paid) * 100) / 100) : null,
