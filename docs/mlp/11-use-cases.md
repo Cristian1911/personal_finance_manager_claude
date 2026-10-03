@@ -18,7 +18,7 @@ Every architecture, database and screen decision is checked against this list. N
 | A2 | Tell Zeta when I get paid (15/30, monthly, biweekly, irregular) | Onboarding, Ajustes › Cuándo me pagan | v1 | ok |
 | A3 | Tell Zeta how much I receive each payday | Onboarding, Ajustes | v1 | ok |
 | A4 | Tell Zeta how much I have today, to get my first number | Onboarding | v1 | ok |
-| A5 | Declare the fixed payments I still owe before payday | Onboarding | v1 | ok |
+| A5 | Declare the fixed payments I still owe before payday (amount/day optional; incomplete ones become tasks) | Onboarding, Hoy › Afina tu número | v1 | S10-4 |
 | A6 | See my Disponible before giving any permission | Onboarding (aha) | v1 | ok |
 | A7 | Connect a capture source: bank notifications (Android) / Gmail (iPhone) / a PDF | Onboarding, Ajustes › Fuentes | v1 | ok |
 | A8 | Add my accounts and cards up front | Onboarding (optional step), Ajustes › Mis cuentas | v1 | D1 |
@@ -48,7 +48,7 @@ Every architecture, database and screen decision is checked against this list. N
 | B15 | See my next card bill growing as I use the card, and what it will be at the cut | Inicio, Pagos › card | v1 | S3-5 |
 | B16 | Organize Inicio's 2-column widget grid: add/remove, order, size (half/full within each widget's minimum), expand in place, urgent widgets flagged and auto-opened (13 widgets: Hoy, Próximo pago, Te deben, Tarjetas, Deudas, Límites, Mis cuentas, Tu flujo, ¿En qué se me fue?, Últimos movimientos, Tus comercios, Dólar hoy, Viaje) | Inicio › Organizar | v1 | S5-4 |
 | B17 | Be alerted on Inicio when something is urgent or critical (bill due tomorrow, running out before payday, next cycle short, a debt overdue) | Inicio widget alert states | v1 | S5-4 |
-| B18 | See my history with full metrics: trends by category, debt shifts, income vs out (last 3 months free; older with Plus) | Historia (from past cycles) | v1.1 | S6-8 |
+| B18 | See my history with full metrics: trends by category, debt shifts, income vs out (simple trends up to 6 months free; older with Plus) | Mi plata › Mejoro | v1 | S10-9 |
 | B19 | "Mi historia": a shareable recap of my year or semester (Wrapped-style) | Historia › Mi historia | later | S6-8 |
 | B13 | See a home-screen widget with my Disponible | Widget | v1.1 | ok |
 
@@ -129,7 +129,7 @@ Every architecture, database and screen decision is checked against this list. N
 | F8 | Make an extra payment to a loan (abono a capital) | Pagos › loan | v1 | D6 |
 | F9 | See how much I still owe on a loan and when it ends | Pagos › loan | v1 | D3 |
 | F12 | Get a suggestion to pay extra on a card/loan when I have money left, with its real impact | Push, Pagos › Deudas | later | S3-6 |
-| F10 | Plan paying off debts (avalanche/snowball, scenarios) | — | out | ok (01: nobody used it) |
+| F10 | Plan paying off debts (avalanche/snowball, scenarios) | Herramientas › Plan de deudas | later | S10-8 |
 | F11 | Handle a card with USD debt | Pagos › card (≈ COP, "USD 120" subtitle) | v1 | D7 |
 
 ## G. Te deben (money I lent) and money I owe people
@@ -158,7 +158,7 @@ Every architecture, database and screen decision is checked against this list. N
 | H3 | Change or remove a limit | Límites › row | v1 | ok |
 | H4 | See each limit: spent, pace, "te quedan $X" | Límites | v1 | ok |
 | H5 | Be warned when a limit reaches Cuidado | Push | v1 | ok |
-| H6 | Create a full budget before I have data (all categories, 50/30/20) | — | out | ok (01 decision) |
+| H6 | Create a full budget (by categories or 50/30/20), choosing a style from examples | Herramientas › Presupuesto | v1 | S10-7 |
 
 ## I. Saving
 
@@ -166,7 +166,7 @@ Every architecture, database and screen decision is checked against this list. N
 |---|---|---|---|---|
 | I1 | Set aside a fixed amount each cycle | Ajustes › Ahorro, first payday prompt | v1 | ok |
 | I2 | Decide what to do with what I didn't spend (to savings / keep it) | Push + prompt at new cycle | v1 | ok |
-| I3 | See how much I've saved in total / towards a goal | — | later | D9 |
+| I3 | See how much I've saved in total / towards a goal | Herramientas › Metas | later | D9, S10-13 |
 
 ## J. Trips
 
@@ -194,6 +194,21 @@ Every architecture, database and screen decision is checked against this list. N
 | K10 | Switch light / dark / system theme | Ajustes | v1 | ok |
 | K12 | Try, buy, restore or cancel Zeta Plus; see my plan and this month's PDF count | Paywall (on tapping a Plus feature), Ajustes › Tu plan | v1.1 | S6 |
 | K11 | Save my PDF password so I don't type it every month | PDF import | v1 | ok (exists) |
+
+## N. Understanding my money and the toolbox (session 10)
+
+| ID | I want to… | Where | Release | Status |
+|---|---|---|---|---|
+| N1 | See Tengo · Gasto · Debo · Mejoro in one place (net worth, habits, fixed vs variable, gastos hormiga, total debt and its monthly interest, trends) | Mi plata | v1 | S10-1 |
+| N2 | Get concrete improvement points with their impact in pesos and a button to act ("Domicilios subió 40 %: +$210.000") | Mi plata › Mejoro | v1 | S10-1 |
+| N3 | See how precise my Disponible is and what's missing to make it real | Hoy (precision chip, Afina tu número) | v1 | S10-4 |
+| N4 | Fetch my bank statements with a per-bank guide, share-to-Zeta or email forwarding, without fear of leaving the app | Onboarding, Hoy | v1 | S10-5 |
+| N5 | Confirm fixed payments Zeta found in my statements | Onboarding (after import), Revisar | v1 | S10-6 |
+| N6 | Know when paying a foreign-currency debt makes most sense (exchange-rate metric) | Debo, Pagos › card | v1 | S10-8 |
+| N7 | Record my investments and update them from monthly statements | Mi plata › Tengo, Mis cuentas | v1 | S10-10 |
+| N8 | Invite a person (QR / WhatsApp) and connect them with a destinatario to share expenses | Te deben, Ajustes | v1 | S10-11 |
+| N9 | Choose default currency, time zone and language | Ajustes | v1 | S10-12 |
+| N10 | Get a short guided intro the first time a section unlocks, and replay it later | Every section, avatar menu | v1 | S10-3 |
 
 ---
 

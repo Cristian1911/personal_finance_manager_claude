@@ -8,6 +8,8 @@
 
 ## 1. What v2 is
 
+> **Session 10 (2026-10-03) widens this.** Zeta is for understanding your money (Tengo · Gasto · Debo · Mejoro) plus a toolbox; Disponible is the entry door. Tabs become Hoy · Movimientos · Mi plata · Herramientas, with Revisar and Ajustes in the avatar menu and a contextual +. Onboarding is continuous, with a precision level on Disponible. See S10-1…S10-13 in `12-decision-log.md` and `docs/superpowers/specs/2026-10-03-v2-onboarding-design.md`; where they disagree with this section, they win.
+
 A native app (iPhone + Android, same store listing `com.venti5.zeta`) that answers one question: **how much can I still spend until my next payday?** (Disponible), with money movements arriving on their own.
 
 - **Tabs:** Inicio · Movimientos · Revisar. Ajustes from the avatar.
@@ -131,6 +133,8 @@ A native app (iPhone + Android, same store listing `com.venti5.zeta`) that answe
 - **Rollback:** everything is additive; re-release the last v1 build with a higher version code if needed; keep `release/v1` for two weeks after v2 GA.
 
 ## 10. Milestones
+
+> **Order revised by S10-13:** onboarding (precision, Afina tu número, statement path, detected fixed payments) → Debo → Gasto → Presupuesto → Te deben + people connections → the rest. The milestone table below is kept for scope; re-estimate after the onboarding phase.
 
 | | Weeks | Scope | Owner accepts when… |
 |---|---|---|---|
