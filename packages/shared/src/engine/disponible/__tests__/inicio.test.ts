@@ -307,3 +307,24 @@ describe("buildInicio — Pagos edge cases (review)", () => {
     expect(partial.result.porPagar.total).toBe(withBill.result.porPagar.total - 10_000);
   });
 });
+
+describe("¿Alcanza? with only the balance told (no accounts that count)", () => {
+  it("checks the next bill against the money told, not against $0", () => {
+    // Only "cuánto tienes hoy" answered ($1.500.000, no accounts) and a card bill due in 2 days.
+    const r = build("2026-10-03", [], {
+      accounts: [{ id: CARD, accountType: "CREDIT_CARD", currentBalance: 480_000, countsInDisponible: null, cutoffDay: 15, paymentDay: 5 }],
+      statements: [{ accountId: CARD, cutDate: "2026-09-15", dueDate: "2026-10-05", minimum: 480_000, totalDue: 480_000, rate: 24 }],
+    });
+    const pago = r.widgets.find((w) => w.id === "pago")!;
+    expect(pago.attention?.reason).not.toBe("No alcanza");
+  });
+
+  it("still says No alcanza when the money told really doesn't cover it", () => {
+    const r = build("2026-10-03", [], {
+      settings: settings({ balanceAnchor: { balance: 100_000, at: "2026-10-01T14:00:00.000Z" } }),
+      accounts: [{ id: CARD, accountType: "CREDIT_CARD", currentBalance: 480_000, countsInDisponible: null, cutoffDay: 15, paymentDay: 5 }],
+      statements: [{ accountId: CARD, cutDate: "2026-09-15", dueDate: "2026-10-05", minimum: 480_000, totalDue: 480_000, rate: 24 }],
+    });
+    expect(r.widgets.find((w) => w.id === "pago")!.attention).toMatchObject({ level: "red", reason: "No alcanza" });
+  });
+});

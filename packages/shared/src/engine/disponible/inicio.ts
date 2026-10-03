@@ -219,11 +219,16 @@ export function buildInicio(input: {
       .reduce((s, m) => s + (m.direction === "INFLOW" ? m.amount : -m.amount), 0)) * 100) / 100
     : input.accounts.filter((a) => counted.has(a.id)).reduce((s, a) => s + a.currentBalance, 0);
   const obligations = bills.obligations;
+  // What "¿Alcanza?" checks bills against: the counted accounts; with none (only "cuánto tienes hoy" was
+  // told, no accounts), the money told plus what moved since — the same money Disponible starts from.
+  const countedBalances = input.accounts.filter((a) => counted.has(a.id)).map((a) => ({ accountId: a.id, balance: a.currentBalance }));
   const widgetsInput: InicioWidgetsInput = {
     today, cycle, result, movements, counted,
     transactions: input.transactions,
     obligations,
-    balances: input.accounts.filter((a) => counted.has(a.id)).map((a) => ({ accountId: a.id, balance: a.currentBalance })),
+    balances: countedBalances.length ? countedBalances
+      // Told in an earlier cycle: the cycle's money is what Disponible starts from (before bills and Ahorro).
+      : [{ accountId: "told", balance: anchor ? balanceToday : result.disponible + result.porPagar.total + result.ahorro.total }],
     people: input.people,
     cards: input.cards ?? cardsFrom(input.accounts, bills.items, input.statements ?? [], input.transactions, today),
     balanceToday,
