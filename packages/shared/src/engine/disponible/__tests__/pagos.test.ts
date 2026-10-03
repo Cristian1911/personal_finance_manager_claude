@@ -135,6 +135,7 @@ describe("a card bill with a USD section (S10-14)", () => {
       tx("card", "2026-09-15", 100_000, "OUTFLOW"),
       tx("card", "2026-09-20", 20, "OUTFLOW", { currencyCode: "USD", amountInBaseCurrency: 80_000 }),
     ] });
-    expect(bills.items[0]).toMatchObject({ amount: 180_000, usd: 20, estimated: true });
+    // 80.000 at the day's rate, + 3 % like the bank charges.
+    expect(bills.items[0]).toMatchObject({ amount: 182_400, usd: 20, estimated: true });
   });
 });

@@ -57,9 +57,9 @@ describe.each(DRIVERS)("statement import on the phone (planStatements + statemen
     await applyCommand(s, envelope("captureManualTransaction", { transactionId: "44444444-4444-4444-8444-444444444444", accountId: SAVINGS, amount: 30_000, direction: "OUTFLOW", currencyCode: "COP", date: "2026-10-01", description: "Mercado" }));
   }
   const accounts = async () => (await readInicioData(driver, USER, "2026-09-01")).accounts.map((a) => ({ id: a.id, name: a.name, accountType: a.accountType, mask: a.mask, cutoffDay: a.cutoffDay }));
-  async function importAll(statements: StatementInput[], choices: Parameters<typeof statementCommands>[3]) {
+  async function importAll(statements: StatementInput[], choices: Parameters<typeof statementCommands>[3], usdRate: number | null = 4_000) {
     const accs = await accounts();
-    const work = await statementCommands(USER, statements, planStatements(statements, accs), choices, accs);
+    const work = await statementCommands(USER, statements, planStatements(statements, accs), choices, accs, undefined, usdRate);
     const out = [];
     for (const w of work) {
       const results = [];
@@ -93,6 +93,12 @@ describe.each(DRIVERS)("statement import on the phone (planStatements + statemen
     expect(c).toMatchObject({ currentBalance: 260_000, currencyBalances: { USD: { current_balance: 12.5 } } });
     const usdRow = (await readInicioData(driver, USER, "2026-09-01")).transactions.find((t) => t.currencyCode === "USD");
     expect(usdRow).toMatchObject({ amount: 12.5, accountId: cd.accountId });
+  });
+
+  it("a USD section waits for today's dollar: nothing half-imported without it", async () => {
+    await setup();
+    const [, , us] = await importAll([savings, card, usd], [{ index: 1, create: { name: "Bancolombia tarjeta ••7706" } }], null);
+    expect(us).toMatchObject({ nuevos: 0, nota: expect.stringContaining("dólar de hoy") });
     const live = (await readInicioData(driver, USER, "2026-09-01")).transactions.filter((t) => t.accountId === SAVINGS && !t.reconciledIntoTransactionId);
     expect(live).toHaveLength(4); // arriendo (merged), two transfers, mercado
   });

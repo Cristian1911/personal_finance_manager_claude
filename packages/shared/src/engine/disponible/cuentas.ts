@@ -53,7 +53,7 @@ function row(a: InicioAccount): CuentaRow {
     title: a.name?.trim() || kind,
     sub: parts.join(" · "),
     amount: formatPesos(a.currentBalance),
-    ...(a.usdOwed ? { usd: `+ ${formatUsd(a.usdOwed)}` } : {}),
+    ...(a.usdOwed && a.usdOwed > 0 ? { usd: `+ ${formatUsd(a.usdOwed)}` } : {}),
     counts,
     canCount: !isDebt,
     isDebt,

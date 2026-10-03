@@ -97,10 +97,24 @@ export function createSqlStorage(driver: SqlDriver): StoragePort {
     },
 
     async adjustCurrencyBalance(userId, id, currency, delta) {
-      const bal = await readCurrencyBalances(userId, id);
-      const entry = bal[currency] ?? {};
-      const next = Math.round(((entry.current_balance ?? 0) + delta) * 100) / 100;
-      await writeCurrencyBalances(userId, id, { ...bal, [currency]: { ...entry, current_balance: next } });
+      if (!/^[A-Z]{3}$/.test(currency)) throw new Error("currency");
+      // One statement, like adjustAccountBalance: two captures at once on the server can't lose each other's delta.
+      if (pg) {
+        await q(
+          `UPDATE accounts_enc SET currency_balances = jsonb_set(
+             jsonb_set(coalesce(currency_balances, '{}'::jsonb), ARRAY[?::text], coalesce(currency_balances -> ?::text, '{}'::jsonb)),
+             ARRAY[?::text, 'current_balance'],
+             to_jsonb(round(coalesce((currency_balances -> ?::text ->> 'current_balance')::numeric, 0) + ?, 2)))
+           WHERE user_id = ? AND id = ?`,
+          [currency, currency, currency, currency, delta, userId, id]);
+      } else {
+        const path = `$.${currency}.current_balance`;
+        await q(
+          `UPDATE accounts SET currency_balances = json_set(coalesce(currency_balances, '{}'), ?,
+             round(coalesce(json_extract(currency_balances, ?), 0) + ?, 2))
+           WHERE user_id = ? AND id = ?`,
+          [path, path, delta, userId, id]);
+      }
     },
 
     async setCurrencyBalance(userId, id, currency, patch) {

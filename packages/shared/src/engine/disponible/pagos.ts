@@ -124,8 +124,9 @@ export function cycleBills(i: {
   const into = (accountId: string, from: string, to: string) => i.transactions
     .filter((t) => live(t) && t.accountId === accountId && t.date >= from && t.date <= to);
   // A foreign row counts by its value in pesos (or today's dollar + 3 %); with no rate at all, not at all.
+  // amountInBaseCurrency is at the day's rate; what the bank charges adds about 3 % (spec §4), same as a USD minimum.
   const pesos = (t: StoredTransaction) => (t.currencyCode === "COP" ? t.amount
-    : t.amountInBaseCurrency ?? (i.usdRate && t.currencyCode === "USD" ? t.amount * i.usdRate * FOREIGN_MARKUP : 0));
+    : (t.amountInBaseCurrency ?? (i.usdRate && t.currencyCode === "USD" ? t.amount * i.usdRate : 0)) * FOREIGN_MARKUP);
   const sum = (ts: StoredTransaction[], dir: "INFLOW" | "OUTFLOW") => cents(ts.filter((t) => t.direction === dir).reduce((s, t) => s + pesos(t), 0));
   const dollars = (ts: StoredTransaction[]) => cents(ts.filter((t) => t.direction === "OUTFLOW" && t.currencyCode === "USD").reduce((s, t) => s + t.amount, 0));
   for (const a of i.accounts.filter((x) => isDebtAccountType(x.accountType) && x.paymentDay)) {

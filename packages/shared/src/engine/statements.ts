@@ -191,7 +191,9 @@ export async function statementCommands(
     const foreign = currency !== "COP";
     const sibling = plan.withIndex != null ? resolved.get(plan.withIndex) : undefined;
     const siblingAccount = sibling?.id;
-    if (choice?.skip || (plan.withIndex != null && !choice && !plan.accountId && !siblingAccount)) { none("No lo importaste."); continue; }
+    if (choice?.skip || (plan.withIndex != null && !choice?.accountId && !choice?.create && !plan.accountId && !siblingAccount)) { none("No lo importaste."); continue; }
+    // Dollars need today's rate, which only an up-to-date server sends: without it, nothing is half-imported.
+    if (foreign && !usdRate) { none("Zeta aún no tiene el dólar de hoy: sincroniza e impórtalo de nuevo."); continue; }
 
     const steps: StatementStep[] = [];
     let accountId = choice?.accountId ?? plan.accountId ?? siblingAccount ?? null;

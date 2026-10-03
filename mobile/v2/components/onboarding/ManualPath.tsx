@@ -124,7 +124,9 @@ export function ManualPath({ onFinish, onBack }: { onFinish: (r: ManualResult) =
       ...namedCards.map((c): [CommandType, unknown] => {
         const owed = money(c.owed);
         return ["createAccount", {
-          accountId: c.key, accountType: "CREDIT_CARD", name: c.name.trim(), currencyCode: c.usd ? "USD" : "COP",
+          accountId: c.key, accountType: "CREDIT_CARD", name: c.name.trim(),
+          // A card is in pesos; its USD part comes with its statement (S10-14: same card, dollars apart).
+          currencyCode: "COP",
           balance: owed ?? 0, balanceUnknown: owed == null, creditLimit: money(c.limit) ?? undefined, paymentDay: dayOf(c.day) ?? undefined,
         }];
       }),
@@ -229,18 +231,11 @@ export function ManualPath({ onFinish, onBack }: { onFinish: (r: ManualResult) =
                 {rowX(`Quitar ${c.name || "tarjeta"}`, () => remove(setCards, c.key))}
               </View>
               <View style={styles.line}>
-                <Field label={c.usd ? "Cupo en dólares (opcional)" : "Cupo (opcional)"} value={c.limit} onChange={(v) => update(setCards, c.key, { limit: v })} placeholder={c.usd ? "US$0" : "$0"} money />
-                <Field label={c.usd ? "Debes hoy en dólares (opcional)" : "Debes hoy (opcional)"} value={c.owed} onChange={(v) => update(setCards, c.key, { owed: v })} placeholder={c.usd ? "US$0" : "$0"} money />
+                <Field label="Cupo (opcional)" value={c.limit} onChange={(v) => update(setCards, c.key, { limit: v })} placeholder="$0" money />
+                <Field label="Debes hoy en pesos (opcional)" value={c.owed} onChange={(v) => update(setCards, c.key, { owed: v })} placeholder="$0" money />
               </View>
               <View style={styles.line}>
                 <Field label="Día de pago" value={c.day} onChange={(v) => update(setCards, c.key, { day: v })} placeholder="Ej: 20" day />
-                <View style={{ flex: 1, gap: 6 }}>
-                  <Text style={{ fontSize: 13, color: t.colors.muted, fontFamily: t.fonts.uiMedium }}>Moneda</Text>
-                  <View style={styles.chips}>
-                    <Chip label="Pesos" on={!c.usd} onPress={() => update(setCards, c.key, { usd: false })} />
-                    <Chip label="Dólares" on={c.usd} onPress={() => update(setCards, c.key, { usd: true })} />
-                  </View>
-                </View>
               </View>
             </View>
           ))}

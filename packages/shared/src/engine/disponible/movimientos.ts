@@ -4,7 +4,7 @@ import type { PayCycle } from "./cycle";
 import { diffDays, dayOfWeek, type IsoDate } from "./dates";
 import type { InicioAccount } from "./inicio";
 import type { StoredTransaction } from "./movements";
-import { formatPesos } from "./verdict";
+import { formatPesos, formatUsd } from "./verdict";
 import { movementTime, readableName, cycleLabel, signedPesos } from "./view";
 import { colombiaTime, relativeDay } from "./widgets";
 import { categoryById } from "../categories";
@@ -125,9 +125,14 @@ function toneOf(t: StoredTransaction, a: Account | undefined): MovimientoTone {
 }
 
 function amountOf(t: StoredTransaction, tone: MovimientoTone): string {
-  if (tone === "neutral") return formatPesos(t.amount);
-  return t.direction === "INFLOW" ? `+${formatPesos(t.amount)}` : `−${formatPesos(t.amount)}`;
+  // A card's USD row (S10-14) reads in dollars, never as pesos.
+  const fmt = t.currencyCode === "USD" ? formatUsd : formatPesos;
+  if (tone === "neutral") return fmt(t.amount);
+  return t.direction === "INFLOW" ? `+${fmt(t.amount)}` : `−${fmt(t.amount)}`;
 }
+
+/** A row's value in pesos for day totals: foreign rows by their value in pesos (unknown → left out). */
+const pesosOf = (t: StoredTransaction) => (t.currencyCode === "COP" ? t.amount : t.amountInBaseCurrency ?? 0);
 
 function statusOf(t: StoredTransaction, a: Account | undefined): string | null {
   if (t.isExcluded) return "Ignorado";
@@ -203,7 +208,7 @@ export function movimientosView(input: {
   for (const g of groups) {
     const net = shown
       .filter((t) => t.date === g.date && toneOf(t, accounts.get(t.accountId)) !== "neutral")
-      .reduce((s, t) => s + (t.direction === "INFLOW" ? t.amount : -t.amount), 0);
+      .reduce((s, t) => s + (t.direction === "INFLOW" ? pesosOf(t) : -pesosOf(t)), 0);
     g.total = net > 0 ? `+${formatPesos(net)}` : signedPesos(Math.round(net * 100) / 100);
   }
 

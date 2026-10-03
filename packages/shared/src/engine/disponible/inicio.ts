@@ -1,3 +1,4 @@
+import { FOREIGN_MARKUP } from "./pagos";
 import { defaultCountsInDisponible } from "../commands/set-account-counts-in-disponible";
 import type { CycleSettings, StoredPaySchedule } from "../types";
 import { computePayCycle, EARLY_ARRIVAL_DAYS, LATE_ARRIVAL_DAYS, type PayCycle, type PaySchedule } from "./cycle";
@@ -230,7 +231,7 @@ export function buildInicio(input: {
       // Told in an earlier cycle: the cycle's money is what Disponible starts from (before bills and Ahorro).
       : [{ accountId: "told", balance: anchor ? balanceToday : result.disponible + result.porPagar.total + result.ahorro.total }],
     people: input.people,
-    cards: input.cards ?? cardsFrom(input.accounts, bills.items, input.statements ?? [], input.transactions, today),
+    cards: input.cards ?? cardsFrom(input.accounts, bills.items, input.statements ?? [], input.transactions, today, input.usdRate ?? null),
     balanceToday,
     nextIncome: irregular ? 0 : income,
     cycles: { prev: cycleOn(addDays(cycle.start, -1)), next: cycleOn(addDays(cycle.end, 1)) },
@@ -253,7 +254,7 @@ export function buildInicio(input: {
  * one still pending, minus what's paid on it — never an old one. Usage, minimum
  * and the at-cut projection come with the statement later.
  */
-function cardsFrom(accounts: InicioAccount[], items: BillItem[], statements: CardStatement[], transactions: StoredTransaction[], today: IsoDate): CardSummary[] {
+function cardsFrom(accounts: InicioAccount[], items: BillItem[], statements: CardStatement[], transactions: StoredTransaction[], today: IsoDate, usdRate: number | null = null): CardSummary[] {
   return accounts.filter((a) => a.accountType === "CREDIT_CARD").map((a) => {
     const pending = items.find((b) => b.kind === "card" && b.accountId === a.id && b.status === "pending");
     const cutDay = a.cutoffDay ?? a.paymentDay;
@@ -261,7 +262,8 @@ function cardsFrom(accounts: InicioAccount[], items: BillItem[], statements: Car
     const last = statements.filter((s) => s.accountId === a.id && s.cutDate).sort((x, y) => y.cutDate!.localeCompare(x.cutDate!))[0];
     const since = last?.cutDate
       ? Math.round(transactions.filter((t) => isLiveTransaction(t) && t.accountId === a.id && t.direction === "OUTFLOW" && t.date > last.cutDate!)
-        .reduce((s, t) => s + (t.currencyCode === "COP" ? t.amount : t.amountInBaseCurrency ?? 0), 0) * 100) / 100
+        .reduce((s, t) => s + (t.currencyCode === "COP" ? t.amount
+          : (t.amountInBaseCurrency ?? (usdRate && t.currencyCode === "USD" ? t.amount * usdRate : 0)) * FOREIGN_MARKUP), 0) * 100) / 100
       : null;
     return {
       minimum: pending && !pending.estimated ? Math.max(0, Math.round((pending.amount - pending.paid) * 100) / 100) : null,

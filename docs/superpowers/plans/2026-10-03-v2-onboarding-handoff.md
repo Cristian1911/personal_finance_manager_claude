@@ -57,6 +57,16 @@ This is the first file to read when resuming this work on branch `ccr-8048e38b-y
   - "Completa tus datos" is collapsible and collapsed by default.
 - Next: USD card sections (`docs/superpowers/specs/2026-10-03-v2-usd-cards-design.md`).
 
+## USD cards (S10-14), done 2026-10-03
+
+- Built: storage + sync, per-currency balances, import of the USD section, the day's dollar via the snapshot, bills, Mis cuentas, Cuenta, Pagos, Movimientos. `zeta-v2-reviewer` findings fixed: dollars in Movimientos, an atomic jsonb/json update, the 1.03 applied consistently, no USD import without a rate, the onboarding USD toggle removed.
+- Still open:
+  - A zeta-dev integration test (`webapp/src/lib/engine/__tests__/pg-integration.test.ts`) for the jsonb write and `amount_in_base_currency` through the encrypted views.
+  - A sync json round-trip test.
+  - "te quedan" on the card limit ignores the USD debt.
+  - Splitting a payment between the pesos and USD parts (Debo).
+- **Deploy order:** the server before the phone.
+
 ## Still to do before a PR (original list)
 
 1. **See it running.** Nothing has been run in a browser or on a device yet. In `mobile/`, use `pnpm preview:web`, or for shots:
