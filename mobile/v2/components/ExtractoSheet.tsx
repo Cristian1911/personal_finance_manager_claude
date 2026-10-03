@@ -9,6 +9,7 @@ import {
 import { toColombiaDateString } from "../../lib/utils/date";
 import { getV2Database } from "../../lib/v2/engine/database";
 import { expoSha256, notifyLocalWrite, runLocalCommand } from "../../lib/v2/engine/run-local";
+import { notifyV2Change } from "../../lib/v2/changes";
 import { parseStatement } from "../../lib/v2/statement";
 import { useV2Theme } from "../theme/ThemeProvider";
 import { Button } from "./Button";
@@ -65,6 +66,8 @@ export function ExtractoSheet({ file, userId, onClose }: {
       results.push(statementResult(w, out));
     }
     notifyLocalWrite();
+    // Screens (Mis cuentas, Hoy) reload on this one; notifyLocalWrite only reaches sync.
+    notifyV2Change();
     // For each card: did it make a payment, and how the debt moved against the statement before.
     const { driver } = await getV2Database();
     const today = toColombiaDateString();
