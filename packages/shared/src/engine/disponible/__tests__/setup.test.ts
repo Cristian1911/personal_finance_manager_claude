@@ -64,6 +64,11 @@ describe("setupProgress (S10-4: how real the Disponible is)", () => {
     expect(pct({ transactions: [{ date: "2026-10-01", captureMethod: "NOTIFICATION" }] })).toBe(20);
   });
 
+  it("'No uso extractos' closes the statement task (optional, S10-5)", () => {
+    expect(pct({ noStatements: true, noCards: true, noBills: true })).toBe(100);
+    expect(setupProgress(base).tasks.find((t) => t.id === "statement")!.declineLabel).toBe("No uso extractos");
+  });
+
   it("levels: <40 Borrador, 40–79 Aproximado, ≥80 Real", () => {
     expect([39, 40, 79, 80].map(setupLevel)).toEqual(["borrador", "aproximado", "aproximado", "real"]);
   });

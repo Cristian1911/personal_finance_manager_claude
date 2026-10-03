@@ -54,8 +54,8 @@ export const snoozeCapture = (userId: string, today: string) =>
 export const markHoyGuideSeen = (userId: string) => remember(userId, ONBOARDING_KEYS.hoyGuideSeen, "1");
 
 /** "No tengo" on a setup task (cards or fixed payments). */
-export const declineSetupTask = (userId: string, task: "cards" | "bills") =>
-  remember(userId, task === "cards" ? ONBOARDING_KEYS.noCards : ONBOARDING_KEYS.noBills, "1");
+export const declineSetupTask = (userId: string, task: "cards" | "bills" | "statement") =>
+  remember(userId, task === "cards" ? ONBOARDING_KEYS.noCards : task === "bills" ? ONBOARDING_KEYS.noBills : ONBOARDING_KEYS.noStatements, "1");
 
 function parseLayout(raw: string | undefined): InicioLayout | null {
   const l = parseLocal<InicioLayout | null>(raw, null);
@@ -84,7 +84,7 @@ export async function loadInicio(userId: string, now: Date = new Date()): Promis
 
   const local = await readLocal(userId, [
     MEMO_KEY, AUTO_OPEN_KEY, LAYOUT_KEY,
-    ONBOARDING_KEYS.pendingBills, ONBOARDING_KEYS.noCards, ONBOARDING_KEYS.noBills, ONBOARDING_KEYS.hoyGuideSeen, ONBOARDING_KEYS.tourSeen, ONBOARDING_KEYS.setupOpen, ONBOARDING_KEYS.captureSnoozedUntil,
+    ONBOARDING_KEYS.pendingBills, ONBOARDING_KEYS.noCards, ONBOARDING_KEYS.noBills, ONBOARDING_KEYS.noStatements, ONBOARDING_KEYS.hoyGuideSeen, ONBOARDING_KEYS.tourSeen, ONBOARDING_KEYS.setupOpen, ONBOARDING_KEYS.captureSnoozedUntil,
   ]);
   // A damaged memo only costs one flicker.
   const memo = parseLocal<DisponibleVerdictMemo | null>(local.get(MEMO_KEY), null);
@@ -99,6 +99,7 @@ export async function loadInicio(userId: string, now: Date = new Date()): Promis
     pendingBills,
     noCards: local.has(ONBOARDING_KEYS.noCards),
     noBills: local.has(ONBOARDING_KEYS.noBills),
+    noStatements: local.has(ONBOARDING_KEYS.noStatements),
     today,
   });
   const guideSeen = local.has(ONBOARDING_KEYS.hoyGuideSeen);

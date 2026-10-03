@@ -89,7 +89,7 @@ function TaskRow({ task, onPress, onDecline, compact }: { task: SetupTask; onPre
       {!task.done && !compact && task.canDecline && (
         <Button
           label={task.declineLabel} variant="text" size="S" onPress={onDecline} style={{ alignSelf: "flex-start", marginLeft: 34 }}
-          accessibilityLabel={task.declineLabel === "No tengo" ? `No tengo ${task.id === "cards" ? "tarjetas de crédito" : "pagos fijos"}` : `${task.declineLabel}: quitar los pagos sin monto`}
+          accessibilityLabel={task.declineLabel === "No tengo" ? `No tengo ${task.id === "cards" ? "tarjetas de crédito" : "pagos fijos"}` : task.id === "bills" ? `${task.declineLabel}: quitar los pagos sin monto` : task.declineLabel}
         />
       )}
     </View>

@@ -45,6 +45,7 @@ export const ONBOARDING_KEYS = {
   pendingBills: "onboarding.pending_bills",
   noCards: "onboarding.no_cards",
   noBills: "onboarding.no_bills",
+  noStatements: "onboarding.no_statements",
   hoyGuideSeen: "guide.hoy_seen",
   setupOpen: "guide.setup_open",
   /** "Ahora no" on the capture card: hidden until this date (YYYY-MM-DD). */

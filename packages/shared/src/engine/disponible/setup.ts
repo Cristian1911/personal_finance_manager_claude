@@ -45,6 +45,8 @@ export interface SetupInput {
   pendingBills: string[];
   noCards: boolean;
   noBills: boolean;
+  /** "No uso extractos": statements are the main path, never mandatory (S10-5). */
+  noStatements?: boolean;
   today: IsoDate;
 }
 
@@ -90,7 +92,7 @@ export function setupProgress(input: SetupInput): SetupProgress {
       title: "Cuándo te pagan y cuánto tienes", detail: "Lo mínimo para tu número",
     },
     {
-      id: "statement", weight: SETUP_WEIGHTS.statement, done: input.hasStatement, canDecline: false, declineLabel: "",
+      id: "statement", weight: SETUP_WEIGHTS.statement, done: input.hasStatement || !!input.noStatements, canDecline: true, declineLabel: "No uso extractos",
       title: "Sube tus extractos", detail: "Los últimos 3 meses son gratis: Zeta saca tus pagos y tarjetas",
     },
     {

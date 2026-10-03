@@ -225,7 +225,7 @@ export default function InicioScreen() {
     router.push(route as never);
   }, [router, pendingBills]);
   const onSetupDecline = useCallback((id: SetupTaskId) => {
-    if (id !== "cards" && id !== "bills") return;
+    if (id === "basics") return;
     // Names left without amount in onboarding: "Ya no los pago" drops them (they aren't "No tengo").
     const done = id === "bills" && pendingBills.length
       ? rememberJson(userId, ONBOARDING_KEYS.pendingBills, [])
