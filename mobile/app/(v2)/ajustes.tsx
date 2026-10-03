@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react-native";
 import { amountTyping, createSqlStorage, formatPesos, parseAmount, type CycleSettings } from "@zeta/shared";
 import { useAuth } from "../../lib/auth";
 import { LEGAL_URLS, SUPPORT_EMAIL } from "../../lib/constants/urls";
-import { deleteAccountV2, signOutV2 } from "../../lib/v2/account";
+import { deleteAccountV2, restartV2, signOutV2 } from "../../lib/v2/account";
 import { notifyV2Change } from "../../lib/v2/changes";
 import { getV2Database } from "../../lib/v2/engine/database";
 import { runLocalCommand } from "../../lib/v2/engine/run-local";
@@ -33,7 +33,8 @@ const choiceOf = (s: CycleSettings | null): PayChoice | null => {
 /**
  * Ajustes (S8-7, launch-trimmed): your number (when you get paid, how
  * much, Ahorro, Mis cuentas), how the app looks, help and legal, then
- * Cerrar sesión and Borrar mi cuenta — both ask first.
+ * Cerrar sesión, Empezar de nuevo (S10-4: wipe the money data, keep the
+ * account, onboarding again) and Borrar mi cuenta — all ask first.
  */
 export default function AjustesScreen() {
   const t = useV2Theme();
@@ -44,8 +45,9 @@ export default function AjustesScreen() {
   const { prefs, setPrefs } = useThemePrefs();
   const [settings, setSettings] = useState<CycleSettings | null>(null);
   const [editing, setEditing] = useState(false);
-  const [confirm, setConfirm] = useState<"logout" | "delete" | null>(null);
+  const [confirm, setConfirm] = useState<"logout" | "restart" | "delete" | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [restarting, setRestarting] = useState(false);
 
   const reload = useCallback(async () => {
     const { driver } = await getV2Database();
@@ -127,6 +129,8 @@ export default function AjustesScreen() {
         {session && (
           <View style={{ gap: 6, marginTop: 12 }}>
             <Button label="Cerrar sesión" variant="destructive" onPress={() => setConfirm("logout")} />
+            <Button label="Empezar de nuevo" variant="text" onPress={() => setConfirm("restart")} loading={restarting} style={{ alignSelf: "center" }}
+              accessibilityHint="Borra tus movimientos, cuentas y pagos, y vuelve a configurar Zeta" />
             <Button label="Borrar mi cuenta" variant="text" onPress={() => setConfirm("delete")} loading={deleting} style={{ alignSelf: "center" }} />
           </View>
         )}
@@ -151,6 +155,27 @@ export default function AjustesScreen() {
         onConfirm={async () => {
           setConfirm(null);
           await signOutV2(userId).catch(() => Alert.alert("No se pudo cerrar sesión", "Intenta de nuevo."));
+        }}
+        onCancel={() => setConfirm(null)}
+      />
+      <ConfirmSheet
+        open={confirm === "restart"}
+        title="¿Empezar de nuevo?"
+        consequence="Se borran tus movimientos, cuentas, tarjetas, extractos, pagos fijos, deudas y cuándo te pagan, aquí y en tu cuenta. Quedan tu usuario, tus categorías, los comercios que Zeta aprendió y tu correo de reenvío. No se puede deshacer."
+        confirmLabel="Borrar y empezar"
+        destructive
+        onConfirm={async () => {
+          setConfirm(null);
+          setRestarting(true);
+          try {
+            await restartV2(userId);
+            notifyV2Change();
+            router.navigate("/inicio" as never);
+          } catch (e) {
+            Alert.alert("No se pudo empezar de nuevo", e instanceof Error ? e.message : "Intenta de nuevo.");
+          } finally {
+            setRestarting(false);
+          }
         }}
         onCancel={() => setConfirm(null)}
       />

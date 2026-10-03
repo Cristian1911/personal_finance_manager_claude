@@ -4022,6 +4022,10 @@ export type Database = {
         Args: Record<string, never>
         Returns: undefined
       }
+      restart_financial_data: {
+        Args: Record<string, never>
+        Returns: undefined
+      }
       get_accounts_with_masks: {
         Args: { p_user_id: string }
         Returns: {

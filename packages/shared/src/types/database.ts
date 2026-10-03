@@ -854,6 +854,10 @@ export type Database = {
         Args: Record<string, never>
         Returns: undefined
       }
+      restart_financial_data: {
+        Args: Record<string, never>
+        Returns: undefined
+      }
     }
     Enums: {
       account_type:
