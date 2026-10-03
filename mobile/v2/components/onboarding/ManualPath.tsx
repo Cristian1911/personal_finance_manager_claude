@@ -178,7 +178,7 @@ export function ManualPath({ onFinish, onBack }: { onFinish: (r: ManualResult) =
       body: (
         <>
           {accounts.map((a) => (
-            <View key={a.key} style={styles.line}>
+            <View key={a.key} style={[styles.line, { alignItems: "center" }]}>
               {a.cash
                 ? <Text style={{ flex: 1.2, fontSize: 15, color: t.colors.ink, fontFamily: t.fonts.uiSemibold }}>Efectivo</Text>
                 : <Field label="Nombre de la cuenta" hideLabel value={a.name} onChange={(v) => update(setAccounts, a.key, { name: v })} placeholder="Ej: Bancolombia" flex={1.2} />}

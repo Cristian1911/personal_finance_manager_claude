@@ -10,8 +10,9 @@ const FALLBACK_SUPABASE_URL = "https://invalid.localhost";
 const FALLBACK_SUPABASE_KEY = "invalid-publishable-key";
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+// `||`: the web preview sets these to "" when there's no dev project (demo mode).
 const supabaseKey =
-  process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+  process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
   process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseKey);
@@ -92,7 +93,7 @@ const ExpoSecureStoreAdapter = {
  */
 const projectRef = (() => {
   try {
-    return new URL(supabaseUrl ?? FALLBACK_SUPABASE_URL).hostname.split(".")[0] ?? "invalid";
+    return new URL(supabaseUrl || FALLBACK_SUPABASE_URL).hostname.split(".")[0] ?? "invalid";
   } catch {
     return "invalid";
   }
@@ -141,8 +142,8 @@ export function isDeadRefreshToken(error: unknown): boolean {
 }
 
 export const supabase = createClient<Database>(
-  supabaseUrl ?? FALLBACK_SUPABASE_URL,
-  supabaseKey ?? FALLBACK_SUPABASE_KEY,
+  supabaseUrl || FALLBACK_SUPABASE_URL,
+  supabaseKey || FALLBACK_SUPABASE_KEY,
   {
     auth: {
       storage: ExpoSecureStoreAdapter,

@@ -30,7 +30,7 @@ export function ErrorLine({ text }: { text: string | null }) {
   );
 }
 
-/** A labelled input. `money` formats as pesos while typing; `day` takes 1–2 digits. */
+/** A labelled input. `money` formats as pesos while typing; `day` takes 1–2 digits. `flex` sizes it in a row. */
 export function Field({ label, value, onChange, placeholder, money, day, flex, hideLabel }: {
   label: string;
   value: string;
@@ -44,7 +44,8 @@ export function Field({ label, value, onChange, placeholder, money, day, flex, h
 }) {
   const t = useV2Theme();
   return (
-    <View style={{ flex: flex ?? 1, gap: 6, minWidth: 0 }}>
+    // flex 0 = full width in a column (flex 0 would collapse it to nothing there).
+    <View style={[{ gap: 6, minWidth: 0 }, flex === 0 ? { alignSelf: "stretch" } : { flex: flex ?? 1 }]}>
       {!hideLabel && <Text style={{ fontSize: 13, color: t.colors.muted, fontFamily: t.fonts.uiMedium }}>{label}</Text>}
       <TextInput
         value={value}
